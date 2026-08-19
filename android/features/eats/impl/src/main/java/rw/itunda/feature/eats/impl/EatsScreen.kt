@@ -136,7 +136,7 @@ import java.util.UUID
 // (2026-07-23) gave it the same BuildConfig-avoidance NetworkClient.init already had, so
 // it's imported directly from core/designsystem, same as every other shared UI atom.
 
-private val EATS_STATUS_LABEL = mapOf(
+internal val EATS_STATUS_LABEL = mapOf(
     "PLACED" to "Placed",
     "ACCEPTED" to "Accepted by restaurant",
     "PREPARING" to "Preparing",
@@ -211,7 +211,7 @@ private fun EatsStatusStepper(status: String, hasRider: Boolean) {
     }
 }
 
-private fun nextRiderStatus(current: String): String? {
+internal fun nextRiderStatus(current: String): String? {
     val idx = RIDER_STATUS_CHAIN.indexOf(current)
     return if (idx >= 0 && idx + 1 < RIDER_STATUS_CHAIN.size) RIDER_STATUS_CHAIN[idx + 1] else null
 }
@@ -1827,7 +1827,7 @@ private fun DineInOrderConfirmationView(order: DineInOrderDto, onDone: () -> Uni
 }
 
 @Composable
-private fun EatsOrderRow(
+internal fun EatsOrderRow(
     order: EatsOrderDto,
     restaurant: ShoppingMerchantDto? = null,
     action: (@Composable () -> Unit)? = null,
@@ -2103,215 +2103,5 @@ private fun ReorderButton(reordering: Boolean, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun DeliverContent() {
-    var rider by remember { mutableStateOf<RiderDto?>(null) }
-    var loadedRider by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var registering by remember { mutableStateOf(false) }
-    var available by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
-    var mine by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
-    var busyOrderId by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    fun loadRider() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyRiderProfile()
-                if (res.success) rider = res.rider
-                error = null
-            } catch (e: HttpException) {
-                if (e.code() == 404) {
-                    rider = null
-                } else {
-                    error = superAppErrorMessage(e)
-                }
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                loadedRider = true
-            }
-        }
-    }
-    LaunchedEffect(Unit) { loadRider() }
-
-    suspend fun loadDeliveries() {
-        try {
-            val a = NetworkClient.apiService.getAvailableDeliveries()
-            val m = NetworkClient.apiService.getRiderDeliveries()
-            if (a.success) available = a.orders
-            if (m.success) mine = m.orders
-        } catch (_: Exception) {
-            // Keep showing the last-known lists on a transient poll failure.
-        }
-    }
-    LaunchedEffect(rider?.id) {
-        if (rider == null) return@LaunchedEffect
-        while (true) {
-            loadDeliveries()
-            delay(4000)
-        }
-    }
-
-    if (!loadedRider) {
-        SkeletonBlock()
-        return
-    }
-
-    val currentRider = rider
-    if (currentRider == null) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Deliver with Itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    "Earn a real delivery fee for every order you deliver, paid straight to your wallet.",
-                    color = Ids.colors.textSecondary,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.brand)
-                        .clickable(enabled = !registering) {
-                            registering = true
-                            error = null
-                            coroutineScope.launch {
-                                try {
-                                    val res = NetworkClient.apiService.registerRider()
-                                    if (res.success) rider = res.rider
-                                } catch (e: HttpException) {
-                                    // Real Toss-style resolution (2026-08-10), matching
-                                    // riderapp's own BecomeRiderScreen fix: registerRider's
-                                    // only real 409 is RiderAlreadyRegisteredException --
-                                    // the account genuinely IS already a rider, so load
-                                    // their real profile and move forward instead of
-                                    // showing an error for something that isn't actually
-                                    // wrong.
-                                    if (e.code() == 409) {
-                                        loadRider()
-                                    } else {
-                                        error = superAppErrorMessage(e)
-                                    }
-                                } finally {
-                                    registering = false
-                                }
-                            }
-                        }
-                        .padding(horizontal = 24.dp, vertical = 14.dp),
-                ) { Text(if (registering) "Registering…" else "Become a rider", color = Color.White, fontWeight = FontWeight.Bold) }
-                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
-            }
-        }
-        return
-    }
-
-    val activeDeliveries = mine.orEmpty().filter { it.status != "DELIVERED" }
-    val pastDeliveries = mine.orEmpty().filter { it.status == "DELIVERED" }
-
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap), contentPadding = PaddingValues(bottom = 20.dp)) {
-        item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text(if (currentRider.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(if (currentRider.available) "Visible for new deliveries" else "Go online to see deliveries", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (currentRider.available) Ids.colors.danger else Ids.colors.brand)
-                            .clickable {
-                                coroutineScope.launch {
-                                    try {
-                                        val res = NetworkClient.apiService.setRiderAvailability(SetRiderAvailabilityRequest(!currentRider.available))
-                                        if (res.success) rider = res.rider
-                                    } catch (e: HttpException) {
-                                        error = superAppErrorMessage(e)
-                                    }
-                                }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                    ) { Text(if (currentRider.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                }
-            }
-        }
-        error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 12.sp) } }
-        if (activeDeliveries.isNotEmpty()) {
-            item { Text("Your active deliveries", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            items(activeDeliveries, key = { it.id }) { o ->
-                val next = nextRiderStatus(o.status)
-                EatsOrderRow(o) {
-                    if (next != null) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Ids.colors.brand)
-                                .clickable(enabled = busyOrderId != o.id) {
-                                    busyOrderId = o.id
-                                    error = null
-                                    coroutineScope.launch {
-                                        try {
-                                            NetworkClient.apiService.updateRiderOrderStatus(o.id, UpdateEatsOrderStatusRequest(next))
-                                            loadDeliveries()
-                                        } catch (e: HttpException) {
-                                            error = superAppErrorMessage(e)
-                                        } finally {
-                                            busyOrderId = null
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Text(
-                                if (busyOrderId == o.id) "Updating…" else "Mark ${(EATS_STATUS_LABEL[next] ?: next).lowercase()}",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        if (currentRider.available) {
-            item { Text("Available deliveries", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            if (available == null) {
-                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
-            } else if (available!!.isEmpty()) {
-                item { EmptyState("No deliveries waiting right now.", icon = Icons.AutoMirrored.Outlined.ReceiptLong) }
-            } else {
-                items(available!!, key = { it.id }) { o ->
-                    EatsOrderRow(o) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Ids.colors.brand)
-                                .clickable(enabled = busyOrderId != o.id) {
-                                    busyOrderId = o.id
-                                    error = null
-                                    coroutineScope.launch {
-                                        try {
-                                            NetworkClient.apiService.claimDelivery(o.id)
-                                            loadDeliveries()
-                                        } catch (e: HttpException) {
-                                            error = superAppErrorMessage(e)
-                                        } finally {
-                                            busyOrderId = null
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                        ) { Text(if (busyOrderId == o.id) "Claiming…" else "Claim delivery", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                    }
-                }
-            }
-        }
-        if (pastDeliveries.isNotEmpty()) {
-            item { Text("Completed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            items(pastDeliveries, key = { it.id }) { o -> EatsOrderRow(o) }
-        }
-    }
-}
+// DeliverContent moved to EatsDeliver.kt (2026-08-19) -- see that file's own
+// header comment.
