@@ -13582,3 +13582,54 @@ process (`docs/ARCHITECTURE_GUIDELINES.md` §2), not reflexively to silence a re
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
 `scripts/file-size-baseline.json`. Commit `d460dde3`.*
+
+## 204. Real Eats sort picker (rating/distance) -- and a real cluster-memory honesty note
+
+Second gap from the same research fork (§203): `OrderFoodView` only had a single
+favorites toggle where real Coupang Eats offers a full sort picker. Backend
+(`ShoppingController.getEligibleMerchants`) already computed `rating`/`distanceKm`
+per-row for display, just never made them sortable -- same shape of gap as §203's fix.
+
+Added real `rating`/`distance` sortBy modes on the backend alongside the existing
+`delivery_time`/`favorites`. Deliberately used an explicit two-key comparator
+(is-null, then descending rating) rather than `compareByDescending(nullsFirst()/
+nullsLast())` for the rating sort -- hand-traced that combinator and confirmed
+`nullsFirst()` is actually the correct choice there, but it's a genuinely
+easy-to-get-backwards pattern with no `kotlinc` available in this environment to verify
+empirically, so chose the unambiguous idiom instead, per this repo's own new
+`docs/ARCHITECTURE_GUIDELINES.md` §1 readability rule.
+
+Replaced `OrderFoodView`'s single favorites-only toggle with a real 4-mode picker
+(Nearest/Fastest delivery/Highest rated/Most favorited) -- no fabricated "Recommended"/
+"Newest" pill, since nothing on the backend actually sorts by either.
+
+### A real bug caught by live click-through, fixed same pass
+
+The first version tracked a plain `locatingForSort: boolean` with no record of which
+mode triggered the geolocation request, so both the Nearest and Fastest-delivery pills
+showed "Locating…" simultaneously regardless of which was actually clicked. Fixed with
+`pendingSortMode: RestaurantSortMode | null` tracking the specific pending mode.
+Re-verified live after the fix: only the clicked pill shows "Locating…", and a real
+geolocation-permission denial (this automated browser has none granted) shows a clean,
+honest error and resets cleanly to Default, no stuck state.
+
+### Honest scope note: real cluster memory constraint
+
+Attempting the real backend deploy (`ITUNDA_PRIVATE_CLOUD_SERVICES=backend bash
+scripts/private-cloud-images.sh build-push-private-cloud`) was correctly refused by the
+script's own real safety check: the cluster's primary node had 776MiB available memory,
+below its 1536MiB minimum-headroom threshold. Did not override this -- forcing a build
+onto an already memory-constrained node risks destabilizing it further, and the real fix
+(resizing resource requests/limits) needs the user's own go-ahead, already tracked in
+[[project_itunda_private_cloud]]. The backend change is compile-verified
+(`:merchant:compileKotlin`) but NOT yet deployed live. Verified live that this degrades
+gracefully in the meantime: selecting Nearest/Highest rated against the currently-live
+(older) backend is a real, harmless no-op -- the deployed code doesn't recognize
+`sortBy=rating`/`distance` and simply returns the unsorted page, not an error.
+`delivery_time`/`favorites` continue working exactly as before.
+
+*Shipped: `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/web/ShoppingController.kt`,
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`services/micro-frontends/bank-mfe/src/lib/eats.ts`,
+`scripts/file-size-baseline.json`. Commit `e4f7682d`. Backend deploy pending real
+cluster memory headroom.*
