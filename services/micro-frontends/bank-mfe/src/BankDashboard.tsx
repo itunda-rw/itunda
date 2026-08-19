@@ -5250,6 +5250,9 @@ function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscript
 // KYB submission and ops-mfe the review queue, but this ordinary personal
 // NATIONAL_ID/PASSPORT submission had zero UI on any client -- kyc-mfe, checked
 // directly, is an unwired mock shell with no real API calls at all.
+const IDENTITY_DOCUMENT_LABELS: Record<IdentityDocumentType, string> = { NATIONAL_ID: 'National ID', PASSPORT: 'Passport' };
+const IDENTITY_STATUS_LABELS: Record<string, string> = { PENDING: 'Pending review', VERIFIED: 'Verified', REJECTED: 'Rejected' };
+
 function IdentityView() {
   const [submissions, setSubmissions] = useState<KycSubmission[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -5257,6 +5260,20 @@ function IdentityView() {
   const [documentType, setDocumentType] = useState<IdentityDocumentType>('NATIONAL_ID');
   const [documentNumber, setDocumentNumber] = useState('');
   const [documentReference, setDocumentReference] = useState('');
+  // Real "Explain Why" fix (2026-08-19) -- Toss's own real Product Principle
+  // (toss.im/tossfeed/article/tossproductprinciples): "clarify the reasoning behind
+  // required actions... never assume what's obvious to us is obvious to users." This
+  // screen used to open straight into a document-upload form with zero explanation of
+  // why. Grounded in a REAL, live number rather than an invented claim: the same
+  // `fetchCreditScoreSuggestions` endpoint CreditScoreView already uses reports the exact
+  // real point value `CreditScoreService.KYC_VERIFIED_POINTS` awards on approval, so this
+  // reuses it rather than hardcoding a number that could drift from the backend truth.
+  const [kycPointsGain, setKycPointsGain] = useState<number | null>(null);
+  useEffect(() => {
+    fetchCreditScoreSuggestions()
+      .then((suggestions) => setKycPointsGain(suggestions.find((s) => s.action === 'Verify your identity')?.pointsGain ?? null))
+      .catch(() => {});
+  }, []);
 
   const refresh = () => {
     setError(null);
@@ -5268,6 +5285,7 @@ function IdentityView() {
   useEffect(refresh, []);
 
   const hasPending = submissions?.some((s) => s.status === 'PENDING') ?? false;
+  const hasVerified = submissions?.some((s) => s.status === 'VERIFIED') ?? false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -5287,6 +5305,12 @@ function IdentityView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Verify your identity</h2>
+      {!hasPending && !hasVerified && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+          A quick, one-time check that confirms it's really you -- it protects your account from takeover
+          {kycPointsGain != null ? `, and raises your Credit Score by ${kycPointsGain} points once approved.` : '.'}
+        </p>
+      )}
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {hasPending ? (
         <div className="itunda-card" style={{ padding: '16px' }}>
@@ -5302,7 +5326,7 @@ function IdentityView() {
                 className={documentType === t ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 onClick={() => setDocumentType(t)}
               >
-                {t}
+                {IDENTITY_DOCUMENT_LABELS[t]}
               </button>
             ))}
           </div>
@@ -5322,8 +5346,8 @@ function IdentityView() {
         submissions.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>You have no submissions yet.</p> :
         submissions.map((s) => (
           <div key={s.id} className="itunda-card" style={{ padding: '16px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{s.documentType} · {s.documentNumber}</h4>
-            <p style={{ fontSize: '13px' }}>Status: {s.status}</p>
+            <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{IDENTITY_DOCUMENT_LABELS[s.documentType as IdentityDocumentType] ?? s.documentType} · {s.documentNumber}</h4>
+            <p style={{ fontSize: '13px' }}>Status: {IDENTITY_STATUS_LABELS[s.status] ?? s.status}</p>
             {s.decisionReason && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{s.decisionReason}</p>}
             <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Filed: {s.submittedAt}</p>
           </div>
