@@ -14184,3 +14184,40 @@ fix. Multiset diff confirmed zero unexplained content changes beyond the intende
 ShopMerchantDetail.swift,ShopBooking.swift,ShopProductDetail.swift,ShopOrders.swift,
 ShopMerchantOrders.swift,ShopReturns.swift,ShopReviews.swift,ShopPay.swift}` +
 `scripts/file-size-baseline.json`.*
+
+## 216. iOS EatsScreen.swift real decomposition -- closes the iOS half of the sweep
+
+Fourth and last iOS file: `EatsScreen.swift` (1,802 lines). Same technique as
+§213-215. 6 files, ALL under 500 lines -- the second file in this entire sweep
+(after HoodScreen.swift, §213) needing zero documented exceptions:
+`EatsScreen.swift` (405, entry point + `OrderFoodContent`, 309 lines -- unlike its
+Android/`ShopScreen.swift` siblings, small enough here to not need its own exception),
+`EatsMembership.swift` (156), `EatsRestaurantMenu.swift` (456), `EatsCheckout.swift`
+(249), `EatsOrders.swift` (344), `EatsDeliver.swift` (216, the rider-role content --
+real parity with Android's own dedicated `EatsDeliver.kt`, §209, which iOS never had
+until now).
+
+One more instance of the `EatsScreen.swift`-only `private struct StarRatingRow` (the
+same intentionally-duplicated pattern §215 found in `ShopScreen.swift`, both citing
+each other by name in their own doc comments) -- confirmed via a repo-wide grep that
+`ShopScreen.swift`'s copy was already renamed to `ShopStarRatingRow` in §215, so this
+one could safely stay named `StarRatingRow` with no collision once promoted to
+`internal`.
+
+Verified via a real `xcodebuild -scheme ItundaApp` build (exit 0, zero errors on the
+first attempt), `scripts/ios-silo-boundary-check.py` (clean), and a multiset diff
+(zero unexplained content changes). Baseline entry for `EatsScreen.swift` removed
+entirely (was 1,802, no longer needed).
+
+**This closes the iOS half of the repo-wide sweep.** All 4 originally-oversized iOS
+files (`HoodScreen.swift`/`TalkScreen.swift`/`ShopScreen.swift`/`EatsScreen.swift`,
+§213-216) are now genuinely decomposed, mirroring the Android side (§210-212) --
+real, technique carried forward across both platforms and 8 total files, with the same
+"single tangled-state composable" wall independently confirmed on both platforms for
+the Talk and Shop features specifically (`ChatThreadScreen`/`ChatThreadView`,
+`CommerceShopContent` on both). Only `MapsScreen.kt`'s internal monolith and the web
+`maps-mfe` isolation gap remain from the original module-isolation initiative.
+
+*Shipped: `ios/App/Sources/{EatsScreen.swift,EatsMembership.swift,
+EatsRestaurantMenu.swift,EatsCheckout.swift,EatsOrders.swift,EatsDeliver.swift}` +
+`scripts/file-size-baseline.json`.*
