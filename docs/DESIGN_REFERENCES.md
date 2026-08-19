@@ -14140,3 +14140,47 @@ exception). Baseline tightened 3368->668 (`TalkChatThread.swift`) via
 TalkGroupThread.swift,TalkSplitBills.swift,TalkGroupExtras.swift,TalkChatThread.swift,
 TalkChatBubbles.swift,TalkMessageBubbles.swift,TalkEmoticons.swift}` +
 `scripts/file-size-baseline.json`.*
+
+## 215. iOS ShopScreen.swift real decomposition -- a real name-collision bug caught
+
+Third iOS file: `ShopScreen.swift` (2,876 lines). Same technique as §213-214. 10 files,
+9 under 500 lines: `ShopScreen.swift` (600, entry point + `CommerceShopContent`),
+`ShopBrowseComponents.swift` (154), `ShopMerchantDetail.swift` (360),
+`ShopBooking.swift` (352), `ShopProductDetail.swift` (301), `ShopOrders.swift` (223),
+`ShopMerchantOrders.swift` (266), `ShopReturns.swift` (129), `ShopReviews.swift` (244),
+`ShopPay.swift` (317, the pay-a-merchant UI -- Android already has this as its own
+`ShopPay.kt`/`ShopPayCards.kt` files, §115; iOS never had that separation until now).
+`CommerceShopContent` (515 lines, closely matching Android's own ~640-line
+`CommerceShopContent`) is the one real exception, same tangled-state cause as every
+other platform/feature that's hit this wall.
+
+### A real cross-file name collision, unique to Swift's whole-module compilation
+
+The build failed with "invalid redeclaration of 'StarRatingRow'": `ShopScreen.swift`
+already had its own `private struct StarRatingRow` with a comment explicitly noting
+*"duplicated here rather than shared, matching EatsScreen.swift's own [pattern]"* --
+`EatsScreen.swift` has an unrelated `private struct StarRatingRow` too, an intentional
+pre-existing duplication (not a shared component) that worked fine because Swift
+allows same-named `private` top-level declarations across different files in one
+module (each stays file-scoped, no collision). Stripping `private` to make Shop's copy
+`internal` (needed for the new cross-file Shop* references) broke that -- now it's a
+real module-wide symbol colliding with Eats' still-`private` one. This is a Swift-
+specific failure mode Kotlin's Talk/Shop/Eats decompositions never hit, since Kotlin's
+`private`->`internal` promotions never encountered a same-named sibling declaration
+elsewhere in the module. Fixed by renaming Shop's copy to `ShopStarRatingRow` (kept the
+existing intentional-duplication design, matching what the file's own comment already
+argued for, rather than promoting to a shared component -- a bigger, out-of-scope
+change) across its declaration and both call sites.
+
+### Verification
+
+Real `xcodebuild -scheme ItundaApp` build (exit 0, BUILD SUCCEEDED) after the rename
+fix. Multiset diff confirmed zero unexplained content changes beyond the intended
+`private`-keyword removals and the `StarRatingRow`->`ShopStarRatingRow` rename.
+`scripts/ios-silo-boundary-check.py` clean. Baseline tightened 2876->600 via
+`--update-baseline`.
+
+*Shipped: `ios/App/Sources/{ShopScreen.swift,ShopBrowseComponents.swift,
+ShopMerchantDetail.swift,ShopBooking.swift,ShopProductDetail.swift,ShopOrders.swift,
+ShopMerchantOrders.swift,ShopReturns.swift,ShopReviews.swift,ShopPay.swift}` +
+`scripts/file-size-baseline.json`.*

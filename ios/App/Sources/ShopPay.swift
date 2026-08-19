@@ -1,0 +1,317 @@
+import SwiftUI
+import UIKit
+import CoreDesignSystem
+import CoreNetwork
+import CoreLocation
+
+
+/// Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
+/// (this app has no scanner), mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard` and
+/// Android's `PayAMerchantSection` exactly. bank-mfe/Android already have both; this is
+/// the first iOS client for either -- previously neither the dynamic per-sale flow nor
+/// the static QR flow existed anywhere on this native consumer app.
+/// Coupon-preview-before-pay (bank-mfe's own `previewPaymentIntent` flow, item 149/146)
+/// closed 2026-08-01 -- see PayByCodeCard's own doc comment.
+// Real fix (2026-08-11) -- no longer private. This is itunda's real, working
+// payment-collection UI (pay-by-code, pay-by-static-QR, Face Pay) -- see
+// ContentView.swift's own PayScreen doc comment for why it's now called directly
+// from there too, same App-target file as this one.
+struct PayAMerchantSection: View {
+    @Binding var paymentResult: CollectPaymentResultDto?
+    // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
+    // here, same as bank-mfe's own ShoppingView, so this card and PayByCodeCard don't
+    // each fetch enrollment status independently.
+    @State private var facePayEnrolled: Bool?
+
+    var body: some View {
+        if let result = paymentResult {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Payment complete").font(.headline).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text(result.merchantName).font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+                Text("\(Int(result.amount)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                if result.cashbackEarned > 0 {
+                    Text("+ \(Int(result.cashbackEarned)) RWF cashback").font(.footnote).foregroundColor(IDS.Colors.brand)
+                }
+                Button(action: { paymentResult = nil }) {
+                    Text("Done").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+            }
+            .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                FacePaySettingsCard(enrolled: facePayEnrolled, onChanged: { Task { await loadFacePayStatus() } })
+                PayByCodeCard(facePayEnrolled: facePayEnrolled ?? false, onPaid: { paymentResult = $0 })
+                PayByStaticQrCard(onPaid: { paymentResult = $0 })
+            }
+            .task { await loadFacePayStatus() }
+        }
+    }
+
+    private func loadFacePayStatus() async {
+        facePayEnrolled = (try? await NetworkClient.shared.getFacePayStatus())?.enrolled
+    }
+}
+
+/// Real Face Pay enroll/disable toggle -- see rw.itunda.merchant.FacePayService's own
+/// doc comment. bank-mfe/Android already have this; this is the first iOS client.
+/// Enrolling swaps Pay-by-code's own collect call to the Face Pay channel -- same manual
+/// code entry, just a different real ledger channel label, matching bank-mfe's own
+/// honest scope exactly (no device biometric prompt gates it on any client, itunda's own).
+struct FacePaySettingsCard: View {
+    let enrolled: Bool?
+    let onChanged: () -> Void
+
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        if enrolled == nil {
+            Color(.secondarySystemBackground).frame(height: 64).cornerRadius(IDS.Layout.cardCornerRadius)
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("😊 Face Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text(enrolled == true ? "Enabled — authorize payment codes with your face, no code re-entry needed" : "Not enabled on this account")
+                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    Spacer()
+                    Button(action: { Task { await toggle() } }) {
+                        Text(busy ? "…" : (enrolled == true ? "Disable" : "Enable"))
+                            .bold().font(.caption).foregroundColor(enrolled == true ? IDS.Colors.textPrimary : .white)
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(enrolled == true ? Color(.tertiarySystemBackground) : IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        }
+    }
+
+    private func toggle() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if enrolled == true {
+                _ = try await NetworkClient.shared.revokeFacePay()
+            } else {
+                _ = try await NetworkClient.shared.enrollFacePay()
+            }
+            onChanged()
+        } catch {
+            self.error = "Could not update Face Pay."
+        }
+    }
+}
+
+func couponDiscountLabel(_ c: MerchantCouponPreviewDto) -> String {
+    c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(Int(c.discountValue)) RWF off"
+}
+
+// Real Coupang 타임특가 (Time Deal, item 226) countdown -- mirrors bank-mfe/Android's
+// own formatDealCountdown exactly.
+func formatTimeDealCountdown(_ endsAt: String) -> String {
+    guard let end = ISO8601DateFormatter(withFractionalSeconds: true).date(from: endsAt) ?? ISO8601DateFormatter().date(from: endsAt) else { return "Ending soon" }
+    let secondsLeft = end.timeIntervalSinceNow
+    if secondsLeft <= 0 { return "Ending soon" }
+    let totalMinutes = Int(secondsLeft / 60)
+    let hours = totalMinutes / 60
+    let minutes = totalMinutes % 60
+    return hours > 0 ? "\(hours)h \(minutes)m left" : "\(minutes)m left"
+}
+
+/// Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
+/// this struct's own doc comment previously named. Mirrors bank-mfe's PayByCodeCard
+/// exactly: a non-Face-Pay code with real eligible coupons stops at a preview step
+/// (merchant/amount + coupon picker) before the actual collect() call; Face Pay and a
+/// code with zero eligible coupons both skip straight to a direct pay.
+struct PayByCodeCard: View {
+    let facePayEnrolled: Bool
+    let onPaid: (CollectPaymentResultDto) -> Void
+
+    @State private var code = ""
+    @State private var submitting = false
+    @State private var error: String?
+    @State private var needsDeviceVerification = false
+    @State private var preview: PaymentIntentPreviewResponse?
+    @State private var eligibleCoupons: [MerchantCouponViewDto] = []
+    @State private var selectedCouponId: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Pay by code").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text(facePayEnrolled
+                ? "Face Pay is on — enter the code the merchant shows you to authorize with your face."
+                : "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            if let preview {
+                Text(preview.businessName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("\(Int(preview.amount)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("Apply a coupon?").font(.footnote).bold().foregroundColor(IDS.Colors.textPrimary)
+                Button(action: { selectedCouponId = nil }) {
+                    HStack {
+                        Image(systemName: selectedCouponId == nil ? "largecircle.fill.circle" : "circle")
+                        Text("No coupon").font(.footnote)
+                    }.foregroundColor(IDS.Colors.textPrimary)
+                }
+                ForEach(eligibleCoupons) { c in
+                    Button(action: { selectedCouponId = c.coupon.id }) {
+                        HStack {
+                            Image(systemName: selectedCouponId == c.coupon.id ? "largecircle.fill.circle" : "circle")
+                            Text("\(c.coupon.title) — \(couponDiscountLabel(c.coupon))").font(.footnote)
+                        }.foregroundColor(IDS.Colors.textPrimary)
+                    }
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                HStack(spacing: 10) {
+                    Button(action: { Task { await payDirect(couponId: selectedCouponId) } }) {
+                        Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.brand).cornerRadius(10)
+                    }
+                    .disabled(submitting)
+                    Button(action: cancelPreview) {
+                        Text("Cancel").bold().foregroundColor(IDS.Colors.textPrimary)
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    }
+                    .disabled(submitting)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    TextField("Payment code", text: $code)
+                        .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? (facePayEnrolled ? "Authorizing…" : "Paying…") : (facePayEnrolled ? "😊 Pay" : "Pay"))
+                            .bold().foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .background(submitting || code.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                            .cornerRadius(10)
+                    }
+                    .disabled(submitting || code.isEmpty)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+        }
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
+        // full account. payDirect resets needsDeviceVerification itself.
+        DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { await payDirect(couponId: selectedCouponId) })
+    }
+
+    private func payDirect(couponId: String? = nil) async {
+        submitting = true
+        error = nil
+        needsDeviceVerification = false
+        defer { submitting = false }
+        do {
+            let result = facePayEnrolled
+                ? try await NetworkClient.shared.collectWithFacePay(intentId: code.trimmingCharacters(in: .whitespaces))
+                : try await NetworkClient.shared.collectPayment(intentId: code.trimmingCharacters(in: .whitespaces), couponId: couponId)
+            code = ""
+            preview = nil
+            eligibleCoupons = []
+            selectedCouponId = nil
+            onPaid(result)
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
+        } catch {
+            self.error = "Could not complete this payment."
+        }
+    }
+
+    private func submit() async {
+        error = nil
+        if facePayEnrolled {
+            await payDirect()
+            return
+        }
+        submitting = true
+        do {
+            let r = try await NetworkClient.shared.previewPaymentIntent(intentId: code.trimmingCharacters(in: .whitespaces))
+            let eligible = r.coupons.filter { $0.eligible && !$0.alreadyRedeemed }
+            if eligible.isEmpty {
+                submitting = false
+                await payDirect()
+            } else {
+                preview = r
+                eligibleCoupons = eligible
+                submitting = false
+            }
+        } catch {
+            self.error = "Could not look up this payment code."
+            submitting = false
+        }
+    }
+
+    private func cancelPreview() {
+        preview = nil
+        eligibleCoupons = []
+        selectedCouponId = nil
+        error = nil
+    }
+}
+
+struct PayByStaticQrCard: View {
+    let onPaid: (CollectPaymentResultDto) -> Void
+
+    @State private var merchantId = ""
+    @State private var amount = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Pay a merchant's static QR").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text("For a merchant with one permanent code (like a market stall) — enter their merchant ID and how much you're paying.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            TextField("Merchant ID", text: $merchantId)
+                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+            HStack(spacing: 10) {
+                TextField("Amount (RWF)", text: $amount)
+                    .keyboardType(.decimalPad)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                Button(action: { Task { await pay() } }) {
+                    Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .background(submitting || merchantId.isEmpty || Double(amount) == nil ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                        .cornerRadius(10)
+                }
+                .disabled(submitting || merchantId.isEmpty || Double(amount) == nil)
+            }
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+
+    private func pay() async {
+        guard let numericAmount = Double(amount), numericAmount > 0 else {
+            error = "Enter a valid amount."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            let result = try await NetworkClient.shared.payByStaticQr(merchantId: merchantId.trimmingCharacters(in: .whitespaces), amount: numericAmount)
+            merchantId = ""
+            amount = ""
+            onPaid(result)
+        } catch {
+            self.error = "Could not complete this payment."
+        }
+    }
+}
