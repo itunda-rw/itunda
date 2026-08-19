@@ -13927,3 +13927,52 @@ exception). `file-size-lint.py` clean (0 violations after the baseline update).
 {TalkScreen.kt,TalkLists.kt,TalkGroupsBrowse.kt,TalkGroupThread.kt,TalkGroupExtras.kt,
 TalkChatThread.kt,TalkChatBubbles.kt,TalkMessageBubbles.kt,TalkEmoticons.kt}` +
 `scripts/file-size-baseline.json`.*
+
+## 211. ShopScreen.kt real decomposition, same standard as §210
+
+Continuing straight from §210's TalkScreen.kt redo, applying the exact same standard to
+`ShopScreen.kt` (3,134 lines, only one slice removed by §207) -- the user's rejection of
+single-slice extraction applies equally here even though it wasn't named directly.
+
+Same technique as §210 throughout: the comment-inclusive-start declaration scanner found
+41 top-level declarations; a grep-based cross-file usage audit confirmed real dependency
+boundaries before grouping; every extracted declaration's `private` became `internal`;
+`androidx.compose.runtime.{getValue,setValue}` explicitly force-kept in every file
+regardless of the literal-text import trim (the exact bug §210 hit and fixed); a
+multiset diff of every non-blank/non-import line confirmed zero drops/duplicates beyond
+the intended visibility changes.
+
+Grouping (9 files, 8 under 500 lines): `ShopScreen.kt` (874, entry point +
+`CommerceShopContent`), `ShopBrowseComponents.kt` (397, banner/points/grid/cart-fab/
+store-card/product-thumb/price-row), `ShopMerchantDetail.kt` (422, merchant detail +
+bookings + review button), `ShopBooking.kt` (347, booking flow + subscribe-and-save),
+`ShopProductDetail.kt` (307, product detail + multi-cart), `ShopOrders.kt` (281,
+wishlist + inquiries + subscriptions), `ShopMerchantOrders.kt` (350, merchant-side
+orders/returns/live-tracking), `ShopReturns.kt` (250, return/exchange + billing plan),
+`ShopReviews.kt` (304, inquiry section + rating badge + review row).
+
+Unlike Talk, this pass compiled clean on the FIRST attempt -- no orphaned-annotation or
+missed-import bugs -- because §210's two real bugs were already fixed into the technique
+(force-keeping `getValue`/`setValue`, and cutting at comment-inclusive starts rather
+than bare decl lines) before this pass started, not rediscovered.
+
+`CommerceShopContent` alone is ~640 body lines with ~20 tangled `remember` state vars
+(search/cart/deals/banners/missions/time-deals/recently-viewed/favorites/follows all
+closing over the same BROWSE-tab UI) -- confirmed via grep that the OTHER 40
+declarations already take zero/trivial params and own their own state (matching §115's
+original "already well-decomposed" finding), so `CommerceShopContent` is the one real
+structural wall, same shape as `ChatThreadView` (§210) and `MapsScreen.kt`'s mega-
+composable: a genuine state-hoisting refactor, not attempted this pass.
+
+`ShopScreen.kt`: 3,134 -> 874 (entry point) + 8 files (all under 500 lines). Since
+874 < the prior 3,134 baseline entry, this didn't even trigger a new violation (baseline
+files may shrink freely) -- but `--update-baseline` was still run to tighten the frozen
+number down to reality, closing the "could silently regrow to 3,134 again" gap that
+leaving the stale number would have left open. `file-size-lint.py` clean both before and
+after the tightening. Both `:features:shop:impl:compileDebugKotlin` and
+`:app:compileDebugKotlin` verified clean.
+
+*Shipped: `android/features/shop/impl/src/main/java/rw/itunda/feature/shop/impl/
+{ShopScreen.kt,ShopBrowseComponents.kt,ShopMerchantDetail.kt,ShopBooking.kt,
+ShopProductDetail.kt,ShopOrders.kt,ShopMerchantOrders.kt,ShopReturns.kt,ShopReviews.kt}`
++ `scripts/file-size-baseline.json`.*
