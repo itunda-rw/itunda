@@ -16,7 +16,7 @@
   "android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/HoodShared.kt": 631,
   "android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt": 5314,
   "android/features/community/impl/src/main/java/rw/itunda/feature/community/impl/CommunityScreen.kt": 899,
-  "android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/EatsScreen.kt": 2107,
+  "android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/EatsScreen.kt": 525,
   "android/features/jobs/impl/src/main/java/rw/itunda/feature/jobs/impl/JobsScreen.kt": 926,
   "android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/MapsScreen.kt": 2790,
   "android/features/marketplace/impl/src/main/java/rw/itunda/feature/marketplace/impl/MarketplaceScreen.kt": 1689,

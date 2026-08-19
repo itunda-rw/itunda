@@ -13976,3 +13976,46 @@ after the tightening. Both `:features:shop:impl:compileDebugKotlin` and
 {ShopScreen.kt,ShopBrowseComponents.kt,ShopMerchantDetail.kt,ShopBooking.kt,
 ShopProductDetail.kt,ShopOrders.kt,ShopMerchantOrders.kt,ShopReturns.kt,ShopReviews.kt}`
 + `scripts/file-size-baseline.json`.*
+
+## 212. EatsScreen.kt real decomposition -- closing the 3-file single-slice backlog
+
+Third and last of the §210/§211 redo sequence: `EatsScreen.kt` (2,107 lines, only one
+slice -- `DeliverContent` -- removed by §209). Same technique throughout (declaration
+scanner, grep-verified grouping, `private`->`internal`, force-kept `getValue`/
+`setValue`, multiset diff confirming zero drops) -- clean compile on the first attempt
+again.
+
+Grouping (8 files): `EatsScreen.kt` (525, entry point + `OrderFoodContent`),
+`EatsStatusShared.kt` (107, status-label maps/stepper/`nextRiderStatus` -- shared with
+`EatsDeliver.kt`, unaffected by this split), `EatsCategoryBrowse.kt` (282, category
+icons/restaurant card/dish grid), `EatsMembership.kt` (215, platform + per-restaurant
+membership cards), `EatsFavoritesReview.kt` (331, favorites/rating badge/review card),
+`EatsRestaurantMenu.kt` (290, menu view + address autocomplete), `EatsCheckout.kt` (321,
+checkout flow + confirmation views + the cart-line data type, moved here from the
+remainder file since checkout is its natural home), `EatsOrders.kt` (328, order row +
+my-orders views + reorder button).
+
+`OrderFoodContent` alone is ~400 lines with 20 tangled `remember` state vars (the same
+real structural shape as `ChatThreadView` §210 and `CommerceShopContent` §211), which is
+why `EatsScreen.kt` lands at 525 -- 25 lines over the guideline, the smallest overage of
+the three files hit this wall, but the same underlying cause: a genuinely single,
+cohesive, state-heavy composable, not a leftover monolith. Accepted as a third real,
+documented baseline exception rather than forcing a cosmetic split.
+
+`EatsScreen.kt`: 2,107 -> 525 (entry point) + 7 files (all under 500 lines). Baseline
+tightened 2107->525 via `--update-baseline` (same gap-closing rationale as §211 --
+574 lines under the old frozen number left real regrowth headroom). Both
+`:features:eats:impl:compileDebugKotlin` and `:app:compileDebugKotlin` verified clean.
+
+This closes the full redo of all 3 files (`ShopScreen.kt`/`TalkScreen.kt`/
+`EatsScreen.kt`) that §207-209 had only single-sliced. Real end state across all 4
+originally-oversized files from the repo-wide sweep (§202-212): `MapsScreen.kt` (2,790,
+internal monolith still deferred -- a genuine state-holder redesign, tracked
+separately), `ShopScreen.kt` (874), `TalkScreen.kt` (182), `EatsScreen.kt` (525) --
+3 of 4 fully decomposed into many sub-500-line files each with at most one documented
+single-composable exception; only Maps' internal split remains undone.
+
+*Shipped: `android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/
+{EatsScreen.kt,EatsStatusShared.kt,EatsCategoryBrowse.kt,EatsMembership.kt,
+EatsFavoritesReview.kt,EatsRestaurantMenu.kt,EatsCheckout.kt,EatsOrders.kt}` +
+`scripts/file-size-baseline.json`.*
