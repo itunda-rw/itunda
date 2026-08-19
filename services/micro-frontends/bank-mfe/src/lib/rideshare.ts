@@ -33,6 +33,11 @@ export interface RideTrip {
   // discarded on every response -- see the "report a trip issue" feature's own need to
   // pre-fill SupportTicket.transactionId with a specific completed ride's payment.
   transactionId: string;
+  // Same gap, found 2026-08-20: the backend has always returned this too
+  // (RideTrip.tipAmount) -- null until tipDriver() below is called once, never again
+  // after (RideTripAlreadyTippedException). Declared here so the client can actually
+  // tell whether a completed trip has already been tipped.
+  tipAmount: number | null;
 }
 
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
@@ -144,6 +149,17 @@ export const shareRideTripStatus = (tripId: string, conversationId: string) =>
 
 export const cancelRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/cancel`, { method: 'POST' }).then((r) => r.trip);
+
+// Real Uber post-trip tipping -- see backend RideTripService.tipDriver's own doc
+// comment. Found via scripts/uncalled-endpoint-sweep.py: fully built on the backend
+// (real TIP_WINDOW, real already-tipped guard, real wallet-to-wallet ledger legs)
+// with zero client anywhere.
+export const tipDriver = (tripId: string, amount: number) =>
+  apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/tip`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.trip);
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
 // RideTripReview.kt doc comment for the full sourced account.

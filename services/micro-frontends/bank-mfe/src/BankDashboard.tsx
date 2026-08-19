@@ -211,7 +211,7 @@ import {
 import {
   acceptRideTrip, addTrustedContact, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
   fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchRideTripPin, fetchTripStops, fetchTrustedContacts, registerAsDriver, removeTrustedContact, requestRideTrip, sendStatusToTrustedContacts, setDriverAvailability,
-  shareRideTripStatus, startRideTrip, submitRideReview, updateDriverLocation,
+  shareRideTripStatus, startRideTrip, submitRideReview, tipDriver, updateDriverLocation,
   type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop, type RideTrustedContact,
 } from './lib/rideshare';
 import {
@@ -16441,6 +16441,83 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
   );
 }
 
+const TIP_PRESETS = [500, 1000, 2000];
+
+// Real Uber post-trip tipping -- see lib/rideshare.ts's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built on the backend with zero client
+// anywhere. Same real device step-up pattern every other money-moving action in this
+// file already needs (tip is a real wallet-to-wallet transfer, gated by
+// DeviceVerificationFilter same as TransferFlow/DelayedTransfersCard).
+function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped: () => void }) {
+  const [amount, setAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+
+  const handleSubmit = async (overrideAmount?: number) => {
+    const finalAmount = overrideAmount ?? amount ?? Number(customAmount);
+    if (!(finalAmount > 0)) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await tipDriver(tripId, finalAmount);
+      onTipped();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not tip your driver.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (needsDeviceVerification) {
+    return (
+      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
+        <DeviceStepUpPrompt onVerified={() => { setNeedsDeviceVerification(false); handleSubmit(); }} onCancel={() => setNeedsDeviceVerification(false)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, marginBottom: '6px' }}>Tip your driver</p>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+        {TIP_PRESETS.map((preset) => (
+          <button
+            key={preset} type="button" disabled={submitting}
+            onClick={() => { setAmount(preset); setCustomAmount(''); handleSubmit(preset); }}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+              border: '1px solid var(--itunda-grey-200)', background: amount === preset ? 'var(--itunda-blue)' : 'transparent',
+              color: amount === preset ? 'white' : 'var(--itunda-grey-700)',
+            }}
+          >
+            {preset.toLocaleString()}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input
+          type="number" placeholder="Custom amount (RWF)" value={customAmount}
+          onChange={(e) => { setCustomAmount(e.target.value); setAmount(null); }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)' }}
+        />
+        <button
+          className="itunda-btn itunda-btn-primary" disabled={submitting || !(Number(customAmount) > 0)}
+          onClick={() => handleSubmit()} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 14px' }}
+        >
+          {submitting ? '…' : 'Send'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 // Real Uber Safety "Trusted Contacts" (help.uber.com) -- a persistent contact list set
 // up once, distinct from the per-trip "Share trip status" pick above. Found while
 // triaging the uncalled-endpoint sweep: RideController already shipped a complete,
@@ -16572,6 +16649,10 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   // trips have already been rated this session, so a submitted/already-reviewed
   // prompt doesn't linger. See RideReviewPrompt's own doc comment.
   const [reviewedTripIds, setReviewedTripIds] = useState<Set<string>>(new Set());
+  // Same real optimistic-hide pattern as reviewedTripIds above -- tipDriver's own
+  // response includes the updated trip with tipAmount now set, but pastTrips itself
+  // isn't refetched on every tip, so this tracks which trips were tipped THIS session.
+  const [tippedTripIds, setTippedTripIds] = useState<Set<string>>(new Set());
 
   const loadMyTrips = () => {
     fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
@@ -16920,6 +17001,9 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                       <>
                         {t.status === 'COMPLETED' && t.driverId && !reviewedTripIds.has(t.id) && (
                           <RideReviewPrompt tripId={t.id} onSubmitted={() => setReviewedTripIds((prev) => new Set(prev).add(t.id))} />
+                        )}
+                        {t.status === 'COMPLETED' && t.driverId && !t.tipAmount && !tippedTripIds.has(t.id) && (
+                          <TipDriverPrompt tripId={t.id} onTipped={() => setTippedTripIds((prev) => new Set(prev).add(t.id))} />
                         )}
                         {t.status === 'COMPLETED' && (
                           <button
