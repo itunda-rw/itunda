@@ -14547,3 +14547,68 @@ roadmap item's own wording -- the other 5 real micro-frontends (`kyc-mfe`,
 `services/micro-frontends/bank-mfe/src/{BankDashboard,BusView,InsuranceView,
 ParkingView,RegisterPage,BikeShareView,LoginPage,LiveRiderMap,
 SimpleLiveRiderMap,RouteMiniMap,EmptyState,Badge}.tsx`.*
+
+## 221. Real 지연이체 (delayed-transfer) safety feature -- first client for a fully-built, zero-client backend service
+
+Built `scripts/uncalled-endpoint-sweep.py` -- a real, reusable, checked-in version of
+the ad hoc uncalled-endpoint sweep script this repo's own memory notes have
+independently rewritten from scratch (and re-broken some subset of the same ~5 bug
+classes in) every time since 2026-08-05. Fixed 3 NEW real extractor bugs while
+building it, on top of the already-known ones: (1) `@RequestMapping` included in the
+same regex alternation as `@GetMapping`/etc. got double-counted as its own
+"endpoint" and self-concatenated with its own base path
+(`api/v1/accounts/api/v1/accounts`); (2) client path strings like
+`` `${BASE_URL}/api/v1/...` `` -- a variable interpolation PRECEDING the literal
+path -- were invisible to a regex anchored at the opening quote; (3) `normalize()`'s
+substitution order let the bare `{id}` regex partially consume `${id}` before the
+dollar-brace regex got a turn, leaving a broken `${}`; (4) the path character class
+didn't include `?&=`, so real call sites with a query string
+(`` `/api/v1/system/compliance/queue?page=${page}` ``) never matched at all. After
+all fixes: 693 backend endpoints, 671 client paths, 66 raw candidates (down from a
+broken-script 215 on the very first run) -- verified against 5 known-called
+endpoints (`auth/terms`, `uploads`, `gift-vouchers/{}/redeem`, `p2p/recipient`,
+`system/compliance/queue`) before trusting the output, per this technique's own
+standing discipline.
+
+One real gap surfaced and closed this pass: `P2pDelayedTransferService`
+(`sendDelayed`/`getMyDelayedTransfers`/`cancel`) -- a real, fully-built, sourced
+Korean anti-voice-phishing safeguard (지연이체서비스, matching KakaoBank/Toss/IBK/KB's
+own real published practice: hold an outgoing transfer for a real window, itunda's
+own 3 hours matching KakaoBank's real minimum, so a transfer made under phishing
+pressure or a fat-fingered recipient can still be cancelled before it's
+irreversible) with zero client anywhere. Genuinely distinct from the already-shipped
+`ScheduledTransfersCard`'s own 예약송금 (a user-chosen FUTURE date) -- this is a
+safety delay on a transfer the sender wants to send right now.
+
+Built `DelayedTransfersCard` (`lib/delayedTransfers.ts` + `BankDashboard.tsx`),
+mirroring `ScheduledTransfersCard`'s exact shape, wired into `PayHub`. Two real
+integration details found only by testing, not by reading the backend code: (1)
+reuses the existing `resolveRecipient` (`lib/p2p.ts`) the same way `TransferFlow`'s
+instant-send step already does, so the sender sees the real resolved account-holder
+name before committing -- skipping this would defeat the whole point of a safety
+delay; (2) `send-delayed` carries an `Idempotency-Key` like every other real
+money-moving endpoint, so it's gated by the same `DeviceVerificationFilter` -- a
+raw, unhandled 403 first rendered with no resolution path during live browser
+click-through, fixed by wiring in the existing `DeviceStepUpPrompt` pattern
+(matching `TransferFlow`'s own `handleConfirm`: catch `code === 'DEVICE_NOT_VERIFIED'`,
+render the step-up prompt, retry the original call on verify). Real, honest v1
+limitation kept rather than solved: the backend's list endpoint returns the raw
+entity with only `recipientUserId`, no resolved name -- names resolved at send time
+are remembered in local component state for the session; a transfer loaded fresh
+from a prior session honestly shows a generic "Recipient" label instead of
+fabricating one.
+
+**Live-verified end to end**, not just compile-checked: registered two fresh test
+users, logged in via a real dev server pointed at the real running cluster
+(`VITE_API_BASE_URL`), typed a real recipient phone number and watched
+`resolveRecipient` return the real registered name live in the form, submitted with
+a zero balance and watched the real `DEVICE_NOT_VERIFIED` 403 render the step-up
+prompt, verified with the real password, watched the original call automatically
+retry and correctly surface the real `InsufficientFundsException` message -- the
+full real request/response round trip proven end to end with zero dead ends at any
+step.
+
+*Shipped: `scripts/uncalled-endpoint-sweep.py` (new) +
+`services/micro-frontends/bank-mfe/src/lib/delayedTransfers.ts` (new) +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx` +
+`services/micro-frontends/bank-mfe/src/i18n/translations.ts`.*
