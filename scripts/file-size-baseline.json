@@ -80,7 +80,7 @@
   "services/backend/splitbill/src/test/kotlin/rw/itunda/splitbill/SplitBillServiceTest.kt": 552,
   "services/backend/stocks/src/test/kotlin/rw/itunda/stocks/StocksServiceTest.kt": 607,
   "services/backend/wallet/src/main/kotlin/rw/itunda/wallet/WalletService.kt": 545,
-  "services/micro-frontends/bank-mfe/src/BankDashboard.tsx": 23559,
+  "services/micro-frontends/bank-mfe/src/BankDashboard.tsx": 23564,
   "services/micro-frontends/bank-mfe/src/MapView.tsx": 2043,
   "services/micro-frontends/bank-mfe/src/i18n/translations.ts": 834,
   "services/micro-frontends/merchant-mfe/src/i18n/translations.ts": 2153,

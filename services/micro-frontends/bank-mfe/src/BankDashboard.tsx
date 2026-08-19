@@ -15566,7 +15566,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
               </p>
             </div>
           ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {restaurants.map((r) => (
             <div
               key={r.merchantId}
@@ -15575,32 +15575,52 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
               onClick={() => setSelected(r)}
               onKeyDown={(e) => { if (e.key === 'Enter') setSelected(r); }}
               className="itunda-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
+              style={{ padding: 0, overflow: 'hidden', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
-              {r.photoUrl ? (
-                <img
-                  src={r.photoUrl} alt=""
-                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--itunda-blue-light)' }}
-                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                />
-              ) : (
-                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Utensils size={20} color="var(--itunda-blue)" />
+              {/* Real photo-forward card rework (2026-08-19) -- real Coupang Eats/
+                  배달의민족 both use a card UI that emphasizes food/photo over a
+                  text-dense row (sourced: "카드 뷰 형태의 UI를 사용해 매장보다는
+                  '음식'을 강조하는 디자인"). itunda has no per-dish photo in its real
+                  data model (MenuItem carries no photo field) -- honestly uses the
+                  merchant's own real photoUrl as the card image rather than
+                  fabricating a per-dish one, matching the real STRUCTURAL pattern
+                  (large photo-topped card) without overclaiming dish-level detail
+                  that doesn't exist. */}
+              <div style={{ position: 'relative', width: '100%', height: '140px', backgroundColor: 'var(--itunda-blue-light)' }}>
+                {r.photoUrl ? (
+                  <img
+                    src={r.photoUrl} alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Utensils size={32} color="var(--itunda-blue)" />
+                  </div>
+                )}
+                {r.isAcceptingOrders === false && (
+                  <span style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '11px', fontWeight: 600, color: 'var(--itunda-white)', backgroundColor: 'rgba(0,0,0,0.6)', padding: '3px 9px', borderRadius: '99px' }}>
+                    ⏸ Temporarily paused
+                  </span>
+                )}
+                {/* Real gap found live (2026-08-10), docs/DESIGN_REFERENCES.md Section 7's
+                    own "four separate bespoke favorite implementations" note: this was a
+                    hand-rolled Lucide Heart button, distinct from the shared
+                    WishlistButton every other favorite/heart affordance on this screen
+                    already uses. Unified onto the same shared component; overlaid on the
+                    photo's corner, matching real Coupang Eats/Baemin's own card
+                    convention. */}
+                <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '8px', right: '8px', backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: '999px' }}>
+                  <WishlistButton
+                    favorited={favoriteIds.has(r.merchantId)}
+                    busy={favoritingId === r.merchantId}
+                    onToggle={() => toggleFavorite(r.merchantId)}
+                  />
                 </div>
-              )}
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              </div>
+              <div style={{ padding: '14px 16px' }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
                   {r.businessName}
-                  {/* Real Baemin CEO app 영업일시중지 (temporarily pause business)
-                      (2026-08-16) -- see Merchant.isAcceptingOrders's own doc comment.
-                      Real backend enforcement (RestaurantNotAcceptingOrdersException)
-                      already blocks a real order; this surfaces the reason up front
-                      instead of a buyer discovering it only after trying to check out. */}
-                  {r.isAcceptingOrders === false && (
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '99px' }}>
-                      ⏸ Temporarily paused
-                    </span>
-                  )}
                 </p>
                 {/* Real browse-card enrichment (2026-07-21) -- rating/reviewCount/distance/
                     delivery-time estimate/min order, closing docs/DESIGN_REFERENCES.md's
@@ -15631,21 +15651,6 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>
-              </div>
-              {/* Real gap found live (2026-08-10), docs/DESIGN_REFERENCES.md Section 7's
-                  own "four separate bespoke favorite implementations" note: this was a
-                  hand-rolled Lucide Heart button with its own aria-label wording
-                  ("...favorites") and styling, distinct from the shared WishlistButton
-                  every other favorite/heart affordance on this screen already uses
-                  (Hood listings/Jobs/Property, Shop products) -- the exact same
-                  interaction looked and read differently depending on which feature you
-                  were in. Unified onto the same shared component. */}
-              <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
-                <WishlistButton
-                  favorited={favoriteIds.has(r.merchantId)}
-                  busy={favoritingId === r.merchantId}
-                  onToggle={() => toggleFavorite(r.merchantId)}
-                />
               </div>
             </div>
           ))}
