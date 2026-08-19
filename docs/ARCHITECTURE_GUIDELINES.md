@@ -48,23 +48,38 @@ names the frontend-scale version of the same idea: cohesion means files that mus
 together live in the same directory.
 
 itunda's own real, live violation of this, found and being actively fixed
-(`docs/DESIGN_REFERENCES.md` §202, [[project_itunda_feature_isolation]]): `BankDashboard.tsx`
-is 23,000+ lines holding every product (Bank/Pay/Eats/Marketplace/Community/Messages/etc)
-in one file — by Uber's own framing, this is a "networked monolith": no real module
-boundary means no real independent blast radius, regardless of how the code is internally
-organized. Android's own `:features:maps` module is the cautionary tale one level down:
-having a REAL module boundary doesn't guarantee internal cohesion — `MapsScreen.kt` was
-still a 3,090-line, 40-state-variable monolith bundling 8 real, separable features (search,
-navigation, bookmarks, nearby-browse, place-detail, bus-trips, ruler-tool, style/rendering)
-inside ONE function, which had already hit a real JVM "Method too large" compile error.
+(`docs/DESIGN_REFERENCES.md` §202): `BankDashboard.tsx` is 23,000+ lines holding every
+product (Bank/Pay/Eats/Marketplace/Community/Messages/etc) in one file — by Uber's own
+framing, this is a "networked monolith": no real module boundary means no real independent
+blast radius, regardless of how the code is internally organized. Android's own
+`:features:maps` module is the cautionary tale one level down: having a REAL module
+boundary doesn't guarantee internal cohesion — `MapsScreen.kt` was still a 3,090-line,
+40-state-variable monolith bundling 8 real, separable features (search, navigation,
+bookmarks, nearby-browse, place-detail, bus-trips, ruler-tool, style/rendering) inside ONE
+function, which had already hit a real JVM "Method too large" compile error. A full repo
+sweep (2026-08-19) found this is not a two-file problem: `ShopScreen.kt` (3,629 lines),
+`TalkScreen.kt` (3,595), `HoodScreen.swift` (4,058), `TalkScreen.swift` (3,368), and 84
+more files across web/Android/iOS are already over 500 lines — the same shape of mistake,
+repeated on every platform, every product.
+
+**Real, automated enforcement, not just this prose**: `scripts/file-size-lint.py` (wired
+into CI) freezes every currently-oversized file at its real, recorded line count in
+`scripts/file-size-baseline.json` — a file already in the baseline that grows PAST its
+recorded count fails CI, and any file NOT in the baseline that crosses 500 lines for the
+first time fails CI too. Existing giants are grandfathered so this doesn't block on ~90
+files needing rework in one shot, but they can't silently keep growing, and nothing new
+can quietly become the next one. Decomposition (shrinking a baselined file) is always
+free; growth requires a deliberate `--update-baseline` run with the reason stated in the
+commit.
 
 **How to apply**: before adding a new screen/feature, ask which existing file/module it
 should live in by what it does, not by where it's convenient to paste it. When touching a
-file that's already known to be oversized (`BankDashboard.tsx`, any future giant), prefer
-extracting the piece you're touching into its own file/module over adding more to the pile
-— matching the safe, staged pattern already used for `MapStyle.kt`/`MapUiComponents.kt`
-(move purely stateless code first, zero behavior risk) before attempting anything that
-needs real state-holder redesign.
+file that's already known to be oversized, prefer extracting the piece you're touching
+into its own file/module over adding more to the pile — matching the safe, staged pattern
+already used for `MapStyle.kt`/`MapUiComponents.kt` (move purely stateless code first,
+zero behavior risk) before attempting anything that needs real state-holder redesign. If
+`file-size-lint.py` fails on your change, that is the signal working as designed — extract,
+don't bump the baseline reflexively.
 
 ## 3. One real component, never a local fork (Toss)
 

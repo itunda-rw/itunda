@@ -63,6 +63,13 @@ hallucination research:
   swallowed inside the layer-export step) — see [[feedback_docker_build_killed_disk_pressure]]
   session memory. A green build/exit-code is necessary, never sufficient, evidence that
   something actually happened.
+- **"Everything in one file," the most-repeated real mistake in this codebase**:
+  `BankDashboard.tsx` grew to 23,000+ lines holding every product, one reasonable-looking
+  addition at a time — never one bad decision, always "it's easier to add it here than set
+  up a new file/module." A 2026-08-19 sweep found this is not one file's problem: 87 more
+  files across web/Android/iOS are already over 500 lines the same way. Real, automated
+  guardrail now exists: `scripts/file-size-lint.py` (see `ARCHITECTURE_GUIDELINES.md` §2)
+  — run it before finishing any change that touches an already-large file.
 - **itunda's own JWT secret handling is the CORRECT counter-example, worth copying**:
   `application.yml`'s `secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}` —
   externalized via env var, with a fallback that's both obviously fake AND says so in its
@@ -95,11 +102,19 @@ not in the abstract, against the actual diff:
    whether an existing one already covers this (grep first), and if this one is genuinely
    new, did I write it down in `ARCHITECTURE_GUIDELINES.md`/`UI_UX_GUIDELINES.md` so the
    next agent doesn't have to rediscover it or invent a THIRD inconsistent version?
-7. **Am I claiming something is fixed/verified that I only assumed?** → Every "fixed"/
+7. **Am I adding code to a file that's already huge, instead of extracting?** → Run
+   `python3 scripts/file-size-lint.py` before you finish. This is the single most-repeated
+   real mistake in this codebase's own history — `BankDashboard.tsx` reached 23,000+ lines
+   this way, one reasonable-looking addition at a time, and a 2026-08-19 sweep found the
+   identical pattern on 87 other files across every platform. "It's just one more function"
+   is exactly how every one of those got that way. If the file you're editing is already in
+   `scripts/file-size-baseline.json`, prefer a new file/module for what you're adding over
+   extending it further.
+8. **Am I claiming something is fixed/verified that I only assumed?** → Every "fixed"/
    "verified" claim in a commit message or summary should trace to something you actually
    observed (a test result, a live response, a rendered screenshot) — not "it should work
    now." If you didn't verify it, say so honestly instead of implying you did.
-8. **Does this documentation/comment describe what's REALLY here?** → Before writing a
+9. **Does this documentation/comment describe what's REALLY here?** → Before writing a
    doc, comment, or commit message describing the stack/behavior, check the actual code —
    don't pattern-match to what a typical project "usually" looks like (the CONTRIBUTING.md
    failure above).

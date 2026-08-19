@@ -54,6 +54,12 @@ whichever one is wrong; never let them silently drift apart.
 - `.oxlintrc.json` (root + per-workspace, since a workspace's own config does NOT inherit
   root's rules): `no-nested-ternary` is `warn` repo-wide.
 - `scripts/accessibility-lint.py`: real accessibility checks on changed web files.
+- `scripts/file-size-lint.py`: the "everything in one file" guardrail — freezes every
+  currently-oversized file (`scripts/file-size-baseline.json`, 88 files across web/
+  Android/iOS, `BankDashboard.tsx` and `MapsScreen.kt`/`HoodScreen.swift`/`ShopScreen.kt`
+  among them) at its recorded line count; fails if a baselined file grows past it, or if
+  any new file crosses 500 lines. Never bump the baseline just to make a red run green —
+  extract instead.
 
 When you add a new boundary or rule, verify it actually fires (deliberately trigger a
 violation, confirm it's caught, then fix/revert) before trusting a clean run — "0

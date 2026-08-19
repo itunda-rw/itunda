@@ -36,6 +36,9 @@ jobs:
       - name: Accessibility lint (item 247, docs/DESIGN_REFERENCES.md Section 14)
         run: python3 scripts/accessibility-lint.py
 
+      - name: File-size guardrail (no new "everything in one file" monoliths)
+        run: python3 scripts/file-size-lint.py
+
   root-workspace-build:
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck]
