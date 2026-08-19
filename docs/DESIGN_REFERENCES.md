@@ -13519,3 +13519,66 @@ remote -> share link, both -> code as last resort.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
 `services/micro-frontends/bank-mfe/package.json` (added `qrcode`/`@types/qrcode`).*
+
+## 203. Re-auditing the "product feel" roadmap; a real Shop merchant-list data gap
+
+Direct user instruction: "good now improve our ecosystems." The standing product-feel
+roadmap's item 11 claimed Maps/neighborhood-marketplace/Eats/Shopping were "entirely
+untouched" -- re-checked directly rather than trusted, per this session's own new
+`docs/AI_AGENT_SELF_CHECK.md` discipline (don't pattern-match to a stale note).
+
+### The roadmap note was wrong about neighborhood/marketplace
+
+Confirmed `MarketplaceView`/`CommunityView` (`BankDashboard.tsx`) are itunda's real 당근
+마켓/Karrot equivalent, and they're already genuinely mature, not untouched: real Karrot
+Score parity (`TrustScoreService.kt` -- `INITIAL_SCORE = 30`, `MAX_SCORE = 1000`, exactly
+matching Karrot's own real global-market numbers, sourced directly --
+`redbusbagman.com/karrotuxresearch` documents Karrot's real 2026 move away from the
+Korean-specific 매너온도/Manner-Temperature metaphor to this exact abstract 0-1000 scale
+for non-Korean markets, which is precisely itunda's own real situation), hyperlocal
+neighborhood browsing with real second-neighborhood support, 같이해요 join-together
+meetups with a real pinned mid-feed slot, escrow/safe-pay, real 조회수 view counts, price
+offers, and trust badges on every listing/job/property card.
+
+### Eats and Shopping, surveyed via a dedicated research fork
+
+Also more mature than the stale note claimed: real budget filter, tiered promotion,
+surplus/closing-deals (a real government-partnered food-waste program), group orders,
+delivery prep-time ETA. Real, concrete, prioritized gaps found:
+
+1. **Shop's merchant list was showing a generic icon + the identical hardcoded subtitle
+   for every merchant** -- fixed this pass, see below.
+2. **Eats has no real sort picker** -- only a favorites toggle exists; real Coupang Eats
+   has 5 real sort modes (recommended/most-ordered/nearest/highest-rated/newest). Backend
+   support not yet confirmed -- check before assuming this is client-only. Not yet built.
+3. **Eats' restaurant browsing is a photo-thumbnail list, not Coupang Eats' real
+   large-food-photo card grid** -- a bigger visual rework, lower priority than 1-2, not
+   yet built.
+
+### The real fix shipped this pass
+
+`ShopView`'s merchant row (`BankDashboard.tsx`) rendered every merchant identically: a
+generic `ShoppingBag` icon and the exact same hardcoded subtitle ("Real cart checkout,
+real delivery tracking") regardless of which merchant it was -- while `ShoppingMerchant`
+(the SAME real type `OrderFoodView`'s restaurant row already uses, confirmed by both
+using `useState<ShoppingMerchant[] | null>`) already carries real `photoUrl`/`rating`/
+`reviewCount`/`distanceKm`/`deliveryTimeMinutes`/`favoriteCount`/`isBusy`/`closedToday`/
+`isAcceptingOrders` fields, already fetched, just never rendered here. Ported the exact
+enrichment pattern `OrderFoodView` already proved out -- conditional on real data being
+present, never a fabricated placeholder, the generic subtitle kept as the honest fallback
+for a merchant with none of this data set.
+
+### Live verification against the real deployed backend
+
+`yarn build`/`oxlint`/`accessibility-lint.py` all clean. Real browser click-through: a
+real merchant with a real rating now shows "★5.0 (1)" instead of the generic line; a real
+paused merchant shows "⏸ Temporarily paused"; merchants with no enrichment data correctly
+still show the honest fallback, not a broken image or blank space.
+
+`scripts/file-size-lint.py` correctly flagged this as real growth past
+`BankDashboard.tsx`'s recorded baseline (23,468 -> 23,503 lines) -- the baseline was
+updated deliberately, after live-verifying the change, per the guardrail's own documented
+process (`docs/ARCHITECTURE_GUIDELINES.md` §2), not reflexively to silence a red run.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`scripts/file-size-baseline.json`. Commit `d460dde3`.*
