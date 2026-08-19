@@ -13776,3 +13776,39 @@ caught before committing). `file-size-lint.py` clean.
 
 *Shipped: `android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/
 {TalkScreen.kt,TalkGroupSplitBills.kt,TalkDirectSplitBills.kt}`. Commit `4aaed405`.*
+
+## 209. EatsScreen.kt's Deliver tab split -- and a real splice bug caught before it shipped
+
+Continuing the same audit: `EatsScreen.kt` (2,317 lines, 4th-biggest in the repo-wide
+sweep) was the same shape as `ShopScreen.kt`/`TalkScreen.kt` -- 28 already-independent
+top-level composables. `DeliverContent` (`EatsMode.DELIVER`) is a whole separate tab,
+called only from `EatsContent` (staying in `EatsScreen.kt`) -- confirmed via grep, so it
+changed from `private` to `internal`.
+
+### A real dependency-audit miss, caught by the real compile
+
+`DeliverContent`'s own body also calls `nextRiderStatus`/`EatsOrderRow` and reads
+`EATS_STATUS_LABEL`, all still `private` in `EatsScreen.kt` -- a comment already in the
+file (line 127, from the ORIGINAL decision that Deliver shouldn't be its own Gradle
+module) named this exact dependency, but checking only who calls `DeliverContent(`
+instead of what `DeliverContent` itself calls missed it on the first pass. All three
+changed to `internal` -- a same-file-split fix, not a reopening of that original
+module-boundary decision (which is still correct and unaffected).
+
+### A real splice bug caught before it shipped
+
+Before compiling, an `awk` one-liner meant to insert a pointer comment after
+`EatsScreen.kt`'s last remaining function instead REPLACED that function's own closing
+brace -- a real syntax-breaking mistake in the extraction script itself, not the
+extracted code. Caught by reading the spliced file's tail directly before trusting it
+(the same discipline `docs/AI_AGENT_SELF_CHECK.md` names generally, applied here to a
+one-off shell script rather than product code) -- a real compile error would eventually
+have caught it too, but verifying the diff directly is faster and would also catch
+subtler versions of the same mistake (e.g. silently dropping a line that happened to
+still leave syntactically valid Kotlin) that a compiler wouldn't.
+
+`EatsScreen.kt`: 2,317 -> 2,107 lines. Both `:features:eats:impl:compileDebugKotlin` and
+`:app:compileDebugKotlin` verified clean. `file-size-lint.py` clean.
+
+*Shipped: `android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/
+{EatsScreen.kt,EatsDeliver.kt}`. Commit `5681c7e4`.*
