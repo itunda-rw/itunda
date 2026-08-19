@@ -20575,12 +20575,47 @@ function ShopView() {
               className="itunda-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <ShoppingBag size={20} color="var(--itunda-blue)" />
-              </div>
+              {/* Real fix (2026-08-19): this row used to show a generic icon and the exact
+                  same hardcoded subtitle for every merchant, ignoring the real photoUrl/
+                  rating/reviewCount/distanceKm/deliveryTimeMinutes/favoriteCount fields
+                  ShoppingMerchant already carries -- OrderFoodView's restaurant row (same
+                  ShoppingMerchant type) already had this real enrichment; this was simply
+                  never ported over to Shop's own merchant list. */}
+              {m.photoUrl ? (
+                <img
+                  src={m.photoUrl} alt=""
+                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--itunda-blue-light)' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ShoppingBag size={20} color="var(--itunda-blue)" />
+                </div>
+              )}
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Real cart checkout, real delivery tracking</p>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {m.businessName}
+                  {m.isAcceptingOrders === false && (
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '99px' }}>
+                      ⏸ Temporarily paused
+                    </span>
+                  )}
+                </p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  {m.category && <span>{m.category}</span>}
+                  {m.rating != null && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                      <Star size={11} color="#F5A623" fill="#F5A623" /> {m.rating.toFixed(1)} ({m.reviewCount})
+                    </span>
+                  )}
+                  {!!m.favoriteCount && m.favoriteCount > 0 && <span>· ❤️ {m.favoriteCount.toLocaleString()}</span>}
+                  {m.distanceKm != null && <span>· {m.distanceKm.toFixed(1)} km</span>}
+                  {m.deliveryTimeMinutes != null && <span>· ~{m.deliveryTimeMinutes} min</span>}
+                  {m.isBusy && <span>· 🔥 Busy, delivery may take longer</span>}
+                  {m.closedToday && <span>· 🚫 Closed today</span>}
+                  {m.minOrderAmount != null && <span>· Min {m.minOrderAmount.toLocaleString()} RWF</span>}
+                  {!m.category && m.rating == null && m.distanceKm == null && <span>Real cart checkout, real delivery tracking</span>}
+                </p>
               </div>
             </button>
           ))}
