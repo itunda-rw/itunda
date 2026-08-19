@@ -14097,3 +14097,46 @@ is under the 500-line threshold).
 HoodMarketplaceReview.swift,HoodMarketplaceCard.swift,HoodCommunity.swift,
 HoodCommunityPosts.swift,HoodJobs.swift,HoodJobsForms.swift,HoodProperty.swift,
 HoodPropertyListing.swift}` + `scripts/file-size-baseline.json`.*
+
+## 214. iOS TalkScreen.swift real decomposition -- same standard as its Android twin
+
+Second iOS file: `TalkScreen.swift` (3,368 lines) -- the same Talk feature Android's
+§210 already decomposed, so the grouping mirrors it closely (`TalkLists`/
+`TalkGroupsBrowse`/`TalkGroupThread`/`TalkGroupExtras`/`TalkChatThread`/
+`TalkChatBubbles`/`TalkMessageBubbles`/`TalkEmoticons`), plus a `TalkSplitBills.swift`
+(iOS keeps `GroupSplitBillsView`+`DirectSplitBillsView` together in one file, unlike
+Android's two separate files -- both fit comfortably under 500 combined here).
+
+Same technique as §213 (the `final` keyword already folded into the declaration regex
+this time, so no repeat of that bug). 10 files, 9 under 500 lines:
+`TalkScreen.swift` (218), `TalkLists.swift` (281), `TalkGroupsBrowse.swift` (229),
+`TalkGroupThread.swift` (446), `TalkSplitBills.swift` (366), `TalkGroupExtras.swift`
+(289), `TalkChatBubbles.swift` (375), `TalkMessageBubbles.swift` (214),
+`TalkEmoticons.swift` (343). `TalkChatThread.swift` (668, `ChatThreadScreen` alone) is
+the one real exception -- and, notably, almost exactly the same size as Android's own
+`ChatThreadView` (660 body lines): the same feature hit the same real state-tangling
+wall on both platforms independently, reinforcing that this is a genuine property of
+the feature's design, not an artifact of either port.
+
+### The tuist/pod ordering bug recurred -- now a known, expected step
+
+The same "unable to resolve module dependency: MapLibre" failure from §213 reappeared
+after `tuist generate`, because every `tuist generate` regenerates `Itunda.xcodeproj`
+and invalidates the previous CocoaPods integration -- `pod install` must run again
+after EVERY `tuist generate`, not just the first time in a session. Recognized
+immediately from §213's finding rather than re-investigated as a new bug; running
+`pod install` again fixed it in one step.
+
+### Verification
+
+Real `xcodebuild -scheme ItundaApp` build (exit 0, BUILD SUCCEEDED). Multiset diff of
+every non-blank/non-import line confirmed zero drops/duplicates beyond the intended
+`private`-keyword removals. `scripts/ios-silo-boundary-check.py` clean.
+`TalkScreen.swift`: 3,368 -> 218 (entry point) + 9 files (8 under 500, 1 documented
+exception). Baseline tightened 3368->668 (`TalkChatThread.swift`) via
+`--update-baseline`.
+
+*Shipped: `ios/App/Sources/{TalkScreen.swift,TalkLists.swift,TalkGroupsBrowse.swift,
+TalkGroupThread.swift,TalkSplitBills.swift,TalkGroupExtras.swift,TalkChatThread.swift,
+TalkChatBubbles.swift,TalkMessageBubbles.swift,TalkEmoticons.swift}` +
+`scripts/file-size-baseline.json`.*
