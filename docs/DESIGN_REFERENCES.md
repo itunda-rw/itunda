@@ -13704,3 +13704,42 @@ boundary-check.py` also clean.
 *Shipped: `ios/Project.swift`, `ios/Podfile`, `ios/Podfile.lock`,
 `ios/App/Sources/ContentView.swift`, `ios/App/Sources/BenefitsShopAllScreens.swift`,
 `ios/Features/Maps/**` (new). Commits `7ca13c83`/`202eb58e`.*
+
+## 207. Android ShopScreen.kt split -- and a real self-check gap caught by running my own tool
+
+Continuing the "does a module boundary mean the module is actually coherent" audit --
+`ShopScreen.kt` (3,629 lines) was the second-biggest single-file monolith found in the
+repo-wide file-size sweep. Unlike `MapsScreen.kt` (one 2,540-line composable, 40+
+interdependent state variables), `ShopScreen.kt` turned out already well-decomposed
+internally: 41 separate top-level composables, each with its own independent local
+state. This makes it a fundamentally easier, lower-risk class of split than Maps was --
+group already-independent functions by real feature area and move them, no state-
+threading redesign needed.
+
+Extracted the real "pay a merchant" UI (`PayAMerchantSection` and its 3 real payment
+modes, Face Pay settings) into its own file. `PayAMerchantSection` is called directly
+from `:app`'s `ItundaAppScreen.kt` (a real, pre-existing cross-module precedent) --
+verified that call site still resolves via a full `:app:compileDebugKotlin`, not just
+the feature module's own build.
+
+### A real gap in my own process, caught by running my own tool
+
+Shipped that first split without running `scripts/file-size-lint.py` -- exactly the
+checklist item (`docs/AI_AGENT_SELF_CHECK.md` #7) this same session wrote. Running it on
+the next task surfaced 4 real issues: the new `ShopPay.kt` (646 lines) had itself crossed
+the 500-line guideline -- extracting from one big file onto a second big-ish file isn't a
+real fix. Split further: the 3 real payment-collection UIs (`PayByCodeCard`/
+`PayByScanCard`/`PayByStaticQrCard`) moved to a new `ShopPayCards.kt`, leaving
+`ShopPay.kt` with just the entry point, Face Pay settings, and the shared button --
+323/475 lines, both genuinely under the guideline. The other 3 flagged items were
+legitimate, already-explained growth from the prior iOS Maps commit (a `+1 line
+import FeatureMaps` in two files, and `MapScreenView.swift`'s baseline entry needing to
+follow its own real path rename) -- folded into the baseline via `--update-baseline`,
+no code change needed.
+
+`ShopScreen.kt`: 3,629 -> 3,134 lines. Both `:features:shop:impl:compileDebugKotlin` and
+`:app:compileDebugKotlin` verified clean after each split.
+
+*Shipped: `android/features/shop/impl/src/main/java/rw/itunda/feature/shop/impl/
+{ShopScreen.kt,ShopPay.kt,ShopPayCards.kt}`, `scripts/file-size-baseline.json`. Commits
+`6e9a978e`/`7da2d318`.*
