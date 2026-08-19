@@ -14435,3 +14435,58 @@ new `maps-mfe` path, same 2,043 lines -- a pure relocation, not new growth).
 *Shipped: `android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/
 {MapsScreen.kt,MapItineraryCard.kt,MapAroundYouSection.kt,MapTopChrome.kt,
 MapPlaceDetailView.kt,MapRoutePlanningView.kt}` + `scripts/file-size-baseline.json`.*
+
+## 219. Real file-uploads production fix -- closes a bug live since 2026-07-24
+
+`rw.itunda.marketplace.web.UploadController`'s `POST /api/v1/uploads` (used by
+profile photos, Talk photo messages, and marketplace-listing photos) had been
+silently 500ing on every real call since the day it was built -- see
+`project_itunda_uploads_volume_fix.md` for the full history. The deployed `backend`
+container runs as non-root uid 999 with no writable `/uploads` mount; a fix
+(`hostPath` volume in `infra/k8s/production/backend.yaml`) was committed to git
+07-24 but three separate blockers kept it from ever going live: GHCR pull access
+being broken, `kubectl apply`'s `last-applied-configuration` annotation claiming the
+volume was attached when the deployment's *live* `spec.template.spec.volumes` never
+actually had it, and (once that was fixed) the host directory
+`/var/lib/itunda/uploads` being owned by a mismatched user.
+
+Got explicit user permission via `AskUserQuestion` before touching this production
+Deployment. Ran `sudo chown -R 999:999 /var/lib/itunda/uploads` -- turned out this
+host's own `/etc/passwd` maps uid 999 to `fwupd-refresh` (`getent passwd 999`), so
+the directory's ownership had actually been numerically correct as `fwupd-refresh`
+the whole time; the real remaining gap was purely the missing volume attachment.
+Rather than a full `kubectl apply -f backend.yaml` -- which would have rolled the
+live image back to the manifest's stale `ghcr.io/itunda-rw/backend:latest` default
+instead of the real running `192.168.252.4:32000/itunda/backend:<tag>`, a genuine
+regression -- staged a minimal YAML and applied it with `kubectl patch deployment
+backend --type strategic --patch-file=...`, which correctly list-merges
+`volumes`/`volumeMounts` by name instead of replacing the whole array. Confirmed via
+`kubectl get deployment backend -o jsonpath=` (the live spec, not just the
+annotation) that `spec.template.spec.volumes` now has both `uploads-storage` and the
+pre-existing `firebase-credentials`, and that the image reference was untouched.
+
+The rollout briefly looked stuck (`rollout status` timed out, `kubectl describe pod`
+hit transient TLS handshake timeouts) during a real node overload (`uptime` load
+average 50.19 -- matches the documented pattern in
+`feedback_private_cloud_severe_overload_registry_refused.md`). A high-CPU
+`java -jar app.jar` process owned by `fwupd-refresh` in `ps aux` looked concerning
+at first glance -- confirmed via its cgroup path
+(`kubepods-burstable-pod...`) to be a genuine `backend` pod, not a rogue process;
+just the host's own uid-999 username showing through on a container process. Waited
+it out rather than intervening further; the rollout completed cleanly on its own.
+
+**Real end-to-end proof, not just a rollout check** -- the whole point of this bug
+was that the endpoint looked healthy (compiled, deployed, reachable) while silently
+failing on every real call, so a rollout-succeeded check alone would not have been
+enough: registered a fresh test user, sent a real multipart PNG to
+`POST /api/v1/uploads` with a real bearer token -> real `201` +
+`{"url":"/api/v1/uploads/<uuid>.png"}`; `GET` that URL back -> `200`,
+byte-identical to the original file (`cmp` confirmed); confirmed the file existed on
+the real host-mounted `/var/lib/itunda/uploads` (survives pod restarts, not
+container-ephemeral). Test file deleted from prod afterward. Talk photo messages and
+marketplace-listing photos share this exact endpoint and fix with zero additional
+work needed.
+
+*Shipped: live `kubectl patch` + host `chown` on the production cluster (no git
+diff -- infra/k8s/production/backend.yaml already had the correct manifest since
+07-24, the gap was purely that it was never actually live).*
