@@ -188,6 +188,19 @@ export type TranslationKey =
   | 'scheduledTransfers.statusSent'
   | 'scheduledTransfers.statusCancelled'
   | 'scheduledTransfers.statusFailed'
+  | 'delayedTransfers.title'
+  | 'delayedTransfers.subtitle'
+  | 'delayedTransfers.new'
+  | 'delayedTransfers.sendingTo'
+  | 'delayedTransfers.sendButton'
+  | 'delayedTransfers.createError'
+  | 'delayedTransfers.cancelError'
+  | 'delayedTransfers.noTransfers'
+  | 'delayedTransfers.recipientFallback'
+  | 'delayedTransfers.releasesIn'
+  | 'delayedTransfers.statusPending'
+  | 'delayedTransfers.statusCompleted'
+  | 'delayedTransfers.statusCancelled'
   | 'autoTransfers.title'
   | 'autoTransfers.cancel'
   | 'autoTransfers.setUp'
@@ -380,6 +393,19 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'scheduledTransfers.statusSent': 'Sent',
     'scheduledTransfers.statusCancelled': 'Cancelled',
     'scheduledTransfers.statusFailed': 'Failed',
+    'delayedTransfers.title': 'Send safely (delayed)',
+    'delayedTransfers.subtitle': 'Your money is held for a few hours so you can still cancel before it lands — useful if you’re not fully sure about the recipient.',
+    'delayedTransfers.new': '+ Send safely',
+    'delayedTransfers.sendingTo': 'Sending to',
+    'delayedTransfers.sendButton': 'Hold and send',
+    'delayedTransfers.createError': 'Could not hold this transfer.',
+    'delayedTransfers.cancelError': 'Could not cancel this held transfer.',
+    'delayedTransfers.noTransfers': 'No delayed transfers — send one safely and you’ll have a window to cancel it here.',
+    'delayedTransfers.recipientFallback': 'Recipient',
+    'delayedTransfers.releasesIn': 'Releases in',
+    'delayedTransfers.statusPending': 'Held',
+    'delayedTransfers.statusCompleted': 'Sent',
+    'delayedTransfers.statusCancelled': 'Cancelled',
     'autoTransfers.title': 'Auto-transfers',
     'autoTransfers.cancel': 'Cancel',
     'autoTransfers.setUp': '+ Set up',
@@ -571,6 +597,19 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'scheduledTransfers.statusSent': 'Byoherejwe',
     'scheduledTransfers.statusCancelled': 'Byahagaritswe',
     'scheduledTransfers.statusFailed': 'Byanze',
+    'delayedTransfers.title': 'Kohereza mu buryo bwizewe',
+    'delayedTransfers.subtitle': 'Amafaranga yawe agumana igihe gito kugira ngo ushobore guhagarika mbere y’uko agera ku wayakira — byifashishwa igihe utizeye neza uwo woherereza.',
+    'delayedTransfers.new': '+ Kohereza mu buryo bwizewe',
+    'delayedTransfers.sendingTo': 'Woherereza',
+    'delayedTransfers.sendButton': 'Kugumana no kohereza',
+    'delayedTransfers.createError': 'Ntibishoboka gukomeza iyi kohereza.',
+    'delayedTransfers.cancelError': 'Ntibishoboka guhagarika iyi kohereza yagumanywe.',
+    'delayedTransfers.noTransfers': 'Nta kohereza zigumanywe — ohereza imwe mu buryo bwizewe kugira ngo ubone uburyo bwo kuyihagarika hano.',
+    'delayedTransfers.recipientFallback': 'Uwakira',
+    'delayedTransfers.releasesIn': 'Izajya ku wakira mu',
+    'delayedTransfers.statusPending': 'Igumanywe',
+    'delayedTransfers.statusCompleted': 'Yoherejwe',
+    'delayedTransfers.statusCancelled': 'Byahagaritswe',
     'autoTransfers.title': 'Kohereza byikoresha',
     'autoTransfers.cancel': 'Hagarika',
     'autoTransfers.setUp': '+ Tunganya',
@@ -762,6 +801,19 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'scheduledTransfers.statusSent': 'Envoyé',
     'scheduledTransfers.statusCancelled': 'Annulé',
     'scheduledTransfers.statusFailed': 'Échoué',
+    'delayedTransfers.title': 'Envoyer en toute sécurité (différé)',
+    'delayedTransfers.subtitle': 'Votre argent est retenu quelques heures afin que vous puissiez encore annuler avant qu’il n’arrive — utile si vous n’êtes pas totalement sûr du destinataire.',
+    'delayedTransfers.new': '+ Envoyer en toute sécurité',
+    'delayedTransfers.sendingTo': 'Envoi à',
+    'delayedTransfers.sendButton': 'Retenir et envoyer',
+    'delayedTransfers.createError': 'Impossible de retenir ce transfert.',
+    'delayedTransfers.cancelError': 'Impossible d’annuler ce transfert retenu.',
+    'delayedTransfers.noTransfers': 'Aucun transfert différé — envoyez-en un en toute sécurité et vous aurez le temps de l’annuler ici.',
+    'delayedTransfers.recipientFallback': 'Destinataire',
+    'delayedTransfers.releasesIn': 'Envoi dans',
+    'delayedTransfers.statusPending': 'Retenu',
+    'delayedTransfers.statusCompleted': 'Envoyé',
+    'delayedTransfers.statusCancelled': 'Annulé',
     'autoTransfers.title': 'Virements automatiques',
     'autoTransfers.cancel': 'Annuler',
     'autoTransfers.setUp': '+ Configurer',
