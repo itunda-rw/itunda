@@ -147,12 +147,21 @@ export interface CollectPaymentResult {
 // scanning, not an invented shortcut; this app has no camera-based QR scanner (that's
 // the real mobile app's job, already real there), so this is the honest, real
 // alternative rather than faking a scan.
-export const collectPayment = (intentId: string, couponId?: string) =>
+export const collectPayment = (intentId: string, couponId?: string, pointsToRedeem?: number) =>
   apiFetch<{ success: boolean } & CollectPaymentResult>(`/api/v1/merchant/collect/${intentId}`, {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: couponId ? JSON.stringify({ couponId }) : undefined,
+    body: couponId || pointsToRedeem ? JSON.stringify({ couponId, pointsToRedeem }) : undefined,
   });
+
+// Real Toss Place-style 자동 적립 balance check -- see backend
+// MerchantController.getLoyaltyBalance's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: real automatic point accrual already happens on
+// every collectPayment call (MerchantLoyaltyPointsService.getBalance is called from
+// MerchantService.collect), but there was no way for a customer to ever SEE their real
+// balance, let alone redeem it, before this.
+export const fetchLoyaltyBalance = (merchantId: string) =>
+  apiFetch<{ success: boolean; pointBalance: number }>(`/api/v1/merchant/${merchantId}/loyalty-balance`).then((r) => r.pointBalance);
 
 // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see the backend's
 // MerchantStaticQrService doc comment. Genuinely distinct from collectPayment above:

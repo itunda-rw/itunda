@@ -96,7 +96,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchLoyaltyBalance, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
 import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
@@ -6864,6 +6864,12 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   const [preview, setPreview] = useState<PaymentIntentPreview | null>(null);
   const [eligibleCoupons, setEligibleCoupons] = useState<MerchantCouponView[]>([]);
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
+  // Real Toss Place-style loyalty balance check (see lib/shopping.ts's own doc
+  // comment on fetchLoyaltyBalance) -- shown alongside the coupon picker in this same
+  // pre-payment preview step, since it's the identical real moment a customer would
+  // want to know before choosing to redeem.
+  const [loyaltyBalance, setLoyaltyBalance] = useState(0);
+  const [redeemPoints, setRedeemPoints] = useState(false);
 
   // Real camera-scan support (2026-08-19): scanning sets `code` state AND passes the
   // scanned value straight through as an explicit param, since a scan's payDirect/
@@ -6873,11 +6879,11 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   const [scanUnavailable, setScanUnavailable] = useState(false);
   const [manualEntry, setManualEntry] = useState(false);
 
-  const payDirect = async (rawCode: string, couponId?: string) => {
+  const payDirect = async (rawCode: string, couponId?: string, pointsToRedeem?: number) => {
     setNeedsDeviceVerification(false);
     setSubmitting(true);
     try {
-      const result = facePayEnrolled ? await collectWithFacePay(rawCode) : await collectPayment(rawCode, couponId);
+      const result = facePayEnrolled ? await collectWithFacePay(rawCode) : await collectPayment(rawCode, couponId, pointsToRedeem);
       onPaid(result);
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
@@ -6903,11 +6909,13 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
     try {
       const r = await previewPaymentIntent(trimmed);
       const eligible = r.coupons.filter((c) => c.eligible && !c.alreadyRedeemed);
-      if (eligible.length === 0) {
+      const balance = await fetchLoyaltyBalance(r.merchantId).catch(() => 0);
+      if (eligible.length === 0 && balance <= 0) {
         await payDirect(trimmed);
       } else {
         setPreview(r);
         setEligibleCoupons(eligible);
+        setLoyaltyBalance(balance);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not look up this payment code.');
@@ -6935,12 +6943,18 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   else if (facePayEnrolled) payButtonLabel = '😊 Pay';
   else payButtonLabel = 'Pay';
 
-  const handleConfirm = () => payDirect(code.trim(), selectedCouponId ?? undefined);
+  // Real cap: MerchantLoyaltyPointsService.validateAndComputeRedemption's own real
+  // rule is min(pointsToRedeem, paymentAmount) -- mirrored here so the client sends
+  // exactly what the backend would actually apply, not an inflated request.
+  const redeemableAmount = Math.min(loyaltyBalance, preview?.amount ?? 0);
+  const handleConfirm = () => payDirect(code.trim(), selectedCouponId ?? undefined, redeemPoints ? redeemableAmount : undefined);
 
   const handleCancel = () => {
     setPreview(null);
     setEligibleCoupons([]);
     setSelectedCouponId(null);
+    setLoyaltyBalance(0);
+    setRedeemPoints(false);
     setError(null);
   };
 
@@ -6992,6 +7006,12 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
               </label>
             ))}
           </div>
+          {loyaltyBalance > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
+              <input type="checkbox" checked={redeemPoints} onChange={(e) => setRedeemPoints(e.target.checked)} />
+              Use my {loyaltyBalance.toLocaleString()} points ({redeemableAmount.toLocaleString()} RWF off)
+            </label>
+          )}
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
           <div style={{ display: 'flex', gap: '10px' }}>
             <IdsButton fullWidth style={{ flex: 1 }} disabled={submitting} onClick={handleConfirm}>
