@@ -13812,3 +13812,118 @@ still leave syntactically valid Kotlin) that a compiler wouldn't.
 
 *Shipped: `android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/
 {EatsScreen.kt,EatsDeliver.kt}`. Commit `5681c7e4`.*
+
+## 210. TalkScreen.kt real decomposition -- correcting §208's single-slice approach
+
+§208 extracted ONE self-contained slice (split-bill UI) from `TalkScreen.kt` and left
+3,173 lines behind, then §209 did the same to `EatsScreen.kt`. Direct, correct user
+pushback: "wait so you mean you didn't decompose talkscreen it's still that giant file
+with 3,173 lines?" then "that's wrong architecture no to be tolerated" -- one slice
+removed from a multi-thousand-line file isn't decomposition, it's a token gesture. This
+entry redoes `TalkScreen.kt` properly: full decomposition into 9 files, 8 of them under
+the 500-line guideline.
+
+### Automated, gapless boundary detection (replacing manual line-range reading)
+
+The first redo attempt used manually-read `sed -n` line windows to find each top-level
+declaration's boundaries -- exactly the error-prone approach this whole initiative
+exists to move away from. It produced a genuinely broken file (an orphaned
+`AsyncImage(...)` call leaked into the wrong file) and was fully reverted
+(`git checkout --` + `rm -f` the new files, confirmed clean via `git status`).
+
+The fix: a script that finds every top-level declaration via a regex anchored at column
+0 (`^(private |internal |public |)(fun |val |var |data class |enum class |sealed class
+|class |object |interface |typealias )`), then for each one scans backward from its own
+line to swallow all directly-preceding `//`/`/*`/`*`/`@Annotation` lines, stopping at the
+first blank line -- giving a "comment-inclusive start." Each declaration's real range is
+then `[its own comment-inclusive start, the next declaration's comment-inclusive start -
+1]`, which by construction gapleessly and non-overlappingly partitions the entire file.
+This found 33 top-level declarations (the first hand-rolled attempt's regex had missed
+`private enum class TalkView` entirely -- broadened to also match `enum class`/`object`/
+`sealed class`/`interface` fixed it).
+
+### Grep-verified dependency grouping, then real cross-file usage audit
+
+Before deciding which declarations could share a destination file, every candidate name
+was grepped as a call-site across the whole original file to confirm real usage
+boundaries -- e.g. confirming `GiftBubble`/`OfferBubble`/etc. are called ONLY from
+`MessageBubble` (1:1 chat), never `GroupMessageBubble` (group chat doesn't support gift/
+offer bubbles, a real product fact, not an oversight). Final grouping (9 files):
+
+- `TalkScreen.kt` (182 lines) -- `TalkTab` entry point + tab switcher only.
+- `TalkLists.kt` (430) -- `DirectMessagesList`, `SwipeableConversationRow`, `ConversationRow`.
+- `TalkGroupsBrowse.kt` (274) -- `FriendsView`, `GroupsList`, `GroupRow`.
+- `TalkGroupThread.kt` (468) -- mention helpers + `GroupThreadView`.
+- `TalkGroupExtras.kt` (423) -- `GroupManageMembersView`, `GroupMessageBubble`, `GroupRepliesThreadView`.
+- `TalkChatThread.kt` (751) -- `ChatThreadView` alone. See below.
+- `TalkChatBubbles.kt` (441) -- `RepliesThreadView`, offer/gift bubbles, `MessageBubble`.
+- `TalkMessageBubbles.kt` (254) -- reactions/forward/gallery/emoticon-bubble, shared by group+direct.
+- `TalkEmoticons.kt` (349) -- gift-voucher composer + emoticon picker/store.
+
+Every extracted declaration changed `private` -> `internal` (file-scoped `private` in
+Kotlin doesn't survive a cross-file move); confirmed via a second grep pass which
+declarations are genuinely called from a different destination file before touching
+visibility, rather than blanket-changing everything.
+
+### Two real bugs caught before committing
+
+1. **Orphaned annotation from a bad move script.** A follow-up move (relocating 3 small
+   mention-related declarations out of an over-budget `TalkGroupThread.kt` into
+   `TalkGroupExtras.kt`) cut at each declaration's bare `internal fun X` line instead of
+   its comment-inclusive start -- leaving `activeMentionQuery`'s leading (and, in the
+   original source, already slightly misattributed) `@Composable` + doc-comment behind in
+   `TalkGroupThread.kt`, immediately above `GroupThreadView`, while `GroupThreadView`'s
+   own real `@Composable` annotation got swept into `TalkGroupExtras.kt` with nothing
+   after it (a dangling annotation at end of file). Caught by reading both files' content
+   directly, not by the compiler. Fixed by removing the dangling annotation and
+   collapsing the orphaned comment down to a single correct `@Composable` directly above
+   `GroupThreadView`.
+2. **Import-trim silently drops implicit-usage imports.** Copying the full 156-line
+   import block into all 9 files pushed several over 500 lines just from import bulk, so
+   imports were trimmed per-file to only those whose local name appears as a literal
+   identifier in that file's body. This broke every file: `androidx.compose.runtime.
+   {getValue,setValue}` back the `by remember { mutableStateOf(...) }` property-delegate
+   syntax used almost everywhere in this codebase, but the literal text "getValue"/
+   "setValue" never appears in the body -- the word-boundary-regex trim dropped both,
+   producing cascading "ambiguous getValue/setValue" and downstream "unresolved
+   reference 'it'" errors. This is the same class of bug §208's import-trim detour hit
+   (an implicit/operator-based usage invisible to literal-text matching). Fixed by adding
+   `getValue`/`setValue` back to all 9 files. A real compile (not just a visual read) is
+   what caught this -- confirming the standing practice of never trusting an import trim
+   without compiling.
+
+### `ChatThreadView`'s single-composable ceiling -- a real, documented exception
+
+`ChatThreadView` alone is ~660 lines: ~30 `remember` state variables declared in one
+composable body, with the top bar, media-gallery/split-bills/replies-thread toggles,
+search row, pinned-message banner, and the `LazyColumn` message list (whose `MessageBubble`
+call passes 15+ lambdas, several closing over the `itemsIndexed` loop's own `m`/`index`)
+all reading and writing that same shared state directly. This is the same shape of
+problem `MapsScreen.kt`'s single mega-composable already represents elsewhere in this
+sweep -- splitting it safely would mean either threading 20+ params and 15+ lambdas into
+a sibling file (high transcription risk for no real coupling reduction) or a genuine
+state-hoisting refactor (a state-holder class, ViewModel-shaped) touching real,
+live-money chat functionality (WebSocket lifecycle, gift/offer response flows) --
+deliberately not attempted in this pass, same as `MapsScreen.kt`'s deferral. Registered
+as a real, reviewed exception via `scripts/file-size-lint.py --update-baseline` (replacing
+the now-stale `TalkScreen.kt: 3595` baseline entry with `TalkChatThread.kt: 751`) rather
+than either fighting the guideline with a risky mechanical split or silently leaving a
+3000+-line file unaddressed.
+
+### Correctness verification (multiset diff, not just compile)
+
+Beyond the two real compile targets (`:features:talk:impl:compileDebugKotlin` and
+`:app:compileDebugKotlin`, both clean), every non-blank/non-import line of the original
+3,173-line file was multiset-diffed against the union of all 9 new files' content. The
+only differences: the 32 `private` -> `internal` visibility changes (expected), the
+TalkScreen.kt-specific historical header comment (intentionally replaced with a short
+pointer comment), and one vestigial `@Composable` annotation removed as part of fixing
+bug #1 above. No line was dropped, duplicated, or corrupted.
+
+`TalkScreen.kt`: 3,173 -> 182 (main) + 8 files (7 under 500 lines, 1 documented
+exception). `file-size-lint.py` clean (0 violations after the baseline update).
+
+*Shipped: `android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/
+{TalkScreen.kt,TalkLists.kt,TalkGroupsBrowse.kt,TalkGroupThread.kt,TalkGroupExtras.kt,
+TalkChatThread.kt,TalkChatBubbles.kt,TalkMessageBubbles.kt,TalkEmoticons.kt}` +
+`scripts/file-size-baseline.json`.*
