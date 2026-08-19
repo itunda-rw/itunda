@@ -140,7 +140,7 @@ class ShoppingController(
         } else {
             emptyMap()
         }
-        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?, val favoriteCount: Long)
+        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?, val favoriteCount: Long, val rating: Double?, val distanceKm: Double?)
         var rows = page.content.map { merchant ->
             val distanceKm = if (hasBuyerLocation && merchant.latitude != null && merchant.longitude != null) {
                 GeoUtils.haversineKm(buyerLat!!, buyerLng!!, merchant.latitude!!, merchant.longitude!!)
@@ -200,6 +200,8 @@ class ShoppingController(
                 ),
                 deliveryTimeMinutes,
                 favoriteCount,
+                rating?.average,
+                distanceKm,
             )
         }
         // sortedBy is stable, so ties (or every row when no buyer location was supplied,
@@ -210,6 +212,21 @@ class ShoppingController(
             rows = rows.sortedWith(compareBy(nullsLast()) { it.deliveryTimeMinutes })
         } else if (sortBy == "favorites") {
             rows = rows.sortedByDescending { it.favoriteCount }
+        } else if (sortBy == "rating") {
+            // Real Baemin/Coupang Eats-style rating sort (2026-08-19) -- both `rating`
+            // and `distanceKm` were already computed per-row above for display, just
+            // never sortable. Explicit two-key comparator (is-null, then descending
+            // rating) rather than compareByDescending(nullsFirst()/nullsLast()) --
+            // that combinator's null-placement flips in a genuinely easy-to-get-backwards
+            // way once wrapped in Descending, and this reads unambiguously instead: a
+            // merchant with zero real reviews sorts after every merchant this sort CAN
+            // honestly rank.
+            rows = rows.sortedWith(compareBy<MerchantRow> { it.rating == null }.thenByDescending { it.rating })
+        } else if (sortBy == "distance") {
+            // Only meaningful when the caller supplied a real buyerLat/buyerLng, same
+            // real-location gate delivery_time already requires -- distanceKm is null
+            // for every row otherwise.
+            rows = rows.sortedWith(compareBy(nullsLast()) { it.distanceKm })
         }
         val merchants = rows.map { it.map }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))

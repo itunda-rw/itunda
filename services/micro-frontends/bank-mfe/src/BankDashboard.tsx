@@ -155,7 +155,7 @@ import {
   fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
   removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, setRiderAvailability, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type Rider,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type Rider, type RestaurantSortMode,
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
@@ -15322,9 +15322,46 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  // Real Baemin 찜순 (favorite-count) sort (2026-08-16) -- unlike the fastest-delivery
-  // sort, this needs no buyer geolocation, so it's a real, immediately usable toggle.
-  const [sortByFavorites, setSortByFavorites] = useState(false);
+  // Real Coupang Eats-style sort picker (2026-08-19, replacing the single favorites-only
+  // toggle) -- see fetchRestaurants' own RestaurantSortMode doc comment for the real
+  // backend-supported modes. 'distance'/'delivery_time' need a real buyer location;
+  // 'favorites'/'rating' don't. Only these 4 real modes are offered -- no fabricated
+  // "Recommended"/"Newest" pill, since nothing on the backend actually sorts by either.
+  const [sortMode, setSortMode] = useState<RestaurantSortMode | null>(null);
+  const [buyerLocation, setBuyerLocation] = useState<{ lat: number; lng: number } | null>(null);
+  // Real bug caught by live click-through (2026-08-19): an earlier version of this used a
+  // plain `locatingForSort: boolean` with no record of WHICH mode triggered it, so both
+  // 'distance' and 'delivery_time' pills showed "Locating..." simultaneously regardless of
+  // which one was actually clicked. Tracking the specific pending mode fixes this.
+  const [pendingSortMode, setPendingSortMode] = useState<RestaurantSortMode | null>(null);
+  const [sortLocationError, setSortLocationError] = useState<string | null>(null);
+
+  const selectSortMode = (mode: RestaurantSortMode | null) => {
+    setSortLocationError(null);
+    if (mode === null || mode === 'favorites' || mode === 'rating' || buyerLocation) {
+      setSortMode(mode);
+      return;
+    }
+    // 'distance'/'delivery_time' need a real position first -- same geolocation pattern
+    // ListingCard's own handleShowDirections already uses.
+    if (!navigator.geolocation) {
+      setSortLocationError('This browser does not support real location access.');
+      return;
+    }
+    setPendingSortMode(mode);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setPendingSortMode(null);
+        setBuyerLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setSortMode(mode);
+      },
+      () => {
+        setPendingSortMode(null);
+        setSortLocationError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [confirmed, setConfirmed] = useState<EatsOrder | null>(null);
@@ -15372,12 +15409,12 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
 
   const load = () => {
     setError(null);
-    fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined, undefined, undefined, sortByFavorites ? 'favorites' : undefined)
+    fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined, buyerLocation?.lat, buyerLocation?.lng, sortMode ?? undefined)
       .then(setRestaurants)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
   };
 
-  useEffect(load, [selectedCategory, debouncedSearch, sortByFavorites]);
+  useEffect(load, [selectedCategory, debouncedSearch, sortMode, buyerLocation]);
 
   // Real "Reorder" (2026-07-19): re-populates a fresh cart from a real past order's
   // real items, filtered to whatever's still real and active on the restaurant's
@@ -15485,16 +15522,35 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
           />
-          {/* Real Baemin 찜순 (favorite-count) sort toggle (2026-08-16) -- needs no
-              buyer geolocation, unlike the fastest-delivery sort, so this is a real,
-              immediately usable chip rather than one waiting on a separate gap. */}
-          <button
-            className="itunda-btn itunda-btn-secondary"
-            style={{ marginBottom: '12px', padding: '6px 14px', fontSize: '13px', backgroundColor: sortByFavorites ? 'var(--itunda-blue-light)' : undefined, color: sortByFavorites ? 'var(--itunda-blue)' : undefined }}
-            onClick={() => setSortByFavorites((v) => !v)}
-          >
-            ❤️ Most favorited
-          </button>
+          {/* Real Coupang Eats-style sort picker (2026-08-19) -- see selectSortMode's
+              own doc comment. Only the 4 real backend-supported modes, no fabricated
+              "Recommended"/"Newest" pill. */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '4px', paddingBottom: '2px' }}>
+            {([
+              { mode: null, label: 'Default' },
+              { mode: 'distance' as const, label: pendingSortMode === 'distance' ? '📍 Locating…' : '📍 Nearest' },
+              { mode: 'delivery_time' as const, label: pendingSortMode === 'delivery_time' ? '⏱ Locating…' : '⏱ Fastest delivery' },
+              { mode: 'rating' as const, label: '⭐ Highest rated' },
+              { mode: 'favorites' as const, label: '❤️ Most favorited' },
+            ]).map(({ mode, label }) => (
+              <button
+                key={label}
+                className="itunda-btn itunda-btn-secondary"
+                disabled={pendingSortMode !== null}
+                style={{
+                  whiteSpace: 'nowrap', padding: '6px 12px', fontSize: '12px',
+                  backgroundColor: sortMode === mode ? 'var(--itunda-blue-light)' : undefined,
+                  color: sortMode === mode ? 'var(--itunda-blue)' : undefined,
+                }}
+                onClick={() => selectSortMode(mode)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {sortLocationError && (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{sortLocationError}</p>
+          )}
           {error ? (
             <ErrorCard message={error} onRetry={load} />
           ) : restaurants === null ? (

@@ -23,7 +23,11 @@ import type { ShoppingMerchant } from './shopping';
 // takes effect when buyerLat/buyerLng are also supplied (see backend
 // ShoppingController.getEligibleMerchants's own doc comment for why).
 // 'favorites' added 2026-08-16 -- real Baemin 찜순 sort, needs no buyer location.
-export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number, sortBy?: 'delivery_time' | 'favorites') => {
+// 'rating'/'distance' added 2026-08-19 -- real Coupang Eats-style 별점순/거리순 sort;
+// both were already computed per-row on the backend for display, just never sortable.
+// 'distance', like 'delivery_time', only takes effect with a real buyerLat/buyerLng.
+export type RestaurantSortMode = 'delivery_time' | 'favorites' | 'rating' | 'distance';
+export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number, sortBy?: RestaurantSortMode) => {
   const params = new URLSearchParams();
   params.set('businessType', 'RESTAURANT');
   if (category) params.set('category', category);
