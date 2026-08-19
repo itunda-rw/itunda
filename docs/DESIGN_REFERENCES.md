@@ -14019,3 +14019,81 @@ single-composable exception; only Maps' internal split remains undone.
 {EatsScreen.kt,EatsStatusShared.kt,EatsCategoryBrowse.kt,EatsMembership.kt,
 EatsFavoritesReview.kt,EatsRestaurantMenu.kt,EatsCheckout.kt,EatsOrders.kt}` +
 `scripts/file-size-baseline.json`.*
+
+## 213. iOS HoodScreen.swift real decomposition -- same standard, first iOS file
+
+Moving to the iOS side of the repo-wide sweep: `HoodScreen.swift` (4,058 lines, iOS's
+single biggest file, untouched since it was first flagged). Unlike Android, iOS never
+split Marketplace/Community/Jobs/Property into separate files at all -- everything for
+all 4 domains lives in this one file (Android split these into 4 separate Gradle
+modules back in the original 7-module extraction).
+
+Same declaration-scanner technique as §210-212, adapted for Swift syntax
+(`^(private |fileprivate |internal |public |open |)(struct |func |enum |class |
+extension |protocol |typealias |let |var )`), plus a Swift-specific fact: bare
+declarations default to `internal` (module-wide) rather than Kotlin's file-scoped
+default, so most of the 37 top-level declarations needed NO visibility change at all
+when moved to a sibling file within the same target -- only the ones already marked
+`private` (33 of 37) needed that keyword dropped, exactly mirroring Kotlin's
+`private`->`internal` fix but for a different reason (Swift's `private` at file scope
+also means file-only, same practical effect as Kotlin).
+
+Grouping followed the 4 already-Android-established domain boundaries (10 files, all
+under 500 lines): `HoodScreen.swift` (366, entry point + shared helpers: image picker,
+radius control, neighborhood-setup prompt, skeleton), `HoodMarketplace.swift` (440),
+`HoodMarketplaceReview.swift` (339), `HoodMarketplaceCard.swift` (479, `ListingCard`
+alone), `HoodCommunity.swift` (372), `HoodCommunityPosts.swift` (412),
+`HoodJobs.swift` (440), `HoodJobsForms.swift` (434), `HoodProperty.swift` (463),
+`HoodPropertyListing.swift` (382). Unlike every Android file so far, NONE of the 37
+declarations here was individually oversized enough to force a single-composable
+exception -- the biggest single struct (`ListingCard`, 472 lines) still fits.
+
+### A real bug from a regex gap, caught by the compiler
+
+The declaration-scanner regex expected the visibility keyword directly followed by
+`struct`/`func`/etc., but one real declaration -- `private final class
+HoodLocationFetcher` (a `CLLocationManagerDelegate` used by all 4 domains) -- has
+`final` between `private` and `class`, so the regex missed it entirely. It stayed
+correctly embedded inside `ImagePickerView`'s captured range (both landed in the
+remainder file, so no content was lost or misplaced) but its `private` was never
+stripped, since the extraction script only touches lines it identifies as a real
+declaration start. Caught immediately by the real Xcode build: 11 "'HoodLocationFetcher'
+is inaccessible due to 'private' protection level" errors across every domain file that
+uses it. Fixed by manually dropping `private` from that one declaration. (For any future
+Swift decomposition: broaden the regex to `(final )?` between the visibility keyword and
+the type keyword.)
+
+### A real, pre-existing, unrelated build-order bug found and fixed along the way
+
+The full `xcodebuild -scheme ItundaApp` build initially failed with "unable to resolve
+module dependency: 'MapLibre'" -- confirmed via `git status` (zero changes to
+`Features/Maps/` or any Podfile) and a standalone `xcodebuild -scheme FeatureMaps` build
+(same failure in complete isolation) that this was 100% pre-existing and unrelated to
+this split. Root cause: `pod install` had been run BEFORE `tuist generate` in this
+session, but the correct sequence (matching the Maps extraction's own established
+chain, §115 above) is `tuist generate` first (creates `.xcodeproj`) THEN `pod install`
+(patches Pods integration into the already-generated project and creates the real
+`.xcworkspace`) -- running them in the wrong order left the regenerated project without
+proper CocoaPods framework integration. Re-running in the correct order fixed it
+completely, with no code change needed. Worth remembering for any future iOS session:
+if a change to unrelated files somehow "breaks" the build, check the tuist/pod command
+order before assuming the code is at fault.
+
+### Verification
+
+Real `xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination
+'generic/platform=iOS Simulator' build` -- exit code 0, BUILD SUCCEEDED (only
+pre-existing deprecation warnings unrelated to this change, e.g. `onChange(of:perform:)`
+warnings already present in `TalkScreen.swift`/`ShopScreen.swift` before this pass).
+`scripts/ios-silo-boundary-check.py` clean. Multiset diff of every non-blank/non-import
+line confirmed zero drops/duplicates beyond the intended visibility-keyword changes.
+
+`HoodScreen.swift`: 4,058 -> 366 (entry point) + 9 files, ALL under 500 lines -- the
+first file in this entire sweep (Android or iOS) needing zero documented exceptions.
+Baseline entry removed entirely (was 4,058, now not needed since every resulting file
+is under the 500-line threshold).
+
+*Shipped: `ios/App/Sources/{HoodScreen.swift,HoodMarketplace.swift,
+HoodMarketplaceReview.swift,HoodMarketplaceCard.swift,HoodCommunity.swift,
+HoodCommunityPosts.swift,HoodJobs.swift,HoodJobsForms.swift,HoodProperty.swift,
+HoodPropertyListing.swift}` + `scripts/file-size-baseline.json`.*
