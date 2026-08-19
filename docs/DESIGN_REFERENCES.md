@@ -13633,3 +13633,32 @@ gracefully in the meantime: selecting Nearest/Highest rated against the currentl
 `services/micro-frontends/bank-mfe/src/lib/eats.ts`,
 `scripts/file-size-baseline.json`. Commit `e4f7682d`. Backend deploy pending real
 cluster memory headroom.*
+
+## 205. Photo-forward Eats restaurant cards -- closing the research fork's 3-item list
+
+Third and final gap from the §203/§204 research fork: `OrderFoodView`'s restaurant list
+was a small-thumbnail text row, not the real large-photo, food-forward card UI both
+Coupang Eats and 배달의민족 actually use (sourced: "카드 뷰 형태의 UI를 사용해 매장보다는
+'음식'을 강조하는 디자인" -- both use card-view UI emphasizing food over the storefront).
+
+itunda's real data model has no per-dish photo (`MenuItem` carries no photo field) --
+honestly uses the merchant's own real `photoUrl` as the card image rather than fabricating
+a per-dish one, matching the real STRUCTURAL pattern (a large photo-topped card, not a
+text-dense list) without overclaiming dish-level specificity that doesn't exist.
+
+Also closed, in the same pass: the restaurant card's favorite heart was still a hand-rolled
+one, the same "four separate bespoke favorite implementations" gap Section 7 already named
+for other screens -- now the shared `WishlistButton`, overlaid on the photo's corner
+matching the real Coupang Eats/Baemin convention, with `stopPropagation` so toggling
+favorite doesn't also navigate into the restaurant.
+
+### Live verification against the real deployed backend
+
+`yarn build`/`oxlint`/`accessibility-lint.py` all clean. Real browser click-through: real
+food photos render full-width, the "Temporarily paused" badge overlays correctly on a
+real paused merchant, tapping the heart toggles it to filled/pink WITHOUT navigating into
+the restaurant (confirming `stopPropagation` works), and tapping the card body still
+correctly opens the real menu (verified against Kigali Grill House's real 3 menu items).
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`scripts/file-size-baseline.json`. Commit `eea7b9b0`.*
