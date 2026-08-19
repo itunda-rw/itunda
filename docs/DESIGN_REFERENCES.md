@@ -14339,3 +14339,99 @@ src/BankDashboard.tsx,vite.config.ts,src/vite-env.d.ts}` +
 `services/micro-frontends/{Dockerfile,Dockerfile.dockerignore,nginx.conf}` +
 `infra/k8s/private-cloud/micro-frontends.yaml`. Deployed live to the private cloud
 cluster (NodePorts 30520-30525).*
+
+## 218. MapsScreen.kt real state-holder-adjacent decomposition + real device verification
+
+Closes the last item from the whole repo-wide module-isolation sweep: `MapScreen`
+(2,790 lines, the single Composable this initiative kept deferring -- see
+`project_itunda_feature_isolation.md`'s own long history of "needs a real state-holder
+redesign, not a mechanical split, deferred every time no device was available to
+verify on"). This pass had what the others didn't: a real physical device, connected
+mid-task via wireless ADB specifically to unblock this.
+
+### Why this needed a different technique than Talk/Shop/Eats/Hood
+
+Those files had 30-60 already-independent composables plus one large one -- genuine
+file-boundary moves, zero logic risk. `MapScreen` is ~60 state vars and ~20 local
+closures (`selectPlace`, `fetchDirections`, `toggleMeasuring`, ...) that read and write
+each other's state directly, several defined *inline* at their own use site (e.g.
+`fetchDirections`/`clearRoute` declared in the middle of the place-detail sheet's own
+render code). There's no clean seam to cut along without either state-holder classes
+(real risk: a `LaunchedEffect` keyed on a var that moved to a class property could
+silently change firing semantics) or extracting pure UI-rendering functions that
+receive everything as explicit values + callbacks, changing zero state ownership. Went
+with the second, safer option -- exactly the technique this same file's own
+`SharedFolderSection` already used once before (extracted after a real
+`MethodTooLargeException`, `docs/DESIGN_REFERENCES.md` history), just applied at scale.
+
+### Four staged extractions, each compiled before the next
+
+1. `MapItineraryCard.kt` (`ItineraryBuilderCard`, 244 lines) -- the multi-stop trip
+   planner card.
+2. `MapAroundYouSection.kt` (`AroundYouSection`, 223 lines) -- home/work quick pills,
+   nearby-category results, shared-folder section, bookmark folder list + move-picker.
+   Required promoting `SharedFolderSection` from `private` to `internal` (needed
+   cross-file now) -- caught immediately by a real compile error, not assumed.
+3. `MapTopChrome.kt` (`MapTopChrome`, 326 lines) -- search bar, category chips,
+   itinerary-toggle pill, around-me/trending default cards, search-results/recent-
+   searches cards. One real bug self-caught mid-write before it ever reached the
+   compiler: an incomplete first draft that dropped the actual search-results/
+   category-results/error card and recent-searches card entirely, replaced with a
+   placeholder `if` block that did nothing -- caught by re-reading the file before
+   moving on, not by the compiler (the placeholder was syntactically valid Kotlin).
+4. `MapPlaceDetailView.kt` (`PlaceDetailAndRouteView`, later split further --
+   `MapRoutePlanningView.kt`'s `RoutePlanningView`, 458+217 lines) -- the biggest,
+   riskiest block: place info (rating/menu/reviews/bookmark-save), real-time
+   directions/route-alternatives, and live turn-by-turn navigation, mutually
+   exclusive branches. `fetchDirections`/`clearRoute` stayed as real functions in
+   `MapScreen` (need `routing`/`error`/`myLocation`/etc, the same vars every other
+   `MapScreen` closure already touches) and are passed down as plain callbacks --
+   zero new closures invented, only their call sites moved.
+
+`MapPlaceDetailView.kt` alone was still 596 lines after step 4 -- crossed the 500-line
+guideline on its own. Split further along its one real natural seam (place-info vs.
+route-planning/navigation are already mutually exclusive branches, `if (route ==
+null) {...} else {...}`) into `MapPlaceDetailView.kt` (458) and
+`MapRoutePlanningView.kt` (217) -- both now real, under-500 files, no baseline
+exception needed for either.
+
+### Real device verification -- the actual point of this pass
+
+Connected a real physical device (Samsung SM-A165N) via wireless ADB mid-task,
+specifically because the risk profile here (live GPS polling, rerouting-on-deviation,
+TTS voice guidance) genuinely couldn't be responsibly verified by compile alone. Real
+recipe applied (see `feedback_physical_device_networking.md`): `adb reverse` for the
+already-working `127.0.0.1:30081` backend NodePort, plus two new `socat` relays
+(`8090`/`8091`) for tiles/glyphs that weren't already forwarded this session, then a
+real `:app:installDebug -PapiBaseUrl=... -PtilesBaseUrl=... -PglyphsBaseUrl=...`
+rebuild -- the first build had none of these flags and silently baked in the
+emulator-only dead default, explaining an early false "You are offline" reading.
+
+**Real, comprehensive, live-verified end to end**: real map tiles rendered (actual
+Kigali street names, BK Arena, The New Times Headquarters); real Nominatim search
+results; a real place selected and a real OSRM directions request (8.6km/12min, a real
+alternative route 9.2km/15min, real driving/walking/bus mode ETAs); "Start navigation"
+entered live turn-by-turn mode with a real GPS-driven `currentStepIndexFor` computation
+(correctly resolved to the route's own last step, given the physical device's real GPS
+fix is in Korea, thousands of km from the Rwanda route -- expected, not a bug); the
+voice on/off toggle; "End navigation" correctly returning to the route-planning view;
+`clearRoute` (`← Back to`) correctly returning to plain place info; the bookmark
+folder/color picker opening with real pre-filled defaults from an existing bookmark.
+This is the first file in the entire repo-wide sweep verified on a real device rather
+than compile-only, closing the risk gap every other pass in this sweep had to
+explicitly accept.
+
+`MapsScreen.kt`: 2,790 -> 1,800 lines (still the one deliberate exception in this
+sweep, same class as `ChatThreadView`/`CommerceShopContent`/`OrderFoodContent` --
+state/logic that can't be split without real state-holder classes, a larger, separate
+undertaking not attempted this pass) -- but now with 6 of its real UI sections
+genuinely pulled into focused, independently-verified, under-500-line files instead of
+staying inline. `file-size-lint.py` clean (`MapsScreen.kt`'s own baseline entry
+tightened 2790->1800; two incidental web violations from the same session's earlier
+maps-mfe work also resolved: `BankDashboard.tsx`'s real +6-line doc-comment growth,
+and `MapView.tsx`'s baseline entry correctly moved from its old `bank-mfe` path to its
+new `maps-mfe` path, same 2,043 lines -- a pure relocation, not new growth).
+
+*Shipped: `android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/
+{MapsScreen.kt,MapItineraryCard.kt,MapAroundYouSection.kt,MapTopChrome.kt,
+MapPlaceDetailView.kt,MapRoutePlanningView.kt}` + `scripts/file-size-baseline.json`.*

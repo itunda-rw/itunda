@@ -1312,304 +1312,53 @@ fun MapScreen(
                     .padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .shadow(3.dp, CircleShape)
-                        .background(Ids.colors.surface, CircleShape)
-                        .clip(CircleShape)
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
-                }
-
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .shadow(3.dp, RoundedCornerShape(999.dp))
-                        .background(Ids.colors.surface, RoundedCornerShape(999.dp))
-                        .padding(start = 14.dp, end = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Outlined.Search,
-                        contentDescription = "Search",
-                        tint = if (searching) Ids.colors.textSecondary else Ids.colors.brand,
-                        modifier = Modifier.size(18.dp).clickable(enabled = !searching && query.isNotBlank()) { runSearch() },
-                    )
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = { Text("Search a real place in Rwanda", fontSize = 13.sp) },
-                        singleLine = true,
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                            disabledBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                        ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { runSearch() }),
-                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
-                            .onFocusChanged { searchFocused = it.isFocused },
-                    )
-                    if (query.isNotBlank()) {
-                        Icon(
-                            Icons.Outlined.Close,
-                            contentDescription = "Clear search",
-                            tint = Ids.colors.textSecondary,
-                            modifier = Modifier.size(16.dp).clickable { query = ""; searchResults = null },
-                        )
-                        Box(modifier = Modifier.width(6.dp))
+            MapTopChrome(
+                onBack = onBack,
+                query = query,
+                searching = searching,
+                activeCategory = activeCategory,
+                categoryLoading = categoryLoading,
+                categoryResults = categoryResults,
+                itineraryBuilding = itineraryBuilding,
+                itineraryStopCount = itineraryStops.size,
+                selectedPlace = selectedPlace,
+                searchResults = searchResults,
+                error = error,
+                aroundMePlaces = aroundMePlaces,
+                trendingPlaces = trendingPlaces,
+                searchFocused = searchFocused,
+                recentSearches = recentSearches,
+                isAgentCashDiscovery = isAgentCashDiscovery,
+                onQueryChange = { query = it },
+                onRunSearch = { runSearch() },
+                onClearQuery = { query = ""; searchResults = null },
+                onSearchFocusChange = { searchFocused = it },
+                onCategoryClick = { categoryId -> searchNearbyCategory(categoryId) },
+                onToggleItinerary = {
+                    if (itineraryBuilding) {
+                        itineraryBuilding = false
+                        itineraryStops = emptyList()
+                        showingItineraryRoute = false
+                        route = null
+                    } else {
+                        itineraryBuilding = true
+                        selectedPlace = null
+                        route = null
+                        routeAlternatives = null
+                        showingItineraryRoute = false
                     }
-                }
-            }
-
-            // Real category-chip "nearby places" search (Naver/Kakao's own convention) --
-            // mirrors bank-mfe's MapView.tsx chip row, now with a per-category emoji glyph
-            // (MAP_CATEGORY_ICONS) so chips read at a glance instead of as text-only pills.
-            //
-            // Real UI/UX fix (2026-08-09), found live after direct user feedback ("not good,
-            // not simplicity"): the active chip used a hardcoded purple (0xFF8B5CF6) instead
-            // of the app's real brand blue (Ids.colors.brand, Toss blue #3182F6) -- every
-            // OTHER "active" element on this same screen (route-alternative picker, Start
-            // Navigation card) correctly used the brand token, making this chip row visually
-            // disjointed from the rest of the app. This and several other hardcoded hex colors
-            // below also never adapted to dark mode (this session's own test device defaults
-            // to system dark mode) while everything using Ids.colors.* correctly does --
-            // very likely the real, concrete cause of "doesn't look good," not a vague
-            // aesthetic complaint. Swept the whole file for the same pattern and fixed each.
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                MAP_NEARBY_CATEGORIES.forEach { category ->
-                    val active = activeCategory == category.id
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier
-                            .shadow(if (active) 3.dp else 1.dp, RoundedCornerShape(999.dp))
-                            .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                            .clickable(enabled = !categoryLoading || active) { searchNearbyCategory(category.id) }
-                            .padding(start = if (active) 12.dp else 6.dp, end = 12.dp, top = if (active) 8.dp else 6.dp, bottom = if (active) 8.dp else 6.dp),
-                    ) {
-                        // Real colored-circle icon badge (2026-08-09), matching real Naver
-                        // Maps' own category-chip style (see 발견 tab's own 음식점/카페 chips) --
-                        // itunda's chips previously had a plain inline emoji with no badge
-                        // treatment at all. Only in the inactive state; the active state's
-                        // solid blue fill + white label already reads clearly on its own,
-                        // matching Naver's own selected-chip treatment.
-                        if (active) {
-                            Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 13.sp)
-                        } else {
-                            Box(
-                                modifier = Modifier.size(24.dp).clip(CircleShape).background(Ids.colors.warningTint),
-                                contentAlignment = androidx.compose.ui.Alignment.Center,
-                            ) {
-                                Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 12.sp)
-                            }
-                        }
-                        Text(
-                            if (active && categoryLoading) "…" else category.label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
-                        )
+                },
+                onSelectPlace = { place -> selectPlace(place) },
+                onSearchResultTap = { place ->
+                    recentSearches = recentSearchesStore.add(place)
+                    if (itineraryBuilding) {
+                        addItineraryStop(place)
+                    } else {
+                        selectPlace(place)
                     }
-                }
-            }
-
-            // A real multi-stop planner, not a second fake map mode. While active,
-            // search results become ordered stops for the bounded OSRM itinerary API.
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .shadow(1.dp, RoundedCornerShape(999.dp))
-                    .background(Ids.colors.surface, RoundedCornerShape(999.dp))
-                    .clickable {
-                        if (itineraryBuilding) {
-                            itineraryBuilding = false
-                            itineraryStops = emptyList()
-                            showingItineraryRoute = false
-                            route = null
-                        } else {
-                            itineraryBuilding = true
-                            selectedPlace = null
-                            route = null
-                            routeAlternatives = null
-                            showingItineraryRoute = false
-                        }
-                    }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Text(if (itineraryBuilding) "✓ Planning ${itineraryStops.size + 1} stops" else "＋ Plan multi-stop trip", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (itineraryBuilding) Ids.colors.brand else Ids.colors.textPrimary)
-                if (itineraryBuilding) Text("Tap to cancel", fontSize = 11.sp, color = Ids.colors.textSecondary)
-            }
-
-            // Real "Smart Around"-style default state (2026-08-04) -- see loadAroundMe's own
-            // doc comment for the real, re-verified Naver Map sourcing and honest scope.
-            // Gated to the true empty state: no place/category/search/itinerary active, so
-            // this never competes with a result the user actually asked for.
-            if (selectedPlace == null && activeCategory == null && searchResults == null && !searchFocused && !itineraryBuilding) {
-                if (!aroundMePlaces.isNullOrEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                            .background(Ids.colors.surface, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                            .padding(vertical = 8.dp),
-                    ) {
-                        Text("주변 · Nearby", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary, modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
-                        Row(modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            aroundMePlaces!!.forEach { place ->
-                                Column(
-                                    modifier = Modifier
-                                        .width(140.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Ids.colors.surfaceSoft)
-                                        .clickable { selectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
-                                        .padding(10.dp),
-                                ) {
-                                    Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                    Text("%.1f km".format(place.distanceKm), fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-                if (!trendingPlaces.isNullOrEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                            .background(Ids.colors.surface, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                            .padding(vertical = 8.dp),
-                    ) {
-                        Text("이번 주에 많이 저장한 · Popular this week", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary, modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
-                        Row(modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            trendingPlaces!!.forEach { place ->
-                                Column(
-                                    modifier = Modifier
-                                        .width(140.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Ids.colors.surfaceSoft)
-                                        .clickable { selectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
-                                        .padding(10.dp),
-                                ) {
-                                    Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                    Text("★ saved by ${place.saveCount}", fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if ((activeCategory != null && categoryResults != null) || searchResults != null || error != null) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                        .background(Ids.colors.surface, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                        .padding(vertical = 4.dp),
-                ) {
-                    if (activeCategory != null && categoryResults != null) {
-                        val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase()
-                        Text(
-                            if (categoryResults!!.isEmpty()) "No real matches found nearby for that category."
-                            else if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
-                                "${categoryResults!!.size} Itunda agents found nearby, closest first. Select one for directions."
-                            } else "${categoryResults!!.size} real $label found nearby, closest first.",
-                            color = Ids.colors.textSecondary,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        )
-                    }
-
-                    searchResults?.let { results ->
-                        if (results.isEmpty()) {
-                            Text("No real places found for that search.", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
-                        } else {
-                            results.forEach { place ->
-                                val (name, address) = splitPlaceName(place.displayName)
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            recentSearches = recentSearchesStore.add(place)
-                                            if (itineraryBuilding) {
-                                                addItineraryStop(place)
-                                            } else {
-                                                selectPlace(place)
-                                            }
-                                        }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                ) {
-                                    Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
-                                    if (address != null) {
-                                        Text(address, fontSize = 11.sp, color = Ids.colors.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) }
-                }
-            }
-
-            // Real recent-searches list (2026-07-22) -- its own card, separately gated
-            // from the search-results/category-results card above (that one only renders
-            // when there's a real result set; this one renders instead of it, only while
-            // the search box is focused and empty). Same real Naver/Kakao Maps convention
-            // bank-mfe's own version already follows.
-            if (searchFocused && query.isBlank() && recentSearches.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                        .background(Ids.colors.surface, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                        .padding(vertical = 4.dp),
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                    ) {
-                        Text("Recent searches", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
-                        Text(
-                            "Clear", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                            modifier = Modifier.clickable { recentSearchesStore.clear(); recentSearches = emptyList() },
-                        )
-                    }
-                    recentSearches.forEach { place ->
-                        Text(
-                            "🕐 ${place.displayName}",
-                            fontSize = 13.sp,
-                            color = Ids.colors.textPrimary,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    recentSearches = recentSearchesStore.add(place)
-                                    if (itineraryBuilding) {
-                                        addItineraryStop(place)
-                                    } else {
-                                        selectPlace(place)
-                                    }
-                                }
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                        )
-                    }
-                }
-            }
+                },
+                onClearRecentSearches = { recentSearchesStore.clear(); recentSearches = emptyList() },
+            )
             } // end floating top panel
 
             // Real distance-measurement (ruler) tool info badge (2026-07-23) -- only
@@ -1774,24 +1523,11 @@ fun MapScreen(
                     ) {
                         val place = selectedPlace
                         if (place != null) {
-                            val (placeName, placeAddress) = splitPlaceName(place.displayName)
-                            // Real rich merchant detail (2026-08-09) -- found live: tapping a
-                            // merchant pin already had real rating/photo/category/cashback data
-                            // sitting in `merchants` (ShoppingMerchantDto, the exact same DTO
-                            // Shop's own browse cards already render this way), but the map's
-                            // click handler collapsed it down to a bare name+coordinate
-                            // PlaceSearchResultDto before this sheet ever saw it. Matches back
-                            // by coordinate -- the same technique the click handler itself
-                            // already uses -- rather than threading a second selected-merchant
-                            // state through the whole file.
-                            val matchedMerchant = selectedMerchant
                             // Real driving/walking mode toggle (2026-07-22) -- same real
                             // Naver/Kakao Maps convention of picking a travel mode before/
                             // after a route is drawn. Switching mode while a route is already
                             // shown re-fetches against itunda's own separately-deployed
-                            // foot-profile OSRM instance. Moved above the place/route split
-                            // below (2026-08-09) since both the place-info "Directions" button
-                            // and the route view's own mode toggle need to call it.
+                            // foot-profile OSRM instance.
                             fun fetchDirections(mode: String) {
                                 coroutineScope.launch {
                                     routing = true
@@ -1830,657 +1566,89 @@ fun MapScreen(
                                 otherModeEtaMinutes = null
                                 showSteps = false
                             }
-                            // Real "one thing per page" fix (2026-08-09) -- direct user
-                            // feedback: "flower of info, you can't just put everything on one
-                            // page" (Toss's own product principle #8, see docs/
-                            // DESIGN_REFERENCES.md's "One thing, one page" section -- Toss's
-                            // real resolution for a multi-purpose screen like this one was
-                            // never "reorganize in place," it was eliminating the multi-
-                            // purpose screen: each function moves to its own screen). Place
-                            // browsing (this whole block) and route planning/navigation
-                            // (below) are now mutually exclusive, not stacked -- requesting
-                            // directions replaces this view entirely instead of appending
-                            // beneath it, matching how the real Naver Maps reference
-                            // screenshots show these as genuinely separate screens.
-                            if (route == null) {
-                            Row(verticalAlignment = Alignment.Top) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        placeName,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        color = Ids.colors.textPrimary,
-                                    )
-                                    if (placeAddress != null) {
-                                        Text(placeAddress, fontSize = 12.sp, color = Ids.colors.textSecondary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
-                                    }
-                                }
-                            }
-                            // Real Naver Maps-style pill action row (2026-08-09, Section 27's
-                            // own "deliberately not attempted" list) -- replaces the small
-                            // corner-icon share/bookmark from before with itunda's real subset
-                            // of Naver's 출발/도착/배달/공유/전화/알림받기 row: Share and Save
-                            // (bookmark), always real; Call, only when this merchant actually
-                            // has a real phoneNumber set. No fake "Directions"/"Delivery" pill
-                            // added here -- Directions already has its own dedicated entry
-                            // point elsewhere in this sheet, not duplicated.
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
-                                val bookmarked = isBookmarked(place)
-                                PlaceActionPill(
-                                    icon = if (bookmarked) "★" else "☆",
-                                    label = if (bookmarked) "Saved" else "Save",
-                                    filled = bookmarked,
-                                    enabled = !bookmarking,
-                                    onClick = { toggleBookmark(place) },
-                                )
-                                PlaceActionPill(
-                                    icon = "📤",
-                                    label = "Share",
-                                    filled = false,
-                                    enabled = true,
-                                    onClick = {
-                                        // Real "share this place" (2026-07-22) -- ported from
-                                        // bank-mfe's own real Web Share/clipboard action. Plain
-                                        // name+coordinate text via Android's native share sheet,
-                                        // not a link into itunda's own domain -- there's no public
-                                        // per-place page a recipient outside this app could open.
-                                        val text = "${place.displayName} (${"%.6f".format(place.latitude)}, ${"%.6f".format(place.longitude)})"
-                                        val intent = Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, text)
-                                        }
-                                        context.startActivity(Intent.createChooser(intent, place.displayName))
-                                    },
-                                )
-                                val callNumber = selectedMerchant?.phoneNumber
-                                if (callNumber != null) {
-                                    PlaceActionPill(
-                                        icon = "📞",
-                                        label = "Call",
-                                        filled = false,
-                                        enabled = true,
-                                        onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$callNumber"))) },
-                                    )
-                                }
-                                // Real "배달" (Delivery) pill (2026-08-09) -- closes the one
-                                // named-but-not-built pill from Section 35. Only shown when
-                                // this merchant genuinely has a real orderable catalog (the
-                                // exact same `showMenuTab` check the Menu tab itself already
-                                // uses) -- never a fake "order here" button for a merchant
-                                // with nothing to sell through itunda.
-                                if (selectedMerchant != null && !placeProducts.isNullOrEmpty()) {
-                                    PlaceActionPill(
-                                        icon = "🛵",
-                                        label = "Delivery",
-                                        filled = false,
-                                        enabled = true,
-                                        onClick = { onOrderDelivery(selectedMerchant.merchantId, selectedMerchant.businessName) },
-                                    )
-                                }
-                                val followMerchantId = selectedMerchant?.merchantId
-                                if (followMerchantId != null) {
-                                    val followed = followMerchantId in followedMerchantIds
-                                    PlaceActionPill(
-                                        icon = if (followed) "🔔" else "🔕",
-                                        label = if (followed) "Following" else "Notify me",
-                                        filled = followed,
-                                        enabled = !following,
-                                        onClick = { toggleFollow(followMerchantId) },
-                                    )
-                                }
-                            }
-                            if (matchedMerchant != null) {
-                                // Real "Itunda Places" tab row (2026-08-09) -- Menu/Reviews only
-                                // appear once the real fetch in the LaunchedEffect above actually
-                                // returned content, never as an empty promise. Home always shows
-                                // the existing at-a-glance summary below.
-                                val showMenuTab = !placeProducts.isNullOrEmpty()
-                                val showReviewsTab = !placeReviews.isNullOrEmpty()
-                                if (showMenuTab || showReviewsTab) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
-                                        listOfNotNull(
-                                            PlaceTab.HOME,
-                                            PlaceTab.MENU.takeIf { showMenuTab },
-                                            PlaceTab.REVIEWS.takeIf { showReviewsTab },
-                                        ).forEach { tab ->
-                                            val label = when (tab) {
-                                                PlaceTab.HOME -> "Home"
-                                                PlaceTab.MENU -> "Menu (${placeProducts?.size ?: 0})"
-                                                PlaceTab.REVIEWS -> "Reviews (${placeReviews?.size ?: 0})"
-                                                PlaceTab.INFO -> "Info"
-                                            }
-                                            val active = placeTab == tab
-                                            Column(
-                                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                                modifier = Modifier.clickable { placeTab = tab },
-                                            ) {
-                                                Text(
-                                                    label, fontSize = 13.sp,
-                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (active) Ids.colors.brand else Ids.colors.textSecondary,
-                                                )
-                                                Box(
-                                                    modifier = Modifier
-                                                        .padding(top = 4.dp)
-                                                        .height(2.dp)
-                                                        .width(if (active) 20.dp else 0.dp)
-                                                        .background(Ids.colors.brand, RoundedCornerShape(1.dp)),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if (matchedMerchant != null && placeTab == PlaceTab.MENU) {
-                                // Real per-merchant menu (2026-08-09) -- the exact same
-                                // MerchantProductDto Commerce/Eats checkout already uses, not new
-                                // or invented data.
-                                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    placeProducts.orEmpty().forEach { product ->
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                            if (product.imageUrl != null) {
-                                                AsyncImage(
-                                                    model = product.imageUrl,
-                                                    contentDescription = product.name,
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)),
-                                                )
-                                            }
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(product.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                                val original = product.originalPrice
-                                                if (original != null && original > product.price) {
-                                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                        Text("RWF ${original.toInt()}", fontSize = 11.sp, color = Ids.colors.textTertiary, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
-                                                        Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger)
-                                                    }
-                                                } else {
-                                                    Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if (matchedMerchant != null && placeTab == PlaceTab.REVIEWS) {
-                                // Real transaction-verified reviews (2026-08-09) -- the exact
-                                // same EatsReviewDto Eats' own review UI already renders
-                                // (real text, real rating, optional real photo, real owner
-                                // reply). No reviewer identity shown -- matches the existing
-                                // Eats review UI's own convention exactly, not a new choice.
-                                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    placeReviews.orEmpty().forEach { review ->
-                                        Column {
-                                            Text("⭐".repeat(review.restaurantRating), fontSize = 12.sp)
-                                            val comment = review.restaurantComment
-                                            if (!comment.isNullOrBlank()) {
-                                                Text(comment, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(top = 2.dp))
-                                            }
-                                            if (review.photoUrl != null) {
-                                                AsyncImage(
-                                                    model = review.photoUrl,
-                                                    contentDescription = null,
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                                    modifier = Modifier.padding(top = 4.dp).size(width = 120.dp, height = 80.dp).clip(RoundedCornerShape(8.dp)),
-                                                )
-                                            }
-                                            val ownerReply = review.ownerReply
-                                            if (!ownerReply.isNullOrBlank()) {
-                                                Column(
-                                                    modifier = Modifier
-                                                        .padding(top = 6.dp)
-                                                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                        .padding(8.dp),
-                                                ) {
-                                                    Text("Owner's reply", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
-                                                    Text(ownerReply, fontSize = 12.sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(top = 2.dp))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            if (matchedMerchant != null && placeTab == PlaceTab.HOME) {
-                                // Real simplicity fix (2026-08-09), found live after direct user
-                                // feedback ("not simplicity at all"): this used to be up to 7
-                                // separate stacked Text rows, one fact per line -- rating,
-                                // category, cashback, min-order, distance, hours, phone, each
-                                // its own row. Real Naver/Kakao Maps group related "at a glance"
-                                // facts onto one line with middle-dot separators instead, and
-                                // only give a genuine action (call) its own row. Grouped into 3
-                                // lines: (category · rating · distance), (cashback · min order),
-                                // (hours), plus phone as the one real tappable action.
-                                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    if (matchedMerchant.photoUrl != null) {
-                                        AsyncImage(
-                                            model = matchedMerchant.photoUrl,
-                                            contentDescription = matchedMerchant.businessName,
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
-                                        )
-                                    }
-                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        val glanceLine = listOfNotNull(
-                                            matchedMerchant.category,
-                                            matchedMerchant.rating?.let { r ->
-                                                "⭐ ${"%.1f".format(r)}" + if (matchedMerchant.reviewCount > 0) " (${matchedMerchant.reviewCount})" else ""
-                                            },
-                                            matchedMerchant.distanceKm?.let { d ->
-                                                val eta = matchedMerchant.deliveryTimeMinutes?.let { " · ~$it min" } ?: ""
-                                                "${"%.1f".format(d)} km$eta"
-                                            },
-                                        ).joinToString(" · ")
-                                        if (glanceLine.isNotEmpty()) {
-                                            Text(glanceLine, fontSize = 12.sp, color = Ids.colors.textSecondary)
-                                        }
-                                        val valueLine = listOfNotNull(
-                                            "${matchedMerchant.cashbackRate} cashback",
-                                            matchedMerchant.minOrderAmount?.let { "Min. RWF ${it.toInt()}" },
-                                        ).joinToString(" · ")
-                                        Text(valueLine, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
-                                        val openingHours = matchedMerchant.openingHours
-                                        if (openingHours != null) {
-                                            Text("🕒 $openingHours", fontSize = 11.sp, color = Ids.colors.textSecondary)
-                                        }
-                                        val phoneNumber = matchedMerchant.phoneNumber
-                                        if (phoneNumber != null) {
-                                            // Real "call + copy" row (2026-08-09) -- the full-
-                                            // screen Naver Maps reference showed a real 복사
-                                            // (Copy) action sitting right next to the phone
-                                            // number, not just a tap-to-dial. Same real number,
-                                            // just a second, equally cheap real action.
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 2.dp)) {
-                                                Text(
-                                                    "📞 $phoneNumber",
-                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                                    modifier = Modifier.clickable {
-                                                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber")))
-                                                    },
-                                                )
-                                                Text(
-                                                    "Copy",
-                                                    fontSize = 11.sp, color = Ids.colors.textTertiary,
-                                                    modifier = Modifier.clickable {
-                                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Phone number", phoneNumber))
-                                                    },
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // Real folder/color picker (2026-07-22) -- only expanded for
-                            // the place actually being saved right now, ported from
-                            // bank-mfe's own real save-time picker.
-                            if (savingToFolder != null && savingToFolder!!.latitude == place.latitude && savingToFolder!!.longitude == place.longitude) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                        .padding(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    IdsTextField(
-                                        value = folderNameInput,
-                                        onValueChange = { folderNameInput = it },
-                                        label = "Folder name (e.g. Favorites)",
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        listOf("Home", "Work").forEach { preset ->
-                                            val active = folderNameInput.equals(preset, ignoreCase = true)
-                                            Text(preset, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).clickable { folderNameInput = preset }.padding(horizontal = 10.dp, vertical = 6.dp))
-                                        }
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        BOOKMARK_COLOR_PALETTE.forEach { c ->
-                                            val color = try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(c)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) }
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(22.dp)
-                                                    .background(color, CircleShape)
-                                                    .then(
-                                                        if (folderColorInput == c) Modifier.border(2.dp, Ids.colors.textPrimary, CircleShape) else Modifier,
-                                                    )
-                                                    .clickable { folderColorInput = c },
-                                            )
-                                        }
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .background(Ids.colors.brand, RoundedCornerShape(8.dp))
-                                                .clickable(enabled = !bookmarking) { confirmSaveToFolder() }
-                                                .padding(vertical = 8.dp),
-                                            contentAlignment = androidx.compose.ui.Alignment.Center,
-                                        ) { Text(if (bookmarking) "Saving…" else "Save", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clickable(enabled = !bookmarking) { savingToFolder = null }
-                                                .padding(vertical = 8.dp),
-                                            contentAlignment = androidx.compose.ui.Alignment.Center,
-                                        ) { Text("Cancel", color = Ids.colors.textSecondary, fontSize = 13.sp) }
-                                    }
-                                }
-                            }
-                            if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
-                                Text(
-                                    "This is an Itunda agent location. Confirm the cash is ready before showing your withdrawal code.",
-                                    fontSize = 12.sp,
-                                    color = Ids.colors.textSecondary,
-                                )
-                            }
-                            // Real single "Directions" entry point (2026-08-09) -- mode
-                            // selection now happens on the dedicated route-planning view
-                            // below, not here, so this place-info view stays to one real
-                            // action: view info, or ask for directions.
-                            Box(
-                                modifier = Modifier
-                                    .background(Ids.colors.brand, RoundedCornerShape(12.dp))
-                                    .clickable(enabled = !routing) { fetchDirections(travelMode) }
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                            ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
-                            if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
-                                Text(
-                                    "Back to cash-out codes",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Ids.colors.brand,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(onClick = onBack)
-                                        .padding(vertical = 8.dp),
-                                )
-                            }
-                            } else {
-                                // Real route-planning / active-navigation view (2026-08-09) --
-                                // its own screen now, never stacked beneath place info. Only
-                                // one of {place info, this} is ever visible at a time.
-                                val currentRoute = route
-                                if (currentRoute != null) {
-                                    if (!navigating) {
-                                        Text(
-                                            "← Back to $placeName",
-                                            fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                            modifier = Modifier.clickable { clearRoute() }.padding(bottom = 6.dp),
-                                        )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                                            listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking", "BUS" to "🚌 Bus").forEach { (mode, label) ->
-                                                val active = travelMode == mode
-                                                // Real per-mode precomputed time (2026-08-09) --
-                                                // matches the real reference screenshots' mode-
-                                                // selector row, where every mode shows its own
-                                                // time, not just the active one. Bus has no real
-                                                // precomputed ETA (see busTrips's own doc comment
-                                                // above -- no live schedule feed), so this
-                                                // honestly shows a trip count once searched
-                                                // instead of a fake time.
-                                                val eta = if (mode == "BUS") null else if (active) route?.route?.durationMinutes else otherModeEtaMinutes
-                                                Column(
-                                                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                        .clickable(enabled = !routing && !busSearching) {
-                                                            if (mode == "BUS") {
-                                                                travelMode = "BUS"
-                                                                searchBus(placeName)
-                                                            } else if (mode != travelMode) {
-                                                                fetchDirections(mode)
-                                                            }
-                                                        }
-                                                        .padding(vertical = 6.dp),
-                                                ) {
-                                                    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
-                                                    if (eta != null) {
-                                                        Text(
-                                                            "${eta.toInt()} min",
-                                                            fontSize = 10.sp,
-                                                            color = if (active) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f) else Ids.colors.textTertiary,
-                                                        )
-                                                    } else if (mode == "BUS" && active) {
-                                                        Text(
-                                                            if (busSearching) "…" else "${busTrips?.size ?: 0} found",
-                                                            fontSize = 10.sp,
-                                                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if (travelMode == "BUS") {
-                                            BusTripResultsView(placeName, busSearching, busTrips)
-                                        } else {
-                                        Text(
-                                            "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
-                                            fontSize = 13.sp, color = Ids.colors.textSecondary,
-                                            modifier = Modifier.padding(top = 8.dp),
-                                        )
-                                        // Real alternative-route picker (2026-07-22) -- only
-                                        // rendered when OSRM genuinely offered more than one
-                                        // real route for this trip. See
-                                        // MapsDirectionsAlternativesResponse's own doc comment.
-                                        val alternatives = routeAlternatives
-                                        if (alternatives != null && alternatives.size > 1) {
-                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) {
-                                                alternatives.forEachIndexed { i, alt ->
-                                                    val active = selectedRouteIndex == i
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .weight(1f)
-                                                            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                            .clickable {
-                                                                selectedRouteIndex = i
-                                                                route = MapsDirectionsResponse(success = true, route = alt)
-                                                            }
-                                                            .padding(vertical = 5.dp),
-                                                        contentAlignment = androidx.compose.ui.Alignment.Center,
-                                                    ) {
-                                                        Text(
-                                                            "Route ${i + 1} · ${"%.1f".format(alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
-                                                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                                                            color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary,
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if (currentRoute.route.steps.isNotEmpty()) {
-                                            Text(
-                                                if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
-                                                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).clickable { showSteps = !showSteps },
-                                            )
-                                        }
-                                        // Real full-width prominent CTA (2026-08-09), matching
-                                        // real Naver Maps' own "안내시작" (Start guide) bottom bar.
-                                        Row(
-                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(top = 8.dp)
-                                                .background(Ids.colors.brand, RoundedCornerShape(12.dp))
-                                                .clickable {
-                                                    currentStepIndex = 0
-                                                    // Itinerary routes have no single `selectedPlace` (the destination is the
-                                                    // last stop in itineraryStops instead) -- covers both real Start
-                                                    // Navigation entry points with the one real destination each carries.
-                                                    navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
-                                                        ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
-                                                    navigating = true
-                                                    requestMyLocation()
-                                                }
-                                                .padding(vertical = 13.dp),
-                                        ) {
-                                            Text(
-                                                "▶  Start navigation",
-                                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                                                color = androidx.compose.ui.graphics.Color.White,
-                                            )
-                                        }
-                                        if (showSteps) {
-                                            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                currentRoute.route.steps.forEachIndexed { i, step ->
-                                                    Text(
-                                                        "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
-                                                        fontSize = 12.sp, color = Ids.colors.textSecondary,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        }
-                                    } else {
-                                        // Real "Start Navigation" mode (2026-08-09) -- see
-                                        // currentStepIndexFor's own doc comment above for why.
-                                        // Shows ONLY the current maneuver -- no mode toggle, no
-                                        // alternatives, no distance summary -- matching real
-                                        // Naver/Kakao/Google's own turn-by-turn view exactly,
-                                        // and this same pass's "one thing per page" fix.
-                                        val steps = currentRoute.route.steps
-                                        val stepIdx = currentStepIndex.coerceIn(0, (steps.size - 1).coerceAtLeast(0))
-                                        val activeStep = steps.getOrNull(stepIdx)
-                                        val remainingKm = steps.drop(stepIdx + 1).sumOf { it.distanceMeters } / 1000.0 +
-                                            (activeStep?.distanceMeters ?: 0.0) / 1000.0
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .background(Ids.colors.brand, RoundedCornerShape(14.dp))
-                                                .padding(16.dp),
-                                        ) {
-                                            Column {
-                                                Text(
-                                                    activeStep?.instruction ?: "Arriving at your destination",
-                                                    fontSize = 17.sp, fontWeight = FontWeight.Bold,
-                                                    color = androidx.compose.ui.graphics.Color.White,
-                                                )
-                                                Text(
-                                                    "Step ${stepIdx + 1} of ${steps.size} · ${"%.1f".format(remainingKm)} km remaining",
-                                                    fontSize = 12.sp,
-                                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
-                                                    modifier = Modifier.padding(top = 4.dp),
-                                                )
-                                                Row(modifier = Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Text(
-                                                        "End navigation",
-                                                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                                        color = androidx.compose.ui.graphics.Color.White,
-                                                        modifier = Modifier
-                                                            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                                            .clickable { navigating = false }
-                                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                                    )
-                                                    Text(
-                                                        if (voiceEnabled) "🔊 Voice on" else "🔇 Voice off",
-                                                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                                        color = androidx.compose.ui.graphics.Color.White,
-                                                        modifier = Modifier
-                                                            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                                            .clickable {
-                                                                voiceEnabled = !voiceEnabled
-                                                                if (!voiceEnabled) tts.stop()
-                                                            }
-                                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // A little breathing room below so the drag-to-Full state
-                            // doesn't cut the last line off against the screen edge.
-                            Box(modifier = Modifier.height(24.dp))
+                            PlaceDetailAndRouteView(
+                                place = place,
+                                selectedMerchant = selectedMerchant,
+                                placeProducts = placeProducts,
+                                placeReviews = placeReviews,
+                                placeTab = placeTab,
+                                followedMerchantIds = followedMerchantIds,
+                                following = following,
+                                isBookmarked = isBookmarked(place),
+                                bookmarking = bookmarking,
+                                savingToFolder = savingToFolder,
+                                folderNameInput = folderNameInput,
+                                folderColorInput = folderColorInput,
+                                isAgentCashDiscovery = isAgentCashDiscovery,
+                                activeCategory = activeCategory,
+                                routing = routing,
+                                route = route,
+                                navigating = navigating,
+                                travelMode = travelMode,
+                                otherModeEtaMinutes = otherModeEtaMinutes,
+                                busSearching = busSearching,
+                                busTrips = busTrips,
+                                routeAlternatives = routeAlternatives,
+                                selectedRouteIndex = selectedRouteIndex,
+                                showSteps = showSteps,
+                                currentStepIndex = currentStepIndex,
+                                voiceEnabled = voiceEnabled,
+                                onBack = onBack,
+                                onOrderDelivery = onOrderDelivery,
+                                onFetchDirections = { mode -> fetchDirections(mode) },
+                                onClearRoute = { clearRoute() },
+                                onToggleBookmark = { toggleBookmark(place) },
+                                onToggleFollow = { merchantId -> toggleFollow(merchantId) },
+                                onPlaceTabChange = { tab -> placeTab = tab },
+                                onFolderNameChange = { folderNameInput = it },
+                                onFolderColorChange = { folderColorInput = it },
+                                onConfirmSaveToFolder = { confirmSaveToFolder() },
+                                onCancelSaveToFolder = { savingToFolder = null },
+                                onSearchBus = { destination -> travelMode = "BUS"; searchBus(destination) },
+                                onSelectRouteAlternative = { i, alt ->
+                                    selectedRouteIndex = i
+                                    route = MapsDirectionsResponse(success = true, route = alt)
+                                },
+                                onToggleShowSteps = { showSteps = !showSteps },
+                                onStartNavigation = {
+                                    currentStepIndex = 0
+                                    // Itinerary routes have no single `selectedPlace` (the destination is the
+                                    // last stop in itineraryStops instead) -- covers both real Start
+                                    // Navigation entry points with the one real destination each carries.
+                                    navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
+                                        ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
+                                    navigating = true
+                                    requestMyLocation()
+                                },
+                                onEndNavigation = { navigating = false },
+                                onToggleVoice = {
+                                    voiceEnabled = !voiceEnabled
+                                    if (!voiceEnabled) tts.stop()
+                                },
+                            )
                         } else {
                             if (itineraryBuilding) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Ids.colors.successTint, RoundedCornerShape(12.dp))
-                                        .padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text("Multi-stop trip", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-                                    Text(
-                                        "Start: ${if (myLocation != null) "your current location" else "Kigali map center"}. Search and tap places in the order you want to visit them.",
-                                        fontSize = 12.sp,
-                                        color = Ids.colors.textSecondary,
-                                    )
-                                    if (itineraryStops.isEmpty()) {
-                                        Text("Add 1–6 destinations to make a real road itinerary.", fontSize = 12.sp, color = Ids.colors.textSecondary)
-                                    } else {
-                                        itineraryStops.forEachIndexed { index, stop ->
-                                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                                Text("${index + 2}. ${stop.displayName}", fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
-                                                Text("Remove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand, modifier = Modifier.clickable {
-                                                    itineraryStops = itineraryStops.filterIndexed { itemIndex, _ -> itemIndex != index }
-                                                    route = null
-                                                    showingItineraryRoute = false
-                                                })
-                                            }
+                                ItineraryBuilderCard(
+                                    itineraryStops = itineraryStops,
+                                    routing = routing,
+                                    travelMode = travelMode,
+                                    showingItineraryRoute = showingItineraryRoute,
+                                    route = route,
+                                    showSteps = showSteps,
+                                    hasMyLocation = myLocation != null,
+                                    onFetchItinerary = { fetchItinerary() },
+                                    onModeClick = { mode ->
+                                        if (mode != travelMode) {
+                                            if (showingItineraryRoute) fetchItinerary(mode) else travelMode = mode
                                         }
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(Ids.colors.brand, RoundedCornerShape(9.dp))
-                                            .clickable(enabled = itineraryStops.isNotEmpty() && !routing) { fetchItinerary() }
-                                            .padding(vertical = 10.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            if (routing) "Finding real itinerary…" else "Route ${itineraryStops.size + 1} stops",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = androidx.compose.ui.graphics.Color.White,
-                                        )
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                                        listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
-                                            val active = travelMode == mode
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                    .clickable(enabled = !routing) {
-                                                        if (mode != travelMode) {
-                                                            if (showingItineraryRoute) fetchItinerary(mode) else travelMode = mode
-                                                        }
-                                                    }
-                                                    .padding(vertical = 6.dp),
-                                                contentAlignment = Alignment.Center,
-                                            ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary) }
-                                        }
-                                    }
-                                    val itineraryRoute = route.takeIf { showingItineraryRoute }
-                                    if (itineraryRoute != null) {
-                                        Text(
-                                            "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(itineraryRoute.route.distanceKm)} km · ${itineraryRoute.route.durationMinutes.toInt()} min by real road",
-                                            fontSize = 13.sp,
-                                            color = Ids.colors.textSecondary,
-                                        )
-                                        Text("Legs", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-                                        val legLabels = listOf(if (myLocation != null) "Your location" else "Kigali map center") + itineraryStops.map { it.displayName }
-                                        legLabels.zipWithNext().forEachIndexed { index, (from, to) ->
-                                            Text("${index + 1}. $from → $to", fontSize = 12.sp, color = Ids.colors.textSecondary)
-                                        }
-                                        if (itineraryRoute.route.steps.isNotEmpty()) {
-                                            Text(
-                                                if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${itineraryRoute.route.steps.size} steps)",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Ids.colors.brand,
-                                                modifier = Modifier.clickable { showSteps = !showSteps },
-                                            )
-                                            if (showSteps) itineraryRoute.route.steps.forEachIndexed { index, step ->
-                                                Text("${index + 1}. ${step.instruction}", fontSize = 12.sp, color = Ids.colors.textSecondary)
-                                            }
-                                        }
-                                    }
-                                }
+                                    },
+                                    onToggleShowSteps = { showSteps = !showSteps },
+                                    onRemoveStop = { index ->
+                                        itineraryStops = itineraryStops.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                        route = null
+                                        showingItineraryRoute = false
+                                    },
+                                )
                             }
                             // Real "one thing per page" fix (2026-08-09) -- same complaint,
                             // same fix as the place-detail sheet above: this "Around you"
@@ -2491,220 +1659,62 @@ fun MapScreen(
                             // Smart Around sheet reference (below) with one real function at
                             // a time.
                             if (!itineraryBuilding) {
-                            // Real default "around me" state (2026-07-21) -- Naver Map's
-                            // own Smart Around sheet keeps a non-modal panel permanently
-                            // docked with real curated content even before any search,
-                            // rather than only ever appearing once a place is selected.
-                            // itunda has no editorial "today's pick"/"worth visiting"
-                            // content to curate, so this surfaces real data it already
-                            // has instead: the active category's real results (if any),
-                            // a real merchant count, and real saved places -- honest
-                            // functional content, not a fabricated curated feed.
-                            Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Ids.colors.textPrimary)
-                            val home = bookmarks.firstOrNull { it.folderName.equals("Home", ignoreCase = true) }
-                            val work = bookmarks.firstOrNull { it.folderName.equals("Work", ignoreCase = true) }
-                            if (home != null || work != null) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).clickable { selectAndRoute(PlaceSearchResultDto(home.displayName, home.latitude, home.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
-                                    if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).clickable { selectAndRoute(PlaceSearchResultDto(work.displayName, work.latitude, work.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
-                                }
-                            }
-                            if (activeCategory != null && categoryResults != null) {
-                                val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase() ?: "places"
-                                if (categoryResults!!.isEmpty()) {
-                                    Text("No real matches found nearby for $label.", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                                } else {
-                                    categoryResults!!.forEach { nearby ->
-                                        val (nearbyName, nearbyAddress) = splitPlaceName(nearby.displayName)
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    selectedPlace = PlaceSearchResultDto(nearby.displayName, nearby.latitude, nearby.longitude)
-                                                    route = null
-                                                    routeAlternatives = null
-                                                    selectedRouteIndex = 0
-                                                    savingToFolder = null
-                                                }
-                                                .padding(vertical = 6.dp),
-                                        ) {
-                                            Text(
-                                                "${if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") "Itunda agent · " else ""}$nearbyName",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = Ids.colors.textPrimary,
-                                            )
-                                            Text(
-                                                listOfNotNull(nearbyAddress, "${"%.1f".format(nearby.distanceKm)} km").joinToString(" · "),
-                                                fontSize = 11.sp,
-                                                color = Ids.colors.textSecondary,
-                                                maxLines = 1,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                                modifier = Modifier.padding(top = 1.dp),
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    if (merchants.isEmpty()) "Search a real place or pick a category above to explore Rwanda."
-                                    else "${merchants.size} real merchant${if (merchants.size == 1) "" else "s"} on the map. Search a place or pick a category above to explore.",
-                                    color = Ids.colors.textSecondary,
-                                    fontSize = 13.sp,
-                                )
-                            }
-
-                            // A folder someone shared with this user, shown above their own
-                            // saved places since it's the reason they opened the app.
-                            if (initialSharedFolder != null) {
-                                SharedFolderSection(
-                                    folderName = initialSharedFolder.second,
-                                    loading = loadingSharedFolder,
-                                    error = sharedFolderError,
-                                    sharedBookmarks = sharedFolderBookmarks,
-                                    subscribing = subscribingSharedFolder,
-                                    subscribedCount = subscribedSharedFolderCount,
-                                    onSubscribe = ::handleSubscribeToSharedFolder,
-                                    onOpenPlace = { shared ->
-                                        selectedPlace = PlaceSearchResultDto(shared.displayName, shared.latitude, shared.longitude)
+                                AroundYouSection(
+                                    bookmarks = bookmarks,
+                                    activeCategory = activeCategory,
+                                    categoryResults = categoryResults,
+                                    isAgentCashDiscovery = isAgentCashDiscovery,
+                                    merchants = merchants,
+                                    initialSharedFolder = initialSharedFolder,
+                                    loadingSharedFolder = loadingSharedFolder,
+                                    sharedFolderError = sharedFolderError,
+                                    sharedFolderBookmarks = sharedFolderBookmarks,
+                                    subscribingSharedFolder = subscribingSharedFolder,
+                                    subscribedSharedFolderCount = subscribedSharedFolderCount,
+                                    shareConfirmation = shareConfirmation,
+                                    sharingFolder = sharingFolder,
+                                    movingBookmark = movingBookmark,
+                                    moveFolderNameInput = moveFolderNameInput,
+                                    moveFolderColorInput = moveFolderColorInput,
+                                    onSelectAndRoute = { place -> selectAndRoute(place) },
+                                    onSelectPlace = { place ->
+                                        selectedPlace = place
                                         route = null
                                         routeAlternatives = null
                                         selectedRouteIndex = 0
                                         savingToFolder = null
                                     },
-                                )
-                            }
-                            Text(
-                                "★ Your saved places",
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = Ids.colors.textSecondary,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                            shareConfirmation?.let {
-                                Text(it, fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 4.dp))
-                            }
-                            if (bookmarks.isEmpty()) {
-                                EmptyState("No saved places yet — tap ☆ on a place to save it here.", icon = Icons.Outlined.BookmarkBorder)
-                            } else {
-                                // Real "My Places" folder grouping (2026-07-22) --
-                                // ported from bank-mfe's own real grouping. groupBy
-                                // preserves encounter order, so a folder's position here
-                                // is simply wherever its most-recently-saved place falls
-                                // (bookmarks is already createdAt-desc), not a separate
-                                // alphabetic re-sort.
-                                val bookmarksByFolder = bookmarks.groupBy { it.folderName }
-                                bookmarksByFolder.forEach { (folderName, folderBookmarks) ->
-                                    // Real Naver Map-style public/private folder + share
-                                    // (2026-08-04) -- see toggleFolderShare's own doc
-                                    // comment. Always shown (not gated on >1 folder like
-                                    // the name label below) since even the single default
-                                    // folder is real and shareable.
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                    ) {
-                                        if (bookmarksByFolder.size > 1) {
-                                            Text(folderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
-                                        } else {
-                                            Box(modifier = Modifier)
-                                        }
-                                        val isPublic = folderBookmarks.any { it.isPublic }
-                                        Text(
-                                            if (sharingFolder == folderName) "…" else if (isPublic) "🌐 Public · Share" else "🔒 Private · Share",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (isPublic) Ids.colors.brand else Ids.colors.textSecondary,
-                                            modifier = Modifier.clickable(enabled = sharingFolder == null) { toggleFolderShare(folderName, !isPublic) },
-                                        )
-                                    }
-                                    folderBookmarks.forEach { bookmark ->
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable {
-                                                    selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
-                                                    route = null
-                                                    routeAlternatives = null
-                                                    selectedRouteIndex = 0
-                                                    savingToFolder = null
-                                                }
-                                                .padding(vertical = 6.dp),
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(8.dp)
-                                                    .background(
-                                                        try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(bookmark.color)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) },
-                                                        CircleShape,
-                                                    ),
-                                            )
-                                            Text(bookmark.displayName, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
-                                            Text(
-                                                "Move", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary,
-                                                modifier = Modifier.clickable {
-                                                    if (movingBookmark?.let { it.latitude == bookmark.latitude && it.longitude == bookmark.longitude } == true) {
-                                                        movingBookmark = null
-                                                    } else {
-                                                        movingBookmark = bookmark
-                                                        moveFolderNameInput = bookmark.folderName
-                                                        moveFolderColorInput = bookmark.color
-                                                    }
-                                                },
-                                            )
-                                        }
+                                    onSubscribeSharedFolder = ::handleSubscribeToSharedFolder,
+                                    onToggleFolderShare = { folderName, makePublic -> toggleFolderShare(folderName, makePublic) },
+                                    onToggleMovingBookmark = { bookmark ->
                                         if (movingBookmark?.let { it.latitude == bookmark.latitude && it.longitude == bookmark.longitude } == true) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                    .padding(8.dp),
-                                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                                            ) {
-                                                IdsTextField(
-                                                    value = moveFolderNameInput,
-                                                    onValueChange = { moveFolderNameInput = it },
-                                                    label = "Folder name",
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                )
-                                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    BOOKMARK_COLOR_PALETTE.forEach { c ->
-                                                        val color = try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(c)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) }
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(22.dp)
-                                                                .background(color, CircleShape)
-                                                                .then(if (moveFolderColorInput == c) Modifier.border(2.dp, Ids.colors.textPrimary, CircleShape) else Modifier)
-                                                                .clickable { moveFolderColorInput = c },
-                                                        )
-                                                    }
+                                            movingBookmark = null
+                                        } else {
+                                            movingBookmark = bookmark
+                                            moveFolderNameInput = bookmark.folderName
+                                            moveFolderColorInput = bookmark.color
+                                        }
+                                    },
+                                    onMoveFolderNameChange = { moveFolderNameInput = it },
+                                    onMoveFolderColorChange = { moveFolderColorInput = it },
+                                    onConfirmMove = {
+                                        val target = movingBookmark
+                                        if (target != null) {
+                                            coroutineScope.launch {
+                                                try {
+                                                    NetworkClient.apiService.moveMapBookmark(
+                                                        target.latitude, target.longitude,
+                                                        MoveMapBookmarkRequest(moveFolderNameInput, moveFolderColorInput),
+                                                    )
+                                                    bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+                                                    movingBookmark = null
+                                                } catch (_: Exception) {
+                                                    // Best-effort -- leaves the picker open so the user can retry.
                                                 }
-                                                Text(
-                                                    "Save", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                                    modifier = Modifier.clickable(enabled = moveFolderNameInput.isNotBlank()) {
-                                                        val target = movingBookmark ?: return@clickable
-                                                        coroutineScope.launch {
-                                                            try {
-                                                                NetworkClient.apiService.moveMapBookmark(
-                                                                    target.latitude, target.longitude,
-                                                                    MoveMapBookmarkRequest(moveFolderNameInput, moveFolderColorInput),
-                                                                )
-                                                                bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
-                                                                movingBookmark = null
-                                                            } catch (_: Exception) {
-                                                                // Best-effort -- leaves the picker open so the user can retry.
-                                                            }
-                                                        }
-                                                    },
-                                                )
                                             }
                                         }
-                                    }
-                                }
-                            }
+                                    },
+                                )
                             }
                             Box(modifier = Modifier.height(24.dp))
                         }
@@ -2719,7 +1729,7 @@ fun MapScreen(
 // was already close enough to the JVM's 64KB per-method bytecode ceiling that adding
 // this section inline overflowed it (real MethodTooLargeException, 2026-08-14).
 @Composable
-private fun SharedFolderSection(
+internal fun SharedFolderSection(
     folderName: String,
     loading: Boolean,
     error: String?,
