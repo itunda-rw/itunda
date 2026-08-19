@@ -13743,3 +13743,36 @@ no code change needed.
 *Shipped: `android/features/shop/impl/src/main/java/rw/itunda/feature/shop/impl/
 {ShopScreen.kt,ShopPay.kt,ShopPayCards.kt}`, `scripts/file-size-baseline.json`. Commits
 `6e9a978e`/`7da2d318`.*
+
+## 208. TalkScreen.kt split-bill extraction -- and a real detour worth recording
+
+Continuing the same audit: `TalkScreen.kt` (3,595 lines, 3rd-biggest in the repo-wide
+sweep) turned out the same shape as `ShopScreen.kt`, not `MapsScreen.kt` -- 32
+already-independent top-level composables. The real KakaoPay-style split-bill feature
+(`GroupSplitBillsView`/`DirectSplitBillsView`) is thematically distinct from message
+rendering and fully self-contained -- confirmed via grep neither is called from outside
+`TalkScreen.kt`, so both changed from `private` to `internal`.
+
+### A real detour, worth recording honestly
+
+First attempt: one `TalkSplitBills.kt` with both views. That file itself crossed the
+500-line guideline (mostly its own copied ~158-line import block copied wholesale from
+`TalkScreen.kt`, matching `ShopPay.kt`'s own earlier precedent). Tried trimming the
+import list down to only what's genuinely used -- a text-match heuristic (does each
+imported symbol's simple name appear anywhere in the body) reduced 158 imports to 52 and
+looked plausible, but broke the real build: `DirectSplitBillsView`'s `items(current, key
+= {...}) { entry -> ... }` call produced cascading "unresolved reference" errors on the
+lambda parameter, specific to that one call site even though the structurally-identical
+call in `GroupSplitBillsView` compiled fine. Root cause not identified in the time
+available -- rather than chase a non-obvious Kotlin overload-resolution edge case blind,
+reverted the trim entirely (a real bug is a much worse outcome than a slightly-oversized
+file) and instead split `GroupSplitBillsView`/`DirectSplitBillsView` into their own
+files, each keeping the FULL, already-verified-working import list. 388/361 lines, both
+comfortably under the guideline with zero import surgery -- the lower-risk fix.
+
+`TalkScreen.kt`: 3,595 -> 3,173 lines. Both `:features:talk:impl:compileDebugKotlin` and
+`:app:compileDebugKotlin` verified clean at every step (including the failed attempt,
+caught before committing). `file-size-lint.py` clean.
+
+*Shipped: `android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/
+{TalkScreen.kt,TalkGroupSplitBills.kt,TalkDirectSplitBills.kt}`. Commit `4aaed405`.*
