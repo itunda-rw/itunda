@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import CoreNetwork
 import FeatureBanking
+import FeatureMaps
 import FeaturePayments
 
 // Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --

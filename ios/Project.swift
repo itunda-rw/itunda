@@ -121,7 +121,20 @@ let featureDependencies: [TargetDependency] = [
     .target(name: "CoreIdentity")
 ]
 
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking"]
+// "Maps" added 2026-08-19 -- reopens the multi-agent isolation initiative for iOS
+// (Android's own :features:maps was already extracted 2026-07-23, see
+// android/features/maps/impl's own header comment). MapScreenView.swift/
+// RecentMapSearchesStore.swift moved from App/Sources -- confirmed via a real
+// dependency audit before moving anything (matching Android's own precedent): neither
+// depends on RouteMiniMap/LiveRiderMiniMap/SimpleLiveRiderMiniMap (still App/Sources-
+// only, consumed by EatsScreen/HoodScreen/ShopScreen, which are themselves still
+// un-extracted App-level screens -- promoting those into a shared Core module is a
+// separate, not-yet-needed step, same reasoning Android's own RouteMiniMap ->
+// core/designsystem promotion only happened once a real cross-Feature need existed).
+// No MainViewModel/AppState/@EnvironmentObject coupling, no injected callback needed
+// (unlike Android's real onOrderDelivery callback for the Delivery pill) -- this
+// extraction is fully self-contained.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

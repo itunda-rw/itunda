@@ -77,3 +77,13 @@ target 'ItundaApp' do
     )
   end
 end
+
+# Real Maps Feature-module extraction (2026-08-19) -- MapScreenView.swift moved from
+# App/Sources into Features/Maps/Sources (see Project.swift's own featureModules doc
+# comment). CocoaPods integration here is per-Tuist-target, not global (see this
+# Podfile's own header comment on why Tuist 3.x needs this separate bridge) -- ItundaApp's
+# own `pod 'MapLibre'` above only links MapLibre.framework for that target, so the new
+# FeatureMaps target needs its own real declaration or `import MapLibre` fails to link.
+target 'FeatureMaps' do
+  pod 'MapLibre'
+end
