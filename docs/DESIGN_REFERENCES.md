@@ -14490,3 +14490,60 @@ work needed.
 *Shipped: live `kubectl patch` + host `chown` on the production cluster (no git
 diff -- infra/k8s/production/backend.yaml already had the correct manifest since
 07-24, the gap was purely that it was never actually live).*
+
+## 220. Full bank-mfe typography-scale rollout -- closes product-feel roadmap item 5
+
+§197 ported a 7-step semantic subset of the real TDS typography scale
+(`--itunda-type-{large-amount,title1,title2,subtitle1,body1,body2,button}-size`)
+and applied it to exactly one component. Everything else in `bank-mfe` still had
+~1600 bare inline `fontSize: 'Npx'` pixel literals with no token backing them --
+the roadmap's own item 5, unstarted until now.
+
+Re-fetched `tossmini-docs.toss.im/tds-mobile/foundation/typography` directly
+(rather than assuming the 7-step subset was the whole scale) and found the real
+TDS scale is actually 1px-granular from 11px to 30px, 20 steps total -- confirmed
+the existing 7 semantic tokens are an exact subset of this (e.g. `subtitle1`
+17px/25.5px matches the raw 17px step exactly). Added all 20 raw steps to
+`packages/design-tokens/tokens.css` as `--itunda-type-scale-N-{size,line-height}`,
+named by literal pixel value rather than TDS's own "Typography 3 / sub Typography
+7" ordinal numbering (which doesn't sort by pixel value). Deliberately did NOT
+invent a per-step font-weight the way the 7 semantic tokens have one -- TDS's own
+docs only say "five weights available" generically, not a per-step weight, and
+itunda has no established per-step-weight precedent for the sub-steps.
+
+Wrote a small Python codemod (regex-matched `fontSize:\s*'(1[1-9]|2[0-9]|30)px'`,
+deliberately excluding decimal values like `'12.5px'` -- those are real half-steps
+outside this scale, left untouched rather than guessed at) and ran it across every
+`.tsx`/`.ts` file in `bank-mfe/src`: 1616 replacements across 12 files
+(`BankDashboard.tsx` alone: 1487; `BusView.tsx`/`InsuranceView.tsx`/
+`ParkingView.tsx`/`RegisterPage.tsx`/`BikeShareView.tsx`/`LoginPage.tsx`/
+`LiveRiderMap.tsx`/`SimpleLiveRiderMap.tsx`/`RouteMiniMap.tsx`/`EmptyState.tsx`/
+`Badge.tsx` for the rest). Each replacement is a literal 1-for-1 swap (`fontSize:
+'13px'` -> `fontSize: 'var(--itunda-type-scale-13-size)'`) -- deliberately
+zero-visual-diff by construction, not a redesign, since `var()` resolves to the
+exact same pixel value already in use.
+
+Verified real, not just "the regex looks right": `tsc -b` clean; `vite build`
+clean; `oxlint` clean (same pre-existing warnings as before, none new, none
+touching `fontSize`); `accessibility-lint.py` clean on all 12 touched files;
+`file-size-lint.py`'s baseline unaffected (`BankDashboard.tsx`'s line count is
+byte-identical at 23,570 -- confirms the codemod only replaced text within
+existing lines, added/removed none). Live browser check against the real running
+dev server: queried every element with an `itunda-type-scale` inline style and
+compared `getComputedStyle(...).fontSize` against the literal value it replaced --
+exact match (11px/12px/13px/24px all confirmed) -- direct proof the `var()`
+substitution renders identically, not just that it type-checks.
+
+**Deliberately still open**: `lineHeight` inline pixel values were NOT touched --
+matching a `lineHeight` sibling to the `fontSize` it belongs to reliably needs real
+AST-level parsing (a style object can have `lineHeight` many properties away from
+`fontSize`, or none at all), not a blind regex proximity match, so this pass didn't
+risk it. A future pass could tackle this with a real TS/Babel AST codemod instead
+of scaling up this regex approach. Also scoped to `bank-mfe` only, matching the
+roadmap item's own wording -- the other 5 real micro-frontends (`kyc-mfe`,
+`merchant-mfe`, `ops-mfe`, `pay-checkout`, `maps-mfe`) weren't audited this pass.
+
+*Shipped: `packages/design-tokens/tokens.css` (20 new raw scale tokens) +
+`services/micro-frontends/bank-mfe/src/{BankDashboard,BusView,InsuranceView,
+ParkingView,RegisterPage,BikeShareView,LoginPage,LiveRiderMap,
+SimpleLiveRiderMap,RouteMiniMap,EmptyState,Badge}.tsx`.*
