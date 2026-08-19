@@ -1,0 +1,19 @@
+@import "@itunda/design-tokens/tokens.css";
+
+body {
+  margin: 0;
+  font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  background-color: var(--itunda-grey-100);
+  color: var(--itunda-grey-900);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100svh;
+  box-sizing: border-box;
+}
+
+h1, h2, p {
+  margin: 0;
+}

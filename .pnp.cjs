@@ -43,6 +43,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:services/micro-frontends/kyc-mfe"\
     },\
     {\
+      "name": "maps-mfe",\
+      "reference": "workspace:services/micro-frontends/maps-mfe"\
+    },\
+    {\
       "name": "merchant-mfe",\
       "reference": "workspace:services/micro-frontends/merchant-mfe"\
     },\
@@ -67,6 +71,7 @@ const RAW_RUNTIME_STATE =
     ["host-app", ["workspace:services/micro-frontends/host-app"]],\
     ["itunda", ["workspace:."]],\
     ["kyc-mfe", ["workspace:services/micro-frontends/kyc-mfe"]],\
+    ["maps-mfe", ["workspace:services/micro-frontends/maps-mfe"]],\
     ["merchant-mfe", ["workspace:services/micro-frontends/merchant-mfe"]],\
     ["ops-mfe", ["workspace:services/micro-frontends/ops-mfe"]],\
     ["pay-checkout", ["workspace:services/micro-frontends/pay-checkout"]]\
@@ -2714,6 +2719,28 @@ const RAW_RUNTIME_STATE =
           ["vt-pbf", "npm:3.1.3"]\
         ],\
         "linkType": "HARD"\
+      }]\
+    ]],\
+    ["maps-mfe", [\
+      ["workspace:services/micro-frontends/maps-mfe", {\
+        "packageLocation": "./services/micro-frontends/maps-mfe/",\
+        "packageDependencies": [\
+          ["@itunda/design-tokens", "workspace:packages/design-tokens"],\
+          ["@originjs/vite-plugin-federation", "npm:1.4.1"],\
+          ["@types/node", "npm:24.13.2"],\
+          ["@types/react", "npm:19.2.17"],\
+          ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
+          ["@vitejs/plugin-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:6.0.3"],\
+          ["es-toolkit", "npm:1.49.0"],\
+          ["maplibre-gl", "npm:4.7.1"],\
+          ["maps-mfe", "workspace:services/micro-frontends/maps-mfe"],\
+          ["oxlint", "virtual:b8ff5402e982b8ed9596db3ac35c94f3ce99202243034da986f5ead687ac240a0f7cc0d2349ef0d4a8db361a93ff6303b573638f1423c9aee0e1f39970e14466#npm:1.73.0"],\
+          ["react", "npm:19.2.7"],\
+          ["react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.7"],\
+          ["typescript", "patch:typescript@npm%3A6.0.3#optional!builtin<compat/typescript>::version=6.0.3&hash=5786d5"],\
+          ["vite", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:8.1.3"]\
+        ],\
+        "linkType": "SOFT"\
       }]\
     ]],\
     ["match-sorter", [\

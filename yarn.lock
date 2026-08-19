@@ -2088,6 +2088,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"maps-mfe@workspace:services/micro-frontends/maps-mfe":
+  version: 0.0.0-use.local
+  resolution: "maps-mfe@workspace:services/micro-frontends/maps-mfe"
+  dependencies:
+    "@itunda/design-tokens": "workspace:*"
+    "@originjs/vite-plugin-federation": "npm:^1.4.1"
+    "@types/node": "npm:^24.13.2"
+    "@types/react": "npm:^19.2.17"
+    "@types/react-dom": "npm:^19.2.3"
+    "@vitejs/plugin-react": "npm:^6.0.3"
+    es-toolkit: "npm:^1.49.0"
+    maplibre-gl: "npm:^4.7.1"
+    oxlint: "npm:^1.71.0"
+    react: "npm:^19.2.7"
+    react-dom: "npm:^19.2.7"
+    typescript: "npm:~6.0.2"
+    vite: "npm:^8.1.1"
+  languageName: unknown
+  linkType: soft
+
 "match-sorter@npm:^6.0.2":
   version: 6.3.4
   resolution: "match-sorter@npm:6.3.4"

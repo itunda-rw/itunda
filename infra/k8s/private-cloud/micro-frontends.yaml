@@ -1,0 +1,371 @@
+# Real production deployment for the Vite + React micro-frontends (2026-08-19) --
+# previously none of these had any deploy story: "bank-mfe running standalone" meant
+# a local `yarn dev` server, not anything served from this cluster. Images built from
+# services/micro-frontends/Dockerfile (one shared multi-stage Dockerfile, selected
+# per-package via the WORKSPACE build-arg), served by nginx (see
+# services/micro-frontends/nginx.conf for the real CORS/SPA-fallback config every one
+# of these needs -- Module Federation remotes are consumed cross-origin here since
+# each app gets its own NodePort).
+#
+# Images live at 192.168.252.4:32000/itunda/<name>:latest -- the same real in-cluster
+# registry (infra/k8s/private-cloud/registry-rehearsal.yaml, a plain unauthenticated
+# `registry:3`) every existing real workload (backend/api-gateway/ledger-service/
+# payment-service) actually pulls from, confirmed by inspecting their live pod specs
+# -- NOT ghcr.io directly, even though production/backend.yaml's own manifest lists a
+# ghcr.io image as its default (that value gets overridden at real deploy time, see
+# private-cloud-deploy.sh's own override_images_if_set). Learned this the hard way on
+# the first attempt: freshly-pushed ghcr.io/itunda-rw/<name> packages 401'd on pull
+# ("failed to fetch anonymous token") because the node has no ghcr.io credential
+# configured anywhere (no imagePullSecret in the itunda namespace, no containerd
+# certs.d entry for ghcr.io) -- only for this local registry.
+#
+# Single replica + tight resource requests/limits per app, deliberately: this is the
+# same single-node, already-memory-constrained private cloud the backend Deployment's
+# own doc comment describes (infra/k8s/private-cloud's real topology) -- nginx
+# serving static files is genuinely lightweight (no JVM, no app server), so 6 of
+# these together cost far less than one more backend replica would.
+#
+# host-app deliberately excluded -- see CLAUDE.md's own note that it's a mostly-
+# unused 2-tab Module Federation demo shell, not a real product surface.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-mfe
+  namespace: itunda
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: bank-mfe
+  template:
+    metadata:
+      labels:
+        app: bank-mfe
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: bank-mfe
+        image: 192.168.252.4:32000/itunda/bank-mfe:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "96Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-mfe-nodeport
+  namespace: itunda
+spec:
+  type: NodePort
+  selector:
+    app: bank-mfe
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30520
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyc-mfe
+  namespace: itunda
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: kyc-mfe
+  template:
+    metadata:
+      labels:
+        app: kyc-mfe
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: kyc-mfe
+        image: 192.168.252.4:32000/itunda/kyc-mfe:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "96Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyc-mfe-nodeport
+  namespace: itunda
+spec:
+  type: NodePort
+  selector:
+    app: kyc-mfe
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30521
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: merchant-mfe
+  namespace: itunda
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: merchant-mfe
+  template:
+    metadata:
+      labels:
+        app: merchant-mfe
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: merchant-mfe
+        image: 192.168.252.4:32000/itunda/merchant-mfe:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "96Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: merchant-mfe-nodeport
+  namespace: itunda
+spec:
+  type: NodePort
+  selector:
+    app: merchant-mfe
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30522
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ops-mfe
+  namespace: itunda
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: ops-mfe
+  template:
+    metadata:
+      labels:
+        app: ops-mfe
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: ops-mfe
+        image: 192.168.252.4:32000/itunda/ops-mfe:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "96Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ops-mfe-nodeport
+  namespace: itunda
+spec:
+  type: NodePort
+  selector:
+    app: ops-mfe
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30523
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pay-checkout
+  namespace: itunda
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: pay-checkout
+  template:
+    metadata:
+      labels:
+        app: pay-checkout
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: pay-checkout
+        image: 192.168.252.4:32000/itunda/pay-checkout:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "96Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pay-checkout-nodeport
+  namespace: itunda
+spec:
+  type: NodePort
+  selector:
+    app: pay-checkout
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30524
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maps-mfe
+  namespace: itunda
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: maps-mfe
+  template:
+    metadata:
+      labels:
+        app: maps-mfe
+    spec:
+      enableServiceLinks: false
+      containers:
+      - name: maps-mfe
+        image: 192.168.252.4:32000/itunda/maps-mfe:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "96Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maps-mfe-nodeport
+  namespace: itunda
+spec:
+  type: NodePort
+  selector:
+    app: maps-mfe
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30525

@@ -176,7 +176,13 @@ import { cancelBooking, createBooking, fetchAvailableSlots, fetchBookingDeposit,
 // Rwanda's real mobile-network conditions, shipping a full map engine nobody asked
 // for yet on every cold load is a direct, measurable cost against that. Lazy-loaded
 // instead: maplibre-gl now only downloads when a user actually opens Map.
-const MapView = lazy(() => import('./MapView'));
+//
+// Real maps-mfe split (2026-08-19) -- MapView now lives in its own federated remote
+// (see maps-mfe/src/MapView.tsx + this package's own vite.config.ts remotes.maps_mfe
+// block), the first real Module Federation *consumption* by this app (previously only
+// ever exposed, never consumed) -- lazy-loading a federated remote is the same import()
+// call as lazy-loading a local module, so this line barely changes.
+const MapView = lazy(() => import('maps_mfe/MapView'));
 const InsuranceView = lazy(() => import('./InsuranceView'));
 const BikeShareView = lazy(() => import('./BikeShareView'));
 const ParkingView = lazy(() => import('./ParkingView'));

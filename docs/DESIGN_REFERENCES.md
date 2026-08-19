@@ -14221,3 +14221,121 @@ the Talk and Shop features specifically (`ChatThreadScreen`/`ChatThreadView`,
 *Shipped: `ios/App/Sources/{EatsScreen.swift,EatsMembership.swift,
 EatsRestaurantMenu.swift,EatsCheckout.swift,EatsOrders.swift,EatsDeliver.swift}` +
 `scripts/file-size-baseline.json`.*
+
+## 217. Web maps-mfe split + real production deployment for every micro-frontend
+
+Closes the last item from the module-isolation initiative: `MapView.tsx` (2,043
+lines) extracted from `bank-mfe` into its own real Module Federation remote,
+`maps-mfe`, following `kyc-mfe`'s exact real scaffolding template. Unlike the
+Android/iOS decompositions (§210-216, mechanical multi-file splits within one Gradle
+module / Xcode target), this is a genuine cross-package boundary -- the first time
+`bank-mfe` (the real, deployed super-app, not `host-app`'s demo shell) has ever
+*consumed* a federated remote rather than only exposing one.
+
+### Scoping the split: only MapView moves, not the shared mini-maps
+
+`RouteMiniMap`/`LiveRiderMap`/`SimpleLiveRiderMap`/`lib/maps.ts`'s `searchPlaces` stay
+in `bank-mfe` -- they're used inline by other product flows (ride booking, order
+tracking, search) directly in `BankDashboard.tsx`, the same real scoping decision iOS's
+own Maps extraction (§91-105 in `project_itunda_feature_isolation.md`) already made
+and documented as correct. `maps-mfe` gets its own independent `lib/api.ts` (a minimal
+`apiFetch`/`ApiError`/token-read, reading the exact same shared `localStorage` token
+`bank-mfe`'s login writes) plus full/narrow copies of `lib/maps.ts`/`lib/shopping.ts`/
+`lib/bus.ts` -- this codebase's real, established convention (confirmed by reading
+`kyc-mfe/src/lib/api.ts`'s own doc comment) is each MFE independently re-implements
+what it needs rather than a shared network package; no such package exists for the web
+stack (unlike Android's `:core:network`/iOS's `Core/Network`).
+
+### The real production deploy story didn't exist at all -- built from scratch
+
+Before this, NO web frontend had any deployment story: "`bank-mfe` running standalone"
+meant a local `yarn dev` server, not anything served by the cluster; no Dockerfile, no
+k8s manifest, for any of the 6 real micro-frontends. Built:
+
+- `services/micro-frontends/Dockerfile` -- one shared multi-stage Dockerfile
+  (`WORKSPACE` build-arg selects the package), `COPY . .` + `yarn install --immutable`
+  + `yarn workspace ${WORKSPACE} run build`, then nginx serving the static `dist/`.
+  Mirrors `services/backend/Dockerfile`'s own COPY-everything shape (a Yarn 4 PnP
+  workspace needs the full repo tree for dependency resolution, same reason the
+  Gradle multi-module build does).
+- `services/micro-frontends/Dockerfile.dockerignore` -- scoped separately from the
+  root `.dockerignore` (which excludes `packages/` entirely, fine for the backend
+  build but would break a frontend build needing `packages/design-tokens`).
+  Deliberately keeps `packages/saronite` excluded (2.5GB, React Native mini-apps,
+  irrelevant to any web build).
+- `services/micro-frontends/nginx.conf` -- CORS headers on every response (Module
+  Federation remotes are consumed cross-origin here, since each app gets its own
+  NodePort -- even same-host requests differ by port) + SPA fallback to `index.html`.
+- `infra/k8s/private-cloud/micro-frontends.yaml` -- Deployment + NodePort Service for
+  all 6 real frontends (`bank-mfe`/`kyc-mfe`/`merchant-mfe`/`ops-mfe`/`pay-checkout`/
+  `maps-mfe`, NodePorts 30520-30525), single replica + tight resource limits (32Mi/
+  96Mi per pod -- nginx serving static files costs far less than a JVM replica).
+  `host-app` deliberately excluded -- CLAUDE.md's own note names it a mostly-unused
+  2-tab demo shell, not a real product surface.
+
+### Four real bugs found and fixed getting this working end to end
+
+1. **`docker buildx` missing** -- this Colima-backed Docker CLI had no buildx plugin,
+   so per-Dockerfile `.dockerignore` (a BuildKit-only feature) was silently ignored,
+   falling back to the root `.dockerignore` and breaking workspace resolution
+   (`@itunda/design-tokens@workspace:*: Workspace not found`). Fixed by
+   `brew install docker-buildx` + wiring `cliPluginsExtraDirs` into
+   `~/.docker/config.json` -- not routed around.
+2. **Excluding `services/api-gateway` from the dockerignore broke `yarn install
+   --immutable`** -- it's a real root `package.json` workspaces member (36KB); with
+   its source missing from the build context, yarn concluded that workspace had been
+   deleted and wanted to rewrite `yarn.lock` to drop it, which `--immutable` then
+   refused to do silently. Fixed by keeping it in the build context (cheap) rather
+   than dropping `--immutable` (which would have hidden the real problem).
+3. **`zsh`'s `:l` history-modifier silently mangled `$p:latest` in a loop** -- `docker
+   build ... -t ghcr.io/itunda-rw/$p:latest` tagged every image as `<name>atest`
+   instead of `<name>:latest` (zsh parsed `:latest` as the `:l` lowercase-modifier
+   plus literal trailing text "atest"). Caught by checking `docker images` output
+   directly rather than trusting the build logs. Fixed with `${p}:latest` (braces
+   disambiguate parameter expansion from a history modifier).
+4. **GHCR 401 on every freshly-pushed image, despite `backend`'s identical-visibility
+   package already pulling fine** -- investigated rather than assumed: `kubectl
+   describe pod` showed "failed to fetch anonymous token", and inspecting the node's
+   `/etc/containerd/certs.d` plus every *currently running* pod's actual image
+   reference (`kubectl get pods -o custom-columns=...image`) revealed EVERY real
+   workload (backend/api-gateway/ledger-service/payment-service) actually pulls from
+   `192.168.252.4:32000/itunda/<name>` -- a real, plain, unauthenticated in-cluster
+   `registry:3` (`infra/k8s/private-cloud/registry-rehearsal.yaml`), not `ghcr.io`
+   directly, even though the committed backend manifest lists a `ghcr.io` image as its
+   default (overridden at real deploy time via `private-cloud-deploy.sh`'s
+   `override_images_if_set`). Re-tagged and pushed all 6 images to the real local
+   registry instead -- the same mechanism every other live workload already uses,
+   not a new one invented for this task.
+
+Also hit and fixed: `run_vm`'s hardcoded `</dev/null` blocks any attempt to pipe YAML
+into `cluster_kubectl` over stdin (`apply -f -`) -- the real, established mechanism is
+`mount_repo_on_primary`/`stage_repo_on_primary` (tars the relevant local directory,
+`multipass transfer`s it, extracts on the node), then `apply -f <real remote path>`.
+
+### Verification
+
+Real local dev-server-to-dev-server test first (both `maps-mfe` `vite preview` and
+`bank-mfe` `vite dev`, real browser click-through via Chrome automation into the Map
+tab -- confirmed via console stack traces sourced from `localhost:5006/assets/
+MapView-*.js`, not a local bundle). Then, after the real cluster deploy: all 6
+`/healthz` endpoints return 200 on their real NodePorts; `bank-mfe`'s dev server
+re-pointed at `VITE_MAPS_MFE_URL=http://192.168.252.4:30525/assets/remoteEntry.js`
+(the real deployed URL, not localhost) and re-verified via the same browser
+click-through -- console stack traces now sourced from `192.168.252.4:30525`, proving
+the federated remote genuinely loads from the live cluster.
+
+Found (not fixed, out of scope, flagged for a future pass): a real, pre-existing
+MapLibre bug in the moved `MapView.tsx` itself -- `'var(--itunda-red)'` used as a
+literal string in several `paint` properties, which MapLibre's style-JSON validator
+rejects (`layers[10].paint.line-color: color expected`) since it parses real color
+values, not CSS custom-property syntax. Confirmed pre-existing (present in the
+byte-identical `git mv`'d file, unrelated to this split) via `grep` before ruling it
+in scope. Also unrelated: a real `ReferenceError: locatingForSort is not defined`
+crash in `OrderFoodView` (Eats), hit incidentally while testing the Map tab.
+
+*Shipped: `services/micro-frontends/maps-mfe/**` (new package) +
+`services/micro-frontends/bank-mfe/{src/MapView.tsx (moved out),
+src/BankDashboard.tsx,vite.config.ts,src/vite-env.d.ts}` +
+`services/micro-frontends/{Dockerfile,Dockerfile.dockerignore,nginx.conf}` +
+`infra/k8s/private-cloud/micro-frontends.yaml`. Deployed live to the private cloud
+cluster (NodePorts 30520-30525).*
