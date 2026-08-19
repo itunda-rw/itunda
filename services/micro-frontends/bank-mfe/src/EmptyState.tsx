@@ -25,7 +25,7 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
       >
         <Icon size={24} color="var(--itunda-grey-500)" />
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
     </div>
   );
 }
@@ -55,7 +55,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
       >
         <AlertCircle size={24} color="var(--itunda-red)" />
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
       <button type="button" onClick={onRetry} className="itunda-btn itunda-btn-primary" style={{ padding: '10px 24px' }}>
         Retry
       </button>

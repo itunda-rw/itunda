@@ -99,14 +99,14 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
           <ShieldCheck size={24} color="var(--itunda-blue)" />
-          <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
+          <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
           Create your Itunda account.
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
               rule #4), matching the identical same-day fix on LoginPage.tsx. */}
           <input
@@ -120,14 +120,14 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
               padding: '12px 14px',
               borderRadius: '10px',
               border: '1px solid var(--itunda-grey-200)',
-              fontSize: '15px',
+              fontSize: 'var(--itunda-type-scale-15-size)',
             }}
           />
         </label>
 
         <div style={{ display: 'flex', gap: '10px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>First name</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>First name</span>
             <input
               type="text"
               value={firstName}
@@ -137,12 +137,12 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
                 padding: '12px 14px',
                 borderRadius: '10px',
                 border: '1px solid var(--itunda-grey-200)',
-                fontSize: '15px',
+                fontSize: 'var(--itunda-type-scale-15-size)',
               }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Last name</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Last name</span>
             <input
               type="text"
               value={lastName}
@@ -152,14 +152,14 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
                 padding: '12px 14px',
                 borderRadius: '10px',
                 border: '1px solid var(--itunda-grey-200)',
-                fontSize: '15px',
+                fontSize: 'var(--itunda-type-scale-15-size)',
               }}
             />
           </label>
         </div>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Password</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Password</span>
           <div style={{ position: 'relative' }}>
           <input
             type={showPassword ? 'text' : 'password'}
@@ -172,7 +172,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
               padding: '12px 40px 12px 14px',
               borderRadius: '10px',
               border: '1px solid var(--itunda-grey-200)',
-              fontSize: '15px',
+              fontSize: 'var(--itunda-type-scale-15-size)',
             }}
           />
           <button
@@ -188,7 +188,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
 
         {showReferralField ? (
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Referral code (optional)</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Referral code (optional)</span>
             <input
               type="text"
               value={referralCode}
@@ -197,7 +197,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
                 padding: '12px 14px',
                 borderRadius: '10px',
                 border: '1px solid var(--itunda-grey-200)',
-                fontSize: '15px',
+                fontSize: 'var(--itunda-type-scale-15-size)',
               }}
             />
           </label>
@@ -205,7 +205,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
           <button
             type="button"
             onClick={() => setShowReferralField(true)}
-            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: '13px', color: 'var(--itunda-blue)', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)', cursor: 'pointer' }}
           >
             Have a referral code?
           </button>
@@ -216,7 +216,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
             <label
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 4px',
-                fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)', cursor: 'pointer',
+                fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', cursor: 'pointer',
               }}
             >
               <input type="checkbox" checked={allAccepted} onChange={toggleAll} style={{ width: '18px', height: '18px' }} />
@@ -227,7 +227,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
             {[...requiredTerms, ...optionalTerms].map((term) => (
               <div key={term.id} style={{ borderTop: '1px solid var(--itunda-grey-100)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 4px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, fontSize: '13px', color: 'var(--itunda-grey-700)', cursor: 'pointer' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={acceptedTermsIds.has(term.id)}
@@ -236,7 +236,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
                     />
                     <span
                       style={{
-                        fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px',
+                        fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, padding: '1px 6px', borderRadius: '4px',
                         color: term.required ? 'var(--itunda-red)' : 'var(--itunda-grey-500)',
                         background: term.required ? 'rgba(255,59,48,0.08)' : 'var(--itunda-grey-100)',
                       }}
@@ -255,7 +255,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
                   </button>
                 </div>
                 {expandedTermsId === term.id && (
-                  <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '0 4px 10px 30px' }}>{term.summary}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '0 4px 10px 30px' }}>{term.summary}</p>
                 )}
               </div>
             ))}
@@ -263,7 +263,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
         )}
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
@@ -275,7 +275,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
         <button
           type="button"
           onClick={onBackToLogin}
-          style={{ background: 'none', border: 'none', fontSize: '13px', color: 'var(--itunda-grey-500)', cursor: 'pointer' }}
+          style={{ background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', cursor: 'pointer' }}
         >
           Already have an account? Log in
         </button>

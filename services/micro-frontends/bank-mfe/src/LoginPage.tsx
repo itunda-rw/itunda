@@ -45,7 +45,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ShieldCheck size={24} color="var(--itunda-blue)" />
-            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
+            <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
           </div>
           {/* Real first language switcher (2026-08-08) -- see src/i18n's own doc comment
               for why this exists: itunda had zero localization anywhere before this,
@@ -56,19 +56,19 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
             value={locale}
             onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
             aria-label="Language"
-            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)' }}
+            style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)' }}
           >
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
           {t('login.tagline')}
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.phoneNumber')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.phoneNumber')}</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
               rule #4 -- toss.tech/article/4-ways-for-minimum-input): the very first field on
               itunda's single highest-traffic screen had no autoFocus, an extra tap before
@@ -84,13 +84,13 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
               padding: '12px 14px',
               borderRadius: '10px',
               border: '1px solid var(--itunda-grey-200)',
-              fontSize: '15px',
+              fontSize: 'var(--itunda-type-scale-15-size)',
             }}
           />
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.password')}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.password')}</span>
           <div style={{ position: 'relative' }}>
             <input
               type={showPassword ? 'text' : 'password'}
@@ -102,7 +102,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
                 padding: '12px 40px 12px 14px',
                 borderRadius: '10px',
                 border: '1px solid var(--itunda-grey-200)',
-                fontSize: '15px',
+                fontSize: 'var(--itunda-type-scale-15-size)',
                 boxSizing: 'border-box',
               }}
             />
@@ -118,7 +118,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
@@ -130,7 +130,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
         <button
           type="button"
           onClick={onCreateAccount}
-          style={{ background: 'none', border: 'none', fontSize: '13px', color: 'var(--itunda-grey-500)', cursor: 'pointer' }}
+          style={{ background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', cursor: 'pointer' }}
         >
           {t('login.createAccount')}
         </button>

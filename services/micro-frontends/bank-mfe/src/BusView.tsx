@@ -133,31 +133,31 @@ export default function BusView() {
 
       {subTab === 'RIDE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {riderError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
+          {riderError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
           <div className="itunda-card">
-            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Search routes</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Search routes</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input
                 type="text" value={searchOrigin} placeholder="From (e.g. Kigali)" onChange={(e) => setSearchOrigin(e.target.value)}
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
               <input
                 type="text" value={searchDestination} placeholder="To (e.g. Musanze)" onChange={(e) => setSearchDestination(e.target.value)}
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
             </div>
             <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={loadTrips}>Search</button>
           </div>
           {trips === null ? (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
           ) : trips.length === 0 ? (
             <EmptyState message="No upcoming trips — request a ride and it'll show up here." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {trips.map((trip) => (
                 <div key={trip.id} className="itunda-card">
-                  <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                     {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     {' · '}{trip.farePerSeat.toLocaleString()} RWF/seat · {trip.availableSeats} seat(s) left
                   </p>
@@ -165,7 +165,7 @@ export default function BusView() {
                     <input
                       type="number" min={1} max={trip.availableSeats} value={seatCounts[trip.id] ?? '1'}
                       onChange={(e) => setSeatCounts((prev) => ({ ...prev, [trip.id]: e.target.value }))}
-                      style={{ width: '60px', padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+                      style={{ width: '60px', padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
                     />
                     <button
                       className="itunda-btn itunda-btn-primary" disabled={busyTripId === trip.id} style={{ flex: 1 }}
@@ -180,13 +180,13 @@ export default function BusView() {
           )}
           {myBookings && myBookings.filter((b) => b.status === 'BOOKED').length > 0 && (
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bookings</h4>
+              <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bookings</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myBookings.filter((b) => b.status === 'BOOKED').map((b) => (
                   <div key={b.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <p style={{ fontSize: '13px', fontWeight: 700 }}>{b.seatCount} seat(s)</p>
-                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{b.seatCount} seat(s)</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
                     </div>
                     <button className="itunda-btn itunda-btn-secondary" disabled={busyBookingId === b.id} onClick={() => handleCancelBooking(b.id)}>
                       {busyBookingId === b.id ? '…' : 'Cancel'}
@@ -201,31 +201,31 @@ export default function BusView() {
 
       {subTab === 'OPERATE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {operatorError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{operatorError}</p>}
+          {operatorError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{operatorError}</p>}
           <div className="itunda-card">
-            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Post a route</p>
-            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Post a route</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Any itunda user can post a scheduled trip -- no transport-licensing check.
             </p>
             <input
               type="text" value={tripOrigin} placeholder="Origin" onChange={(e) => setTripOrigin(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '8px' }}
             />
             <input
               type="text" value={tripDestination} placeholder="Destination" onChange={(e) => setTripDestination(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '8px' }}
             />
             <input
               type="datetime-local" value={tripDeparture} onChange={(e) => setTripDeparture(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '8px' }}
             />
             <input
               type="number" value={tripSeats} placeholder="Total seats" onChange={(e) => setTripSeats(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '8px' }}
             />
             <input
               type="number" value={tripFare} placeholder="Fare per seat (RWF)" onChange={(e) => setTripFare(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '12px' }}
             />
             <button
               className="itunda-btn itunda-btn-primary" style={{ width: '100%' }}
@@ -237,32 +237,32 @@ export default function BusView() {
           </div>
           {myTrips && myTrips.length > 0 && (
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your routes</h4>
+              <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your routes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myTrips.map((trip) => (
                   <div key={trip.id} className="itunda-card">
-                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                       {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       {' · '}{trip.availableSeats}/{trip.totalSeats} seats left · {trip.farePerSeat.toLocaleString()} RWF/seat
                     </p>
                     <button
-                      className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px' }}
+                      className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px', fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}
                       onClick={() => toggleManifest(trip.id)}
                     >
                       {expandedTripId === trip.id ? 'Hide bookings' : 'View bookings'}
                     </button>
                     {expandedTripId === trip.id && (
                       <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
-                        {manifestError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{manifestError}</p>}
-                        {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading…</p>}
+                        {manifestError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{manifestError}</p>}
+                        {!manifestError && tripBookings === null && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>}
                         {tripBookings !== null && tripBookings.length === 0 && (
                           <EmptyState message="No one's booked a seat yet — share your route to fill it up." />
                         )}
                         {tripBookings !== null && tripBookings.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {tripBookings.map((b) => (
-                              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-12-size)' }}>
                                 <span style={{ color: 'var(--itunda-grey-700)' }}>
                                   Rider #{b.riderUserId.slice(-6)} · {b.seatCount} seat{b.seatCount > 1 ? 's' : ''}
                                 </span>

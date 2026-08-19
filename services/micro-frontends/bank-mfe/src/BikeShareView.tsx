@@ -160,12 +160,12 @@ export default function BikeShareView() {
 
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {riderError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
+          {riderError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
           {justCompletedRental && (
             <div className="itunda-card" style={{ textAlign: 'center', padding: '24px' }}>
-              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
-              <p style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString()} RWF</p>
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
               <button className="itunda-btn itunda-btn-secondary" onClick={() => setJustCompletedRental(null)} style={{ marginTop: '12px' }}>
                 Done
               </button>
@@ -173,8 +173,8 @@ export default function BikeShareView() {
           )}
           {!justCompletedRental && activeRental && (
             <div className="itunda-card">
-              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>🚲 Riding now</p>
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>🚲 Riding now</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time once you end the rental.
               </p>
               <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={endingRental} onClick={handleEndRental}>
@@ -184,11 +184,11 @@ export default function BikeShareView() {
           )}
           {!justCompletedRental && !activeRental && (
             <div>
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Nearby bikes, within 5 km of your real location.
               </p>
               {nearbyBikes === null ? (
-                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
               ) : nearbyBikes.length === 0 ? (
                 <EmptyState message="No bikes nearby right now — try a different area or check back soon." />
               ) : (
@@ -196,8 +196,8 @@ export default function BikeShareView() {
                   {nearbyBikes.map((bike) => (
                     <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
+                        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'}</p>
+                        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
                       </div>
                       <button
                         className="itunda-btn itunda-btn-primary" disabled={busyBikeId === bike.id}
@@ -213,12 +213,12 @@ export default function BikeShareView() {
           )}
           {rentalHistory && rentalHistory.filter((r) => r.status === 'COMPLETED').length > 0 && (
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rentals</h4>
+              <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rentals</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
                   <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
-                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
                   </div>
                 ))}
               </div>
@@ -229,10 +229,10 @@ export default function BikeShareView() {
 
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {ownerError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
+          {ownerError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
           <div className="itunda-card">
-            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Add your bike to the pool</p>
-            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Add your bike to the pool</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Uses your real current location as the bike's starting spot.
             </p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
@@ -255,15 +255,15 @@ export default function BikeShareView() {
           </div>
           {myBikes && myBikes.length > 0 && (
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bikes</h4>
+              <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bikes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myBikes.map((bike) => (
                   <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'} bike</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'} bike</p>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         className="itunda-btn itunda-btn-secondary" disabled={updatingLocationId === bike.id}
-                        onClick={() => handleUpdateBikeLocation(bike.id)} style={{ fontSize: '12px', padding: '8px 10px' }}
+                        onClick={() => handleUpdateBikeLocation(bike.id)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 10px' }}
                       >
                         {updatingLocationId === bike.id ? '…' : 'Update location'}
                       </button>

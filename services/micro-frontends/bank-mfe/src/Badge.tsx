@@ -9,7 +9,7 @@ export function Badge({ text, filled = true, tint = 'var(--itunda-blue)' }: { te
     <span
       style={{
         display: 'inline-block',
-        fontSize: '11px',
+        fontSize: 'var(--itunda-type-scale-11-size)',
         fontWeight: 700,
         padding: '2px 6px',
         borderRadius: '6px',

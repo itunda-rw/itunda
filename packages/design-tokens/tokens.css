@@ -177,6 +177,62 @@
   --itunda-type-button-size: 16px;
   --itunda-type-button-line-height: 20px;
   --itunda-type-button-weight: 600;
+
+  /* Real full raw TDS scale (2026-08-20), sourced by directly fetching
+     tossmini-docs.toss.im/tds-mobile/foundation/typography's complete step table (not
+     just the 7 named Typography1-7 steps above, which are itunda's own established
+     semantic subset already wired at real call sites on Android/iOS) -- the real TDS
+     scale is actually 1px-granular from 11px to 30px, 20 steps total. Named by literal
+     pixel value (scale-N) rather than TDS's own confusing "Typography 3 / sub
+     Typography 7" ordinal numbering, since the ordinals don't sort by pixel value.
+     Font-weight deliberately NOT included per step here (unlike the semantic tokens
+     above) -- TDS's own docs only say "five weights available," not a per-step
+     weight, and itunda has no established per-step-weight precedent for the sub-steps
+     the way it does for the 7 semantic ones. Added specifically to do a real,
+     mechanical `fontSize:` token rollout across bank-mfe (see
+     project_itunda_product_feel.md roadmap item 5) -- every value below is a literal,
+     zero-visual-change swap-in for the exact bare pixel value already used at real
+     call sites, not a redesign. */
+  --itunda-type-scale-30-size: 30px;
+  --itunda-type-scale-30-line-height: 40px;
+  --itunda-type-scale-29-size: 29px;
+  --itunda-type-scale-29-line-height: 38px;
+  --itunda-type-scale-28-size: 28px;
+  --itunda-type-scale-28-line-height: 37px;
+  --itunda-type-scale-27-size: 27px;
+  --itunda-type-scale-27-line-height: 36px;
+  --itunda-type-scale-26-size: 26px;
+  --itunda-type-scale-26-line-height: 35px;
+  --itunda-type-scale-25-size: 25px;
+  --itunda-type-scale-25-line-height: 34px;
+  --itunda-type-scale-24-size: 24px;
+  --itunda-type-scale-24-line-height: 33px;
+  --itunda-type-scale-23-size: 23px;
+  --itunda-type-scale-23-line-height: 32px;
+  --itunda-type-scale-22-size: 22px;
+  --itunda-type-scale-22-line-height: 31px;
+  --itunda-type-scale-21-size: 21px;
+  --itunda-type-scale-21-line-height: 30px;
+  --itunda-type-scale-20-size: 20px;
+  --itunda-type-scale-20-line-height: 29px;
+  --itunda-type-scale-19-size: 19px;
+  --itunda-type-scale-19-line-height: 28px;
+  --itunda-type-scale-18-size: 18px;
+  --itunda-type-scale-18-line-height: 27px;
+  --itunda-type-scale-17-size: 17px;
+  --itunda-type-scale-17-line-height: 25.5px;
+  --itunda-type-scale-16-size: 16px;
+  --itunda-type-scale-16-line-height: 24px;
+  --itunda-type-scale-15-size: 15px;
+  --itunda-type-scale-15-line-height: 22.5px;
+  --itunda-type-scale-14-size: 14px;
+  --itunda-type-scale-14-line-height: 21px;
+  --itunda-type-scale-13-size: 13px;
+  --itunda-type-scale-13-line-height: 19.5px;
+  --itunda-type-scale-12-size: 12px;
+  --itunda-type-scale-12-line-height: 18px;
+  --itunda-type-scale-11-size: 11px;
+  --itunda-type-scale-11-line-height: 16.5px;
 }
 
 /*

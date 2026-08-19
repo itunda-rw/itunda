@@ -146,25 +146,25 @@ export default function InsuranceView() {
   };
 
   if (!plans) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   const enrolledPlanIds = new Set(policies.map((p) => p.planId));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
 
       {policies.length > 0 && (
         <div className="itunda-card" style={{ padding: '16px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My policies</h3>
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My policies</h3>
           {policies.map((p) => (
             <div key={p.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: 600 }}>{p.planName}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString()} RWF/mo</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{p.planName}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString()} RWF/mo</p>
                 </div>
                 <button
                   className="itunda-btn itunda-btn-secondary"
@@ -229,7 +229,7 @@ export default function InsuranceView() {
                 const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
                 return (
                   <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                       Saved toward next premium: {fund.currentAmount.toLocaleString()} / {fund.targetAmount.toLocaleString()} RWF
                     </p>
                     <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
@@ -260,12 +260,12 @@ export default function InsuranceView() {
 
       {claims.length > 0 && (
         <div className="itunda-card" style={{ padding: '16px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My claims</h3>
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My claims</h3>
           {claims.map((c) => (
-            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
               <div>
                 <p>{c.description}</p>
-                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{c.status}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{c.status}</p>
               </div>
               <span>{c.amount.toLocaleString()} RWF</span>
             </div>
@@ -274,21 +274,21 @@ export default function InsuranceView() {
       )}
 
       <div className="itunda-card" style={{ padding: '16px' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
         {plans.map((plan) => (
           <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '13px', fontWeight: 600 }}>{plan.name}</p>
-                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
-                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{plan.description}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{plan.name}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.description}</p>
               </div>
               {enrolledPlanIds.has(plan.id) ? (
-                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-green)', flexShrink: 0, whiteSpace: 'nowrap' }}>✓ Enrolled</span>
+                <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 600, color: 'var(--itunda-green)', flexShrink: 0, whiteSpace: 'nowrap' }}>✓ Enrolled</span>
               ) : (
                 <button
                   className="itunda-btn itunda-btn-secondary"
-                  style={{ width: 'auto', flexShrink: 0, padding: '8px 14px', fontSize: '13px' }}
+                  style={{ width: 'auto', flexShrink: 0, padding: '8px 14px', fontSize: 'var(--itunda-type-scale-13-size)' }}
                   disabled={enrollingId === plan.id}
                   onClick={() => handleEnroll(plan.id)}
                 >
@@ -374,8 +374,8 @@ function CropWeatherIndexSection() {
   return (
     <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
-        <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Crop Weather Insurance</h3>
-        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Crop Weather Insurance</h3>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
           Rwanda's real National Agricultural Insurance Scheme model: if your district's official rainfall for this
           season falls below the drought threshold, every enrolled farmer in that district and season is paid
           automatically — no claim needed. The season's rainfall figure is transcribed by an admin from the real
@@ -383,16 +383,16 @@ function CropWeatherIndexSection() {
         </p>
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
 
       {policies.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {policies.map((p) => (
             <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
-                <p style={{ fontSize: '13px', fontWeight: 600 }}>{p.cropType.replace('_', ' ')} · {p.district} {p.season}</p>
-                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{p.cropType.replace('_', ' ')} · {p.district} {p.season}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                   {p.status} · insured {p.insuredAmount.toLocaleString()} RWF · premium {p.premiumAmount.toLocaleString()} RWF
                 </p>
               </div>
@@ -431,7 +431,7 @@ function CropWeatherIndexSection() {
           onChange={(e) => setInsuredAmount(e.target.value)}
           style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
         />
-        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your wallet.</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your wallet.</p>
         <button className="itunda-btn itunda-btn-secondary" disabled={enrolling} onClick={handleEnroll}>
           {enrolling ? '...' : 'Enroll'}
         </button>

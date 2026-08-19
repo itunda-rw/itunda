@@ -128,12 +128,12 @@ export default function ParkingView() {
 
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {renterError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{renterError}</p>}
+          {renterError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{renterError}</p>}
           {justCompletedSession && (
             <div className="itunda-card" style={{ textAlign: 'center', padding: '24px' }}>
-              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Parking complete</p>
-              <p style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0' }}>{(justCompletedSession.totalFare ?? 0).toLocaleString()} RWF</p>
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{justCompletedSession.durationMinutes} minutes</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Parking complete</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700, margin: '8px 0' }}>{(justCompletedSession.totalFare ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{justCompletedSession.durationMinutes} minutes</p>
               <button className="itunda-btn itunda-btn-secondary" onClick={() => setJustCompletedSession(null)} style={{ marginTop: '12px' }}>
                 Done
               </button>
@@ -141,8 +141,8 @@ export default function ParkingView() {
           )}
           {!justCompletedSession && activeSession && (
             <div className="itunda-card">
-              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>🅿️ Parked now</p>
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>🅿️ Parked now</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time (rounded up to the next hour) once you check out.
               </p>
               <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={endingSession} onClick={handleEndSession}>
@@ -152,11 +152,11 @@ export default function ParkingView() {
           )}
           {!justCompletedSession && !activeSession && (
             <div>
-              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Nearby parking, within 5 km of your real location.
               </p>
               {nearbySpots === null ? (
-                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
               ) : nearbySpots.length === 0 ? (
                 <EmptyState message="No parking nearby right now — try a different area or check back soon." />
               ) : (
@@ -164,8 +164,8 @@ export default function ParkingView() {
                   {nearbySpots.map((spot) => (
                     <div key={spot.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <p style={{ fontSize: '13px', fontWeight: 700 }}>{spot.address}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
+                        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{spot.address}</p>
+                        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
                       </div>
                       <button
                         className="itunda-btn itunda-btn-primary" disabled={busySpotId === spot.id}
@@ -181,12 +181,12 @@ export default function ParkingView() {
           )}
           {rentalHistory && rentalHistory.filter((r) => r.status === 'COMPLETED').length > 0 && (
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past sessions</h4>
+              <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past sessions</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
                   <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
-                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
                   </div>
                 ))}
               </div>
@@ -197,19 +197,19 @@ export default function ParkingView() {
 
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {ownerError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
+          {ownerError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
           <div className="itunda-card">
-            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>List your spot</p>
-            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>List your spot</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Uses your real current location as the spot's location.
             </p>
             <input
               type="text" value={spotAddress} placeholder="Address (e.g. Kigali Heights driveway)" onChange={(e) => setSpotAddress(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '8px' }}
             />
             <input
               type="number" value={spotHourlyRate} placeholder="Hourly rate (RWF)" onChange={(e) => setSpotHourlyRate(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '12px' }}
             />
             <button
               className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={registering || !spotAddress.trim() || !spotHourlyRate}
@@ -220,13 +220,13 @@ export default function ParkingView() {
           </div>
           {mySpots && mySpots.length > 0 && (
             <div>
-              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your spots</h4>
+              <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your spots</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {mySpots.map((spot) => (
                   <div key={spot.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <p style={{ fontSize: '13px', fontWeight: 700 }}>{spot.address}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{spot.address}</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
                     </div>
                     <button className="itunda-btn itunda-btn-secondary" disabled={busySpotId === spot.id} onClick={() => handleToggleSpotAvailable(spot)}>
                       {busySpotId === spot.id ? '…' : spot.available ? 'Available' : 'Unavailable'}
