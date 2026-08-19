@@ -13662,3 +13662,45 @@ correctly opens the real menu (verified against Kigali Grill House's real 3 menu
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
 `scripts/file-size-baseline.json`. Commit `eea7b9b0`.*
+
+## 206. iOS Maps extraction into a real Feature module
+
+Continuing the reopened multi-agent isolation initiative (§202-203): Android's own
+`:features:maps` was extracted 2026-07-23; iOS Maps had zero isolation at all until now,
+still directly in `App/Sources` unlike Credit (already moved to `Features/Credit/` in an
+earlier pass).
+
+Real dependency audit before moving anything, matching Android's own discipline:
+confirmed via grep that `MapScreenView.swift`/`RecentMapSearchesStore.swift` don't
+depend on `RouteMiniMap`/`LiveRiderMiniMap`/`SimpleLiveRiderMiniMap` -- those stay in
+`App/Sources`, consumed by `EatsScreen`/`HoodScreen`/`ShopScreen`, themselves still
+un-extracted App-level screens (promoting the mini-map components to a shared Core
+module is a separate, not-yet-needed step, same reasoning Android's own `RouteMiniMap`
+promotion followed). No `MainViewModel`/`AppState`/`@EnvironmentObject` coupling, no
+injected callback needed -- cleaner than Android's own extraction (which needed a real
+`onOrderDelivery` callback for cross-Feature Delivery routing).
+
+New `Features/Maps/{Interface,Sources,Testing,Tests,Example}` Tuist targets, matching
+Credit's exact directory/target shape (`Project.swift`'s `featureModules` array).
+`MapScreenView`/its `init`/its `body` all needed explicit `public` -- Swift defaults to
+internal, and `body` specifically must be public to satisfy `View`'s protocol
+requirement across a module boundary, caught by a real `xcodebuild` compile error, not
+assumed correct. CocoaPods integration in this repo is per-Tuist-target, not global --
+added a new `target 'FeatureMaps' do pod 'MapLibre' end` block to `ios/Podfile`, since
+`ItundaApp`'s own `pod 'MapLibre'` only linked that framework for `ItundaApp`'s target.
+
+### Real verification chain
+
+`tuist generate` (manifest valid) -> `pod install` (81 deps, 80 pods) ->
+`xcodebuild -scheme FeatureMaps` `** BUILD SUCCEEDED **` ->
+`xcodebuild -scheme ItundaApp` `** BUILD SUCCEEDED **` -- the full app target, pulling
+in every Feature module plus Saronite/React Native. This also corrects a stale memory
+note ([[project_itunda_ios_build_env]]) claiming the full App-target build was
+regressed (real, twice-reproduced Saronite/BrickCodegen module-map failures on
+2026-08-16/17) -- as of this verification it builds clean again, root cause still not
+identified, treated as environment-dependent rather than fixed. `scripts/ios-silo-
+boundary-check.py` also clean.
+
+*Shipped: `ios/Project.swift`, `ios/Podfile`, `ios/Podfile.lock`,
+`ios/App/Sources/ContentView.swift`, `ios/App/Sources/BenefitsShopAllScreens.swift`,
+`ios/Features/Maps/**` (new). Commits `7ca13c83`/`202eb58e`.*
