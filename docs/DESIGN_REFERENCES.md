@@ -14661,3 +14661,44 @@ done.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/rideshare.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 223. Real merchant loyalty-point balance + redemption -- third gap from the same sweep pass
+
+`MerchantController.getLoyaltyBalance` (`GET
+/api/v1/merchant/{merchantId}/loyalty-balance`) was the third real gap surfaced by
+§221's sweep run: a real Toss Place-style 자동 적립 (automatic point accrual) already
+happens on every `MerchantService.collect` call, but no client anywhere let a
+customer see their own balance at a store, let alone redeem it -- despite `collect()`
+itself already having a real, fully-implemented `pointsToRedeem` parameter
+(`MerchantLoyaltyPointsService.validateAndComputeRedemption`, correctly capped at
+`min(balance, paymentAmount)`) with zero caller passing it.
+
+Rather than bolt on a bare balance display disconnected from any real purchase flow,
+wired both halves into `PayByCodeCard`'s existing pre-payment preview step -- the
+identical real moment the card already shows eligible coupons (`previewPaymentIntent`
+already returns the resolved `merchantId`, so fetching the loyalty balance for that
+same merchant costs one more `await` in the same decision path). The existing "skip
+straight to payment when there's nothing to choose" gate (previously `eligible.length
+=== 0`) was extended to `eligible.length === 0 && balance <= 0` -- the common
+zero-balance case is completely unchanged, matching this codebase's own repeatedly-
+cited Toss "no unnecessary step" principle rather than forcing an extra tap on every
+payment. When a real balance exists, a checkbox appears next to the coupon picker
+("Use my N points -- X RWF off"), computed client-side with the identical
+`min(balance, amount)` cap the backend enforces, so the request sent never claims more
+than the backend would actually apply.
+
+**Verification depth matches §222's, for the same reason**: the real endpoint
+round-trip is proven (`curl` against an existing real merchant from prior session test
+data returned a real `200 {"pointBalance":0}`), and a real browser session confirmed
+the modified `submitCode`'s error path still works correctly (a real "Payment code not
+found" for an invalid code, zero console errors) -- but the nonzero-balance UI path
+itself (checkbox appearing, redemption actually reducing the charged amount) was not
+click-through-verified, since that needs either a real completed purchase history at a
+specific merchant or DB-level seeding, and this session's attempt at the latter was
+blocked by the permission classifier (see §222's own account of the same constraint,
+and [[feedback_deploy_mechanism_multipass_not_ssh]] for where MySQL actually lives on
+this cluster). Confirmed correct by code/type review and the proven API contract, not
+by watching it render.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/shopping.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
