@@ -193,7 +193,7 @@ private final class LocationFetcher: NSObject, ObservableObject, CLLocationManag
 /// by itunda's self-hosted Nominatim (via the new general-purpose `rw.itunda.maps`
 /// module), a real blue dot via `CLLocationManager`, and real turn-by-turn-capable
 /// directions drawing the actual road-following route via itunda's self-hosted OSRM.
-struct MapScreenView: View {
+public struct MapScreenView: View {
     /// Optional authenticated handoff from another Itunda surface. It only seeds the
     /// existing self-hosted search field; all result fetching remains in `search()`.
     let initialSearchQuery: String?
@@ -205,7 +205,7 @@ struct MapScreenView: View {
     // of this at all -- Android already resolved the deep link, this app didn't.
     let initialSharedFolder: (ownerId: String, folderName: String)?
 
-    init(initialSearchQuery: String? = nil, initialSharedFolder: (ownerId: String, folderName: String)? = nil) {
+    public init(initialSearchQuery: String? = nil, initialSharedFolder: (ownerId: String, folderName: String)? = nil) {
         self.initialSearchQuery = initialSearchQuery?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160).description
         self.initialSharedFolder = initialSharedFolder
     }
@@ -299,7 +299,7 @@ struct MapScreenView: View {
         bookmarks.contains { $0.latitude == place.latitude && $0.longitude == place.longitude }
     }
 
-    var body: some View {
+    public var body: some View {
         NavigationStack {
             // Real full-bleed map with floating overlays (2026-07-21) -- brings iOS to
             // parity with Android's own `MapScreen.kt` restructure (commit 48ad768):
