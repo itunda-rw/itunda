@@ -42,3 +42,19 @@ export const resumeProductSubscription = (id: string) =>
 
 export const cancelProductSubscription = (id: string) =>
   apiFetch<{ success: boolean; subscription: ProductSubscription }>(`/api/v1/product-subscriptions/${id}/cancel`, { method: 'POST' }).then((r) => r.subscription);
+
+// Real Coupang 정기배송 "건너뛰기" (skip next delivery) -- see backend
+// ProductSubscriptionService.skipNext's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built with zero client anywhere despite
+// pause/resume/cancel already being real bank-mfe features.
+export const skipNextProductSubscriptionDelivery = (id: string) =>
+  apiFetch<{ success: boolean; subscription: ProductSubscription }>(`/api/v1/product-subscriptions/${id}/skip-next`, { method: 'POST' }).then((r) => r.subscription);
+
+// Real Coupang 정기배송 수량/주기 변경 (change quantity/interval) -- see backend
+// ProductSubscriptionService.updateSubscription's own doc comment. Deliberately does
+// NOT touch the already-scheduled next delivery -- matches the real product.
+export const updateProductSubscription = (id: string, quantity: number | null, intervalDays: number | null) =>
+  apiFetch<{ success: boolean; subscription: ProductSubscription }>(`/api/v1/product-subscriptions/${id}/update`, {
+    method: 'POST',
+    body: JSON.stringify({ quantity, intervalDays }),
+  }).then((r) => r.subscription);
