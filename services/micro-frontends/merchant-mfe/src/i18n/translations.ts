@@ -428,6 +428,11 @@ export type TranslationKey =
   | 'pos.optionsToggle'
   | 'pos.pricingToggle'
   | 'pos.timeDealToggle'
+  | 'pos.analyticsToggle'
+  | 'pos.analyticsLoading'
+  | 'pos.analyticsLoadError'
+  | 'pos.analyticsViewCount'
+  | 'pos.analyticsOrderCount'
   | 'pos.adjustStockButton'
   | 'pos.removeButton'
   | 'pos.optionGroupsLoadError'
@@ -958,6 +963,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.optionsToggle': 'Options',
     'pos.pricingToggle': 'Pricing',
     'pos.timeDealToggle': 'Time deal',
+    'pos.analyticsToggle': 'Analytics',
+    'pos.analyticsLoading': 'Loading analytics…',
+    'pos.analyticsLoadError': 'Could not load analytics for this product.',
+    'pos.analyticsViewCount': 'Views',
+    'pos.analyticsOrderCount': 'Orders',
     'pos.adjustStockButton': 'Adjust stock',
     'pos.removeButton': 'Remove',
     'pos.optionGroupsLoadError': 'Could not load option groups.',
@@ -1479,6 +1489,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.optionsToggle': 'Amahitamo',
     'pos.pricingToggle': 'Ibiciro',
     'pos.timeDealToggle': 'Igabanuka ry\'igihe',
+    'pos.analyticsToggle': 'Imibare',
+    'pos.analyticsLoading': 'Gutegereza imibare…',
+    'pos.analyticsLoadError': 'Ntibishoboka gushaka imibare y\'iki gicuruzwa.',
+    'pos.analyticsViewCount': 'Abarebye',
+    'pos.analyticsOrderCount': 'Ibyaguzwe',
     'pos.adjustStockButton': 'Vugurura ibicuruzwa',
     'pos.removeButton': 'Kuraho',
     'pos.optionGroupsLoadError': 'Ntibishoboka gushakisha amatsinda y\'amahitamo.',
@@ -2000,6 +2015,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.optionsToggle': 'Options',
     'pos.pricingToggle': 'Tarification',
     'pos.timeDealToggle': 'Offre flash',
+    'pos.analyticsToggle': 'Statistiques',
+    'pos.analyticsLoading': 'Chargement des statistiques…',
+    'pos.analyticsLoadError': 'Impossible de charger les statistiques de ce produit.',
+    'pos.analyticsViewCount': 'Vues',
+    'pos.analyticsOrderCount': 'Commandes',
     'pos.adjustStockButton': 'Ajuster le stock',
     'pos.removeButton': 'Retirer',
     'pos.optionGroupsLoadError': "Impossible de charger les groupes d'options.",

@@ -415,6 +415,17 @@ export const setSoldOut = (productId: string, soldOut: boolean) =>
     body: JSON.stringify({ soldOut }),
   }).then((r) => r.product);
 
+// Real Coupang WING 상품분석 (product analytics) -- see backend
+// MerchantProductService.getProductAnalytics's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built with zero client anywhere.
+export interface ProductAnalytics {
+  viewCount: number;
+  orderCount: number;
+}
+
+export const getProductAnalytics = (productId: string) =>
+  apiFetch<{ success: boolean } & ProductAnalytics>(`/api/v1/merchant/products/${productId}/analytics`);
+
 export const removeProduct = (productId: string) =>
   apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}`, {
     method: 'DELETE',

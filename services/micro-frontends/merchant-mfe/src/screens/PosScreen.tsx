@@ -17,6 +17,7 @@ import {
   fetchPriceTiers,
   generateQr,
   getOptionGroups,
+  getProductAnalytics,
   getProductCatalog,
   paymentIntentQrPayload,
   removeOptionGroup,
@@ -27,6 +28,7 @@ import {
   type MenuOptionGroup,
   type MerchantProduct,
   type PaymentIntent,
+  type ProductAnalytics,
   type TimeDeal,
 } from '../lib/merchant';
 import { useI18n } from '../i18n/I18nContext';
@@ -447,6 +449,10 @@ function CatalogView() {
   // Real Coupang 타임특가 (Time Deal, item 226) -- same "one panel expanded at a time"
   // convention as Options/Pricing above, its own separate toggle.
   const [expandedTimeDealProductId, setExpandedTimeDealProductId] = useState<string | null>(null);
+  // Real Coupang WING 상품분석 (product analytics) -- found via
+  // scripts/uncalled-endpoint-sweep.py: fully built with zero client anywhere. Same
+  // "one panel expanded at a time" convention as Options/Pricing/Time Deal above.
+  const [expandedAnalyticsProductId, setExpandedAnalyticsProductId] = useState<string | null>(null);
   const lowStock = products?.filter((product) => product.stockQuantity !== null && product.stockQuantity <= 5) ?? [];
 
   const load = () => {
@@ -674,6 +680,7 @@ function CatalogView() {
                 const isExpanded = expandedProductId === product.id;
                 const isPricingExpanded = expandedPricingProductId === product.id;
                 const isTimeDealExpanded = expandedTimeDealProductId === product.id;
+                const isAnalyticsExpanded = expandedAnalyticsProductId === product.id;
                 return (
                   <Fragment key={product.id}>
                     <tr style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
@@ -709,6 +716,12 @@ function CatalogView() {
                             style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.timeDealToggle')} {isTimeDealExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
+                            onClick={() => setExpandedAnalyticsProductId(isAnalyticsExpanded ? null : product.id)}
+                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            {t('pos.analyticsToggle')} {isAnalyticsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => adjustStock(product)}
@@ -758,6 +771,13 @@ function CatalogView() {
                         </td>
                       </tr>
                     )}
+                    {isAnalyticsExpanded && (
+                      <tr style={{ borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-grey-100)' }}>
+                        <td colSpan={3} style={{ padding: '16px 20px' }}>
+                          <ProductAnalyticsPanel productId={product.id} />
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 );
               })}
@@ -780,6 +800,37 @@ interface ChoiceDraft {
 // create an option group at all was a direct API call -- no UI anywhere. v1: required
 // single-select only, matching MenuOptionGroup.kt's own real, honestly-scoped backend
 // constraint (at least 2 choices per group, enforced server-side too).
+// Real Coupang WING 상품분석 (product analytics) -- see lib/merchant.ts's own doc
+// comment. Found via scripts/uncalled-endpoint-sweep.py: fully built with zero
+// client anywhere.
+function ProductAnalyticsPanel({ productId }: { productId: string }) {
+  const { t } = useI18n();
+  const [analytics, setAnalytics] = useState<ProductAnalytics | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getProductAnalytics(productId)
+      .then(setAnalytics)
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('pos.analyticsLoadError')));
+  }, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (error) return <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
+  if (!analytics) return <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('pos.analyticsLoading')}</p>;
+
+  return (
+    <div style={{ display: 'flex', gap: '24px' }}>
+      <div>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('pos.analyticsViewCount')}</p>
+        <p style={{ fontSize: '20px', fontWeight: 700 }}>{analytics.viewCount.toLocaleString()}</p>
+      </div>
+      <div>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('pos.analyticsOrderCount')}</p>
+        <p style={{ fontSize: '20px', fontWeight: 700 }}>{analytics.orderCount.toLocaleString()}</p>
+      </div>
+    </div>
+  );
+}
+
 function ProductOptionsPanel({ productId }: { productId: string }) {
   const { t } = useI18n();
   const [groups, setGroups] = useState<MenuOptionGroup[] | null>(null);
