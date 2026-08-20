@@ -124,6 +124,16 @@ export const markListingSold = (listingId: string, buyerPhoneNumber?: string) =>
     body: JSON.stringify({ buyerPhoneNumber }),
   }).then((r) => r.listing);
 
+// Real 가격 수정 (price edit) + Karrot 가격 하락 알림 (price-drop notification) -- see
+// backend MarketplaceService.updatePrice's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built (real favoriters-notified-on-drop
+// side effect) with zero client anywhere.
+export const updateListingPrice = (listingId: string, price: number) =>
+  apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/price`, {
+    method: 'PATCH',
+    body: JSON.stringify({ price }),
+  }).then((r) => r.listing);
+
 // Real "pay via itunda" Marketplace escrow (backend since 2026-07-25) -- an opt-in
 // safer alternative to the existing in-person cash handoff, never replacing it. Real
 // gap found 2026-08-15: this had existed on the backend and Android for weeks with

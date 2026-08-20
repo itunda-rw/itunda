@@ -123,7 +123,7 @@ import {
 import {
   addKeywordAlert, addListingFavorite, confirmEscrowReceipt, contactSeller, createListing, disputeEscrow, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingDetail, fetchListingReviews, fetchListings,
   fetchListingsMyNeighborhood, fetchMarketplaceCategories, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, makeOffer,
-  markListingSold, payEscrow, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
+  markListingSold, payEscrow, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours, updateListingPrice,
   submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type MarketplaceEscrow, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { clearSecondNeighborhood, fetchProfile, setBirthDate, setNeighborhood, setSecondNeighborhood, updateProfilePhoto } from './lib/neighborhood';
@@ -11348,6 +11348,9 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   const [markingSold, setMarkingSold] = useState(false);
   const [buyerPhone, setBuyerPhone] = useState('');
   const myUserId = getStoredUser()?.id;
+  // Real 가격 수정 (price edit) -- see lib/marketplace.ts's own doc comment.
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState('');
 
   // Real "pay via itunda" Marketplace escrow -- first web client for these endpoints
   // (2026-08-15, real gap found: existed on backend+Android for weeks with zero
@@ -11478,6 +11481,24 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
     }
   };
 
+  // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see lib/marketplace.ts's own
+  // doc comment. A price drop real-notifies every real favoriter server-side.
+  const handleUpdatePrice = async () => {
+    const price = Number(newPrice);
+    if (!(price > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateListingPrice(listing.id, price);
+      setEditingPrice(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleMessage = async () => {
     setBusy(true);
     setError(null);
@@ -11600,6 +11621,23 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           </button>
         </div>
       )}
+      {editingPrice && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="number" min="1" value={newPrice} onChange={(e) => setNewPrice(e.target.value)}
+            placeholder="New price (RWF)"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setEditingPrice(false)}>
+              Cancel
+            </button>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy || !(Number(newPrice) > 0)} onClick={handleUpdatePrice}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
       {/* Real optional "who bought this?" prompt (2026-07-24) -- see backend
           MarketplaceService.markSold's own doc comment. */}
       {markingSold && (
@@ -11659,6 +11697,11 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       <div style={{ display: 'flex', gap: '8px' }}>
         {isMine ? (
           <>
+            {listing.status === 'ACTIVE' && !markingSold && !editingPrice && (
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => { setEditingPrice(true); setNewPrice(String(listing.price)); }}>
+                Edit price
+              </button>
+            )}
             {listing.status === 'ACTIVE' && !markingSold && (
               <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setMarkingSold(true)}>
                 Mark sold
