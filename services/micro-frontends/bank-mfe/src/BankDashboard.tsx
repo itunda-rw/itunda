@@ -151,15 +151,18 @@ import {
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, cancelGroupEatsOrder, completePickupOrder, contactRestaurant, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS,
-  fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS,
-  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type RestaurantSortMode,
+  addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, completePickupOrder, contactRestaurant, EATS_MEMBERSHIP_TIERS,
+  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchRestaurantCategories,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS,
+  removeFavoriteRestaurant, replyToRestaurantReview, reportEatsReview, searchDeliveryAddress, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type EatsReviewReportReason, type FavoriteRestaurant, type MenuItem, type PlatformMembership, type RatingSummary, type RestaurantSortMode,
 } from './lib/eats';
 import {
   advanceRiderOrder, claimDelivery, fetchAvailableDeliveries, fetchMyRiderProfile, fetchRiderDeliveries, registerRider, setRiderAvailability, type Rider,
 } from './lib/eatsRider';
+import {
+  cancelGroupEatsOrder, createGroupEatsOrder, fetchGroupEatsOrder, finalizeGroupEatsOrder, joinGroupEatsOrder, setMyGroupEatsOrderItems, type GroupEatsOrderDetail,
+} from './lib/eatsGroupOrders';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
   fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchOrderRiderLocation, fetchPriceTiers, fetchProduct,
@@ -14940,18 +14943,74 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
                     ↳ Restaurant: {r.ownerReply}
                   </div>
                 )}
-                <button
-                  type="button" onClick={() => handleToggleHelpful(r.id)}
-                  style={{ display: 'block', marginTop: '2px', fontSize: 'var(--itunda-type-scale-11-size)', color: helpfulVoted.has(r.id) ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}
-                >
-                  👍 Helpful{r.helpfulCount ? ` (${r.helpfulCount})` : ''}
-                </button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '2px', alignItems: 'flex-start' }}>
+                  <button
+                    type="button" onClick={() => handleToggleHelpful(r.id)}
+                    style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: helpfulVoted.has(r.id) ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}
+                  >
+                    👍 Helpful{r.helpfulCount ? ` (${r.helpfulCount})` : ''}
+                  </button>
+                  <ReportReviewButton reviewId={r.id} />
+                </div>
               </div>
             ))
           )}
         </div>
       )}
     </div>
+  );
+}
+
+const EATS_REVIEW_REPORT_REASONS: { reason: EatsReviewReportReason; label: string }[] = [
+  { reason: 'DEFAMATION', label: 'False or defamatory' },
+  { reason: 'PERSONAL_INFO_EXPOSURE', label: 'Shares personal information' },
+  { reason: 'OBSCENE_OR_VIOLENT', label: 'Obscene or violent' },
+  { reason: 'UNRELATED_ABUSE', label: 'Unrelated or abusive' },
+];
+
+// Real 배달의민족 리뷰 신고하기 (report a review) -- see lib/eats.ts's own doc comment on
+// reportEatsReview. Same real preset-reason-picker shape as HoodReportButton, but this
+// review-specific endpoint is genuinely separate (HoodReportButton's own 4 real targets
+// don't cover reviews at all).
+function ReportReviewButton({ reviewId }: { reviewId: string }) {
+  const [showChoices, setShowChoices] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const send = async (reason: EatsReviewReportReason) => {
+    setShowChoices(false);
+    setSending(true);
+    try {
+      await reportEatsReview(reviewId, reason);
+      setMessage('Thanks. Your report was sent for review.');
+    } catch (err) {
+      setMessage(err instanceof ApiError && err.code === 'REVIEW_ALREADY_REPORTED' ? 'You already reported this review.' : 'Could not send the report.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (message) {
+    return <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: message.startsWith('Thanks') ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>{message}</p>;
+  }
+
+  if (showChoices) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {EATS_REVIEW_REPORT_REASONS.map(({ reason, label }) => (
+          <button key={reason} className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-11-size)', padding: '4px 10px' }} onClick={() => send(reason)}>
+            {label}
+          </button>
+        ))}
+        <button style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }} onClick={() => setShowChoices(false)}>Cancel</button>
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }} disabled={sending} onClick={() => setShowChoices(true)}>
+      {sending ? 'Reporting…' : 'Report'}
+    </button>
   );
 }
 

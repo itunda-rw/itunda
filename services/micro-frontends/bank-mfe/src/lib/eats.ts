@@ -278,6 +278,22 @@ export const tipEatsOrderRider = (orderId: string, amount: number) =>
 // Real Baemin/Coupang-style "도움돼요" (helpful) idempotent toggle -- see backend
 // EatsReviewService.toggleHelpful's own doc comment. Found via
 // scripts/uncalled-endpoint-sweep.py: fully built with zero client anywhere.
+// Real 배달의민족 리뷰 신고하기 (report a review) -- see backend
+// EatsReviewService.reportReview's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built (own-review guard,
+// already-reported guard, real reporter-count auto-hide threshold) with zero client
+// anywhere. Genuinely NOT covered by the existing generic HoodReportButton
+// (lib/hoodReport.ts) -- that mechanism's 4 real targets are
+// MARKETPLACE_LISTING/COMMUNITY_POST/JOB_POST/PROPERTY_LISTING, no REVIEW target
+// exists there at all, so this needs its own real client, not a route-through.
+export type EatsReviewReportReason = 'DEFAMATION' | 'PERSONAL_INFO_EXPOSURE' | 'OBSCENE_OR_VIOLENT' | 'UNRELATED_ABUSE' | 'OTHER';
+
+export const reportEatsReview = (reviewId: string, reason: EatsReviewReportReason, details?: string) =>
+  apiFetch<{ success: boolean; report: { id: string } }>(`/api/v1/eats/reviews/${reviewId}/report`, {
+    method: 'POST',
+    body: JSON.stringify({ reason, details: details?.trim() || null }),
+  });
+
 export const toggleReviewHelpful = (reviewId: string) =>
   apiFetch<{ success: boolean; helpful: boolean }>(`/api/v1/eats/reviews/${reviewId}/helpful`, { method: 'POST' }).then((r) => r.helpful);
 
@@ -405,86 +421,7 @@ export const subscribePlatformMembership = (days: number) =>
     body: JSON.stringify({ days }),
   }).then((r) => r.membership);
 
-// Real 배달의민족 함께주문 (Baemin "Together Order") shared-cart group ordering
-// (2026-08-15) -- see GroupEatsOrderService.kt's own doc comment on the backend for the
-// full account, including a fresh 2026-06 sourced account of Baemin's own real "host
-// pays first, Dutch pay requested after via existing split-bill" mechanism, which this
-// reuses unchanged rather than inventing a new multi-payer checkout model.
-export type GroupEatsOrderStatus = 'OPEN' | 'FINALIZED' | 'CANCELLED';
-
-export interface GroupEatsOrder {
-  id: string;
-  hostUserId: string;
-  restaurantId: string;
-  joinCode: string;
-  deliveryAddress: string;
-  deliveryLatitude: number | null;
-  deliveryLongitude: number | null;
-  fulfillmentType: 'DELIVERY' | 'PICKUP';
-  status: GroupEatsOrderStatus;
-  resultingOrderId: string | null;
-  createdAt: string;
-  finalizedAt: string | null;
-}
-
-export interface GroupEatsOrderItemView {
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  lineTotal: number;
-}
-
-export interface GroupEatsOrderParticipantView {
-  userId: string;
-  joinedAt: string;
-  subtotal: number;
-  items: GroupEatsOrderItemView[];
-}
-
-export interface GroupEatsOrderDetail {
-  groupOrder: GroupEatsOrder;
-  grandTotal: number;
-  participants: GroupEatsOrderParticipantView[];
-}
-
-export const createGroupEatsOrder = (
-  restaurantId: string,
-  deliveryAddress: string,
-  deliveryLatitude?: number,
-  deliveryLongitude?: number,
-  fulfillmentType: 'DELIVERY' | 'PICKUP' = 'DELIVERY',
-) =>
-  apiFetch<{ success: boolean; groupOrder: GroupEatsOrder }>('/api/v1/eats/group-orders', {
-    method: 'POST',
-    body: JSON.stringify({ restaurantId, deliveryAddress, deliveryLatitude, deliveryLongitude, fulfillmentType }),
-  }).then((r) => r.groupOrder);
-
-export const joinGroupEatsOrder = (joinCode: string) =>
-  apiFetch<{ success: boolean; groupOrder: GroupEatsOrder }>('/api/v1/eats/group-orders/join', {
-    method: 'POST',
-    body: JSON.stringify({ joinCode }),
-  }).then((r) => r.groupOrder);
-
-export const fetchGroupEatsOrder = (groupOrderId: string) =>
-  apiFetch<{ success: boolean } & GroupEatsOrderDetail>(`/api/v1/eats/group-orders/${groupOrderId}`);
-
-export const setMyGroupEatsOrderItems = (
-  groupOrderId: string,
-  items: { menuItemId: string; quantity: number; selectedChoiceIds?: string[] }[],
-) =>
-  apiFetch<{ success: boolean } & GroupEatsOrderDetail>(`/api/v1/eats/group-orders/${groupOrderId}/items`, {
-    method: 'POST',
-    body: JSON.stringify({ items }),
-  });
-
-export const finalizeGroupEatsOrder = (groupOrderId: string) =>
-  apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>(`/api/v1/eats/group-orders/${groupOrderId}/finalize`, {
-    method: 'POST',
-    headers: { 'Idempotency-Key': randomUUID() },
-  });
-
-export const cancelGroupEatsOrder = (groupOrderId: string) =>
-  apiFetch<{ success: boolean; groupOrder: GroupEatsOrder }>(`/api/v1/eats/group-orders/${groupOrderId}/cancel`, {
-    method: 'POST',
-  }).then((r) => r.groupOrder);
+// Real 배달의민족 함께주문 (Baemin "Together Order") shared-cart group ordering moved to
+// lib/eatsGroupOrders.ts (2026-08-20, real file-size-lint threshold crossed a second
+// time) -- genuinely distinct from everything else in this file: its own real
+// join-code-based join flow, its own finalize/cancel lifecycle.
