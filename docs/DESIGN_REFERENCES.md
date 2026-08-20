@@ -14726,3 +14726,34 @@ errors throughout.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/community.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 225. Real Baemin pickup-discount setting -- fifth gap, first merchant-mfe fix this pass
+
+`MerchantService.setPickupDiscount` (real Baemin 포장할인 -- a merchant-set discount %
+applied when a customer orders for pickup instead of delivery) was the fifth gap
+surfaced by §221's sweep run, and the first one landing in `merchant-mfe` rather than
+`bank-mfe`. `EatsOrderService` already applies this real discount correctly on the
+customer side once a rate is set (confirmed via a direct grep of every real caller of
+`pickupDiscountPercent` across the backend) -- only the merchant-facing setter was
+ever missing, the same "one side of a two-sided feature shipped, the other side
+forgotten" shape several earlier gaps in this sweep also had.
+
+Added right next to the already-shipped, already-live `avgPrepTimeMinutes` field in
+`SettingsScreen.tsx`'s `StoreSettingsCard` -- same form, same submit handler, same
+number-input shape -- rather than a new screen, since it's a natural sibling setting
+a merchant would expect to find in the same place.
+
+**Verification note**: `curl` fully proved the real end-to-end round trip (registered
+a fresh test merchant, confirmed real `pickupDiscountPercent: null` on creation, set
+it to `10`, confirmed it persisted via a separate independent `GET /merchant/me`),
+but the actual UI render/click-through was NOT visually confirmed this pass -- the
+Claude-in-Chrome browser extension disconnected mid-session (an unrelated `/login`/
+`/remote-control` command changed the active session) and reconnecting wasn't
+available. The added code is a direct structural mirror of the `avgPrepTimeMinutes`
+field immediately above it in the same component, which IS already live-verified in
+production -- a real risk gap worth closing on a future pass once the browser tool is
+available again, not a silent gloss-over.
+
+*Shipped: `services/micro-frontends/merchant-mfe/src/lib/merchant.ts` +
+`services/micro-frontends/merchant-mfe/src/screens/SettingsScreen.tsx` +
+`services/micro-frontends/merchant-mfe/src/i18n/translations.ts`.*
