@@ -14823,3 +14823,39 @@ via a separate independent `GET`, then cleaned up the test listing.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/marketplace.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 228. Real Uber-Eats-style delivery tip -- eighth gap, plus a real file-size split
+
+`EatsOrderService.tipRider` (real Uber Eats post-delivery rider tip -- fully built,
+real already-tipped guard, real `TIP_WINDOW`, real wallet-to-wallet ledger legs) was
+the eighth gap from §221's sweep run, and the exact same real gap shape as
+`RideTripService.tipDriver` this session already closed in §222: order completion +
+post-delivery restaurant/rider rating (`ReviewOrderCard`) was already fully wired,
+but no way to actually tip.
+
+Added `TipRiderPrompt` right next to `ReviewOrderCard` on a `DELIVERED` order's
+card, directly mirroring `TipDriverPrompt` (reusing the same `TIP_PRESETS`). One
+real, worth-remembering difference from the ride tip: this endpoint does NOT
+require an `Idempotency-Key` header, so no `DeviceStepUpPrompt` wiring was added
+here -- `DeviceVerificationFilter` gates specifically on Idempotency-Key-carrying
+calls, and matching the real endpoint's own signature (rather than assuming
+symmetry with its ride sibling) is what a genuine live-verification pass is for.
+
+**A real, live file-size-lint hit, handled the right way**: adding `tipEatsOrderRider`
+pushed `lib/eats.ts` to 510 lines, crossing the 500-line guideline for the first
+time -- the linter's own message explicitly warns against reflexively baselining a
+file crossing the threshold fresh. Extracted the genuinely distinct rider-role half
+(`Rider` type, `registerRider`/`fetchMyRiderProfile`/`setRiderAvailability`/
+`fetchAvailableDeliveries`/`fetchRiderDeliveries`/`claimDelivery`/
+`advanceRiderOrder` -- none of it ever called by a buyer or restaurant owner) into
+a new `lib/eatsRider.ts`. `eats.ts` is back to 479 lines; the new file is 45.
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean on
+both files. Live-verified the real request/response shape via curl (a `POST`
+against a nonexistent order id correctly round-trips to a real `404
+ORDER_NOT_FOUND`) -- the happy path needs a funded wallet + a real delivered order,
+same open gap as this session's other funds-blocked closures.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/eats.ts` +
+`services/micro-frontends/bank-mfe/src/lib/eatsRider.ts` (new) +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
