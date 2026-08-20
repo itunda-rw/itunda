@@ -75,3 +75,27 @@ export const completePickupOrder = (orderId: string) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/complete-pickup`, {
     method: 'POST',
   }).then((r) => r.order);
+
+// Real DoorDash/Uber Eats-style "Item Unavailable" flow -- see backend
+// EatsOrderService.markItemUnavailable's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built (real partial refund back to the
+// buyer's wallet, real ACCEPTED/PREPARING-only guard, real "can't unavailable the
+// last item" guard) with zero client anywhere -- not even bank-mfe had this, despite
+// every other real restaurant-order action already being ported here.
+export interface EatsOrderItem {
+  id: string;
+  orderId: string;
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  unavailable: boolean;
+}
+
+export const fetchEatsOrderDetail = (orderId: string) =>
+  apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>(`/api/v1/eats/orders/${orderId}`);
+
+export const markEatsOrderItemUnavailable = (orderId: string, itemId: string) =>
+  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/items/${itemId}/unavailable`, {
+    method: 'POST',
+  }).then((r) => r.order);

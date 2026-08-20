@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
 import { ErrorCard } from '../components/EmptyState';
-import { advanceRestaurantOrder, completePickupOrder, fetchRestaurantOrders, type EatsOrder, type EatsOrderStatus } from '../lib/eats';
+import { advanceRestaurantOrder, completePickupOrder, fetchEatsOrderDetail, fetchRestaurantOrders, markEatsOrderItemUnavailable, type EatsOrder, type EatsOrderItem, type EatsOrderStatus } from '../lib/eats';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 
@@ -117,6 +117,9 @@ export default function EatsOrdersScreen() {
                 {t('eatsOrders.notePrefix')} {o.deliveryNotes}
               </p>
             )}
+            {(o.status === 'ACCEPTED' || o.status === 'PREPARING') && (
+              <ItemUnavailableSection orderId={o.id} />
+            )}
             {readyForPickupHandoff ? (
               <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
                 {busyOrderId === o.id ? t('eatsOrders.updating') : t('eatsOrders.markPickedUp')}
@@ -129,6 +132,74 @@ export default function EatsOrdersScreen() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Real DoorDash/Uber Eats-style "Item Unavailable" flow -- see lib/eats.ts's own doc
+// comment. Toggle-open, only rendered for ACCEPTED/PREPARING orders (matching the
+// backend's own real status guard).
+function ItemUnavailableSection({ orderId }: { orderId: string }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<EatsOrderItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
+
+  const load = () => {
+    fetchEatsOrderDetail(orderId)
+      .then((r) => setItems(r.items))
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('eatsOrders.itemsLoadError')));
+  };
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && items === null) load();
+  };
+
+  const handleMarkUnavailable = async (itemId: string) => {
+    setBusyItemId(itemId);
+    setError(null);
+    try {
+      await markEatsOrderItemUnavailable(orderId, itemId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('eatsOrders.itemUnavailableError'));
+    } finally {
+      setBusyItemId(null);
+    }
+  };
+
+  return (
+    <div>
+      <button type="button" onClick={toggle} style={{ color: 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}>
+        {t('eatsOrders.itemsToggle')}
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+          {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+          {items === null ? (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('eatsOrders.itemsLoading')}</p>
+          ) : (
+            items.map((item) => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                <span style={{ textDecoration: item.unavailable ? 'line-through' : 'none', color: item.unavailable ? 'var(--itunda-grey-500)' : 'var(--itunda-grey-900)' }}>
+                  {item.productName} x{item.quantity}
+                </span>
+                {!item.unavailable && (
+                  <button
+                    className="itunda-btn itunda-btn-secondary" disabled={busyItemId === item.id}
+                    onClick={() => handleMarkUnavailable(item.id)} style={{ fontSize: '11px', padding: '4px 8px' }}
+                  >
+                    {busyItemId === item.id ? '…' : t('eatsOrders.markItemUnavailable')}
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

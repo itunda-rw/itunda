@@ -113,6 +113,11 @@ export type TranslationKey =
   | 'eatsOrders.notePrefix'
   | 'eatsOrders.updating'
   | 'eatsOrders.markPickedUp'
+  | 'eatsOrders.itemsToggle'
+  | 'eatsOrders.itemsLoading'
+  | 'eatsOrders.itemsLoadError'
+  | 'eatsOrders.markItemUnavailable'
+  | 'eatsOrders.itemUnavailableError'
   | 'eatsOrders.markPrefix'
   | 'eatsOrders.empty'
   // Real 5th-localization-pass additions (2026-08-15): DineInScreen -- the real
@@ -672,6 +677,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'eatsOrders.notePrefix': 'Note:',
     'eatsOrders.updating': 'Updating…',
     'eatsOrders.markPickedUp': 'Mark picked up',
+    'eatsOrders.itemsToggle': 'Items',
+    'eatsOrders.itemsLoading': 'Loading items…',
+    'eatsOrders.itemsLoadError': 'Could not load this order\'s items.',
+    'eatsOrders.markItemUnavailable': 'Mark unavailable',
+    'eatsOrders.itemUnavailableError': 'Could not mark this item unavailable.',
     'eatsOrders.markPrefix': 'Mark',
     'eatsOrders.empty': 'No Eats orders yet. Orders placed against your restaurant will show up here.',
     'dineIn.qrTitle': 'Table QR codes',
@@ -1198,6 +1208,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'eatsOrders.notePrefix': 'Icyitonderwa:',
     'eatsOrders.updating': 'Kuvugurura…',
     'eatsOrders.markPickedUp': 'Emeza ko byatorewe',
+    'eatsOrders.itemsToggle': 'Ibiribwa',
+    'eatsOrders.itemsLoading': 'Gutegereza ibiribwa…',
+    'eatsOrders.itemsLoadError': 'Ntibishoboka gushaka ibiribwa by\'iri tegeko.',
+    'eatsOrders.markItemUnavailable': 'Emeza ko bidahari',
+    'eatsOrders.itemUnavailableError': 'Ntibishoboka kwemeza ko iki kiribwa kidahari.',
     'eatsOrders.markPrefix': 'Emeza',
     'eatsOrders.empty': 'Nta itumiza ry\'ibiryo urafite. Itumiza ryakorewe resitora yawe rizagaragara hano.',
     'dineIn.qrTitle': 'QR code z\'ameza',
@@ -1724,6 +1739,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'eatsOrders.notePrefix': 'Remarque :',
     'eatsOrders.updating': 'Mise à jour…',
     'eatsOrders.markPickedUp': 'Marquer comme récupérée',
+    'eatsOrders.itemsToggle': 'Articles',
+    'eatsOrders.itemsLoading': 'Chargement des articles…',
+    'eatsOrders.itemsLoadError': 'Impossible de charger les articles de cette commande.',
+    'eatsOrders.markItemUnavailable': 'Marquer indisponible',
+    'eatsOrders.itemUnavailableError': 'Impossible de marquer cet article comme indisponible.',
     'eatsOrders.markPrefix': 'Marquer',
     'eatsOrders.empty': 'Aucune commande Eats pour le moment. Les commandes passées à votre restaurant apparaîtront ici.',
     'dineIn.qrTitle': 'Codes QR des tables',
