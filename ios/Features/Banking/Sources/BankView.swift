@@ -276,6 +276,8 @@ public struct BankView: View {
     private let coopRows: [CooperativeRowData]
     private let onSend: () -> Void
     private let onOpenTransactionHistory: () -> Void
+    private let onOpenNotifications: () -> Void
+    private let onOpenProfile: () -> Void
 
     /// Real data (2026-07-11) -- balanceText/savingsRows previously didn't exist;
     /// every number here was hardcoded ("RWF 1,284,350" etc). Defaults preserve the
@@ -292,7 +294,9 @@ public struct BankView: View {
         discoverRows: [DiscoverRowData] = [],
         coopRows: [CooperativeRowData] = [],
         onSend: @escaping () -> Void = {},
-        onOpenTransactionHistory: @escaping () -> Void = {}
+        onOpenTransactionHistory: @escaping () -> Void = {},
+        onOpenNotifications: @escaping () -> Void = {},
+        onOpenProfile: @escaping () -> Void = {}
     ) {
         self.balanceText = balanceText
         self.accountNumber = accountNumber
@@ -301,12 +305,14 @@ public struct BankView: View {
         self.coopRows = coopRows
         self.onSend = onSend
         self.onOpenTransactionHistory = onOpenTransactionHistory
+        self.onOpenNotifications = onOpenNotifications
+        self.onOpenProfile = onOpenProfile
     }
 
     public var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
-                HomeTopBar(locale: locale)
+                HomeTopBar(locale: locale, onOpenNotifications: onOpenNotifications, onOpenProfile: onOpenProfile)
                 AccountSummaryCard(balanceText: balanceText, accountNumber: accountNumber, onSend: onSend, locale: locale)
                 QuickActionsRow(locale: locale)
                 if !coopRows.isEmpty {
@@ -445,6 +451,8 @@ private struct HomeRowData: Identifiable {
 
 private struct HomeTopBar: View {
     let locale: BankingLocale
+    let onOpenNotifications: () -> Void
+    let onOpenProfile: () -> Void
 
     var body: some View {
         HStack {
@@ -460,22 +468,35 @@ private struct HomeTopBar: View {
             Spacer()
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                TopBarActionButton(symbol: "bell", accessibilityLabel: bt("notifications", locale: locale))
-                TopBarActionButton(symbol: "person", accessibilityLabel: bt("profile", locale: locale))
+                TopBarActionButton(symbol: "bell", accessibilityLabel: bt("notifications", locale: locale), action: onOpenNotifications)
+                TopBarActionButton(symbol: "person", accessibilityLabel: bt("profile", locale: locale), action: onOpenProfile)
             }
         }
     }
 }
 
-// Icon-only buttons need an explicit label -- SwiftUI doesn't derive one from the SF
-// Symbol name, so without this VoiceOver announced these as "Button" with no name
-// (the same class of bug fixed in ItundaAppScreen.kt's TopIconButton on Android).
+// Real fix (product-feel audit, §235): both icons used to be a literal
+// `Button(action: {})` no-op -- real, confirmed by checking Android's equivalent
+// header (ItundaAppScreen.kt's TopBar), whose own doc comment records the identical
+// bug found and fixed there 2026-07-22 ("Both icons were real no-op taps... despite
+// their own real destinations already existing elsewhere in this file"). iOS never
+// got that same fix. Android's bell opens a dedicated NotificationListScreen,
+// separate from Settings' own notification-preferences row -- iOS has no equivalent
+// dedicated feed screen (confirmed: the only real notification list on iOS lives
+// inside SettingsScreen's own `viewModel.notifications` section), so both icons
+// route to that one real screen rather than to nothing -- an honest destination
+// today, not a fabricated dedicated feed iOS doesn't actually have. Icon-only
+// buttons also need an explicit label -- SwiftUI doesn't derive one from the SF
+// Symbol name, so without `accessibilityLabel` VoiceOver announced these as
+// "Button" with no name (the same class of bug fixed in ItundaAppScreen.kt's
+// TopIconButton on Android).
 private struct TopBarActionButton: View {
     let symbol: String
     let accessibilityLabel: String
+    let action: () -> Void
 
     var body: some View {
-        Button(action: {}) {
+        Button(action: action) {
             Image(systemName: symbol)
                 .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .body))
                 .foregroundColor(IDS.Colors.iconPrimary)

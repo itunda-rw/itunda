@@ -77,6 +77,14 @@ struct ContentView: View {
     @State private var showTransactionHistory = false
     // Real account settings screen (2026-07-12) -- see SettingsScreen.swift.
     @State private var showSettings = false
+    // Real bell/profile icons inside BankView's own header (product-feel audit,
+    // §235) -- see BankView.swift's TopBarActionButton doc comment for why these
+    // route to Settings (the one real destination that already has a notification
+    // feed) rather than a dedicated feed screen iOS doesn't have. Kept as its own
+    // state var (not reusing $showSettings) since it needs to present as a sheet
+    // ON TOP OF the already-showing $showBank fullScreenCover below, not stack a
+    // second fullScreenCover on that binding's own separate presentation.
+    @State private var showBankSettings = false
     @State private var showMapFromDeepLink = false
     @State private var mapSearchFromDeepLink: String?
     // Real Kakao Map-style shared-folder landing (2026-08-18) -- resolves a real
@@ -286,7 +294,9 @@ struct ContentView: View {
                             discoverRows: bankViewModel.discoverRows,
                             coopRows: coopRows,
                             onSend: { showTransferFlow = true },
-                            onOpenTransactionHistory: { showTransactionHistory = true }
+                            onOpenTransactionHistory: { showTransactionHistory = true },
+                            onOpenNotifications: { showBankSettings = true },
+                            onOpenProfile: { showBankSettings = true }
                         )
                             .toolbar {
                                 ToolbarItem(placement: .navigationBarLeading) {
@@ -295,6 +305,9 @@ struct ContentView: View {
                             }
                     }
                         .task { await bankViewModel.load() }
+                        .sheet(isPresented: $showBankSettings) {
+                            SettingsScreen(onDone: { showBankSettings = false })
+                        }
                         .sheet(isPresented: $showSacco) {
                             SaccoScreenView(onBack: { showSacco = false })
                         }

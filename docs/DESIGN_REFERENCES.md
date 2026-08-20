@@ -15092,3 +15092,59 @@ alongside a bug-fix slice. Item 7 stays open; this is progress on it, not closur
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx` +
 `services/micro-frontends/bank-mfe/src/i18n/translations.ts`.*
+
+## 235. Same "looks tappable, does nothing" bug class found and fixed on Android and iOS -- a cross-platform sweep, not just web
+
+Continued straight on from §234's technique (grep for dead/conditionally-undefined
+`onClick`/`clickable`/`action` handlers, the exact shape that found both bank-mfe
+bugs) across the rest of bank-mfe and every other web workspace first -- clean,
+nothing else found (17 `cursor: 'pointer'` sites in `BankDashboard.tsx`, all with a
+real nearby `onClick`; same check across `kyc-mfe`/`host-app`/`pay-checkout`/
+`maps-mfe`/`ops-mfe`/`merchant-mfe` also clean). Extended the same sweep to
+Android/iOS (`clickable {}`/`onClick = {}`/`action: {}` empty-closure patterns) and
+found two more real, live instances -- one confirmed dead bug, one confirmed
+historical/intentional false positive correctly left alone:
+
+- **iOS `BankView.swift`'s `TopBarActionButton`** (bell + person icons in the Bank
+  screen's own header) was a literal `Button(action: {})` -- both taps have done
+  nothing since the component existed. Checked Android's equivalent header
+  (`ItundaAppScreen.kt`'s `TopBar`) first: its own doc comment records the identical
+  bug, found and fixed there 2026-07-22 ("Both icons were real no-op taps... despite
+  their own real destinations already existing elsewhere in this file") -- Android's
+  bell opens a real `NotificationListScreen` with a live unread-count badge. iOS
+  never got the equivalent fix. iOS has no dedicated notification-feed screen the
+  way Android does, though -- the only real notification list on iOS lives inside
+  `SettingsScreen`'s own `viewModel.notifications` section (Devices + Notifications
+  combined, the same conflated shape Android itself had until its 2026-07-22 split).
+  Routed both icons to that one real screen rather than inventing a dedicated feed
+  iOS doesn't actually have: added `onOpenNotifications`/`onOpenProfile` closures to
+  `BankView`'s public init (mirroring the existing `onSend`/`onOpenTransactionHistory`
+  pattern exactly), threaded through `HomeTopBar` to `TopBarActionButton`, wired at
+  the real call site (`ContentView.swift`'s `$showBank` fullScreenCover) to a new
+  `$showBankSettings` sheet presenting the real `SettingsScreen` -- kept as its own
+  state var rather than reusing the existing `$showSettings` binding, since that one
+  is already bound to its own sibling fullScreenCover on `EntireMenuScreen` and
+  stacking two simultaneous full-screen covers off the same binding path is exactly
+  the kind of presentation-layer risk not worth taking for a fix this size.
+- **Android `TransferFlow.kt`'s "Select bank" row** (recipient-entry step, account
+  tab) turned out to be the confirmed non-bug, but with a real, separate half-fix
+  still worth doing: a 2026-07-12 pass already correctly rewrote this row's COPY to
+  stop implying real bank auto-detection (itunda has no BIN registry to check
+  against) and left an honest comment -- "for now this is just a label" -- but never
+  updated the row's own `.clickable { }` + trailing `ChevronRight` chevron, which
+  still visually claims to be a tappable picker. Same shape as both bugs above:
+  removed the empty `.clickable {}` and the chevron (plus its now-unused import) so
+  the row's affordance finally matches what the 2026-07-12 comment already said it
+  honestly is.
+
+**Verification**: iOS -- full `xcodebuild -workspace Itunda.xcworkspace -scheme
+ItundaApp -destination "generic/platform=iOS Simulator"` build, BUILD SUCCEEDED (no
+simulator device in this headless environment, so compile+link verified only, same
+caveat as every other iOS pass this session -- see
+[[project_itunda_ios_build_env]]). Android -- `:features:payments:impl:
+compileDebugKotlin` and `:app:compileDebugKotlin` both BUILD SUCCESSFUL, zero new
+warnings.
+
+*Shipped: `ios/Features/Banking/Sources/BankView.swift` +
+`ios/App/Sources/ContentView.swift` +
+`android/features/payments/impl/src/main/java/rw/itunda/feature/payments/impl/TransferFlow.kt`.*

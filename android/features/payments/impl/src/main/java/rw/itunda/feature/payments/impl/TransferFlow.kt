@@ -15,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Search
@@ -268,7 +267,6 @@ fun RecipientEntryScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { }
                             .padding(vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -283,13 +281,20 @@ fun RecipientEntryScreen(
                             // transfer/quote endpoint takes a single opaque `recipient` string,
                             // not a resolved bank). A picker is a real, honest affordance for a
                             // future release; for now this is just a label.
+                            //
+                            // Real fix (product-feel audit, §235): the 2026-07-12 pass fixed the
+                            // COPY to stop implying detection, but left the row's `.clickable { }`
+                            // and a trailing chevron -- the exact "looks tappable, does nothing"
+                            // shape just found and fixed in bank-mfe's PayHub (a dead
+                            // `QuickActions` tile) and iOS's BankView (dead bell/profile icons).
+                            // Removed both: a row that's honestly "just a label" per this same
+                            // comment shouldn't still visually claim to be a picker.
                             Text(
                                 stringResource(R.string.transfer_select_bank_hint),
                                 color = Ids.colors.textTertiary,
                                 fontSize = 13.sp
                             )
                         }
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                     }
                 }
 
