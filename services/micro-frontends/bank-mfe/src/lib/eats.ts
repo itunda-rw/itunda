@@ -248,6 +248,11 @@ export interface EatsReview {
   ownerReply: string | null;
   ownerRepliedAt: string | null;
   createdAt: string;
+  // Real Baemin/Coupang-style "도움돼요" (helpful) count -- see backend
+  // EatsReviewService.toggleHelpful's own doc comment. Same silent-discard shape as
+  // EatsOrder.tipAmount above: the backend has always returned this, this client
+  // type never declared it.
+  helpfulCount?: number;
 }
 
 export interface RatingSummary {
@@ -269,6 +274,12 @@ export const tipEatsOrderRider = (orderId: string, amount: number) =>
     method: 'POST',
     body: JSON.stringify({ amount }),
   }).then((r) => r.order);
+
+// Real Baemin/Coupang-style "도움돼요" (helpful) idempotent toggle -- see backend
+// EatsReviewService.toggleHelpful's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: fully built with zero client anywhere.
+export const toggleReviewHelpful = (reviewId: string) =>
+  apiFetch<{ success: boolean; helpful: boolean }>(`/api/v1/eats/reviews/${reviewId}/helpful`, { method: 'POST' }).then((r) => r.helpful);
 
 export const submitEatsReview = (
   orderId: string,

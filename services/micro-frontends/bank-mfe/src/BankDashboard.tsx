@@ -154,7 +154,7 @@ import {
   addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, cancelGroupEatsOrder, completePickupOrder, contactRestaurant, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS,
   fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS,
-  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview, tipEatsOrderRider,
+  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful,
   type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type RestaurantSortMode,
 } from './lib/eats';
 import {
@@ -14882,6 +14882,22 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
   const [rating, setRating] = useState<RatingSummary | null>(null);
   const [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<EatsReview[] | null>(null);
+  // Real "도움돼요" (helpful) toggle -- see lib/eats.ts's own doc comment.
+  const [helpfulVoted, setHelpfulVoted] = useState<Set<string>>(new Set());
+
+  const handleToggleHelpful = async (reviewId: string) => {
+    try {
+      const helpful = await toggleReviewHelpful(reviewId);
+      setHelpfulVoted((prev) => {
+        const next = new Set(prev);
+        if (helpful) next.add(reviewId); else next.delete(reviewId);
+        return next;
+      });
+      setReviews((prev) => prev?.map((r) => (r.id === reviewId ? { ...r, helpfulCount: (r.helpfulCount ?? 0) + (helpful ? 1 : -1) } : r)) ?? null);
+    } catch {
+      // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+    }
+  };
 
   useEffect(() => {
     fetchRestaurantRating(restaurantId).then(setRating).catch(() => {
@@ -14924,6 +14940,12 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
                     ↳ Restaurant: {r.ownerReply}
                   </div>
                 )}
+                <button
+                  type="button" onClick={() => handleToggleHelpful(r.id)}
+                  style={{ display: 'block', marginTop: '2px', fontSize: 'var(--itunda-type-scale-11-size)', color: helpfulVoted.has(r.id) ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}
+                >
+                  👍 Helpful{r.helpfulCount ? ` (${r.helpfulCount})` : ''}
+                </button>
               </div>
             ))
           )}
