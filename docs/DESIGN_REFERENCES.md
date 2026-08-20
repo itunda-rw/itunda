@@ -14787,3 +14787,39 @@ real browser either, since the extension was still disconnected this pass.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/productSubscriptions.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 227. Real marketplace price-edit + two confirmed non-gaps (not built on purpose)
+
+`MarketplaceService.updatePrice` (real 가격 수정 -- price edit -- with a real Karrot
+가격 하락 알림 side effect: every favoriter of the listing is server-side notified on
+a genuine price drop) was the seventh gap from §221's sweep run: fully built, with
+mark-sold and remove already real seller-facing actions on the exact same listing,
+but no way to actually reprice one. Added "Edit price" as a third seller-only action,
+same inline toggle-open input pattern the mark-sold buyer-phone prompt right below it
+already uses.
+
+**Also confirmed two adjacent sweep candidates are deliberately NOT gaps**:
+`community/posts/{id}/report` and `marketplace/listings/{id}/report` both have real,
+working backend implementations -- genuinely distinct from the generic mechanism
+below, with their own per-target report tables and a real reporter-count auto-hide
+threshold (no admin involvement once enough independent reports accumulate). But the
+client already reports both content types (and `PROPERTY_LISTING`/`JOB_POST`) through
+the already-shipped, cross-platform-consistent `HoodReportButton`
+(`POST /api/v1/hood/reports`) -- the exact same mechanism Android's
+`HoodReportAction`/`HoodShared.kt` and iOS already use, which queues a single report
+for manual admin review instead of auto-hiding at a threshold. Building a client for
+the dedicated endpoints would mean running two real, functionally different
+content-moderation policies side by side for the same content types -- a genuine
+product decision (which moderation model itunda actually wants), not a client-code
+gap a sweep should close unilaterally. Recorded in
+[[feedback_uncalled_endpoint_sweep]] so a future pass doesn't re-flag these as
+"missing."
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean.
+Live-verified the full real round trip via curl: created a real test listing (5000
+RWF), `PATCH`ed the price down to 4000 (a real price drop, exercising the real
+`notifyFavoritersOfPriceDrop` path server-side), confirmed the new price persisted
+via a separate independent `GET`, then cleaned up the test listing.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/marketplace.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
