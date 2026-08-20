@@ -131,9 +131,9 @@ import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerific
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGift, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
 import {
-  addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
+  addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommentNotificationsEnabled, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
   fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMeetupSessions, fetchMyCommunityPosts, finalizeGroupBuy, joinCommunityMeetup,
-  removeCommunityPost, scheduleMeetupSessions, toggleCommunityLike,
+  removeCommunityPost, scheduleMeetupSessions, setCommentNotificationsEnabled, toggleCommunityLike,
   type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts, type MeetupSession,
 } from './lib/community';
 import {
@@ -12571,6 +12571,56 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
   );
 }
 
+// Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- see
+// lib/community.ts's own doc comment. Found via scripts/uncalled-endpoint-sweep.py:
+// fully built on the backend with zero client anywhere. Scoped to MY posts (the
+// preference only affects notifications about comments on posts the caller
+// authored), same real reason this renders only inside the MINE view.
+function CommentNotificationToggle() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCommentNotificationsEnabled().then(setEnabled).catch(() => setEnabled(true));
+  }, []);
+
+  const handleToggle = async () => {
+    if (enabled === null) return;
+    setBusy(true);
+    setError(null);
+    const next = !enabled;
+    try {
+      setEnabled(await setCommentNotificationsEnabled(next));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this setting.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (enabled === null) return null;
+
+  return (
+    <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', marginBottom: '12px' }}>
+      <div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Notify me about new comments</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>On your own posts, in this neighborhood</p>
+        {error && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
+      </div>
+      <button
+        type="button" role="switch" aria-checked={enabled} aria-label="Notify me about new comments" disabled={busy} onClick={handleToggle}
+        style={{
+          width: '44px', height: '26px', borderRadius: '13px', padding: '2px', flexShrink: 0,
+          background: enabled ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)', display: 'flex', justifyContent: enabled ? 'flex-end' : 'flex-start',
+        }}
+      >
+        <span style={{ width: '22px', height: '22px', borderRadius: '11px', background: 'white', display: 'block' }} />
+      </button>
+    </div>
+  );
+}
+
 function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joinedCount, joining, onJoin }: {
   post: CommunityPost; categoryLabel: string; isMine: boolean; onOpen: () => void; onChanged: () => void;
   joinedCount?: number; joining?: boolean; onJoin?: () => void;
@@ -13003,6 +13053,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
         </div>
       )}
 
+      {view === 'MINE' && <CommentNotificationToggle />}
       {view === 'MINE' && <NewCommunityPostCard categories={categories} onCreated={load} />}
 
       {view === 'NEIGHBORHOOD' && neighborhoodName === null && (

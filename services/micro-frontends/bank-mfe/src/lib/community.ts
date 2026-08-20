@@ -165,3 +165,17 @@ export const finalizeGroupBuy = (postId: string, totalAmount: number, descriptio
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ totalAmount, description }),
   });
+
+// Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- see
+// backend CommunityController's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: real, fully-built account-wide toggle with zero
+// client anywhere.
+export const fetchCommentNotificationsEnabled = () =>
+  apiFetch<{ success: boolean; commentNotificationsEnabled: boolean }>('/api/v1/community/notification-preference')
+    .then((r) => r.commentNotificationsEnabled);
+
+export const setCommentNotificationsEnabled = (enabled: boolean) =>
+  apiFetch<{ success: boolean; commentNotificationsEnabled: boolean }>('/api/v1/community/notification-preference', {
+    method: 'POST',
+    body: JSON.stringify({ enabled }),
+  }).then((r) => r.commentNotificationsEnabled);
