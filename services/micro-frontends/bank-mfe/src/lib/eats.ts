@@ -137,6 +137,11 @@ export interface EatsOrder {
   // for its whole lifecycle, so a review of one has no rider to rate -- see
   // ReviewOrderCard's own use of this field.
   fulfillmentType?: 'DELIVERY' | 'PICKUP';
+  // Same real gap this session already found on RideTrip.tipAmount -- the backend has
+  // always returned this (EatsOrder.tipAmount), but this client type never declared
+  // it. See EatsOrderService.tipRider's own doc comment (real Uber Eats post-delivery
+  // tip).
+  tipAmount?: number | null;
 }
 
 export const placeEatsOrder = (
@@ -218,42 +223,11 @@ export const contactRestaurant = (orderId: string) =>
     method: 'POST',
   }).then((r) => r.conversation);
 
-// Real rider role -- any itunda user can opt in.
-export interface Rider {
-  id: string;
-  userId: string;
-  walletId: string;
-  status: 'ACTIVE' | 'SUSPENDED';
-  available: boolean;
-  createdAt: string;
-}
-
-export const registerRider = () =>
-  apiFetch<{ success: boolean; rider: Rider }>('/api/v1/eats/riders/register', { method: 'POST' }).then((r) => r.rider);
-
-export const fetchMyRiderProfile = () =>
-  apiFetch<{ success: boolean; rider: Rider }>('/api/v1/eats/riders/me').then((r) => r.rider);
-
-export const setRiderAvailability = (available: boolean) =>
-  apiFetch<{ success: boolean; rider: Rider }>('/api/v1/eats/riders/availability', {
-    method: 'POST',
-    body: JSON.stringify({ available }),
-  }).then((r) => r.rider);
-
-export const fetchAvailableDeliveries = () =>
-  apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/available').then((r) => r.orders);
-
-export const fetchRiderDeliveries = () =>
-  apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/rider-deliveries').then((r) => r.orders);
-
-export const claimDelivery = (orderId: string) =>
-  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/claim`, { method: 'POST' }).then((r) => r.order);
-
-export const advanceRiderOrder = (orderId: string, status: EatsOrderStatus) =>
-  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/rider-status`, {
-    method: 'POST',
-    body: JSON.stringify({ status }),
-  }).then((r) => r.order);
+// The rider-role half of Eats (Rider type, registerRider/fetchMyRiderProfile/
+// setRiderAvailability/fetchAvailableDeliveries/fetchRiderDeliveries/claimDelivery/
+// advanceRiderOrder) moved to lib/eatsRider.ts (2026-08-20, real file-size-lint
+// threshold crossed) -- genuinely distinct from everything else in this file, none
+// of it ever called by a buyer or restaurant owner.
 
 // Real post-delivery ratings & reviews (2026-07-18) -- the single biggest remaining
 // Coupang Eats-defining gap, added at the user's direct request. See
@@ -284,6 +258,18 @@ export interface RatingSummary {
 // riderRating/riderComment are optional (2026-07-26) -- a real Baemin-style PICKUP
 // order review has no rider to rate; see EatsReview.kt's own doc comment for the full
 // account of the real bug this fixes (every PICKUP order was previously unreviewable).
+// Real Uber Eats post-delivery tip -- see backend EatsOrderService.tipRider's own doc
+// comment. Found via scripts/uncalled-endpoint-sweep.py: fully built (real
+// already-tipped guard, real TIP_WINDOW, real wallet-to-wallet ledger legs) with zero
+// client anywhere, mirroring the real gap this session already closed for
+// RideTripService.tipDriver. Real backend shape: no Idempotency-Key required here
+// (unlike the ride tip), matching this exact endpoint's own real signature.
+export const tipEatsOrderRider = (orderId: string, amount: number) =>
+  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/tip`, {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.order);
+
 export const submitEatsReview = (
   orderId: string,
   restaurantRating: number,

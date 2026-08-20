@@ -151,12 +151,15 @@ import {
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, cancelGroupEatsOrder, claimDelivery, completePickupOrder, contactRestaurant, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
-  fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
-  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, setRiderAvailability, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type Rider, type RestaurantSortMode,
+  addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, cancelGroupEatsOrder, completePickupOrder, contactRestaurant, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS,
+  fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchRestaurantCategories,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS,
+  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview, tipEatsOrderRider,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type RestaurantSortMode,
 } from './lib/eats';
+import {
+  advanceRiderOrder, claimDelivery, fetchAvailableDeliveries, fetchMyRiderProfile, fetchRiderDeliveries, registerRider, setRiderAvailability, type Rider,
+} from './lib/eatsRider';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
   fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchOrderRiderLocation, fetchPriceTiers, fetchProduct,
@@ -15100,6 +15103,68 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   );
 }
 
+// Real Uber Eats post-delivery tip -- see lib/eats.ts's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py, same real gap shape as TipDriverPrompt (rides)
+// this session already closed -- mirrors it directly, reusing TIP_PRESETS. A PICKUP
+// order has no rider (see ReviewOrderCard's own hasRider comment above), so the
+// caller only renders this for a real DELIVERY order.
+function TipRiderPrompt({ orderId, onTipped }: { orderId: string; onTipped: () => void }) {
+  const [amount, setAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (overrideAmount?: number) => {
+    const finalAmount = overrideAmount ?? amount ?? Number(customAmount);
+    if (!(finalAmount > 0)) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await tipEatsOrderRider(orderId, finalAmount);
+      onTipped();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not tip your rider.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, marginBottom: '6px' }}>Tip your rider</p>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+        {TIP_PRESETS.map((preset) => (
+          <button
+            key={preset} type="button" disabled={submitting}
+            onClick={() => { setAmount(preset); setCustomAmount(''); handleSubmit(preset); }}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+              border: '1px solid var(--itunda-grey-200)', background: amount === preset ? 'var(--itunda-blue)' : 'transparent',
+              color: amount === preset ? 'white' : 'var(--itunda-grey-700)',
+            }}
+          >
+            {preset.toLocaleString()}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <input
+          type="number" placeholder="Custom amount (RWF)" value={customAmount}
+          onChange={(e) => { setCustomAmount(e.target.value); setAmount(null); }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)' }}
+        />
+        <button
+          className="itunda-btn itunda-btn-primary" disabled={submitting || !(Number(customAmount) > 0)}
+          onClick={() => handleSubmit()} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 14px' }}
+        >
+          {submitting ? '…' : 'Send'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function AddressAutocomplete({
   value, onChangeText, onSelectSuggestion,
 }: {
@@ -15533,6 +15598,9 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSelle
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [messagingOrderId, setMessagingOrderId] = useState<string | null>(null);
+  // Real optimistic-hide for TipRiderPrompt -- same pattern reviewedTripIds/
+  // tippedTripIds already established for the ride equivalent this session.
+  const [tippedOrderIds, setTippedOrderIds] = useState<Set<string>>(new Set());
 
   const handleMessageRestaurant = async (orderId: string) => {
     setMessagingOrderId(orderId);
@@ -15597,6 +15665,9 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSelle
             ) : o.status === 'DELIVERED' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <ReviewOrderCard order={o} onSubmitted={load} />
+                {o.riderId && !o.tipAmount && !tippedOrderIds.has(o.id) && (
+                  <TipRiderPrompt orderId={o.id} onTipped={() => setTippedOrderIds((prev) => new Set(prev).add(o.id))} />
+                )}
                 <button className="itunda-btn itunda-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
                   {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
                 </button>
