@@ -103,6 +103,17 @@ export const markPropertyListingTaken = (propertyListingId: string, counterparty
     body: JSON.stringify({ counterpartyPhoneNumber }),
   }).then((r) => r.listing);
 
+// Real Karrot(당근마켓)-style price-drop notification -- see backend
+// PropertyListingService.updatePrice's own doc comment. Found via
+// scripts/uncalled-endpoint-sweep.py: the same real gap shape as
+// MarketplaceService.updatePrice (§227, already closed this session) -- fully built
+// with zero client anywhere.
+export const updatePropertyListingPrice = (propertyListingId: string, price: number) =>
+  apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}/price`, {
+    method: 'POST',
+    body: JSON.stringify({ price }),
+  }).then((r) => r.listing);
+
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
 // -- see backend HoodReviewService's own doc comment.
 export const submitPropertyListingReview = (propertyListingId: string, goodPoints: string[], uncomfortablePoints: string[]) =>

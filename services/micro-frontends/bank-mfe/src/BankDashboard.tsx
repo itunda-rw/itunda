@@ -146,7 +146,7 @@ import {
   addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
   fetchPropertyListingReviews, fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
   fetchPropertyValuation, makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
-  submitPropertyListingReview, submitPropertyOwnershipVerification,
+  submitPropertyListingReview, submitPropertyOwnershipVerification, updatePropertyListingPrice,
   type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType, type PropertyValuationEstimate,
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
@@ -14093,6 +14093,9 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   // backend PropertyListingService.markTaken's own doc comment.
   const [markingTaken, setMarkingTaken] = useState(false);
   const [counterpartyPhone, setCounterpartyPhone] = useState('');
+  // Real Karrot(당근마켓)-style price edit -- see lib/realestate.ts's own doc comment.
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState('');
 
   // Real post-transaction review with asymmetric public/private visibility
   // (2026-07-24) -- see backend HoodReviewService's own doc comment.
@@ -14196,6 +14199,22 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
     }
   };
 
+  const handleUpdatePrice = async () => {
+    const price = Number(newPrice);
+    if (!(price > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updatePropertyListingPrice(listing.id, price);
+      setEditingPrice(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSubmitReview = async () => {
     setSubmittingReview(true);
     setError(null);
@@ -14262,6 +14281,23 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
         </div>
       )}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {editingPrice && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="number" min="1" value={newPrice} onChange={(e) => setNewPrice(e.target.value)}
+            placeholder="New price (RWF)"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setEditingPrice(false)}>
+              Cancel
+            </button>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy || !(Number(newPrice) > 0)} onClick={handleUpdatePrice}>
+              Save
+            </button>
+          </div>
+        </div>
+      )}
       {/* Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see backend
           PropertyListingService.markTaken's own doc comment. */}
       {markingTaken && (
@@ -14346,6 +14382,15 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       <div style={{ display: 'flex', gap: '10px' }}>
         {isMine ? (
           <>
+            {listing.status === 'AVAILABLE' && !markingTaken && !editingPrice && (
+              <button
+                className="itunda-btn itunda-btn-secondary"
+                disabled={busy}
+                onClick={() => { setEditingPrice(true); setNewPrice(String(listing.price)); }}
+              >
+                Edit price
+              </button>
+            )}
             {listing.status === 'AVAILABLE' && !markingTaken && (
               <button
                 className="itunda-btn itunda-btn-secondary"
