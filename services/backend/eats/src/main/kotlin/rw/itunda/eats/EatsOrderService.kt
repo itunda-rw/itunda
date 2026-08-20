@@ -668,9 +668,25 @@ class EatsOrderService(
      * ([EatsOrderAlreadyTippedException]) and real window ([EatsOrderTipWindowExpiredException],
      * [TIP_WINDOW]) enforcement.
      */
+    // Real lost-update fix (concurrency sweep, §236, same bug shape already found and
+    // fixed twice in this codebase -- GroupEatsOrderService.finalizeOrder/cancel and
+    // MerchantBookingService.payOutDeposit/refundDeposit, see
+    // [[project_itunda_concurrency_audit]]): this read the order UNLOCKED, checked
+    // `tipAmount != null`, posted a real ledger transfer, THEN wrote `tipAmount` --
+    // two concurrent tips on the same order (a real double-tap, or a client retry
+    // racing the original) could both pass the already-tipped check before either
+    // committed, both moving real money, with only `@Version` catching the conflict
+    // at the FINAL save -- after the money had already moved twice. `@Version`
+    // rolling back the whole `@Transactional` method would eventually undo the
+    // second debit/credit too, but `MerchantBookingService`'s own fix explicitly
+    // rejected relying on that: "a strictly worse failure mode for a real-money path
+    // even though eventually consistent." Locking the order row up front instead
+    // means a second concurrent call blocks until the first commits, then re-reads
+    // FRESH state and correctly no-ops via `EatsOrderAlreadyTippedException` before
+    // ever calling `postLedgerTransaction` a second time.
     @Transactional
     fun tipRider(buyerId: String, orderId: String, amount: BigDecimal): EatsOrder {
-        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        val order = eatsOrderRepository.findByIdForUpdate(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
         if (order.buyerId != buyerId) {
             throw EatsOrderNotFoundException("Order not found")
         }

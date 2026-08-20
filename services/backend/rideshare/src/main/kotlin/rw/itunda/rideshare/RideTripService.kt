@@ -631,9 +631,12 @@ class RideTripService(
      * 30-day-window ([RideTripTipWindowExpiredException]) enforcement, matching Uber's
      * own real published rules exactly.
      */
+    // Real lost-update fix (concurrency sweep, §236) -- see EatsOrderService.tipRider's
+    // identical fix and doc comment (this method was ported to Eats from this one, so
+    // it carried the same missing-lock check-then-act-then-write shape on `tipAmount`).
     @Transactional
     fun tipDriver(passengerUserId: String, tripId: String, amount: BigDecimal): RideTrip {
-        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
         if (trip.passengerId != passengerUserId) {
             throw RideTripNotFoundException("Trip not found")
         }

@@ -1,8 +1,10 @@
 package rw.itunda.core.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.EatsOrder
@@ -10,6 +12,7 @@ import rw.itunda.core.domain.EatsOrderItem
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.Rider
 import java.time.Instant
+import java.util.Optional
 
 interface RiderRepository : JpaRepository<Rider, String> {
     fun findByUserId(userId: String): Rider?
@@ -43,6 +46,14 @@ interface EatsOrderRepository : JpaRepository<EatsOrder, String> {
     // rider only ever carries one active delivery at a time, same Coupang Eats/배민1
     // real, sourced distinction docs/DESIGN_REFERENCES.md itself named.
     fun existsByRiderIdAndStatusIn(riderId: String, statuses: List<EatsOrderStatus>): Boolean
+
+    // Real lost-update fix (product-feel-audit-adjacent concurrency sweep, §236): see
+    // EatsOrderService.tipRider's own doc comment. Same findByIdForUpdate convention
+    // WalletRepository/FraudFlagRepository/DebitCardRepository/CommunityPostRepository
+    // already establish for a check-then-act-then-write row.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from EatsOrder o where o.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<EatsOrder>
 
     // Real busy-rider exclusion for dispatch (2026-07-26) -- lets
     // EatsOrderService.rankNearbyRiders' candidate pool skip riders already carrying a

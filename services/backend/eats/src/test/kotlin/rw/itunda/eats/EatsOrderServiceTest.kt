@@ -2546,7 +2546,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         )
 
         When("the buyer tips the rider a real amount") {
-            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder())
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("tip_txn_1", emptyList())
 
@@ -2560,6 +2560,14 @@ class EatsOrderServiceTest : BehaviorSpec({
                 legs.first { it.accountId == "wallet_rider" }.amount shouldBe BigDecimal("500")
             }
 
+            // Real lost-update regression test (concurrency sweep, §236) -- proves the
+            // order row is actually locked for the check-then-act-then-write on
+            // tipAmount, same convention P2pTransferLimitServiceTest already
+            // establishes for its own findByIdForUpdate fix.
+            Then("it locks the order row for the check-then-act-then-write on tipAmount") {
+                verify(exactly = 1) { eatsOrderRepository.findByIdForUpdate("eats_order_1") }
+            }
+
             Then("it real-notifies the rider they received a tip") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "rider_user_1" && it.type == "EATS_TIP_RECEIVED" }) }
             }
@@ -2567,7 +2575,7 @@ class EatsOrderServiceTest : BehaviorSpec({
 
         When("the order hasn't been delivered yet") {
             val placedOrder = deliveredOrder().also { it.status = EatsOrderStatus.PICKED_UP }
-            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(placedOrder)
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(placedOrder)
 
             Then("it throws EatsOrderNotDeliveredException and never touches the ledger") {
                 try {
@@ -2580,7 +2588,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         }
 
         When("the order has already been tipped once") {
-            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder(tipAmount = BigDecimal("300")))
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder(tipAmount = BigDecimal("300")))
 
             Then("it throws EatsOrderAlreadyTippedException") {
                 try {
@@ -2593,7 +2601,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         }
 
         When("the tip amount is zero") {
-            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder())
 
             Then("it throws InvalidEatsTipAmountException") {
                 try {
@@ -2606,7 +2614,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         }
 
         When("the 30-day tip window has expired") {
-            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder(updatedAt = java.time.Instant.now().minus(EatsOrderService.TIP_WINDOW).minusSeconds(60)))
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder(updatedAt = java.time.Instant.now().minus(EatsOrderService.TIP_WINDOW).minusSeconds(60)))
 
             Then("it throws EatsOrderTipWindowExpiredException") {
                 try {
@@ -2619,7 +2627,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         }
 
         When("someone who isn't the buyer tries to tip") {
-            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_1") } returns Optional.of(deliveredOrder())
 
             Then("it throws EatsOrderNotFoundException, the same real-vs-fake IDOR discipline every other order lookup uses") {
                 try {

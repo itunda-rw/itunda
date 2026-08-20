@@ -15148,3 +15148,61 @@ warnings.
 *Shipped: `ios/Features/Banking/Sources/BankView.swift` +
 `ios/App/Sources/ContentView.swift` +
 `android/features/payments/impl/src/main/java/rw/itunda/feature/payments/impl/TransferFlow.kt`.*
+
+## 236. Real lost-update fix on Eats/ride tipping -- the same check-then-act-then-write race already found and fixed twice in this codebase, unfixed a third time in newer code
+
+Pivoted from the UI restraint audit to a backend concurrency pass while auditing
+`EatsOrderService.tipRider`/`RideTripService.tipDriver` for IDOR (both clean --
+real ownership checks, `currentUser.userId` from the JWT principal, never a
+client-supplied id) and noticed the same shape [[project_itunda_concurrency_audit]]
+already found and fixed twice before: `GroupEatsOrderService.finalizeOrder`/
+`cancel` and `MerchantBookingService.payOutDeposit`/`refundDeposit` both used to
+read a status/flag field UNLOCKED, check it, post real ledger money, THEN write the
+new field -- both fixed with a real `findByIdForUpdate` row lock.
+
+Both `tipRider` (2026-08-17) and `tipDriver` (2026-08-16, the original `tipRider`
+was ported from) have the identical shape: read the order/trip via a plain
+`findById`, check `tipAmount != null` (already-tipped guard), call
+`ledgerService.postLedgerTransaction` (real buyer/passenger-wallet-to-rider/driver-
+wallet transfer), THEN write `tipAmount` and save. Two concurrent tips on the same
+order/trip (a real double-tap, or a client retry racing the original network call)
+could both pass the already-tipped check before either commits, both moving real
+money -- only `@Version` optimistic locking would catch the conflict, and only at
+the FINAL save, after the money had already moved twice. `@Version` rolling back
+the whole `@Transactional` method would eventually undo the second leg too, but
+`MerchantBookingService`'s own prior fix explicitly rejected relying on that
+eventual-consistency path as "a strictly worse failure mode for a real-money path."
+
+**Fixed the same proven way**: added `findByIdForUpdate` (real
+`@Lock(LockModeType.PESSIMISTIC_WRITE)`) to `EatsOrderRepository`/
+`RideTripRepository`, matching the exact convention already established by
+`WalletRepository`/`FraudFlagRepository`/`DebitCardRepository`/
+`CommunityPostRepository`/`GroupEatsOrderRepository`. Both `tipRider`/`tipDriver`
+now lock the order/trip row up front -- a second concurrent call blocks until the
+first commits, then re-reads FRESH state and correctly no-ops via
+`EatsOrderAlreadyTippedException`/`RideTripAlreadyTippedException` before ever
+calling `postLedgerTransaction` a second time, closing the race entirely rather
+than relying on a late rollback.
+
+**Verification**: `:eats:compileKotlin`/`:rideshare:compileKotlin`/
+`:core:compileKotlin` all clean. Updated both services' existing mock-based unit
+tests (`findById` → `findByIdForUpdate` stubs, scoped correctly -- verified each
+mock instance is local to its own `Given` block before a blanket rename, since
+`eatsOrderRepository`/`rideTripRepository` mocks are reused across unrelated test
+groups with the same fixture ids elsewhere in each file). Added a new regression
+assertion to each happy-path test (`verify(exactly = 1) {
+eatsOrderRepository.findByIdForUpdate(...) }`) proving the lock call actually
+happens, same convention `P2pTransferLimitServiceTest` already established for its
+own §192 fix. `:eats:test`/`:rideshare:test` both clean, no regressions. Not live-
+concurrency-tested against the real deployed backend (per
+[[project_itunda_ride_tipping]], the happy path itself is still blocked on funding
+a real test wallet for a real completed trip/delivered order -- this fix is
+compile+unit-test verified only, same honest caveat as that memory already
+records).
+
+*Shipped: `services/backend/core/src/main/kotlin/rw/itunda/core/repository/EatsRepositories.kt` +
+`services/backend/core/src/main/kotlin/rw/itunda/core/repository/RideRepositories.kt` +
+`services/backend/eats/src/main/kotlin/rw/itunda/eats/EatsOrderService.kt` +
+`services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/RideTripService.kt` +
+`services/backend/eats/src/test/kotlin/rw/itunda/eats/EatsOrderServiceTest.kt` +
+`services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/RideTripServiceTest.kt`.*

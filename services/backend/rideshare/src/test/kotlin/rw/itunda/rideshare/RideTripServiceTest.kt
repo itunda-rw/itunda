@@ -1029,7 +1029,7 @@ class RideTripServiceTest : BehaviorSpec({
             status = RideTripStatus.COMPLETED, updatedAt = java.time.Instant.now(),
         )
 
-        every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(trip)
+        every { rideTripRepository.findByIdForUpdate("ride_trip_tip_1") } returns java.util.Optional.of(trip)
         every { rideDriverRepository.findById("driver_tip") } returns java.util.Optional.of(driver)
         every { walletRepository.findByUserIdAndType("passenger_tip", WalletType.MAIN) } returns passengerWallet
         every { walletRepository.findById("wallet_driver_tip") } returns java.util.Optional.of(driverWallet)
@@ -1053,11 +1053,19 @@ class RideTripServiceTest : BehaviorSpec({
             Then("it notifies the real driver they received a tip") {
                 verify(exactly = 1) { notificationRepository.save(match { it.type == "RIDE_TIP_RECEIVED" && it.userId == "driver_user_tip" }) }
             }
+
+            // Real lost-update regression test (concurrency sweep, §236) -- proves the
+            // trip row is actually locked for the check-then-act-then-write on
+            // tipAmount, same convention P2pTransferLimitServiceTest already
+            // establishes for its own findByIdForUpdate fix.
+            Then("it locks the trip row for the check-then-act-then-write on tipAmount") {
+                verify(exactly = 1) { rideTripRepository.findByIdForUpdate("ride_trip_tip_1") }
+            }
         }
 
         When("the same trip is tipped a second time") {
             val tipped = trip.also { it.tipAmount = BigDecimal("500"); it.tipTransactionId = "ledgertxn_tip_result" }
-            every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(tipped)
+            every { rideTripRepository.findByIdForUpdate("ride_trip_tip_1") } returns java.util.Optional.of(tipped)
 
             Then("it throws RideTripAlreadyTippedException before touching the ledger") {
                 try {
@@ -1078,7 +1086,7 @@ class RideTripServiceTest : BehaviorSpec({
                 fare = BigDecimal("2000"), platformFee = BigDecimal("30"), transactionId = "ledgertxn_tip_1",
                 status = RideTripStatus.IN_PROGRESS,
             )
-            every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(inProgress)
+            every { rideTripRepository.findByIdForUpdate("ride_trip_tip_1") } returns java.util.Optional.of(inProgress)
 
             Then("it throws RideTripNotCompletedException before touching the ledger") {
                 try {
@@ -1110,7 +1118,7 @@ class RideTripServiceTest : BehaviorSpec({
                 fare = BigDecimal("2000"), platformFee = BigDecimal("30"), transactionId = "ledgertxn_tip_1",
                 status = RideTripStatus.COMPLETED, updatedAt = java.time.Instant.now().minus(java.time.Duration.ofDays(31)),
             )
-            every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(stale)
+            every { rideTripRepository.findByIdForUpdate("ride_trip_tip_1") } returns java.util.Optional.of(stale)
 
             Then("it throws RideTripTipWindowExpiredException before touching the ledger") {
                 try {
