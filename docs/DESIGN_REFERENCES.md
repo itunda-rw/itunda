@@ -14884,3 +14884,39 @@ request round-trips.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/eats.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 230. Real "report a review" -- confirmed NOT superseded, unlike §227's pair
+
+`EatsReviewService.reportReview` (real 배달의민족 리뷰 신고하기) was the tenth gap from
+§221's sweep run: fully built (own-review guard, already-reported guard, real
+reporter-count auto-hide threshold) with zero client anywhere. Checked first, per
+§227's own precedent, whether this was ALSO superseded by the generic
+`HoodReportButton` -- confirmed it's genuinely NOT: that mechanism's 4 real targets
+(`MARKETPLACE_LISTING`/`COMMUNITY_POST`/`JOB_POST`/`PROPERTY_LISTING`) have no
+REVIEW target at all, so this is a real, distinct gap, not a duplicate moderation
+path to avoid.
+
+Added `ReportReviewButton` next to the "Helpful" toggle §229 just added, mirroring
+`HoodReportButton`'s own preset-reason-picker shape with the real
+`EatsReviewReportReason` enum values (`DEFAMATION`/`PERSONAL_INFO_EXPOSURE`/
+`OBSCENE_OR_VIOLENT`/`UNRELATED_ABUSE`).
+
+**Real file-size split, the second this session**: adding this pushed `lib/eats.ts`
+to 506 lines, crossing 500 for the second time (§228 already split off the
+rider-role half earlier). Extracted the genuinely distinct real Baemin 함께주문
+(Together Order) group-ordering feature -- its own real join-code-based join flow,
+its own finalize/cancel lifecycle -- into a new `lib/eatsGroupOrders.ts`. `eats.ts`
+is back to 427 lines.
+
+**Verification caught and fixed a real mistake before it shipped**: the first draft
+guessed the already-reported error code as `EATS_REVIEW_ALREADY_REPORTED`; a real
+curl round trip against the actual running backend (`POST` a real report -> `201`
+with a real report id; `POST` again -> a real `409`) revealed the true code is
+`REVIEW_ALREADY_REPORTED` (no `EATS_` prefix, unlike most other Eats error codes),
+fixed by reading `EatsController.kt`'s own exception handler directly rather than
+trusting the pattern-matched guess -- a concrete, live example of why this session's
+verification discipline matters, not just a formality.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/eats.ts` +
+`services/micro-frontends/bank-mfe/src/lib/eatsGroupOrders.ts` (new) +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
