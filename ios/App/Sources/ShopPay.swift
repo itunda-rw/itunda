@@ -5,13 +5,14 @@ import CoreNetwork
 import CoreLocation
 
 
-/// Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
-/// (this app has no scanner), mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard` and
-/// Android's `PayAMerchantSection` exactly. bank-mfe/Android already have both; this is
-/// the first iOS client for either -- previously neither the dynamic per-sale flow nor
-/// the static QR flow existed anywhere on this native consumer app.
+/// Real "pay a merchant" -- mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard` and
+/// Android's `PayAMerchantSection` exactly. bank-mfe/Android already have both; this
+/// was the first iOS client for either -- previously neither the dynamic per-sale flow
+/// nor the static QR flow existed anywhere on this native consumer app.
 /// Coupon-preview-before-pay (bank-mfe's own `previewPaymentIntent` flow, item 149/146)
-/// closed 2026-08-01 -- see PayByCodeCard's own doc comment.
+/// closed 2026-08-01 -- see PayByCodeCard's own doc comment. Real camera QR scanning
+/// added (Pay-parity port, §237, see QrScanCamera.swift) -- this app now has a real
+/// scanner, closing the 9-day gap behind Android/web's own scanners.
 // Real fix (2026-08-11) -- no longer private. This is itunda's real, working
 // payment-collection UI (pay-by-code, pay-by-static-QR, Face Pay) -- see
 // ContentView.swift's own PayScreen doc comment for why it's now called directly
@@ -143,13 +144,21 @@ struct PayByCodeCard: View {
     @State private var preview: PaymentIntentPreviewResponse?
     @State private var eligibleCoupons: [MerchantCouponViewDto] = []
     @State private var selectedCouponId: String?
+    // Real camera-scan support (Pay-parity port, §237) -- see QrScanCamera.swift's
+    // own header for the sourced contract. `manualEntry` alone decides capture mode
+    // (NOT `facePayEnrolled`, which only changes how the found code is authorized
+    // afterward) -- bank-mfe's own identical card briefly had this coupled and it
+    // was a real, confirmed bug (Face-Pay users locked out of scanning entirely, see
+    // docs/DESIGN_REFERENCES.md §234) -- built correctly here from the start.
+    @State private var scanUnavailable = false
+    @State private var manualEntry = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Pay by code").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-            Text(facePayEnrolled
-                ? "Face Pay is on — enter the code the merchant shows you to authorize with your face."
-                : "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.")
+            Text(manualEntry ? "Pay by code" : "Scan to pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text(manualEntry
+                ? (facePayEnrolled ? "Enter the code the merchant shows you to authorize with your face." : "Enter the payment code the merchant shows you.")
+                : (facePayEnrolled ? "Point your camera at the merchant's QR code — you'll confirm with your face." : "Point your camera at the merchant's QR code to pay instantly and earn cashback."))
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             if let preview {
                 Text(preview.businessName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -186,6 +195,23 @@ struct PayByCodeCard: View {
                     }
                     .disabled(submitting)
                 }
+            } else if !manualEntry {
+                if !scanUnavailable && !submitting {
+                    QrScanCameraView(onDetect: handleScan, onUnavailable: { scanUnavailable = true })
+                        .frame(height: 220).cornerRadius(12).clipped()
+                }
+                if submitting {
+                    Text("Looking up code…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                Button(action: { manualEntry = true }) {
+                    Text(scanUnavailable ? "Enter code manually" : "No camera? Enter code instead")
+                        .bold().foregroundColor(IDS.Colors.textPrimary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                }
             } else {
                 HStack(spacing: 10) {
                     TextField("Payment code", text: $code)
@@ -202,12 +228,24 @@ struct PayByCodeCard: View {
                 if let error {
                     Text(error).font(.caption).foregroundColor(.red)
                 }
+                if !scanUnavailable {
+                    Button(action: { manualEntry = false }) {
+                        Text("Scan a QR code instead").bold().foregroundColor(IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    }
+                }
             }
         }
         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
         // full account. payDirect resets needsDeviceVerification itself.
         DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { await payDirect(couponId: selectedCouponId) })
+    }
+
+    private func handleScan(_ raw: String) {
+        code = parseQrParam(raw, key: "intentId")
+        Task { await submit() }
     }
 
     private func payDirect(couponId: String? = nil) async {
@@ -270,31 +308,64 @@ struct PayByStaticQrCard: View {
     @State private var amount = ""
     @State private var submitting = false
     @State private var error: String?
+    // Real camera-scan support (Pay-parity port, §237) -- see QrScanCamera.swift's
+    // own header. Same real Kakao Pay 정액 QR distinction PayByCodeCard's own doc
+    // comment establishes: the merchant's id is fixed/scanned, the amount always
+    // stays customer-typed, so a scan lands in the typed-amount view with merchantId
+    // prefilled rather than paying immediately -- matches bank-mfe's identical
+    // `PayByStaticQrCard` handleScan exactly.
+    @State private var scanUnavailable = false
+    @State private var manualEntry = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Pay a merchant's static QR").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-            Text("For a merchant with one permanent code (like a market stall) — enter their merchant ID and how much you're paying.")
+            Text("For a merchant with one permanent code (like a market stall) — scan their code, then say how much you're paying.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            TextField("Merchant ID", text: $merchantId)
-                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
-            HStack(spacing: 10) {
-                TextField("Amount (RWF)", text: $amount)
-                    .keyboardType(.decimalPad)
-                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
-                Button(action: { Task { await pay() } }) {
-                    Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .background(submitting || merchantId.isEmpty || Double(amount) == nil ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                        .cornerRadius(10)
+            if !manualEntry && merchantId.isEmpty {
+                if !scanUnavailable {
+                    QrScanCameraView(onDetect: handleScan, onUnavailable: { scanUnavailable = true })
+                        .frame(height: 220).cornerRadius(12).clipped()
                 }
-                .disabled(submitting || merchantId.isEmpty || Double(amount) == nil)
+                Button(action: { manualEntry = true }) {
+                    Text(scanUnavailable ? "Enter merchant ID manually" : "No camera? Enter merchant ID instead")
+                        .bold().foregroundColor(IDS.Colors.textPrimary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                }
+            } else {
+                TextField("Merchant ID", text: $merchantId)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                HStack(spacing: 10) {
+                    TextField("Amount (RWF)", text: $amount)
+                        .keyboardType(.decimalPad)
+                        .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                    Button(action: { Task { await pay() } }) {
+                        Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .background(submitting || merchantId.isEmpty || Double(amount) == nil ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                            .cornerRadius(10)
+                    }
+                    .disabled(submitting || merchantId.isEmpty || Double(amount) == nil)
+                }
+                if !scanUnavailable {
+                    Button(action: { manualEntry = false; merchantId = "" }) {
+                        Text("Scan a QR code instead").bold().foregroundColor(IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    }
+                }
             }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
         }
         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+
+    private func handleScan(_ raw: String) {
+        merchantId = parseQrParam(raw, key: "merchantId")
+        manualEntry = true
     }
 
     private func pay() async {

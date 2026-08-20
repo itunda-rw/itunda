@@ -200,6 +200,12 @@ allTargets.append(
             "CFBundleURLTypes": [[
                 "CFBundleURLSchemes": ["itunda"],
             ]],
+            // Real camera QR scanning (product-feel/Pay-parity port, §237) -- first
+            // camera capability anywhere in this app target. Without this key iOS
+            // crashes immediately on the first AVCaptureDevice access rather than
+            // showing a permission prompt; matches bank-mfe's/Android's own real
+            // "point your camera at the merchant's QR code" copy.
+            "NSCameraUsageDescription": "itunda uses your camera to scan a merchant's payment QR code.",
             // Real typeface fix (2026-08-13, direct user feedback: "we are still far away
             // from toss") -- see Android's identical Pretendard.kt for the full sourced
             // account (github.com/orioncactus/pretendard, SIL Open Font License 1.1). iOS

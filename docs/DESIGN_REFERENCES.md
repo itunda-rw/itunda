@@ -15206,3 +15206,66 @@ records).
 `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/RideTripService.kt` +
 `services/backend/eats/src/test/kotlin/rw/itunda/eats/EatsOrderServiceTest.kt` +
 `services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/RideTripServiceTest.kt`.*
+
+## 237. Real camera QR scanning ported to iOS -- closing a 9-day cross-platform gap in the itunda Pay/KakaoPay-parity thread
+
+[[project_itunda_pay_kakaopay_parity]] shipped real camera QR scanning to bank-mfe
+and Android over 2026-08-11/19 but explicitly recorded "iOS has NOT received any of
+this." Re-checked directly rather than trusting the 9-day-old memory (grepped for
+`AVCaptureSession`/`CustomerPaymentCode` anywhere in `ios/` -- zero matches,
+confirmed still true) before starting.
+
+Built `QrScanCameraView` (`ios/App/Sources/QrScanCamera.swift`) -- a
+`UIViewControllerRepresentable` wrapping `AVFoundation`'s native
+`AVCaptureMetadataOutput` (`.qr` type), the first camera capability in this whole
+app target. No third-party scanning library needed (unlike Android's CameraX+ML
+Kit) -- matches itunda's own "don't depend on third-party if it's not open source"
+rule with a genuinely first-party framework. Same real contract bank-mfe's
+`QrScanCamera`/Android's scanner establish: calls `onDetect` once with the decoded
+string then stops itself, falls back to `onUnavailable` on permission denial or a
+missing camera (real explicit `AVCaptureDevice.requestAccess` handling, not just
+letting a denied session silently show nothing). Added the required
+`NSCameraUsageDescription` to `ItundaApp`'s Info.plist (`ios/Project.swift`) --
+without it, iOS crashes on first camera access rather than showing a permission
+prompt.
+
+Wired into both existing manual-only cards in `ShopPay.swift`:
+- **`PayByCodeCard`**: rebuilt to scan-first by default (was manual-code-entry
+  only), with a `manualEntry` fallback toggle -- built the CORRECTED version from
+  the start (capture mode gated on `manualEntry` alone, never `facePayEnrolled`),
+  since bank-mfe's own identical card had briefly coupled those two and that was a
+  real, confirmed bug just fixed there (§234) -- no reason to port the same mistake.
+- **`PayByStaticQrCard`**: same real Kakao Pay 정액 QR distinction the existing doc
+  comment already establishes (merchant id fixed/scanned, amount always
+  customer-typed) -- a scan lands in the typed-amount view with `merchantId`
+  prefilled, exactly matching bank-mfe's own `handleScan` behavior.
+
+Both reuse `parseQrParam(_:key:)`, a direct Swift port of bank-mfe's identical
+regex-based helper (extract a query param from an `itunda://pay?intentId=...` URL,
+or fall back to the raw trimmed string for the dynamic per-sale codes, which aren't
+URL-wrapped).
+
+**Verification**: `tuist generate && pod install` (a new source file needs project
+regeneration -- the first attempt failed with "cannot find `QrScanCameraView` in
+scope" purely from a stale generated project, not a real code error) then a full
+`xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -destination "generic/
+platform=iOS Simulator"` build -- BUILD SUCCEEDED. A real iOS Simulator was
+available this session (unlike the "no simulator device" constraint recorded
+throughout the rest of this iOS work) -- installed and launched the real built
+`.app`, confirmed via screenshot it reaches the real login screen with no crash
+(the camera-permission Info.plist change and the new source file were the two
+most likely regression points). Full interactive click-through into the scan flow
+itself was NOT possible -- `osascript`/System Events UI automation has no visible
+Simulator window in this headless environment (`Can't get window 1 of process
+"Simulator" -- Invalid index`), and `simctl` has no built-in tap/type primitive --
+so this is launch-verified, not scan-flow-interactively-verified. Left the
+simulator shut down afterward.
+
+**Still open in this thread**: the wallet carousel (round 2) and the customer
+"My code" reveal-QR screen (round 1's Android-only build) are still iOS gaps -- this
+pass closed only the camera-scanning half. See
+[[project_itunda_pay_kakaopay_parity]] for the full remaining scope if picked up
+again.
+
+*Shipped: `ios/App/Sources/QrScanCamera.swift` (new) +
+`ios/App/Sources/ShopPay.swift` + `ios/Project.swift`.*
