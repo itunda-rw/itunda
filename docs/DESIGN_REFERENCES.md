@@ -14859,3 +14859,28 @@ same open gap as this session's other funds-blocked closures.
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/eats.ts` +
 `services/micro-frontends/bank-mfe/src/lib/eatsRider.ts` (new) +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 229. Real "helpful" voting on Eats reviews -- the first no-funds gap this pass, fully live-verified
+
+`EatsReviewService.toggleHelpful` (real Baemin/Coupang-style "도움돼요" idempotent
+per-user vote) was the ninth gap from §221's sweep run: fully built with zero client
+anywhere, despite `RestaurantRatingBadge` already rendering the exact written-review
+list this belongs on. `EatsReview.helpfulCount` was another silent client-type gap
+in the same shape as `EatsOrder.tipAmount`/`RideTrip.tipAmount` earlier this same
+session -- the backend has always returned it, the client type never declared it.
+
+Added a "👍 Helpful (N)" toggle under each review, colored to reflect the caller's
+own vote state for the session.
+
+**The first gap this whole pass needing no funded wallet at all** (a helpful vote
+moves no money), so unlike every other gap closed in §222-228, this one got the
+FULL live-verification depth the same way [[project_itunda_delayed_transfer]] and
+the comment-notification toggle (§224) did: found a real pre-existing review from
+earlier test-session data, `POST`ed a real helpful toggle (count `0` -> `1`,
+confirmed via a separate independent `GET`, not just the response body), toggled it
+back off (confirmed back to `0`) -- proving the client's own optimistic
+increment/decrement logic matches the real backend's exactly, not just that the
+request round-trips.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/eats.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
