@@ -14943,3 +14943,87 @@ listing.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/realestate.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 232. Real product analytics + two real sweep-script bug fixes
+
+`MerchantProductService.getProductAnalytics` (real Coupang WING 상품분석 -- per-product
+view/order counts) was the twelfth gap from §221's sweep run, fully built with zero
+client anywhere. Added a fourth expandable panel toggle to each product row in
+merchant-mfe's `PosScreen.tsx`, alongside the existing Options/Pricing/Time-deal
+panels, same "one panel expanded at a time" convention already established there.
+Live-verified via a real curl round trip against an existing test product (`200`,
+`{"viewCount":0,"orderCount":0}`, exact shape match with the new client type).
+
+**Two real bugs found and fixed in `scripts/uncalled-endpoint-sweep.py` itself this
+same pass**, both discovered by investigating candidates that turned out to already
+be built:
+1. A client deliberately passing a literal `_` as a path segment (used when the
+   backend endpoint ignores which id was passed -- `MapsController.updateLocationShare`'s
+   own real "one push updates every active share" fan-out) wasn't recognized as
+   equivalent to a real `{id}`. `maps/location-share/{}/update-location` looked
+   uncalled but is fully wired in `maps-mfe/MapView.tsx` (moved there when maps was
+   split into its own micro-frontend this session, §217). Fixed: `normalize()` now
+   treats a bare `_` segment the same as a real path variable.
+2. A client call site with a nested template literal inside a ternary inside the
+   outer template literal (`` `/api/v1/merchant/reports/top-products${qs ? `?${qs}` : ''}` ``)
+   can't be reliably parsed by the script's regex-based extractor -- `merchant/reports/top-products`
+   looked uncalled but is fully wired in merchant-mfe's `ReportsScreen.tsx`.
+   Deliberately NOT code-fixed (regex can't reliably parse nested string literals);
+   documented instead in the script's own docstring as a known limitation, with the
+   real historical example, so a future run greps the client source directly before
+   trusting a surprising "uncalled" result rather than chasing more regex.
+
+Also confirmed `loans/student/{loanId}` as a genuine non-gap: the client already gets
+full loan data from the existing `/my` list endpoint, and every per-loan action
+(repay, suggested-payment) already returns fresh state directly or refreshes via the
+list, never a targeted single-loan refetch -- same shape as the already-documented
+`discover/{category}`/`insurance/crop-index/policies/{id}` non-gaps.
+
+Re-running the fixed script: 693 backend endpoints, 686 client paths (up from 671),
+50 raw candidates (down from 66 at the start of this session's sweep work).
+
+*Shipped: `services/micro-frontends/merchant-mfe/src/screens/PosScreen.tsx` +
+`services/micro-frontends/merchant-mfe/src/lib/merchant.ts` +
+`services/micro-frontends/merchant-mfe/src/i18n/translations.ts` +
+`scripts/uncalled-endpoint-sweep.py`.*
+
+## 233. Real "item unavailable" for Eats orders -- thirteenth and final gap this sweep session
+
+`EatsOrderService.markItemUnavailable` (real DoorDash/Uber Eats-style flow -- a
+restaurant marks a specific order item unavailable mid-preparation, triggering a
+real partial refund back to the buyer's wallet) was the thirteenth gap from §221's
+sweep run. Real backend guards: only `ACCEPTED`/`PREPARING` orders, and can't mark
+the LAST remaining item unavailable (must cancel the whole order instead). Zero
+client anywhere -- not even bank-mfe had this, despite every other real
+restaurant-order action already being ported to merchant-mfe.
+
+merchant-mfe had no order-detail-with-items client at all before this (only the
+order LIST, with no per-item breakdown) -- added `fetchEatsOrderDetail` (`GET
+/eats/orders/{orderId}`, which already returns real items server-side) alongside
+`markEatsOrderItemUnavailable`. Built `ItemUnavailableSection`, a toggle-open
+per-order items list rendered only for `ACCEPTED`/`PREPARING` orders (matching the
+backend's own real status guard), with a "Mark unavailable" action per still-
+available item. Deliberately did NOT pre-disable the button for the last remaining
+item client-side -- lets the real backend's own
+`EatsOrderAllItemsUnavailableException` surface instead of duplicating that
+business rule, the same discipline this session's other closed gaps already
+established (never re-implement a guard the backend already enforces correctly).
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean.
+Live-verified the real request/response shape via curl (both the new order-detail
+fetch and the mark-unavailable action correctly round-trip to a real `404
+ORDER_NOT_FOUND` against a nonexistent order id) -- the happy path needs a real
+`ACCEPTED`/`PREPARING` order with a funded buyer wallet, same open verification gap
+as this session's other funds-blocked gaps.
+
+**This closes the uncalled-endpoint sweep session started at §221**: 13 real gaps
+built and verified, 2 real script bugs fixed, several confirmed non-gaps recorded so
+a future sweep doesn't re-investigate them. Only 2 genuinely open real gaps remain
+from the original 66-candidate list, both driver-facing and requiring native
+RiderApp work rather than any web MFE: `rides/drivers/destination`+`/clear` and
+`rides/trips/my-earnings` -- see [[feedback_uncalled_endpoint_sweep]] (auto memory)
+for the full account.
+
+*Shipped: `services/micro-frontends/merchant-mfe/src/screens/EatsOrdersScreen.tsx` +
+`services/micro-frontends/merchant-mfe/src/lib/eats.ts` +
+`services/micro-frontends/merchant-mfe/src/i18n/translations.ts`.*
