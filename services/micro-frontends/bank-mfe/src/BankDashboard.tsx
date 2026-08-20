@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useCountUp } from './hooks/useCountUp';
 import { recordEvent } from './lib/analytics';
@@ -1022,37 +1022,33 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
 // animation and cursor: 'pointer' unconditionally -- a UI signal both are tappable
 // -- with zero onClick wired to either. "Cards" has a real destination (CardView,
 // already reachable from the tab bar, just not from here) and is now wired to it.
-// "Scan to Pay" genuinely has nowhere to go: this app has no camera QR scanner
-// anywhere (see RequestMoneyCard's own doc comment -- manual code entry is the real,
-// deliberate substitute), so rather than fake a destination, its tap affordance is
-// removed instead -- honest about its current non-functional state, matching this
-// session's own "don't fake it" precedent (SuperAppTabs.kt's unwired Search icon).
+// "Scan to Pay" was removed outright rather than re-wired (product-feel audit,
+// §234): item 244's own reasoning ("no camera QR scanner anywhere") went stale the
+// moment `QrScanCamera` shipped (2026-08-19) into `PayByCodeCard`, which now renders
+// directly below this row and opens straight into a live camera by default -- a
+// second tile pointing at the same capability already visible on the same screen is
+// exactly what Toss's own real "Minimum Feature" principle ("기능이 추가될수록 제품은
+// 어려워진다") asks to cut, not re-wire. See [[project_itunda_product_feel]] roadmap
+// item 7 for the sourced restraint audit this was found under.
 function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
   const { t } = useI18n();
-  const actions = [
-    { title: t('quickActions.scanToPay'), icon: <ScanFace size={24} color="var(--itunda-blue)" />, bg: 'var(--itunda-blue-light)', onClick: undefined as (() => void) | undefined },
-    { title: t('quickActions.cards'), icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)', onClick: onCardsClick },
-  ];
 
   return (
     <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-      {actions.map((action, i) => (
-        <motion.div
-          key={i}
-          whileTap={action.onClick ? { scale: 0.96 } : undefined}
-          className="itunda-card"
-          onClick={action.onClick}
-          role={action.onClick ? 'button' : undefined}
-          tabIndex={action.onClick ? 0 : undefined}
-          onKeyDown={action.onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); action.onClick!(); } } : undefined}
-          style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: action.onClick ? 'pointer' : 'default' }}
-        >
-          <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {action.icon}
-          </div>
-          <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{action.title}</span>
-        </motion.div>
-      ))}
+      <motion.div
+        whileTap={{ scale: 0.96 }}
+        className="itunda-card"
+        onClick={onCardsClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardsClick(); } }}
+        style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
+      >
+        <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: 'rgba(138, 43, 226, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <WalletIcon size={24} color="#8A2BE2" />
+        </div>
+        <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
+      </motion.div>
     </div>
   );
 }
@@ -6955,6 +6951,16 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   // preview call happens in the same tick as setCode and can't rely on the (still stale)
   // `code` closure -- the typed-code path still reads from state via handleConfirm below,
   // which only ever runs after a real render (the preview step) so state is fresh there.
+  //
+  // Real bug fix (product-feel audit, §234): `manualEntry` used to be gated behind
+  // `!facePayEnrolled` everywhere it was checked, so a Face-Pay-enrolled user could
+  // never reach the camera at all -- typed-code entry was their ONLY path, a direct
+  // violation of the standing "no manual codes" law (see
+  // [[feedback_no_manual_codes_ux]]: scan/QR beats typing whenever both exist).
+  // Face Pay only changes how the payment is AUTHORIZED after a code is found (face
+  // vs. nothing extra), not how the code itself is captured -- scanning and Face Pay
+  // are orthogonal, so `manualEntry` alone (not `facePayEnrolled`) now decides which
+  // capture mode renders.
   const [scanUnavailable, setScanUnavailable] = useState(false);
   const [manualEntry, setManualEntry] = useState(false);
 
@@ -7039,19 +7045,17 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
 
   return (
     <div className="itunda-card" style={{ marginBottom: '16px' }}>
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{facePayEnrolled ? 'Pay by code' : 'Scan to pay'}</h3>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{manualEntry ? 'Pay by code' : 'Scan to pay'}</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
-        {facePayEnrolled
-          ? 'Face Pay is on — enter the code the merchant shows you to authorize with your face.'
-          : manualEntry
-            ? 'Enter the payment code the merchant shows you.'
-            : 'Point your camera at the merchant\'s QR code to pay instantly and earn cashback.'}
+        {manualEntry
+          ? (facePayEnrolled ? 'Enter the code the merchant shows you to authorize with your face.' : 'Enter the payment code the merchant shows you.')
+          : (facePayEnrolled ? 'Point your camera at the merchant\'s QR code — you\'ll confirm with your face.' : 'Point your camera at the merchant\'s QR code to pay instantly and earn cashback.')}
       </p>
       {needsDeviceVerification ? (
         // Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
         // account. handleConfirm -> payDirect resets needsDeviceVerification itself.
         <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={() => setNeedsDeviceVerification(false)} />
-      ) : !facePayEnrolled && !manualEntry && !preview ? (
+      ) : !manualEntry && !preview ? (
         <>
           {!scanUnavailable && !submitting && (
             <QrScanCamera onDetect={handleScan} onUnavailable={() => setScanUnavailable(true)} />
@@ -7115,7 +7119,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
               {payButtonLabel}
             </button>
           </form>
-          {!facePayEnrolled && !scanUnavailable && (
+          {!scanUnavailable && (
             <button
               type="button"
               className="itunda-btn itunda-btn-secondary"

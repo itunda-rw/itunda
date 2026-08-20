@@ -15027,3 +15027,68 @@ for the full account.
 *Shipped: `services/micro-frontends/merchant-mfe/src/screens/EatsOrdersScreen.tsx` +
 `services/micro-frontends/merchant-mfe/src/lib/eats.ts` +
 `services/micro-frontends/merchant-mfe/src/i18n/translations.ts`.*
+
+## 234. Two real bugs found under the product-feel initiative's restraint audit (roadmap item 7) -- a dead quick-action tile and Face-Pay users losing QR scanning entirely
+
+Resumed the product-feel initiative's still-open roadmap item 7 (the sourced Toss
+restraint audit: "first screen shows only account/card items", "exactly one
+actionable button per screen" -- see the initiative's own memory file for the full
+Toss research). Started on `PayHub` (bank-mfe's Pay tab, itunda's closest analogue
+to Toss's real main money screen) since it's visibly the densest single screen in
+the app -- balance, a 2-button grid, quick actions, request-money, pay-by-code,
+pay-by-static-QR, scheduled transfers, delayed transfers, auto top-up, and
+transaction history all stacked on one page.
+
+Auditing `QuickActions` (the first card below the primary buttons) surfaced a real,
+concrete regression rather than a fresh design opinion:
+
+- **Dead tile, stale reasoning**: item 244's own doc comment justified rendering
+  "Scan to Pay" with `onClick: undefined` (no tap affordance at all) because "this
+  app has no camera QR scanner anywhere." That was true when item 244 shipped, but
+  went stale the moment real camera-scan support (`QrScanCamera`) landed in
+  `PayByCodeCard` on 2026-08-19 -- which renders directly below this exact tile on
+  the same screen and opens straight into a live camera by default. A second,
+  non-functional tile pointing at a capability already visible one scroll away is
+  exactly what Toss's own real "Minimum Feature" product-strategy principle
+  ("기능이 추가될수록 제품은 어려워진다" -- as features accumulate, the product gets
+  harder) asks to cut. Removed outright (not re-wired) -- `QuickActions` now
+  renders a single "Cards" tile, its i18n keys retired across all 3 locales, and the
+  now-dead conditional-tappability branching (`action.onClick ? ... : undefined`
+  everywhere) simplified away since every remaining action is unconditionally
+  clickable.
+- **Real correctness bug, not just a density issue**: `PayByCodeCard`'s scan-camera
+  entry was gated behind `!facePayEnrolled` -- a Face-Pay-enrolled user was routed
+  straight to the typed-code form with **no way back into the camera at all** (the
+  "Scan a QR code instead" fallback button was also gated the same way). Face Pay
+  only changes how a payment is *authorized* after a code is found (face vs.
+  nothing extra); it has nothing to do with how the code itself is *captured* --
+  scanning and Face Pay are orthogonal, so the two were wrongly coupled. This is a
+  direct violation of itunda's own standing "no manual codes" law (see
+  [[feedback_no_manual_codes_ux]]) that the very same law's own §202 pass had
+  fixed everywhere else. Fixed by re-gating both the entry-mode branch and the
+  fallback button on `manualEntry` alone -- title/subtitle copy also decoupled from
+  `facePayEnrolled` (now describes capture mode; Face Pay's face-auth explanation
+  only shows in the manual-entry copy where it's actually relevant).
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean (no
+new warnings on touched lines). Live-verified via headless Chrome + raw CDP (the
+Claude-in-Chrome extension was unavailable this session -- see
+[[feedback_headless_chrome_verification]]) against the real deployed backend:
+logged in as the seeded demo user, navigated to Pay, and confirmed by screenshot +
+DOM text dump that `QuickActions` now renders exactly one "Cards" tile with no
+leftover dead element, and `PayByCodeCard` opens directly into "Starting camera…"
+by default. The Face-Pay-specific half of the fix (a non-facePayEnrolled demo user
+was used) is verified by code inspection + typecheck rather than a live Face-Pay
+click-through -- reuses the same `QrScanCamera`/`manualEntry` toggle already
+exercised live for the default path, so the residual risk is low.
+
+**Roadmap item 7 status**: this pass found and fixed two real, concrete bugs under
+the restraint-audit lens, but did **not** do the larger rail-consolidation redesign
+`PayHub` still visibly needs (nine stacked sections is still far denser than
+Toss's own tested "show almost nothing" home screen) -- that's a separate, larger,
+higher-risk redesign (deciding what moves behind a secondary "more" area, matching
+real Toss patterns for it) that deserves its own pass rather than being rushed
+alongside a bug-fix slice. Item 7 stays open; this is progress on it, not closure.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx` +
+`services/micro-frontends/bank-mfe/src/i18n/translations.ts`.*

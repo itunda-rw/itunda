@@ -123,7 +123,6 @@ export type TranslationKey =
   // device step-up prompt, and the ReportScamLink component -- explicitly named as a
   // known gap two passes ago -- were all still English.
   | 'home.loadError'
-  | 'quickActions.scanToPay'
   | 'quickActions.cards'
   | 'deviceStepUp.title'
   | 'deviceStepUp.body'
@@ -331,7 +330,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'dashboard.transfer': 'Transfer',
     'dashboard.topUp': 'Top up',
     'home.loadError': 'Could not load your account.',
-    'quickActions.scanToPay': 'Scan to Pay',
     'quickActions.cards': 'Cards',
     'deviceStepUp.title': '🔒 Verify this device',
     'deviceStepUp.body': 'This is a new device for your account. Re-enter your password to allow it to send money, then try again.',
@@ -535,7 +533,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'dashboard.transfer': 'Kohereza',
     'dashboard.topUp': 'Ongera amafaranga',
     'home.loadError': "Ntibishoboka gushaka amakuru ya konti yawe.",
-    'quickActions.scanToPay': 'Kwishyura ukoresheje QR',
     'quickActions.cards': 'Amakarita',
     'deviceStepUp.title': '🔒 Emeza iyi terefoni',
     'deviceStepUp.body': "Iyi ni terefoni nshya kuri konti yawe. Ongera wandike ijambo ry'ibanga kugira ngo wemeze ko ishobora kohereza amafaranga, hanyuma ugerageze nanone.",
@@ -739,7 +736,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'dashboard.transfer': 'Transférer',
     'dashboard.topUp': 'Recharger',
     'home.loadError': 'Impossible de charger votre compte.',
-    'quickActions.scanToPay': 'Scanner pour payer',
     'quickActions.cards': 'Cartes',
     'deviceStepUp.title': '🔒 Vérifier cet appareil',
     'deviceStepUp.body': 'Ceci est un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l’autoriser à envoyer de l’argent, puis réessayez.',
