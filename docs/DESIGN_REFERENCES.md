@@ -14702,3 +14702,27 @@ by watching it render.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/shopping.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 224. Real Karrot comment-notification toggle -- fourth gap, fully live-verified
+
+`CommunityController.setCommentNotificationsEnabled`/`getCommentNotificationsEnabled`
+(real Karrot 동네생활 "새 댓글 알림 끄기" -- turn off new-comment notifications) was the
+fourth gap surfaced by §221's sweep run: a fully-built, account-wide preference with
+zero client anywhere. Scoped to notifications about comments on posts the caller
+authored, so `CommentNotificationToggle` was added to `CommunityView`'s existing "My
+posts" tab rather than a generic account-settings screen (bank-mfe doesn't have one
+yet) -- the preference only means something in that context.
+
+Unlike §222 (tip) and §223 (loyalty balance), which both hit the same DB-access
+constraint documented in [[feedback_deploy_mechanism_multipass_not_ssh]], this
+feature needed no funded wallet, so it got the FULL live-verification depth this
+session's other closed gaps had: real `curl` GET/POST/GET against the running
+backend proved the preference genuinely persists server-side (not just an
+optimistic response echo); a real browser session logged in, clicked the toggle
+off, confirmed the visual state changed, then did a real hard page reload and
+confirmed the OFF state was freshly re-fetched from the server on that fresh load
+(not stale local state) before toggling back to the default ON. Zero console
+errors throughout.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/community.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
