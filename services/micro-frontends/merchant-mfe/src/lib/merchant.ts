@@ -54,6 +54,12 @@ export interface Merchant {
   // comment on the backend (Baemin's real "가게배달 배달시간 AI 예측"). Null means the
   // real customer-facing delivery estimate falls back to itunda's own flat default.
   avgPrepTimeMinutes: number | null;
+  // Real Baemin 포장할인 (pickup discount) -- see MerchantService.setPickupDiscount's
+  // own doc comment on the backend. Found via scripts/uncalled-endpoint-sweep.py:
+  // EatsOrderService already applies this real discount when a customer orders for
+  // pickup, but no merchant-facing client ever let a merchant actually set the rate.
+  // Null means no pickup discount.
+  pickupDiscountPercent: number | null;
 }
 
 export const setMerchantLocation = (latitude: number, longitude: number) =>
@@ -291,6 +297,14 @@ export const setMerchantAvgPrepTimeMinutes = (avgPrepTimeMinutes: number | null)
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/prep-time', {
     method: 'POST',
     body: JSON.stringify({ avgPrepTimeMinutes }),
+  }).then((r) => r.merchant);
+
+// Real Baemin 포장할인 (pickup discount) -- see Merchant.pickupDiscountPercent's own
+// doc comment above.
+export const setMerchantPickupDiscount = (pickupDiscountPercent: number | null) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/pickup-discount', {
+    method: 'POST',
+    body: JSON.stringify({ pickupDiscountPercent }),
   }).then((r) => r.merchant);
 
 // Real Naver Pay-style boosted cashback opt-in -- rate is a fraction 0-0.05 (0-5%);

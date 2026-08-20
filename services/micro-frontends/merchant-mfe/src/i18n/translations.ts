@@ -537,6 +537,7 @@ export type TranslationKey =
   | 'settings.phoneNumberLabel'
   | 'settings.openingHoursLabel'
   | 'settings.avgPrepTimeMinutesLabel'
+  | 'settings.pickupDiscountPercentLabel'
   | 'settings.acceptScheduledOrdersTitle'
   | 'settings.acceptScheduledOrdersBody'
   | 'settings.acceptingOrdersTitle'
@@ -1062,6 +1063,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.phoneNumberLabel': 'Phone number (shown on the map, blank = hidden)',
     'settings.openingHoursLabel': 'Opening hours (shown on the map, blank = hidden)',
     'settings.avgPrepTimeMinutesLabel': 'Average kitchen prep time in minutes (blank = itunda default)',
+    'settings.pickupDiscountPercentLabel': 'Pickup discount % (customers who pick up instead of delivery, blank = no discount)',
     'settings.acceptScheduledOrdersTitle': 'Accept scheduled orders',
     'settings.acceptScheduledOrdersBody': 'Let buyers pick a future delivery/pickup time.',
     'settings.acceptingOrdersTitle': 'Accepting orders',
@@ -1582,6 +1584,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.phoneNumberLabel': 'Nomero ya telefoni (igaragara kuri ikarita, ubusa = ihishwa)',
     'settings.openingHoursLabel': 'Amasaha yo gukorera (agaragara kuri ikarita, ubusa = ahishwa)',
     'settings.avgPrepTimeMinutesLabel': 'Iminota isanzwe yo gutegura ibiryo (ubusa = igipimo gisanzwe cya itunda)',
+    'settings.pickupDiscountPercentLabel': 'Igabanyirizo % ku bakiriya bikura mu iduka (ntibatumizirwa, ubusa = nta gabanyirizo)',
     'settings.acceptScheduledOrdersTitle': 'Kwemera itumiza rigenwe igihe',
     'settings.acceptScheduledOrdersBody': 'Reka abaguzi bahitemo igihe kizaza cyo kohererezwa/gutorwa.',
     'settings.acceptingOrdersTitle': 'Kwakira itumiza',
@@ -2102,6 +2105,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.phoneNumberLabel': 'Numéro de téléphone (affiché sur la carte, vide = masqué)',
     'settings.openingHoursLabel': "Heures d'ouverture (affichées sur la carte, vide = masquées)",
     'settings.avgPrepTimeMinutesLabel': 'Temps de préparation moyen en minutes (vide = valeur par défaut d\'itunda)',
+    'settings.pickupDiscountPercentLabel': 'Remise % pour retrait en magasin (au lieu de la livraison, vide = aucune remise)',
     'settings.acceptScheduledOrdersTitle': 'Accepter les commandes programmées',
     'settings.acceptScheduledOrdersBody': 'Permettre aux clients de choisir une heure de livraison/retrait future.',
     'settings.acceptingOrdersTitle': 'Acceptation des commandes',
