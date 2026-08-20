@@ -14920,3 +14920,26 @@ verification discipline matters, not just a formality.
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/eats.ts` +
 `services/micro-frontends/bank-mfe/src/lib/eatsGroupOrders.ts` (new) +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 231. Real real-estate price-edit -- eleventh gap, mirrors §227 exactly
+
+`PropertyListingService.updatePrice` (real Karrot 당근마켓-style price-drop
+notification) was the eleventh gap from §221's sweep run -- the real-estate mirror
+of `MarketplaceService.updatePrice` (§227, already closed this session): same real
+gap shape, a lister could mark a property taken or remove it, but never actually
+reprice one.
+
+Added "Edit price" next to the existing seller-only Mark taken/Remove actions on a
+property listing, same inline toggle-open input pattern already used there (this
+component's own render order put the toggle-open form ABOVE the trigger buttons
+rather than below, unlike the marketplace listing component -- matched the existing
+layout rather than imposing a different one).
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean.
+Live-verified the full real round trip via curl: created a real test property
+listing (50,000,000 RWF), updated the price down to 45,000,000 (a real price drop),
+confirmed it persisted via a separate independent `GET`, then cleaned up the test
+listing.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/realestate.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
