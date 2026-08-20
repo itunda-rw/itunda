@@ -15269,3 +15269,48 @@ again.
 
 *Shipped: `ios/App/Sources/QrScanCamera.swift` (new) +
 `ios/App/Sources/ShopPay.swift` + `ios/Project.swift`.*
+
+## 238. Real customer "My code" reveal-QR ported to bank-mfe -- the KakaoPay-parity gap was two platforms behind, not one
+
+While closing §237's iOS scanning gap, re-checked whether web (bank-mfe) had
+Android's real customer-presented "My code" reveal-QR flow
+([[project_itunda_pay_kakaopay_parity]], shipped to Android only 2026-08-11) --
+a real grep sweep (`generateCustomerPaymentCode`, `CustomerPaymentCode`) found
+zero matches anywhere in `bank-mfe/src`. The existing memory only flagged iOS as
+missing this; web was equally behind and undocumented as such.
+
+Added `generateCustomerPaymentCode` (`lib/shopping.ts`, `POST /api/v1/merchant/
+pay/customer-code`) and a new `MyPaymentCodeCard` in `PayHub`, right below
+`AccountBalance`. Ported the core mechanism directly from Android's real,
+already-verified implementation: a lock-gated reveal (explicit tap required before
+the real code shows, matching Android's own 2026-08-13 KakaoPay-researched fix --
+protects a customer whose unlocked phone someone else picks up), an
+auto-refreshing QR encoding the RAW opaque code (confirmed via
+`chargeByCustomerCode`'s real merchant-side scanner contract -- no `itunda://...`
+URL wrapping, the scanned string passes straight through as the code), a live
+countdown, and the real wallet balance. Deliberately did **not** port Android's
+nearby-merchant-ads/linked-account rows -- those are supplementary display
+additions, and PayHub is already a flagged density problem
+([[project_itunda_product_feel]] roadmap item 7); adding more rows while that's
+still open would cut against the very audit that found the gap.
+
+Also fixed a stale doc comment on `collectPayment` (`lib/shopping.ts`) that still
+claimed "this app has no camera-based QR scanner" -- gone stale the moment §234's
+real scanner landed in `PayByCodeCard`, caught while working in the same file.
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean
+(no new warnings). Live-verified via headless Chrome + raw CDP against the real
+deployed backend (same recipe as §234/§236): logged in, navigated to Pay,
+confirmed the lock-gated card renders, clicked "Tap to show," and confirmed by
+screenshot + DOM text a REAL QR image renders (`src` length 4154, a genuine
+generated PNG) with a real live countdown ("Refreshes in 123s") and the correct
+real wallet balance (8,457 RWF, matching `AccountBalance`'s own figure) -- a full,
+real, live round trip against `generateCustomerPaymentCode`, not just a build
+check.
+
+**Still open**: the wallet carousel (Android round 2) is now the last remaining
+gap in this whole parity thread, on both web and iOS. iOS also still needs its own
+port of this exact reveal-QR card (§237 only closed the scanning half there).
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/shopping.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*

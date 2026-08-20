@@ -142,11 +142,10 @@ export interface CollectPaymentResult {
 // exact same real POST /api/v1/merchant/collect/{intentId} MerchantService.collect
 // already proved out for QR Pay (see that method's own doc comment), which is also
 // where real Toss Shopping cashback gets awarded. A payment code here is the same real
-// PaymentIntent id a merchant's real QR encodes -- typing it in is the same real
-// manual-code-entry fallback many real payment apps offer alongside camera QR
-// scanning, not an invented shortcut; this app has no camera-based QR scanner (that's
-// the real mobile app's job, already real there), so this is the honest, real
-// alternative rather than faking a scan.
+// PaymentIntent id a merchant's real QR encodes. Real camera QR scanning shipped into
+// `PayByCodeCard` 2026-08-19 (this comment used to say the opposite -- "this app has
+// no camera-based QR scanner" -- gone stale the moment that landed); manual entry is
+// now the honest fallback alongside it, not the only path.
 export const collectPayment = (intentId: string, couponId?: string, pointsToRedeem?: number) =>
   apiFetch<{ success: boolean } & CollectPaymentResult>(`/api/v1/merchant/collect/${intentId}`, {
     method: 'POST',
@@ -175,6 +174,28 @@ export const payByStaticQr = (merchantId: string, amount: number, description?: 
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount, description }),
+  });
+
+// Real customer-presented payment code (Pay-parity port, §238) -- see backend
+// MerchantService.generateCustomerPaymentCode's own doc comment. Android shipped
+// this real KakaoPay/Toss Pay "My code" reveal-QR flow 2026-08-11; bank-mfe never
+// received it (confirmed via a real grep sweep before starting -- zero
+// generateCustomerPaymentCode references anywhere in this workspace). Same real
+// short-lived (2-min), single-use, opaque code a merchant scans and charges via
+// chargeByCustomerCode -- the QR must encode the RAW `code` value, no
+// `itunda://...` URL wrapping, matching exactly what Android's real merchant-side
+// scanner (`CameraQrScanner`'s `onScanned` callback) passes straight through as
+// the code with no param extraction.
+export interface CustomerPaymentCode {
+  code: string;
+  expiresAt: string;
+  walletId: string | null;
+}
+
+export const generateCustomerPaymentCode = (walletId?: string) =>
+  apiFetch<{ success: boolean } & CustomerPaymentCode>('/api/v1/merchant/pay/customer-code', {
+    method: 'POST',
+    body: JSON.stringify({ walletId }),
   });
 
 // Real read-only preview (item 149) -- see backend MerchantService.previewIntent's own
