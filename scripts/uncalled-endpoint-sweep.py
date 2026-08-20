@@ -19,6 +19,23 @@ Known pitfalls this script already handles (do not "simplify" these away):
   6. Scan ALL client dirs, not just bank-mfe -- native-only or admin-only endpoints
      called from Android/iOS/ops-mfe/merchant-mfe/kyc-mfe/pay-checkout/maps-mfe will
      false-positive as "uncalled" if any one of those is skipped.
+  7. A client sometimes deliberately passes a literal `_` as a path segment instead of
+     a real id (when the backend endpoint ignores the id entirely and fans out some
+     other way, e.g. MapsController.updateLocationShare's own real "one push updates
+     every active share" doc comment) -- normalize() treats a bare `_` segment the
+     same as a real {id}, or this shows up as a false "uncalled" positive.
+
+KNOWN, UNFIXED LIMITATION -- do not spend more regex effort chasing this: a client
+call site with a NESTED template literal inside a ternary inside the outer template
+literal (e.g. `` `/api/v1/x${qs ? `?${qs}` : ''}` `` -- a real example that produced a
+false "uncalled" positive for `merchant/reports/top-products`, already fully wired in
+merchant-mfe's ReportsScreen.tsx) will not be extracted correctly. PATH_STRING_RE's
+character class deliberately excludes backtick (it has to, to find the OUTER string's
+own closing quote), so it can't see past the inner backtick without genuinely parsing
+nested string literals -- which regex fundamentally can't do reliably. If a "real
+uncalled" candidate looks surprising, grep the client source directly for that literal
+path substring before trusting the script -- this class of false positive won't self-
+correct with more regex tweaking.
 
 Usage: python3 scripts/uncalled-endpoint-sweep.py
 """
@@ -73,6 +90,10 @@ def normalize(path: str) -> str:
     path = re.sub(r'\$\{[^}/]+\}', '{}', path)
     path = re.sub(r'\{[^}/]+\}', '{}', path)
     path = re.sub(r'\\\([^)/]+\)', '{}', path)
+    # A client sometimes deliberately passes a literal underscore as a path segment
+    # instead of a real id, when the backend endpoint ignores which id was passed
+    # (see pitfall #7 in this file's own docstring).
+    path = re.sub(r'/_(?=/|$)', '/{}', path)
     return path.rstrip('/')
 
 
