@@ -14757,3 +14757,33 @@ available again, not a silent gloss-over.
 *Shipped: `services/micro-frontends/merchant-mfe/src/lib/merchant.ts` +
 `services/micro-frontends/merchant-mfe/src/screens/SettingsScreen.tsx` +
 `services/micro-frontends/merchant-mfe/src/i18n/translations.ts`.*
+
+## 226. Real Coupang subscription skip-next + edit -- sixth gap, back to bank-mfe
+
+`ProductSubscriptionService.skipNext`/`updateSubscription` (real Coupang 정기배송
+"건너뛰기" -- skip the next delivery -- and 수량/주기 변경 -- change quantity/interval)
+were the sixth gap from §221's sweep run: fully built, with pause/resume/cancel
+already real, live bank-mfe features for the exact same subscriptions, but these two
+sibling actions had no client anywhere.
+
+Extended the already-shipped `MyProductSubscriptionsCard` rather than building a new
+surface: a "Skip next" button (shown only on `ACTIVE` subscriptions, matching the
+backend's own guard -- `InvalidProductSubscriptionException` if attempted on a
+paused/cancelled one) and a toggle-open inline edit form for quantity/interval,
+reusing the exact same "one thing open at a time" pattern
+`DelayedTransfersCard`/`TipDriverPrompt` already established earlier this session.
+Also surfaced `nextDeliveryAt` in the status line -- a field the client's own
+TypeScript type already declared but the UI never rendered.
+
+**Verification note, same shape as §222/§223/§225**: `curl` proved the real request
+shape is correct (both `skip-next` and `update` correctly round-trip to a real `404
+PRODUCT_SUBSCRIPTION_NOT_FOUND` against a nonexistent subscription id), but the
+happy path needed a funded wallet to set up a real subscription to test against --
+`subscribe()` itself charges the first delivery immediately
+(`INSUFFICIENT_FUNDS` confirmed live against a fresh test merchant + product), the
+same DB-access constraint hit repeatedly this session (see
+[[feedback_deploy_mechanism_multipass_not_ssh]]). Not click-through-verified in a
+real browser either, since the extension was still disconnected this pass.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/productSubscriptions.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
