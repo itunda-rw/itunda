@@ -134,26 +134,130 @@ func formatTimeDealCountdown(_ endsAt: String) -> String {
 /// exactly: a non-Face-Pay code with real eligible coupons stops at a preview step
 /// (merchant/amount + coupon picker) before the actual collect() call; Face Pay and a
 /// code with zero eligible coupons both skip straight to a direct pay.
-// Real customer-presented payment code (Pay-parity port, §239) -- see
-// CustomerPaymentCodeResponse's own doc comment for the sourced contract. Android
-// shipped this real KakaoPay/Toss Pay "My code" reveal-QR flow 2026-08-11
-// (direct user-provided screenshot comparison); bank-mfe ported it 2026-08-21
-// (§238); this closes the same gap on iOS. QR generation uses Core Image's native
-// `CIFilter.qrCodeGenerator` -- no third-party library, same "don't depend on
-// third-party if it's not open source" discipline `QrScanCamera.swift` already
-// establishes for scanning. Deliberately NOT porting Android's nearby-merchant-
-// ads/linked-account rows -- supplementary display additions, not the core
-// mechanism, and adding more to this screen isn't the priority right now (see
-// PayHub's own identical scope-down on bank-mfe, §238).
+
+/// Real "my location" for the nearby-benefits row -- same per-file
+/// CLLocationManager fetcher convention BikeRentalScreenView.swift/
+/// DesignatedDriverScreenView.swift already establish.
+private final class MyPaymentCodeLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var coordinate: CLLocationCoordinate2D?
+    private let manager = CLLocationManager()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func requestLocation() {
+        let status = manager.authorizationStatus
+        if status == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.requestLocation()
+        }
+        // Denied/restricted: silent, same as every other nearby() caller in this
+        // codebase -- the row just doesn't render.
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            manager.requestLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        coordinate = locations.last?.coordinate
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+}
+
+/// Real swipeable funding-source cards -- see `MyPaymentCodeCard`'s own doc
+/// comment for why this stays a deliberate, honest simplification of the real
+/// reference's mixed wallet/card/membership row (itunda has no Samsung-Pay NFC
+/// or membership equivalent to include honestly). Settling on a card is a real
+/// selection: it's the walletId `MyPaymentCodeCard`'s own code is generated
+/// against. `TabView` with `.page` style is SwiftUI's real equivalent of
+/// Android's `HorizontalPager` -- no extra dependency needed.
+private struct WalletCardCarousel: View {
+    let wallets: [Wallet]
+    let selectedWalletId: String?
+    let onSelect: (String) -> Void
+
+    private func cardColor(_ currency: String) -> Color {
+        switch currency {
+        case "RWF": return Color(red: 0x22 / 255, green: 0x72 / 255, blue: 0xEB / 255)
+        case "USD": return Color(red: 0x04 / 255, green: 0xC0 / 255, blue: 0x65 / 255)
+        case "EUR": return Color(red: 0x7C / 255, green: 0x5C / 255, blue: 0xFC / 255)
+        case "GBP": return Color(red: 0x00 / 255, green: 0x89 / 255, blue: 0x8A / 255)
+        default: return IDS.Colors.textSecondary
+        }
+    }
+
+    var body: some View {
+        TabView(selection: Binding(
+            get: { selectedWalletId ?? wallets.first?.id ?? "" },
+            set: { onSelect($0) }
+        )) {
+            ForEach(wallets, id: \.id) { w in
+                VStack(alignment: .leading) {
+                    // Small light rectangle mimicking a real card's EMV chip -- a
+                    // cheap, honest visual cue that reads as "card" at a glance,
+                    // matching Android's identical real-card metaphor.
+                    RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.35)).frame(width: 32, height: 24)
+                    Spacer()
+                    Text(w.type == "MAIN" ? "itunda Pay" : "itunda Pay \(w.currency)")
+                        .font(.system(size: 13, weight: .bold)).foregroundColor(.white)
+                    Text("\(w.currency) \(w.currency == "RWF" ? String(Int(w.availableBalance)) : String(format: "%.2f", w.availableBalance))")
+                        .font(.system(size: 19, weight: .bold)).foregroundColor(.white)
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(cardColor(w.currency))
+                .cornerRadius(16)
+                .padding(.horizontal, 4)
+                .tag(w.id)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .frame(height: 180)
+    }
+}
+// Real customer-presented payment code (Pay-parity port, §239; corrected §241)
+// -- see CustomerPaymentCodeResponse's own doc comment for the sourced contract.
+// §239's first pass was QR-only, reasoning from Android's own implementation
+// rather than a fresh real reference. Corrected the same way bank-mfe's
+// identical §238 -> §240 fix was: the user pushed back directly ("100% kakaopay
+// like"), and this session fetched KakaoPay's own real screenshots two ways --
+// headless Chrome navigating their real App Store listing, and 3 real
+// screenshots of the user's own live app. Both agree on a materially different
+// design: the real code is a linear BARCODE (Code128, Korea's real 바코드결제
+// standard, works with plain laser POS scanners) with a small QR secondary, not
+// QR alone -- and the real card also shows the funding account and a real
+// "nearby benefits" row (real nearby merchant discounts+distance), both real
+// itunda data §239 dropped as "supplementary." A real "포인트 사용" toggle exists
+// in the reference but itunda has no separate points balance -- deliberately
+// still not faked, matching Android's own original honest scope-down. Barcode
+// generation uses Core Image's native `CIFilter.code128BarcodeGenerator`
+// (`QrScanCamera.swift`'s new `generateBarcodeImage`) -- no third-party library,
+// same discipline `generateQrImage` already established for the QR half.
 struct MyPaymentCodeCard: View {
     @State private var revealed = false
     @State private var code: CustomerPaymentCodeResponse?
+    @State private var barcodeImage: UIImage?
     @State private var qrImage: UIImage?
     @State private var error: String?
     @State private var secondsLeft = 0
-    @State private var wallet: Wallet?
+    @State private var wallets: [Wallet] = []
+    @State private var selectedWalletId: String?
+    @State private var linkedAccount: LinkedAccountDto?
+    @State private var nearbyAds: [NearbyMerchantAdDto] = []
     @State private var refreshTask: Task<Void, Never>?
     @State private var countdownTask: Task<Void, Never>?
+    @StateObject private var locationFetcher = MyPaymentCodeLocationFetcher()
+
+    private var wallet: Wallet? {
+        wallets.first(where: { $0.id == selectedWalletId }) ?? wallets.first(where: { $0.type == "MAIN" }) ?? wallets.first
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -178,24 +282,37 @@ struct MyPaymentCodeCard: View {
                         }
                         .padding(20)
                     }
-                } else if let qrImage {
+                } else if let barcodeImage, let qrImage {
                     VStack(spacing: 8) {
-                        Image(uiImage: qrImage)
-                            .interpolation(.none)
-                            .resizable()
-                            .frame(width: 180, height: 180)
-                            .cornerRadius(8)
+                        HStack(spacing: 10) {
+                            Image(uiImage: barcodeImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 60)
+                                .frame(maxWidth: .infinity)
+                                .padding(4)
+                                .background(Color.white)
+                                .cornerRadius(6)
+                            Image(uiImage: qrImage)
+                                .interpolation(.none)
+                                .resizable()
+                                .frame(width: 56, height: 56)
+                                .padding(3)
+                                .background(Color.white)
+                                .cornerRadius(6)
+                        }
                         Text(secondsLeft > 0 ? "Refreshes in \(secondsLeft)s" : "Refreshing…")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     }
-                    .padding(20)
+                    .padding(16)
                 } else if let error {
                     Text(error).font(.caption).foregroundColor(.red).padding(20)
                 } else {
                     Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(20)
                 }
             }
-            .frame(minHeight: 220)
+            .frame(minHeight: 140)
 
             if let wallet {
                 HStack {
@@ -204,10 +321,46 @@ struct MyPaymentCodeCard: View {
                     Text("\(Int(wallet.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                 }
             }
+            if let linkedAccount {
+                HStack {
+                    Text("Funding account").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    Spacer()
+                    Text("\(linkedAccount.provider) \(linkedAccount.externalAccountNumberMasked)").font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                }
+            }
+            if !nearbyAds.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Nearby benefits").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            ForEach(nearbyAds) { nearbyAd in
+                                VStack(spacing: 4) {
+                                    Circle().fill(IDS.Colors.brand.opacity(0.15)).frame(width: 40, height: 40)
+                                        .overlay(Text(String(nearbyAd.businessName.prefix(1)).uppercased()).font(.system(size: 16, weight: .bold)).foregroundColor(IDS.Colors.brand))
+                                    Text(nearbyAd.businessName).font(.system(size: 11)).foregroundColor(IDS.Colors.textPrimary).lineLimit(1)
+                                    Text("\(Int(nearbyAd.distanceKm * 1000))m").font(.system(size: 11)).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                                .frame(width: 64)
+                            }
+                        }
+                    }
+                }
+            }
+            if wallets.count > 1 {
+                WalletCardCarousel(wallets: wallets, selectedWalletId: selectedWalletId) { selectedWalletId = $0 }
+            }
         }
         .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         .task {
-            wallet = try? await NetworkClient.shared.getWallets().wallets.first(where: { $0.type == "MAIN" })
+            wallets = (try? await NetworkClient.shared.getWallets().wallets) ?? []
+            linkedAccount = (try? await NetworkClient.shared.getLinkedAccounts().linkedAccounts.first(where: { $0.status == "LINKED" })) ?? nil
+            locationFetcher.requestLocation()
+        }
+        .onChange(of: locationFetcher.coordinate?.latitude) { _, _ in
+            guard let coordinate = locationFetcher.coordinate else { return }
+            Task {
+                nearbyAds = (try? await NetworkClient.shared.getNearbyMerchantAds(latitude: coordinate.latitude, longitude: coordinate.longitude).ads) ?? []
+            }
         }
         .onDisappear {
             refreshTask?.cancel()
@@ -227,7 +380,10 @@ struct MyPaymentCodeCard: View {
                     let result = try await NetworkClient.shared.generateCustomerPaymentCode(walletId: wallet?.id)
                     code = result
                     error = nil
-                    qrImage = generateQrImage(from: result.code, size: 400)
+                    // Real contract: both encode the RAW code, no itunda://...
+                    // URL wrapping -- matches the real merchant-scanner contract.
+                    barcodeImage = generateBarcodeImage(from: result.code, width: 260, height: 60)
+                    qrImage = generateQrImage(from: result.code, size: 160)
                     let waitSeconds = max(parseExpiry(result.expiresAt).timeIntervalSinceNow - 10, 5)
                     try await Task.sleep(nanoseconds: UInt64(waitSeconds * 1_000_000_000))
                 } catch {

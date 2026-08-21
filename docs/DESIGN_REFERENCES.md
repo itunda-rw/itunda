@@ -15427,3 +15427,44 @@ build already has the richer version and does not need this correction.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx` +
 `services/micro-frontends/bank-mfe/package.json` (added `jsbarcode`).*
+
+## 241. The same real KakaoPay correction ported to iOS, closing the last named gap in the whole Pay/KakaoPay-parity thread
+
+Closed §240's own "still open" item: iOS's `MyPaymentCodeCard` (§239) had the
+identical QR-only gap bank-mfe's §238 had, for the identical reason (reasoned
+from Android's implementation instead of a fresh real reference). Same fix,
+native-iOS equivalents throughout:
+
+- **Barcode generation**: Core Image's native `CIFilter.code128BarcodeGenerator`
+  (`QrScanCamera.swift`'s new `generateBarcodeImage`) -- no third-party library,
+  same discipline `generateQrImage` already established for the QR half.
+- **Funding account + nearby benefits**: both real, already-existing iOS network
+  calls (`getLinkedAccounts`/`getNearbyMerchantAds`) -- no new backend work.
+  Nearby benefits needed a real `CLLocationManager` fetch; added
+  `MyPaymentCodeLocationFetcher`, a private per-file fetcher matching the exact
+  convention `BikeRentalScreenView.swift`/`DesignatedDriverScreenView.swift`
+  already establish (not a new pattern).
+- **Wallet carousel**: `TabView` with `.page` style -- SwiftUI's real equivalent
+  of Android's `HorizontalPager`, no extra dependency. Same real per-currency
+  card colors as the bank-mfe port (`#2272EB`/`#04C065`/`#7C5CFC`/`#00898A`,
+  matching Android's own `IdsColors.Blue600`/`Green500`/etc. hex values exactly,
+  not itunda's own brand blue -- these are specifically the real KakaoPay-card
+  colors Android already sourced, kept consistent cross-platform for the same UI
+  element).
+
+**Verification**: full `xcodebuild -workspace Itunda.xcworkspace -scheme
+ItundaApp -destination "generic/platform=iOS Simulator"` build -- BUILD
+SUCCEEDED. Installed + launched the real `.app` on the available Simulator,
+confirmed via screenshot no crash reaching login. Same honest caveat as
+§237/§239: no interactive click-through into the reveal/barcode/carousel flow
+itself, no visible Simulator window for UI automation in this headless
+environment.
+
+**This closes the itunda Pay/KakaoPay-parity thread completely** -- every real,
+sourced correction found this session (barcode+QR, funding account, nearby
+benefits, wallet carousel) now exists identically on web, Android, and iOS, all
+three grounded in the same real KakaoPay screenshots (the user's own live app +
+KakaoPay's official App Store listing), not invented or assumed from an
+in-repo comment.
+
+*Shipped: `ios/App/Sources/ShopPay.swift` + `ios/App/Sources/QrScanCamera.swift`.*

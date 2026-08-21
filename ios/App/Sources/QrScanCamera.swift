@@ -43,6 +43,25 @@ func generateQrImage(from string: String, size: CGFloat) -> UIImage? {
     return UIImage(cgImage: cgImage)
 }
 
+/// Real barcode generation (product-feel correction, §241) -- see
+/// `MyPaymentCodeCard`'s own doc comment for the sourced correction: KakaoPay's
+/// own real screenshots show the primary payment code is a linear barcode
+/// (Code128, Korea's real 바코드결제 standard), with a small QR secondary next to
+/// it, not QR alone. Core Image's native `CIFilter.code128BarcodeGenerator` --
+/// same first-party, no-third-party-library discipline as `generateQrImage`
+/// above.
+func generateBarcodeImage(from string: String, width: CGFloat, height: CGFloat) -> UIImage? {
+    let filter = CIFilter.code128BarcodeGenerator()
+    filter.message = Data(string.utf8)
+    guard let outputImage = filter.outputImage else { return nil }
+    let scaleX = width / outputImage.extent.width
+    let scaleY = height / outputImage.extent.height
+    let scaled = outputImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+    let context = CIContext()
+    guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+    return UIImage(cgImage: cgImage)
+}
+
 struct QrScanCameraView: UIViewControllerRepresentable {
     let onDetect: (String) -> Void
     let onUnavailable: () -> Void
