@@ -1251,6 +1251,18 @@ fun ItundaAppScreen(
                 onTopUp = { showAccountDetail = false; showAgentCash = true },
                 onSend = { showAccountDetail = false; transferStep = TransferStep.Recipient },
                 onClaimInterest = { showAccountDetail = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                onDepositToGoal = { goalId, goalName -> showAccountDetail = false; savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
+                onOpenSacco = { showAccountDetail = false; showSacco = true },
+                onOpenIkimina = { showAccountDetail = false; showIkimina = true },
+                onOpenMotoOwnership = { showAccountDetail = false; showMotoOwnership = true },
+                onOpenHarvestAdvance = { showAccountDetail = false; showHarvestAdvance = true },
+                onOpenLoans = { showAccountDetail = false; showLoans = true },
+                onOpenInvest = { showAccountDetail = false; showInvest = true },
+                onOpenWeeklySavings = { showAccountDetail = false; showWeeklySavings = true },
+                onOpenGrow31Savings = { showAccountDetail = false; showGrow31Savings = true },
+                onOpenUpfrontDeposit = { showAccountDetail = false; showUpfrontDeposit = true },
+                onOpenVupLoan = { showAccountDetail = false; showVupLoan = true },
+                onOpenStudentLoan = { showAccountDetail = false; showStudentLoan = true },
             )
             return@IdsTheme
         }
@@ -2963,11 +2975,43 @@ private fun AccountDetailScreen(
     onTopUp: () -> Unit,
     onSend: () -> Unit,
     onClaimInterest: () -> Unit,
+    // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user instruction:
+    // "should look 100% like in this images pixels by pixels"): the real account-
+    // detail screen isn't just balance+interest+ledger -- below the transaction
+    // history it continues into a full flat product catalog (Demand Deposits/
+    // Savings/Foreign Currency/Grow Lump Sum/Loan/Cards). itunda already had every
+    // one of these real products, but the catalog only lived on the separate
+    // BankHubScreen hub reached via a hop this screen skips (Home -> BankHubScreen
+    // -> here). Rather than restructure that navigation, this screen now ALSO
+    // renders the same real catalog rows BankHubScreen does (same ShellRow data,
+    // same real rates/callbacks -- deliberately duplicated, not extracted into a
+    // shared function, so this scoped addition can't destabilize BankHubScreen's
+    // own already-tested tab-toggled version), just flat instead of card-wrapped
+    // (FlatShellSection, not ShellSection) per the same 2026-08-21 user flat-design
+    // directive PayMoneyDetailScreen followed. BankHubScreen itself, and its own
+    // ACCOUNTS/BORROW tab toggle, are untouched.
+    onDepositToGoal: (String, String) -> Unit,
+    onOpenSacco: () -> Unit,
+    onOpenIkimina: () -> Unit,
+    onOpenMotoOwnership: () -> Unit,
+    onOpenHarvestAdvance: () -> Unit,
+    onOpenLoans: () -> Unit,
+    onOpenInvest: () -> Unit,
+    onOpenWeeklySavings: () -> Unit,
+    onOpenGrow31Savings: () -> Unit,
+    onOpenUpfrontDeposit: () -> Unit,
+    onOpenVupLoan: () -> Unit,
+    onOpenStudentLoan: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val primaryAccount by viewModel.primaryAccount.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
+    val savingsGoals by viewModel.savingsGoals.collectAsState()
+    val roundUpSettings by viewModel.roundUpSettings.collectAsState()
+    var showRoundUpDialog by remember { mutableStateOf(false) }
+    var showNewGoalDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val balance = primaryAccount?.balance ?: 0.0
     val currency = primaryAccount?.currency ?: "RWF"
     val currentUserId = primaryAccount?.userId
@@ -3076,6 +3120,140 @@ private fun AccountDetailScreen(
                         AccountLedgerRow(transaction = tx, isOutgoing = tx.senderId == currentUserId, afterBalance = afterBalance, currency = currency)
                     }
                 }
+            }
+            // Real Toss Bank product catalog, flat -- see this function's own doc
+            // comment above for why this duplicates (rather than shares) BankHubScreen's
+            // row-building. Same real rate constants that screen already uses.
+            item {
+                FlatShellSection(
+                    title = stringResource(R.string.bank_save_grow),
+                    rows = buildList {
+                        interestJar?.let { jar ->
+                            add(
+                                ShellRow(
+                                    stringResource(R.string.home_interest_jar),
+                                    if (jar.earnedTotal > 0.0) {
+                                        stringResource(R.string.home_interest_jar_rate_subtitle_total, "%.1f".format(jar.rate), "%,.0f".format(jar.earnedTotal))
+                                    } else {
+                                        stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate))
+                                    },
+                                    "RWF %,.0f".format(jar.earnedThisMonth),
+                                    Icons.Outlined.Savings, AccentOrange, onClick = onClaimInterest,
+                                )
+                            )
+                        }
+                        savingsGoals.forEach { goal ->
+                            val progressPercent = if (goal.targetAmount > 0) (goal.currentAmount / goal.targetAmount * 100).toInt() else 0
+                            add(
+                                ShellRow(
+                                    goal.name,
+                                    goal.targetDate?.takeIf { it.isNotBlank() }?.let { date ->
+                                        stringResource(R.string.home_savings_progress_by_date, "%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount), date.take(10))
+                                    } ?: stringResource(R.string.home_savings_progress, "%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
+                                    "$progressPercent%",
+                                    Icons.Outlined.Savings, AccentBlue, onClick = { onDepositToGoal(goal.id, goal.name) },
+                                )
+                            )
+                        }
+                        add(
+                            ShellRow(
+                                stringResource(R.string.savings_new_goal_title), stringResource(R.string.savings_new_goal_subtitle), "+",
+                                Icons.Outlined.Savings, AccentTeal, onClick = { showNewGoalDialog = true },
+                            )
+                        )
+                        if (savingsGoals.isNotEmpty()) {
+                            add(
+                                ShellRow(
+                                    stringResource(R.string.home_round_up_title),
+                                    if (roundUpSettings?.enabled == true) {
+                                        roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) } ?: stringResource(R.string.home_round_up_off)
+                                    } else stringResource(R.string.home_round_up_off),
+                                    if (roundUpSettings?.enabled == true) stringResource(R.string.home_round_up_on) else stringResource(R.string.home_round_up_set_up),
+                                    Icons.Outlined.CurrencyExchange, AccentPurple, onClick = { showRoundUpDialog = true },
+                                )
+                            )
+                        }
+                        add(ShellRow("26-week savings", "$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly", ">", Icons.Outlined.CalendarMonth, AccentBlue, onClick = onOpenWeeklySavings))
+                        add(ShellRow("31-day savings", "Daily streak, up to $BANK_HUB_GROW31_MAX_BONUS_RATE% bonus rate", ">", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
+                        add(ShellRow("12-month deposit", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%/yr interest paid upfront, principal locked", ">", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit))
+                        add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
+                        add(ShellRow(stringResource(R.string.home_coop_rail_sacco_title), stringResource(R.string.home_coop_rail_sacco_subtitle), ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco))
+                        add(ShellRow("Investments", "RSE stocks, bonds & fixed income, IPOs", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
+                    },
+                )
+                FlatShellSection(
+                    title = stringResource(R.string.bank_borrow),
+                    rows = listOf(
+                        ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentBlue, onClick = onOpenLoans),
+                        ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.Agriculture, AccentTeal, onClick = onOpenHarvestAdvance),
+                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.Shield, AccentBlue, onClick = onOpenVupLoan),
+                        ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
+                        ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
+                    ),
+                )
+            }
+        }
+        if (showRoundUpDialog) {
+            RoundUpSettingsDialog(
+                settings = roundUpSettings,
+                goals = savingsGoals,
+                onDismiss = { showRoundUpDialog = false },
+                onSave = { enabled, increment, goalId ->
+                    coroutineScope.launch {
+                        viewModel.setRoundUpSettings(enabled, increment, goalId)
+                        showRoundUpDialog = false
+                    }
+                },
+            )
+        }
+        if (showNewGoalDialog) {
+            NewSavingsGoalDialog(
+                onDismiss = { showNewGoalDialog = false },
+                onCreate = { name, target, monthly, date -> viewModel.createSavingsGoal(name, target, monthly, date) },
+                onCreated = { showNewGoalDialog = false },
+            )
+        }
+    }
+}
+
+// Real flat renderer for ShellRow data -- ShellSection (below) wraps every section
+// in an IdsCard; this doesn't, matching the 2026-08-21 flat-over-card-heavy user
+// directive PayMoneyDetailScreen already follows. Deliberately kept as informative
+// two-line rows (title/subtitle/action) rather than compressing to the real Toss
+// reference's terser single-line-plus-rate rows -- itunda's own real content (26-
+// week savings' actual base rate, a goal's actual progress) is worth the extra
+// line, and BankHubScreen's identical ShellRow shape already established this as
+// itunda's own real convention, not an invented one.
+@Composable
+private fun FlatShellSection(title: String, rows: List<ShellRow>) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 24.dp)) {
+        if (title.isNotEmpty()) {
+            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.padding(bottom = 4.dp))
+        }
+        rows.forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (row.onClick != null) Modifier.clickable(onClick = row.onClick) else Modifier)
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.size(38.dp).clip(RoundedCornerShape(14.dp)).background(row.iconColor),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(row.title, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    Text(row.subtitle, fontSize = 12.5.sp, color = Ids.colors.textSecondary)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(row.action, fontSize = 13.sp, color = Ids.colors.textTertiary, fontWeight = FontWeight.Medium)
+            }
+            if (index < rows.lastIndex) {
+                androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
     }
