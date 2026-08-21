@@ -1243,7 +1243,10 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   const loadAccount = () => {
     Promise.all([fetchAccounts(), fetchTransactions()])
       .then(([fetchedAccounts, txs]) => {
-        setAccount(fetchedAccounts.find((item) => item.type === 'MAIN') ?? fetchedAccounts[0] ?? null);
+        // Real Toss Bank/Toss Pay separation (2026-08-21): this is the Pay tab, so its
+        // headline balance is itunda Pay money, not the Bank account -- MAIN kept only
+        // as a defensive fallback for an account predating the real PayAccountBackfillRunner.
+        setAccount(fetchedAccounts.find((item) => item.type === 'PAY') ?? fetchedAccounts.find((item) => item.type === 'MAIN') ?? fetchedAccounts[0] ?? null);
         setAccounts(fetchedAccounts);
         setTransactions(txs);
       })
@@ -6986,10 +6989,11 @@ function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [linkedAccount, setLinkedAccount] = useState<LinkedAccount | null>(null);
   const [nearbyAds, setNearbyAds] = useState<NearbyMerchantAd[]>([]);
-  // Real swipeable funding-source selection (§240) -- defaults to MAIN, same as
-  // before this pass; explicit user selection only kicks in once they swipe.
+  // Real swipeable funding-source selection (§240) -- defaults to the real itunda Pay
+  // account (§257: this code always pays out of Pay money unless the customer
+  // explicitly swipes to a different account), MAIN kept only as a defensive fallback.
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const account = accounts.find((w) => w.id === selectedAccountId) ?? accounts.find((w) => w.type === 'MAIN') ?? accounts[0] ?? null;
+  const account = accounts.find((w) => w.id === selectedAccountId) ?? accounts.find((w) => w.type === 'PAY') ?? accounts.find((w) => w.type === 'MAIN') ?? accounts[0] ?? null;
 
   // Real auto-refresh shortly before the code's own real 2-minute expiry, matching
   // Android's identical MyPaymentCodeCard -- a customer standing at a register
@@ -7178,7 +7182,7 @@ function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accoun
                 Android's identical real-card metaphor. */}
             <div style={{ width: '32px', height: '24px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.35)' }} />
             <div>
-              <p style={{ margin: 0, color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>{w.type === 'MAIN' ? 'itunda Pay' : `itunda Pay ${w.currency}`}</p>
+              <p style={{ margin: 0, color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>{w.type === 'PAY' ? 'itunda Pay' : w.type === 'MAIN' ? 'itunda Bank' : `itunda Pay ${w.currency}`}</p>
               <p style={{ margin: '2px 0 0', color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-19-size)' }}>
                 {w.currency} {w.currency === 'RWF' ? w.availableBalance.toLocaleString() : w.availableBalance.toFixed(2)}
               </p>
