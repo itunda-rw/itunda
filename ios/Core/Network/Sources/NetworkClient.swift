@@ -1683,6 +1683,10 @@ extension NetworkClient {
     }
     public func getKeywordAlertQuietHours() async throws -> KeywordAlertQuietHoursResponse { try await get("api/v1/marketplace/keyword-alerts/quiet-hours") }
     public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/account/transactions") }
+    // Real "Toss Pay Money" detail/statement screen (user screenshots, 2026-08-21) --
+    // scoped to one account's own transactions, not getTransactionHistory's mix of
+    // every account. See AccountService.getAccountTransactionHistory on the backend.
+    public func getAccountTransactionHistory(accountId: String) async throws -> TransactionHistoryResponse { try await get("api/v1/account/\(accountId)/transactions") }
     // Real account settings screen (2026-07-12).
     public func getProfile() async throws -> ProfileResponse { try await get("api/v1/auth/profile") }
 

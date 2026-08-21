@@ -11,14 +11,20 @@ public struct TransactionDisplayItem: Identifiable {
     public let currency: String
     public let status: String
     public let isOutgoing: Bool
+    // Real "see payment history only" filter on PayMoneyDetailScreen (2026-08-21) --
+    // needs the transaction's own type ("PAYMENT" etc.), not just status/direction.
+    public let type: String
+    public let createdAt: String
 
-    public init(id: String, description: String, amount: Double, currency: String, status: String, isOutgoing: Bool) {
+    public init(id: String, description: String, amount: Double, currency: String, status: String, isOutgoing: Bool, type: String = "", createdAt: String = "") {
         self.id = id
         self.description = description
         self.amount = amount
         self.currency = currency
         self.status = status
         self.isOutgoing = isOutgoing
+        self.type = type
+        self.createdAt = createdAt
     }
 }
 
