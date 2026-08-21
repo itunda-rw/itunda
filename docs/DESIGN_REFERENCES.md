@@ -16506,3 +16506,55 @@ All 4 codebases verified: full backend test suite green, `tsc -b` +
 *Shipped: `services/backend/merchant/**` (commit `c645380b`),
 `services/micro-frontends/bank-mfe/src/{BankDashboard.tsx,
 lib/account.ts}` + `ios/App/Sources/ShopPay.swift` (commit `b262ed07`).*
+
+## 261. AuthService.kt file-size violation closed -- extracted UserVerificationService
+
+Continuing the file-size backlog: `AuthService.kt` was 16 lines over
+its real 500-line baseline. Extracted `UserVerificationService.kt` --
+email/phone OTP request+confirm (`requestEmailVerification`/
+`confirmEmailVerification`/`requestPhoneVerification`/
+`confirmPhoneVerification`/`sendPhoneVerificationCode`), a real,
+cohesive concern distinct from `AuthService`'s own core registration/
+login/session responsibility. `AuthController` was the only caller of
+either half, so the split needed no cross-module changes beyond wiring
+the new service into the controller and having
+`AuthService.register()` call `userVerificationService
+.sendPhoneVerificationCode` as a real collaborator instead of a
+private method it owned itself. `User.toPublic()` (needed by both
+classes) moved from a private `AuthService` member to a top-level
+`internal` extension function in the same file, so both classes can
+build the same real `PublicUser` shape without duplicating the mapping.
+
+`AuthService.kt`: 557 -> 400 lines, constructor 15 params -> 12 (4
+now-unused deps dropped -- `emailVerificationTokenRepository`/
+`phoneVerificationTokenRepository`/`notificationRepository`/
+`pushNotificationService` -- 1 new collaborator added). New
+`UserVerificationService.kt`: 189 lines.
+
+Test coverage split the identical way: `AuthServiceTest.kt`'s single
+35-`When` shared-fixture `Given` block had ~13 `When`s that were purely
+about verification -- moved to a new `UserVerificationServiceTest.kt`
+with its own smaller fixture (6 of the original 15 deps, not the full
+registration/login mock set). `AuthServiceTest.kt`: 800 -> 549 lines
+(well under its own 798 baseline); new file: 315 lines. Same 42 total
+test cases preserved exactly (28+14 = 42) -- nothing lost in the split,
+confirmed via the real JUnit XML test-count output, not just "it
+compiled." Full backend test suite green end to end. Fixed 3 stale
+doc-comment references to `AuthService` (now `UserVerificationService`)
+in `card`/`core` modules along the way.
+
+**Net effect on the tracked backlog**: 21 -> 20 violations (both
+`AccountService.kt`'s and `AuthService.kt`'s pairs now fully closed).
+Two small NEW violations surfaced from this same session's own
+necessary correctness work (not scope creep, and deliberately not
+force-extracted or baseline-bumped): `MainViewModel.kt` (Android, +26
+lines for the real `payAccount` StateFlow fix, §259) and
+`MerchantController.kt` (backend, +4 lines for the real
+`PaymentCodeAccountNotEligibleException` handler, §260) -- neither has
+an obvious clean extraction seam (`MainViewModel` is the sole ViewModel
+for the whole `:app` module, no existing split precedent; a 577-line
+REST controller isn't worth fragmenting over 4 lines), so both are
+named, honest follow-ups alongside the rest of the backlog rather than
+selectively excepted.
+
+*Shipped: `services/backend/auth/**` (commit `7c7dfda7`).*
