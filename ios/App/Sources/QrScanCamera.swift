@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import CoreImage.CIFilterBuiltins
 
 // Real camera QR scanning (Pay-parity port, §237) -- first camera capability
 // anywhere in this app target (see the memory this closes: 9 days after Android's
@@ -24,6 +25,22 @@ func parseQrParam(_ raw: String, key: String) -> String {
         }
     }
     return raw.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+/// Real QR generation for the customer-presented payment code (`MyPaymentCodeCard`
+/// in ShopPay.swift) -- Core Image's native `CIFilter.qrCodeGenerator`, no
+/// third-party library, the generation-side counterpart to this file's own
+/// scanning capability above.
+func generateQrImage(from string: String, size: CGFloat) -> UIImage? {
+    let filter = CIFilter.qrCodeGenerator()
+    filter.message = Data(string.utf8)
+    filter.correctionLevel = "M"
+    guard let outputImage = filter.outputImage else { return nil }
+    let scale = size / outputImage.extent.width
+    let scaled = outputImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+    let context = CIContext()
+    guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+    return UIImage(cgImage: cgImage)
 }
 
 struct QrScanCameraView: UIViewControllerRepresentable {

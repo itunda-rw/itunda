@@ -15314,3 +15314,44 @@ port of this exact reveal-QR card (§237 only closed the scanning half there).
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/shopping.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 239. Real customer "My code" reveal-QR ported to iOS -- the itunda Pay/KakaoPay-parity thread now matches on the core mechanism across all 3 platforms
+
+Closed the last named iOS gap from §237/§238: ported `MyPaymentCodeCard` to
+`ShopPay.swift`, same scope-down as bank-mfe's own port (§238) -- the lock-gated
+reveal, auto-refreshing QR, live countdown, and real wallet balance, deliberately
+without Android's supplementary nearby-ads/linked-account rows.
+
+Added `generateCustomerPaymentCode` to `NetworkClient.swift` (`POST /api/v1/
+merchant/pay/customer-code`, no Idempotency-Key -- mints a code, doesn't move
+money, matching bank-mfe's identical client) plus the `CustomerPaymentCodeResponse`/
+`GenerateCustomerPaymentCodeRequest` DTOs. QR image generation uses Core Image's
+native `CIFilter.qrCodeGenerator` (`QrScanCamera.swift`'s new `generateQrImage`
+helper) -- no third-party library, the generation-side counterpart to that file's
+own scanning capability, same discipline. Encodes the RAW code string, no
+`itunda://...` wrapping, matching the real merchant-scanner contract every
+platform now shares. Date parsing for the code's `expiresAt` reuses the
+established double-fallback pattern already in this codebase (`ISO8601DateFormatter`
+first, `isoDateFormatterFractional` -- a shared formatter already defined in
+`EatsScreen.swift` -- as fallback) rather than inventing a new one.
+
+Also fixed a second stale "this app has no scanner" comment on
+`NetworkClient.collectPayment`, the network-layer twin of the one already fixed
+in `ShopPay.swift` at §237.
+
+**Verification**: `xcodebuild` (full `ItundaApp` scheme) BUILD SUCCEEDED. Real
+Simulator install + launch + screenshot again confirmed no crash reaching login
+(the two most likely regression points -- new DTOs/network method and the new
+Core Image import -- both compile clean). Same honest caveat as §237: no
+interactive click-through into the reveal/QR flow itself, no visible Simulator
+window for UI automation in this headless environment.
+
+**This closes the itunda Pay/KakaoPay-parity thread's core mechanism across all 3
+platforms** -- customer code reveal + QR, camera scanning, Face Pay, static QR all
+now exist on web/Android/iOS alike. Only the swipeable wallet-card carousel
+(Android's own round 2, still Android-only) remains open in
+[[project_itunda_pay_kakaopay_parity]], and it's now explicitly a lower-priority
+visual nicety rather than a missing payment mechanism.
+
+*Shipped: `ios/App/Sources/ShopPay.swift` + `ios/App/Sources/QrScanCamera.swift` +
+`ios/Core/Network/Sources/NetworkClient.swift`.*

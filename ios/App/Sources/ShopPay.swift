@@ -42,6 +42,7 @@ struct PayAMerchantSection: View {
             .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         } else {
             VStack(alignment: .leading, spacing: 10) {
+                MyPaymentCodeCard()
                 FacePaySettingsCard(enrolled: facePayEnrolled, onChanged: { Task { await loadFacePayStatus() } })
                 PayByCodeCard(facePayEnrolled: facePayEnrolled ?? false, onPaid: { paymentResult = $0 })
                 PayByStaticQrCard(onPaid: { paymentResult = $0 })
@@ -133,6 +134,124 @@ func formatTimeDealCountdown(_ endsAt: String) -> String {
 /// exactly: a non-Face-Pay code with real eligible coupons stops at a preview step
 /// (merchant/amount + coupon picker) before the actual collect() call; Face Pay and a
 /// code with zero eligible coupons both skip straight to a direct pay.
+// Real customer-presented payment code (Pay-parity port, §239) -- see
+// CustomerPaymentCodeResponse's own doc comment for the sourced contract. Android
+// shipped this real KakaoPay/Toss Pay "My code" reveal-QR flow 2026-08-11
+// (direct user-provided screenshot comparison); bank-mfe ported it 2026-08-21
+// (§238); this closes the same gap on iOS. QR generation uses Core Image's native
+// `CIFilter.qrCodeGenerator` -- no third-party library, same "don't depend on
+// third-party if it's not open source" discipline `QrScanCamera.swift` already
+// establishes for scanning. Deliberately NOT porting Android's nearby-merchant-
+// ads/linked-account rows -- supplementary display additions, not the core
+// mechanism, and adding more to this screen isn't the priority right now (see
+// PayHub's own identical scope-down on bank-mfe, §238).
+struct MyPaymentCodeCard: View {
+    @State private var revealed = false
+    @State private var code: CustomerPaymentCodeResponse?
+    @State private var qrImage: UIImage?
+    @State private var error: String?
+    @State private var secondsLeft = 0
+    @State private var wallet: Wallet?
+    @State private var refreshTask: Task<Void, Never>?
+    @State private var countdownTask: Task<Void, Never>?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14).fill(Color(.tertiarySystemBackground))
+                if !revealed {
+                    // Real reveal gate, matching Android's identical 2026-08-13
+                    // KakaoPay-researched fix: the code requires an explicit tap
+                    // before it shows, protecting a customer whose unlocked phone
+                    // someone else picks up.
+                    Button(action: { revealed = true; startRefreshLoop() }) {
+                        VStack(spacing: 14) {
+                            Circle().fill(Color.white).frame(width: 56, height: 56)
+                                .overlay(Image(systemName: "lock.fill").foregroundColor(IDS.Colors.textSecondary))
+                            VStack(spacing: 2) {
+                                Text("Your payment code is hidden").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text("Protects you if someone else has your phone").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
+                            Text("Tap to show").bold().foregroundColor(.white)
+                                .padding(.horizontal, 28).padding(.vertical, 10)
+                                .background(IDS.Colors.brand).cornerRadius(999)
+                        }
+                        .padding(20)
+                    }
+                } else if let qrImage {
+                    VStack(spacing: 8) {
+                        Image(uiImage: qrImage)
+                            .interpolation(.none)
+                            .resizable()
+                            .frame(width: 180, height: 180)
+                            .cornerRadius(8)
+                        Text(secondsLeft > 0 ? "Refreshes in \(secondsLeft)s" : "Refreshing…")
+                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    .padding(20)
+                } else if let error {
+                    Text(error).font(.caption).foregroundColor(.red).padding(20)
+                } else {
+                    Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(20)
+                }
+            }
+            .frame(minHeight: 220)
+
+            if let wallet {
+                HStack {
+                    Text("itunda Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Spacer()
+                    Text("\(Int(wallet.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                }
+            }
+        }
+        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .task {
+            wallet = try? await NetworkClient.shared.getWallets().wallets.first(where: { $0.type == "MAIN" })
+        }
+        .onDisappear {
+            refreshTask?.cancel()
+            countdownTask?.cancel()
+        }
+    }
+
+    private func parseExpiry(_ raw: String) -> Date {
+        ISO8601DateFormatter().date(from: raw) ?? isoDateFormatterFractional.date(from: raw) ?? Date()
+    }
+
+    private func startRefreshLoop() {
+        refreshTask?.cancel()
+        refreshTask = Task {
+            while !Task.isCancelled {
+                do {
+                    let result = try await NetworkClient.shared.generateCustomerPaymentCode(walletId: wallet?.id)
+                    code = result
+                    error = nil
+                    qrImage = generateQrImage(from: result.code, size: 400)
+                    let waitSeconds = max(parseExpiry(result.expiresAt).timeIntervalSinceNow - 10, 5)
+                    try await Task.sleep(nanoseconds: UInt64(waitSeconds * 1_000_000_000))
+                } catch {
+                    if !Task.isCancelled { self.error = "Could not load your payment code." }
+                    return
+                }
+            }
+        }
+        startCountdown()
+    }
+
+    private func startCountdown() {
+        countdownTask?.cancel()
+        countdownTask = Task {
+            while !Task.isCancelled {
+                if let code {
+                    secondsLeft = max(Int(parseExpiry(code.expiresAt).timeIntervalSinceNow), 0)
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
+    }
+}
+
 struct PayByCodeCard: View {
     let facePayEnrolled: Bool
     let onPaid: (CollectPaymentResultDto) -> Void

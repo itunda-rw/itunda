@@ -3658,6 +3658,24 @@ public struct MerchantCouponViewDto: Decodable, Identifiable {
     public var id: String { coupon.id }
 }
 public struct MerchantCouponsForCustomerResponse: Decodable { public let success: Bool; public let coupons: [MerchantCouponPreviewDto] }
+
+// Real customer-presented payment code (Pay-parity port, §239) -- see
+// MerchantService.generateCustomerPaymentCode's own doc comment, and bank-mfe's
+// lib/shopping.ts generateCustomerPaymentCode for the identical real contract this
+// mirrors: a short-lived (2-min), single-use, opaque code a merchant scans and
+// charges. The QR a caller builds from `code` must encode the RAW string -- no
+// `itunda://...` URL wrapping -- matching exactly what the real merchant-side
+// scanner passes through unparsed.
+public struct GenerateCustomerPaymentCodeRequest: Encodable {
+    public let walletId: String?
+    public init(walletId: String? = nil) { self.walletId = walletId }
+}
+public struct CustomerPaymentCodeResponse: Decodable {
+    public let success: Bool
+    public let code: String
+    public let expiresAt: String
+    public let walletId: String?
+}
 public struct PaymentIntentPreviewResponse: Decodable {
     public let success: Bool
     public let merchantId: String
@@ -5037,13 +5055,19 @@ extension NetworkClient {
         try await get("api/v1/merchant/follows?size=200")
     }
 
-    // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
-    // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/
-    // payByStaticQr and Android's ApiService.kt exactly. This is the first iOS client for
-    // either -- previously neither the dynamic per-sale flow nor the static QR flow
-    // existed anywhere on this native consumer app.
+    // Real "pay a merchant", mirrors bank-mfe's lib/shopping.ts collectPayment/
+    // payByStaticQr and Android's ApiService.kt exactly. Real camera QR scanning
+    // shipped into this app's PayByCodeCard/PayByStaticQrCard §237 (this comment used
+    // to say "this app has no scanner" -- gone stale the moment that landed); manual
+    // entry is the honest fallback alongside it now, not the only path.
     public func collectPayment(intentId: String, couponId: String? = nil) async throws -> CollectPaymentResultDto {
         try await authenticatedPost("api/v1/merchant/collect/\(intentId)", body: CollectPaymentRequest(couponId: couponId), idempotencyKey: UUID().uuidString)
+    }
+    // Real customer-presented payment code -- see CustomerPaymentCodeResponse's own
+    // doc comment. No Idempotency-Key: this doesn't move money, it just mints a
+    // short-lived code (matches bank-mfe's identical generateCustomerPaymentCode).
+    public func generateCustomerPaymentCode(walletId: String? = nil) async throws -> CustomerPaymentCodeResponse {
+        try await authenticatedPost("api/v1/merchant/pay/customer-code", body: GenerateCustomerPaymentCodeRequest(walletId: walletId))
     }
     // Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
     // PayByCodeCard's own doc comment previously named. bank-mfe/Android already have
