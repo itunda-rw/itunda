@@ -145,6 +145,27 @@ element that duplicates an existing shared component's job, use the shared compo
 real, tracked, NOT-yet-fixed backlog — don't add to it, and prefer converting one when
 you're already touching that screen for another reason.
 
+## 10. Flat over card-heavy (Toss, direct 2026-08-21 user correction)
+
+Real Toss Pay Money detail screen (user-provided screenshots, 2026-08-21): balance,
+Send/Add money buttons, and the transaction statement all sit directly on the page
+background — no `itunda-card` wrapper anywhere on that screen. Sections are separated
+by a thin rule or a bottom border on each row, not by boxing content in cards. Direct
+user instruction from the same screenshot: "that's how I want our all designs to be
+(flat and beautiful) like that." itunda's own screens lean heavily on `itunda-card`
+(the real Toss reference itself is far more selective about it — cards for genuinely
+separable, tappable *modules* like a swipeable account carousel, not for every section
+of a single linear screen).
+
+**How to apply**: on a new screen, default to flat sections (page background + a rule/
+border between them) unless the content is a genuinely separate, self-contained module
+(a carousel, a distinct product entry point). Don't wrap a screen's balance headline,
+primary action buttons, or a list in `itunda-card` reflexively. This is a direction for
+new/touched screens, not a retroactive sweep — itunda's existing card-heavy screens
+(most of `BankDashboard.tsx` and its Android/iOS equivalents) haven't been converted;
+convert one when you're already touching that screen for another reason, same
+discipline as rule 9's `IdsButton` backlog.
+
 ## Standing checklist before shipping a new screen
 
 1. Does it do more than one job? → apply rule 1.
@@ -155,3 +176,5 @@ you're already touching that screen for another reason.
 6. Is there a bare "no X yet" or unhumanized backend value? → apply rules 6-7.
 7. Is there a hardcoded hex/px instead of a token, or a raw `<button>`/duplicated
    component instead of the shared one? → apply rules 8-9.
+8. Is a linear screen's content boxed in `itunda-card` out of habit rather than because
+   it's a genuinely separate module? → apply rule 10.
