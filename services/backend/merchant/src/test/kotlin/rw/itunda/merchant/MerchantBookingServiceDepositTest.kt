@@ -68,6 +68,10 @@ class MerchantBookingServiceDepositTest : BehaviorSpec({
         every { bookingDepositRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        // Real default: no top-up needed, the account passed in already covers the
+        // deposit -- the short-balance test below overrides this with a more specific
+        // stub for its own exact (userId, account, amount) triple.
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
             merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
@@ -104,7 +108,7 @@ class MerchantBookingServiceDepositTest : BehaviorSpec({
                 val payerLeg = legsSlot.captured.first { it.accountId == "account_customer" }
                 payerLeg.amount shouldBe BigDecimal("8000")
                 payerLeg.direction shouldBe LedgerDirection.DEBIT
-                verify(exactly = 0) { autoTopUpService.topUpPayFromMain(any(), any(), any()) }
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("customer_1", payerAccount, BigDecimal("8000")) }
             }
         }
 
@@ -112,17 +116,14 @@ class MerchantBookingServiceDepositTest : BehaviorSpec({
             val shortAccount = account("account_customer_2", "customer_2", availableBalance = BigDecimal("1000"))
             val toppedUpAccount = account("account_customer_2", "customer_2", availableBalance = BigDecimal("10000"))
             every { accountRepository.findByUserIdAndType("customer_2", AccountType.PAY) } returns shortAccount
-            every { accountRepository.findById("account_customer_2") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("customer_2", "account_customer_2", BigDecimal("7000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 7000 RWF from itunda Bank")
+            every { autoTopUpService.ensureSufficientPayBalance("customer_2", shortAccount, BigDecimal("8000")) } returns toppedUpAccount
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_hold2", emptyList())
 
             service.book("customer_2", "merchant_1", "service_1", futureDate, LocalTime.of(10, 0))
 
-            Then("it auto-tops-up from itunda Bank for exactly the real shortfall, then holds the deposit") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("customer_2", "account_customer_2", BigDecimal("7000")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+            Then("it calls the shared top-up helper for exactly the real deposit amount, then holds the deposit") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("customer_2", shortAccount, BigDecimal("8000")) }
                 legsSlot.captured.first { it.accountId == "account_customer_2" }.amount shouldBe BigDecimal("8000")
             }
         }

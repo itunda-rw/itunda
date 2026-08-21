@@ -2,6 +2,7 @@ package rw.itunda.account
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LinkedAccountStatus
@@ -334,5 +335,35 @@ class AutoTopUpService(
             ),
         )
         return AutoTopUpTriggerResult(true, "Topped up $shortfallAmount ${mainAccount.currency} from your itunda Bank account")
+    }
+
+    /**
+     * Real Toss Bank/Toss Pay separation (2026-08-21) -- the shared "auto-fund the
+     * shortfall at the moment of payment" shape every real merchant-collection call
+     * site duplicated inline after the sweep in docs/DESIGN_REFERENCES.md §257
+     * (MerchantService.collect/chargeByCustomerCode, MerchantBillingChargeExecutor,
+     * MerchantBookingService.holdDeposit, commerce OrderService.placeOrder,
+     * EatsOrderService/DineInOrderService.placeOrder, GiftVoucherService
+     * .purchaseVoucher). Extracted here once each call site had already proven the
+     * exact same 10-line block was correct, rather than duplicating it a 7th+ time --
+     * tries [topUpPayFromMain] first (itunda's own internal, zero-external-risk
+     * transfer), then [topUpShortfall] (an external linked bank/card) if that's not
+     * configured/available. Returns the account re-read fresh if a top-up actually
+     * landed, or the original (still-short) account unchanged otherwise -- the caller's
+     * own real ledger post is always what surfaces a genuine remaining shortfall as
+     * [rw.itunda.core.ledger.InsufficientFundsException], not this method.
+     */
+    fun ensureSufficientPayBalance(userId: String, account: Account, requiredAmount: BigDecimal): Account {
+        if (account.availableBalance >= requiredAmount) return account
+        val shortfall = requiredAmount.subtract(account.availableBalance)
+        var topUpResult = topUpPayFromMain(userId, account.id, shortfall)
+        if (!topUpResult.triggered) {
+            topUpResult = topUpShortfall(userId, account.id, shortfall)
+        }
+        return if (topUpResult.triggered) {
+            accountRepository.findById(account.id).orElse(account)
+        } else {
+            account
+        }
     }
 }

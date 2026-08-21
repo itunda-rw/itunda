@@ -757,16 +757,7 @@ class MerchantService(
         // Bank balance -- safe to call synchronously here, before this payment's own
         // ledger legs are posted, same reasoning P2pService.sendDirect's own call site
         // already establishes.
-        if (payerAccount.availableBalance < chargeAmount) {
-            val shortfall = chargeAmount.subtract(payerAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(payerUserId, payerAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(payerUserId, payerAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                payerAccount = accountRepository.findById(payerAccount.id).orElseThrow { MerchantNoAccountException("No itunda Pay money found for this account") }
-            }
-        }
+        payerAccount = autoTopUpService.ensureSufficientPayBalance(payerUserId, payerAccount, chargeAmount)
 
         // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee waiver) -- see
         // MerchantFeeWaiverService's own doc comment. Null means this merchant never
@@ -1011,15 +1002,8 @@ class MerchantService(
         var payerAccount = paymentCode.accountId?.let { accountRepository.findById(it).orElse(null) }
             ?: accountRepository.findByUserIdAndType(payerUserId, AccountType.PAY)
             ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
-        if (paymentCode.accountId == null && payerAccount.availableBalance < amount) {
-            val shortfall = amount.subtract(payerAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(payerUserId, payerAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(payerUserId, payerAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                payerAccount = accountRepository.findById(payerAccount.id).orElseThrow { MerchantNoAccountException("No itunda Pay money found for this account") }
-            }
+        if (paymentCode.accountId == null) {
+            payerAccount = autoTopUpService.ensureSufficientPayBalance(payerUserId, payerAccount, amount)
         }
         val merchantAccount = accountRepository.findById(merchant.accountId)
             .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }

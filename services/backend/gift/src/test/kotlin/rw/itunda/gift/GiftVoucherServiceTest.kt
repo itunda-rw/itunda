@@ -56,7 +56,10 @@ class GiftVoucherServiceTest : BehaviorSpec({
         messagingService: MessagingService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
-        autoTopUpService: rw.itunda.account.AutoTopUpService = mockk(relaxed = true),
+        // Real default: no top-up needed, the account passed in already covers the
+        // amount -- the short-balance test overrides this with its own explicit mock.
+        autoTopUpService: rw.itunda.account.AutoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+            .also { every { it.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() } },
     ) = GiftVoucherService(
         giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository,
         userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine,
@@ -125,15 +128,12 @@ class GiftVoucherServiceTest : BehaviorSpec({
             val shortAccount = account("account_purchaser", "user_purchaser", "1000")
             val toppedUpAccount = account("account_purchaser", "user_purchaser", "10000")
             every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.PAY) } returns shortAccount
-            every { accountRepository.findById("account_purchaser") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("user_purchaser", "account_purchaser", BigDecimal("2000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 2000 RWF from itunda Bank")
+            every { autoTopUpService.ensureSufficientPayBalance("user_purchaser", shortAccount, BigDecimal("3000")) } returns toppedUpAccount
 
             val voucher = svcWithTopUp.purchaseVoucher("user_purchaser", "+250788000002", "merchant_1", "product_1", null)
 
-            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the purchase") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("user_purchaser", "account_purchaser", BigDecimal("2000")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+            Then("it calls the shared top-up helper for exactly this voucher's real amount, then completes the purchase") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("user_purchaser", shortAccount, BigDecimal("3000")) }
                 voucher.status shouldBe GiftVoucherStatus.ACTIVE
             }
         }

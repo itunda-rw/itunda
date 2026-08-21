@@ -90,6 +90,10 @@ class MerchantServiceTest : BehaviorSpec({
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
         val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        // Real default: no top-up needed, the account passed in already covers the
+        // charge -- individual short-balance tests below override this with a more
+        // specific stub for their own exact (userId, account, amount) triple.
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = MerchantService(merchantRepository, paymentIntentRepository, accountRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService, autoTopUpService)
 
         val ownerAccount = account("account_merchant", "owner_1")
@@ -349,7 +353,10 @@ class MerchantServiceTest : BehaviorSpec({
         // Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at
         // payment time) wired into merchant payment collection -- same real mechanic
         // P2pService.sendDirect already uses for P2P transfers, previously missing from
-        // this app's actual highest-traffic real money-moving path.
+        // this app's actual highest-traffic real money-moving path. The real two-tier
+        // Bank-then-external fallback logic itself is now tested directly at
+        // AutoTopUpServiceTest -- this only proves collect() calls the shared
+        // ensureSufficientPayBalance correctly and plugs its result into the payment.
         When("collecting a payment where the payer's balance is short, but auto top-up covers it") {
             val shortAccount = account("account_short", "payer_short").also { it.availableBalance = BigDecimal("2000") }
             val toppedUpAccount = account("account_short", "payer_short").also { it.availableBalance = BigDecimal("10000") }
@@ -362,18 +369,16 @@ class MerchantServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findByUserIdAndType("payer_short", AccountType.PAY) } returns shortAccount
             every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
-            every { accountRepository.findById("account_short") } returns Optional.of(toppedUpAccount)
             every { notificationRepository.save(any()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
                 LedgerPostResult("ledgertxn_short", emptyList())
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
-            every { autoTopUpService.topUpShortfall("payer_short", "account_short", BigDecimal("3000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 3000 RWF to cover the real shortfall")
+            every { autoTopUpService.ensureSufficientPayBalance("payer_short", shortAccount, BigDecimal("5000")) } returns toppedUpAccount
 
             val result = service.collect("payer_short", "pi_short")
 
-            Then("it calls topUpShortfall for exactly the real gap, re-reads the account, and completes the payment") {
-                verify(exactly = 1) { autoTopUpService.topUpShortfall("payer_short", "account_short", BigDecimal("3000")) }
+            Then("it calls the shared top-up helper for exactly this payment's real amount and completes the payment") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("payer_short", shortAccount, BigDecimal("5000")) }
                 result["status"] shouldBe "COMPLETED"
                 val payerLeg = legsSlot.captured.first { it.accountId == "account_short" }
                 payerLeg.amount shouldBe BigDecimal("5000")
@@ -390,8 +395,7 @@ class MerchantServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findByUserIdAndType("payer_short2", AccountType.PAY) } returns shortAccount
             every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
-            every { autoTopUpService.topUpShortfall("payer_short2", "account_short2", BigDecimal("3000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(false, "No auto top-up setting configured for this account")
+            every { autoTopUpService.ensureSufficientPayBalance("payer_short2", shortAccount, BigDecimal("5000")) } returns shortAccount
             every { ledgerService.postLedgerTransaction(any(), any()) } throws
                 rw.itunda.core.ledger.InsufficientFundsException("Insufficient available balance for this transfer")
 
@@ -438,90 +442,9 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
-        // Real Toss Bank/Toss Pay separation (2026-08-21) -- chargeByCustomerCode (the
-        // merchant-scans-customer "My code" flow) still defaulted to a direct
-        // AccountType.MAIN debit after collect() (the customer-scans-merchant flow) was
-        // already fixed to use PAY money with auto-topup, a real inconsistency between
-        // two sibling payment-collection methods. Previously zero test coverage existed
-        // for chargeByCustomerCode at all.
-        When("charging a customer's presented code with no explicit account selected and sufficient Pay money") {
-            val payerPayAccount = account("account_paycode_1", "payer_code_1").also { it.type = AccountType.PAY }
-            val paymentCode = CustomerPaymentCode(
-                id = "cpc_1", userId = "payer_code_1", code = "code_1", expiresAt = Instant.now().plusSeconds(600),
-            )
-            val legsSlot = slot<List<LedgerLeg>>()
-            every { customerPaymentCodeRepository.findByCode("code_1") } returns paymentCode
-            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-            every { accountRepository.findByUserIdAndType("payer_code_1", AccountType.PAY) } returns payerPayAccount
-            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
-            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
-                LedgerPostResult("ledgertxn_code_1", emptyList())
-
-            val result = service.chargeByCustomerCode("owner_1", "code_1", BigDecimal("3000"))
-
-            Then("it charges the real itunda Pay account, not Bank, and never calls auto top-up") {
-                result["status"] shouldBe "COMPLETED"
-                legsSlot.captured.first { it.accountId == "account_paycode_1" }.amount shouldBe BigDecimal("3000")
-                verify(exactly = 0) { autoTopUpService.topUpPayFromMain(any(), any(), any()) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
-            }
-        }
-
-        When("charging a customer's presented code with no explicit account and Pay money is short") {
-            val shortPayAccount = account("account_paycode_2", "payer_code_2")
-                .also { it.type = AccountType.PAY; it.availableBalance = BigDecimal("1000") }
-            val toppedUpAccount = account("account_paycode_2", "payer_code_2")
-                .also { it.type = AccountType.PAY; it.availableBalance = BigDecimal("10000") }
-            val paymentCode = CustomerPaymentCode(
-                id = "cpc_2", userId = "payer_code_2", code = "code_2", expiresAt = Instant.now().plusSeconds(600),
-            )
-            val legsSlot = slot<List<LedgerLeg>>()
-            every { customerPaymentCodeRepository.findByCode("code_2") } returns paymentCode
-            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-            every { accountRepository.findByUserIdAndType("payer_code_2", AccountType.PAY) } returns shortPayAccount
-            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
-            every { accountRepository.findById("account_paycode_2") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("payer_code_2", "account_paycode_2", BigDecimal("2000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 2000 RWF from itunda Bank")
-            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
-                LedgerPostResult("ledgertxn_code_2", emptyList())
-
-            val result = service.chargeByCustomerCode("owner_1", "code_2", BigDecimal("3000"))
-
-            Then("it auto-tops-up from itunda Bank first, then completes the payment") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("payer_code_2", "account_paycode_2", BigDecimal("2000")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
-                result["status"] shouldBe "COMPLETED"
-                legsSlot.captured.first { it.accountId == "account_paycode_2" }.amount shouldBe BigDecimal("3000")
-            }
-        }
-
-        When("charging a customer's presented code where the customer explicitly picked a specific account") {
-            val explicitAccount = account("account_explicit", "payer_code_3")
-                .also { it.type = AccountType.FOREIGN_CURRENCY; it.availableBalance = BigDecimal("500") }
-            val paymentCode = CustomerPaymentCode(
-                id = "cpc_3", userId = "payer_code_3", code = "code_3", expiresAt = Instant.now().plusSeconds(600),
-                accountId = "account_explicit",
-            )
-            every { customerPaymentCodeRepository.findByCode("code_3") } returns paymentCode
-            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-            every { accountRepository.findById("account_explicit") } returns Optional.of(explicitAccount)
-            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
-            every { ledgerService.postLedgerTransaction(any(), any()) } throws
-                rw.itunda.core.ledger.InsufficientFundsException("Insufficient available balance for this transfer")
-
-            Then("no auto top-up is attempted -- the customer's explicit account choice is charged directly, even if short") {
-                try {
-                    service.chargeByCustomerCode("owner_1", "code_3", BigDecimal("3000"))
-                    error("expected InsufficientFundsException")
-                } catch (e: rw.itunda.core.ledger.InsufficientFundsException) {
-                    // expected
-                }
-                verify(exactly = 0) { autoTopUpService.topUpPayFromMain(any(), any(), any()) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
-                verify(exactly = 0) { accountRepository.findByUserIdAndType("payer_code_3", AccountType.PAY) }
-            }
-        }
+        // chargeByCustomerCode's own Toss Bank/Toss Pay separation coverage lives in
+        // MerchantChargeByCustomerCodeTest.kt, not here -- kept out of this
+        // already-oversized file to avoid growing its real baseline further.
 
         When("collecting an already-completed payment intent") {
             val paidIntent = PaymentIntent(

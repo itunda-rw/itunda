@@ -64,7 +64,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
-        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, accountRepository, autoTopUpService)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, autoTopUpService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
             accountRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
@@ -125,16 +126,13 @@ class MerchantBillingServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findByUserIdAndType("customer_short", AccountType.PAY) } returns shortPayAccount
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findById("account_customer_short") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("customer_short", "account_customer_short", BigDecimal("4000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 4000 RWF from itunda Bank")
+            every { autoTopUpService.ensureSufficientPayBalance("customer_short", shortPayAccount, BigDecimal("5000")) } returns toppedUpAccount
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("txn_topup", emptyList())
 
             val subscription = service.subscribe("customer_short", "plan_1")
 
-            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the charge") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("customer_short", "account_customer_short", BigDecimal("4000")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+            Then("it calls the shared top-up helper for exactly this plan's real amount, then completes the charge") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("customer_short", shortPayAccount, BigDecimal("5000")) }
                 subscription.status shouldBe MerchantBillingSubscriptionStatus.ACTIVE
             }
         }
@@ -210,7 +208,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
-        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, accountRepository, autoTopUpService)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService, autoTopUpService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
             accountRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,

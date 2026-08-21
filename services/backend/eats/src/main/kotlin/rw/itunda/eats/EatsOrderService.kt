@@ -562,16 +562,7 @@ class EatsOrderService(
         // "platform pays" mechanic for that discount specifically.
         val buyerCharge = totalAmount.subtract(promotionDiscount).subtract(pickupDiscount)
 
-        if (buyerAccount.availableBalance < buyerCharge) {
-            val shortfall = buyerCharge.subtract(buyerAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(buyerId, buyerAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(buyerId, buyerAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                buyerAccount = accountRepository.findById(buyerAccount.id).orElse(buyerAccount)
-            }
-        }
+        buyerAccount = autoTopUpService.ensureSufficientPayBalance(buyerId, buyerAccount, buyerCharge)
 
         val result = ledgerService.postLedgerTransaction(
             buyerAccount.currency,

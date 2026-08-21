@@ -68,6 +68,7 @@ class DineInOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
             menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
@@ -122,18 +123,15 @@ class DineInOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
-            every { accountRepository.findById("account_buyer_short") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 5000 RWF from itunda Bank")
+            every { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6000")) } returns toppedUpAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
 
             service.placeOrder("buyer_short", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_1", 2)))
 
-            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the order") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+            Then("it calls the shared top-up helper for exactly this order's real total, then completes the order") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6000")) }
                 legsSlot.captured.first { it.accountId == "account_buyer_short" }.amount shouldBe BigDecimal("6000")
             }
         }
@@ -280,6 +278,7 @@ class DineInOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
             menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,

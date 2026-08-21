@@ -203,18 +203,12 @@ class MerchantBookingService(
         // (held, then paid out or refunded), same as QR/code payment -- draws from the
         // customer's itunda Pay money, auto-topped from Bank (then an external linked
         // account) if short.
-        var customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.PAY)
-            ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
-        if (customerAccount.availableBalance < amount) {
-            val shortfall = amount.subtract(customerAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(customerId, customerAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(customerId, customerAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                customerAccount = accountRepository.findById(customerAccount.id).orElse(customerAccount)
-            }
-        }
+        val customerAccount = autoTopUpService.ensureSufficientPayBalance(
+            customerId,
+            accountRepository.findByUserIdAndType(customerId, AccountType.PAY)
+                ?: throw MerchantNoAccountException("No itunda Pay money found for this account"),
+            amount,
+        )
         val merchantAccount = accountRepository.findById(merchant.accountId)
             .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
         val fee = amount.multiply(DEPOSIT_FEE_RATE).setScale(2, RoundingMode.HALF_UP)

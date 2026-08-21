@@ -18,7 +18,6 @@ import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
-import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
@@ -48,7 +47,6 @@ class MerchantBillingChargeExecutor(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
-    private val accountRepository: AccountRepository,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingChargeExecutor::class.java)
@@ -75,17 +73,7 @@ class MerchantBillingChargeExecutor(
         // through to a real, honest InsufficientFundsException. `customerAccount` is
         // already resolved to the customer's PAY account by both real callers
         // (MerchantBillingService.subscribe/chargeOne).
-        var resolvedCustomerAccount = customerAccount
-        if (resolvedCustomerAccount.availableBalance < plan.amount) {
-            val shortfall = plan.amount.subtract(resolvedCustomerAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(subscription.customerId, resolvedCustomerAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(subscription.customerId, resolvedCustomerAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                resolvedCustomerAccount = accountRepository.findById(resolvedCustomerAccount.id).orElse(resolvedCustomerAccount)
-            }
-        }
+        val resolvedCustomerAccount = autoTopUpService.ensureSufficientPayBalance(subscription.customerId, customerAccount, plan.amount)
         val fee = plan.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = plan.amount.subtract(fee)
         val result = ledgerService.postLedgerTransaction(

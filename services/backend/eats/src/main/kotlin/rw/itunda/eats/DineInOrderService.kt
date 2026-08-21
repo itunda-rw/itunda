@@ -219,16 +219,7 @@ class DineInOrderService(
         val netToRestaurant = itemsSubtotal.subtract(platformFee)
         val totalAmount = itemsSubtotal
 
-        if (buyerAccount.availableBalance < totalAmount) {
-            val shortfall = totalAmount.subtract(buyerAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(buyerId, buyerAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(buyerId, buyerAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                buyerAccount = accountRepository.findById(buyerAccount.id).orElse(buyerAccount)
-            }
-        }
+        buyerAccount = autoTopUpService.ensureSufficientPayBalance(buyerId, buyerAccount, totalAmount)
 
         val result = ledgerService.postLedgerTransaction(
             buyerAccount.currency,

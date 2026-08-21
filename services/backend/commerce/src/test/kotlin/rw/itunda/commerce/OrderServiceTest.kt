@@ -78,6 +78,7 @@ class OrderServiceTest : BehaviorSpec({
         val affiliateService = mockk<AffiliateService>()
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
@@ -284,9 +285,7 @@ class OrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
-            every { accountRepository.findById("account_buyer_short") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 5000 RWF from itunda Bank")
+            every { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6000")) } returns toppedUpAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
@@ -294,9 +293,8 @@ class OrderServiceTest : BehaviorSpec({
 
             service.placeOrder("buyer_short", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "KG 123 St")
 
-            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the order") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+            Then("it calls the shared top-up helper for exactly this order's real total, then completes the order") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6000")) }
                 legsSlot.captured.first { it.accountId == "account_buyer_short" }.amount shouldBe BigDecimal("6000")
             }
         }
@@ -510,6 +508,7 @@ class OrderServiceTest : BehaviorSpec({
         val affiliateService = mockk<AffiliateService>()
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
@@ -705,6 +704,7 @@ class OrderServiceTest : BehaviorSpec({
         val affiliateService = mockk<AffiliateService>()
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,

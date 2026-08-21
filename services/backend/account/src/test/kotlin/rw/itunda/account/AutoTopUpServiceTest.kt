@@ -415,6 +415,71 @@ class AutoTopUpServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real Toss Bank/Toss Pay separation (2026-08-21) -- topUpPayFromMain/
+    // ensureSufficientPayBalance had zero direct test coverage until now (only
+    // exercised indirectly through every consumer's own mocked-collaborator tests,
+    // e.g. MerchantServiceTest). See docs/DESIGN_REFERENCES.md §257.
+    Given("real itunda Pay money auto-funded from a real itunda Bank account") {
+        val accountAutoTopUpSettingRepository = mockk<AccountAutoTopUpSettingRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>()
+        val linkedAccountRepository = mockk<LinkedAccountRepository>(relaxed = true)
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val service = AutoTopUpService(accountAutoTopUpSettingRepository, accountRepository, linkedAccountRepository, ledgerService, transactionRepository, providerConnector)
+
+        When("topUpPayFromMain runs for a real 3000 RWF shortfall and Bank covers it") {
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1", "50000")
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_paytopup", emptyList())
+
+            val result = service.topUpPayFromMain("user_1", "account_pay", BigDecimal("3000"))
+
+            Then("it real-posts a balanced Bank-debit/Pay-credit transaction for exactly the shortfall") {
+                result.triggered shouldBe true
+                legsSlot.captured.first { it.accountId == "account_main" }.amount shouldBe BigDecimal("3000")
+                legsSlot.captured.first { it.accountId == "account_pay" }.amount shouldBe BigDecimal("3000")
+            }
+        }
+
+        When("topUpPayFromMain is attempted for a user with no real Bank account") {
+            every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns null
+
+            val result = service.topUpPayFromMain("user_2", "account_pay", BigDecimal("3000"))
+
+            Then("it honestly does not trigger, and the ledger is never touched") {
+                result.triggered shouldBe false
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("ensureSufficientPayBalance sees an account that already covers the required amount") {
+            val sufficientAccount = account("account_pay3", "user_1", "10000").also { it.type = AccountType.PAY }
+
+            val result = service.ensureSufficientPayBalance("user_1", sufficientAccount, BigDecimal("3000"))
+
+            Then("it returns the same account unchanged, never touching the ledger") {
+                result shouldBe sufficientAccount
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("ensureSufficientPayBalance sees a short account that Bank covers") {
+            val shortAccount = account("account_pay4", "user_1", "1000").also { it.type = AccountType.PAY }
+            val toppedUpAccount = account("account_pay4", "user_1", "10000").also { it.type = AccountType.PAY }
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main2", "user_1", "50000")
+            every { accountRepository.findById("account_pay4") } returns Optional.of(toppedUpAccount)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_ensure", emptyList())
+
+            val result = service.ensureSufficientPayBalance("user_1", shortAccount, BigDecimal("3000"))
+
+            Then("it real-tops-up from Bank for exactly the real shortfall and returns the fresh, re-read account") {
+                result shouldBe toppedUpAccount
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

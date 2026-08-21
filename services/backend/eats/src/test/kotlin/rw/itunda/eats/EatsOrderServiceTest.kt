@@ -111,6 +111,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (not inline) so the platform-membership test below can override it per-test.
         val platformMembershipService = mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -174,9 +175,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
             every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
-            every { accountRepository.findById("account_buyer_short") } returns Optional.of(toppedUpAccount)
-            every { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5500")) } returns
-                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 5500 RWF from itunda Bank")
+            every { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6500")) } returns toppedUpAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
@@ -184,9 +183,8 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             service.placeOrder("buyer_short", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
 
-            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the order") {
-                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5500")) }
-                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+            Then("it calls the shared top-up helper for exactly this order's real charge, then completes the order") {
+                verify(exactly = 1) { autoTopUpService.ensureSufficientPayBalance("buyer_short", shortAccount, BigDecimal("6500")) }
                 legsSlot.captured.first { it.accountId == "account_buyer_short" }.amount shouldBe BigDecimal("6500")
             }
         }
@@ -901,6 +899,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1441,6 +1440,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1606,6 +1606,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1808,6 +1809,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1906,6 +1908,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2051,6 +2054,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2204,6 +2208,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2348,6 +2353,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2434,6 +2440,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2568,6 +2575,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,

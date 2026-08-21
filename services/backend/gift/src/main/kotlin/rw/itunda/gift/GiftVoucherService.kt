@@ -111,16 +111,7 @@ class GiftVoucherService(
         // account) if short.
         var purchaserAccount = accountRepository.findByUserIdAndType(purchaserUserId, AccountType.PAY)
             ?: throw GiftVoucherNoAccountException("No itunda Pay money found for this account")
-        if (purchaserAccount.availableBalance < amount) {
-            val shortfall = amount.subtract(purchaserAccount.availableBalance)
-            var topUpResult = autoTopUpService.topUpPayFromMain(purchaserUserId, purchaserAccount.id, shortfall)
-            if (!topUpResult.triggered) {
-                topUpResult = autoTopUpService.topUpShortfall(purchaserUserId, purchaserAccount.id, shortfall)
-            }
-            if (topUpResult.triggered) {
-                purchaserAccount = accountRepository.findById(purchaserAccount.id).orElse(purchaserAccount)
-            }
-        }
+        purchaserAccount = autoTopUpService.ensureSufficientPayBalance(purchaserUserId, purchaserAccount, amount)
         if (purchaserAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this gift voucher")
         }
