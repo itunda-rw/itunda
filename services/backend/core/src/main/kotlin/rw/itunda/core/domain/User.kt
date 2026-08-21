@@ -67,7 +67,7 @@ class User(
     var emailVerified: Boolean = false,
 
     // Real phone verification at registration (2026-07-26) -- see
-    // AuthService.requestPhoneVerification's own doc comment.
+    // UserVerificationService.requestPhoneVerification's own doc comment.
     @Column(name = "phone_verified", nullable = false)
     var phoneVerified: Boolean = false,
 

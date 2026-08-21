@@ -88,7 +88,7 @@ class CardService(
         // A real routable PAN needs a real card-network partnership itunda doesn't
         // have (see this entity's own doc comment) -- last4 is real stored display
         // data, generated with SecureRandom (a card-adjacent secret-shaped value,
-        // same reasoning AuthService.sendPhoneVerificationCode's OTP fix just
+        // same reasoning UserVerificationService.sendPhoneVerificationCode's OTP fix just
         // established), not a value anyone could derive from the account.
         val last4 = (secureRandom.nextInt(9000) + 1000).toString()
         val card = debitCardRepository.save(

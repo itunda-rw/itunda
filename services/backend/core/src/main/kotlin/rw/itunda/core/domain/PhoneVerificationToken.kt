@@ -11,7 +11,7 @@ import java.time.Instant
  * `EmailVerificationToken`, just a BCrypt-hashed random 6-digit OTP instead of a
  * hex string (matching the real-world phone-OTP UX this mirrors) and issued at
  * registration rather than opt-in from a profile screen. See
- * `AuthService.requestPhoneVerification`'s own doc comment for the full delivery story.
+ * `UserVerificationService.requestPhoneVerification`'s own doc comment for the full delivery story.
  */
 @Entity
 @Table(name = "phone_verification_tokens")

@@ -19,7 +19,11 @@ import rw.itunda.core.web.ApiError
 
 @RestController
 @RequestMapping("/api/v1/auth")
-class AuthController(private val authService: AuthService, private val deviceService: DeviceService) {
+class AuthController(
+    private val authService: AuthService,
+    private val userVerificationService: UserVerificationService,
+    private val deviceService: DeviceService,
+) {
 
     // Real unified phone-first entry (2026-08-13) -- see PhoneCheckRequest's own doc
     // comment. Public (see SecurityConfig): called before a user has any credential
@@ -76,11 +80,11 @@ class AuthController(private val authService: AuthService, private val deviceSer
     ): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "user" to authService.updateProfilePhoto(currentUser.userId, request.profilePhotoUrl)))
 
-    // See AuthService.requestEmailVerification's doc comment: the real token is
-    // delivered via a real Notification, never echoed back here.
+    // See UserVerificationService.requestEmailVerification's doc comment: the real
+    // token is delivered via a real Notification, never echoed back here.
     @PostMapping("/profile/verify-email")
     fun requestEmailVerification(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
-        authService.requestEmailVerification(currentUser.userId)
+        userVerificationService.requestEmailVerification(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
@@ -89,14 +93,15 @@ class AuthController(private val authService: AuthService, private val deviceSer
         @RequestBody request: ConfirmEmailVerificationRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> =
-        ResponseEntity.ok(mapOf("success" to true, "user" to authService.confirmEmailVerification(currentUser.userId, request.token)))
+        ResponseEntity.ok(mapOf("success" to true, "user" to userVerificationService.confirmEmailVerification(currentUser.userId, request.token)))
 
-    // Real phone verification (2026-07-26) -- see AuthService.requestPhoneVerification's
-    // own doc comment. A code is already sent automatically at registration; this is the
-    // real resend action for an expired/lost code.
+    // Real phone verification (2026-07-26) -- see
+    // UserVerificationService.requestPhoneVerification's own doc comment. A code is
+    // already sent automatically at registration; this is the real resend action for an
+    // expired/lost code.
     @PostMapping("/profile/verify-phone")
     fun requestPhoneVerification(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
-        authService.requestPhoneVerification(currentUser.userId)
+        userVerificationService.requestPhoneVerification(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
@@ -105,7 +110,7 @@ class AuthController(private val authService: AuthService, private val deviceSer
         @RequestBody request: ConfirmPhoneVerificationRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> =
-        ResponseEntity.ok(mapOf("success" to true, "user" to authService.confirmPhoneVerification(currentUser.userId, request.code)))
+        ResponseEntity.ok(mapOf("success" to true, "user" to userVerificationService.confirmPhoneVerification(currentUser.userId, request.code)))
 
     // Real hyperlocal neighborhood (2026-07-20) -- see AuthService.setNeighborhood's own
     // doc comment.
