@@ -12,6 +12,7 @@ import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchAccounts, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Account } from './lib/account';
 import { PayMoneyDetail } from './PayMoneyDetail';
+import { AccountLedgerHeader } from './AccountLedgerHeader';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
@@ -24103,6 +24104,10 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
   const { t } = useI18n();
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Real Toss Bank reference (2026-08-21) -- see AccountLedgerHeader's own doc
+  // comment for why this leads the screen now.
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferAccountBalance, setTransferAccountBalance] = useState(0);
 
   const load = () => {
     setError(null);
@@ -24139,6 +24144,14 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
   return (
     <div>
       <ProductPageHeader title="itunda Bank" subtitle="Savings, SACCO, Ikimina, loans & investments" />
+      <AccountLedgerHeader onSend={(account) => { setTransferAccountBalance(account.balance); setShowTransfer(true); }} />
+      {showTransfer && (
+        <TransferFlow
+          accountBalance={transferAccountBalance}
+          onClose={() => setShowTransfer(false)}
+          onSuccess={() => setShowTransfer(false)}
+        />
+      )}
       {/* Real architectural fix (2026-08-13, matching the identical Android/iOS fix
           same session): this rail (SACCO/Ikimina/Moto-Taxi Ownership/Harvest advance)
           used to render on Home -- real Bank-product content on what's meant to be a
