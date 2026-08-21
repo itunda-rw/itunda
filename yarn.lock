@@ -827,6 +827,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:^6.0.3"
     es-toolkit: "npm:^1.49.0"
     framer-motion: "npm:^11.11.17"
+    jsbarcode: "npm:^3.12.3"
     lucide-react: "npm:^0.454.0"
     maplibre-gl: "npm:^4.7.1"
     overlay-kit: "npm:^1.9.0"
@@ -1824,6 +1825,13 @@ __metadata:
   version: 0.8.0
   resolution: "js-sha3@npm:0.8.0"
   checksum: 10c0/43a21dc7967c871bd2c46cb1c2ae97441a97169f324e509f382d43330d8f75cf2c96dba7c806ab08a425765a9c847efdd4bffbac2d99c3a4f3de6c0218f40533
+  languageName: node
+  linkType: hard
+
+"jsbarcode@npm:^3.12.3":
+  version: 3.12.3
+  resolution: "jsbarcode@npm:3.12.3"
+  checksum: 10c0/da6683fe036eb288b92159d4f46b96cc376bcd0b7048715aaa7dc47f20e3d6d505b59e645818ed9685c399ed79c513197e30cf0540c94627d9dee19d0a67ddaa
   languageName: node
   linkType: hard
 

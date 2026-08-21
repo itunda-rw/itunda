@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useCountUp } from './hooks/useCountUp';
@@ -1223,6 +1224,12 @@ function ProductPageHeader({ title, subtitle }: { title: string; subtitle: strin
 // the established transfer, bill, merchant-code, and payment-intent components.
 function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  // Real swipeable funding-source cards (Pay-parity port, §240) -- see
+  // WalletCardCarousel's own doc comment. The full real wallet list (MAIN + any
+  // opened foreign-currency ones), not just the single MAIN wallet AccountBalance
+  // shows -- kept alongside `wallet` rather than replacing it, since every other
+  // card on this screen (Send/Bills/Transfer) is deliberately still MAIN-only.
+  const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
   const [showTransfer, setShowTransfer] = useState(false);
@@ -1235,8 +1242,9 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   // identical WalletHeroCard -> PayTab move the same session.
   const loadWallet = () => {
     Promise.all([fetchWallets(), fetchTransactions()])
-      .then(([wallets, txs]) => {
-        setWallet(wallets.find((item) => item.type === 'MAIN') ?? wallets[0] ?? null);
+      .then(([fetchedWallets, txs]) => {
+        setWallet(fetchedWallets.find((item) => item.type === 'MAIN') ?? fetchedWallets[0] ?? null);
+        setWallets(fetchedWallets);
         setTransactions(txs);
       })
       .catch(() => setWallet(null));
@@ -1258,7 +1266,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
     <div>
       <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
       <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
-      <MyPaymentCodeCard wallet={wallet} />
+      <MyPaymentCodeCard wallets={wallets} />
       {showTransfer && (
         <TransferFlow
           walletBalance={wallet?.balance ?? 0}
@@ -6911,24 +6919,42 @@ async function shareOrCopyLink(url: string, title: string, text: string): Promis
   }
 }
 
-// Real customer-presented payment code (Pay-parity port, §238) -- see
-// lib/shopping.ts's own generateCustomerPaymentCode doc comment for the full
-// sourced contract. Android shipped this real KakaoPay/Toss Pay "My code"
-// reveal-QR flow 2026-08-11 (direct user-provided screenshot comparison, see
-// [[project_itunda_pay_kakaopay_parity]] auto memory); bank-mfe never received it
-// (confirmed via a real grep sweep before starting -- zero
-// generateCustomerPaymentCode references anywhere in this workspace). Ported the
-// core flow (lock-gated reveal, auto-refreshing QR, wallet balance) -- deliberately
-// NOT porting the nearby-merchant-ads/linked-account rows Android's version also
-// shows, to keep this pass scoped to the real payment mechanism rather than
-// growing PayHub's already-flagged density problem (see
-// [[project_itunda_product_feel]] roadmap item 7) with supplementary display rows.
-function MyPaymentCodeCard({ wallet }: { wallet: Wallet | null }) {
+// Real customer-presented payment code (Pay-parity port, §238, corrected §240) --
+// see lib/shopping.ts's own generateCustomerPaymentCode doc comment for the full
+// sourced contract. §238's first pass was QR-only, based on secondhand reasoning
+// about what KakaoPay "probably" shows -- the user then had us fetch KakaoPay's own
+// real App Store screenshots directly (apps.apple.com), and separately sent 3 real
+// screenshots of their own actual KakaoPay app. Both real, first-party sources
+// agree on a materially different real design than §238 built:
+// - The primary code is a real linear BARCODE (Code128, Korea's real 바코드결제
+//   standard, works with plain laser POS scanners), with a small QR secondary next
+//   to it -- not a big centered QR alone.
+// - The real card also shows the funding account and a real "nearby benefits" row
+//   (real nearby merchant discounts+distance) -- §238 deliberately dropped both as
+//   "supplementary," but the real reference confirms they're part of the actual
+//   core screen, not optional extras.
+// - A real "포인트 사용" (use points) toggle exists in the reference, but itunda has
+//   no separate points balance (cashback credits straight to the wallet, same
+//   honest scope-down Android's own original MyPaymentCodeCard already
+//   established) -- deliberately still not faked here.
+// - The real screen's bottom card row mixes wallet + real linked bank cards +
+//   Samsung-Pay NFC + membership -- itunda has no NFC/membership equivalent, so
+//   Android's own wallet-only carousel was already an honest, deliberate
+//   simplification of that row, not an inaccuracy -- kept as-is when this pass
+//   restores everything else.
+function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
   const [revealed, setRevealed] = useState(false);
   const [code, setCode] = useState<CustomerPaymentCode | null>(null);
+  const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [linkedAccount, setLinkedAccount] = useState<LinkedAccount | null>(null);
+  const [nearbyAds, setNearbyAds] = useState<NearbyMerchantAd[]>([]);
+  // Real swipeable funding-source selection (§240) -- defaults to MAIN, same as
+  // before this pass; explicit user selection only kicks in once they swipe.
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
+  const wallet = wallets.find((w) => w.id === selectedWalletId) ?? wallets.find((w) => w.type === 'MAIN') ?? wallets[0] ?? null;
 
   // Real auto-refresh shortly before the code's own real 2-minute expiry, matching
   // Android's identical MyPaymentCodeCard -- a customer standing at a register
@@ -6960,11 +6986,19 @@ function MyPaymentCodeCard({ wallet }: { wallet: Wallet | null }) {
   }, [revealed, wallet?.id]);
 
   useEffect(() => {
-    if (!code) { setQrDataUrl(null); return; }
-    // Real contract: the QR encodes the RAW code, no itunda://... URL wrapping --
-    // see lib/shopping.ts's own doc comment for why (a merchant's real camera
-    // scanner passes the decoded string straight through as the code).
-    QRCode.toDataURL(code.code, { width: 200, margin: 1 }).then(setQrDataUrl).catch(() => setQrDataUrl(null));
+    if (!code) { setBarcodeDataUrl(null); setQrDataUrl(null); return; }
+    // Real contract: both the barcode and QR encode the RAW code, no
+    // itunda://... URL wrapping -- see lib/shopping.ts's own doc comment for why
+    // (a merchant's real camera scanner passes the decoded string straight
+    // through as the code).
+    const canvas = document.createElement('canvas');
+    try {
+      JsBarcode(canvas, code.code, { format: 'CODE128', displayValue: false, margin: 0, height: 60, width: 2 });
+      setBarcodeDataUrl(canvas.toDataURL());
+    } catch {
+      setBarcodeDataUrl(null);
+    }
+    QRCode.toDataURL(code.code, { width: 140, margin: 1 }).then(setQrDataUrl).catch(() => setQrDataUrl(null));
   }, [code]);
 
   useEffect(() => {
@@ -6975,9 +7009,29 @@ function MyPaymentCodeCard({ wallet }: { wallet: Wallet | null }) {
     return () => clearInterval(interval);
   }, [code]);
 
+  // Real funding account -- same data AutoTopUpScreen/OverviewScreen already
+  // fetch, read-only display here (matches the real reference's "충전계좌" row).
+  useEffect(() => {
+    fetchLinkedAccounts()
+      .then((accounts) => setLinkedAccount(accounts.find((a) => a.status === 'LINKED') ?? null))
+      .catch(() => {});
+  }, []);
+
+  // Real 당근(Karrot)-style radius-targeted nearby merchant benefits (matches the
+  // real reference's own "주변 혜택" row) -- silent when location is denied or
+  // nothing is nearby, same as every other nearby() caller in this codebase.
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => { fetchNearbyAds(position.coords.latitude, position.coords.longitude).then(setNearbyAds).catch(() => {}); },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
+
   return (
-    <div className="itunda-card" style={{ padding: '20px', marginBottom: '16px', textAlign: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '220px', borderRadius: '14px', backgroundColor: 'var(--itunda-grey-100)' }}>
+    <div className="itunda-card" style={{ padding: '20px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '140px', borderRadius: '14px', backgroundColor: 'var(--itunda-grey-100)' }}>
         {!revealed ? (
           // Real reveal gate (matching Android's identical 2026-08-13 fix, itself a
           // direct response to real KakaoPay research: the code screen requires an
@@ -6986,7 +7040,7 @@ function MyPaymentCodeCard({ wallet }: { wallet: Wallet | null }) {
           // up from having their payment code immediately visible).
           <button
             onClick={() => setRevealed(true)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '20px' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '20px', width: '100%' }}
           >
             <div style={{ width: '56px', height: '56px', borderRadius: '999px', backgroundColor: 'var(--itunda-white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Lock size={24} color="var(--itunda-grey-700)" />
@@ -6999,10 +7053,13 @@ function MyPaymentCodeCard({ wallet }: { wallet: Wallet | null }) {
               Tap to show
             </span>
           </button>
-        ) : code && qrDataUrl ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '20px' }}>
-            <img src={qrDataUrl} alt="Your payment QR code" width={180} height={180} style={{ borderRadius: '8px' }} />
-            <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)' }}>
+        ) : code && barcodeDataUrl && qrDataUrl ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img src={barcodeDataUrl} alt="Your payment barcode" style={{ flex: '1 1 0%', minWidth: 0, width: '100%', height: '60px', objectFit: 'contain', backgroundColor: 'var(--itunda-white)', borderRadius: '6px', padding: '4px' }} />
+              <img src={qrDataUrl} alt="Your payment QR code" width={56} height={56} style={{ borderRadius: '6px', backgroundColor: 'var(--itunda-white)', padding: '3px' }} />
+            </div>
+            <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)' }}>
               {secondsLeft > 0 ? `Refreshes in ${secondsLeft}s` : 'Refreshing…'}
             </p>
           </div>
@@ -7018,8 +7075,105 @@ function MyPaymentCodeCard({ wallet }: { wallet: Wallet | null }) {
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{wallet.balance.toLocaleString()} RWF</span>
         </div>
       )}
+      {linkedAccount && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-600)' }}>Funding account</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>{linkedAccount.provider} {linkedAccount.externalAccountNumberMasked}</span>
+        </div>
+      )}
+      {nearbyAds.length > 0 && (
+        <div style={{ marginTop: '16px' }}>
+          <p style={{ margin: '0 0 10px', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>Nearby benefits</p>
+          <div style={{ display: 'flex', gap: '16px', overflowX: 'auto' }}>
+            {nearbyAds.map((nearbyAd) => (
+              <div key={nearbyAd.ad.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '64px', flexShrink: 0 }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '999px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--itunda-blue)', fontSize: 'var(--itunda-type-scale-16-size)' }}>
+                  {nearbyAd.businessName.charAt(0).toUpperCase()}
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-800)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center' }}>{nearbyAd.businessName}</p>
+                <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-600)' }}>{Math.round(nearbyAd.distanceKm * 1000)}m</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {wallets.length > 1 && (
+        <WalletCardCarousel wallets={wallets} selectedWalletId={wallet?.id ?? null} onSelect={setSelectedWalletId} />
+      )}
     </div>
   );
+}
+
+// Real swipeable funding-source cards -- see MyPaymentCodeCard's own doc comment
+// for why this stays a deliberate, honest simplification of the real reference's
+// mixed wallet/card/membership row (itunda has no Samsung-Pay NFC or membership
+// equivalent to include honestly). Settling on a card is a real selection: it's
+// the walletId MyPaymentCodeCard's own code is generated against, matching the
+// real "swipe to choose what you pay with" KakaoPay behavior. CSS scroll-snap is
+// the web equivalent of Android's HorizontalPager -- no extra dependency needed.
+function WalletCardCarousel({ wallets, selectedWalletId, onSelect }: { wallets: Wallet[]; selectedWalletId: string | null; onSelect: (id: string) => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el || wallets.length === 0) return;
+    const cardWidth = el.scrollWidth / wallets.length;
+    const index = Math.min(Math.round(el.scrollLeft / cardWidth), wallets.length - 1);
+    const w = wallets[index];
+    if (w && w.id !== selectedWalletId) onSelect(w.id);
+  };
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        style={{ display: 'flex', gap: '12px', overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: '4px' }}
+      >
+        {wallets.map((w) => (
+          <div
+            key={w.id}
+            style={{
+              scrollSnapAlign: 'center', flexShrink: 0, width: '220px', height: '148px', borderRadius: '16px',
+              backgroundColor: walletCardColor(w.currency), padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+            }}
+          >
+            {/* Small light rectangle mimicking a real card's EMV chip -- a cheap,
+                honest visual cue that reads as "card" at a glance, matching
+                Android's identical real-card metaphor. */}
+            <div style={{ width: '32px', height: '24px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.35)' }} />
+            <div>
+              <p style={{ margin: 0, color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>{w.type === 'MAIN' ? 'itunda Pay' : `itunda Pay ${w.currency}`}</p>
+              <p style={{ margin: '2px 0 0', color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-19-size)' }}>
+                {w.currency} {w.currency === 'RWF' ? w.availableBalance.toLocaleString() : w.availableBalance.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
+        {wallets.map((w) => (
+          <div
+            key={w.id}
+            style={{
+              width: w.id === selectedWalletId ? '8px' : '6px', height: w.id === selectedWalletId ? '8px' : '6px',
+              borderRadius: '999px', backgroundColor: w.id === selectedWalletId ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)',
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function walletCardColor(currency: string): string {
+  switch (currency) {
+    case 'RWF': return '#2272EB';
+    case 'USD': return '#04C065';
+    case 'EUR': return '#7C5CFC';
+    case 'GBP': return '#00898A';
+    default: return 'var(--itunda-grey-700)';
+  }
 }
 
 function readAndClearUrlParam(key: string): string | null {

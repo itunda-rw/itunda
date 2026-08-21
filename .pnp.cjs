@@ -1203,6 +1203,7 @@ const RAW_RUNTIME_STATE =
           ["bank-mfe", "workspace:services/micro-frontends/bank-mfe"],\
           ["es-toolkit", "npm:1.49.0"],\
           ["framer-motion", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:11.18.2"],\
+          ["jsbarcode", "npm:3.12.3"],\
           ["lucide-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:0.454.0"],\
           ["maplibre-gl", "npm:4.7.1"],\
           ["overlay-kit", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.9.0"],\
@@ -2424,6 +2425,15 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "../.yarn/berry/cache/js-sha3-npm-0.8.0-decf3ddcfa-10c0.zip/node_modules/js-sha3/",\
         "packageDependencies": [\
           ["js-sha3", "npm:0.8.0"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["jsbarcode", [\
+      ["npm:3.12.3", {\
+        "packageLocation": "../.yarn/berry/cache/jsbarcode-npm-3.12.3-0ce6abcf2b-10c0.zip/node_modules/jsbarcode/",\
+        "packageDependencies": [\
+          ["jsbarcode", "npm:3.12.3"]\
         ],\
         "linkType": "HARD"\
       }]\

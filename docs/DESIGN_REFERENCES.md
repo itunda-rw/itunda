@@ -15355,3 +15355,75 @@ visual nicety rather than a missing payment mechanism.
 
 *Shipped: `ios/App/Sources/ShopPay.swift` + `ios/App/Sources/QrScanCamera.swift` +
 `ios/Core/Network/Sources/NetworkClient.swift`.*
+
+## 240. Real correction to §238's "My code" card on bank-mfe -- barcode+QR combo, funding account, nearby benefits, and the wallet carousel, all grounded in real KakaoPay screenshots fetched and provided this session
+
+§238 built bank-mfe's "My code" card QR-only, reasoning from Android's existing
+implementation rather than a fresh real reference. The user pushed back directly
+("wallet carousel should be 100% kakaopay like") and, when generic web search
+came up empty, this session fetched KakaoPay's own real screenshots two ways: (1)
+headless Chrome navigated to KakaoPay's real App Store listing
+(`apps.apple.com/kr/app/카카오페이/id1464496236`) and captured their official
+promotional screenshot at full resolution; (2) the user then sent 3 real
+screenshots of their own actual KakaoPay app (dark mode, live device). Both
+first-party sources agree on a materially different design than §238 built:
+
+- **The primary code is a real linear barcode (Code128), not a QR** -- a small QR
+  sits secondary next to it. This is Korea's real 바코드결제 standard, chosen
+  specifically because it works with plain laser POS scanners, not just camera
+  readers. §238's QR-only design was wrong on this specific point.
+- **The real card also shows the funding account and a real "nearby benefits"
+  row** (real nearby-merchant discounts + distance) -- §238 deliberately dropped
+  both as "supplementary" to avoid `PayHub` density, but the real reference
+  confirms they're part of the actual core screen.
+- **A real "포인트 사용" (use points) toggle exists in the reference, but itunda has
+  no separate points balance** (cashback credits straight to the wallet) -- kept
+  deliberately unbuilt, same honest scope-down Android's own original
+  `MyPaymentCodeCard` already established; not re-litigated.
+- **The real screen's bottom card row mixes wallet + real linked bank cards +
+  Samsung-Pay NFC + membership** -- itunda has no NFC or membership equivalent to
+  honestly include, so Android's own wallet-only `WalletCardCarousel` was already
+  a deliberate, correct simplification of that row, not an inaccuracy. Ported it
+  to bank-mfe as real CSS scroll-snap (the web equivalent of Android's
+  `HorizontalPager`, no extra dependency) -- swiping a card is a real selection,
+  propagated into the walletId `generateCustomerPaymentCode` is called against,
+  matching the real "swipe to choose what you pay with" behavior.
+
+**Implementation**: added `jsbarcode` (open-source, MIT, real dependency addition
+via `yarn workspace bank-mfe add jsbarcode`) for real Code128 generation
+client-side, rendered to a canvas and read back via `toDataURL()` -- same pattern
+`qrcode`'s own `toDataURL` already established in this file. Funding account and
+nearby benefits reuse `fetchLinkedAccounts`/`fetchNearbyAds`, both already real,
+already-used client functions -- no new backend work needed.
+
+**Real bug caught during live verification**: the barcode `<img>` first rendered
+at 679px wide (spilling far past the 430px viewport, with the QR pushed
+completely off-screen) -- a classic flexbox gotcha: a flex item's default
+`min-width: auto` doesn't let a replaced element (an `<img>`) shrink below its
+own intrinsic size, so `flex: 1` alone can grow the barcode but never shrink it
+down from the canvas's native pixel width. Fixed with an explicit
+`minWidth: 0` + `width: 100%` + `objectFit: 'contain'`. Would NOT have been
+caught by `tsc`/`vite build`/`oxlint`/accessibility-lint -- only found via the
+live headless-Chrome screenshot, the same "a screenshot catches what static
+checks can't" lesson [[feedback_idsbutton_default_fullwidth_flex_sibling]]
+already recorded once before.
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all clean.
+Live-verified via headless Chrome + raw CDP against the real deployed backend:
+logged in, revealed the code, confirmed by zoomed screenshot the real barcode
+(302px, correctly sized) and real QR (56px) render side by side exactly matching
+the real reference's layout, confirmed the live countdown ticks and refetches on
+expiry, and confirmed the wallet carousel renders all 7 of the real test
+account's real wallets (RWF/USD, correct per-currency colors, correct balances)
+with working pagination dots. Nearby-benefits/funding-account rows didn't render
+in this headless session (no geolocation permission / no linked account on this
+test user) -- both degrade silently by design, matching every other `nearby()`
+caller in this codebase, not a bug.
+
+**Still open**: same correction (barcode+QR, funding account, nearby benefits)
+needs porting to iOS's `MyPaymentCodeCard` (§239 built the QR-only version there
+too, same reasoning gap as §238). Android's own original screenshot-grounded
+build already has the richer version and does not need this correction.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx` +
+`services/micro-frontends/bank-mfe/package.json` (added `jsbarcode`).*

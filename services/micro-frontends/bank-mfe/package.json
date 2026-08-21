@@ -16,6 +16,7 @@
     "@toss/use-funnel": "^1.4.2",
     "es-toolkit": "^1.49.0",
     "framer-motion": "^11.11.17",
+    "jsbarcode": "^3.12.3",
     "lucide-react": "^0.454.0",
     "maplibre-gl": "^4.7.1",
     "overlay-kit": "^1.9.0",
