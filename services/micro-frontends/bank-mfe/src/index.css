@@ -90,6 +90,23 @@ button:active {
   transition: var(--itunda-transition);
 }
 
+/* Real Toss Bank home reference (2026-08-21/22, direct user directive: "our bank
+   home screen should look 100% like toss bank screen") -- itunda Bank's own
+   product catalog (Save & Grow / SACCO / Ikimina / weekly & 31-day savings /
+   auto-transfer / mini account etc.) is one continuous flat list on real Toss,
+   not a grid of separate white shadowed cards. Same flat treatment already
+   shipped this session on Android's ShellSection and iOS's
+   AccountLedgerDetailRow -- no background/shadow/rounded-card box, just a thin
+   bottom divider between sections so the list still reads as separated content. */
+.itunda-flat-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--itunda-grey-100);
+}
+
+.itunda-flat-section:last-child {
+  border-bottom: none;
+}
+
 .itunda-btn {
   display: flex;
   align-items: center;

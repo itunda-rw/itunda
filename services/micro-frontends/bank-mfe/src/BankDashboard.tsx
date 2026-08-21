@@ -1042,10 +1042,7 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
   ];
 
   return (
-    <div
-      className="itunda-card"
-      style={{ padding: '20px', marginBottom: '16px', border: '1px solid var(--itunda-blue)' }}
-    >
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-grey-900)' }}>{t('coopRail.title')}</h3>
       <p style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)', marginTop: '2px', marginBottom: '16px' }}>{t('coopRail.subtitle')}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1500,7 +1497,7 @@ function MiniAccountCard() {
   if (miniAccount === undefined) return null;
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('miniAccount.title')}</h3>
         {miniAccount && (
@@ -1927,7 +1924,7 @@ function AutoTransfersCard() {
   const cancelled = (transfers ?? []).filter((at) => at.status === 'CANCELLED');
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('autoTransfers.title')}</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -22113,7 +22110,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
   if (settings === undefined) return null;
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Round-up savings</h3>
         {settings?.enabled && (
@@ -22203,7 +22200,7 @@ function InterestJarCard() {
   const canClaim = jar.earnedThisMonth > 0;
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+    <div style={{ marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)', padding: '24px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
       {/* Real methodology-transparency fix (2026-08-11): jar.rate is the ANNUAL rate
           SavingsService.accrueInterest() divides by 365 to get the real daily accrual
           (dailyRate = rate/100/365) -- this copy called it "daily interest" outright,
@@ -22264,7 +22261,7 @@ function DepositProtectionCard() {
   if (status === null) return null;
 
   return (
-    <div className="itunda-card" style={{ marginTop: '20px', padding: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, margin: '0 0 8px' }}>Deposit Protection Fund (simulation)</h3>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Your covered balance</p>
@@ -22311,7 +22308,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '10px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{goal.name}</p>
@@ -22823,8 +22820,8 @@ function GroupAccountsSection() {
           <button
             key={a.id}
             onClick={() => setOpenId(a.id)}
-            className="itunda-card"
-            style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+            className="itunda-flat-section"
+            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
           >
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{a.name}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Tap to view balance and members</p>
@@ -22877,8 +22874,8 @@ function IkiminaSection() {
           <button
             key={k.id}
             onClick={() => setOpenId(k.id)}
-            className="itunda-card"
-            style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+            className="itunda-flat-section"
+            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
           >
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{k.name}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
@@ -23259,7 +23256,7 @@ function SaccoSection() {
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '0 4px 10px' }}>
         Buy real shares in itunda's own SACCO pool and earn periodic dividends, the same real cooperative model as Rwanda's 416 Umurenge SACCOs.
       </p>
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         {shareholding === undefined ? (
           <div style={{ height: '48px' }} />
         ) : (
@@ -23289,7 +23286,7 @@ function SaccoSection() {
         </div>
       </div>
       {dividends && dividends.length > 0 && (
-        <div className="itunda-card">
+        <div className="itunda-flat-section">
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '8px' }}>Dividend history</p>
           {dividends.map((d) => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '4px 0' }}>
@@ -23634,8 +23631,8 @@ function WeeklySavingsSection() {
             <button
               key={p.id}
               onClick={() => setOpenId(p.id)}
-              className="itunda-card"
-              style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+              className="itunda-flat-section"
+              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{p.name}</p>
@@ -23963,8 +23960,8 @@ function Grow31SavingsSection() {
             <button
               key={p.id}
               onClick={() => setOpenId(p.id)}
-              className="itunda-card"
-              style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+              className="itunda-flat-section"
+              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{p.name}</p>
@@ -24083,7 +24080,7 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '10px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{deposit.principal.toLocaleString()} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{deposit.withdrawnAt ? 'WITHDRAWN' : deposit.status}</p>
