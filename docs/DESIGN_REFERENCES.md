@@ -16401,8 +16401,65 @@ clean, `vite build` succeeds, accessibility-lint clean (commit
 **Still explicitly not done**: a real dedicated "Pay money" balance
 card/screen visually distinct from "Bank account" (this pass only fixed
 the Pay tab's own existing balance to show the RIGHT number, it didn't
-add a new dual-balance view), the same fix on Android/iOS (neither
-touched this pass), the funding-source-carousel's own semantics
-(swiping still charges the swiped account directly with no auto-topup,
-a separate real product question), and the full file-size remediation
-named above.
+add a new dual-balance view), the funding-source-carousel's own
+semantics (swiping still charges the swiped account directly with no
+auto-topup, a separate real product question), and the full file-size
+remediation named above.
+
+## 259. AccountService.kt file-size violation closed; the MAIN-default bug ported and fixed on Android and iOS
+
+Continuing the file-size backlog named in §258: extracted
+`SpendingInsightService.kt` out of `AccountService.kt` (which had just
+crossed 500 lines for the first time, pre-existing, unrelated to any of
+this session's other work). Spending categorization and budgets
+(`getSpendingInsight`/`getMonthlySpendingReport`/
+`getBusinessExpenseSummary`/`setBudget`/`getBudgets` and their shared
+`categorizeDebits`/`maybeNotifyBudgetThreshold` internals) had zero
+callers outside `AccountController`, so the split needed no
+cross-module changes. `AccountService.kt` 545 -> 253 lines, constructor
+10 params -> 6. New `SpendingInsightServiceTest.kt` (197 lines) carries
+the moved test coverage. Full backend suite green (commit `177f583e`).
+20 of the original 21 file-size violations remain.
+
+Checked whether `RideTripService.kt`/`AuthService.kt` (also on the
+list) had an equally clean seam: `RideTripService.kt` does not -- the
+ride request/accept/start/complete/cancel/tip lifecycle is one real
+cohesive flow, only 3 lines over baseline, not attempted.
+`AuthService.kt` has a real candidate split (registration/login/session
+vs. profile-edit/email-phone-verification) but wasn't attempted this
+pass -- named as a real next-session candidate, not equivalent to
+RideTripService's dead end.
+
+**§258's bank-mfe Pay-tab fix (customer payment code defaulting to the
+Bank account instead of Pay money) was real ONLY on web -- confirmed by
+grepping, not assumed, and found identically on both other clients**:
+
+- **Android** (`MainViewModel.kt`/`ItundaAppScreen.kt`, commit
+  `90b1f733`): `PayTab` reused the app-wide `primaryAccount` StateFlow
+  (deliberately, correctly still MAIN -- `BankHubScreen`/Send/Savings
+  all depend on that staying true) for its own headline balance,
+  funding-source-carousel default, and card labels. Added a new,
+  separate `payAccount` StateFlow resolved to PAY (MAIN as a defensive
+  pre-backfill fallback only); `PayTab` now reads `payAccount`
+  throughout, the carousel now fetches PAY (not MAIN) as its base
+  account set, and both label ternaries fixed. `:app:compileDebugKotlin`
+  BUILD SUCCESSFUL.
+- **iOS** (`ShopPay.swift`, commit `5c7f0eea`):
+  `MyPaymentCodeCard.account` (the funding source the customer's own
+  code actually charges) and `AccountCardCarousel`'s per-card label had
+  the identical bug -- both fixed the same way. `BankViewModel`
+  (iOS's own equivalent of Android's shared `primaryAccount`, backing
+  `BankView`'s real Bank balance) deliberately left untouched, same
+  "Bank stays Bank" reasoning as Android. `xcodebuild` BUILD SUCCEEDED
+  for `ItundaApp`.
+
+All 3 clients now correctly default a customer's own presented payment
+code to their real itunda Pay money, matching the backend's own
+`MerchantService.chargeByCustomerCode` default -- this specific
+correctness gap (not the broader dual-balance-UI feature gap) is now
+closed everywhere.
+
+*Shipped: `services/backend/account/**` (commit `177f583e`),
+`android/app/src/main/java/rw/itunda/app/ui/{MainViewModel,
+ItundaAppScreen}.kt` (commit `90b1f733`),
+`ios/App/Sources/ShopPay.swift` (commit `5c7f0eea`).*
