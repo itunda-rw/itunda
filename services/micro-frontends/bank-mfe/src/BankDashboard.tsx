@@ -1225,10 +1225,14 @@ function ProductPageHeader({ title, subtitle }: { title: string; subtitle: strin
 function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
   const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
-  // AccountCardCarousel's own doc comment. The full real account list (MAIN + any
-  // opened foreign-currency ones), not just the single MAIN account AccountBalance
-  // shows -- kept alongside `account` rather than replacing it, since every other
-  // card on this screen (Send/Bills/Transfer) is deliberately still MAIN-only.
+  // AccountCardCarousel's own doc comment. Only the real payment-eligible accounts
+  // (PAY + MAIN + any opened foreign-currency ones), not the customer's full account
+  // list -- a real gap found+fixed 2026-08-21 (direct user confirmation): this used
+  // to include every account type (SAVINGS/INVESTMENT/LOAN/GROUP among them), none
+  // of which are real payment products, matching the backend's own new
+  // PAYMENT_ELIGIBLE_ACCOUNT_TYPES allowlist (MerchantService.kt). Kept alongside
+  // `account` rather than replacing it, since every other card on this screen
+  // (Send/Bills/Transfer) is deliberately still MAIN-only.
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
@@ -1247,7 +1251,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
         // headline balance is itunda Pay money, not the Bank account -- MAIN kept only
         // as a defensive fallback for an account predating the real PayAccountBackfillRunner.
         setAccount(fetchedAccounts.find((item) => item.type === 'PAY') ?? fetchedAccounts.find((item) => item.type === 'MAIN') ?? fetchedAccounts[0] ?? null);
-        setAccounts(fetchedAccounts);
+        setAccounts(fetchedAccounts.filter((item) => item.type === 'PAY' || item.type === 'MAIN' || item.type === 'FOREIGN_CURRENCY'));
         setTransactions(txs);
       })
       .catch(() => setAccount(null));

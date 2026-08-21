@@ -358,7 +358,13 @@ struct MyPaymentCodeCard: View {
         }
         .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         .task {
-            accounts = (try? await NetworkClient.shared.getAccounts().accounts) ?? []
+            // Real gap found+fixed (2026-08-21, direct user confirmation): only the
+            // real payment-eligible types, not the customer's full account list --
+            // this used to include SAVINGS/INVESTMENT/LOAN/GROUP, none of which are
+            // real payment products, matching the backend's own new
+            // PAYMENT_ELIGIBLE_ACCOUNT_TYPES allowlist (MerchantService.kt).
+            let fetched = (try? await NetworkClient.shared.getAccounts().accounts) ?? []
+            accounts = fetched.filter { $0.type == "PAY" || $0.type == "MAIN" || $0.type == "FOREIGN_CURRENCY" }
             linkedAccount = (try? await NetworkClient.shared.getLinkedAccounts().linkedAccounts.first(where: { $0.status == "LINKED" })) ?? nil
             locationFetcher.requestLocation()
         }
