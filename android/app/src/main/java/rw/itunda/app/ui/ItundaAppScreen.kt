@@ -2147,9 +2147,15 @@ private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80
 // Home coop rail grouping them with SACCO/Ikimina) because both convert to a loan --
 // kept consistent with that existing, already-vetted categorization rather than the
 // coop rail's simpler "Rwanda savings products" framing this replaces.
-// Real Toss Bank 카드/관리-style header-tab split for BankHubScreen -- see that
-// composable's own bankHubTab doc comment for the full reasoning.
-private enum class BankHubTab { ACCOUNTS, BORROW }
+//
+// Real Toss Bank reference (20 screenshots, 2026-08-21, direct user follow-up:
+// "bank home screen should look 100% like toss bank screen, icons, size, layout,
+// functionality, everything"): the real screen has no card-holding 카드/관리-style
+// header tab at all -- every section (Save & grow, Borrow) renders flat and
+// continuous, always visible, not behind a toggle. The BankHubTab split this
+// replaces was itself an itunda invention reasoning from a DIFFERENT real
+// screenshot set (Section 65's Card/Manage header comparison) -- removed now that
+// a more direct, more recent real reference shows the actual real structure.
 
 @Composable
 private fun BankHubScreen(
@@ -2191,19 +2197,7 @@ private fun BankHubScreen(
     val roundUpSettings by viewModel.roundUpSettings.collectAsState()
     var showRoundUpDialog by remember { mutableStateOf(false) }
     var showNewGoalDialog by remember { mutableStateOf(false) }
-    // Real Toss Bank reference (Section 65's own 12-image direct comparison,
-    // 2026-08-13): the real 카드/관리-style header-tab structure, named explicitly as
-    // still open through Sections 65 and 193. BankHubScreen has no card-holding
-    // content to literally split on "Cards," so this maps the same real "what you
-    // already hold" vs. "what you can apply for" split onto itunda's own actual
-    // sections instead of forcing an ill-fitting label: Accounts (Save & grow,
-    // Insights, deposit protection -- your own existing money) vs. Borrow (credit
-    // products). The persistent balance/total-saved/auto-transfer summary above stays
-    // visible regardless of tab, matching Toss's own real pattern of an always-shown
-    // account header above its tabbed content.
-    var bankHubTab by remember { mutableStateOf(BankHubTab.ACCOUNTS) }
     val coroutineScope = rememberCoroutineScope()
-    val totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount }
     // Real Deposit Protection Fund status (2026-08-11) -- own-screen fetch, same
     // "each screen fetches its own minimal real data" precedent OverviewScreen's own
     // getProfile() call already establishes, rather than growing MainViewModel's
@@ -2240,90 +2234,61 @@ private fun BankHubScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
-            // Real fix (2026-08-14, direct user complaint) -- the actual spendable
-            // account balance + real transaction ledger (AccountDetailScreen) used to
-            // only be reachable from Home's account switcher. This card is its real
-            // home now: tapping it is the one way into that ledger.
+            // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user
+            // follow-up: "bank home screen should look 100% like toss bank screen,
+            // icons, size, layout, functionality, everything"): the real screen has
+            // no card anywhere here -- the account balance sits flat on the page
+            // background, "Total saved" (an itunda-only aggregate with no real Toss
+            // equivalent) is gone, and Auto-transfer is a plain flat row, not a card.
+            // Tapping the balance still opens the real ledger (AccountDetailScreen),
+            // same real destination as before.
             if (primaryAccount != null) {
                 item {
-                    IdsCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAccountDetail).padding(20.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(stringResource(R.string.bank_account_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    "${primaryAccount!!.currency} %,.0f".format(primaryAccount!!.balance),
-                                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
-                                )
-                            }
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                        }
-                    }
-                }
-            }
-            item {
-                IdsCard(shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(24.dp)) {
-                        Text(stringResource(R.string.bank_total_saved), fontSize = 14.sp, color = Ids.colors.textSecondary)
-                        Text("RWF %,.0f".format(totalSaved), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
-                    }
-                }
-            }
-            item {
-                IdsCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAutoTransfers).padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAccountDetail).padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(Ids.colors.chip),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(16.dp))
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text(stringResource(R.string.bank_account_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                if (autoTransferCount > 0) stringResource(R.string.home_auto_transfer_active, autoTransferCount) else stringResource(R.string.home_auto_transfer_setup),
-                                color = Ids.colors.textSecondary,
-                                fontSize = 13.sp,
+                                "${primaryAccount!!.currency} %,.0f".format(primaryAccount!!.balance),
+                                fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                             )
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
                         }
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                     }
                 }
             }
-            // Real Toss Bank 카드/관리-style header tabs -- reuses the exact real
-            // pill-segmented-picker convention ShopScreen's own PayMerchantMode picker
-            // already established (active tab: brand-color fill + white text; inactive:
-            // surfaceSoft + textPrimary), rather than inventing a new tab visual.
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    listOf(BankHubTab.ACCOUNTS to stringResource(R.string.bank_hub_tab_accounts), BankHubTab.BORROW to stringResource(R.string.bank_hub_tab_borrow)).forEach { (tab, label) ->
-                        val active = bankHubTab == tab
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAutoTransfers).padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(32.dp).clip(CircleShape).background(Ids.colors.chip),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                            color = if (active) Color.White else Ids.colors.textPrimary,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .clickable { bankHubTab = tab }
-                                .padding(vertical = 10.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            if (autoTransferCount > 0) stringResource(R.string.home_auto_transfer_active, autoTransferCount) else stringResource(R.string.home_auto_transfer_setup),
+                            color = Ids.colors.textSecondary,
+                            fontSize = 13.sp,
                         )
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
                     }
                 }
+                androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
-            if (bankHubTab == BankHubTab.ACCOUNTS) item {
+            item {
                 val roundUpOff = stringResource(R.string.home_round_up_off)
                 val roundUpOn = stringResource(R.string.home_round_up_on)
                 val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
@@ -2446,7 +2411,7 @@ private fun BankHubScreen(
                     }
                 )
             }
-            if (bankHubTab == BankHubTab.BORROW) item {
+            item {
                 ShellSection(
                     title = stringResource(R.string.bank_borrow),
                     rows = listOf(
@@ -2471,7 +2436,7 @@ private fun BankHubScreen(
             // content stranded on a tab that's meant to be a generic access point.
             // Moved here (state fetched near the top of this composable, alongside
             // depositProtection's own identical pattern -- see above).
-            if (bankHubTab == BankHubTab.ACCOUNTS) item {
+            item {
                 ShellSection(
                     title = stringResource(R.string.bank_insights),
                     rows = buildList {
@@ -2516,20 +2481,18 @@ private fun BankHubScreen(
             // maintains as its own internal simulation of what real deposit protection
             // could look like -- same "real mechanics, honestly labeled as itunda's
             // own scheme" discipline this codebase already applies to VUP/RSE/SACCO.
-            if (bankHubTab == BankHubTab.ACCOUNTS) depositProtection?.let { dp ->
+            depositProtection?.let { dp ->
                 item {
-                    IdsCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(stringResource(R.string.bank_deposit_protection_title), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(R.string.bank_deposit_protection_covered), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                                Text("RWF %,.0f".format(dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(stringResource(R.string.bank_deposit_protection_cap, "%,.0f".format(dp.coverageCapPerUser)), color = Ids.colors.textTertiary, fontSize = 11.sp)
-                            Text(stringResource(R.string.bank_deposit_protection_reserve, "%,.0f".format(dp.fundReserveBalance)), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                    Column(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                        Text(stringResource(R.string.bank_deposit_protection_title), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.bank_deposit_protection_covered), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                            Text("RWF %,.0f".format(dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(stringResource(R.string.bank_deposit_protection_cap, "%,.0f".format(dp.coverageCapPerUser)), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                        Text(stringResource(R.string.bank_deposit_protection_reserve, "%,.0f".format(dp.fundReserveBalance)), color = Ids.colors.textTertiary, fontSize = 11.sp)
                     }
                 }
             }
@@ -3206,67 +3169,69 @@ private data class ShellRow(
     val onClick: (() -> Unit)? = null,
 )
 
+// Flattened 2026-08-22 (direct user directive: "out bank home screen should
+// look 100% like toss bank screen") -- real Toss Bank's own product catalog
+// (Save & Grow / Borrow / Insights) renders as one continuous flat list, not a
+// grid of separate rounded cards; matches iOS's AccountLedgerDetailRow and
+// AccountDetailScreen.tsx's flat row pattern built the same session. 38dp
+// circular icon badge (was 42dp square-ish RoundedCornerShape(16.dp)) to match
+// those exactly.
 @Composable
 private fun ShellSection(title: String, rows: List<ShellRow>) {
-    IdsCard(
-        shape = RoundedCornerShape(28.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            if (title.isNotEmpty()) {
-                Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            rows.forEachIndexed { index, row ->
-                Row(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (title.isNotEmpty()) {
+            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        rows.forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (row.onClick != null) Modifier.clickable(onClick = row.onClick) else Modifier)
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (row.onClick != null) Modifier.clickable(onClick = row.onClick) else Modifier)
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(row.iconColor),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(row.iconColor),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Was showing row.third (the action label, e.g. "3 new"
-                        // or "Claim") crammed into a 42dp icon box -- a real bug,
-                        // not a placeholder; it also rendered a second time below
-                        // via the row's own action button whenever longer than one character.
-                        // Then briefly row.first's initial as a stopgap, then a
-                        // real icon but on a flat muted Ids.colors.chip background --
-                        // real Toss's card-list icon badges (송금/자산 reference
-                        // screenshots) are vivid per-item brand colors, not one
-                        // neutral gray tone reused everywhere.
-                        Icon(row.icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
-                        if (row.subtitle.isNotEmpty()) {
-                            Text(row.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
-                        }
-                    }
-                    if (row.action == ">") {
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                    } else if (row.action.isNotBlank()) {
-                        // Real fix (2026-08-13, direct user report: "entire app is
-                        // still messy"): this button's onClick was hardcoded to a
-                        // no-op regardless of row.onClick -- the surrounding Row above
-                        // is already clickable via row.onClick when set, but a nested
-                        // clickable element (this button) intercepts the tap before it
-                        // reaches the parent, so tapping directly on the visually
-                        // obvious CTA (e.g. credit score's "View") silently did
-                        // nothing while tapping elsewhere in the same row worked.
-                        IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
+                    // Was showing row.third (the action label, e.g. "3 new"
+                    // or "Claim") crammed into a 42dp icon box -- a real bug,
+                    // not a placeholder; it also rendered a second time below
+                    // via the row's own action button whenever longer than one character.
+                    // Then briefly row.first's initial as a stopgap, then a
+                    // real icon but on a flat muted Ids.colors.chip background --
+                    // real Toss's card-list icon badges (송금/자산 reference
+                    // screenshots) are vivid per-item brand colors, not one
+                    // neutral gray tone reused everywhere.
+                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    if (row.subtitle.isNotEmpty()) {
+                        Text(row.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
                     }
                 }
-                if (index != rows.lastIndex) {
-                    Divider(color = Ids.colors.divider)
+                if (row.action == ">") {
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                } else if (row.action.isNotBlank()) {
+                    // Real fix (2026-08-13, direct user report: "entire app is
+                    // still messy"): this button's onClick was hardcoded to a
+                    // no-op regardless of row.onClick -- the surrounding Row above
+                    // is already clickable via row.onClick when set, but a nested
+                    // clickable element (this button) intercepts the tap before it
+                    // reaches the parent, so tapping directly on the visually
+                    // obvious CTA (e.g. credit score's "View") silently did
+                    // nothing while tapping elsewhere in the same row worked.
+                    IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }
+            }
+            if (index != rows.lastIndex) {
+                Divider(color = Ids.colors.divider)
             }
         }
     }
