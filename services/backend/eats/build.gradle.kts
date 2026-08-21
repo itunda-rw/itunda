@@ -21,6 +21,12 @@ dependencies {
     // EatsController.contactRestaurant's own doc comment. Mirrors
     // MarketplaceService.contactSeller's exact existing use of MessagingService.
     implementation(project(":messaging"))
+    // For AutoTopUpService.topUpPayFromMain/topUpShortfall -- EatsOrderService/
+    // DineInOrderService now draw from the customer's real itunda Pay money
+    // (auto-topped from Bank if short) at order payment time, same as
+    // MerchantService.collect()'s own QR-payment treatment. No circular
+    // dependency: :account only depends on :core.
+    implementation(project(":account"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

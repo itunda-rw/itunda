@@ -130,6 +130,7 @@ class EatsOrderService(
     private val eatsMembershipService: EatsMembershipService,
     private val platformMembershipService: PlatformMembershipService,
     private val pushNotificationService: PushNotificationService,
+    private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     private val logger = LoggerFactory.getLogger(EatsOrderService::class.java)
 
@@ -364,8 +365,14 @@ class EatsOrderService(
 
         val restaurantAccount = accountRepository.findById(restaurant.accountId)
             .orElseThrow { RestaurantNoAccountException("Restaurant settlement account not found") }
-        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
-            ?: throw EatsBuyerNoAccountException("No account found for this account")
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see MerchantService
+        // .collect()'s own doc comment for the full sourced architecture. An Eats order
+        // is real merchant collection, same as QR/code payment -- draws from the
+        // buyer's itunda Pay money, auto-topped from Bank (then an external linked
+        // account) if short (see the auto-topup block right before this order's
+        // ledger post below, once buyerCharge is known).
+        var buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.PAY)
+            ?: throw EatsBuyerNoAccountException("No itunda Pay money found for this account")
 
         // Real menu-options resolution (2026-07-21) -- batched up front for every
         // distinct menu item in this order, not one pair of queries per line item (same
@@ -554,6 +561,17 @@ class EatsOrderService(
         // as a real expense (PROMOTION_EXPENSE leg below), matching Baemin's own real
         // "platform pays" mechanic for that discount specifically.
         val buyerCharge = totalAmount.subtract(promotionDiscount).subtract(pickupDiscount)
+
+        if (buyerAccount.availableBalance < buyerCharge) {
+            val shortfall = buyerCharge.subtract(buyerAccount.availableBalance)
+            var topUpResult = autoTopUpService.topUpPayFromMain(buyerId, buyerAccount.id, shortfall)
+            if (!topUpResult.triggered) {
+                topUpResult = autoTopUpService.topUpShortfall(buyerId, buyerAccount.id, shortfall)
+            }
+            if (topUpResult.triggered) {
+                buyerAccount = accountRepository.findById(buyerAccount.id).orElse(buyerAccount)
+            }
+        }
 
         val result = ledgerService.postLedgerTransaction(
             buyerAccount.currency,
@@ -1291,8 +1309,10 @@ class EatsOrderService(
 
         val restaurantAccount = accountRepository.findById(restaurant.accountId)
             .orElseThrow { RestaurantNoAccountException("Restaurant settlement account not found") }
-        val buyerAccount = accountRepository.findByUserIdAndType(order.buyerId, AccountType.MAIN)
-            ?: throw EatsBuyerNoAccountException("No account found for this account")
+        // Refunds back to the same real itunda Pay account the order was charged from
+        // (see placeOrder's own doc comment) -- a refund, so no auto-topup applies.
+        val buyerAccount = accountRepository.findByUserIdAndType(order.buyerId, AccountType.PAY)
+            ?: throw EatsBuyerNoAccountException("No itunda Pay money found for this account")
 
         val itemAmount = item.unitPrice.multiply(BigDecimal(item.quantity))
         val refund = ledgerService.postLedgerTransaction(
@@ -1408,7 +1428,9 @@ class EatsOrderService(
 
         val abandonedRiderId = order.riderId
         if (order.deliveryFee > BigDecimal.ZERO) {
-            val buyerAccount = accountRepository.findByUserIdAndType(order.buyerId, AccountType.MAIN)
+            // Refunds back to the same real itunda Pay account the order was charged
+            // from -- a refund, so no auto-topup applies.
+            val buyerAccount = accountRepository.findByUserIdAndType(order.buyerId, AccountType.PAY)
             if (buyerAccount != null) {
                 val refund = ledgerService.postLedgerTransaction(
                     buyerAccount.currency,

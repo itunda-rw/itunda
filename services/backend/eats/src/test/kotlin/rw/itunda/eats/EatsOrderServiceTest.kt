@@ -110,11 +110,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         // no-active-member-by-default convention as EatsMembershipService above. Named
         // (not inline) so the platform-membership test below can override it per-test.
         val platformMembershipService = mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
-            eatsMembershipService, platformMembershipService, pushNotificationService,
+            eatsMembershipService, platformMembershipService, pushNotificationService, autoTopUpService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -125,7 +126,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a real buyer places a real order for 2 units") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -164,10 +165,36 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- an Eats order is real
+        // merchant collection, same as MerchantService.collect()'s own QR path, so it
+        // gets the same auto-topup-from-Bank-if-short treatment.
+        When("a real buyer's itunda Pay money is short but auto top-up from Bank covers it") {
+            val shortAccount = account("account_buyer_short", "buyer_short").also { it.availableBalance = BigDecimal("1000") }
+            val toppedUpAccount = account("account_buyer_short", "buyer_short").also { it.availableBalance = BigDecimal("10000") }
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
+            every { accountRepository.findById("account_buyer_short") } returns Optional.of(toppedUpAccount)
+            every { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5500")) } returns
+                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 5500 RWF from itunda Bank")
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            service.placeOrder("buyer_short", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
+
+            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the order") {
+                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5500")) }
+                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+                legsSlot.captured.first { it.accountId == "account_buyer_short" }.amount shouldBe BigDecimal("6500")
+            }
+        }
+
         When("a real order's itemsSubtotal is below the lowest real promotion tier") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_no_promo", emptyList())
@@ -190,7 +217,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a real Coupang Wow-style platform member orders at a restaurant that has NOT opted into Eats Club") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_platform_member", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -210,7 +237,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a restaurant order is still inside its payment transaction") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -243,7 +270,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a real buyer places a real Baemin-style 포장주문 (Pickup) order, no delivery address given") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_pickup", emptyList())
@@ -276,7 +303,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithPickupDiscount)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_pickup_discount", emptyList())
@@ -313,7 +340,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithPickupDiscount)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_delivery_no_pickup_discount", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -332,7 +359,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithMin)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
 
             Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
@@ -352,7 +379,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithMin)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -371,7 +398,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(schedulingRestaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_sched", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -446,7 +473,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a real buyer places an order with real delivery notes") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -511,7 +538,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             val otherItem = MerchantProduct(id = "item_2", merchantId = "restaurant_OTHER", name = "Not this restaurant's item", price = BigDecimal("500"))
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_2") } returns Optional.of(otherItem)
 
             Then("it throws MenuItemNotFoundException, not silently mixing restaurants into one order") {
@@ -528,7 +555,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             val soldOutItem = MerchantProduct(id = "item_3", merchantId = "restaurant_1", name = "Out of stock special", price = BigDecimal("1500"), soldOut = true)
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_3") } returns Optional.of(soldOutItem)
 
             Then("it throws MenuItemSoldOutException, distinct from MenuItemNotFoundException -- the item is real and still shown") {
@@ -553,7 +580,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_expired_surplus") } returns Optional.of(expiredDealItem)
 
             Then("it throws MenuItemSurplusDealExpiredException, distinct from MenuItemNotFoundException") {
@@ -569,7 +596,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("ordering with zero quantity") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
 
             Then("it throws InvalidEatsQuantityException") {
                 try {
@@ -589,7 +616,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
             every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
@@ -612,7 +639,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             val choices = listOf(rw.itunda.core.domain.MenuOptionChoice(id = "choice_small", groupId = "group_1", name = "Small", priceDelta = BigDecimal.ZERO))
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
             every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
@@ -632,7 +659,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             val choices = listOf(rw.itunda.core.domain.MenuOptionChoice(id = "choice_small", groupId = "group_1", name = "Small", priceDelta = BigDecimal.ZERO))
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
             every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
@@ -650,7 +677,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a menu item has NO option groups at all and the buyer sends no selections") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_opt2", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -670,7 +697,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_2", emptyList())
@@ -702,7 +729,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -730,7 +757,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_5", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -749,7 +776,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("no delivery coordinates are given and Nominatim finds no match") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_6", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -771,7 +798,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
@@ -873,6 +900,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -886,6 +914,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -1327,7 +1356,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             val abandoningRider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider_1")
             every { eatsOrderRepository.findById("eats_order_stale") } returns Optional.of(staleOrder)
             every { riderRepository.findById("rider_1") } returns Optional.of(abandoningRider)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns account("account_buyer", "buyer_1")
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns account("account_buyer", "buyer_1")
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_stale", emptyList())
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
 
@@ -1411,6 +1440,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1418,12 +1448,13 @@ class EatsOrderServiceTest : BehaviorSpec({
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
-        val buyerAccount = Account(id = "account_buyer", userId = "buyer_1", accountNumber = "ACC-B", accountName = "Buyer", type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+        val buyerAccount = Account(id = "account_buyer", userId = "buyer_1", accountNumber = "ACC-B", accountName = "Buyer", type = AccountType.PAY, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
         val restaurantAccount = Account(id = "account_restaurant", userId = "owner_1", accountNumber = "ACC-R", accountName = "Restaurant", type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
-        every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+        every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
         every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
 
         fun acceptedOrder(status: EatsOrderStatus = EatsOrderStatus.ACCEPTED) = EatsOrder(
@@ -1574,6 +1605,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1587,6 +1619,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val readyOrder = EatsOrder(
@@ -1774,6 +1807,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1787,6 +1821,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
@@ -1870,6 +1905,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1883,6 +1919,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
 
@@ -2013,6 +2050,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2026,6 +2064,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val riderAccount = account("account_rider", "rider_user_1")
@@ -2164,6 +2203,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2177,6 +2217,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Test Spot", status = MerchantStatus.ACTIVE)
@@ -2306,6 +2347,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2319,6 +2361,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
 
         When("a real query matches real Nominatim suggestions") {
@@ -2390,6 +2433,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2403,6 +2447,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
 
         // Kigali city center vs. Huye (real Rwandan towns, ~135km apart) -- a rider
@@ -2522,6 +2567,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2529,6 +2575,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
+            autoTopUpService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val riderAccount = account("account_rider", "rider_user_1")

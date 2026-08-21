@@ -67,11 +67,12 @@ class DineInOrderServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
             menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
             transactionRepository, fraudRuleEngine, ledgerEntryRepository, notificationRepository,
-            pushNotificationService,
+            pushNotificationService, autoTopUpService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -82,7 +83,7 @@ class DineInOrderServiceTest : BehaviorSpec({
         When("a real buyer places a real table order for 2 units") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -109,6 +110,31 @@ class DineInOrderServiceTest : BehaviorSpec({
 
             Then("the restaurant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "New table order", any(), any()) }
+            }
+        }
+
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- a dine-in order is real
+        // merchant collection, same as MerchantService.collect()'s own QR path, so it
+        // gets the same auto-topup-from-Bank-if-short treatment.
+        When("a real buyer's itunda Pay money is short but auto top-up from Bank covers it") {
+            val shortAccount = account("account_buyer_short", "buyer_short").also { it.availableBalance = BigDecimal("1000") }
+            val toppedUpAccount = account("account_buyer_short", "buyer_short").also { it.availableBalance = BigDecimal("10000") }
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
+            every { accountRepository.findById("account_buyer_short") } returns Optional.of(toppedUpAccount)
+            every { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) } returns
+                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 5000 RWF from itunda Bank")
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
+
+            service.placeOrder("buyer_short", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_1", 2)))
+
+            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the order") {
+                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) }
+                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+                legsSlot.captured.first { it.accountId == "account_buyer_short" }.amount shouldBe BigDecimal("6000")
             }
         }
 
@@ -173,7 +199,7 @@ class DineInOrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_expired_surplus") } returns Optional.of(expiredDealItem)
 
             Then("it throws DineInMenuItemSurplusDealExpiredException before debiting a account") {
@@ -189,7 +215,7 @@ class DineInOrderServiceTest : BehaviorSpec({
         When("a table order is still inside its payment transaction") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
 
@@ -253,11 +279,12 @@ class DineInOrderServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
             menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
             transactionRepository, fraudRuleEngine, ledgerEntryRepository, notificationRepository,
-            pushNotificationService,
+            pushNotificationService, autoTopUpService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
