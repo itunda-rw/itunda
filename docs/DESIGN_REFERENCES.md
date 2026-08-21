@@ -16037,3 +16037,228 @@ largeAmount` already uses for its own money-hero token). `xcodebuild` BUILD
 SUCCEEDED. 84 sites remain across 26 files.
 
 *Shipped: `ios/Features/Payments/Sources/TransactionHistoryScreen.swift`.*
+
+## 254. Real Toss Bank/Toss Pay separation: itunda Pay money now isolated from itunda Bank, auto-funded at payment time -- plus a full "Wallet" -> "Account" rename across all 4 codebases
+
+Direct, repeated user correction, grounded in real Toss architecture:
+Toss Bank and Toss Pay are fully isolated products. Sending money moves
+through the real Bank account; Toss Pay has its own real 토스머니/Toss Pay
+Money stored-value balance, which can be funded from different linked
+bank accounts and cards -- confirmed via direct research (계좌 = "account"
+for Bank-side, 토스머니/토스페이머니 = "Toss Money"/"Toss Pay Money" for the
+Pay-side balance; a real 2022 press mention "토스 '토스페이머니'로
+선불충전시장 진출" confirms Toss Pay Money as a real, named, distinct
+product, not an invented term). When a user pays with Face Pay or a QR/
+barcode, Pay money auto-tops-up the exact amount from Bank (or an
+external card) at the moment of payment -- itunda Bank's own transaction
+history only ever shows a generic top-up transfer, never which real
+가맹점 (merchant) was paid, because Bank genuinely never touches merchant
+payment collection at all anymore.
+
+### The architecture change
+
+- **New `AccountType.PAY`** alongside existing `MAIN` ("itunda Bank
+  account"), provisioned at registration alongside MAIN/SAVINGS/
+  INVESTMENT (`AuthService.register`).
+- **`MerchantService.collect`** (the real QR/Face-Pay/Static-QR/USSD
+  payment collection path every one of those 4 channels routes through,
+  confirmed by reading `FacePayService.collect`/`MerchantStaticQrService`
+  both composing it directly rather than duplicating logic) now debits
+  `PAY`, not `MAIN`.
+- **New `AutoTopUpService.topUpPayFromMain`**: when Pay money can't cover
+  a payment, it auto-funds the shortfall from the user's own Bank account
+  first -- an ordinary internal wallet-to-wallet transfer (same real
+  shape `MiniWalletService.deposit`'s MAIN -> Mini funding already
+  established: `senderId == recipientId == userId`, both ledger legs
+  `LedgerAccountType.WALLET`, `TransactionType.TRANSFER`), itself a
+  completely normal, generic, visible Bank-side transaction ("Top up to
+  itunda Pay," no merchant name anywhere in it). Falls back to the
+  already-real `AutoTopUpService.topUpShortfall` (an external linked-
+  account pull, the same real Naver Pay Money "결제 시 부족분 자동 충전"
+  mechanic already wired into `P2pService.sendDirect` for P2P transfers)
+  only if Bank itself can't cover it either -- matching the user's own
+  description that real Toss Pay money "can be connected to different
+  bank accounts and different cards."
+
+### The full "no wallet in code" rename
+
+The user's follow-up direction -- "not only user-facing strings but also
+in codes to avoid confusion for better developer experience" -- meant
+this wasn't scoped to copy. Confirmed scope explicitly via
+`AskUserQuestion` (given the true size, measured before committing to it:
+1,688 raw occurrences across 122 backend files alone, including ~35
+separate per-feature `*NoWalletException` classes) rather than guessing:
+**full rename, backend first, then all 3 clients.**
+
+`Wallet` -> `Account`, `WalletType` -> `AccountType`, `WalletRepository`
+-> `AccountRepository`, every `*NoWalletException` ->
+`*NoAccountException`, `MiniWallet*` -> `MiniAccount*`,
+`ForeignCurrencyWallet*` -> `ForeignCurrencyAccount*`, every
+`walletId`/`walletRepository`/etc identifier, every `WALLET_NOT_FOUND`/
+`WALLET_FROZEN`/`MINI_WALLET_*`/`FOREIGN_WALLET_*` error-code string (a
+real second wire-contract layer the first rename pass missed -- these are
+`ApiError.code` values every client string-compares against, caught only
+because the SAME rename had to be replicated client-side and a stale
+code check surfaced it), the `:wallet` Gradle module -> `:account`
+(directory, package, `settings.gradle.kts`, every consuming
+`build.gradle.kts`), file renames (`WalletService.kt` ->
+`AccountService.kt`, `lib/wallet.ts` -> `lib/account.ts`,
+`MiniWalletScreen.kt`/`MiniWalletScreenView.swift` ->
+`MiniAccountScreen.kt`/`MiniAccountScreenView.swift`, etc.) -- across the
+backend, `bank-mfe`, Android (`:app`/`:merchantapp`/`:riderapp`/
+`:agentapp` + every touched feature module), and iOS
+(`App`/`MerchantApp`/`RiderApp` + `Core/Network`/`Features/Banking`/
+`Features/Payments`/`Features/Maps`).
+
+**Real naming collisions found and fixed by hand, backend-side** -- the
+backend already had OTHER distinct "\*Account"-suffixed concepts a bare
+rename collided with (confirmed live via real Kotlin "Conflicting
+declarations" compile errors, not guessed): `LedgerService`'s own
+`LedgerAccount` clearing-account locking map vs. the new user `Account`
+locking map (`lockedUserAccounts`/`lockedClearingAccounts`);
+`OverdraftService`'s `OverdraftAccount` vs. the underlying `Account`;
+`GroupAccountService`'s `GroupAccount` vs. the underlying `Account`;
+`OverviewService`'s `AccountSummary` vs. the raw `Account` list. Each
+given a distinct local name rather than shadowing.
+
+**Real client-side collisions found and fixed by hand too**: the
+`lucide-react` `Wallet` icon (web) and `androidx.compose.material.icons.
+outlined.AccountBalanceWallet` (Android, hit ~10 call sites) are real
+third-party library export names, not itunda's own code -- both got
+blindly mangled by the first script pass (`Account as AccountIcon`,
+`AccountBalanceAccount`), caught via real `tsc`/Kotlin compile errors and
+reverted to their real library names (`Wallet as AccountIcon`,
+`AccountBalanceWallet`).
+
+**A real mid-rename bug, caught and fixed before it shipped**: the
+all-caps `WALLET` -> `ACCOUNT` pass needed to protect
+`LedgerAccountType.WALLET` (an `@Enumerated(EnumType.STRING)` value --
+its literal name is what's persisted in every existing `ledger_entries`
+row in the live database) using a placeholder-token technique. The first
+version of that script used a placeholder (`__PROTECTED_LAT_WALLET__`)
+that itself contained the substring "WALLET" -- the very next line in the
+same script corrupted its own placeholder before the restore step could
+find it, silently leaving `__PROTECTED_LAT_ACCOUNT__` literal garbage in
+79 files. Caught immediately via the very next compile pass (`Conflicting
+declarations`/`Unresolved reference` errors), traced to the actual
+placeholder self-collision (not assumed), and fixed with a second pass
+that finds-and-restores the corrupted token back to the real protected
+value across all 79 files -- verified clean via a fresh grep before
+moving on. **Lesson for any future scripted protect-then-rename pass**: a
+placeholder token must never itself contain the substring being
+replaced.
+
+**Deliberately, permanently left unchanged** (same real-live-data-risk
+reasoning throughout, not an oversight): the two
+`@Table(name = "wallets"/"wallet_auto_topup_settings")` DB table names,
+`LedgerAccountType.WALLET` itself (the persisted enum value), and every
+past Flyway migration file (`V102__foreign_currency_wallets.sql` etc. --
+immutable historical record, `ddl-auto: validate` means schema drift here
+is a real live-database risk, not a code-clarity concern). Renaming any
+of these requires a real, separately reviewed Flyway migration against
+live data, a fundamentally different, higher-stakes action than a code
+identifier rename -- explicitly out of scope for this pass.
+
+### Verification
+
+- **Backend**: `:app:compileKotlin` (aggregates all 40+ modules) BUILD
+  SUCCESSFUL after each of the 2 rename passes (mixed-case, then
+  all-caps). Full `test` task: **1,975 tests, 0 failures, 0 errors**
+  (1 pre-existing `AuthServiceTest` assertion updated for the new 4th
+  provisioned account). `:architecture-test` equivalent not re-run this
+  pass (no Konsist-relevant boundary touched on the backend side).
+- **bank-mfe**: `tsc -b` clean, full `vite build` succeeds.
+- **Android**: `:app`/`:merchantapp`/`:riderapp`/`:agentapp` +
+  `:features:payments:impl`/`:features:shop:impl`/`:features:eats:impl`/
+  `:features:talk:impl` all compile clean, `:app`'s instrumented test
+  sources compile clean, every changed XML file validated with
+  `xmllint`, `:architecture-test` (the real Konsist feature-boundary
+  check) passes.
+- **iOS**: full `xcodebuild` for all 3 real app targets --
+  `ItundaApp`/`ItundaMerchantApp`/`ItundaRiderApp` -- BUILD SUCCEEDED.
+  Required `tuist generate` (to pick up the renamed
+  `MiniAccountScreenView.swift`) + a follow-up `pod install` (a known
+  issue this session's own memory already names: `tuist generate` breaks
+  Pods module resolution, confirmed live again here -- `MapLibre` failed
+  to resolve until `pod install` re-ran).
+- **Full-repo final sweep**: a fresh case-insensitive grep across all 4
+  codebases confirms every single remaining "wallet"-containing string
+  anywhere is one of the deliberately-protected patterns above (81
+  backend matches, all `LedgerAccountType.WALLET`/the 2 `@Table` names; 2
+  web matches, the `lucide-react` import + one doc comment; 3 Android
+  matches, all real `AccountBalanceWallet` Material icon usages; 0 iOS
+  matches) -- not a single accidental leftover anywhere.
+
+### What this pass does NOT include (real, explicit follow-ups, not silently dropped)
+
+- **Client UI for the new dual-balance model**: no screen on any of the 3
+  clients yet shows Pay money and Bank account as two separate visible
+  balances -- the backend/ledger separation is real and load-bearing
+  (payment collection genuinely debits a different account row now), but
+  the UI still shows whatever it showed before (a single "wallet"/balance
+  card, now backed by the `PAY` account for payment-collection screens
+  specifically since that's the only UI surface this pass touched
+  functionally, everything else UNCHANGED). A real "itunda Pay" balance
+  card/screen, separate from "itunda Bank," is the natural next slice.
+- **`FamilyLinkService`/`P2pTransferLimitService`/every other MAIN-wallet
+  consumer**: untouched -- transfers, savings, bills, loans all
+  correctly continue to operate on the Bank (`MAIN`) account exactly as
+  before; only merchant/QR/Face-Pay/Static-QR/USSD payment COLLECTION
+  moved to `PAY`.
+- **Existing seeded/test users**: provisioned before this change have no
+  `PAY` account row yet (only new registrations get one from
+  `AuthService.register`) -- their first payment attempt will hit
+  `AccountNotFoundException("No itunda Pay money found for this
+  account")` until a real backfill migration runs. Not attempted this
+  pass (the same "no live-data schema/backfill risk without explicit
+  review" boundary as the DB-table-rename exclusion above) -- a real,
+  named, still-open operational follow-up before this can safely reach
+  the live cluster's existing user base.
+- **Deploy**: NOT deployed to the live private cloud this pass -- all 4
+  codebases had to move together (a partial deploy would break every
+  already-installed client against the renamed URL/JSON contract), and
+  the existing-user backfill gap above means even a fully-synchronized
+  deploy isn't yet safe for the live cluster's current real users.
+
+*Shipped: `services/backend/**` (329 files, see the backend commit for
+the full list) + `services/micro-frontends/bank-mfe/**` (38 files) +
+`android/**` (55 files) + `ios/**` (44 files) across 4 separate commits.*
+
+## 255. §254's existing-user PAY-account backfill gap, closed
+
+The "Existing seeded/test users" follow-up §254 named as a real, open,
+not-silently-dropped operational blocker is now closed. Added
+`PayAccountBackfillRunner` (`services/backend/app/src/main/kotlin/rw/itunda/
+app/PayAccountBackfillRunner.kt`), a `CommandLineRunner` that runs at
+startup, diffs every user against existing `PAY`-account owners with one
+batched `AccountRepository.findByUserIdInAndType` call (not one query per
+user), and creates a real `PAY` account (zero balance, same shape
+`AuthService.register` already uses) for whichever users are missing one.
+
+**Deliberately a Kotlin runner, not a raw Flyway SQL migration** -- the
+reason is real, not stylistic: `AccountNumberGenerator.generate` carries
+real collision-retry logic (10 attempts against the live
+`uq_accounts_account_number`-equivalent constraint) that lives in Kotlin,
+not something a one-shot SQL `INSERT ... SELECT` can safely reproduce
+without either risking a real unique-constraint violation or duplicating
+the retry logic a second time in SQL.
+
+Idempotent and additive-only by construction (only ever `save()`s a row
+for a user found missing one -- never touches an existing PAY account),
+so safe to run on every application startup indefinitely, not just once.
+Ordering relative to `SeedDataRunner` is deliberately left unspecified
+(neither declares `@Order`) -- harmless, since in the worst case a
+freshly-seeded demo user just gets backfilled on the very next restart
+instead of the same one; real users are entirely unaffected by ordering
+since `AuthService.register` already provisions their PAY account inline.
+
+3 real Mockito unit tests (`PayAccountBackfillRunnerTest.kt`): the mixed
+case (one user already covered, one missing, verifies exactly one `save()`
+call with the right userId/type/zero-balance), the fully-covered no-op
+case (verifies zero `save()` calls), and the empty-database no-op case.
+All 3 passing. `:app:compileKotlin` clean.
+
+**Still open from §254, unchanged by this pass**: no client UI yet shows
+Pay money and Bank account as two separate visible balances, and this is
+still not deployed to the live private cloud (deploying now only needs
+the 4 client builds pushed together -- the backfill blocker is resolved).
