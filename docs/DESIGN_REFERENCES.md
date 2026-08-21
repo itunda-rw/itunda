@@ -15611,3 +15611,51 @@ architecture-boundary verified only, not visually confirmed on-device.
 `android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/TalkGroupsBrowse.kt` +
 `android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt` +
 `android/app/src/main/AndroidManifest.xml`.*
+
+## 245. Real Uber "Destination Filter" + driver earnings report -- the last 2 uncalled endpoints from the original sweep, closed on bank-mfe
+
+[[feedback_uncalled_endpoint_sweep]] tracked exactly 2 remaining real gaps as
+"both need native RiderApp work": `rides/drivers/destination`+`/clear` and
+`rides/trips/my-earnings`. Re-ran `scripts/uncalled-endpoint-sweep.py` fresh
+rather than trusting that old note, and used it as the occasion to actually
+check what "RiderApp" meant here -- `android/riderapp`/`ios/RiderApp` turned
+out to be Eats/Commerce DELIVERY riders specifically (confirmed via grep: zero
+`rides/` references anywhere in either), not ride-hailing drivers at all. The
+real ride-hailing driver experience (register/accept/decline/start trip,
+availability toggle, ratings) already lives in bank-mfe's own `RidesView`
+component's DRIVE sub-tab (`BankDashboard.tsx`) -- so "needs native RiderApp"
+was itself an inaccurate scope note; the real gap was just two missing cards
+on an already-real, already-built driver screen.
+
+Added `setDriverDestination`/`clearDriverDestination`/`fetchMyEarnings` to
+`lib/rideshare.ts` (`RideDriver` gained real `destinationLatitude`/
+`destinationLongitude` fields, matching the backend entity directly). Built a
+real "Heading somewhere?" card reusing the existing `AddressAutocomplete`
+component (itunda's own self-hosted Nominatim, the same real address-search
+already used for Eats delivery addresses) -- gave it an optional `placeholder`
+prop rather than forking a second copy, since the only difference from its
+existing Eats use is the label. Built a real "This week" earnings summary
+(trip count, gross fare, net earnings) from the backend's own real default
+7-day window.
+
+**Verification**: `tsc -b`/`vite build`/`oxlint`/`accessibility-lint` all
+clean. Live-verified via headless Chrome against the real deployed backend:
+registered a fresh driver, typed into the destination field, confirmed REAL
+Nominatim suggestions returned ("City of Kigali, Rwanda" and a full street
+address), selected one, confirmed the card correctly switched to "Only
+offered trips heading toward City of Kigali, Rwanda" with a working Clear
+button -- a full real round trip through `setDriverDestination`, not just a
+UI mock. Earnings card correctly stayed hidden for this fresh driver with zero
+completed trips (gated on `earnings.length > 0`), matching intended behavior
+rather than showing an empty/zero state.
+
+**Still open**: same two cards not yet ported to Android/iOS. Checked properly
+this time (an earlier draft of this note wrongly claimed neither platform has
+ANY ride-hailing driver UI -- a narrow `grep` for the wrong function name
+missed `RideScreen.kt`/`RideScreenView.swift`, both of which DO have the real
+register/accept/decline/availability driver flow already). Confirmed via a
+correct grep that neither has the destination-filter/earnings pair
+specifically -- that's the actual, narrower remaining gap.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/lib/rideshare.ts` +
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*

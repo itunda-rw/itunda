@@ -63,6 +63,12 @@ export interface RideDriver {
   currentLatitude: number | null;
   currentLongitude: number | null;
   locationUpdatedAt: string | null;
+  // Real Uber "Destination Filter" (uncalled-endpoint sweep follow-up, item 245)
+  // -- see RideDriverService.setDestination's own doc comment. A driver heading
+  // somewhere real (e.g. home) sets it here, and only gets offered trips heading
+  // that direction, matching Uber's own real published feature.
+  destinationLatitude: number | null;
+  destinationLongitude: number | null;
 }
 
 export const registerAsDriver = () =>
@@ -82,6 +88,41 @@ export const updateDriverLocation = (latitude: number, longitude: number) =>
     method: 'POST',
     body: JSON.stringify({ latitude, longitude }),
   }).then((r) => r.driver);
+
+// Real Uber "Destination Filter" -- see RideDriver.destinationLatitude's own doc
+// comment. Found via scripts/uncalled-endpoint-sweep.py: a real, fully-built
+// backend endpoint with zero client anywhere on any platform.
+export const setDriverDestination = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; driver: RideDriver }>('/api/v1/rides/drivers/destination', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.driver);
+
+export const clearDriverDestination = () =>
+  apiFetch<{ success: boolean; driver: RideDriver }>('/api/v1/rides/drivers/destination/clear', { method: 'POST' }).then((r) => r.driver);
+
+// Real Uber Driver-style earnings report -- see RideTripService.getMyEarnings's
+// own doc comment. Found the same way as the destination filter above: real,
+// fully-built, zero client anywhere. Defaults to the last 7 days (backend's own
+// default when from/to are omitted), matching how the driver would actually want
+// to check "how did this week go."
+export interface DriverDailyEarnings {
+  date: string;
+  tripCount: number;
+  grossFare: number;
+  platformFees: number;
+  netEarnings: number;
+}
+
+export const fetchMyEarnings = (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const query = params.toString();
+  return apiFetch<{ success: boolean; from: string; to: string; days: DriverDailyEarnings[] }>(
+    `/api/v1/rides/trips/my-earnings${query ? `?${query}` : ''}`,
+  );
+};
 
 export const requestRideTrip = (
   pickupAddress: string, pickupLatitude: number, pickupLongitude: number,

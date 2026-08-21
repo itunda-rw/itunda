@@ -216,10 +216,10 @@ import {
   type AutoTransfer, type AutoTransferFrequency,
 } from './lib/autoTransfers';
 import {
-  acceptRideTrip, addTrustedContact, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
-  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchRideTripPin, fetchTripStops, fetchTrustedContacts, registerAsDriver, removeTrustedContact, requestRideTrip, sendStatusToTrustedContacts, setDriverAvailability,
+  acceptRideTrip, addTrustedContact, arriveAtRideStop, cancelRideTrip, clearDriverDestination, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
+  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyEarnings, fetchMyTrips, fetchRideTripPin, fetchTripStops, fetchTrustedContacts, registerAsDriver, removeTrustedContact, requestRideTrip, sendStatusToTrustedContacts, setDriverAvailability, setDriverDestination,
   shareRideTripStatus, startRideTrip, submitRideReview, tipDriver, updateDriverLocation,
-  type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop, type RideTrustedContact,
+  type DriverDailyEarnings, type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop, type RideTrustedContact,
 } from './lib/rideshare';
 import {
   acceptDesignatedDriverTrip, cancelDesignatedDriverTrip, completeDesignatedDriverTrip, fetchAvailableDesignatedDriverTrips,
@@ -15562,11 +15562,12 @@ function TipRiderPrompt({ orderId, onTipped }: { orderId: string; onTipped: () =
 }
 
 function AddressAutocomplete({
-  value, onChangeText, onSelectSuggestion,
+  value, onChangeText, onSelectSuggestion, placeholder = 'Delivery address',
 }: {
   value: string;
   onChangeText: (text: string) => void;
   onSelectSuggestion: (suggestion: AddressSuggestion) => void;
+  placeholder?: string;
 }) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -15606,7 +15607,7 @@ function AddressAutocomplete({
         type="text" value={value} onChange={(e) => handleChange(e.target.value)}
         onFocus={() => setOpen(suggestions.length > 0)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Delivery address" required autoComplete="off"
+        placeholder={placeholder} required autoComplete="off"
         style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {searching && (
@@ -17414,6 +17415,12 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   // Real Kakao T-style multi-stop rides (item 214) -- keyed by trip id, so each real
   // active trip's own waypoints render independently.
   const [driverTripStops, setDriverTripStops] = useState<Record<string, RideTripStop[]>>({});
+  // Real Uber "Destination Filter" + earnings report (uncalled-endpoint sweep
+  // follow-up, item 245) -- both real, fully-built backend endpoints found with
+  // zero client anywhere on any platform before this.
+  const [destinationAddress, setDestinationAddress] = useState('');
+  const [destinationBusy, setDestinationBusy] = useState(false);
+  const [earnings, setEarnings] = useState<DriverDailyEarnings[] | null>(null);
 
   const loadDriver = () => {
     fetchMyDriverProfile()
@@ -17444,6 +17451,41 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab, driver?.id]);
+
+  // Real Uber Driver-style earnings report + Destination Filter (uncalled-endpoint
+  // sweep follow-up, item 245) -- both real, fully-built backend endpoints found
+  // with zero client anywhere on any platform before this.
+  useEffect(() => {
+    if (subTab !== 'DRIVE' || !driver) return;
+    fetchMyEarnings().then((r) => setEarnings(r.days)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab, driver?.id]);
+
+  const handleSetDestination = async (suggestion: AddressSuggestion) => {
+    setDestinationBusy(true);
+    setDriverError(null);
+    try {
+      setDriver(await setDriverDestination(suggestion.latitude, suggestion.longitude));
+      setDestinationAddress(suggestion.displayName);
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not set your destination.');
+    } finally {
+      setDestinationBusy(false);
+    }
+  };
+
+  const handleClearDestination = async () => {
+    setDestinationBusy(true);
+    setDriverError(null);
+    try {
+      setDriver(await clearDriverDestination());
+      setDestinationAddress('');
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not clear your destination.');
+    } finally {
+      setDestinationBusy(false);
+    }
+  };
 
   const handleRegisterDriver = async () => {
     setRegisteringDriver(true);
@@ -17712,6 +17754,56 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               </div>
 
               {driverError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{driverError}</p>}
+
+              {/* Real Uber "Destination Filter" -- see RideDriver.destinationLatitude's
+                  own doc comment. Set once, works across sessions until cleared (no
+                  expiry client-side; matches the real backend, which never expires it
+                  on its own either). */}
+              <div className="itunda-card" style={{ marginBottom: '16px' }}>
+                <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Heading somewhere?</p>
+                {driver.destinationLatitude != null ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-600)' }}>
+                      Only offered trips heading toward {destinationAddress || 'your destination'}.
+                    </p>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={destinationBusy} onClick={handleClearDestination}>
+                      {destinationBusy ? '…' : 'Clear'}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+                      Set a destination and you'll only be offered trips heading that direction.
+                    </p>
+                    <AddressAutocomplete
+                      value={destinationAddress}
+                      onChangeText={setDestinationAddress}
+                      onSelectSuggestion={handleSetDestination}
+                      placeholder="Where are you heading?"
+                    />
+                  </>
+                )}
+              </div>
+
+              {earnings && earnings.length > 0 && (
+                <div className="itunda-card" style={{ marginBottom: '16px' }}>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>This week</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Trips</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{earnings.reduce((sum, d) => sum + d.tripCount, 0)}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Gross fare</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{earnings.reduce((sum, d) => sum + d.grossFare, 0).toLocaleString()} RWF</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Net earnings</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{earnings.reduce((sum, d) => sum + d.netEarnings, 0).toLocaleString()} RWF</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {activeDriverTrips.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
