@@ -15700,3 +15700,64 @@ session has zero remaining real gaps anywhere.
 `android/app/src/main/java/rw/itunda/app/ui/RideScreen.kt` +
 `ios/Core/Network/Sources/NetworkClient.swift` +
 `ios/App/Sources/RideScreenView.swift`.*
+
+## 248. Hardened gift-voucher redemption with a real pessimistic lock -- NOT the double-spend the first pass of this finding claimed, corrected before shipping
+
+Initial read: `GiftVoucherService.redeemVoucher()` reads the voucher
+unlocked (`findById`), checks `status == ACTIVE`, posts the real ledger
+transaction crediting the merchant's wallet, and only *after* that writes
+`status = REDEEMED` -- the exact check-then-act-then-write-a-flag shape
+[[project_itunda_concurrency_audit]] already fixed 3 times elsewhere
+(GroupEatsOrder, MerchantBookingService, tipRider/tipDriver). Flagged as a
+"real double-spend" on first pass.
+
+**That claim doesn't survive a closer read.** `GiftVoucher` already has a
+real `@Version` field (`GiftVoucher.kt:112`), with its own doc comment
+naming this exact scenario: "Merchant redemption and expiry refund must
+not settle a voucher concurrently." `LedgerService.postLedgerTransaction`
+is bare `@Transactional` (default `REQUIRED` propagation), so it joins
+`redeemVoucher`'s own ambient transaction rather than committing
+independently. That means when two concurrent redeems both post ledger
+legs and then both try to `save()` the voucher, the loser's `save()` throws
+`ObjectOptimisticLockingFailureException` -- which rolls back its ENTIRE
+transaction, ledger legs included, atomically. No persisted double-credit
+ever happens; the loser gets a 500 (translated to a clean 409 by the
+existing app-wide `IdempotencyExceptionHandler`, per
+[[project_itunda_concurrency_audit]]'s own note on that handler), not lost
+money.
+
+**Kept the fix anyway, for a real if smaller reason**: even with `@Version`
+as a correct backstop, the unlocked read means the losing request still
+does the FULL expensive path (posts real ledger legs, writes a
+`Transaction` row) before finding out it lost, then throws that work away
+via rollback -- and relies on generic optimistic-lock-exception
+translation rather than the codebase's normal clean domain exception
+(`GiftVoucherNotActiveException`, already asserted by an existing test).
+Added `findByIdForUpdate` to `GiftVoucherRepository` (same shape as
+`FraudFlagRepository`'s) and switched `redeemVoucher`'s read to it, so a
+second concurrent caller blocks, re-reads the now-REDEEMED row, and
+no-ops cleanly through the existing status check -- never calling
+`postLedgerTransaction` at all. `getVoucher` (read-only) and
+`sendExpiryReminder` (a message, not money, already re-checks status
+right before sending per its own doc comment) were left alone.
+`expireVoucher` also mutates status but has no concurrent caller
+(`GiftVoucherExpiryScheduler`'s single-threaded sweep is the only one), a
+different risk shape and out of this fix's scope.
+
+**Verification**: updated the 3 `GiftVoucherServiceTest` mocks that
+exercise `redeemVoucher` (`findById` -> `findByIdForUpdate`); `extendExpiry`'s
+and `sendExpiryReminder`'s own mocks untouched since those methods still
+call plain `findById`. `:gift:compileKotlin` + `:core:compileKotlin` BUILD
+SUCCESSFUL, `:gift:test --tests GiftVoucherServiceTest` 19/19 passing.
+
+**Lesson for [[project_itunda_concurrency_audit]]'s own pattern list**:
+before logging a new instance of the check-then-act-then-write-flag shape
+as a real money bug, check whether the entity already carries `@Version`
+AND whether the money-posting call joins the same transaction (default
+`REQUIRED`, not `REQUIRES_NEW`) -- if both hold, it's a hardening/
+error-quality improvement, not a fund-leak, and should be described that
+way.
+
+*Shipped: `services/backend/core/src/main/kotlin/rw/itunda/core/repository/GiftVoucherRepository.kt` +
+`services/backend/gift/src/main/kotlin/rw/itunda/gift/GiftVoucherService.kt` +
+`services/backend/gift/src/test/kotlin/rw/itunda/gift/GiftVoucherServiceTest.kt`.*

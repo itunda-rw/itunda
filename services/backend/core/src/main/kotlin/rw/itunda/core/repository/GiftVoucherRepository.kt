@@ -1,11 +1,21 @@
 package rw.itunda.core.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.GiftVoucher
 import rw.itunda.core.domain.GiftVoucherStatus
 import java.time.Instant
+import java.util.Optional
 
 interface GiftVoucherRepository : JpaRepository<GiftVoucher, String> {
+    /** Redemption is a state transition on real money; only one caller may claim a voucher. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from GiftVoucher v where v.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<GiftVoucher>
+
     fun findByStatusAndExpiresAtBefore(status: GiftVoucherStatus, expiresAt: Instant): List<GiftVoucher>
     fun findByConversationId(conversationId: String): List<GiftVoucher>
 

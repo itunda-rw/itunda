@@ -210,7 +210,7 @@ class GiftVoucherService(
      */
     @Transactional
     fun redeemVoucher(merchantOwnerUserId: String, voucherId: String): GiftVoucher {
-        val voucher = giftVoucherRepository.findById(voucherId).orElseThrow { GiftVoucherNotFoundException("Gift voucher not found") }
+        val voucher = giftVoucherRepository.findByIdForUpdate(voucherId).orElseThrow { GiftVoucherNotFoundException("Gift voucher not found") }
         val merchant = merchantRepository.findById(voucher.merchantId).orElseThrow { GiftVoucherMerchantNotFoundException("Merchant not found") }
         if (merchant.ownerUserId != merchantOwnerUserId) throw GiftVoucherNotFoundException("Gift voucher not found")
         if (voucher.status != GiftVoucherStatus.ACTIVE) throw GiftVoucherNotActiveException("This voucher is already ${voucher.status}")

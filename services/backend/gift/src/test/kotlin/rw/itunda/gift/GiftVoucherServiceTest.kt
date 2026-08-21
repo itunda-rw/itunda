@@ -205,7 +205,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
             amount = BigDecimal("3000"), holdTransactionId = "ledgertxn_1", expiresAt = Instant.now().plus(10, ChronoUnit.DAYS),
         )
 
-        every { giftVoucherRepository.findById("giftvoucher_1") } returns Optional.of(voucher)
+        every { giftVoucherRepository.findByIdForUpdate("giftvoucher_1") } returns Optional.of(voucher)
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
         every { walletRepository.findById("wallet_merchant") } returns Optional.of(wallet("wallet_merchant", "seller_1", "0"))
         val legsSlot = slot<List<LedgerLeg>>()
@@ -246,7 +246,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
                 amount = BigDecimal("3000"), status = GiftVoucherStatus.REDEEMED, holdTransactionId = "ledgertxn_1",
                 expiresAt = Instant.now().plus(10, ChronoUnit.DAYS),
             )
-            every { giftVoucherRepository.findById("giftvoucher_2") } returns Optional.of(redeemed)
+            every { giftVoucherRepository.findByIdForUpdate("giftvoucher_2") } returns Optional.of(redeemed)
 
             Then("it throws GiftVoucherNotActiveException") {
                 try {
@@ -264,7 +264,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
                 conversationId = "conversation_1", messageId = "message_1", merchantId = "merchant_1",
                 amount = BigDecimal("3000"), holdTransactionId = "ledgertxn_1", expiresAt = Instant.now().minus(1, ChronoUnit.DAYS),
             )
-            every { giftVoucherRepository.findById("giftvoucher_3") } returns Optional.of(expiredVoucher)
+            every { giftVoucherRepository.findByIdForUpdate("giftvoucher_3") } returns Optional.of(expiredVoucher)
 
             Then("it throws GiftVoucherExpiredException") {
                 try {
