@@ -16281,4 +16281,72 @@ changes, not noise), ran the full backend test suite (1,975 tests, all
 green) since this touches every controller's real error contract, then
 committed and pushed.
 
+## 257. Every real merchant-collection path now pays from itunda Pay, not Bank
+
+§254 only fixed `MerchantService.collect` (customer-scans-merchant QR/
+Face-Pay/Static-QR/USSD). Auditing `chargeByCustomerCode` (the sibling
+merchant-scans-customer "My code" flow) turned up the identical gap --
+it still defaulted to a direct `AccountType.MAIN` debit with zero
+auto-topup (commit `8775bad6`). That raised a real question: is the
+Bank/Pay isolation guaranteed for QR/code payment specifically, or for
+every real "customer pays a merchant" path in the app? Asked the user
+directly rather than guessing scope on an architectural decision this
+size. Answer: **every real merchant-collection path**, matching "itunda
+Bank never needs to know which 가맹점 was paid" everywhere a real
+merchant is paid, not just the QR/code surface.
+
+Full sweep, one real customer-pays-real-Merchant-entity site at a time,
+found by grepping for `LedgerAccountType.WALLET, LedgerDirection.CREDIT`
+against a real `merchantAccount`/`restaurantAccount` across every module,
+each fixed with the identical shape `collect()` already established
+(resolve `AccountType.PAY`, auto-topup from Bank then an external linked
+account if short, unchanged for refunds which credit back to the same
+PAY account with no auto-topup):
+
+- **`MerchantBillingService`** (subscribe/chargeOne) +
+  **`MerchantBillingChargeExecutor`** -- real Kakao Pay 정기결제-style
+  recurring subscription charges (commit `5c237c25`).
+- **`MerchantBookingService`** -- `holdDeposit`/`refundDeposit`, real
+  prepay booking deposits (commit `5c237c25`).
+- **Commerce `OrderService.placeOrder`** (commit `54997db7`) -- also
+  surfaced a real, separate consistency bug this same pass:
+  `ProductSubscriptionService`'s own cashback-award call still credited
+  the buyer's Bank account even after the order it was for started
+  paying out of Pay money -- fixed to credit the same account the order
+  actually charged.
+- **`EatsOrderService.placeOrder`** + its two refund paths
+  (`markItemUnavailable`, `forceCancelAbandonedDelivery`) and
+  **`DineInOrderService.placeOrder`** (commit `b3c3a9b6`). `tipRider`
+  deliberately left on `MAIN`, unchanged -- a rider tip is a payout to a
+  person for a service (same category as `RideTripService.tipDriver`),
+  not merchant collection.
+- **`GiftVoucherService.purchaseVoucher`** + its expiry-refund path
+  (commit `2c9417a4`) -- purchasing a gift voucher is the purchaser
+  pre-paying a real merchant, held in escrow until redemption.
+  Redemption itself (holding account -> merchant) was already correct
+  and untouched -- no user account is debited at that step.
+
+**Deliberately, explicitly left on `MAIN`/Bank, confirmed correct**: any
+P2P transfer (`P2pService`, `AutoTransferService`, `ScheduledTransferService`,
+`P2pDelayedTransferService` -- "sending" per the user's own original
+wording), payroll/affiliate/referral payouts (a business paying a
+person, not a person paying a merchant), rider/driver settlement and
+tips (a payout for a service, not merchant collection), and itunda's own
+first-party subscription products (`PlatformMembershipService`/
+`EatsMembershipService`, which credit `fee_revenue` -- itunda's own
+revenue, not an external merchant).
+
+Each module needed a new `implementation(project(":account"))` Gradle
+dependency to reach `AutoTopUpService` (commerce, eats, gift -- merchant
+already had it from §254). Every fix shipped with real new test
+coverage for its own auto-topup path (or, for `chargeByCustomerCode`/
+booking deposits, the first-ever test coverage that method had at all)
+and a full run of its own module's test suite before committing. Full
+backend test suite (all modules) run clean end to end after the whole
+sweep.
+
+**Still open, unchanged by this pass**: no client UI yet shows Pay money
+and Bank account as two separate visible balances (§254's own still-open
+item), and this remains undeployed to the live private cloud.
+
 *Shipped: `services/backend/**` (81 files, commit `3ff7b2fb`).*
