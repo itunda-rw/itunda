@@ -16023,3 +16023,17 @@ pick the next-highest-traffic file (`TransactionHistoryScreen.swift`, 8 sites, o
 `ShopPay.swift`, 5) and continue the same pattern.
 
 *Shipped: `ios/Features/Banking/Sources/BankView.swift`.*
+
+## 253. Second slice of the iOS Dynamic-Type-bypass cleanup -- TransactionHistoryScreen.swift's 8 sites converted
+
+Same pattern as §252, next-highest-traffic candidate. All 8 sites in
+`Features/Payments/Sources/TransactionHistoryScreen.swift` were static literals
+(2 of them on `Image(systemName:)` icons, not just `Text` -- `.font()` scales SF
+Symbol rendering size the same way, so converted those too for consistency with
+Dynamic Type). Mapped each literal size to the closest real Apple HIG text style:
+13->`.footnote`, 15->`.subheadline`, 16->`.callout`, 18->`.body`, 32 (the real spent-
+this-month hero number)->`.largeTitle` (same `relativeTo` choice `IDS.Typography.
+largeAmount` already uses for its own money-hero token). `xcodebuild` BUILD
+SUCCEEDED. 84 sites remain across 26 files.
+
+*Shipped: `ios/Features/Payments/Sources/TransactionHistoryScreen.swift`.*

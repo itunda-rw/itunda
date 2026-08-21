@@ -46,7 +46,7 @@ public struct TransactionHistoryScreen: View {
             HStack {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
+                        .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .body))
                         .foregroundColor(IDS.Colors.textPrimary)
                         .frame(width: 44, height: 44)
                 }
@@ -57,10 +57,10 @@ public struct TransactionHistoryScreen: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Spent this month")
-                    .font(.system(size: 15))
+                    .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text("RWF \(formatAmount(Int(spentThisMonth)))")
-                    .font(.system(size: 32, weight: .bold))
+                    .font(IDS.scaledFont(size: 32, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(IDS.Colors.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,7 +71,7 @@ public struct TransactionHistoryScreen: View {
             if transactions.isEmpty {
                 Spacer()
                 Text("No transactions yet")
-                    .font(.system(size: 15))
+                    .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
                     .foregroundColor(IDS.Colors.textTertiary)
                 Spacer()
             } else {
@@ -97,16 +97,16 @@ private struct TransactionRowView: View {
                 .frame(width: 40, height: 40)
                 .overlay(
                     Image(systemName: tx.isOutgoing ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 16))
+                        .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
                         .foregroundColor(tx.isOutgoing ? .red : .green)
                 )
             VStack(alignment: .leading, spacing: 2) {
-                Text(tx.description).font(.system(size: 16, weight: .semibold)).foregroundColor(IDS.Colors.textPrimary)
-                Text(tx.status.capitalized).font(.system(size: 13)).foregroundColor(IDS.Colors.textTertiary)
+                Text(tx.description).font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
+                Text(tx.status.capitalized).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
             }
             Spacer()
             Text("\(tx.isOutgoing ? "-" : "+")\(formatAmount(Int(tx.amount))) \(tx.currency)")
-                .font(.system(size: 15, weight: .semibold))
+                .font(IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline))
                 .foregroundColor(tx.isOutgoing ? IDS.Colors.textPrimary : .green)
         }
         .padding(.vertical, 6)
