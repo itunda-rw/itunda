@@ -997,12 +997,30 @@ class MerchantService(
             throw SelfPaymentException("That's your own code -- share it with a customer instead of using it yourself")
         }
 
-        // Real funding-source selection -- falls back to the historical AccountType.MAIN
-        // default when the code was generated without picking a specific account (see
-        // CustomerPaymentCode.accountId's own doc comment).
-        val payerAccount = paymentCode.accountId?.let { accountRepository.findById(it).orElse(null) }
-            ?: accountRepository.findByUserIdAndType(payerUserId, AccountType.MAIN)
-            ?: throw MerchantNoAccountException("No account found for this account")
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see collect()'s own doc
+        // comment for the full sourced architecture. This customer-presented-code charge
+        // is the same real in-store payment moment collect() handles for the merchant-
+        // presented-QR path, so it needs the identical default: itunda Pay money,
+        // auto-funded from Bank (then an external linked account) if short -- not a
+        // direct Bank debit, which is what this method still did until this fix (a real
+        // gap: collect() got the separation, this sibling method was missed). An
+        // explicit accountId (set when the customer swiped to a specific real account,
+        // e.g. a foreign-currency one, before generating their code) still overrides
+        // this and charges that account directly with no auto-topup -- the customer's
+        // own deliberate choice, not itunda's default.
+        var payerAccount = paymentCode.accountId?.let { accountRepository.findById(it).orElse(null) }
+            ?: accountRepository.findByUserIdAndType(payerUserId, AccountType.PAY)
+            ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
+        if (paymentCode.accountId == null && payerAccount.availableBalance < amount) {
+            val shortfall = amount.subtract(payerAccount.availableBalance)
+            var topUpResult = autoTopUpService.topUpPayFromMain(payerUserId, payerAccount.id, shortfall)
+            if (!topUpResult.triggered) {
+                topUpResult = autoTopUpService.topUpShortfall(payerUserId, payerAccount.id, shortfall)
+            }
+            if (topUpResult.triggered) {
+                payerAccount = accountRepository.findById(payerAccount.id).orElseThrow { MerchantNoAccountException("No itunda Pay money found for this account") }
+            }
+        }
         val merchantAccount = accountRepository.findById(merchant.accountId)
             .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
 

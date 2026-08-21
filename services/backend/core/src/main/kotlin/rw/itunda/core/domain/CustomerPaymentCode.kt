@@ -33,9 +33,11 @@ class CustomerPaymentCode(
     // Real funding-source selection (2026-08-11) -- see the user's own KakaoPay
     // reference screenshot's swipeable card carousel (멤버십/페이머니/bravo card etc.):
     // the real, buildable slice of that is "which of this customer's own real accounts
-    // funds this code" -- null means MerchantService.chargeByCustomerCode falls back
-    // to the real historical default, AccountType.MAIN, exactly as before this field
-    // existed, so no existing unused code is invalidated by this migration.
+    // funds this code" -- null means MerchantService.chargeByCustomerCode falls back to
+    // the user's real itunda Pay money (AccountType.PAY), auto-topped-up from Bank/an
+    // external account if short, same as every other real payment-collection path since
+    // the 2026-08-21 Toss Bank/Toss Pay separation. A non-null value still charges that
+    // exact account directly with no auto-topup -- the customer's own deliberate choice.
     @Column(name = "account_id", length = 64)
     val accountId: String? = null,
 
