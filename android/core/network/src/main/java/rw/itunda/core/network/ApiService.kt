@@ -1481,6 +1481,12 @@ data class FacePayEnrollmentDto(val id: String, val userId: String, val active: 
 data class FacePayEnrollmentResponse(val success: Boolean, val enrollment: FacePayEnrollmentDto)
 data class FacePayStatusResponse(val success: Boolean, val enrolled: Boolean, val enrollment: FacePayEnrollmentDto?)
 
+// Real RewardsService task list -- mirrors bank-mfe's lib/rewards.ts RewardTasksResult.
+data class RewardTaskDto(val id: String, val title: String, val subtitle: String, val rewardAmount: Double, val claimed: Boolean, val claimedAt: String?, val eligible: Boolean)
+data class RewardTasksResponse(val success: Boolean, val tasks: List<RewardTaskDto>, val rewardsTotal: Double)
+data class ClaimRewardTaskRequest(val taskId: String)
+data class ClaimRewardTaskResponse(val success: Boolean, val message: String, val rewardAmount: Double, val newBalance: Double)
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: the backend (ProductFavoriteService, shipped 2026-07-20) and
 // bank-mfe (ProductCatalogView.toggleFavorite) already had this; Android had zero
@@ -3440,6 +3446,17 @@ interface ApiService {
 
     @POST("api/v1/facepay/collect/{intentId}")
     suspend fun collectWithFacePay(@Path("intentId") intentId: String, @Header("Idempotency-Key") idempotencyKey: String): CollectPaymentResultDto
+
+    // Real RewardsService task list -- see rw.itunda.rewards.web.RewardsController's own
+    // doc comment: the Saronite reward-tasks mini-app's native bridge has called
+    // /api/v1/rewards/tasks since it was built, but this Compose-native surface (PayTab's
+    // real Toss Pay home "Get more rewards" preview, 2026-08-22) never had a direct
+    // client. Mirrors bank-mfe's lib/rewards.ts RewardTasksResult exactly.
+    @GET("api/v1/rewards/tasks")
+    suspend fun getRewardTasks(): RewardTasksResponse
+
+    @POST("api/v1/rewards/claim")
+    suspend fun claimRewardTask(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ClaimRewardTaskRequest): ClaimRewardTaskResponse
 
     // Real Coupang-style multi-item checkout (2026-07-18) -- see rw.itunda.commerce.web.OrderController.
     @POST("api/v1/orders")

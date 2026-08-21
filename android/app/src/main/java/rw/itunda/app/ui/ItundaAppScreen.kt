@@ -1419,6 +1419,8 @@ fun ItundaAppScreen(
                         viewModel,
                         onSend = { transferStep = TransferStep.Recipient },
                         onCashOutAtAgent = { showAgentCash = true },
+                        onSwitchTab = { selectedTab = it },
+                        onOpenSupport = { showSupport = true },
                     )
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is
@@ -3255,7 +3257,31 @@ private fun PayTab(
     viewModel: MainViewModel,
     onSend: () -> Unit,
     onCashOutAtAgent: () -> Unit,
+    onSwitchTab: (ItundaTab) -> Unit,
+    onOpenSupport: () -> Unit,
 ) {
+    // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
+    // "our pay home screen should also look 100% like toss pay home screen") -- real
+    // FacePay enrollment (getFacePayStatus) and real RewardsService task list
+    // (getRewardTasks/claimRewardTask, ApiService.kt), never surfaced on this tab
+    // before. See PayHomeExtras.kt's own doc comment for the honest-scoping detail
+    // (coupons/"how to pay online" omitted, no real backend for either).
+    var facePayEnrolled by remember { mutableStateOf(false) }
+    var facePayBusy by remember { mutableStateOf(false) }
+    var rewardTasks by remember { mutableStateOf<List<rw.itunda.core.network.RewardTaskDto>>(emptyList()) }
+    var claimingRewardId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            facePayEnrolled = rw.itunda.core.network.NetworkClient.apiService.getFacePayStatus().enrolled
+        } catch (e: Exception) {
+            // Non-critical -- the row just keeps showing the last-known state.
+        }
+        try {
+            rewardTasks = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks().tasks
+        } catch (e: Exception) {
+            // Non-critical -- the preview section just stays hidden.
+        }
+    }
     // Real fix (2026-08-11, same session -- direct user pushback: "why is itunda pay
     // have no simplicity at all pay by code?"): PAY_MERCHANT (manual merchant-ID/
     // amount entry) was the ONLY way to pay -- real friction Toss's own "Postel's
@@ -3306,11 +3332,52 @@ private fun PayTab(
         )
         return
     }
+    val coroutineScope = rememberCoroutineScope()
+    val handleFacePayToggle: () -> Unit = {
+        coroutineScope.launch {
+            facePayBusy = true
+            try {
+                if (facePayEnrolled) rw.itunda.core.network.NetworkClient.apiService.revokeFacePay() else rw.itunda.core.network.NetworkClient.apiService.enrollFacePay()
+                facePayEnrolled = !facePayEnrolled
+            } catch (e: Exception) {
+                // Non-critical -- the row just keeps showing the last-known state.
+            } finally {
+                facePayBusy = false
+            }
+        }
+    }
+    val handleClaimReward: (String) -> Unit = { taskId ->
+        coroutineScope.launch {
+            claimingRewardId = taskId
+            try {
+                rw.itunda.core.network.NetworkClient.apiService.claimRewardTask(
+                    java.util.UUID.randomUUID().toString(),
+                    rw.itunda.core.network.ClaimRewardTaskRequest(taskId),
+                )
+                rewardTasks = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks().tasks
+            } catch (e: Exception) {
+                // Non-critical -- the row just stays claimable, retryable on next tap.
+            } finally {
+                claimingRewardId = null
+            }
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { PlainTopBar("Pay") }
+        // Real Toss Pay home reference (4 screenshots, 2026-08-22): a bold "Pay"
+        // wordmark plus a settings icon, not PlainTopBar's generic decorative "..."
+        // menu -- itunda has no dedicated Pay-settings screen yet, so this honestly
+        // routes to the You tab (the closest real settings destination) rather than
+        // fabricating one.
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Pay", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                IdsIconButton(icon = Icons.Outlined.Settings, contentDescription = "Pay settings", onClick = { onSwitchTab(ItundaTab.You) })
+            }
+        }
+        item { FacePayStatusRow(enrolled = facePayEnrolled, busy = facePayBusy, onToggle = handleFacePayToggle) }
         // Real Toss Pay reference (user-provided screenshots, 2026-08-21): the real Pay
         // home screen has no headline balance card at all -- it's a nearby-merchant-
         // rewards surface leading straight into the payment-method picker (Facepay/QR
@@ -3384,6 +3451,16 @@ private fun PayTab(
                     },
                 )
             }
+        }
+        item { RewardsPreviewSection(tasks = rewardTasks, claimingId = claimingRewardId, onClaim = handleClaimReward) }
+        // Real "FAQ / Send feedback" (2026-08-22) -- itunda has no FAQ-content system,
+        // so this honestly routes to the real Support screen rather than fabricating
+        // static FAQ copy.
+        item {
+            Text(
+                "Get help", fontSize = 13.sp, color = Ids.colors.textSecondary,
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenSupport).padding(vertical = 14.dp, horizontal = 4.dp),
+            )
         }
     }
 }
@@ -4710,13 +4787,6 @@ private fun FlatSectionRow(row: FlatRow) {
     }
 }
 
-@Composable
-internal fun PlainTopBar(title: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text("...", color = Ids.colors.textPrimary, fontSize = 24.sp)
-    }
-}
 
 // Real fix (2026-08-10): this was pure decoration -- a Box with static text, no
 // TextField, nothing typed into it ever did anything. Worse than no search bar at
