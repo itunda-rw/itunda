@@ -369,14 +369,14 @@ public struct BankView: View {
                 // scheme" discipline this codebase already applies to VUP/RSE/SACCO.
                 if let dp = depositProtection {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Deposit Protection Fund (simulation)").font(.system(size: 14, weight: .bold))
+                        Text("Deposit Protection Fund (simulation)").font(IDS.scaledFont(size: 14, weight: .bold, relativeTo: .subheadline))
                         HStack {
-                            Text("Your covered balance").font(.system(size: 13)).foregroundColor(IDS.Colors.textSecondary)
+                            Text("Your covered balance").font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary)
                             Spacer()
-                            Text("\(Int(dp.yourCoveredBalance)) RWF").font(.system(size: 13, weight: .semibold))
+                            Text("\(Int(dp.yourCoveredBalance)) RWF").font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                         }
-                        Text("Covered up to \(Int(dp.coverageCapPerUser)) RWF per user").font(.system(size: 11)).foregroundColor(IDS.Colors.textTertiary)
-                        Text("itunda's reserve: \(Int(dp.fundReserveBalance)) RWF").font(.system(size: 11)).foregroundColor(IDS.Colors.textTertiary)
+                        Text("Covered up to \(Int(dp.coverageCapPerUser)) RWF per user").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
+                        Text("itunda's reserve: \(Int(dp.fundReserveBalance)) RWF").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -392,7 +392,7 @@ public struct BankView: View {
                 // anywhere clarifying itunda's actual (unlicensed) status. Same fix on
                 // Android's BankHubScreen and web's Bank tab the same day.
                 Text(bt("bankStatusDisclosure", locale: locale))
-                    .font(.system(size: 11))
+                    .font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2))
                     .foregroundColor(IDS.Colors.textTertiary)
                     .padding(.horizontal, 4)
                     .padding(.top, 4)
@@ -529,7 +529,7 @@ private struct AccountSummaryCard: View {
                 // ELSE's number to send to. Same fix on Android/web the same day.
                 if let accountNumber {
                     Text("itunda \(accountNumber.chunked(4).joined(separator: "-"))")
-                        .font(.system(size: 12))
+                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                         .foregroundColor(IDS.Colors.textTertiary)
                 }
                 Text(balanceText)

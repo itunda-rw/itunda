@@ -15979,3 +15979,47 @@ still-open follow-up for a future pass, not claimed exhausted here.
 `services/backend/rewards/src/test/kotlin/rw/itunda/rewards/StepRewardServiceTest.kt` +
 `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/DesignatedDriverService.kt` +
 `services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/DesignatedDriverServiceTest.kt`.*
+
+## 252. First real slice of the named iOS Dynamic-Type-bypass cleanup -- BankView.swift's 7 sites converted, 92 remain across 27 other files
+
+[[project_itunda_uber_senior_accounts]] named a real, scoped, previously-uninvestigated
+gap: 86 (now 99, some growth since that 2026-08-15 count) raw
+`.font(.system(size:weight:))` call sites across the iOS app bypass `IDS.Typography`/
+`IDS.scaledFont` entirely, so text at those sites never responds to Dynamic Type (iOS's
+real accessibility text-scale setting) -- and as a side effect, never gets the real
+Pretendard typeface either, since `IDS.scaledFont` bakes that in
+(`pretendardFont(size:weight:)`) while a bare `.system(size:)` call always renders
+system San Francisco.
+
+**Converted the highest-traffic file first**: `Features/Banking/Sources/BankView.swift`
+(itunda's real Bank tab), all 7 static-literal call sites (no dynamic `size:`/`weight:`
+expressions, which several other flagged files DO have and need individual care) --
+`.font(.system(size: 14, weight: .bold))` style calls became
+`.font(IDS.scaledFont(size: 14, weight: .bold, relativeTo: .subheadline))`, matching
+each literal size to the closest real Apple HIG text-style point size (13->`.footnote`,
+11/12->`.caption2`/`.caption1`, 14->`.subheadline`) rather than inventing a mapping --
+same discipline `IdsTypeScale`'s own doc comment already establishes for the existing
+named tokens. Deliberately did NOT force-fit these into the existing named
+`IDS.Typography`/`IdsTypeScale` constants where the exact (size, weight) pair didn't
+already have one -- calling `IDS.scaledFont` directly is equally correct and avoids
+inventing new named tokens for one-off sizes.
+
+**Verification**: full `xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp -sdk
+iphonesimulator build` -- BUILD SUCCEEDED. Installed and launched on the one available
+Simulator (`RidePinTest`, iOS 26.5) -- confirmed no crash, login screen renders
+correctly. **Honest caveat**: no test credentials available to actually log in and
+navigate to the Bank tab this pass, so the specific converted screen itself was NOT
+visually confirmed at a scaled-up Dynamic Type size -- build + launch-verified only, the
+same caveat this whole file already applies consistently when device/simulator
+click-through isn't reachable.
+
+**Deliberately a partial slice, not a false claim of completing the 99-site sweep**: 92
+call sites remain across 27 other files (`TransferFlowScreens.swift` alone has 27,
+`SettingsScreen.swift` 15, several including dynamic `size:`/`weight:` expressions that
+need individual judgment, not a mechanical script -- the earlier same-session lesson
+from a failed scripted `useI18n()`-deps-array fix on bank-mfe directly informed doing
+this by hand, file-by-file, rather than scripting all 99 at once). A future pass should
+pick the next-highest-traffic file (`TransactionHistoryScreen.swift`, 8 sites, or
+`ShopPay.swift`, 5) and continue the same pattern.
+
+*Shipped: `ios/Features/Banking/Sources/BankView.swift`.*
