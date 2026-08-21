@@ -80,7 +80,7 @@ export function FacePayStatusRow({ enrolled, busy, cashbackRatePercent, onToggle
   return (
     <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: enrolled ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: enrolled ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ScanFace size={19} color={enrolled ? '#fff' : 'var(--itunda-grey-500)'} />
         </div>
         <div>
@@ -147,7 +147,7 @@ export function RewardsPreviewSection({ tasks, onViewAll }: { tasks: RewardTasks
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{t.title}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t.subtitle}</p>
           </div>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>+{t.rewardAmount} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{t.rewardAmount} RWF</span>
         </div>
       ))}
     </div>

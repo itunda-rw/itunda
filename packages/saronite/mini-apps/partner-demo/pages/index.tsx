@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', marginBottom: 12, color: '#191F28' },
   body: { fontSize: 14, color: '#4E5968' },
   spacer: { height: 16 },
-  actionButton: { backgroundColor: '#3182F6', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+  actionButton: { backgroundColor: '#7472F4', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
   actionButtonText: { color: '#FFFFFF', fontWeight: '700' },
   result: { marginTop: 8, fontSize: 13, color: '#191F28' },
   closeButton: { paddingVertical: 14, alignItems: 'center' },

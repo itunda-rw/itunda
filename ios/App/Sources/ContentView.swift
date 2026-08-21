@@ -142,7 +142,7 @@ struct ContentView: View {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "ikimina")
                 showIkimina = true
             }),
-            CooperativeRowData(title: "Moto-Taxi Ownership", subtitle: "Save toward your own bike, then convert to a loan", symbol: "bicycle", tint: Color.accentBlue.opacity(0.15), onTap: {
+            CooperativeRowData(title: "Moto-Taxi Ownership", subtitle: "Save toward your own bike, then convert to a loan", symbol: "bicycle", tint: Color.accentIndigo.opacity(0.15), onTap: {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "moto_ownership")
                 showMotoOwnership = true
             }),
@@ -150,7 +150,7 @@ struct ContentView: View {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "harvest_advance")
                 showHarvestAdvance = true
             }),
-            CooperativeRowData(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: Color.accentBlue.opacity(0.15), onTap: {
+            CooperativeRowData(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: Color.accentIndigo.opacity(0.15), onTap: {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "loans")
                 showLoans = true
             }),
@@ -486,9 +486,9 @@ struct HomeTabContent: View {
                         ForEach(bankViewModel.discoverRows) { row in
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: "sparkles")
-                                    .foregroundColor(.accentBlue)
+                                    .foregroundColor(.accentIndigo)
                                     .frame(width: 36, height: 36)
-                                    .background(Color.accentBlue.opacity(0.15))
+                                    .background(Color.accentIndigo.opacity(0.15))
                                     .clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(row.isNew ? "\(row.title) · NEW" : row.title)

@@ -154,7 +154,7 @@ export default function InsuranceView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
       {policies.length > 0 && (
         <div className="itunda-card" style={{ padding: '16px' }}>
@@ -233,7 +233,7 @@ export default function InsuranceView() {
                       Saved toward next premium: {fund.currentAmount.toLocaleString()} / {fund.targetAmount.toLocaleString()} RWF
                     </p>
                     <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--itunda-blue)' }} />
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--itunda-indigo)' }} />
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
@@ -384,7 +384,7 @@ function CropWeatherIndexSection() {
       </div>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
       {policies.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

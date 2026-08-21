@@ -60,7 +60,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
             </p>
           )}
           {saved && !error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t('settings.saved')}</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t('settings.saved')}</p>
           )}
 
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
@@ -161,7 +161,7 @@ function FollowersCard() {
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
         )}
         {sentCount !== null && !error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t(sentCount === 1 ? 'settings.broadcastSentSingular' : 'settings.broadcastSentPlural', { count: sentCount })}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t(sentCount === 1 ? 'settings.broadcastSentSingular' : 'settings.broadcastSentPlural', { count: sentCount })}</p>
         )}
       </form>
     </div>
@@ -336,7 +336,7 @@ function DevicesCard() {
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
               <div>
                 <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-                  {d.deviceName ?? t('settings.unknownDevice')} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-blue)' }}>{t('settings.thisDeviceSuffix')}</span>}
+                  {d.deviceName ?? t('settings.unknownDevice')} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-indigo)' }}>{t('settings.thisDeviceSuffix')}</span>}
                 </p>
                 <p style={{ fontSize: '12px', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                   {d.trusted ? t('settings.deviceVerified') : t('settings.deviceNotVerified')}
@@ -411,7 +411,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
         </p>
       )}
       {saved && !error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: '8px 0 0' }}>{t('settings.saved')}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: '8px 0 0' }}>{t('settings.saved')}</p>
       )}
     </div>
   );
@@ -601,7 +601,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
         )}
         {saved && !error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t('settings.saved')}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t('settings.saved')}</p>
         )}
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? t('settings.saving') : t('settings.saveButton')}

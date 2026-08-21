@@ -374,7 +374,7 @@ export const Route = createRoute('/', {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#F2F4F6' },
   title: { fontSize: 20, fontWeight: '800', color: '#191F28' },
-  total: { fontSize: 28, fontWeight: '900', color: '#3182F6', marginTop: 4, marginBottom: 16 },
+  total: { fontSize: 28, fontWeight: '900', color: '#7472F4', marginTop: 4, marginBottom: 16 },
   body: { fontSize: 15, color: '#4E5968' },
   error: { color: '#F04452' },
   spacer: { flex: 1 },
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   // the same fix applied to packages/design-tokens/tokens.css --itunda-green and
   // the Android/iOS semantic `success` token.
   rewardAmount: { fontSize: 14, fontWeight: '700', color: '#05804A', marginRight: 12 },
-  claimButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  claimButton: { backgroundColor: '#7472F4', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   claimButtonDone: { backgroundColor: '#E5E8EB' },
   claimButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  panelButtonText: { color: '#3182F6', fontWeight: '700', fontSize: 13 },
+  panelButtonText: { color: '#7472F4', fontWeight: '700', fontSize: 13 },
   inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   input: {
     flex: 1,

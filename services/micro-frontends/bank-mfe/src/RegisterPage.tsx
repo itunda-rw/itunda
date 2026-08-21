@@ -98,7 +98,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
         style={{ width: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <ShieldCheck size={24} color="var(--itunda-blue)" />
+          <ShieldCheck size={24} color="var(--itunda-indigo)" />
           <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
         </div>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
@@ -205,7 +205,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
           <button
             type="button"
             onClick={() => setShowReferralField(true)}
-            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', cursor: 'pointer' }}
           >
             Have a referral code?
           </button>

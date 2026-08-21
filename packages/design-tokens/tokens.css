@@ -26,7 +26,7 @@
  * packages/design-tokens/tokens.json, this repo's real single source of truth for
  * the primitive color scale (sourced from Toss's own official TDS docs) -- verified
  * to match, not codegen'd directly into this file, since this file's own shape is
- * semantic/light-dark-reactive (--itunda-blue-active, grey-100 as "app background"),
+ * semantic/light-dark-reactive (--itunda-indigo-active, grey-100 as "app background"),
  * not a raw numbered primitive scale like Android's IdsColors.kt/iOS's IdsTheme.swift
  * IdsColors struct, which generate-tokens.js does regenerate directly.
  */
@@ -75,14 +75,28 @@
      stack each app already had if it somehow fails to load. */
   --itunda-font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  --itunda-blue: #3182f6;
-  --itunda-blue-active: #1b64da;
-  --itunda-blue-light: #f5faff;
+  /* Brand primary rebranded blue -> indigo (2026-08-22, direct user identity work:
+     petal-shape mark + indigo, chosen after a full shape/color exploration pass --
+     see the itunda-identity.html design artifact and
+     project_itunda_brand_identity.md). Not an invented hex: derived by the same real
+     technique Toss's own engineering blog documents for generating a TDS hue family
+     (toss.tech/article/tds-color-system-update) -- hold OKLCH lightness+chroma of the
+     real Toss blue anchor this token held before, rotate hue to 280 deg (indigo),
+     clamp chroma back into sRGB gamut. Renamed --itunda-blue -> --itunda-indigo (not
+     left as a misleadingly-named alias) across every consumer -- this file's own
+     header already documents the cost of a color token whose name lies about what it
+     holds. WCAG-verified against the same real bars the old blue cleared: white-on-
+     brand 3.85:1 (was 3.71:1, both above the 3:1 AA-large/UI-component threshold this
+     role is actually held to), brand-vs-dark-bg 4.82:1 (was 5.00:1, both comfortably
+     clear 4.5:1 AA-normal-text). */
+  --itunda-indigo: #7472f4;
+  --itunda-indigo-active: #5c55d8;
+  --itunda-indigo-light: #f8f9ff;
   --itunda-red: #f04452;
   /* Real gap found 2026-08-08 (Toss Simplicity21 research pass, auditing the P2P
      transfer flow): bank-mfe's scam-warning tint box hardcoded #FDECEA directly (3
      call sites in BankDashboard.tsx) instead of a token -- no danger-tint semantic
-     existed here at all, unlike --itunda-blue-light above. Matches Android's real
+     existed here at all, unlike --itunda-indigo-light above. Matches Android's real
      IdsColors.dangerTint (IdsSemanticColors.kt) exactly, same reconciliation this
      file's other semantic tokens already follow. */
   --itunda-red-light: #ffeceb;
@@ -257,9 +271,9 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --itunda-blue: #3485fa;
-    --itunda-blue-active: #1b64da;
-    --itunda-blue-light: #1f3053;
+    --itunda-indigo: #7675f8;
+    --itunda-indigo-active: #5c55d8;
+    --itunda-indigo-light: #2b2c52;
     --itunda-red: #ff6b7a;
     --itunda-red-light: #3a1418;
     --itunda-green: #20d394;

@@ -140,7 +140,7 @@ export default function ReportsScreen() {
           <div key={channel} style={{ display: 'grid', gridTemplateColumns: '88px 1fr auto', gap: '10px', alignItems: 'center', marginTop: '10px', fontSize: '14px' }}>
             <span style={{ fontWeight: 600 }}>{channel.replace('_', ' ')}</span>
             <div aria-hidden="true" style={{ height: '8px', borderRadius: '99px', background: 'var(--itunda-grey-200)', overflow: 'hidden' }}>
-              <div style={{ width: `${(count / totals.collections) * 100}%`, height: '100%', background: 'var(--itunda-blue)', borderRadius: 'inherit' }} />
+              <div style={{ width: `${(count / totals.collections) * 100}%`, height: '100%', background: 'var(--itunda-indigo)', borderRadius: 'inherit' }} />
             </div>
             <span style={{ color: 'var(--itunda-grey-500)' }}>{count} ({Math.round((count / totals.collections) * 100)}%)</span>
           </div>
@@ -190,5 +190,5 @@ export default function ReportsScreen() {
 }
 
 function Metric({ label, value, highlighted = false }: { label: string; value: string; highlighted?: boolean }) {
-  return <div><p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{label}</p><p style={{ fontSize: '20px', fontWeight: 700, color: highlighted ? 'var(--itunda-blue)' : undefined }}>{value}</p></div>;
+  return <div><p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{label}</p><p style={{ fontSize: '20px', fontWeight: 700, color: highlighted ? 'var(--itunda-indigo)' : undefined }}>{value}</p></div>;
 }

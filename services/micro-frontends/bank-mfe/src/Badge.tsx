@@ -4,7 +4,7 @@
 // HoodShared.kt) / iOS's own IdsBadge (Core/DesignSystem/Sources/Components/
 // Components.swift) to bank-mfe -- Time Deal's countdown/remaining-quantity here
 // rendered as plain colored <p> text, no badge shape (Android already had this).
-export function Badge({ text, filled = true, tint = 'var(--itunda-blue)' }: { text: string; filled?: boolean; tint?: string }) {
+export function Badge({ text, filled = true, tint = 'var(--itunda-indigo)' }: { text: string; filled?: boolean; tint?: string }) {
   return (
     <span
       style={{

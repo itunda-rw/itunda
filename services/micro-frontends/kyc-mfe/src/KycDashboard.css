@@ -14,7 +14,7 @@
 }
 
 .kyc-card__title {
-  color: var(--itunda-blue);
+  color: var(--itunda-indigo);
   margin: 0 0 8px 0;
 }
 
@@ -25,7 +25,7 @@
 }
 
 .kyc-card__cta {
-  background-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
   color: var(--itunda-white);
   padding: 14px 24px;
   border: none;
@@ -104,7 +104,7 @@
 }
 
 .kyc-step__next--enabled {
-  background-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
   color: var(--itunda-white);
   cursor: pointer;
 }
@@ -127,7 +127,7 @@
 .kyc-success__badge {
   width: 64px;
   height: 64px;
-  background-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
   border-radius: 32px;
   display: flex;
   align-items: center;
@@ -147,7 +147,7 @@
 }
 
 .kyc-success__done {
-  background-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
   color: var(--itunda-white);
   padding: 18px;
   border-radius: var(--itunda-radius-md);
@@ -227,7 +227,7 @@
 }
 
 .kyc-doctype-btn--active {
-  background-color: var(--itunda-blue);
-  border-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
+  border-color: var(--itunda-indigo);
   color: var(--itunda-white);
 }

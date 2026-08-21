@@ -105,7 +105,7 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
     },
     // Real distance-measurement (ruler) tool line (2026-07-22) -- dashed, and a
     // deliberately different color from the real drawn route above, so the two are never
@@ -1011,7 +1011,7 @@ export default function MapView() {
         el.style.width = '16px';
         el.style.height = '16px';
         el.style.borderRadius = '50%';
-        el.style.backgroundColor = '#3182F6';
+        el.style.backgroundColor = '#7472F4';
         el.style.border = '3px solid white';
         el.style.boxShadow = '0 0 0 2px rgba(49,130,246,0.4)';
         myLocationMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
@@ -1253,7 +1253,7 @@ export default function MapView() {
                 ))}
               </div>
               {subscribedCount !== null ? (
-                <p style={{ fontSize: '12px', fontWeight: 700, color: '#3182F6', marginTop: '10px' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#7472F4', marginTop: '10px' }}>
                   ✓ Saved {subscribedCount} new place{subscribedCount === 1 ? '' : 's'} to your own bookmarks
                 </p>
               ) : (
@@ -1263,7 +1263,7 @@ export default function MapView() {
                   onClick={handleSubscribeToSharedFolder}
                   style={{
                     marginTop: '10px', width: '100%', padding: '10px', borderRadius: '10px',
-                    background: '#3182F6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none',
+                    background: '#7472F4', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none',
                   }}
                 >
                   {subscribing ? 'Saving…' : `Save to my places (${sharedFolderBookmarks.length})`}
@@ -1293,7 +1293,7 @@ export default function MapView() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
           }}
         >
-          <span style={{ fontSize: '15px', color: searching ? 'var(--itunda-grey-400)' : 'var(--itunda-blue)' }}>🔍</span>
+          <span style={{ fontSize: '15px', color: searching ? 'var(--itunda-grey-400)' : 'var(--itunda-indigo)' }}>🔍</span>
           <input
             type="text"
             value={query}
@@ -1371,7 +1371,7 @@ export default function MapView() {
           <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
               <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>Recent searches</p>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={clearRecentSearches} style={{ fontSize: '11px', color: 'var(--itunda-blue)', fontWeight: 700 }}>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={clearRecentSearches} style={{ fontSize: '11px', color: 'var(--itunda-indigo)', fontWeight: 700 }}>
                 Clear
               </button>
             </div>
@@ -1431,7 +1431,7 @@ export default function MapView() {
             width: '46px', height: '46px', borderRadius: '50%',
             background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
             fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: locating ? 'var(--itunda-grey-400)' : 'var(--itunda-blue)',
+            color: locating ? 'var(--itunda-grey-400)' : 'var(--itunda-indigo)',
           }}
         >
           {locating ? '…' : '📍'}
@@ -1481,7 +1481,7 @@ export default function MapView() {
             </span>
           )}
           {measurePoints.length > 0 && (
-            <button type="button" onClick={() => { setMeasurePoints((prev) => prev.slice(0, -1)); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700 }}>
+            <button type="button" onClick={() => { setMeasurePoints((prev) => prev.slice(0, -1)); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: 'var(--itunda-indigo)', fontWeight: 700 }}>
               Undo
             </button>
           )}
@@ -1490,7 +1490,7 @@ export default function MapView() {
               type="button"
               disabled={routing}
               onClick={() => handleRouteItinerary()}
-              style={{ fontSize: '12px', color: '#fff', background: 'var(--itunda-blue)', borderRadius: '999px', padding: '6px 10px', fontWeight: 700 }}
+              style={{ fontSize: '12px', color: '#fff', background: 'var(--itunda-indigo)', borderRadius: '999px', padding: '6px 10px', fontWeight: 700 }}
             >
               {routing ? 'Routing…' : 'Route itinerary'}
             </button>
@@ -1531,7 +1531,7 @@ export default function MapView() {
             <section style={{ padding: '10px', borderRadius: '10px', background: '#EEF6FF', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                 <strong style={{ fontSize: '13px', color: MAP_CARD_TEXT }}>Itinerary · {itineraryStops.length} stops</strong>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
                   {travelMode === 'DRIVING' ? '🚗' : '🚶'} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min
                 </span>
               </div>
@@ -1543,7 +1543,7 @@ export default function MapView() {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" disabled={routing} onClick={() => handleRouteItinerary()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+                <button type="button" disabled={routing} onClick={() => handleRouteItinerary()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
                   {routing ? 'Refreshing…' : 'Refresh route'}
                 </button>
                 <button type="button" onClick={() => setItineraryStops(null)} style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>
@@ -1582,7 +1582,7 @@ export default function MapView() {
                     {selectedMerchant.phoneNumber && (
                       <a
                         href={`tel:${selectedMerchant.phoneNumber}`}
-                        style={{ fontWeight: 700, color: 'var(--itunda-blue)', textDecoration: 'none' }}
+                        style={{ fontWeight: 700, color: 'var(--itunda-indigo)', textDecoration: 'none' }}
                       >
                         📞 {selectedMerchant.phoneNumber}
                       </a>
@@ -1625,7 +1625,7 @@ export default function MapView() {
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
                   />
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: '999px', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#3182F6' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
+                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: '999px', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#7472F4' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {BOOKMARK_COLOR_PALETTE.map((c) => (
@@ -1681,7 +1681,7 @@ export default function MapView() {
                     }}
                     style={{
                       flex: 1, padding: '6px 0', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
-                      background: travelMode === m ? 'var(--itunda-blue)' : '#F2F4F6',
+                      background: travelMode === m ? 'var(--itunda-indigo)' : '#F2F4F6',
                       color: travelMode === m ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                     }}
                   >
@@ -1704,7 +1704,7 @@ export default function MapView() {
                     }}
                     style={{
                       flex: 1, padding: '6px 0', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
-                      background: travelMode === 'BUS' ? 'var(--itunda-blue)' : '#F2F4F6',
+                      background: travelMode === 'BUS' ? 'var(--itunda-indigo)' : '#F2F4F6',
                       color: travelMode === 'BUS' ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                     }}
                   >
@@ -1754,7 +1754,7 @@ export default function MapView() {
                           onClick={() => selectRouteAlternative(i)}
                           style={{
                             flex: 1, padding: '5px 0', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
-                            background: selectedRouteIndex === i ? 'var(--itunda-blue)' : '#F2F4F6',
+                            background: selectedRouteIndex === i ? 'var(--itunda-indigo)' : '#F2F4F6',
                             color: selectedRouteIndex === i ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                           }}
                         >
@@ -1767,7 +1767,7 @@ export default function MapView() {
                     <button
                       type="button"
                       onClick={() => setShowSteps((s) => !s)}
-                      style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700, marginTop: '4px' }}
+                      style={{ fontSize: '12px', color: 'var(--itunda-indigo)', fontWeight: 700, marginTop: '4px' }}
                     >
                       {showSteps ? 'Hide turn-by-turn directions' : `Show turn-by-turn directions (${route.steps.length} steps)`}
                     </button>
@@ -1861,7 +1861,7 @@ export default function MapView() {
                           style={{
                             marginLeft: bookmarksByFolder.length > 1 ? 0 : 'auto',
                             fontSize: '11px', fontWeight: 700,
-                            color: folderBookmarks.some((b) => b.isPublic) ? '#3182F6' : MAP_CARD_TEXT_SECONDARY,
+                            color: folderBookmarks.some((b) => b.isPublic) ? '#7472F4' : MAP_CARD_TEXT_SECONDARY,
                             background: 'none', border: 'none',
                           }}
                         >
@@ -1939,7 +1939,7 @@ export default function MapView() {
                                     // Best-effort -- leaves the picker open so the user can retry.
                                   }
                                 }}
-                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)', alignSelf: 'flex-start' }}
+                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)', alignSelf: 'flex-start' }}
                               >
                                 Save
                               </button>
@@ -1962,7 +1962,7 @@ export default function MapView() {
                   <button
                     type="button"
                     onClick={() => setShowStartShare((v) => !v)}
-                    style={{ fontSize: '11px', fontWeight: 700, color: '#3182F6', background: 'none', border: 'none' }}
+                    style={{ fontSize: '11px', fontWeight: 700, color: '#7472F4', background: 'none', border: 'none' }}
                   >
                     {showStartShare ? 'Cancel' : '+ Share my location'}
                   </button>
@@ -1994,7 +1994,7 @@ export default function MapView() {
                       type="button"
                       disabled={shareBusy || !shareRecipientPhone.trim()}
                       onClick={handleStartLocationShare}
-                      style={{ fontSize: '13px', fontWeight: 700, color: 'white', background: '#3182F6', border: 'none', borderRadius: '6px', padding: '8px', opacity: shareBusy ? 0.6 : 1 }}
+                      style={{ fontSize: '13px', fontWeight: 700, color: 'white', background: '#7472F4', border: 'none', borderRadius: '6px', padding: '8px', opacity: shareBusy ? 0.6 : 1 }}
                     >
                       {shareBusy ? 'Starting…' : 'Start sharing'}
                     </button>
@@ -2025,7 +2025,7 @@ export default function MapView() {
                             Stop watching
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleWatchIncomingShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#3182F6', background: 'none', border: 'none' }}>
+                          <button type="button" onClick={() => handleWatchIncomingShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#7472F4', background: 'none', border: 'none' }}>
                             View on map
                           </button>
                         )}

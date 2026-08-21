@@ -109,7 +109,7 @@ function AvailabilityEditor() {
               style={{
                 padding: '6px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
                 color: day === d ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: day === d ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                backgroundColor: day === d ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
               }}
             >
               {t(DAY_LABEL_KEY[d])}

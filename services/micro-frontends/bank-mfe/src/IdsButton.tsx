@@ -29,8 +29,8 @@ const PADDING: Record<IdsButtonSize, string> = { large: '16px 20px', medium: '12
 // .itunda-btn-danger class this component replaces -- not a new shape, the same one
 // itunda's own destructive actions (device remove, cancel plan) already use.
 const COLORS: Record<IdsButtonVariant, { background: string; color: string }> = {
-  filled: { background: 'var(--itunda-blue)', color: 'var(--itunda-white)' },
-  tinted: { background: 'var(--itunda-blue-light)', color: 'var(--itunda-blue)' },
+  filled: { background: 'var(--itunda-indigo)', color: 'var(--itunda-white)' },
+  tinted: { background: 'var(--itunda-indigo-light)', color: 'var(--itunda-indigo)' },
   danger: { background: 'var(--itunda-red)', color: 'var(--itunda-white)' },
 };
 
@@ -72,7 +72,7 @@ export function IdsButton({
       // Android's identical fix in IdsButton.kt); `tinted`/`danger` keep the existing
       // neutral fallback, a secondary style not shown in the reference.
       // color-mix (not a hardcoded rgba literal) so this stays in sync with
-      // --itunda-blue automatically if the token ever changes -- the exact hardcoded-
+      // --itunda-indigo automatically if the token ever changes -- the exact hardcoded-
       // color drift bug this file's own header comment already describes once.
       style={{
         display: 'inline-flex',
@@ -89,7 +89,7 @@ export function IdsButton({
         cursor: disabled ? 'not-allowed' : 'pointer',
         backgroundColor: disabled
           ? variant === 'filled'
-            ? 'color-mix(in srgb, var(--itunda-blue) 35%, transparent)'
+            ? 'color-mix(in srgb, var(--itunda-indigo) 35%, transparent)'
             : 'var(--itunda-grey-200)'
           : background,
         color: disabled ? (variant === 'filled' ? 'var(--itunda-white)' : 'var(--itunda-grey-400)') : color,

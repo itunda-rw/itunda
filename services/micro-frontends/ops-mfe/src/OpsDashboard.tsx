@@ -76,8 +76,8 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
               fontSize: '14px',
               fontWeight: 600,
               textAlign: 'left',
-              color: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-700)',
-              backgroundColor: tab === id ? 'var(--itunda-blue-light)' : 'transparent',
+              color: tab === id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-700)',
+              backgroundColor: tab === id ? 'var(--itunda-indigo-light)' : 'transparent',
             }}
           >
             <Icon size={18} />

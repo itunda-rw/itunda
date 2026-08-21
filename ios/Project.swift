@@ -222,7 +222,14 @@ allTargets.append(
             ],
         ]),
         sources: ["App/Sources/**"],
-        resources: ["App/Resources/Fonts/**"],
+        // Real app icon (2026-08-22, direct user identity work): the app previously
+        // had no AppIcon.appiconset at all -- ItundaApp built and ran fine with
+        // Xcode/Tuist's blank default, so the gap was never caught by a build
+        // failure. "petal" shape in indigo, same mark as Android's
+        // ic_launcher_foreground.xml and web's favicon.svg -- see
+        // App/Resources/Assets.xcassets/AppIcon.appiconset and
+        // project_itunda_brand_identity.md for the full derivation.
+        resources: ["App/Resources/Fonts/**", "App/Resources/Assets.xcassets/**"],
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's
@@ -232,6 +239,7 @@ allTargets.append(
         // the way adding an ObjC file via Xcode normally would; set explicitly instead.
         settings: .settings(base: [
             "SWIFT_OBJC_BRIDGING_HEADER": "App/Sources/Saronite/Itunda-Bridging-Header.h",
+            "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         ])
     )
 )

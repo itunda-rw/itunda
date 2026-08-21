@@ -1004,7 +1004,7 @@ fun MapScreen(
                 map.uiSettings.isLogoEnabled = false
                 map.setStyle(Style.Builder().fromJson(styleJson)) { style ->
                     val pinDensity = context.resources.displayMetrics.density
-                    style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#3182F6"))
+                    style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#7472F4"))
                     // Real per-category merchant pin (2026-08-09) -- see merchantPinIconId's
                     // own doc comment above for why this is a keyword bucket, not an enum.
                     style.addImage(MERCHANT_FOOD_ICON_ID, createPinBitmap(pinDensity, "#FFA000"))
@@ -1031,7 +1031,7 @@ fun MapScreen(
                     style.addSource(GeoJsonSource(ROUTE_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
                         LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
-                            lineColor("#3182F6"), lineWidth(5f), lineOpacity(0.9f),
+                            lineColor("#7472F4"), lineWidth(5f), lineOpacity(0.9f),
                             lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND),
                         ),
                     )
@@ -1049,12 +1049,12 @@ fun MapScreen(
                     style.addSource(GeoJsonSource(MY_LOCATION_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
                         CircleLayer("$MY_LOCATION_LAYER_ID-halo", MY_LOCATION_SOURCE_ID).withProperties(
-                            circleRadius(18f), circleColor("#3182F6"), circleOpacity(0.16f),
+                            circleRadius(18f), circleColor("#7472F4"), circleOpacity(0.16f),
                         ),
                     )
                     style.addLayer(
                         CircleLayer(MY_LOCATION_LAYER_ID, MY_LOCATION_SOURCE_ID).withProperties(
-                            circleRadius(7f), circleColor("#3182F6"), circleStrokeWidth(3f), circleStrokeColor("#ffffff"),
+                            circleRadius(7f), circleColor("#7472F4"), circleStrokeWidth(3f), circleStrokeColor("#ffffff"),
                         ),
                     )
                     // Real "nearby places" category-search markers (2026-07-19) -- a

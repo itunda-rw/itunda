@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
   fundInputFlex: { flex: 1 },
   fundButtonRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   fundButton: {
-    backgroundColor: '#3182F6',
+    backgroundColor: '#7472F4',
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 14,
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E8EB',
     overflow: 'hidden',
   },
-  fundProgressFill: { height: '100%', backgroundColor: '#3182F6' },
+  fundProgressFill: { height: '100%', backgroundColor: '#7472F4' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
   planName: { fontSize: 15, fontWeight: '700', color: '#191F28' },
   provider: { fontSize: 12, color: '#636E7C', marginTop: 2 },
   premium: { fontSize: 13, color: '#4E5968', marginTop: 4, fontWeight: '600' },
-  enrollButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  enrollButton: { backgroundColor: '#7472F4', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   enrollButtonDone: { backgroundColor: '#E5E8EB' },
   enrollButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },

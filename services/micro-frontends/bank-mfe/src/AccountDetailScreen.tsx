@@ -83,7 +83,7 @@ export function AccountDetailScreen({ account, onBack, onSend }: { account: Acco
                           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{tx.description}</p>
                           <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
-                        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-blue)' : 'var(--itunda-grey-900)' }}>
+                        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
                           {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} {tx.currency}
                         </span>
                       </div>
@@ -111,20 +111,20 @@ export function AccountDetailScreen({ account, onBack, onSend }: { account: Acco
 // DEPOSIT/WITHDRAWAL/BILL/AIRTIME/LOAN/INTEREST, core/domain/Transaction.kt).
 function ledgerRowIcon(tx: Transaction): { Icon: LucideIcon; color: string } {
   const d = tx.description.toLowerCase();
-  if (d.includes('ride')) return { Icon: Car, color: 'var(--itunda-blue)' };
+  if (d.includes('ride')) return { Icon: Car, color: 'var(--itunda-indigo)' };
   if (d.includes('eats') || d.includes('booking')) return { Icon: Utensils, color: '#F2A93B' };
   if (d.includes('gift')) return { Icon: Gift, color: '#7C5CFC' };
   if (d.includes('escrow') || d.includes('marketplace')) return { Icon: ShoppingBag, color: '#14AE85' };
   if (d.includes('cashback')) return { Icon: Percent, color: '#F2A93B' };
-  if (d.includes('interest')) return { Icon: Landmark, color: 'var(--itunda-blue)' };
+  if (d.includes('interest')) return { Icon: Landmark, color: 'var(--itunda-indigo)' };
   if (d.includes('ussd')) return { Icon: Phone, color: '#7C5CFC' };
   switch (tx.type) {
-    case 'TRANSFER': return { Icon: ArrowLeftRight, color: 'var(--itunda-blue)' };
+    case 'TRANSFER': return { Icon: ArrowLeftRight, color: 'var(--itunda-indigo)' };
     case 'PAYMENT': return { Icon: Wallet, color: '#14AE85' };
     case 'BILL': return { Icon: Receipt, color: '#F2A93B' };
     case 'AIRTIME': return { Icon: Smartphone, color: '#7C5CFC' };
-    case 'LOAN': return { Icon: Wallet, color: 'var(--itunda-blue)' };
-    case 'INTEREST': return { Icon: Landmark, color: 'var(--itunda-blue)' };
+    case 'LOAN': return { Icon: Wallet, color: 'var(--itunda-indigo)' };
+    case 'INTEREST': return { Icon: Landmark, color: 'var(--itunda-indigo)' };
     default: return { Icon: ArrowLeftRight, color: 'var(--itunda-grey-500)' };
   }
 }

@@ -449,13 +449,13 @@ function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; 
             <div
               style={{
                 width: '8px', height: '8px', borderRadius: '50%',
-                backgroundColor: i <= activeStepIndex ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)',
+                backgroundColor: i <= activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)',
               }}
             />
             <span
               style={{
                 fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: i === activeStepIndex ? 700 : 500, whiteSpace: 'nowrap',
-                color: i === activeStepIndex ? 'var(--itunda-blue)' : i < activeStepIndex ? 'var(--itunda-grey-700)' : 'var(--itunda-grey-400)',
+                color: i === activeStepIndex ? 'var(--itunda-indigo)' : i < activeStepIndex ? 'var(--itunda-grey-700)' : 'var(--itunda-grey-400)',
               }}
             >
               {label}
@@ -465,7 +465,7 @@ function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; 
             <div
               style={{
                 flex: 1, height: '1px', marginBottom: '17px', marginLeft: '4px', marginRight: '4px',
-                backgroundColor: i < activeStepIndex ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)',
+                backgroundColor: i < activeStepIndex ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)',
               }}
             />
           )}
@@ -649,8 +649,8 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
         }
       >
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '32px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <ShieldCheck size={34} color="var(--itunda-blue)" />
+          <div style={{ width: '64px', height: '64px', borderRadius: '32px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <ShieldCheck size={34} color="var(--itunda-indigo)" />
           </div>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 800, marginBottom: '4px' }}>{t('transfer.done')}</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, marginBottom: '4px' }}>
@@ -678,7 +678,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-            style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-blue-light)', borderTopColor: 'var(--itunda-blue)', borderRadius: '50%' }}
+            style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-indigo-light)', borderTopColor: 'var(--itunda-indigo)', borderRadius: '50%' }}
           />
           <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.sending')}</p>
         </div>
@@ -771,7 +771,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
           </button>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('transfer.toLabel')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{recipientName}</span>
-          {recipientPreview && <ShieldCheck size={15} color="var(--itunda-blue)" />}
+          {recipientPreview && <ShieldCheck size={15} color="var(--itunda-indigo)" />}
           <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
             <X size={20} color="var(--itunda-grey-500)" />
           </button>
@@ -879,7 +879,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.recentLabel')}</p>
-        <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
+        <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 700, background: 'none', border: 'none' }}>
           {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
         </button>
       </div>
@@ -907,7 +907,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
           onClick={() => selectRecipient(c.phoneNumber)}
           style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', background: 'none', border: 'none', textAlign: 'left', width: '100%' }}
         >
-          <div style={{ width: '38px', height: '38px', borderRadius: '19px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-blue)', flexShrink: 0 }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '19px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)', flexShrink: 0 }}>
             {c.name.slice(0, 1).toUpperCase()}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -999,7 +999,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
                       </div>
                     </div>
                   </div>
-                  <span style={{ fontWeight: '700', fontSize: 'var(--itunda-type-scale-16-size)', color: isUnusual ? 'var(--itunda-red)' : isCredit ? 'var(--itunda-blue)' : 'var(--itunda-grey-900)' }}>
+                  <span style={{ fontWeight: '700', fontSize: 'var(--itunda-type-scale-16-size)', color: isUnusual ? 'var(--itunda-red)' : isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
                     {isCredit ? '+' : ''}{tx.amount.toLocaleString()} RWF
                   </span>
                 </motion.div>
@@ -1035,7 +1035,7 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
     // time: onNavigateToTab alone only lands on LoansView's generic Offers catalog --
     // its own `mode` is separate internal state. loansMode threads the real specific
     // product through (see LoansView's own initialMode doc comment).
-    { key: 'moto_ownership', title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-blue)" />, tint: 'var(--itunda-blue-light)', tab: 'LOANS', loansMode: 'MOTO_OWNERSHIP' },
+    { key: 'moto_ownership', title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-indigo)" />, tint: 'var(--itunda-indigo-light)', tab: 'LOANS', loansMode: 'MOTO_OWNERSHIP' },
     { key: 'harvest_advance', title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS', loansMode: 'HARVEST_ADVANCE' },
   ];
 
@@ -1072,8 +1072,8 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
           onClick={() => { recordEvent('coop_rail_tap', 'see_all'); onNavigateToTab('SAVINGS'); }}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%', marginTop: '4px' }}
         >
-          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--itunda-blue)' }}>{t('coopRail.seeAll')}</span>
-          <ChevronRight size={16} color="var(--itunda-blue)" />
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{t('coopRail.seeAll')}</span>
+          <ChevronRight size={16} color="var(--itunda-indigo)" />
         </button>
       </div>
     </div>
@@ -1826,7 +1826,7 @@ function DelayedTransfersCard() {
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           {recipientPreview && (
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)' }}>{t('delayedTransfers.sendingTo')} {recipientPreview.displayName}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>{t('delayedTransfers.sendingTo')} {recipientPreview.displayName}</p>
           )}
           <input
             type="number" placeholder={t('scheduledTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
@@ -2278,7 +2278,7 @@ function AutoTopUpCard({ accountId }: { accountId: string }) {
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
             {t('autoTopUp.upToPerDay', { cap: setting.dailyTriggerCap, count: setting.triggersToday })}
           </p>
-          {triggerResult && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', marginBottom: '8px' }}>{triggerResult}</p>}
+          {triggerResult && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', marginBottom: '8px' }}>{triggerResult}</p>}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleToggle} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
               {setting.enabled ? t('autoTopUp.turnOff') : t('autoTopUp.turnOn')}
@@ -2764,9 +2764,9 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
       {mode === 'STUDENT' && <StudentLoanView />}
       {mode === 'MOTO_OWNERSHIP' && <MotoOwnershipView />}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && payoffMessage && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{payoffMessage}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && payoffMessage && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{payoffMessage}</p>}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && refinanceResult && (
-        <div className="itunda-card" style={{ padding: '16px', border: '1px solid var(--itunda-blue)' }}>
+        <div className="itunda-card" style={{ padding: '16px', border: '1px solid var(--itunda-indigo)' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
         </div>
@@ -2777,7 +2777,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
             <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
               <button
                 className="itunda-btn itunda-btn-secondary"
-                style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === null ? { border: '1px solid var(--itunda-blue)', color: 'var(--itunda-blue)' } : {}) }}
+                style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === null ? { border: '1px solid var(--itunda-indigo)', color: 'var(--itunda-indigo)' } : {}) }}
                 onClick={() => selectLender(null)}
               >
                 All lenders
@@ -2786,7 +2786,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
                 <button
                   key={lender.id}
                   className="itunda-btn itunda-btn-secondary"
-                  style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === lender.id ? { border: '1px solid var(--itunda-blue)', color: 'var(--itunda-blue)' } : {}) }}
+                  style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === lender.id ? { border: '1px solid var(--itunda-indigo)', color: 'var(--itunda-indigo)' } : {}) }}
                   onClick={() => selectLender(lender.id)}
                 >
                   {lender.name}
@@ -2956,7 +2956,7 @@ function OverdraftView() {
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Overdraft line</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Drawn: {account.drawnBalance.toLocaleString()} RWF of {account.creditLimit.toLocaleString()} RWF</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
-      {notice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)' }}>{notice}</p>}
+      {notice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>{notice}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <input
         type="number" value={drawAmount} onChange={(e) => setDrawAmount(e.target.value)} placeholder="Draw amount (RWF)"
@@ -3072,7 +3072,7 @@ function PostpaidCreditView() {
       {line.cycleDueAt && line.status === 'ACTIVE' && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Due by {new Date(line.cycleDueAt).toLocaleDateString()}</p>
       )}
-      {notice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)' }}>{notice}</p>}
+      {notice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>{notice}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <input
         type="number" value={spendAmount} onChange={(e) => setSpendAmount(e.target.value)} placeholder="Spend amount (RWF)"
@@ -3255,7 +3255,7 @@ function HarvestAdvanceView() {
               <div key={a.id} className="itunda-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.principalAmount.toLocaleString()} RWF · {a.purpose}</p>
-                  <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{a.status}</span>
+                  <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{a.status}</span>
                 </div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Repay by {new Date(a.repaymentDueDate).toLocaleDateString()}</p>
                 {a.status === 'REQUESTED' && (
@@ -3404,7 +3404,7 @@ function VupLoanView() {
               <div key={loan.id} className="itunda-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.purpose}</p>
-                  <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-blue)' }}>{loan.status}</span>
+                  <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-indigo)' }}>{loan.status}</span>
                 </div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                   Outstanding: {loan.outstandingPrincipal.toLocaleString()} RWF
@@ -3585,7 +3585,7 @@ function StudentLoanView() {
               <div key={loan.id} className="itunda-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.level}</p>
-                  <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-blue)' }}>{loan.status}</span>
+                  <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-indigo)' }}>{loan.status}</span>
                 </div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                   Outstanding: {loan.outstandingBalance.toLocaleString()} RWF
@@ -3784,7 +3784,7 @@ function MotoOwnershipView() {
                 <div key={plan.id} className="itunda-card" style={{ padding: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{plan.bikePrice.toLocaleString()} RWF bike</p>
-                    <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{plan.status}</span>
+                    <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{plan.status}</span>
                   </div>
                   {plan.status === 'SAVING' && (
                     <>
@@ -3792,7 +3792,7 @@ function MotoOwnershipView() {
                         Saved {plan.savedAmount.toLocaleString()} / {plan.downPaymentTarget.toLocaleString()} RWF down payment
                       </p>
                       <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--itunda-blue)' }} />
+                        <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--itunda-indigo)' }} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                         <input
@@ -3901,7 +3901,7 @@ function CreditScoreView() {
                 <p>{s.action}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{s.description}</p>
               </div>
-              <span style={{ color: 'var(--itunda-blue)', fontWeight: 700 }}>+{s.pointsGain}</span>
+              <span style={{ color: 'var(--itunda-indigo)', fontWeight: 700 }}>+{s.pointsGain}</span>
             </div>
           ))}
         </div>
@@ -4043,7 +4043,7 @@ function RewardsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
       <PetCard />
       <div className="itunda-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total earned</p>
@@ -4223,7 +4223,7 @@ function BillsView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
       {pending.length > 0 && (
         <div className="itunda-card" style={{ padding: '16px' }}>
@@ -4461,7 +4461,7 @@ function AgentOperatorView() {
       {section === 'float' ? <FloatMarketplaceSection /> : (
       <>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
       <div className="itunda-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{till.agentName}</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{till.expectedCash.toLocaleString()} RWF expected in till</h2>
@@ -4654,7 +4654,7 @@ function FloatMarketplaceSection() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
       <div className="itunda-card">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Offer surplus float</h3>
@@ -4975,7 +4975,7 @@ function ConvertCurrencyCard({ accounts, onConverted }: { accounts: ForeignCurre
       )}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       {result && (
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)', fontWeight: 700, margin: 0 }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', fontWeight: 700, margin: 0 }}>
           Converted {result.fromAmount.toLocaleString()} {result.fromCurrency} → {result.toAmount.toLocaleString()} {result.toCurrency}
         </p>
       )}
@@ -5068,7 +5068,7 @@ function RateAlertCard({ accounts }: { accounts: ForeignCurrencyAccount[] }) {
                   style={{
                     padding: '8px 12px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
                     color: direction === d ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                    backgroundColor: direction === d ? 'var(--itunda-blue)' : 'transparent',
+                    backgroundColor: direction === d ? 'var(--itunda-indigo)' : 'transparent',
                   }}
                 >
                   {d === 'ABOVE' ? 'Above' : 'Below'}
@@ -5087,7 +5087,7 @@ function RateAlertCard({ accounts }: { accounts: ForeignCurrencyAccount[] }) {
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
         </form>
       ) : (
-        <button onClick={() => setExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+        <button onClick={() => setExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
           <Bell size={14} /> Set a rate alert
         </button>
       )}
@@ -5177,7 +5177,7 @@ function SpendingInsightView() {
                 <span style={{ fontWeight: 700 }}>{c.amount.toLocaleString()} RWF</span>
               </div>
               <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(c.amount / maxAmount) * 100}%`, backgroundColor: 'var(--itunda-blue)', borderRadius: '3px' }} />
+                <div style={{ height: '100%', width: `${(c.amount / maxAmount) * 100}%`, backgroundColor: 'var(--itunda-indigo)', borderRadius: '3px' }} />
               </div>
             </div>
           ))
@@ -5219,7 +5219,7 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
         <EmptyState message="No budgets set yet -- set a monthly limit to get alerted before you overspend." />
       ) : (
         budgets.map((b) => {
-          const barColor = b.status === 'OVER' ? 'var(--itunda-red)' : b.status === 'NEAR' ? '#F5A623' : 'var(--itunda-blue)';
+          const barColor = b.status === 'OVER' ? 'var(--itunda-red)' : b.status === 'NEAR' ? '#F5A623' : 'var(--itunda-indigo)';
           return (
             <div key={b.category ?? 'overall'} style={{ padding: '8px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '4px' }}>
@@ -5600,7 +5600,7 @@ function SupportView({ initialTransactionId, initialCategory, onConsumedInitial 
       ) : (
         <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
           {initialTransactionId && (
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', fontWeight: 700 }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 700 }}>
               🚗 Reporting an issue with this ride's payment
             </p>
           )}
@@ -5926,7 +5926,7 @@ function NotificationsCard() {
           <span
             role="button"
             onClick={handleReadAll}
-            style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-blue)', cursor: 'pointer' }}
+            style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-indigo)', cursor: 'pointer' }}
           >
             Mark all read
           </span>
@@ -6537,7 +6537,7 @@ function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string;
   };
 
   if (done) {
-    return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', textAlign: 'center' }}>Subscribed -- 5% off every delivery, every 30 days.</p>;
+    return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', textAlign: 'center' }}>Subscribed -- 5% off every delivery, every 30 days.</p>;
   }
 
   return (
@@ -6858,7 +6858,7 @@ function QrScanCamera({ onDetect, onUnavailable }: { onDetect: (value: string) =
   return (
     <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: '16px', overflow: 'hidden', background: '#111', marginBottom: '10px' }}>
       <video ref={videoRef} muted playsInline aria-label="Camera preview for QR scanning" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      <div style={{ position: 'absolute', inset: '14%', border: '3px solid var(--itunda-blue-500)', borderRadius: '16px', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: '14%', border: '3px solid var(--itunda-indigo-500)', borderRadius: '16px', pointerEvents: 'none' }} />
       {status === 'starting' && (
         <p style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center', fontSize: 'var(--itunda-type-scale-12-size)', color: '#fff' }}>
           Starting camera…
@@ -7054,7 +7054,7 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
               <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Your payment code is hidden</p>
               <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)' }}>Protects you if someone else has your phone</p>
             </div>
-            <span style={{ padding: '10px 28px', borderRadius: '999px', backgroundColor: 'var(--itunda-blue)', color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)' }}>
+            <span style={{ padding: '10px 28px', borderRadius: '999px', backgroundColor: 'var(--itunda-indigo)', color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)' }}>
               Tap to show
             </span>
           </button>
@@ -7099,7 +7099,7 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
           <div style={{ display: 'flex', gap: '16px', overflowX: 'auto' }}>
             {nearbyAds.map((nearbyAd) => (
               <div key={nearbyAd.ad.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '64px', flexShrink: 0 }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '999px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--itunda-blue)', fontSize: 'var(--itunda-type-scale-16-size)' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '999px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: 'var(--itunda-indigo)', fontSize: 'var(--itunda-type-scale-16-size)' }}>
                   {nearbyAd.businessName.charAt(0).toUpperCase()}
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-800)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', textAlign: 'center' }}>{nearbyAd.businessName}</p>
@@ -7169,7 +7169,7 @@ function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accoun
             key={w.id}
             style={{
               width: w.id === selectedAccountId ? '8px' : '6px', height: w.id === selectedAccountId ? '8px' : '6px',
-              borderRadius: '999px', backgroundColor: w.id === selectedAccountId ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)',
+              borderRadius: '999px', backgroundColor: w.id === selectedAccountId ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)',
             }}
           />
         ))}
@@ -7563,8 +7563,8 @@ function ShoppingView() {
   return (
     <div>
       {membershipDay?.isMembershipDay && (
-        <div className="itunda-card" style={{ marginBottom: '16px', backgroundColor: 'var(--itunda-blue-light)', border: '1px solid var(--itunda-blue)' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
+        <div className="itunda-card" style={{ marginBottom: '16px', backgroundColor: 'var(--itunda-indigo-light)', border: '1px solid var(--itunda-indigo)' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
         </div>
       )}
@@ -7582,8 +7582,8 @@ function ShoppingView() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {merchants.map((m) => (
             <div key={m.merchantId} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShoppingBag size={20} color="var(--itunda-blue)" />
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShoppingBag size={20} color="var(--itunda-indigo)" />
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{m.businessName}</p>
@@ -7777,7 +7777,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--itunda-blue)' : 'var(--itunda-red)') : 'transparent',
+              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--itunda-indigo)' : 'var(--itunda-red)') : 'transparent',
             }}
           >
             {m === 'BUY' ? 'Buy' : 'Sell'}
@@ -7827,7 +7827,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
                   style={{
                     flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
                     color: alertDirection === d ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                    backgroundColor: alertDirection === d ? 'var(--itunda-blue)' : 'transparent',
+                    backgroundColor: alertDirection === d ? 'var(--itunda-indigo)' : 'transparent',
                   }}
                 >
                   {d === 'ABOVE' ? 'Above' : 'Below'}
@@ -7845,7 +7845,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
             {alertError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{alertError}</p>}
           </form>
         ) : (
-          <button onClick={() => setAlertExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+          <button onClick={() => setAlertExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
             <Bell size={14} /> Set a price alert
           </button>
         )}
@@ -7895,7 +7895,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
     <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Investment cash</p>
-        <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+        <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
           {expanded ? 'Cancel' : 'Add funds'}
         </button>
       </div>
@@ -8016,7 +8016,7 @@ function StocksView() {
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: subTab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: subTab === id ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: subTab === id ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {label}
@@ -8039,7 +8039,7 @@ function StocksView() {
                   style={{
                     padding: '6px 12px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
                     color: marketFilter === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                    backgroundColor: marketFilter === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                    backgroundColor: marketFilter === id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
                   }}
                 >
                   {label}
@@ -8448,8 +8448,8 @@ function MessageReactions({
             onClick={() => onToggle(r.emoji)}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: 'var(--itunda-type-scale-12-size)',
-              border: mine ? '1px solid var(--itunda-blue)' : '1px solid var(--itunda-grey-200)',
-              backgroundColor: mine ? 'var(--itunda-blue-light)' : 'var(--itunda-white)',
+              border: mine ? '1px solid var(--itunda-indigo)' : '1px solid var(--itunda-grey-200)',
+              backgroundColor: mine ? 'var(--itunda-indigo-light)' : 'var(--itunda-white)',
             }}
           >
             <span>{r.emoji}</span>
@@ -8521,7 +8521,7 @@ function OfferBubble({
     <div
       style={{
         maxWidth: '75%', padding: '12px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-14-size)',
-        backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+        backgroundColor: isMine ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
         color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
@@ -8587,7 +8587,7 @@ function GiftBubble({
     <div
       style={{
         maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-14-size)',
-        backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+        backgroundColor: isMine ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
         color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
@@ -8640,7 +8640,7 @@ function GiftVoucherBubble({
     <div
       style={{
         maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-14-size)',
-        backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+        backgroundColor: isMine ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
         color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
@@ -8828,7 +8828,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: 'var(--itunda-type-scale-16-size)', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
         </div>
         {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-        {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)' }}>{message}</p>}
+        {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
         {packs === null ? (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
         ) : (
@@ -8951,7 +8951,7 @@ function GiftVoucherComposerPanel({
       {selected ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{selected.name} · {selected.merchantName} · {selected.price.toLocaleString()} RWF</span>
-          <button type="button" onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)' }}>Change</button>
+          <button type="button" onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>Change</button>
         </div>
       ) : (
         <>
@@ -9526,7 +9526,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                     padding: '10px 14px',
                     borderRadius: '16px',
                     fontSize: 'var(--itunda-type-scale-14-size)',
-                    backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                    backgroundColor: isMine ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
                     color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                   }}
                 >
@@ -9561,7 +9561,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 <button
                   type="button"
                   onClick={() => setThreadRootMessage(m)}
-                  style={{ border: 'none', background: 'none', color: 'var(--itunda-blue)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 600, padding: '4px 0' }}
+                  style={{ border: 'none', background: 'none', color: 'var(--itunda-indigo)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 600, padding: '4px 0' }}
                 >
                   {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'} →
                 </button>
@@ -9671,7 +9671,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         />
       )}
 
-      {replyingTo && <div style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', padding: '8px', borderLeft: '3px solid var(--itunda-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
+      {replyingTo && <div style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', padding: '8px', borderLeft: '3px solid var(--itunda-indigo)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
       <input
         ref={photoInputRef}
         type="file"
@@ -9774,7 +9774,7 @@ function MentionSuggestions({ draft, members, currentUserId, onPick }: {
             onClick={() => onPick(m.name)}
             style={{
               whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-              color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-blue)',
+              color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-indigo)',
             }}
           >
             @{firstName}
@@ -10120,7 +10120,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                     padding: '10px 14px',
                     borderRadius: '16px',
                     fontSize: 'var(--itunda-type-scale-14-size)',
-                    backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                    backgroundColor: isMine ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
                     color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                   }}
                 >
@@ -10153,7 +10153,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 <button
                   type="button"
                   onClick={() => setThreadRootMessage(m)}
-                  style={{ border: 'none', background: 'none', color: 'var(--itunda-blue)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 600, padding: '4px 0' }}
+                  style={{ border: 'none', background: 'none', color: 'var(--itunda-indigo)', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 600, padding: '4px 0' }}
                 >
                   {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'} →
                 </button>
@@ -10192,7 +10192,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       )}
       {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
 
-      {replyingTo && <div style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', padding: '8px', borderLeft: '3px solid var(--itunda-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
+      {replyingTo && <div style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', padding: '8px', borderLeft: '3px solid var(--itunda-indigo)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
       <MentionSuggestions draft={draft} members={members} currentUserId={currentUser?.id} onPick={(name) => setDraft((d) => applyMention(d, name))} />
       <input
         ref={photoInputRef}
@@ -10408,7 +10408,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
                   <div
                     style={{
                       maxWidth: '75%', padding: '10px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-14-size)',
-                      backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                      backgroundColor: isMine ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
                       color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                     }}
                   >
@@ -10559,8 +10559,8 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
               >
                 <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <MessageCircle size={20} color="var(--itunda-blue)" />
+                  <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MessageCircle size={20} color="var(--itunda-indigo)" />
                   </div>
                   {presence[c.otherUserId] && (
                     <span
@@ -10580,7 +10580,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
                 {c.unreadCount > 0 && (
                   <span
                     style={{
-                      fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-blue)',
+                      fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-indigo)',
                       borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
                     }}
                   >
@@ -10596,7 +10596,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
                   type="button"
                   onClick={() => togglePinnedToTop(c.conversationId, !c.pinnedToTop)}
                   title={c.pinnedToTop ? 'Unpin from top' : 'Pin to top'}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: c.pinnedToTop ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: c.pinnedToTop ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }}
                 >
                   {c.pinnedToTop ? <PinOff size={18} /> : <Pin size={18} />}
                 </button>
@@ -10764,7 +10764,7 @@ function GroupSplitBillsView({
             onClick={() => setLadderMode((v) => !v)}
           >
             🎲 Ladder game (randomized split)
-            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: ladderMode ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: ladderMode ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
           </button>
@@ -10815,7 +10815,7 @@ function GroupSplitBillsView({
               );
             })}
             {splitBill.receiptImageUrl && (
-              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)' }}>
+              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>
                 🧾 View receipt
               </a>
             )}
@@ -10977,7 +10977,7 @@ function DirectSplitBillsView({
             onClick={() => setLadderMode((v) => !v)}
           >
             🎲 Ladder game (randomized split)
-            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: ladderMode ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: ladderMode ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
           </button>
@@ -11025,7 +11025,7 @@ function DirectSplitBillsView({
               </p>
             ))}
             {splitBill.receiptImageUrl && (
-              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)' }}>
+              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>
                 🧾 View receipt
               </a>
             )}
@@ -11254,8 +11254,8 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
               className="itunda-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Users size={20} color="var(--itunda-blue)" />
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Users size={20} color="var(--itunda-indigo)" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{g.name} · {g.memberCount}</p>
@@ -11266,7 +11266,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
               {g.unreadCount > 0 && (
                 <span
                   style={{
-                    fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-blue)',
+                    fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-indigo)',
                     borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
                   }}
                 >
@@ -11325,7 +11325,7 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: mode === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: mode === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'DIRECT' ? 'Direct' : v === 'GROUPS' ? 'Groups' : 'Friends'}
@@ -11386,7 +11386,7 @@ function TodaysBirthdaySection({ onOpenConversation }: { onOpenConversation: (co
   if (!birthdays || birthdays.length === 0) return null;
 
   return (
-    <div className="itunda-card" style={{ background: 'var(--itunda-blue-light)' }}>
+    <div className="itunda-card" style={{ background: 'var(--itunda-indigo-light)' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>🎂 Today's birthday</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {birthdays.map((c) => (
@@ -11397,7 +11397,7 @@ function TodaysBirthdaySection({ onOpenConversation }: { onOpenConversation: (co
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 10px', borderRadius: '8px', background: 'var(--itunda-white)', border: 'none', textAlign: 'left', cursor: 'pointer' }}
           >
             <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{c.name}</span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', fontWeight: 700 }}>{startingId === c.userId ? '…' : 'Say happy birthday'}</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 700 }}>{startingId === c.userId ? '…' : 'Say happy birthday'}</span>
           </button>
         ))}
       </div>
@@ -11458,8 +11458,8 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
           style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', width: '100%', textAlign: 'left', background: 'var(--itunda-white)', border: 'none', cursor: 'pointer' }}
         >
           <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Users size={20} color="var(--itunda-blue)" />
+            <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={20} color="var(--itunda-indigo)" />
             </div>
             {presence[c.userId] && (
               <span
@@ -12198,7 +12198,7 @@ function NeighborhoodSwitcherRow({
     <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', marginTop: '10px' }}>
       <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{secondNeighborhoodName ? `Second: ${secondNeighborhoodName}` : 'Add a second neighborhood'}</span>
       <div style={{ display: 'flex', gap: '12px' }}>
-        <button style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-blue)' }} onClick={onAddTapped}>
+        <button style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-indigo)' }} onClick={onAddTapped}>
           {secondNeighborhoodName ? 'Change' : 'Add'}
         </button>
         {secondNeighborhoodName && (
@@ -12494,7 +12494,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? '♡ Wishlist' : v === 'ALERTS' ? '🔔 Alerts' : '🔧 Inspections'}
@@ -12509,7 +12509,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
             style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
               color: selectedCategory === null ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: selectedCategory === null ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+              backgroundColor: selectedCategory === null ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
             }}
           >
             All
@@ -12521,7 +12521,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               style={{
                 flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
                 color: selectedCategory === c ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: selectedCategory === c ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                backgroundColor: selectedCategory === c ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
               }}
             >
               {c}
@@ -12742,7 +12742,7 @@ function VehicleInspectionsView() {
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: tab === t ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: tab === t ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: tab === t ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {t === 'BUYER' ? 'Get a car inspected' : 'Mechanic'}
@@ -13045,7 +13045,7 @@ function CommentNotificationToggle() {
         type="button" role="switch" aria-checked={enabled} aria-label="Notify me about new comments" disabled={busy} onClick={handleToggle}
         style={{
           width: '44px', height: '26px', borderRadius: '13px', padding: '2px', flexShrink: 0,
-          background: enabled ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)', display: 'flex', justifyContent: enabled ? 'flex-end' : 'flex-start',
+          background: enabled ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)', display: 'flex', justifyContent: enabled ? 'flex-end' : 'flex-start',
         }}
       >
         <span style={{ width: '22px', height: '22px', borderRadius: '11px', background: 'white', display: 'block' }} />
@@ -13084,7 +13084,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{categoryLabel}</span>
+        <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{categoryLabel}</span>
         {isMine && (
           <button
             className="itunda-btn itunda-btn-secondary"
@@ -13253,7 +13253,7 @@ function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost;
   if (done) {
     return (
       <div className="itunda-card" style={{ marginTop: '16px' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>Split request sent -- see it in your group chat's Split bill tab.</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>Split request sent -- see it in your group chat's Split bill tab.</p>
       </div>
     );
   }
@@ -13464,7 +13464,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Feed' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
@@ -13480,9 +13480,9 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
               onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
               style={{
                 whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-                border: `1px solid ${activeCategory === c.id ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                border: `1px solid ${activeCategory === c.id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
                 color: activeCategory === c.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: activeCategory === c.id ? 'var(--itunda-blue)' : 'transparent',
+                backgroundColor: activeCategory === c.id ? 'var(--itunda-indigo)' : 'transparent',
               }}
             >
               {c.label}
@@ -13765,7 +13765,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{categoryLabel}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{categoryLabel}</span>
           {post.status === 'FILLED' && (
             <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
               FILLED
@@ -13966,7 +13966,7 @@ function MyJobApplicationsView() {
           <span
             style={{
               display: 'inline-block', marginTop: '6px', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, padding: '2px 8px', borderRadius: '8px',
-              color: application.status === 'ACCEPTED' ? 'var(--itunda-blue)' : application.status === 'DECLINED' ? 'var(--itunda-red)' : 'var(--itunda-grey-700)',
+              color: application.status === 'ACCEPTED' ? 'var(--itunda-indigo)' : application.status === 'DECLINED' ? 'var(--itunda-red)' : 'var(--itunda-grey-700)',
               backgroundColor: application.status === 'ACCEPTED' ? 'rgba(49, 130, 246, 0.1)' : application.status === 'DECLINED' ? 'rgba(229, 57, 53, 0.1)' : 'var(--itunda-grey-100)',
             }}
           >
@@ -14151,7 +14151,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : '♡ Wishlist'}
@@ -14193,9 +14193,9 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
                   onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
                   style={{
                     whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-                    border: `1px solid ${activeCategory === c.id ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                    border: `1px solid ${activeCategory === c.id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
                     color: activeCategory === c.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                    backgroundColor: activeCategory === c.id ? 'var(--itunda-blue)' : 'transparent',
+                    backgroundColor: activeCategory === c.id ? 'var(--itunda-indigo)' : 'transparent',
                   }}
                 >
                   {c.label}
@@ -14557,7 +14557,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
             {listing.listingType === 'RENT' ? 'For rent' : 'For sale'} · {propertyTypeLabel}
           </span>
           {listing.status === 'TAKEN' && (
@@ -14584,7 +14584,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
           just the lister, a trust signal for the buyer/tenant deciding whether to
           contact this listing. Mirrors PropertyScreen.kt's own badge exactly. */}
       {ownershipStatus === 'VERIFIED' && (
-        <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)', backgroundColor: 'rgba(49,130,246,0.12)', padding: '2px 8px', borderRadius: '8px', width: 'fit-content' }}>
+        <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)', backgroundColor: 'rgba(49,130,246,0.12)', padding: '2px 8px', borderRadius: '8px', width: 'fit-content' }}>
           ✓ Owner verified
         </span>
       )}
@@ -14916,7 +14916,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : v === 'WISHLIST' ? '♡ Wishlist' : '시세 Value'}
@@ -14938,9 +14938,9 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
                   onClick={() => setListingTypeFilter(listingTypeFilter === t ? null : t)}
                   style={{
                     padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-                    border: `1px solid ${listingTypeFilter === t ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                    border: `1px solid ${listingTypeFilter === t ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
                     color: listingTypeFilter === t ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                    backgroundColor: listingTypeFilter === t ? 'var(--itunda-blue)' : 'transparent',
+                    backgroundColor: listingTypeFilter === t ? 'var(--itunda-indigo)' : 'transparent',
                   }}
                 >
                   {t === 'RENT' ? 'For rent' : 'For sale'}
@@ -14957,9 +14957,9 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
                   onClick={() => setPropertyTypeFilter(propertyTypeFilter === t.id ? null : t.id)}
                   style={{
                     whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-                    border: `1px solid ${propertyTypeFilter === t.id ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                    border: `1px solid ${propertyTypeFilter === t.id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
                     color: propertyTypeFilter === t.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                    backgroundColor: propertyTypeFilter === t.id ? 'var(--itunda-blue)' : 'transparent',
+                    backgroundColor: propertyTypeFilter === t.id ? 'var(--itunda-indigo)' : 'transparent',
                   }}
                 >
                   {t.label}
@@ -15116,9 +15116,9 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
               onClick={() => setListingType(t)}
               style={{
                 flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-                border: `1px solid ${listingType === t ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                border: `1px solid ${listingType === t ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
                 color: listingType === t ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: listingType === t ? 'var(--itunda-blue)' : 'transparent',
+                backgroundColor: listingType === t ? 'var(--itunda-indigo)' : 'transparent',
               }}
             >
               {t === 'SALE' ? 'For sale' : 'For rent'}
@@ -15184,7 +15184,7 @@ function EatsOrderCard({ order, restaurant, action, onMessageRestaurant }: { ord
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{EATS_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{EATS_STATUS_LABEL[order.status]}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{order.deliveryAddress}</p>
         </div>
         <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
@@ -15317,7 +15317,7 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
                 <div style={{ display: 'flex', gap: '10px', marginTop: '2px', alignItems: 'flex-start' }}>
                   <button
                     type="button" onClick={() => handleToggleHelpful(r.id)}
-                    style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: helpfulVoted.has(r.id) ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}
+                    style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: helpfulVoted.has(r.id) ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }}
                   >
                     👍 Helpful{r.helpfulCount ? ` (${r.helpfulCount})` : ''}
                   </button>
@@ -15595,7 +15595,7 @@ function TipRiderPrompt({ orderId, onTipped }: { orderId: string; onTipped: () =
             onClick={() => { setAmount(preset); setCustomAmount(''); handleSubmit(preset); }}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-              border: '1px solid var(--itunda-grey-200)', background: amount === preset ? 'var(--itunda-blue)' : 'transparent',
+              border: '1px solid var(--itunda-grey-200)', background: amount === preset ? 'var(--itunda-indigo)' : 'transparent',
               color: amount === preset ? 'white' : 'var(--itunda-grey-700)',
             }}
           >
@@ -15893,7 +15893,7 @@ function MenuView({
                 style={{
                   flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
                   color: fulfillmentType === ft ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                  backgroundColor: fulfillmentType === ft ? 'var(--itunda-blue)' : 'transparent',
+                  backgroundColor: fulfillmentType === ft ? 'var(--itunda-indigo)' : 'transparent',
                 }}
               >
                 {ft === 'DELIVERY' ? 'Delivery' : 'Pickup'}
@@ -16180,7 +16180,7 @@ function SearchAndCategoryChips({
             style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
               color: selectedCategory === null ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: selectedCategory === null ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+              backgroundColor: selectedCategory === null ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
             }}
           >
             All
@@ -16192,7 +16192,7 @@ function SearchAndCategoryChips({
               style={{
                 flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
                 color: selectedCategory === c ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: selectedCategory === c ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                backgroundColor: selectedCategory === c ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
               }}
             >
               {c}
@@ -16387,7 +16387,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Restaurants' : v === 'FAVORITES' ? 'Favorites' : 'My orders'}
@@ -16432,8 +16432,8 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                 disabled={pendingSortMode !== null}
                 style={{
                   whiteSpace: 'nowrap', padding: '6px 12px', fontSize: 'var(--itunda-type-scale-12-size)',
-                  backgroundColor: sortMode === mode ? 'var(--itunda-blue-light)' : undefined,
-                  color: sortMode === mode ? 'var(--itunda-blue)' : undefined,
+                  backgroundColor: sortMode === mode ? 'var(--itunda-indigo-light)' : undefined,
+                  color: sortMode === mode ? 'var(--itunda-indigo)' : undefined,
                 }}
                 onClick={() => selectSortMode(mode)}
               >
@@ -16479,7 +16479,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   fabricating a per-dish one, matching the real STRUCTURAL pattern
                   (large photo-topped card) without overclaiming dish-level detail
                   that doesn't exist. */}
-              <div style={{ position: 'relative', width: '100%', height: '140px', backgroundColor: 'var(--itunda-blue-light)' }}>
+              <div style={{ position: 'relative', width: '100%', height: '140px', backgroundColor: 'var(--itunda-indigo-light)' }}>
                 {r.photoUrl ? (
                   <img
                     src={r.photoUrl} alt=""
@@ -16488,7 +16488,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Utensils size={32} color="var(--itunda-blue)" />
+                    <Utensils size={32} color="var(--itunda-indigo)" />
                   </div>
                 )}
                 {r.isAcceptingOrders === false && (
@@ -16677,8 +16677,8 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
           className="itunda-card"
           style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
         >
-          <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Utensils size={20} color="var(--itunda-blue)" />
+          <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Utensils size={20} color="var(--itunda-indigo)" />
           </div>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{f.businessName}</p>
@@ -16786,7 +16786,7 @@ function DeliverView() {
   if (rider === null) {
     return (
       <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <Bike size={32} color="var(--itunda-blue)" style={{ marginBottom: '10px' }} />
+        <Bike size={32} color="var(--itunda-indigo)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '6px' }}>Deliver with Itunda</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           Earn a real delivery fee for every order you deliver, paid straight to your account.
@@ -17045,14 +17045,14 @@ function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
           {trip.scheduledFor && (
-            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-blue)', fontWeight: 700, marginTop: '2px' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-indigo)', fontWeight: 700, marginTop: '2px' }}>
               🕒 Scheduled for {new Date(trip.scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
         </div>
         <span style={{
           fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-blue)',
+          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-indigo)',
           backgroundColor: trip.status === 'CANCELLED' ? 'var(--itunda-red-light)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-100)' : '#E8F0FE',
         }}>
           {trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
@@ -17215,7 +17215,7 @@ function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped: () =>
             onClick={() => { setAmount(preset); setCustomAmount(''); handleSubmit(preset); }}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-              border: '1px solid var(--itunda-grey-200)', background: amount === preset ? 'var(--itunda-blue)' : 'transparent',
+              border: '1px solid var(--itunda-grey-200)', background: amount === preset ? 'var(--itunda-indigo)' : 'transparent',
               color: amount === preset ? 'white' : 'var(--itunda-grey-700)',
             }}
           >
@@ -17297,7 +17297,7 @@ function TrustedContactsSection() {
           <ShieldCheck size={16} color="var(--itunda-green)" /> Trusted contacts
         </h3>
         {(contacts?.length ?? 0) < 5 && (
-          <button style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-blue)' }} onClick={() => setShowAdd((v) => !v)}>
+          <button style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }} onClick={() => setShowAdd((v) => !v)}>
             {showAdd ? 'Cancel' : '+ Add'}
           </button>
         )}
@@ -17646,7 +17646,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: subTab === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: subTab === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: subTab === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'RIDE' ? 'Get a ride' : 'Drive'}
@@ -17667,11 +17667,11 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                       <div
                         style={{
                           textAlign: 'center', padding: '12px', borderRadius: '10px',
-                          backgroundColor: 'var(--itunda-blue-light)', marginBottom: '4px',
+                          backgroundColor: 'var(--itunda-indigo-light)', marginBottom: '4px',
                         }}
                       >
                         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Tell your driver this PIN before you get in</p>
-                        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 700, letterSpacing: '4px', color: 'var(--itunda-blue)' }}>{activeTripPin}</p>
+                        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 700, letterSpacing: '4px', color: 'var(--itunda-indigo)' }}>{activeTripPin}</p>
                       </div>
                     )}
                     {activeTrip.driverId && <DriverRatingSection driverId={activeTrip.driverId} />}
@@ -17702,7 +17702,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
           ) : (
             <div className="itunda-card" style={{ marginBottom: '20px' }}>
               <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Car size={18} color="var(--itunda-blue)" /> Request a ride
+                <Car size={18} color="var(--itunda-indigo)" /> Request a ride
               </h3>
               <PlaceSearchInput label="Pickup" placeholder="Where from?" value={pickup} onSelect={setPickup} />
               {stops.map((stop, i) => (
@@ -17715,7 +17715,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               {stops.length < 3 && (
                 <button
                   type="button" onClick={() => setStops((prev) => [...prev, null])}
-                  style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-blue)', marginBottom: '12px' }}
+                  style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)', marginBottom: '12px' }}
                 >
                   + Add a stop
                 </button>
@@ -17728,7 +17728,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                     style={{
                       flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
                       color: rideTiming === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                      backgroundColor: rideTiming === v ? 'var(--itunda-blue)' : 'transparent',
+                      backgroundColor: rideTiming === v ? 'var(--itunda-indigo)' : 'transparent',
                     }}
                   >
                     {v === 'now' ? 'Ride now' : 'Schedule'}
@@ -17796,7 +17796,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
             <div className="itunda-card skeleton" style={{ height: '180px' }} />
           ) : driver === null ? (
             <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
-              <Car size={32} color="var(--itunda-blue)" style={{ marginBottom: '10px' }} />
+              <Car size={32} color="var(--itunda-indigo)" style={{ marginBottom: '10px' }} />
               <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '6px' }}>Drive with Itunda</h3>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
                 Earn a real fare for every trip you complete, paid straight to your account.
@@ -17998,7 +17998,7 @@ function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip
         </div>
         <span style={{
           fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-blue)',
+          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-indigo)',
           backgroundColor: trip.status === 'CANCELLED' ? 'var(--itunda-red-light)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-100)' : '#E8F0FE',
         }}>
           {DESIGNATED_DRIVER_STATUS_LABEL[trip.status]}
@@ -18580,9 +18580,9 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
           {answers.map((a) => (
             <div
               key={a.id} className="itunda-card"
-              style={{ padding: '10px 14px', border: a.isAdopted ? '1.5px solid var(--itunda-blue)' : undefined }}
+              style={{ padding: '10px 14px', border: a.isAdopted ? '1.5px solid var(--itunda-indigo)' : undefined }}
             >
-              {a.isAdopted && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-blue)', marginBottom: '4px' }}>✅ Adopted answer</p>}
+              {a.isAdopted && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)', marginBottom: '4px' }}>✅ Adopted answer</p>}
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>{a.body}</p>
               {isAsker && !question?.adoptedAnswerId && (
                 <button
@@ -18632,7 +18632,7 @@ function DineInOrderCard({ order, action }: { order: DineInOrder; action?: React
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{DINE_IN_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{DINE_IN_STATUS_LABEL[order.status]}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Table {order.tableNumber}</p>
         </div>
         <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
@@ -18988,7 +18988,7 @@ function DineInCustomerView() {
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Restaurants' : 'My orders'}
@@ -19041,7 +19041,7 @@ function EatsView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, whiteSpace: 'nowrap',
               color: mode === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: mode === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'ORDER' ? 'Order food' : v === 'TOGETHER' ? 'Together order' : v === 'DELIVER' ? 'Deliver' : 'Dine-in'}
@@ -19510,7 +19510,7 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{order.deliveryAddress}</p>
         </div>
         <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
@@ -19760,12 +19760,12 @@ function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Coupons for you</p>
           {coupons.map((c) => (
-            <div key={c.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--itunda-blue-50, #EAF2FF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={c.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--itunda-indigo-50, #EAF2FF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{c.title}</p>
                 {c.description && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{c.description}</p>}
               </div>
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
                 {c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`}
               </p>
             </div>
@@ -19980,7 +19980,7 @@ function ReturnExchangeAction({ orderId }: { orderId: string }) {
   };
 
   if (result) {
-    return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', fontWeight: 600, marginTop: '6px' }}>{result.type === 'RETURN' ? 'Return' : 'Exchange'} requested — awaiting seller review.</p>;
+    return <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 600, marginTop: '6px' }}>{result.type === 'RETURN' ? 'Return' : 'Exchange'} requested — awaiting seller review.</p>;
   }
 
   if (!open) {
@@ -20041,7 +20041,7 @@ function MyReturnRequestsView() {
             </div>
             <span style={{
               fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
-              color: r.status === 'APPROVED' ? 'var(--itunda-green)' : r.status === 'REJECTED' ? 'var(--itunda-red)' : 'var(--itunda-blue)',
+              color: r.status === 'APPROVED' ? 'var(--itunda-green)' : r.status === 'REJECTED' ? 'var(--itunda-red)' : 'var(--itunda-indigo)',
             }}>
               {r.status === 'REQUESTED' ? 'Pending' : r.status === 'APPROVED' ? 'Approved' : 'Rejected'}
             </span>
@@ -20323,7 +20323,7 @@ function HoodReviewForm({
               style={{
                 fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
                 color: selected ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
-                backgroundColor: selected ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                backgroundColor: selected ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
               }}
             >
               {label}
@@ -20401,7 +20401,7 @@ function ProductImageThumb({ imageUrl, size = 96 }: { imageUrl?: string | null; 
   if (!imageUrl || failed) {
     return (
       <div style={{ width: size, height: size, borderRadius: '12px', background: 'var(--itunda-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <ShoppingBag size={size * 0.4} color="var(--itunda-blue)" />
+        <ShoppingBag size={size * 0.4} color="var(--itunda-indigo)" />
       </div>
     );
   }
@@ -20682,7 +20682,7 @@ function ProductCatalogView({
           {following ? 'Following' : 'Follow'}
         </button>
       </div>
-      {shareNotice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-blue)', marginBottom: '12px' }} role="status">{shareNotice}</p>}
+      {shareNotice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', marginBottom: '12px' }} role="status">{shareNotice}</p>}
       {billingPlans.length > 0 && (
         <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Subscription plans</h4>
@@ -21444,7 +21444,7 @@ function ShopView() {
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
               color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Merchants' : v === 'ORDERS' ? 'My orders' : '♡ Wishlist'}
@@ -21492,7 +21492,7 @@ function ShopView() {
                 <div
                   key={v.deal.id}
                   style={{
-                    flex: '0 0 100%', scrollSnapAlign: 'start', height: '140px', background: 'color-mix(in srgb, var(--itunda-blue) 12%, transparent)',
+                    flex: '0 0 100%', scrollSnapAlign: 'start', height: '140px', background: 'color-mix(in srgb, var(--itunda-indigo) 12%, transparent)',
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', boxSizing: 'border-box',
                   }}
                 >
@@ -21538,17 +21538,17 @@ function ShopView() {
                   <div
                     style={{
                       width: '52px', height: '52px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: done ? 'var(--itunda-grey-100)' : 'color-mix(in srgb, var(--itunda-blue) 15%, transparent)',
+                      background: done ? 'var(--itunda-grey-100)' : 'color-mix(in srgb, var(--itunda-indigo) 15%, transparent)',
                     }}
                   >
                     {missionBusyType === m.type ? (
                       <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', color: 'var(--itunda-grey-500)' }}>…</span>
                     ) : (
-                      <Zap size={20} color={done ? 'var(--itunda-grey-400)' : 'var(--itunda-blue)'} />
+                      <Zap size={20} color={done ? 'var(--itunda-grey-400)' : 'var(--itunda-indigo)'} />
                     )}
                   </div>
                   <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', marginTop: '4px', color: done ? 'var(--itunda-grey-400)' : 'var(--itunda-grey-900)', textAlign: 'center' }}>{m.label}</span>
-                  {!done && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--itunda-blue)' }}>{rewardText}</span>}
+                  {!done && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{rewardText}</span>}
                 </button>
               );
             })}
@@ -21574,7 +21574,7 @@ function ShopView() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.ad.title}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{a.businessName}</p>
                 {a.ad.description && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-700)' }}>{a.ad.description}</p>}
-                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-blue)', fontWeight: 600 }}>{a.distanceKm.toFixed(1)} km away</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-indigo)', fontWeight: 600 }}>{a.distanceKm.toFixed(1)} km away</p>
               </button>
             ))}
           </div>
@@ -21661,7 +21661,7 @@ function ShopView() {
                 {/* Real Coupang badge system (2026-08-05) -- see Badge.tsx's own doc
                     comment. Matches Android ShopScreen.kt's own identical StatusBadge
                     treatment (this was plain <p> text on bank-mfe until now). */}
-                <Badge text={formatDealCountdown(v.deal.endsAt)} filled={false} tint="var(--itunda-blue)" />
+                <Badge text={formatDealCountdown(v.deal.endsAt)} filled={false} tint="var(--itunda-indigo)" />
                 <Badge text={`${v.deal.remainingQuantity} left`} tint="var(--itunda-red)" />
               </button>
             ))}
@@ -21743,12 +21743,12 @@ function ShopView() {
               {m.photoUrl ? (
                 <img
                   src={m.photoUrl} alt=""
-                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--itunda-blue-light)' }}
+                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--itunda-indigo-light)' }}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
-                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ShoppingBag size={20} color="var(--itunda-blue)" />
+                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ShoppingBag size={20} color="var(--itunda-indigo)" />
                 </div>
               )}
               <div style={{ flex: 1 }}>
@@ -21840,7 +21840,7 @@ function DevicesView() {
           <div key={d.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-blue)' }}>(this device)</span>}
+                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-indigo)' }}>(this device)</span>}
               </p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                 {d.trusted ? '✓ Verified — can send money' : '⚠ Not verified — sign-in only'}
@@ -22000,7 +22000,7 @@ function CardView() {
       <div
         className="itunda-card"
         style={{
-          background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-blue), #1B64DA)',
+          background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-indigo), #1B64DA)',
           color: 'white', padding: '20px',
         }}
       >
@@ -22050,7 +22050,7 @@ function CardView() {
           {cardSuggestion && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardSuggestion.description}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>+{cardSuggestion.pointsGain} more</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{cardSuggestion.pointsGain} more</span>
             </div>
           )}
         </div>
@@ -22230,7 +22230,7 @@ function InterestJarCard() {
   const canClaim = jar.earnedThisMonth > 0;
 
   return (
-    <div style={{ marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)', padding: '24px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+    <div style={{ marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)', padding: '24px', background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, #4A90E2 100%)', color: '#fff' }}>
       {/* Real methodology-transparency fix (2026-08-11): jar.rate is the ANNUAL rate
           SavingsService.accrueInterest() divides by 365 to get the real daily accrual
           (dailyRate = rate/100/365) -- this copy called it "daily interest" outright,
@@ -22263,7 +22263,7 @@ function InterestJarCard() {
           className="itunda-btn"
           onClick={handleClaim}
           disabled={!canClaim || claiming}
-          style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--itunda-blue)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
+          style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--itunda-indigo)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
         >
           {claiming ? 'Clearing…' : canClaim ? `OK, ${jar.earnedThisMonth.toLocaleString()} RWF added` : 'Nothing new this month yet'}
         </button>
@@ -22354,7 +22354,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
         )}
       </div>
       <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '10px', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--itunda-blue)' }} />
+        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--itunda-indigo)' }} />
       </div>
       {goal.monthlyContribution > 0 && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>
@@ -22666,7 +22666,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
         {detail.members.map((m) => (
           <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 'var(--itunda-type-scale-13-size)' }}>
             <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
-            {m.isOwner && <span style={{ color: 'var(--itunda-blue)', fontWeight: 700 }}>Organizer</span>}
+            {m.isOwner && <span style={{ color: 'var(--itunda-indigo)', fontWeight: 700 }}>Organizer</span>}
           </div>
         ))}
       </div>
@@ -23416,7 +23416,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
     <div>
       <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to 26-week savings</button>
 
-      <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>{plan.name} · Week {plan.weeksElapsed} of {WEEKLY_SAVINGS_TERM_WEEKS}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString()} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
@@ -23454,7 +23454,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         </div>
       )}
 
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)', marginBottom: '10px' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
 
       {needsDeviceVerification ? (
@@ -23673,7 +23673,7 @@ function WeeklySavingsSection() {
                 {p.streakBroken ? ' · streak broken' : ' · on streak'}
               </p>
               <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: p.streakBroken ? 'var(--itunda-grey-500)' : 'var(--itunda-blue)' }} />
+                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: p.streakBroken ? 'var(--itunda-grey-500)' : 'var(--itunda-indigo)' }} />
               </div>
             </button>
           );
@@ -23780,7 +23780,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
     <div>
       <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to 31-day savings</button>
 
-      <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>{plan.name} · Day {Math.min(plan.daysElapsed, GROW31_TERM_DAYS)} of {GROW31_TERM_DAYS}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString()} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
@@ -23814,7 +23814,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         </div>
       )}
 
-      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-blue)', marginBottom: '10px' }}>{message}</p>}
+      {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
 
       {needsDeviceVerification ? (
@@ -24001,7 +24001,7 @@ function Grow31SavingsSection() {
                 {p.totalSaved.toLocaleString()} RWF · day {Math.min(p.daysElapsed, GROW31_TERM_DAYS)}/{GROW31_TERM_DAYS} · streak {p.currentStreak}
               </p>
               <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: bonus > 0 ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }} />
+                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: bonus > 0 ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }} />
               </div>
             </button>
           );
@@ -24580,7 +24580,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
             style={{
               flex: 1, padding: '7px 2px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700,
               color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: tab === id ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: tab === id ? 'var(--itunda-indigo)' : 'transparent',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
             }}
           >

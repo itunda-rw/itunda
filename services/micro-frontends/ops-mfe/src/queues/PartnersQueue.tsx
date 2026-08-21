@@ -49,7 +49,7 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
                 key={scope}
                 style={{
                   fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '8px',
-                  backgroundColor: 'var(--itunda-blue-light)', color: 'var(--itunda-blue)',
+                  backgroundColor: 'var(--itunda-indigo-light)', color: 'var(--itunda-indigo)',
                 }}
               >
                 {scope}

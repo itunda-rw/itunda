@@ -198,7 +198,7 @@ import rw.itunda.core.designsystem.theme.Ids
 // FlatSection rows (갈아타기/서비스/외화/목돈굴리기/연금/대출 등) -- these are
 // brand/product colors in real Toss, not semantic theme colors, so unlike
 // Ids.colors.brand etc. above they intentionally stay constant across light/dark.
-internal val AccentBlue = Color(0xFF3182F6)
+internal val AccentIndigo = Color(0xFF7472F4)
 internal val AccentTeal = Color(0xFF14AE85)
 internal val AccentPurple = Color(0xFF7C5CFC)
 internal val AccentOrange = Color(0xFFF2A93B)
@@ -2355,7 +2355,7 @@ private fun BankHubScreen(
                                     } ?: savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
                                     "$progressPercent%",
                                     Icons.Outlined.Savings,
-                                    AccentBlue,
+                                    AccentIndigo,
                                     onClick = { onDepositToGoal(goal.id, goal.name) },
                                 )
                             )
@@ -2404,7 +2404,7 @@ private fun BankHubScreen(
                         // section's other named gap ("richer/varied per-product
                         // iconography") -- all three used to share the identical Savings
                         // icon as the interest jar and every savings goal row above.
-                        add(ShellRow("26-week savings", "$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly", ">", Icons.Outlined.CalendarMonth, AccentBlue, onClick = onOpenWeeklySavings))
+                        add(ShellRow("26-week savings", "$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly", ">", Icons.Outlined.CalendarMonth, AccentIndigo, onClick = onOpenWeeklySavings))
                         add(ShellRow("31-day savings", "Daily streak, up to $BANK_HUB_GROW31_MAX_BONUS_RATE% bonus rate", ">", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
                         add(ShellRow("12-month deposit", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%/yr interest paid upfront, principal locked", ">", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit))
                         add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
@@ -2424,9 +2424,9 @@ private fun BankHubScreen(
                         // the same already-depended-upon material-icons-extended
                         // library ("Get a loan" keeps AccountBalanceWallet as the
                         // genuinely generic personal/SME loan product).
-                        ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentBlue, onClick = onOpenLoans),
+                        ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentIndigo, onClick = onOpenLoans),
                         ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.Agriculture, AccentTeal, onClick = onOpenHarvestAdvance),
-                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.Shield, AccentBlue, onClick = onOpenVupLoan),
+                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.Shield, AccentIndigo, onClick = onOpenVupLoan),
                         ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
                         ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
                     )
@@ -2639,7 +2639,7 @@ private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem
     val accentColor = try {
         Color(android.graphics.Color.parseColor(item.color))
     } catch (_: IllegalArgumentException) {
-        AccentBlue
+        AccentIndigo
     }
     if (dismissed) return
     Box(
@@ -2690,7 +2690,7 @@ private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
             val accentColor = try {
                 Color(android.graphics.Color.parseColor(discoverItem.color))
             } catch (_: IllegalArgumentException) {
-                AccentBlue
+                AccentIndigo
             }
             IdsCard(
                 shape = RoundedCornerShape(20.dp),
@@ -3117,22 +3117,22 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
 internal fun ledgerRowIcon(transaction: rw.itunda.core.network.TransactionDto): Pair<androidx.compose.ui.graphics.vector.ImageVector, Color> {
     val d = transaction.description.lowercase()
     return when {
-        d.contains("ride") -> Icons.Outlined.DirectionsCar to AccentBlue
+        d.contains("ride") -> Icons.Outlined.DirectionsCar to AccentIndigo
         d.contains("eats") || d.contains("booking") -> Icons.Outlined.Fastfood to AccentOrange
         d.contains("gift") -> Icons.Outlined.CardGiftcard to AccentPurple
         d.contains("escrow") || d.contains("marketplace") -> Icons.Outlined.ShoppingBag to AccentTeal
         d.contains("cashback") -> Icons.Outlined.LocalOffer to AccentOrange
-        d.contains("interest") -> Icons.Outlined.Savings to AccentBlue
+        d.contains("interest") -> Icons.Outlined.Savings to AccentIndigo
         d.contains("ussd") -> Icons.Outlined.Call to AccentPurple
         else -> when (transaction.type) {
-            "TRANSFER" -> Icons.Outlined.SwapHoriz to AccentBlue
+            "TRANSFER" -> Icons.Outlined.SwapHoriz to AccentIndigo
             "PAYMENT" -> Icons.Outlined.Payments to AccentTeal
-            "DEPOSIT" -> Icons.Outlined.ArrowDownward to AccentBlue
+            "DEPOSIT" -> Icons.Outlined.ArrowDownward to AccentIndigo
             "WITHDRAWAL" -> Icons.Outlined.ArrowUpward to Ids.colors.textSecondary
             "BILL" -> Icons.Outlined.Description to AccentOrange
             "AIRTIME" -> Icons.Outlined.Call to AccentPurple
-            "LOAN" -> Icons.Outlined.AccountBalanceWallet to AccentBlue
-            "INTEREST" -> Icons.Outlined.Savings to AccentBlue
+            "LOAN" -> Icons.Outlined.AccountBalanceWallet to AccentIndigo
+            "INTEREST" -> Icons.Outlined.Savings to AccentIndigo
             else -> Icons.Outlined.SwapHoriz to Ids.colors.textSecondary
         }
     }
@@ -3164,7 +3164,7 @@ private data class ShellRow(
     val subtitle: String,
     val action: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val iconColor: Color = AccentBlue,
+    val iconColor: Color = AccentIndigo,
     // Added 2026-07-12 for the real Savings section's rows (deposit/claim) --
     // default null preserves every existing purely-promotional ShellRow call site
     // unchanged.
@@ -3903,7 +3903,7 @@ private fun MenuScreen(
     // see that composable's own doc comment. Pay's own row removed since Pay is now
     // a primary tab itself, not something Explore needs to surface.
     val quickLinksRows = listOf(
-        FlatRow("Shop", subtitle = "Coupang-style commerce", icon = Icons.Outlined.ShoppingBag, iconColor = AccentBlue, onClick = onOpenShop),
+        FlatRow("Shop", subtitle = "Coupang-style commerce", icon = Icons.Outlined.ShoppingBag, iconColor = AccentIndigo, onClick = onOpenShop),
         FlatRow("Eats", subtitle = "Food delivery, order or deliver", icon = Icons.Outlined.Fastfood, iconColor = AccentOrange, onClick = onOpenEats),
         FlatRow("Marketplace", subtitle = "당근마켓-style neighborhood buy/sell", icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenMarketplace),
         FlatRow("Community", subtitle = "Neighborhood life, local questions and posts", icon = Icons.Outlined.Groups, iconColor = AccentTeal, onClick = onOpenCommunity),
@@ -3924,31 +3924,31 @@ private fun MenuScreen(
             onClick = { context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
         ),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
-        FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
+        FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentIndigo, onClick = onOpenWeeklySavings),
         FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
         FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
     )
     val accountsRows = listOf(
-        FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue, onClick = onOpenOverview),
+        FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentIndigo, onClick = onOpenOverview),
         FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
-        FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
-        FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
+        FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentIndigo, onClick = onOpenCard),
+        FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentIndigo, onClick = onOpenSpending),
         FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
         FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
-        FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
-        FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue, onClick = onOpenSubscriptions),
+        FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentIndigo, onClick = onOpenForeignCurrency),
+        FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo, onClick = onOpenSubscriptions),
         FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
     )
     val sendPayRows = listOf(
-        FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
-        FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentBlue, onClick = onOpenRequestMoney),
-        FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
+        FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
+        FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentIndigo, onClick = onOpenRequestMoney),
+        FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentIndigo, onClick = onOpenAutoTopUp),
         FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
     )
     val saveGrowRows = listOf(
-        FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
+        FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentIndigo, onClick = onOpenWeeklySavings),
         FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
         FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
         FlatRow("Mini account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniAccount),
@@ -3956,17 +3956,17 @@ private fun MenuScreen(
         FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
     )
     val borrowRows = listOf(
-        FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+        FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenLoans),
         FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
         FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
-        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenVupLoan),
+        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenVupLoan),
         FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", icon = Icons.Outlined.School, iconColor = AccentPurple, onClick = onOpenStudentLoan),
         FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
     )
     val transportRows = listOf(
-        FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
+        FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentIndigo, onClick = onOpenRides),
         FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
-        FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
+        FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentIndigo, onClick = onOpenBikeRental),
         FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", icon = Icons.Outlined.LocalParking, iconColor = AccentPurple, onClick = onOpenParking),
         FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", icon = Icons.Outlined.DirectionsBus, iconColor = AccentTeal, onClick = onOpenBus),
         FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
@@ -3977,11 +3977,11 @@ private fun MenuScreen(
         FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", icon = Icons.Outlined.HelpOutline, iconColor = AccentPurple, onClick = onOpenKnowledge),
     )
     val cashAgentRows = listOf(
-        FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onOpenAgentOperator),
+        FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentIndigo, onClick = onOpenAgentOperator),
         FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenFloatMarketplace),
     )
     val switchSaveRows = listOf(
-        FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+        FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenLoans),
         FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onOpenLoans),
         FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenLoans)
     )
@@ -3990,10 +3990,10 @@ private fun MenuScreen(
         FlatRow("Virtual card", trailing = "Instant issue", icon = Icons.Outlined.CreditCard, iconColor = AccentGray, onClick = onOpenCard)
     )
     val servicesRows = listOf(
-        FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentBlue),
-        FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue, onClick = onOpenSubscriptions),
+        FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentIndigo),
+        FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentIndigo, onClick = onOpenSubscriptions),
         FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
-        FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
+        FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentIndigo, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
         // Real fix (2026-08-11): interest now auto-credits to the account the instant
@@ -4001,27 +4001,27 @@ private fun MenuScreen(
         // "Claim interest now" overclaimed a pending action that no longer exists.
         FlatRow("Interest earned this month", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
         FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
-        FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue, onClick = onSwitchToTalk),
-        FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue),
+        FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentIndigo, onClick = onSwitchToTalk),
+        FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo),
         FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
     )
     val foreignCurrencyRows = listOf(
         FlatRow("Foreign currency account", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple, onClick = onOpenForeignCurrency),
-        FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue, onClick = onOpenForeignCurrency)
+        FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentIndigo, onClick = onOpenForeignCurrency)
     )
     val growMoneyRows = listOf(
         FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal, onClick = onOpenInvest),
-        FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue, onClick = onOpenInvest),
+        FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentIndigo, onClick = onOpenInvest),
         FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed, onClick = onOpenInvest),
         FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal, onClick = onOpenInvest)
     )
     val pensionRows = listOf(
-        FlatRow("Check my RSSB pension", icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue),
-        FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentBlue)
+        FlatRow("Check my RSSB pension", icon = Icons.Outlined.AccountBalance, iconColor = AccentIndigo),
+        FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentIndigo)
     )
     val loansRows = listOf(
         FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenLoans),
-        FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans)
+        FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenLoans)
     )
     // Real Toss arrangement (2026-08-12, direct user screenshot comparison) -- the
     // real All-tab reference screenshots have NO "Notifications & consent"-style
@@ -4039,7 +4039,7 @@ private fun MenuScreen(
     // 6 rows previously had none at all (plain text), a real visible "still not the
     // same" gap the user flagged directly against the reference screenshot.
     val supportRows = listOf(
-        FlatRow("FAQ", icon = Icons.Outlined.HelpOutline, iconColor = AccentBlue),
+        FlatRow("FAQ", icon = Icons.Outlined.HelpOutline, iconColor = AccentIndigo),
         FlatRow("Live chat", icon = Icons.Outlined.Chat, iconColor = AccentTeal),
         FlatRow("Call support", icon = Icons.Outlined.Call, iconColor = AccentPurple),
         FlatRow("Report an issue with a transaction", icon = Icons.Outlined.ReportProblem, iconColor = AccentRed, showChevron = true, onClick = onOpenSupport),
@@ -4429,8 +4429,8 @@ private fun MyTab(
             FlatSection(
                 "My listings",
                 listOf(
-                    FlatRow("Marketplace", trailing = "$myListingsCount", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", icon = Icons.Outlined.Work, iconColor = AccentBlue, onClick = onSwitchToJobs),
+                    FlatRow("Marketplace", trailing = "$myListingsCount", icon = Icons.Outlined.Storefront, iconColor = AccentIndigo, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", icon = Icons.Outlined.Work, iconColor = AccentIndigo, onClick = onSwitchToJobs),
                     FlatRow("Property listed", trailing = "$myPropertyListingsCount", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onSwitchToProperty),
                 ),
             )
@@ -4706,7 +4706,7 @@ internal data class FlatRow(
     val trailing: String? = null,
     val trailingIsLink: Boolean = false,
     val icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    val iconColor: Color = AccentBlue,
+    val iconColor: Color = AccentIndigo,
     val showChevron: Boolean = false,
     // Real dead-tap fix (item 247 follow-up, docs/DESIGN_REFERENCES.md §14 recommendation
     // #2 -- Simplicity24's "사용자의 실수" lesson on misleading affordances): previously

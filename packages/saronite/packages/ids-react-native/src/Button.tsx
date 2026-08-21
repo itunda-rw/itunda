@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primary: {
-    backgroundColor: colors.primaryBlue,
+    backgroundColor: colors.primaryIndigo,
   },
   secondary: {
     backgroundColor: colors.background,

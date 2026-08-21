@@ -105,7 +105,7 @@ export default function EatsOrdersScreen() {
           <div key={o.id} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
                   {t(EATS_STATUS_KEY[o.status])}{o.fulfillmentType === 'PICKUP' ? t('eatsOrders.pickupSuffix') : ''}
                 </p>
                 <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{o.deliveryAddress}</p>
@@ -173,7 +173,7 @@ function ItemUnavailableSection({ orderId }: { orderId: string }) {
 
   return (
     <div>
-      <button type="button" onClick={toggle} style={{ color: 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}>
+      <button type="button" onClick={toggle} style={{ color: 'var(--itunda-indigo)', fontSize: '13px', fontWeight: 600 }}>
         {t('eatsOrders.itemsToggle')}
       </button>
       {open && (

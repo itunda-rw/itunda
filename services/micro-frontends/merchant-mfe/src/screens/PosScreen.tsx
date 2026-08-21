@@ -63,7 +63,7 @@ export default function PosScreen() {
               fontSize: '14px',
               fontWeight: 700,
               color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: mode === m ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {m === 'REGISTER' ? t('pos.modeRegister') : t('pos.modeCatalog')}
@@ -177,7 +177,7 @@ function RegisterView() {
       <div style={{ flex: 1 }}>
         <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Store size={18} color="var(--itunda-blue)" />
+            <Store size={18} color="var(--itunda-indigo)" />
             <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('pos.cartTitle')}</h2>
           </div>
           {cart.length === 0 ? (
@@ -256,7 +256,7 @@ function CheckoutView({
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
               color: checkoutMode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: checkoutMode === m ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: checkoutMode === m ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {m === 'QR' ? t('pos.checkoutModeQr') : t('pos.checkoutModeCard')}
@@ -359,7 +359,7 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
   if (result) {
     return (
       <div style={{ textAlign: 'center' }}>
-        <CreditCard size={32} color="var(--itunda-blue)" style={{ marginBottom: '8px' }} />
+        <CreditCard size={32} color="var(--itunda-indigo)" style={{ marginBottom: '8px' }} />
         <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>{t('pos.cardChargedResult', { last4: result.cardLast4 })}</p>
         <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={onDone}>
           {t('pos.doneNewSale')}
@@ -701,43 +701,43 @@ function CatalogView() {
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px' }}>
                           <button
                             onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
-                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-indigo)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.optionsToggle')} {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedPricingProductId(isPricingExpanded ? null : product.id)}
-                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-indigo)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.pricingToggle')} {isPricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedTimeDealProductId(isTimeDealExpanded ? null : product.id)}
-                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-indigo)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.timeDealToggle')} {isTimeDealExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedAnalyticsProductId(isAnalyticsExpanded ? null : product.id)}
-                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-indigo)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.analyticsToggle')} {isAnalyticsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => adjustStock(product)}
-                            style={{ color: 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-indigo)', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.adjustStockButton')}
                           </button>
                           <button
                             onClick={() => handleSetSurplusDeal(product)}
-                            style={{ color: product.isSurplusDeal ? 'var(--itunda-red)' : 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: product.isSurplusDeal ? 'var(--itunda-red)' : 'var(--itunda-indigo)', fontSize: '13px', fontWeight: 600 }}
                           >
                             {product.isSurplusDeal ? t('pos.surplusDealClearButton') : t('pos.surplusDealSetButton')}
                           </button>
                           <button
                             onClick={() => handleSetSoldOut(product)}
-                            style={{ color: product.soldOut ? 'var(--itunda-red)' : 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: product.soldOut ? 'var(--itunda-red)' : 'var(--itunda-indigo)', fontSize: '13px', fontWeight: 600 }}
                           >
                             {product.soldOut ? t('pos.soldOutClearButton') : t('pos.soldOutSetButton')}
                           </button>
@@ -946,7 +946,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
               )}
             </div>
           ))}
-          <button type="button" onClick={addChoiceRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <button type="button" onClick={addChoiceRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-indigo)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <Plus size={12} /> {t('pos.addAnotherChoice')}
           </button>
         </div>
@@ -1066,7 +1066,7 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
               </button>
             </div>
           ))}
-          <button type="button" onClick={addTierRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <button type="button" onClick={addTierRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-indigo)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <Plus size={12} /> {t('pos.addTier')}
           </button>
         </div>
@@ -1075,7 +1075,7 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {saved && !error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t('pos.saved')}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-indigo)', margin: 0 }}>{t('pos.saved')}</p>
       )}
       <button type="button" className="itunda-btn itunda-btn-primary" disabled={saving || tiers === null} onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
         {saving ? t('pos.saving') : t('pos.saveTiersButton')}

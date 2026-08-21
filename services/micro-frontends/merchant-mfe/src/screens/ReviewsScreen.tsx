@@ -153,7 +153,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.productName}</p>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
       </div>
       {review.comment && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{review.comment}</p>}
       <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>
@@ -227,7 +227,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.serviceName}</p>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
       </div>
       {review.comment && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{review.comment}</p>}
       <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>

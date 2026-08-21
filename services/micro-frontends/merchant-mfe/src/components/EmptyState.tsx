@@ -35,7 +35,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
       <button
         type="button"
         onClick={onRetry}
-        style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, fontWeight: 600, color: 'var(--itunda-blue)', cursor: 'pointer' }}
+        style={{ marginTop: '10px', background: 'none', border: 'none', padding: 0, fontWeight: 600, color: 'var(--itunda-indigo)', cursor: 'pointer' }}
       >
         Retry
       </button>

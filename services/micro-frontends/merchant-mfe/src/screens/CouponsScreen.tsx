@@ -185,7 +185,7 @@ function CouponRow({ coupon, onChanged }: { coupon: MerchantCoupon; onChanged: (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{coupon.title}</p>
-        <span style={{ fontSize: '12px', fontWeight: 600, color: coupon.active ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: coupon.active ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }}>
           {coupon.active ? t('coupons.statusActive') : t('coupons.statusDeactivated')}
         </span>
       </div>

@@ -23,7 +23,7 @@ function SideToggle({ side, onChange }: { side: Side; onChange: (s: Side) => voi
             fontSize: '13px',
             fontWeight: 600,
             cursor: 'pointer',
-            backgroundColor: side === s ? 'var(--itunda-blue)' : 'transparent',
+            backgroundColor: side === s ? 'var(--itunda-indigo)' : 'transparent',
             color: side === s ? '#fff' : 'var(--itunda-grey-700)',
           }}
         >

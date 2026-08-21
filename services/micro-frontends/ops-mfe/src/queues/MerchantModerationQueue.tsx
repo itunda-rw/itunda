@@ -82,7 +82,7 @@ function ReactivateByIdForm() {
           {pending ? 'Reactivating…' : 'Reactivate'}
         </button>
       </div>
-      {result && <p style={{ fontSize: '12px', color: 'var(--itunda-blue)' }}>{result}</p>}
+      {result && <p style={{ fontSize: '12px', color: 'var(--itunda-indigo)' }}>{result}</p>}
       {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );

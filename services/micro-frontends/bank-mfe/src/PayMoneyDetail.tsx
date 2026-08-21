@@ -71,7 +71,7 @@ export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { accoun
               onClick={() => setPaymentsOnly((v) => !v)}
               style={{
                 width: '40px', height: '24px', borderRadius: '12px', padding: '2px', flexShrink: 0,
-                background: paymentsOnly ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)', display: 'flex', justifyContent: paymentsOnly ? 'flex-end' : 'flex-start',
+                background: paymentsOnly ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)', display: 'flex', justifyContent: paymentsOnly ? 'flex-end' : 'flex-start',
               }}
             >
               <span style={{ width: '20px', height: '20px', borderRadius: '10px', background: 'white', display: 'block' }} />
@@ -100,7 +100,7 @@ export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { accoun
                         <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{tx.description}</p>
                         <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
-                      <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-blue)' : 'var(--itunda-grey-900)' }}>
+                      <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
                         {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} RWF
                       </span>
                     </div>

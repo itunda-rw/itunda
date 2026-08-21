@@ -35,9 +35,9 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
 // same load-failure branches across the app -- stayed plain red text + a bare
 // "Retry" text link, the identical gap Android's ErrorCard / iOS's ErrorCardView
 // (same date) closed. Mirrors EmptyState's centered icon-circle layout exactly.
-// tokens.css has no dedicated red-tint variable (only --itunda-blue-light exists for
+// tokens.css has no dedicated red-tint variable (only --itunda-indigo-light exists for
 // the blue role) -- rather than expand the shared token package for one call site,
-// this computes the tint locally via color-mix, matching --itunda-blue-light's own
+// this computes the tint locally via color-mix, matching --itunda-indigo-light's own
 // real value (~4% blue over white) at the same ratio against --itunda-red.
 export function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (

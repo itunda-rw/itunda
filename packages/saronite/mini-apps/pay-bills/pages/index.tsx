@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   provider: { fontSize: 15, fontWeight: '700', color: '#191F28' },
   due: { fontSize: 12, color: '#636E7C', marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '700', color: '#191F28', marginRight: 12 },
-  payButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  payButton: { backgroundColor: '#7472F4', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   payButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
   closeButtonText: { color: '#636E7C', fontWeight: '600' },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  providerChipSelected: { backgroundColor: '#3182F6', borderColor: '#3182F6' },
+  providerChipSelected: { backgroundColor: '#7472F4', borderColor: '#7472F4' },
   providerChipText: { color: '#191F28', fontSize: 12, fontWeight: '600' },
   providerChipTextSelected: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
   input: {

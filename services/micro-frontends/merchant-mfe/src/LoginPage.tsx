@@ -42,7 +42,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Store size={24} color="var(--itunda-blue)" />
+            <Store size={24} color="var(--itunda-indigo)" />
             <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Business</h1>
           </div>
           {/* Real first language switcher for merchant-mfe (2026-08-15) -- see

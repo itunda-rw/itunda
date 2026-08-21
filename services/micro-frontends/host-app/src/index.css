@@ -66,7 +66,7 @@ button:active {
 }
 
 .itunda-btn-primary {
-  background-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
   color: var(--itunda-white);
 }
 
@@ -110,6 +110,6 @@ button:active {
 }
 
 .host-tab-active {
-  color: var(--itunda-blue);
-  border-bottom-color: var(--itunda-blue);
+  color: var(--itunda-indigo);
+  border-bottom-color: var(--itunda-indigo);
 }

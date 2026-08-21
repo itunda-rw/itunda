@@ -61,7 +61,7 @@ input, textarea {
 }
 
 .itunda-btn-primary {
-  background-color: var(--itunda-blue);
+  background-color: var(--itunda-indigo);
   color: var(--itunda-white);
 }
 

@@ -174,7 +174,7 @@ export default function AgentReconciliationQueue() {
             key={t} onClick={() => setTab(t)}
             style={{
               padding: '6px 12px', borderRadius: '8px', border: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-              backgroundColor: tab === t ? 'var(--itunda-blue)' : 'transparent', color: tab === t ? '#fff' : 'var(--itunda-grey-700)',
+              backgroundColor: tab === t ? 'var(--itunda-indigo)' : 'transparent', color: tab === t ? '#fff' : 'var(--itunda-grey-700)',
             }}
           >
             {t === 'PENDING' ? 'Pending review' : 'Report by date range'}

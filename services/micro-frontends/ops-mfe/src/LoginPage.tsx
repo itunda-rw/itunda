@@ -38,7 +38,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
         style={{ width: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <ShieldCheck size={24} color="var(--itunda-blue)" />
+          <ShieldCheck size={24} color="var(--itunda-indigo)" />
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Ops</h1>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>

@@ -36,7 +36,7 @@ const LIVE_MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+      paint: { 'line-color': '#7472F4', 'line-width': 5, 'line-opacity': 0.9 },
     },
   ],
 };
@@ -75,7 +75,7 @@ export default function LiveRiderMap({
     });
     mapRef.current = map;
 
-    new maplibregl.Marker({ color: '#3182F6' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
+    new maplibregl.Marker({ color: '#7472F4' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
     new maplibregl.Marker({ color: 'var(--itunda-red)' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
 
     getDirections(fromLat, fromLng, toLat, toLng)

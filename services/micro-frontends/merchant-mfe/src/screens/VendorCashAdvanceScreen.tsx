@@ -158,7 +158,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
                 style={{
                   height: '100%',
                   width: `${Math.min(100, Math.round(((advance.totalOwed - advance.remainingOwed) / advance.totalOwed) * 100))}%`,
-                  backgroundColor: 'var(--itunda-blue)',
+                  backgroundColor: 'var(--itunda-indigo)',
                 }}
               />
             </div>

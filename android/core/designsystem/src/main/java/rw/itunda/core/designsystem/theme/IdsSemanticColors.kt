@@ -71,11 +71,19 @@ val IdsLightSemanticColors = IdsSemanticColors(
     // --toss-grey-500 and iOS's IDS.Colors.textTertiary. IdsColors.Gray500/Grey500,
     // the raw primitive used for non-text roles, is deliberately left untouched.
     textTertiary = Color(0xFF636E7C),
-    brand = Color(0xFF3182F6),
-    textBrand = Color(0xFF3182F6),
+    // Brand rebranded blue -> indigo (2026-08-22, direct user identity work: petal-
+    // shape mark + indigo, see project_itunda_brand_identity.md and web's
+    // packages/design-tokens/tokens.css --itunda-indigo for the full derivation note).
+    // Not invented: same OKLCH hue-rotation technique Toss's own eng blog documents
+    // (toss.tech/article/tds-color-system-update) applied to this exact real anchor --
+    // hold L/C of the old 0xFF3182F6, rotate hue to 280deg, clamp chroma to gamut.
+    // WCAG-verified: white-on-brand 3.85:1 (was 3.71:1, both clear the real 3:1
+    // AA-large/UI-component bar this role is held to).
+    brand = Color(0xFF7472F4),
+    textBrand = Color(0xFF7472F4),
     divider = Color(0xFFE5E8EB),
     chip = Color(0xFFF2F4F6),
-    pressed = Color(0xFFEAF2FF),
+    pressed = Color(0xFFEEF0FF),
     // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) -- the
     // original 0xFF04C065 measured 2.40:1 against white, failing even the lenient
     // 3.0:1 AA-large/UI threshold, let alone 4.5:1 AA-normal-text -- any light-mode
@@ -109,11 +117,15 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     // far below 4.5:1. Lightened to 0xFF848A96 (5.15:1 / 4.67:1). Matches the same-day
     // fix on web/iOS.
     textTertiary = Color(0xFF848A96),
-    brand = Color(0xFF3485FA),
-    textBrand = Color(0xFF3485FA),
+    // Same rebrand as light mode's brand field above -- rotated from the old
+    // 0xFF3485FA (Toss's real adaptive-dark blue) to indigo at the same hue.
+    // WCAG-verified: brand-vs-background 4.82:1 (was 5.00:1 against 0xFF17171C),
+    // both comfortably clear 4.5:1 AA-normal-text.
+    brand = Color(0xFF7675F8),
+    textBrand = Color(0xFF7675F8),
     divider = Color(0xFF3C3C47),
     chip = Color(0xFF2C2C35),
-    pressed = Color(0xFF1F3053),
+    pressed = Color(0xFF2B2C52),
     success = Color(0xFF20D394),
     successTint = Color(0xFF10321F),
     warning = Color(0xFFFFC24C),

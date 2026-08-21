@@ -49,8 +49,12 @@ public struct IdsPalette {
     // Toss brand/product colors, not semantic theme colors, so like the rest of this
     // struct they intentionally stay constant across light/dark. Ported exact-value
     // from android/app/.../ItundaAppScreen.kt's AccentBlue/Teal/Purple/Orange/Red/
-    // Pink/Gray (2026-07-11, for the Benefits/Shop/All tab rebuild).
-    public static let accentBlue = Color(hex: 0x3182F6)
+    // Pink/Gray (2026-07-11, for the Benefits/Shop/All tab rebuild). accentBlue ->
+    // accentIndigo (2026-08-22): same brand rebrand as IDS.Colors.brand above --
+    // this constant was a hardcoded duplicate of the old brand blue, so it moves
+    // with it rather than becoming a visible inconsistency next to the new indigo
+    // brand color. Matches Android's identical AccentBlue -> AccentIndigo rename.
+    public static let accentIndigo = Color(hex: 0x7472F4)
     public static let accentTeal = Color(hex: 0x14AE85)
     public static let accentPurple = Color(hex: 0x7C5CFC)
     public static let accentOrange = Color(hex: 0xF2A93B)

@@ -36,7 +36,7 @@ function PropertyOwnershipCard({ submission, onDecided }: { submission: Property
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Submitted {new Date(submission.submittedAt).toLocaleString()}
         </p>
-        <a href={submission.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>
+        <a href={submission.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '13px', color: 'var(--itunda-indigo)' }}>
           View ownership document
         </a>
       </div>

@@ -174,7 +174,7 @@ function RosterTable({
     <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Users size={18} color="var(--itunda-blue)" />
+          <Users size={18} color="var(--itunda-indigo)" />
           <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('payroll.rosterTitle', { count: roster.length })}</h2>
         </div>
         <button

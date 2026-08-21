@@ -167,13 +167,13 @@ fun LiveRiderMiniMap(orderId: String, fromLat: Double, fromLng: Double, toLat: D
                 style.addImage(RIDER_ICON_ID, createEmojiBitmap(context.resources.displayMetrics.density, "🛵"))
                 style.addLayer(
                     LineLayer("route-line", "route").withProperties(
-                        lineColor("#3182F6"), lineWidth(5f), lineOpacity(0.9f),
+                        lineColor("#7472F4"), lineWidth(5f), lineOpacity(0.9f),
                         lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND),
                     ),
                 )
                 style.addLayer(
                     CircleLayer("from-circle", "from").withProperties(
-                        circleRadius(7f), circleColor("#3182F6"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
+                        circleRadius(7f), circleColor("#7472F4"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
                     ),
                 )
                 style.addLayer(

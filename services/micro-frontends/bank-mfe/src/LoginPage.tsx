@@ -44,7 +44,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck size={24} color="var(--itunda-blue)" />
+            <ShieldCheck size={24} color="var(--itunda-indigo)" />
             <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
           </div>
           {/* Real first language switcher (2026-08-08) -- see src/i18n's own doc comment

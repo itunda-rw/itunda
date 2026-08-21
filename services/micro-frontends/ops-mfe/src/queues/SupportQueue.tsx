@@ -47,8 +47,8 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
               style={{
                 fontSize: '12px',
                 fontWeight: 700,
-                color: 'var(--itunda-blue)',
-                backgroundColor: 'var(--itunda-blue-light)',
+                color: 'var(--itunda-indigo)',
+                backgroundColor: 'var(--itunda-indigo-light)',
                 padding: '2px 8px',
                 borderRadius: '6px',
               }}

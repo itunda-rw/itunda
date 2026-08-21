@@ -117,7 +117,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         }}
       >
         <div className="merchant-nav-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px', marginBottom: '20px' }}>
-          <Store size={20} color="var(--itunda-blue)" />
+          <Store size={20} color="var(--itunda-indigo)" />
           <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Business</h1>
         </div>
         {/* Real language switcher (2026-08-15), same placement/pattern as LoginPage's
@@ -148,8 +148,8 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
                 fontSize: '14px',
                 fontWeight: 600,
                 textAlign: 'left',
-                color: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-700)',
-                backgroundColor: tab === id ? 'var(--itunda-blue-light)' : 'transparent',
+                color: tab === id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-700)',
+                backgroundColor: tab === id ? 'var(--itunda-indigo-light)' : 'transparent',
               }}
             >
               <Icon size={18} />

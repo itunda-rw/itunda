@@ -166,6 +166,36 @@ new/touched screens, not a retroactive sweep — itunda's existing card-heavy sc
 convert one when you're already touching that screen for another reason, same
 discipline as rule 9's `IdsButton` backlog.
 
+## 11. itunda's brand identity: petal mark, indigo primary (2026-08-22)
+
+itunda's app icon and primary brand color, after a full 14-shape x 16-color
+exploration pass against a real ledger-screen/launcher-icon test harness (see
+`itunda-identity.html`, [[project_itunda_brand_identity]]): the **petal** shape,
+in **indigo** (`--itunda-indigo: #7472f4` light / `#7675f8` dark, replacing the old
+`--itunda-blue`). Rendered as a unified two-facet 3D-gradient mark — one outer
+silhouette split by a shared internal seam, not two independently-drawn shapes — on
+a white canvas, matching Toss's real published App Store icon convention (fetched
+and inspected directly, apps.apple.com id839333328) rather than a colored-square
+background.
+
+**New brand-adjacent colors are derived, never invented.** Toss's own real eng blog
+(`toss.tech/article/tds-color-system-update`) documents how TDS generates a
+consistent color family: move to OKLCH, hold a hue's lightness and chroma constant,
+only rotate the hue angle, clamping chroma back into the sRGB gamut when a rotated
+hue falls outside it. Indigo was derived this way directly from itunda's real
+shipped blue anchor (not hand-picked) — this is the answer whenever a future
+brand-adjacent color is needed ("what would itunda's X be"): rotate hue from a real
+anchor, don't invent a hex.
+
+**How to apply**: the mark and `--itunda-indigo`/`-active`/`-light` (web),
+`Ids.colors.brand`/`textBrand`/`pressed` (Android/iOS), `colors.primaryIndigo`
+(Saronite) are now the real, shipped brand tokens — reference them, don't
+reintroduce a hardcoded blue literal. A wayfinding UI element that's brand-colored
+on purpose (a map's "your route" line, "your location" dot) follows the same
+rebrand; a color that's one option in an independent user-choice palette (bookmark
+colors, category tags) does not — it isn't the brand pointer, just happens to share
+a hue.
+
 ## Standing checklist before shipping a new screen
 
 1. Does it do more than one job? → apply rule 1.

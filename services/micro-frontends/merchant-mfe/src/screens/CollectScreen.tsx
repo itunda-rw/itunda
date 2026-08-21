@@ -26,7 +26,7 @@ export default function CollectScreen() {
               fontSize: '13px',
               fontWeight: 700,
               color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m ? 'var(--itunda-blue)' : 'transparent',
+              backgroundColor: mode === m ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
             {m === 'QR' ? t('collect.modeQr') : m === 'STATIC' ? t('collect.modeStatic') : m === 'CARD' ? t('collect.modeCard') : t('collect.modeVoucher')}
@@ -124,7 +124,7 @@ function VoucherRedeem() {
   if (result) {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
-        <Ticket size={40} color="var(--itunda-blue)" />
+        <Ticket size={40} color="var(--itunda-indigo)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.voucherRedeemedTitle')}</h2>
         <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {result.productNameSnapshot ?? `${result.amount.toLocaleString()} RWF`}
@@ -321,7 +321,7 @@ function CardCollect() {
   if (result) {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
-        <CreditCard size={40} color="var(--itunda-blue)" />
+        <CreditCard size={40} color="var(--itunda-indigo)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.cardChargedTitle')}</h2>
         <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {result.amount.toLocaleString()} RWF
