@@ -2325,6 +2325,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
 }
 
 function CertificateView() {
+  const { t } = useI18n();
   const [certificate, setCertificate] = useState<Certificate | null | undefined>(undefined);
   const [issuedPrivateKey, setIssuedPrivateKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -2334,7 +2335,7 @@ function CertificateView() {
     setError(null);
     getMyCertificate()
       .then(setCertificate)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your certificate.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);
@@ -2347,7 +2348,7 @@ function CertificateView() {
       setCertificate(result.certificate);
       setIssuedPrivateKey(result.privateKey);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not issue a certificate.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -2361,7 +2362,7 @@ function CertificateView() {
       setCertificate(revoked);
       setIssuedPrivateKey(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not revoke your certificate.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -2678,6 +2679,7 @@ type LoansMode = 'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARV
 // product. `initialMode` closes that -- optional, defaults to the pre-existing
 // behavior, so LoansView's other caller (the "Loans" row inside "More") is unaffected.
 function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: LoansMode; onConsumedInitialMode?: () => void } = {}) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<LoansMode>(initialMode ?? 'OFFERS');
   // Consume once so a later, normal navigation into Loans (e.g. via "More") doesn't
   // keep landing on the same specific mode -- same pattern Android/iOS's HoodTab
@@ -2697,7 +2699,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
     setError(null);
     Promise.all([fetchLoanOffers(), fetchMyLoans(), fetchLenders()])
       .then(([o, l, ln]) => { setOffers(o); setMyLoans(l); setLenders(ln); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load loans.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -2711,7 +2713,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
     setError(null);
     fetchLoanOffers(id ?? undefined)
       .then(setOffers)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load offers.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   const handleApply = async (offer: LoanOffer, amount: number) => {
@@ -2722,7 +2724,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
       setMode('MY_LOANS');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That loan application could not be completed.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -2745,7 +2747,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
       setPayoffMessage(result.remaining <= 0 ? 'You paid off this loan in full — one less thing to carry.' : null);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That repayment could not be completed.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -2763,7 +2765,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
       setRefinanceResult({ oldRate: result.oldInterestRate, newRate: result.newInterestRate, newLoanName: result.newLoanName });
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No better rate is available for this loan right now.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -2889,6 +2891,7 @@ function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boole
 // draw/repay, real daily interest accrual, real security-alert push) with zero client
 // anywhere on any of the 3 platforms.
 function OverdraftView() {
+  const { t } = useI18n();
   const [account, setAccount] = useState<OverdraftAccount | null | undefined>(undefined);
   const [requestedLimit, setRequestedLimit] = useState('100000');
   const [drawAmount, setDrawAmount] = useState('');
@@ -2901,7 +2904,7 @@ function OverdraftView() {
     setError(null);
     fetchMyOverdraft()
       .then(setAccount)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your overdraft account.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);
@@ -2915,7 +2918,7 @@ function OverdraftView() {
       const opened = await openOverdraft(limit);
       setAccount(opened);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open an overdraft account.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -2933,7 +2936,7 @@ function OverdraftView() {
       setDrawAmount('');
       setNotice(`Drew ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF still available.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not draw from your overdraft.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -2951,7 +2954,7 @@ function OverdraftView() {
       setRepayAmount('');
       setNotice(`Repaid ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF now available.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not repay your overdraft.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3006,6 +3009,7 @@ function OverdraftView() {
 // auto-computed from the caller's own real credit score), no interest shown for
 // spending (only a real late fee if a cycle goes unpaid).
 function PostpaidCreditView() {
+  const { t } = useI18n();
   const [line, setLine] = useState<PostpaidCreditLine | null | undefined>(undefined);
   const [spendAmount, setSpendAmount] = useState('');
   const [repayAmount, setRepayAmount] = useState('');
@@ -3017,7 +3021,7 @@ function PostpaidCreditView() {
     setError(null);
     fetchMyPostpaidCredit()
       .then(setLine)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your postpaid credit line.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);
@@ -3028,7 +3032,7 @@ function PostpaidCreditView() {
     try {
       setLine(await applyForPostpaidCredit());
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open a postpaid credit line.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3046,7 +3050,7 @@ function PostpaidCreditView() {
       setSpendAmount('');
       setNotice(`Added ${res.amount.toLocaleString()} RWF to your wallet -- ${res.availableCredit.toLocaleString()} RWF still available.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not spend from your postpaid credit line.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3064,7 +3068,7 @@ function PostpaidCreditView() {
       setRepayAmount('');
       setNotice(`Repaid ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF now available.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not repay your postpaid credit line.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3124,6 +3128,7 @@ function PostpaidCreditView() {
 // itunda's own real loan_payable receivable -- never a shared pool, distinct from the
 // Ikimina/SACCO shapes above.
 function HarvestAdvanceView() {
+  const { t } = useI18n();
   const [memberships, setMemberships] = useState<CooperativeMembership[] | null>(null);
   const [advances, setAdvances] = useState<HarvestAdvance[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -3139,7 +3144,7 @@ function HarvestAdvanceView() {
     setError(null);
     Promise.all([fetchMyCooperativeMemberships(), fetchMyHarvestAdvances()])
       .then(([m, a]) => { setMemberships(m); setAdvances(a); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your cooperative memberships.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -3154,7 +3159,7 @@ function HarvestAdvanceView() {
       setCoopName('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not register this cooperative.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3169,7 +3174,7 @@ function HarvestAdvanceView() {
       setCoopId('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not join this cooperative.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3186,7 +3191,7 @@ function HarvestAdvanceView() {
       setHarvestDate('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not request this harvest advance.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3199,7 +3204,7 @@ function HarvestAdvanceView() {
       await disburseHarvestAdvance(advanceId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not disburse this advance.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3212,7 +3217,7 @@ function HarvestAdvanceView() {
       await repayHarvestAdvance(advanceId, principalAmount);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not repay this advance.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -3315,6 +3320,7 @@ function HarvestAdvanceView() {
 // Disbursement here is a real user-triggered step standing in for the real SACCO
 // officer approval step the actual VUP/FS program uses -- named honestly below.
 function VupLoanView() {
+  const { t } = useI18n();
   const [loans, setLoans] = useState<VupLoan[] | null>(null);
   const [eligibility, setEligibility] = useState<VupLoanEligibility | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -3329,7 +3335,7 @@ function VupLoanView() {
     setError(null);
     Promise.all([fetchMyVupLoans(), fetchVupLoanEligibility()])
       .then(([l, e]) => { setLoans(l); setEligibility(e); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your VUP loans.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -3344,7 +3350,7 @@ function VupLoanView() {
       setAmount('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not apply for this VUP loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3357,7 +3363,7 @@ function VupLoanView() {
       await disburseVupLoan(loanId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not disburse this loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3373,7 +3379,7 @@ function VupLoanView() {
       setRepayAmounts((prev) => { const next = { ...prev }; delete next[loanId]; return next; });
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not repay this loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3470,6 +3476,7 @@ function VupLoanView() {
 // (not Ubudehe), a mandatory grace period between disbursement and first-repayment
 // obligation, and an income-percentage-SUGGESTED (not fixed-installment) repayment.
 function StudentLoanView() {
+  const { t } = useI18n();
   const [loans, setLoans] = useState<StudentLoan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -3490,7 +3497,7 @@ function StudentLoanView() {
           fetchSuggestedPayment(loan.id).then((s) => setSuggested((prev) => ({ ...prev, [loan.id]: s }))).catch(() => undefined);
         });
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your student loans.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -3510,7 +3517,7 @@ function StudentLoanView() {
       setIncome(''); setAmount(''); setGraduationDate('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not apply for this student loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3523,7 +3530,7 @@ function StudentLoanView() {
       await disburseStudentLoan(loanId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not disburse this loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3536,7 +3543,7 @@ function StudentLoanView() {
       await declareStudentLoanGraduated(loanId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not mark this loan as graduated.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3552,7 +3559,7 @@ function StudentLoanView() {
       setRepayAmounts((prev) => { const next = { ...prev }; delete next[loanId]; return next; });
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not repay this loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3664,6 +3671,7 @@ function StudentLoanView() {
 // VupLoanView/StudentLoanView above: this is asset-purchase financing tied to a
 // specific real Rwanda sector (moto-taxi ownership), not a cash microloan.
 function MotoOwnershipView() {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<MotoOwnershipPlan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -3677,7 +3685,7 @@ function MotoOwnershipView() {
     setError(null);
     fetchMyMotoOwnershipPlans()
       .then(setPlans)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your moto-taxi ownership plans.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -3697,7 +3705,7 @@ function MotoOwnershipView() {
       setBikePrice(''); setDailyContribution('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this moto-taxi ownership plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3713,7 +3721,7 @@ function MotoOwnershipView() {
       setContributeAmounts((prev) => { const next = { ...prev }; delete next[planId]; return next; });
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not contribute to this plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3726,7 +3734,7 @@ function MotoOwnershipView() {
       await cancelMotoOwnershipPlan(planId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3739,7 +3747,7 @@ function MotoOwnershipView() {
       await convertMotoOwnershipPlanToLoan(planId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not convert this plan to a loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3755,7 +3763,7 @@ function MotoOwnershipView() {
       setRepayAmounts((prev) => { const next = { ...prev }; delete next[planId]; return next; });
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not repay this loan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -3874,6 +3882,7 @@ function MotoOwnershipView() {
 // backend (rw.itunda.creditscore) with zero client UI anywhere. Not a real bureau
 // score -- computed live from a user's own real transaction/loan/savings/KYC history.
 function CreditScoreView() {
+  const { t } = useI18n();
   const [result, setResult] = useState<CreditScoreResult | null>(null);
   const [suggestions, setSuggestions] = useState<CreditScoreSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -3881,7 +3890,7 @@ function CreditScoreView() {
   useEffect(() => {
     fetchCreditScore()
       .then(setResult)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your credit score.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     // Real Toss 신용플러스-style suggestions (2026-07-26) -- see
     // CreditScoreService.getImprovementSuggestions's own doc comment. Loaded alongside
     // the score itself, not gated behind it -- a real failure here shouldn't block the
@@ -3937,13 +3946,14 @@ function CreditScoreView() {
 // OTHER party (seller/poster/lister); this is the separate "see your own full factor
 // breakdown" screen, mirroring CreditScoreView's own shape exactly.
 function TrustScoreView() {
+  const { t } = useI18n();
   const [result, setResult] = useState<TrustScoreResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTrustScore()
       .then(setResult)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your trust score.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, []);
 
   if (!result) {
@@ -3996,6 +4006,7 @@ function PetCard() {
 }
 
 function RewardsView() {
+  const { t } = useI18n();
   const [tasks, setTasks] = useState<RewardTasksResult | null>(null);
   const [referral, setReferral] = useState<ReferralInfo | null>(null);
   const [todaySteps, setTodaySteps] = useState<number | null>(null);
@@ -4024,7 +4035,7 @@ function RewardsView() {
       setMessage(`${result.message} (+${result.rewardAmount} RWF)`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not claim this reward.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setClaimingId(null);
     }
@@ -4050,7 +4061,7 @@ function RewardsView() {
         setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount} RWF`);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not report steps.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setReportingSteps(false);
     }
@@ -4136,6 +4147,7 @@ function RewardsView() {
 // already have this via the Saronite RN mini-app bridge; bank-mfe itself never had a
 // screen for it despite the real, ledger-backed backend.
 function BillsView() {
+  const { t } = useI18n();
   const [providers, setProviders] = useState<BillProvider[] | null>(null);
   const [pending, setPending] = useState<PendingBill[]>([]);
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -4178,7 +4190,7 @@ function BillsView() {
       setAutoPayMax('');
       fetchAutoPaySettings().then(setAutoPaySettings).catch(() => {});
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set up auto-pay.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSavingAutoPay(false);
     }
@@ -4193,7 +4205,7 @@ function BillsView() {
       setAutoPaySettings((prev) => prev.filter((s) => s.providerId !== providerId));
       setMessage('Auto-pay turned off.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not turn off auto-pay.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setClearingAutoPayId(null);
     }
@@ -4208,7 +4220,7 @@ function BillsView() {
       setMessage(`Paid ${result.amount.toLocaleString()} RWF — ${result.referenceNumber}`);
       setPending((prev) => prev.filter((b) => b.id !== bill.id));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not pay this bill.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setPayingId(null);
     }
@@ -4229,7 +4241,7 @@ function BillsView() {
       setAirtimePhone('');
       setAirtimeAmount('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not buy airtime.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBuyingAirtime(false);
     }
@@ -4364,6 +4376,7 @@ function BillsView() {
 // operator (AgentAdminController.assignOperator); an unassigned account gets a clean
 // "you are not an agent operator" state instead of a generic error.
 function AgentOperatorView() {
+  const { t } = useI18n();
   const [section, setSection] = useState<'till' | 'float'>('till');
   const [till, setTill] = useState<AgentTillSnapshot | null>(null);
   const [activity, setActivity] = useState<AgentActivityItem[]>([]);
@@ -4387,7 +4400,7 @@ function AgentOperatorView() {
       .then((t) => { setTill(t); setNotOperator(false); })
       .catch((err) => {
         if (isNotAgentOperatorError(err)) { setNotOperator(true); return; }
-        setError(err instanceof ApiError ? err.message : 'Could not load your till.');
+        setError(err instanceof ApiError ? err.message : t('common.loadError'));
       });
     fetchAgentActivity().then(setActivity).catch(() => setActivity([]));
   };
@@ -4408,7 +4421,7 @@ function AgentOperatorView() {
       setCashInAccount(''); setCashInAmount(''); setCashInReceipt('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not accept this cash-in.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4429,7 +4442,7 @@ function AgentOperatorView() {
       setCashOutAccount(''); setCashOutAmount(''); setCashOutReceipt(''); setCashOutCode('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not pay this cash-out. Check the withdrawal code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4450,7 +4463,7 @@ function AgentOperatorView() {
       setCountedCash('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this till count.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4544,6 +4557,7 @@ function AgentOperatorView() {
 // feature in this codebase not sourced from Toss/당근/Coupang/Naver/Kakao. See
 // lib/floatMarketplace.ts's own doc comment for the full sourced account.
 function FloatMarketplaceSection() {
+  const { t } = useI18n();
   const [nearby, setNearby] = useState<NearbyFloatListing[]>([]);
   const [myListings, setMyListings] = useState<FloatListing[]>([]);
   const [myRequests, setMyRequests] = useState<FloatTransferRequest[]>([]);
@@ -4573,7 +4587,7 @@ function FloatMarketplaceSection() {
       (position) => {
         fetchNearbyFloatListings(position.coords.latitude, position.coords.longitude)
           .then(setNearby)
-          .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load nearby float listings.'))
+          .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')))
           .finally(() => setLocating(false));
       },
       () => {
@@ -4599,7 +4613,7 @@ function FloatMarketplaceSection() {
       setListAmount('');
       loadMine();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4612,7 +4626,7 @@ function FloatMarketplaceSection() {
       await cancelFloatListing(listingId);
       loadMine();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4634,7 +4648,7 @@ function FloatMarketplaceSection() {
       setRequestAmounts((prev) => ({ ...prev, [listingId]: '' }));
       loadMine();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this request.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4649,7 +4663,7 @@ function FloatMarketplaceSection() {
       setMessage('Float transferred to the requesting agent.');
       loadMine();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not accept this request.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4662,7 +4676,7 @@ function FloatMarketplaceSection() {
       await declineFloatRequest(requestId);
       loadMine();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not decline this request.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -4749,6 +4763,7 @@ function FloatMarketplaceSection() {
 // not sourced from Toss/당근/Coupang/Naver/Kakao. See lib/ussd.ts's own doc comment
 // for the full sourced account (Rwanda's real ~34-35% smartphone penetration).
 function UssdSettingsView() {
+  const { t } = useI18n();
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -4778,7 +4793,7 @@ function UssdSettingsView() {
       setConfirmPin('');
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set your USSD PIN.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -4832,6 +4847,7 @@ function UssdSettingsView() {
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 154) -- see
 // lib/foreignCurrency.ts's own doc comment.
 function ForeignCurrencyView() {
+  const { t } = useI18n();
   const [wallets, setWallets] = useState<ForeignCurrencyWallet[] | null>(null);
   const [conversions, setConversions] = useState<CurrencyConversion[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -4840,7 +4856,7 @@ function ForeignCurrencyView() {
     setError(null);
     fetchMyForeignCurrencyWallets()
       .then(setWallets)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your foreign-currency accounts.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchMyCurrencyConversions().then(setConversions).catch(() => setConversions([]));
   };
   useEffect(load, []);
@@ -4890,6 +4906,7 @@ function ForeignCurrencyView() {
 }
 
 function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly ForeignCurrencyCode[]; onOpened: () => void }) {
+  const { t } = useI18n();
   const [opening, setOpening] = useState<ForeignCurrencyCode | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -4900,7 +4917,7 @@ function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly 
       await openForeignCurrencyWallet(currency);
       onOpened();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open this account.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setOpening(null);
     }
@@ -4928,6 +4945,7 @@ function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly 
 }
 
 function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrencyWallet[]; onConverted: () => void }) {
+  const { t } = useI18n();
   const [direction, setDirection] = useState<'TO_FOREIGN' | 'TO_RWF'>('TO_FOREIGN');
   const [currency, setCurrency] = useState(wallets[0]?.currency ?? '');
   const [amount, setAmount] = useState('');
@@ -4955,7 +4973,7 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
       setAmount('');
       onConverted();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not convert this amount.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -5004,6 +5022,7 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
 // for a backend feature that shipped fully with a live-verified-safe scheduler but
 // zero callers anywhere.
 function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
+  const { t } = useI18n();
   const [alerts, setAlerts] = useState<ExchangeRateAlert[] | null>(null);
   const [currency, setCurrency] = useState(wallets[0]?.currency ?? '');
   const [target, setTarget] = useState('');
@@ -5029,7 +5048,7 @@ function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
       setExpanded(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set that alert.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -5111,13 +5130,14 @@ function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
 // lib/wallet.ts's own doc comment for the full account. A real month-over-month
 // comparison, never a fabricated AI narrative.
 function MonthlySpendingReportCard() {
+  const { t } = useI18n();
   const [report, setReport] = useState<Awaited<ReturnType<typeof fetchMonthlySpendingReport>> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMonthlySpendingReport()
       .then(setReport)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your monthly report.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, []);
 
   if (!report) {
@@ -5151,6 +5171,7 @@ function MonthlySpendingReportCard() {
 // matrix scan: real, ledger-based, and live since well before this session, but never
 // wired to any client anywhere.
 function SpendingInsightView() {
+  const { t } = useI18n();
   const [categories, setCategories] = useState<SpendingCategory[] | null>(null);
   const [totalSpent, setTotalSpent] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -5158,7 +5179,7 @@ function SpendingInsightView() {
   useEffect(() => {
     fetchSpendingInsight()
       .then((r) => { setCategories(r.categories); setTotalSpent(r.totalSpent); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your spending.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, []);
 
   if (!categories) {
@@ -5202,13 +5223,14 @@ function SpendingInsightView() {
 // comment. `WalletService.setBudget/getBudgets` (including real 80%/100%-threshold
 // notifications, wired since 2026-07-28) had zero client anywhere until now.
 function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
+  const { t } = useI18n();
   const [budgets, setBudgets] = useState<BudgetView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const load = () => {
     setError(null);
-    fetchBudgets().then(setBudgets).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your budgets.'));
+    fetchBudgets().then(setBudgets).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -5249,6 +5271,7 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
 }
 
 function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; onSet: () => void }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState('');
   const [monthlyLimit, setMonthlyLimit] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -5268,7 +5291,7 @@ function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; 
       setMonthlyLimit('');
       onSet();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set this budget.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -5302,6 +5325,7 @@ function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; 
 // capability this closes, including the same-day price-change alert. Found with zero
 // client UI anywhere.
 function SubscriptionsView() {
+  const { t } = useI18n();
   const [subscriptions, setSubscriptions] = useState<DetectedSubscription[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -5312,13 +5336,13 @@ function SubscriptionsView() {
     setBillingError(null);
     fetchMyBillingSubscriptions()
       .then(setBillingSubs)
-      .catch((err) => setBillingError(err instanceof ApiError ? err.message : 'Could not load your subscriptions.'));
+      .catch((err) => setBillingError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
     fetchSubscriptions()
       .then((r) => { setSubscriptions(r.subscriptions); setTotal(r.estimatedMonthlyTotal); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your subscriptions.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     loadBilling();
   }, []);
 
@@ -5385,6 +5409,7 @@ function SubscriptionsView() {
 }
 
 function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscription: MerchantBillingSubscription; onChanged: () => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -5395,7 +5420,7 @@ function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscript
       await cancelBillingSubscription(subscription.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this subscription.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -5440,6 +5465,7 @@ const IDENTITY_DOCUMENT_LABELS: Record<IdentityDocumentType, string> = { NATIONA
 const IDENTITY_STATUS_LABELS: Record<string, string> = { PENDING: 'Pending review', VERIFIED: 'Verified', REJECTED: 'Rejected' };
 
 function IdentityView() {
+  const { t } = useI18n();
   const [submissions, setSubmissions] = useState<KycSubmission[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -5465,7 +5491,7 @@ function IdentityView() {
     setError(null);
     fetchIdentityStatus()
       .then(setSubmissions)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your identity status.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -5482,7 +5508,7 @@ function IdentityView() {
       setDocumentNumber(''); setDocumentReference('');
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That submission could not be completed.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -5555,6 +5581,7 @@ const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE
 // established, rather than dropping the rider on a blank category picker they'd have
 // to know to select the right transaction from themselves.
 function SupportView({ initialTransactionId, initialCategory, onConsumedInitial }: { initialTransactionId?: string | null; initialCategory?: SupportTicketCategory; onConsumedInitial?: () => void } = {}) {
+  const { t } = useI18n();
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -5568,7 +5595,7 @@ function SupportView({ initialTransactionId, initialCategory, onConsumedInitial 
     setError(null);
     Promise.all([fetchSupportTickets(), fetchTransactions()])
       .then(([t, tx]) => { setTickets(t); setTransactions(tx); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load support tickets.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(refresh, []);
@@ -5590,7 +5617,7 @@ function SupportView({ initialTransactionId, initialCategory, onConsumedInitial 
       setSelectedTransactionId(null); setDescription(''); setShowNewForm(false);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That ticket could not be submitted.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -5728,6 +5755,7 @@ function BookingDepositBadge({ bookingId }: { bookingId: string }) {
 // doc comment. Mirrors ProductReviewRow's exact shape (star rating + optional comment,
 // a real BOOKING_ALREADY_REVIEWED 409 is treated as already-done, not an error).
 function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -5750,7 +5778,7 @@ function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
       if (err instanceof ApiError && err.code === 'BOOKING_ALREADY_REVIEWED') {
         setDone(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setSubmitting(false);
@@ -5979,6 +6007,7 @@ function NotificationsCard() {
 // was the one remaining "paste a link" holdout in bank-mfe; this wires it to the
 // same real upload endpoint every other photo flow in this app already uses.
 function ProfilePhotoCard() {
+  const { t } = useI18n();
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -6001,7 +6030,7 @@ function ProfilePhotoCard() {
       const user = await updateProfilePhoto(url);
       setProfilePhotoUrl(user.profilePhotoUrl);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -6065,6 +6094,7 @@ function VerificationCard() {
 }
 
 function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' | 'phone'; hasEmail?: boolean; onVerified: () => void }) {
+  const { t } = useI18n();
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -6092,7 +6122,7 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
       await (kind === 'email' ? confirmEmailVerification(code.trim()) : confirmPhoneVerification(code.trim()));
       onVerified();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Invalid or expired code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -6141,6 +6171,7 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
 }
 
 function MyVehiclesCard() {
+  const { t } = useI18n();
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [valuations, setValuations] = useState<Record<string, VehicleValuation>>({});
   const [showCreate, setShowCreate] = useState(false);
@@ -6185,7 +6216,7 @@ function MyVehiclesCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not register this vehicle.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -6202,7 +6233,7 @@ function MyVehiclesCard() {
       await updateVehicleMileage(vehicle.id, newMileage);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update mileage.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6215,7 +6246,7 @@ function MyVehiclesCard() {
       await removeVehicle(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this vehicle.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6309,6 +6340,7 @@ function MyVehiclesCard() {
 // comment for the full sourced account and honest scope boundary (real read-only
 // spending oversight only; allowance reuses AutoTransfer/ScheduledTransfer above).
 function FamilyLinkCard() {
+  const { t } = useI18n();
   const [invites, setInvites] = useState<FamilyLinkView['link'][] | null>(null);
   const [children, setChildren] = useState<FamilyLinkView[] | null>(null);
   const [guardians, setGuardians] = useState<FamilyLinkView[] | null>(null);
@@ -6342,7 +6374,7 @@ function FamilyLinkCard() {
       setShowInvite(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this invitation.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -6355,7 +6387,7 @@ function FamilyLinkCard() {
       await respondToInvite(id, accept);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not respond to this invitation.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6369,7 +6401,7 @@ function FamilyLinkCard() {
       setOpenOverviewFor(null);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not unlink this account.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6386,7 +6418,7 @@ function FamilyLinkCard() {
     try {
       setOverview(await fetchChildOverview(childUserId));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load this overview.');
+      setError(err instanceof ApiError ? err.message : t('common.loadError'));
     }
   };
 
@@ -6401,7 +6433,7 @@ function FamilyLinkCard() {
       setSendAmount('');
       setOverview(await fetchChildOverview(childUserId));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this transfer.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSendBusy(false);
     }
@@ -6515,6 +6547,7 @@ function FamilyLinkCard() {
 // comment for the full sourced account. A minimal delivery-address prompt rather than a
 // full address form, matching this pass's compact-card scope.
 function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string; productId: string }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -6528,7 +6561,7 @@ function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string;
       await subscribeToProduct(merchantId, productId, 1, 30, address);
       setDone(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set up this subscription.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -6555,6 +6588,7 @@ const PRODUCT_SUBSCRIPTION_STATUS_LABEL: Record<ProductSubscription['status'], s
 // Real Coupang 정기배송-style subscription list -- see lib/productSubscriptions.ts's
 // own doc comment.
 function MyProductSubscriptionsCard() {
+  const { t } = useI18n();
   const [subscriptions, setSubscriptions] = useState<ProductSubscription[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -6577,7 +6611,7 @@ function MyProductSubscriptionsCard() {
       else await resumeProductSubscription(s.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this subscription.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6590,7 +6624,7 @@ function MyProductSubscriptionsCard() {
       await cancelProductSubscription(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this subscription.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6605,7 +6639,7 @@ function MyProductSubscriptionsCard() {
       await skipNextProductSubscriptionDelivery(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not skip the next delivery.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6626,7 +6660,7 @@ function MyProductSubscriptionsCard() {
       setEditingId(null);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this subscription.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -6747,6 +6781,7 @@ function AffiliateEarningsCard() {
 // PayByCodeCard each fetching their own status independently meant PayByCodeCard never
 // learned about an enrollment that happened in the same session until a full reload.
 function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null; onChanged: () => void }) {
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -6758,7 +6793,7 @@ function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null
       else await enrollFacePay();
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update Face Pay.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -7188,6 +7223,7 @@ function readAndClearUrlParam(key: string): string | null {
 }
 
 function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPaymentResult) => void; facePayEnrolled: boolean }) {
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -7240,7 +7276,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setSubmitting(false);
@@ -7269,7 +7305,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
         setLoyaltyBalance(balance);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not look up this payment code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
       setSubmitting(false);
     }
   };
@@ -7410,6 +7446,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
 // permanent merchantId with the CUSTOMER choosing the amount, matching Kakao's own real
 // small-vendor use case (a market stall's one printed, unchanging code).
 function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) => void }) {
+  const { t } = useI18n();
   const [merchantId, setMerchantId] = useState('');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -7428,7 +7465,7 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
       const result = await payByStaticQr(merchantId.trim(), numericAmount);
       onPaid(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -7506,6 +7543,7 @@ function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult;
 }
 
 function ShoppingView() {
+  const { t } = useI18n();
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
@@ -7518,7 +7556,7 @@ function ShoppingView() {
     setError(null);
     fetchShoppingCatalog()
       .then(setMerchants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the shopping catalog.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   const loadFacePayStatus = () => {
     fetchFacePayStatus().then((r) => setFacePayEnrolled(r.enrolled)).catch(() => setFacePayEnrolled(false));
@@ -7617,6 +7655,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   onTraded: () => void;
   onWatchToggled: () => void;
 }) {
+  const { t } = useI18n();
   const [history, setHistory] = useState<PricePoint[] | null>(null);
   const [shares, setShares] = useState('');
   const [mode, setMode] = useState<'BUY' | 'SELL'>('BUY');
@@ -7660,7 +7699,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
       setAlertExpanded(false);
       if (!watching) { setWatching(true); onWatchToggled(); }
     } catch (err) {
-      setAlertError(err instanceof ApiError ? err.message : 'Could not set that alert.');
+      setAlertError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setAlertBusy(false);
     }
@@ -7842,6 +7881,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
 // fundInvestmentWallet doc comment. Without this, a user with no pre-seeded
 // investment balance had no in-app way to ever actually buy a stock.
 function AddFundsCard({ onFunded }: { onFunded: () => void }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
@@ -7867,7 +7907,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not add funds.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setBusy(false);
@@ -7909,6 +7949,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
 }
 
 function StocksView() {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'MARKET' | 'PORTFOLIO' | 'WATCHLIST'>('MARKET');
   // Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- a market filter on
   // the existing Market browse, distinguishing the original 6 real RSE-domestic
@@ -7924,17 +7965,17 @@ function StocksView() {
 
   const loadMarket = () => {
     setError(null);
-    fetchStocks().then(setStocks).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the real market.'));
+    fetchStocks().then(setStocks).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   const loadPortfolio = () => {
     setError(null);
     Promise.all([fetchPortfolio(), fetchPortfolioHistory(30)])
       .then(([p, h]) => { setPortfolio(p); setPortfolioHistory(h); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your real portfolio.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   const loadWatchlist = () => {
     setError(null);
-    fetchWatchlist().then(setWatchlist).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your real watchlist.'));
+    fetchWatchlist().then(setWatchlist).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -8094,6 +8135,7 @@ function StocksView() {
 }
 
 function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => void }) {
+  const { t } = useI18n();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -8110,7 +8152,7 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
       setPhoneNumber('');
       onStarted(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start this chat.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -8148,6 +8190,7 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
 }
 
 function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [phoneNumbers, setPhoneNumbers] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -8168,7 +8211,7 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
       setPhoneNumbers('');
       onCreated(group.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this group.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -8214,6 +8257,7 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
 // and anyone with the real generated code can join, not just people the creator
 // explicitly invited.
 function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) => void; onJoined: (groupId: string) => void }) {
+  const { t } = useI18n();
   const [mode, setMode] = useState<'closed' | 'create' | 'join'>('closed');
   const [name, setName] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -8247,7 +8291,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
       setMode('closed');
       onJoined(group.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No open chat found for this code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -8281,7 +8325,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
       setName('');
       setCreated({ id: group.id, joinCode: group.joinCode });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this open chat.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -8747,6 +8791,7 @@ function EmoticonPickerPanel({
 // same "buy it once, own it" model Shop/Insurance already use), or gift one to a
 // friend by phone number.
 function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const [packs, setPacks] = useState<EmoticonPack[] | null>(null);
   const [ownedPackIds, setOwnedPackIds] = useState<Set<string>>(new Set());
   const [busyPackId, setBusyPackId] = useState<string | null>(null);
@@ -8773,7 +8818,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
       await purchaseEmoticonPack(packId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not purchase this pack.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyPackId(null);
     }
@@ -8789,7 +8834,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
       setGiftingPackId(null);
       setGiftPhone('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not gift this pack.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyPackId(null);
     }
@@ -8879,6 +8924,7 @@ function GiftVoucherComposerPanel({
   onSent: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const [phone, setPhone] = useState('');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ProductSearchResult[] | null>(null);
@@ -8895,7 +8941,7 @@ function GiftVoucherComposerPanel({
     try {
       setResults(await searchProducts(query.trim()));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not search products.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSearching(false);
     }
@@ -8909,7 +8955,7 @@ function GiftVoucherComposerPanel({
       await purchaseGiftVoucher(phone.trim(), selected.merchantId, selected.id);
       onSent();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this gift voucher.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSending(false);
     }
@@ -8985,6 +9031,7 @@ function GiftVoucherComposerPanel({
 }
 
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
   const [giftsByMessageId, setGiftsByMessageId] = useState<Record<string, Gift>>({});
@@ -9107,7 +9154,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const load = () => {
     fetchMessages(conversation.conversationId)
       .then(setMessages)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     loadOffers();
     loadGifts();
     loadVouchers();
@@ -9121,7 +9168,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setBlocked(true);
       setError(`You blocked ${conversation.otherUserName}. You can unblock them later from this conversation.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not block this person.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setBlocking(false); }
   };
 
@@ -9132,7 +9179,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setBlocked(false);
       setError(`You unblocked ${conversation.otherUserName}.`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not unblock this person.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setBlocking(false); }
   };
 
@@ -9141,7 +9188,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     try {
       setQuiet(await setConversationQuiet(conversation.conversationId, !quiet));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this quiet room.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setUpdatingQuiet(false); }
   };
 
@@ -9151,7 +9198,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       await pinConversationMessage(conversation.conversationId, message.id);
       setPinnedMessage(message);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not pin this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setUpdatingPin(false); }
   };
 
@@ -9161,7 +9208,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       await unpinConversationMessage(conversation.conversationId);
       setPinnedMessage(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not unpin this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setUpdatingPin(false); }
   };
 
@@ -9172,7 +9219,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       await reportChatMessage(messageId, reason);
       setError('Thanks. Your report was sent for review.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this report.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -9181,7 +9228,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     try {
       await deleteMessage(conversation.conversationId, messageId);
       setMessages((prev) => prev?.map((m) => m.id === messageId ? { ...m, body: 'This message was deleted', deletedAt: new Date().toISOString(), reactions: [] } : m) ?? prev);
-    } catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
+    } catch (err) { setError(err instanceof ApiError ? err.message : t('common.actionError')); }
   };
 
   // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
@@ -9192,7 +9239,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setForwardingMessage(null);
       setError('Message forwarded.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not forward this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -9205,7 +9252,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     if (searchQuery.trim().length < 2) return;
     setSearching(true); setError(null);
     try { setSearchResults(await searchConversationMessages(conversation.conversationId, searchQuery.trim())); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Could not search this conversation.'); }
+    catch (err) { setError(err instanceof ApiError ? err.message : t('common.actionError')); }
     finally { setSearching(false); }
   };
 
@@ -9231,7 +9278,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         pendingDeviceRetryRef.current = () => handleSendGift();
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not send this gift.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setSendingGift(false);
@@ -9248,7 +9295,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         pendingDeviceRetryRef.current = () => handleClaimGift(giftId);
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     }
   };
@@ -9260,7 +9307,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setEmoticonPickerOpen(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this emoticon.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -9277,7 +9324,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setReplyingTo(null);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setUploadingPhoto(false);
       if (photoInputRef.current) photoInputRef.current.value = '';
@@ -9297,7 +9344,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       loadOffers();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not respond to this offer.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -9377,7 +9424,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setDraft('');
       setReplyingTo(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSending(false);
     }
@@ -9762,6 +9809,7 @@ function MentionSuggestions({ draft, members, currentUserId, onPick }: {
 }
 
 function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<GroupMessage[] | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -9808,7 +9856,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       setMessages((prev) => [...(prev ?? []), sent]);
       setReplyingTo(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setUploadingPhoto(false);
       if (photoInputRef.current) photoInputRef.current.value = '';
@@ -9818,7 +9866,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const load = () =>
     fetchGroupMessages(group.groupId)
       .then(setMessages)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
 
   const loadPin = () => fetchPinnedGroupMessage(group.groupId).then(setPinnedMessage).catch(() => {});
 
@@ -9917,7 +9965,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       setDraft('');
       setReplyingTo(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSending(false);
     }
@@ -9939,7 +9987,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       await pinGroupMessage(group.groupId, message.id);
       setPinnedMessage(message);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not pin this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setUpdatingPin(false); }
   };
 
@@ -9949,14 +9997,14 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       await unpinGroupMessage(group.groupId);
       setPinnedMessage(null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not unpin this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setUpdatingPin(false); }
   };
 
   const handleDelete = async (messageId: string) => {
     if (!window.confirm('Delete this message for everyone?')) return;
     try { await deleteGroupMessage(group.groupId, messageId); load(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
+    catch (err) { setError(err instanceof ApiError ? err.message : t('common.actionError')); }
   };
 
   // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
@@ -9967,7 +10015,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       setForwardingMessage(null);
       setError('Message forwarded.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not forward this message.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -9994,7 +10042,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       setEmoticonPickerOpen(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this emoticon.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -10330,6 +10378,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
   onSend: (body: string) => Promise<unknown>;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<T[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -10338,7 +10387,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
   const load = () => {
     fetchThreadMessages()
       .then(setMessages)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this thread.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => { load(); }, [rootMessage.id]);
@@ -10352,7 +10401,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
       setDraft('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this reply.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally { setSending(false); }
   };
 
@@ -10413,6 +10462,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
 }
 
 function DirectMessagesList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
+  const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
   // .archived's own doc comment. Loaded alongside the active list so the
@@ -10434,7 +10484,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     setError(null);
     fetchConversations()
       .then(setConversations)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your conversations.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchConversations(true).then(setArchivedConversations).catch(() => {});
   };
 
@@ -10604,6 +10654,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
 function GroupSplitBillsView({
   groupConversationId, members, currentUserId, onBack,
 }: { groupConversationId: string; members: GroupMember[]; currentUserId: string | null; onBack: () => void }) {
+  const { t } = useI18n();
   const [splitBills, setSplitBills] = useState<SplitBillWithParticipants[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -10621,7 +10672,7 @@ function GroupSplitBillsView({
   const refresh = () =>
     fetchSplitBillsForGroup(groupConversationId)
       .then(setSplitBills)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load split bills.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
 
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [groupConversationId]);
 
@@ -10639,7 +10690,7 @@ function GroupSplitBillsView({
       setAmount(''); setDescription(''); setSelectedIds(new Set()); setShowNewForm(false); setLadderMode(false);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That split bill could not be created.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10652,7 +10703,7 @@ function GroupSplitBillsView({
       await paySplitBillShare(splitBillId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That payment could not be completed.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10668,7 +10719,7 @@ function GroupSplitBillsView({
       setReceiptUrlDrafts((prev) => ({ ...prev, [splitBillId]: '' }));
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That receipt could not be attached.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10681,7 +10732,7 @@ function GroupSplitBillsView({
       await requestSplitBillNextRound(splitBillId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start the next settlement round.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10843,6 +10894,7 @@ function GroupSplitBillsView({
 function DirectSplitBillsView({
   otherUserId, otherUserName, currentUserId, onBack,
 }: { otherUserId: string; otherUserName: string; currentUserId: string | null; onBack: () => void }) {
+  const { t } = useI18n();
   const [splitBills, setSplitBills] = useState<SplitBillWithParticipants[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -10856,7 +10908,7 @@ function DirectSplitBillsView({
   const refresh = () =>
     fetchDirectSplitBills(otherUserId)
       .then(setSplitBills)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load split bills.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
 
   useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [otherUserId]);
 
@@ -10872,7 +10924,7 @@ function DirectSplitBillsView({
       setAmount(''); setDescription(''); setShowNewForm(false); setLadderMode(false);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That split bill could not be created.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10885,7 +10937,7 @@ function DirectSplitBillsView({
       await paySplitBillShare(splitBillId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That payment could not be completed.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10901,7 +10953,7 @@ function DirectSplitBillsView({
       setReceiptUrlDrafts((prev) => ({ ...prev, [splitBillId]: '' }));
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That receipt could not be attached.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -10914,7 +10966,7 @@ function DirectSplitBillsView({
       await requestSplitBillNextRound(splitBillId);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start the next settlement round.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -11055,6 +11107,7 @@ function GroupManageMembersView({
   group: GroupSummary; members: GroupMember[]; currentUserId: string | null;
   onMembersChanged: () => void; onLeft: () => void; onBack: () => void;
 }) {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<TalkContact[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
@@ -11082,7 +11135,7 @@ function GroupManageMembersView({
       await setGroupDescription(group.groupId, description.trim());
       setInfoSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update group info.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSavingInfo(false);
     }
@@ -11096,7 +11149,7 @@ function GroupManageMembersView({
       await leaveGroup(group.groupId);
       onLeft();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not leave this group.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
       setLeaving(false);
     }
   };
@@ -11157,6 +11210,7 @@ function GroupManageMembersView({
 }
 
 function GroupsList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void } = {}) {
+  const { t } = useI18n();
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
@@ -11165,7 +11219,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
     setError(null);
     fetchGroups()
       .then(setGroups)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your groups.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);
@@ -11375,6 +11429,7 @@ function TodaysBirthdaySection({ onOpenConversation }: { onOpenConversation: (co
 }
 
 function FriendsList({ onOpenConversation }: { onOpenConversation: (conversationId: string) => void }) {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<TalkContact[] | null>(null);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
@@ -11387,7 +11442,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
         setContacts(c);
         if (c.length > 0) fetchPresence(c.map((x) => x.userId)).then(setPresence).catch(() => {});
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your friends.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -11398,7 +11453,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
       const conversation = await startConversationWithUser(contact.userId);
       onOpenConversation(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start this chat.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setStartingId(null);
     }
@@ -11450,6 +11505,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
 }
 
 function NewListingCard({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -11480,7 +11536,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
       const { url } = await uploadFile(file);
       setPhotoUrl(url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not upload this photo.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -11529,7 +11585,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -11610,6 +11666,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   onToggleFavorite: () => void;
   sellerTrustScore?: number;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offering, setOffering] = useState(false);
@@ -11721,7 +11778,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       setMarkingSold(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -11738,7 +11795,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       setShowReviewSheet(false);
       setHoodReviews((prev) => [...(prev ?? []), review]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmittingReview(false);
     }
@@ -11751,7 +11808,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       await removeListing(listing.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -11769,7 +11826,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       setEditingPrice(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -11782,7 +11839,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       const conversation = await contactSeller(listing.id);
       onMessageSeller(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not message this seller.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -11799,7 +11856,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       setOfferAmount('');
       onMessageSeller(offer.conversationId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -11812,7 +11869,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       await payEscrow(listing.id, deliveryAddress);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not pay via itunda.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setPaying(false);
     }
@@ -11824,7 +11881,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
     try {
       setEscrow(await confirmEscrowReceipt(listing.id));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not confirm receipt.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setResolvingEscrow(false);
     }
@@ -11838,7 +11895,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       setEscrow(await disputeEscrow(listing.id, disputeReason.trim()));
       setShowDispute(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not report this problem.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setResolvingEscrow(false);
     }
@@ -12090,6 +12147,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
 // Real second neighborhood (2026-08-04) -- isSecond mirrors Android HoodShared.kt's own
 // NeighborhoodSetupPrompt(isSecond) and iOS's own isSecond port exactly, same copy.
 function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: boolean; onDone: (neighborhood: string) => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -12110,7 +12168,7 @@ function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: bool
           })
           .catch((err) => {
             setBusy(false);
-            setError(err instanceof ApiError ? err.message : 'Could not determine your neighborhood.');
+            setError(err instanceof ApiError ? err.message : t('common.actionError'));
           });
       },
       () => {
@@ -12177,13 +12235,14 @@ function NeighborhoodSwitcherRow({
 }
 
 function ListingWishlistView() {
+  const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteListing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyFavoriteListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+    fetchMyFavoriteListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -12193,7 +12252,7 @@ function ListingWishlistView() {
       await removeListingFavorite(listingId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRemovingId(null);
     }
@@ -12235,6 +12294,7 @@ function ListingWishlistView() {
 // Karrot 30-keyword-per-user cap enforced server-side; this view surfaces the
 // backend's own real KEYWORD_ALERT_CAP_REACHED error rather than guessing the limit.
 function KeywordAlertsView() {
+  const { t } = useI18n();
   const [alerts, setAlerts] = useState<KeywordAlert[] | null>(null);
   const [keyword, setKeyword] = useState('');
   const [adding, setAdding] = useState(false);
@@ -12247,7 +12307,7 @@ function KeywordAlertsView() {
 
   const load = () => {
     setError(null);
-    fetchKeywordAlerts().then(setAlerts).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your alerts.'));
+    fetchKeywordAlerts().then(setAlerts).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchKeywordAlertQuietHours()
       .then((qh) => {
         setQuietHoursState(qh);
@@ -12267,7 +12327,7 @@ function KeywordAlertsView() {
       setKeyword('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this alert.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setAdding(false);
     }
@@ -12279,7 +12339,7 @@ function KeywordAlertsView() {
       await removeKeywordAlert(alertId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this alert.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRemovingId(null);
     }
@@ -12292,7 +12352,7 @@ function KeywordAlertsView() {
       const updated = await setKeywordAlertQuietHours(quietStart, quietEnd, enabled);
       setQuietHoursState(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save quiet hours.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSavingQuietHours(false);
     }
@@ -12361,6 +12421,7 @@ function KeywordAlertsView() {
 }
 
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
+  const { t } = useI18n();
   // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend ListingRepository's own doc comment.
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST' | 'ALERTS' | 'INSPECTIONS'>('BROWSE');
@@ -12410,7 +12471,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
             setNeighborhoodName(null);
             setListings([]);
           } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+            setError(err instanceof ApiError ? err.message : t('common.loadError'));
           }
         });
       return;
@@ -12422,7 +12483,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         setListings(result.listings);
         setTrustScores(result.trustScores);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [view, selectedCategory]);
@@ -12570,6 +12631,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
 // books and 100%-prepays a real mechanic to inspect a real used-car listing before
 // purchase; a mechanic can register, browse incoming bookings, and deliver findings.
 function VehicleInspectionsView() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<'BUYER' | 'MECHANIC'>('BUYER');
 
   // Buyer side
@@ -12586,7 +12648,7 @@ function VehicleInspectionsView() {
   const loadBuyerData = () => {
     Promise.all([fetchAvailableMechanics(), fetchMyInspectionBookings()])
       .then(([m, b]) => { setMechanics(m); setMyBookings(b); })
-      .catch((err) => setBuyerError(err instanceof ApiError ? err.message : 'Could not load inspections.'));
+      .catch((err) => setBuyerError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -12609,7 +12671,7 @@ function VehicleInspectionsView() {
       setScheduledAt('');
       loadBuyerData();
     } catch (err) {
-      setBuyerError(err instanceof ApiError ? err.message : 'Could not request this inspection.');
+      setBuyerError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRequesting(false);
     }
@@ -12621,7 +12683,7 @@ function VehicleInspectionsView() {
       await cancelInspection(bookingId);
       loadBuyerData();
     } catch (err) {
-      setBuyerError(err instanceof ApiError ? err.message : 'Could not cancel this booking.');
+      setBuyerError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyBookingId(null);
     }
@@ -12641,7 +12703,7 @@ function VehicleInspectionsView() {
         setMechanicProfile(m);
         if (m) fetchMyMechanicBookings().then(setMechanicBookings).catch(() => {});
       })
-      .catch((err) => setMechanicError(err instanceof ApiError ? err.message : 'Could not load your mechanic profile.'));
+      .catch((err) => setMechanicError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -12655,7 +12717,7 @@ function VehicleInspectionsView() {
     try {
       setMechanicProfile(await registerAsMechanic(businessName.trim()));
     } catch (err) {
-      setMechanicError(err instanceof ApiError ? err.message : 'Could not register as a mechanic.');
+      setMechanicError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRegistering(false);
     }
@@ -12676,7 +12738,7 @@ function VehicleInspectionsView() {
       await acceptInspection(bookingId);
       loadMechanicData();
     } catch (err) {
-      setMechanicError(err instanceof ApiError ? err.message : 'Could not accept this booking.');
+      setMechanicError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyBookingId(null);
     }
@@ -12688,7 +12750,7 @@ function VehicleInspectionsView() {
       await completeInspection(bookingId, findings[bookingId]);
       loadMechanicData();
     } catch (err) {
-      setMechanicError(err instanceof ApiError ? err.message : 'Could not complete this booking.');
+      setMechanicError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyBookingId(null);
     }
@@ -12838,6 +12900,7 @@ function VehicleInspectionsView() {
 // ============================== COMMUNITY (동네생활) ==============================
 
 function NewCommunityPostCard({ categories, onCreated }: { categories: CommunityCategory[]; onCreated: () => void }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState(categories[0]?.id ?? '');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -12897,7 +12960,7 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this post.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -12969,6 +13032,7 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
 // preference only affects notifications about comments on posts the caller
 // authored), same real reason this renders only inside the MINE view.
 function CommentNotificationToggle() {
+  const { t } = useI18n();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -12985,7 +13049,7 @@ function CommentNotificationToggle() {
     try {
       setEnabled(await setCommentNotificationsEnabled(next));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this setting.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -13017,6 +13081,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
   post: CommunityPost; categoryLabel: string; isMine: boolean; onOpen: () => void; onChanged: () => void;
   joinedCount?: number; joining?: boolean; onJoin?: () => void;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13026,7 +13091,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
       await removeCommunityPost(post.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this post.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -13086,6 +13151,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
 // real category === 'meetup' post; the author gets a real schedule form, any real
 // joined member gets a real per-session check-in button.
 function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; currentUserId: string | undefined }) {
+  const { t } = useI18n();
   const [sessions, setSessions] = useState<MeetupSession[] | null>(null);
   const [dates, setDates] = useState<string[]>(['']);
   const [scheduling, setScheduling] = useState(false);
@@ -13111,7 +13177,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
       setDates(['']);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not schedule these sessions.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setScheduling(false);
     }
@@ -13124,7 +13190,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
       await checkIntoMeetupSession(sessionId);
       setCheckedInIds((prev) => new Set(prev).add(sessionId));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not check in to this session.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCheckingInId(null);
     }
@@ -13183,6 +13249,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
 // same 참여하기 flow a meetup already uses, the organizer fronts the total cost and
 // splits it via the already-real SplitBill mechanic.
 function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost; currentUserId: string | undefined }) {
+  const { t } = useI18n();
   const [totalAmount, setTotalAmount] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -13200,7 +13267,7 @@ function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost;
       await finalizeGroupBuy(post.id, amount, description.trim());
       setDone(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not split this cost.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -13237,6 +13304,7 @@ function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost;
 }
 
 function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [authorName, setAuthorName] = useState('');
   const [likedByMe, setLikedByMe] = useState(false);
@@ -13251,7 +13319,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
     setError(null);
     fetchCommunityPost(postId)
       .then((r) => { setPost(r.post); setAuthorName(r.authorName); setLikedByMe(r.likedByMe); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this post.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchCommunityComments(postId)
       .then(setComments)
       .catch(() => { /* non-critical -- the post itself still renders */ });
@@ -13266,7 +13334,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
       setLikedByMe(liked);
       setPost((p) => (p ? { ...p, likeCount: p.likeCount + (liked ? 1 : -1) } : p));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your like.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setLiking(false);
     }
@@ -13282,7 +13350,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
       setCommentBody('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post your comment.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCommenting(false);
     }
@@ -13339,6 +13407,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
 }
 
 function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string) => void }) {
+  const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [categories, setCategories] = useState<CommunityCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -13374,7 +13443,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
             setNeighborhoodName(null);
             setPosts([]);
           } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+            setError(err instanceof ApiError ? err.message : t('common.loadError'));
           }
         });
       return;
@@ -13382,7 +13451,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
     const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
     fetcher
       .then((result) => { setPosts(result.posts); setJoinedCounts(result.joinedCounts); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load posts.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [view, activeCategory]);
@@ -13396,7 +13465,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
       setJoinedCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }));
       onOpenGroupChat(groupId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not join this meetup.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setJoiningPostId(null);
     }
@@ -13526,6 +13595,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
 // ============================== JOBS (당근알바) ==============================
 
 function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; onCreated: () => void }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState(categories[0]?.id ?? '');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -13547,7 +13617,7 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post this job.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -13606,6 +13676,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
   post: JobPost; categoryLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
   favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void; posterTrustScore?: number;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13652,7 +13723,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
     if (!showApplicants || applications !== null) return;
     fetchApplicationsForJobPost(post.id)
       .then(setApplications)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load applicants.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [showApplicants]);
 
   const handleSubmitApplication = async () => {
@@ -13663,7 +13734,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       setApplying(false);
       setApplicationSubmitted(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this application.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmittingApplication(false);
     }
@@ -13676,7 +13747,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       await respondToJobApplication(applicationId, accept);
       setApplications((prev) => prev?.filter((a) => a.id !== applicationId) ?? null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not respond to this application.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRespondingToId(null);
     }
@@ -13690,7 +13761,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       setMarkingFilled(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this job.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -13705,7 +13776,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       setShowReviewSheet(false);
       setHoodReviews((prev) => [...(prev ?? []), review]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmittingReview(false);
     }
@@ -13801,7 +13872,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
                 onClick={async () => {
                   setBusy(true);
                   try { await removeJobPost(post.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not remove this job.'); }
+                  catch (err) { setError(err instanceof ApiError ? err.message : t('common.actionError')); }
                   finally { setBusy(false); }
                 }}
               >
@@ -13887,6 +13958,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
 // carries no job-post title snapshot, so this fans out one real fetchJobPost per
 // application to resolve the title, same N+1 shape Android's own port uses.
 function MyJobApplicationsView() {
+  const { t } = useI18n();
   const [applications, setApplications] = useState<Array<{ application: JobApplication; title: string | null }> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -13901,7 +13973,7 @@ function MyJobApplicationsView() {
         );
         setApplications(withTitles);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your applications.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, []);
 
   if (error) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
@@ -13932,13 +14004,14 @@ function MyJobApplicationsView() {
 // Real 당근알바 job-post wishlist view (2026-07-22) -- mirrors ListingWishlistView
 // exactly, closing a docs/DESIGN_REFERENCES.md-named gap.
 function JobPostWishlistView() {
+  const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteJobPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyFavoriteJobPosts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+    fetchMyFavoriteJobPosts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -13948,7 +14021,7 @@ function JobPostWishlistView() {
       await removeJobPostFavorite(jobPostId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRemovingId(null);
     }
@@ -13985,6 +14058,7 @@ function JobPostWishlistView() {
 }
 
 function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
+  const { t } = useI18n();
   // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend JobPostRepository's own doc comment.
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'WORKED' | 'NEIGHBORHOOD' | 'WISHLIST' | 'APPLICATIONS'>('BROWSE');
@@ -14046,7 +14120,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
             setNeighborhoodName(null);
             setPosts([]);
           } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+            setError(err instanceof ApiError ? err.message : t('common.loadError'));
           }
         });
       return;
@@ -14055,7 +14129,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
     const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : view === 'WORKED' ? fetchMyWorkedJobPosts() : fetchMyJobPosts();
     fetcher
       .then((result) => { setPosts(result.posts); setTrustScores(result.trustScores); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load jobs.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [view, activeCategory]);
@@ -14067,7 +14141,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
       const conversation = await contactPoster(jobPostId);
       onMessagePoster(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not message this poster.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -14253,6 +14327,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
 // ============================== PROPERTY (당근부동산) ==============================
 
 function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: PropertyType[]; onCreated: () => void }) {
+  const { t } = useI18n();
   const [listingType, setListingType] = useState<PropertyListingType>('RENT');
   const [propertyType, setPropertyType] = useState(propertyTypes[0]?.id ?? '');
   const [title, setTitle] = useState('');
@@ -14281,7 +14356,7 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -14352,6 +14427,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   onMessageLister: (conversationId: string) => void;
   favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void; listerTrustScore?: number;
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService's
@@ -14399,7 +14475,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       const { url } = await uploadFile(file);
       setOwnershipDocUrl(url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not upload this document.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setUploadingOwnershipDoc(false);
     }
@@ -14415,7 +14491,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       setShowOwnershipForm(false);
       setOwnershipDocUrl('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this document.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmittingOwnership(false);
     }
@@ -14449,7 +14525,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       setOfferAmount('');
       onMessageLister(offer.conversationId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -14463,7 +14539,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       setMarkingTaken(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -14479,7 +14555,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       setEditingPrice(false);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -14494,7 +14570,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       setShowReviewSheet(false);
       setHoodReviews((prev) => [...(prev ?? []), review]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmittingReview(false);
     }
@@ -14677,7 +14753,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
                 onClick={async () => {
                   setBusy(true);
                   try { await removePropertyListing(listing.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not remove this listing.'); }
+                  catch (err) { setError(err instanceof ApiError ? err.message : t('common.actionError')); }
                   finally { setBusy(false); }
                 }}
               >
@@ -14706,13 +14782,14 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
 // Real 당근부동산 property-listing wishlist view (2026-07-22) -- mirrors
 // ListingWishlistView exactly, closing a docs/DESIGN_REFERENCES.md-named gap.
 function PropertyListingWishlistView() {
+  const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoritePropertyListing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyFavoritePropertyListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+    fetchMyFavoritePropertyListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -14722,7 +14799,7 @@ function PropertyListingWishlistView() {
       await removePropertyListingFavorite(propertyListingId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRemovingId(null);
     }
@@ -14759,6 +14836,7 @@ function PropertyListingWishlistView() {
 }
 
 function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
+  const { t } = useI18n();
   // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend PropertyListingRepository's own doc comment.
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'ACQUIRED' | 'NEIGHBORHOOD' | 'WISHLIST' | 'VALUATION'>('BROWSE');
@@ -14803,7 +14881,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
             setNeighborhoodName(null);
             setListings([]);
           } else {
-            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+            setError(err instanceof ApiError ? err.message : t('common.loadError'));
           }
         });
       return;
@@ -14816,7 +14894,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
         : fetchMyPropertyListings();
     fetcher
       .then((result) => { setListings(result.listings); setTrustScores(result.trustScores); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [view, listingTypeFilter, propertyTypeFilter]);
@@ -14828,7 +14906,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
       const conversation = await contactLister(propertyListingId);
       onMessageLister(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not message this lister.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -14984,6 +15062,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
 // lib/realestate.ts's own doc comment. Read-only: enter a location + size, get a real
 // comparable-listings-based estimate, nothing persisted.
 function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[] }) {
+  const { t } = useI18n();
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [propertyType, setPropertyType] = useState('');
@@ -15019,7 +15098,7 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
       if (err instanceof ApiError && err.code === 'INSUFFICIENT_COMPARABLES') {
         setError(err.message);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not estimate a value.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setLoading(false);
@@ -15334,12 +15413,13 @@ function ReportReviewButton({ reviewId }: { reviewId: string }) {
 // (the owner's own dashboard) since that's the only place this app already resolves
 // "my own restaurant id" for an Eats seller.
 function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string }) {
+  const { t } = useI18n();
   const [reviews, setReviews] = useState<EatsReview[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     fetchRestaurantReviews(restaurantId).then(setReviews).catch((err) => {
-      setError(err instanceof ApiError ? err.message : 'Could not load your reviews.');
+      setError(err instanceof ApiError ? err.message : t('common.loadError'));
     });
   };
   useEffect(load, [restaurantId]);
@@ -15359,6 +15439,7 @@ function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string })
 }
 
 function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; onReplied: () => void }) {
+  const { t } = useI18n();
   const [replying, setReplying] = useState(false);
   const [reply, setReply] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -15373,7 +15454,7 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
       setReplying(false);
       onReplied();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit your reply.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -15413,6 +15494,7 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
 }
 
 function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted: () => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [restaurantRating, setRestaurantRating] = useState(0);
   const [restaurantComment, setRestaurantComment] = useState('');
@@ -15443,7 +15525,7 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
       if (err instanceof ApiError && err.code === 'ORDER_ALREADY_REVIEWED') {
         setDone(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setSubmitting(false);
@@ -15505,6 +15587,7 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
 // order has no rider (see ReviewOrderCard's own hasRider comment above), so the
 // caller only renders this for a real DELIVERY order.
 function TipRiderPrompt({ orderId, onTipped }: { orderId: string; onTipped: () => void }) {
+  const { t } = useI18n();
   const [amount, setAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -15519,7 +15602,7 @@ function TipRiderPrompt({ orderId, onTipped }: { orderId: string; onTipped: () =
       await tipEatsOrderRider(orderId, finalAmount);
       onTipped();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not tip your rider.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -15671,6 +15754,7 @@ function MenuView({
 }: {
   restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: EatsOrder) => void; initialCart?: Record<string, number>;
 }) {
+  const { t } = useI18n();
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
@@ -15719,7 +15803,7 @@ function MenuView({
           return next;
         });
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this menu.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [restaurant.merchantId]);
@@ -15775,7 +15859,7 @@ function MenuView({
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not place this order.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setPlacing(false);
@@ -15991,6 +16075,7 @@ function MenuView({
 }
 
 function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSeller }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null; onMessageSeller: (conversationId: string) => void }) {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -16006,7 +16091,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSelle
       const conversation = await contactRestaurant(orderId);
       onMessageSeller(conversation.id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start a conversation with this restaurant.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setMessagingOrderId(null);
     }
@@ -16014,7 +16099,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSelle
 
   const load = () => {
     setError(null);
-    fetchMyEatsOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your orders.'));
+    fetchMyEatsOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -16032,7 +16117,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSelle
       await cancelEatsOrder(orderId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCancellingId(null);
     }
@@ -16143,6 +16228,7 @@ function SearchAndCategoryChips({
 }
 
 function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
+  const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'FAVORITES' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
   // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
@@ -16241,7 +16327,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
     setError(null);
     fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined, buyerLocation?.lat, buyerLocation?.lng, sortMode ?? undefined)
       .then(setRestaurants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [selectedCategory, debouncedSearch, sortMode, buyerLocation]);
@@ -16275,7 +16361,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
       setSelected(restaurant);
       setView('BROWSE');
     } catch (err) {
-      setReorderError(err instanceof ApiError ? err.message : 'Could not reorder.');
+      setReorderError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setReorderingId(null);
     }
@@ -16543,6 +16629,7 @@ function ShareFavoritesModal({
 }
 
 function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: FavoriteRestaurant) => void; onChanged: () => void }) {
+  const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteRestaurant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -16552,7 +16639,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
 
   const load = () => {
     setError(null);
-    fetchMyFavoriteRestaurants().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load favorites.'));
+    fetchMyFavoriteRestaurants().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, []);
@@ -16565,7 +16652,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
       setShared(true);
       setTimeout(() => setShared(false), 3000);
     } catch (err) {
-      setShareError(err instanceof ApiError ? err.message : 'Could not share favorites.');
+      setShareError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -16576,7 +16663,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
       setFavorites((prev) => prev?.filter((f) => f.restaurantId !== restaurantId) ?? prev);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove favorite.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRemovingId(null);
     }
@@ -16631,6 +16718,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
 }
 
 function DeliverView() {
+  const { t } = useI18n();
   const [rider, setRider] = useState<Rider | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
@@ -16646,7 +16734,7 @@ function DeliverView() {
         if (err instanceof ApiError && err.code === 'RIDER_NOT_REGISTERED') {
           setRider(null);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your rider profile.');
+          setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
   };
@@ -16656,7 +16744,7 @@ function DeliverView() {
   const loadDeliveries = () => {
     Promise.all([fetchAvailableDeliveries(), fetchRiderDeliveries()])
       .then(([a, m]) => { setAvailable(a); setMine(m); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load deliveries.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -16673,7 +16761,7 @@ function DeliverView() {
     try {
       setRider(await registerRider());
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not register as a rider.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRegistering(false);
     }
@@ -16684,7 +16772,7 @@ function DeliverView() {
     try {
       setRider(await setRiderAvailability(!rider.available));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your availability.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -16695,7 +16783,7 @@ function DeliverView() {
       await claimDelivery(orderId);
       loadDeliveries();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not claim this delivery.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -16710,7 +16798,7 @@ function DeliverView() {
       await advanceRiderOrder(order.id, next);
       loadDeliveries();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this delivery.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -16811,6 +16899,7 @@ function DeliverView() {
 }
 
 function RestaurantOrdersView() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
@@ -16825,7 +16914,7 @@ function RestaurantOrdersView() {
         if (err instanceof ApiError && err.code === 'RESTAURANT_NOT_FOUND') {
           setOrders([]);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your restaurant orders.');
+          setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
   };
@@ -16845,7 +16934,7 @@ function RestaurantOrdersView() {
       await advanceRestaurantOrder(order.id, next);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -16862,7 +16951,7 @@ function RestaurantOrdersView() {
       await completePickupOrder(order.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this pickup.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -17045,6 +17134,7 @@ function DriverRatingSection({ driverId }: { driverId: string }) {
 // Real Kakao T-style post-trip driver rating (item 213) -- one real review per real
 // trip, rating the driver who completed it. See lib/rideshare.ts's own doc comment.
 function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted: () => void }) {
+  const { t } = useI18n();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17061,7 +17151,7 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
       // Real 409 (RIDE_TRIP_ALREADY_REVIEWED) means this trip was already rated in an
       // earlier session -- hide the prompt rather than surfacing a confusing error.
       if (err instanceof ApiError && err.code === 'RIDE_TRIP_ALREADY_REVIEWED') onSubmitted();
-      else setError(err instanceof ApiError ? err.message : 'Could not submit your rating.');
+      else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -17104,6 +17194,7 @@ const TIP_PRESETS = [500, 1000, 2000];
 // file already needs (tip is a real wallet-to-wallet transfer, gated by
 // DeviceVerificationFilter same as TransferFlow/DelayedTransfersCard).
 function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped: () => void }) {
+  const { t } = useI18n();
   const [amount, setAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -17122,7 +17213,7 @@ function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped: () =>
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not tip your driver.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setSubmitting(false);
@@ -17179,6 +17270,7 @@ function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped: () =>
 // tested list/add/remove implementation (RideTrustedContactService) with zero client
 // callers on any platform. This is bank-mfe's first UI for it.
 function TrustedContactsSection() {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<RideTrustedContact[] | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState('');
@@ -17202,7 +17294,7 @@ function TrustedContactsSection() {
       setShowAdd(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this trusted contact.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -17215,7 +17307,7 @@ function TrustedContactsSection() {
       await removeTrustedContact(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this contact.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -17274,6 +17366,7 @@ function TrustedContactsSection() {
 }
 
 function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) => void }) {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'RIDE' | 'DRIVE'>('RIDE');
 
   // Passenger side
@@ -17310,7 +17403,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   const [tippedTripIds, setTippedTripIds] = useState<Set<string>>(new Set());
 
   const loadMyTrips = () => {
-    fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
+    fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -17355,7 +17448,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       setStops([]);
       loadMyTrips();
     } catch (err) {
-      setRideError(err instanceof ApiError ? err.message : 'Could not request a ride.');
+      setRideError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRequesting(false);
     }
@@ -17367,7 +17460,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       await cancelRideTrip(tripId);
       loadMyTrips();
     } catch (err) {
-      setRideError(err instanceof ApiError ? err.message : 'Could not cancel this trip.');
+      setRideError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyTripId(null);
     }
@@ -17379,7 +17472,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       await shareRideTripStatus(tripId, conversationId);
       setShowShareTripModal(false);
     } catch (err) {
-      setShareTripError(err instanceof ApiError ? err.message : 'Could not share your trip status.');
+      setShareTripError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -17393,7 +17486,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       const sentCount = await sendStatusToTrustedContacts(tripId);
       setSendStatusResult(sentCount > 0 ? `Sent to ${sentCount} trusted contact${sentCount === 1 ? '' : 's'}.` : 'Add a trusted contact first to send your status.');
     } catch (err) {
-      setSendStatusResult(err instanceof ApiError ? err.message : 'Could not send your status.');
+      setSendStatusResult(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSendStatusBusy(false);
     }
@@ -17430,7 +17523,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       })
       .catch((err) => {
         if (err instanceof ApiError && err.code === 'RIDE_DRIVER_NOT_REGISTERED') setDriver(null);
-        else setDriverError(err instanceof ApiError ? err.message : 'Could not load your driver profile.');
+        else setDriverError(err instanceof ApiError ? err.message : t('common.loadError'));
       });
   };
 
@@ -17441,7 +17534,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   const loadDriverTrips = () => {
     Promise.all([fetchAvailableTrips(), fetchMyDriverTrips()])
       .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m); })
-      .catch((err) => setDriverError(err instanceof ApiError ? err.message : 'Could not load trips.'));
+      .catch((err) => setDriverError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -17468,7 +17561,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       setDriver(await setDriverDestination(suggestion.latitude, suggestion.longitude));
       setDestinationAddress(suggestion.displayName);
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not set your destination.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setDestinationBusy(false);
     }
@@ -17481,7 +17574,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       setDriver(await clearDriverDestination());
       setDestinationAddress('');
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not clear your destination.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setDestinationBusy(false);
     }
@@ -17493,7 +17586,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
     try {
       setDriver(await registerAsDriver());
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not register as a driver.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRegisteringDriver(false);
     }
@@ -17510,7 +17603,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
         });
       }
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not update your availability.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -17521,7 +17614,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       await action(tripId);
       loadDriverTrips();
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not update this trip.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyDriverTripId(null);
     }
@@ -17537,7 +17630,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       setStartPinInputs((prev) => { const next = { ...prev }; delete next[tripId]; return next; });
       loadDriverTrips();
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not update this trip.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyDriverTripId(null);
     }
@@ -17561,7 +17654,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       const refreshed = await fetchTripStops(tripId);
       setDriverTripStops((prev) => ({ ...prev, [tripId]: refreshed }));
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not mark this stop arrived.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyDriverTripId(null);
     }
@@ -17945,6 +18038,7 @@ function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip
 // vehicle -- vehicleMake/vehicleModel/vehiclePlate describe that car, purely
 // informational text the driver sees before arriving.
 function DesignatedDriverView() {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'REQUEST' | 'DRIVE'>('REQUEST');
 
   // Customer side
@@ -17959,7 +18053,7 @@ function DesignatedDriverView() {
   const [busyTripId, setBusyTripId] = useState<string | null>(null);
 
   const loadMyTrips = () => {
-    fetchMyDesignatedDriverTrips().then(setMyTrips).catch((err) => setTripError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
+    fetchMyDesignatedDriverTrips().then(setMyTrips).catch((err) => setTripError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -17988,7 +18082,7 @@ function DesignatedDriverView() {
       setVehiclePlate('');
       loadMyTrips();
     } catch (err) {
-      setTripError(err instanceof ApiError ? err.message : 'Could not request a designated driver.');
+      setTripError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRequesting(false);
     }
@@ -18000,7 +18094,7 @@ function DesignatedDriverView() {
       await cancelDesignatedDriverTrip(tripId);
       loadMyTrips();
     } catch (err) {
-      setTripError(err instanceof ApiError ? err.message : 'Could not cancel this trip.');
+      setTripError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyTripId(null);
     }
@@ -18020,7 +18114,7 @@ function DesignatedDriverView() {
       .then(setDriver)
       .catch((err) => {
         if (err instanceof ApiError && err.code === 'DESIGNATED_DRIVER_NOT_REGISTERED') setDriver(null);
-        else setDriverError(err instanceof ApiError ? err.message : 'Could not load your driver profile.');
+        else setDriverError(err instanceof ApiError ? err.message : t('common.loadError'));
       });
   };
 
@@ -18031,7 +18125,7 @@ function DesignatedDriverView() {
   const loadDriverTrips = () => {
     Promise.all([fetchAvailableDesignatedDriverTrips(), fetchMyDesignatedDriverDriverTrips()])
       .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m); })
-      .catch((err) => setDriverError(err instanceof ApiError ? err.message : 'Could not load trips.'));
+      .catch((err) => setDriverError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -18050,7 +18144,7 @@ function DesignatedDriverView() {
       setDriver(await registerAsDesignatedDriver(licenseNumber.trim()));
       setLicenseNumber('');
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not register as a designated driver.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRegisteringDriver(false);
     }
@@ -18067,7 +18161,7 @@ function DesignatedDriverView() {
         });
       }
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not update your availability.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     }
   };
 
@@ -18078,7 +18172,7 @@ function DesignatedDriverView() {
       await action(tripId);
       loadDriverTrips();
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : 'Could not update this trip.');
+      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyDriverTripId(null);
     }
@@ -18265,6 +18359,7 @@ function DesignatedDriverView() {
 // different shape from the trip/rental views above: no location, no booking, just a
 // real question -> competing answers -> asker-adopts-one-best-answer content flow.
 function KnowledgeView() {
+  const { t } = useI18n();
   const [subTab, setSubTab] = useState<'BROWSE' | 'MINE'>('BROWSE');
   const [categories, setCategories] = useState<KnowledgeCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -18283,13 +18378,13 @@ function KnowledgeView() {
     setError(null);
     setQuestions(null);
     if (subTab === 'MINE') {
-      fetchMyKnowledgeQuestions().then(setQuestions).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your questions.'));
+      fetchMyKnowledgeQuestions().then(setQuestions).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
       fetchMyKnowledgeAnswers().then(setMyAnswers).catch(() => {});
       return;
     }
     fetchKnowledgeQuestions(activeCategory ?? undefined)
       .then(setQuestions)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load questions.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [subTab, activeCategory]);
@@ -18381,6 +18476,7 @@ function KnowledgeView() {
 }
 
 function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; categories: KnowledgeCategory[] }) {
+  const { t } = useI18n();
   const [category, setCategory] = useState('');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -18406,7 +18502,7 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
       setCategory(''); setTitle(''); setBody(''); setOpen(false);
       onAsked();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post this question.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -18438,6 +18534,7 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
 }
 
 function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [question, setQuestion] = useState<KnowledgeQuestion | null>(null);
   const [answers, setAnswers] = useState<KnowledgeAnswer[] | null>(null);
   const [answerBody, setAnswerBody] = useState('');
@@ -18448,7 +18545,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
 
   const load = () => {
     setError(null);
-    fetchKnowledgeQuestion(questionId).then(setQuestion).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this question.'));
+    fetchKnowledgeQuestion(questionId).then(setQuestion).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchKnowledgeAnswers(questionId).then(setAnswers).catch(() => {});
   };
 
@@ -18464,7 +18561,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
       setAnswerBody('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post your answer.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setAnswering(false);
     }
@@ -18477,7 +18574,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
       await adoptKnowledgeAnswer(questionId, answerId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not adopt this answer.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyAnswerId(null);
     }
@@ -18574,6 +18671,7 @@ function DineInOrderCard({ order, action }: { order: DineInOrder; action?: React
 }
 
 function DineInRestaurantOrdersView() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<DineInOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
@@ -18585,7 +18683,7 @@ function DineInRestaurantOrdersView() {
         if (err instanceof ApiError && err.code === 'RESTAURANT_NOT_FOUND') {
           setOrders([]);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your dine-in orders.');
+          setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
   };
@@ -18605,7 +18703,7 @@ function DineInRestaurantOrdersView() {
       await advanceDineInOrderStatus(order.id, next);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -18618,7 +18716,7 @@ function DineInRestaurantOrdersView() {
       await cancelDineInOrder(order.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -18667,6 +18765,7 @@ function DineInRestaurantOrdersView() {
 }
 
 function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: DineInOrder) => void }) {
+  const { t } = useI18n();
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, EatsCartLine>>({});
@@ -18680,7 +18779,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   useEffect(() => {
     fetchMenu(restaurant.merchantId)
       .then((r) => setMenu({ businessName: r.merchant.businessName, products: r.products }))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this menu.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [restaurant.merchantId]);
 
   const cartItems = Object.entries(cart).filter(([, line]) => line.quantity > 0);
@@ -18718,7 +18817,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
       const result = await placeDineInOrder(restaurant.merchantId, tableNumber.trim(), items, notes.trim() || undefined);
       onOrderPlaced(result.order);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not place this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setPlacing(false);
     }
@@ -18868,6 +18967,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
 }
 
 function DineInCustomerView() {
+  const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18876,7 +18976,7 @@ function DineInCustomerView() {
   const [orders, setOrders] = useState<DineInOrder[] | null>(null);
 
   useEffect(() => {
-    fetchRestaurants().then(setRestaurants).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
+    fetchRestaurants().then(setRestaurants).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, []);
 
   useEffect(() => {
@@ -18997,6 +19097,7 @@ function EatsView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
 // checkout/payment path OrderFoodView already uses (GroupEatsOrderService.finalizeOrder
 // calls the exact same backend EatsOrderService.placeOrder underneath).
 function GroupOrderView() {
+  const { t } = useI18n();
   const [groupOrderId, setGroupOrderId] = useState<string | null>(null);
   const [detail, setDetail] = useState<GroupEatsOrderDetail | null>(null);
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
@@ -19035,7 +19136,7 @@ function GroupOrderView() {
   }, [detail?.groupOrder.joinCode]);
 
   const refresh = (id: string) => {
-    fetchGroupEatsOrder(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load group order.'));
+    fetchGroupEatsOrder(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   // Real bug found live (2026-08-19, while verifying the share-link fix above): `detail`
@@ -19057,7 +19158,7 @@ function GroupOrderView() {
       const menuResult = await fetchMenu(restaurantId);
       setMenu(menuResult.products);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start a group order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19074,7 +19175,7 @@ function GroupOrderView() {
       const menuResult = await fetchMenu(groupOrder.restaurantId);
       setMenu(menuResult.products);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not join -- check the code.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19112,7 +19213,7 @@ function GroupOrderView() {
       setMenuItemId('');
       setQty(1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add item.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19127,7 +19228,7 @@ function GroupOrderView() {
       setPlacedOrder(result.order);
       refresh(groupOrderId);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not finalize the group order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19143,7 +19244,7 @@ function GroupOrderView() {
       setDetail(null);
       setMyItems([]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel the group order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19291,6 +19392,7 @@ function GroupOrderView() {
 // required, the same real broader guarantee Coupang Wow has over Baemin Club's
 // participating-seller-only free delivery.
 function PlatformMembershipCard() {
+  const { t } = useI18n();
   const [membership, setMembership] = useState<PlatformMembership | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19309,7 +19411,7 @@ function PlatformMembershipCard() {
       await subscribePlatformMembership(days);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not subscribe.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19353,6 +19455,7 @@ function PlatformMembershipCard() {
 // doc comment. First client UI for this backend feature (item 102, found backend-only
 // via a fresh matrix scan for still-open "no client UI yet" notes).
 function EatsMembershipCard() {
+  const { t } = useI18n();
   const [membership, setMembership] = useState<EatsMembership | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19371,7 +19474,7 @@ function EatsMembershipCard() {
       await subscribeMembership(days);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not subscribe to Eats Club.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -19549,6 +19652,7 @@ const JS_DAY_TO_AVAILABILITY_DAY: MerchantAvailabilityWindow['dayOfWeek'][] = [
 ];
 
 function BookingWidget({ merchantId, product }: { merchantId: string; product: CommerceProduct }) {
+  const { t } = useI18n();
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<BookingSlot[] | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
@@ -19582,7 +19686,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
     }
     fetchAvailableSlots(merchantId, product.id, d)
       .then(setSlots)
-      .catch((err) => setSlotsError(err instanceof ApiError ? err.message : 'Could not load available times.'));
+      .catch((err) => setSlotsError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   const book = async (slot: BookingSlot) => {
@@ -19592,7 +19696,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
       await createBooking(merchantId, product.id, date, slot.startTime);
       setRequested(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not request this booking.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRequesting(null);
     }
@@ -19714,6 +19818,7 @@ function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
 // ProductRatingBadge's reviews above: no order/purchase required at all, so this is
 // always visible on a product's detail page, not gated behind having bought it.
 function ProductInquirySection({ productId }: { productId: string }) {
+  const { t } = useI18n();
   const [inquiries, setInquiries] = useState<ProductInquiry[] | null>(null);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
@@ -19735,7 +19840,7 @@ function ProductInquirySection({ productId }: { productId: string }) {
       setQuestion('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit your question.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setAsking(false);
     }
@@ -19784,6 +19889,7 @@ function ProductInquirySection({ productId }: { productId: string }) {
 }
 
 function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -19806,7 +19912,7 @@ function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
       if (err instanceof ApiError && err.code === 'PRODUCT_ALREADY_REVIEWED') {
         setDone(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setSubmitting(false);
@@ -19872,6 +19978,7 @@ function OrderItemReviews({ order }: { order: CommerceOrder }) {
 // real-errors with an honest message, same discipline as every other time-gated action
 // in this app).
 function ReturnExchangeAction({ orderId }: { orderId: string }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<OrderReturnType>('RETURN');
   const [reasonCode, setReasonCode] = useState<string>(ORDER_RETURN_REASON_CODES[0]);
@@ -19889,7 +19996,7 @@ function ReturnExchangeAction({ orderId }: { orderId: string }) {
       setResult(req);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit this request.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -19969,6 +20076,7 @@ function MyReturnRequestsView() {
 }
 
 function MerchantReturnQueueView() {
+  const { t } = useI18n();
   const [requests, setRequests] = useState<OrderReturnRequestDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -19980,7 +20088,7 @@ function MerchantReturnQueueView() {
         if (err instanceof ApiError && err.code === 'MERCHANT_NOT_FOUND') {
           setRequests([]);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load return requests.');
+          setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
   };
@@ -19998,7 +20106,7 @@ function MerchantReturnQueueView() {
       await decideOrderReturn(id, approve);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not decide this request.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyId(null);
     }
@@ -20049,6 +20157,7 @@ function MerchantReturnQueueView() {
 // GiftVoucherService.redeemVoucher's own doc comment for why this must be
 // merchant-authenticated rather than recipient self-serve.
 function MerchantRedeemVoucherCard() {
+  const { t } = useI18n();
   const [voucherId, setVoucherId] = useState('');
   const [redeemed, setRedeemed] = useState<GiftVoucher | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20066,7 +20175,7 @@ function MerchantRedeemVoucherCard() {
       setRedeemed(voucher);
       setVoucherId('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not redeem this voucher.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -20473,6 +20582,7 @@ function ProductCatalogView({
   onViewCart: () => void;
   onOpenProduct: (product: CommerceProduct) => void;
 }) {
+  const { t } = useI18n();
   const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
@@ -20486,7 +20596,7 @@ function ProductCatalogView({
     setError(null);
     fetchMerchantProducts(merchant.merchantId)
       .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products }))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this catalog.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchMyFavoriteProducts()
       .then((favorites) => setFavoritedIds(new Set(favorites.map((f) => f.productId))))
       .catch(() => {
@@ -20557,7 +20667,7 @@ function ProductCatalogView({
       await navigator.clipboard.writeText(url).catch(() => {});
       setShareNotice('Link copied — earn 3% on any purchase through it.');
     } catch (err) {
-      setShareNotice(err instanceof ApiError ? err.message : 'Could not create a share link.');
+      setShareNotice(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSharingId(null);
       setTimeout(() => setShareNotice(null), 4000);
@@ -20686,6 +20796,7 @@ function ProductCatalogView({
 // own doc comment. One real active subscription per plan; cancelling stops future
 // charges but doesn't refund the current cycle already paid for.
 function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBillingPlan; subscription?: MerchantBillingSubscription; onChanged: () => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20696,7 +20807,7 @@ function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBilli
       await subscribeToBillingPlan(plan.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not subscribe to this plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -20710,7 +20821,7 @@ function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBilli
       await cancelBillingSubscription(subscription.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this subscription.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -20761,6 +20872,7 @@ function MultiCartView({
   onSetQty: (merchantId: string, productId: string, quantity: number) => void;
   onCheckedOut: (results: CommerceCheckoutResult[]) => void;
 }) {
+  const { t } = useI18n();
   const [address, setAddress] = useState('');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20812,7 +20924,7 @@ function MultiCartView({
           setPlacing(false);
           return;
         }
-        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : 'Could not place this order.' });
+        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : t('common.actionError') });
       }
     }
     setPlacing(false);
@@ -20904,13 +21016,14 @@ function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutRe
 }
 
 function MyCommerceOrdersView() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your orders.'));
+    fetchMyOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -20926,7 +21039,7 @@ function MyCommerceOrdersView() {
       await cancelOrder(orderId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setCancellingId(null);
     }
@@ -20968,6 +21081,7 @@ function MyCommerceOrdersView() {
 }
 
 function MerchantOrdersView() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
@@ -20981,7 +21095,7 @@ function MerchantOrdersView() {
         if (err instanceof ApiError && err.code === 'MERCHANT_NOT_FOUND') {
           setOrders([]);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your store orders.');
+          setError(err instanceof ApiError ? err.message : t('common.loadError'));
         }
       });
   };
@@ -21001,7 +21115,7 @@ function MerchantOrdersView() {
       await advanceOrderStatus(order.id, next);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -21042,13 +21156,14 @@ function MerchantOrdersView() {
 // tapping one opens that merchant's real catalog (same "prove once, reuse the existing
 // screen" shape as everywhere else in this file).
 function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingMerchant) => void }) {
+  const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteProduct[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyFavoriteProducts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+    fetchMyFavoriteProducts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -21058,7 +21173,7 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
       await removeProductFavorite(productId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRemovingId(null);
     }
@@ -21116,6 +21231,7 @@ function formatDealCountdown(endsAt: string): string {
 }
 
 function ShopView() {
+  const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
@@ -21192,7 +21308,7 @@ function ShopView() {
       setMissionFeedback(`+${result.amountEarned.toLocaleString()} RWF`);
       loadMissions();
     } catch (err) {
-      setMissionFeedback(err instanceof ApiError ? err.message : "Couldn't reach itunda. Try again.");
+      setMissionFeedback(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setMissionBusyType(null);
     }
@@ -21220,7 +21336,7 @@ function ShopView() {
     setError(null);
     fetchShoppingCatalog(selectedCategory ?? undefined, debouncedMerchantSearch || undefined)
       .then(setMerchants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load merchants.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(() => {
@@ -21703,6 +21819,7 @@ function ShopView() {
 // Real device management (2026-07-20) -- the same self-service "your devices" control
 // Toss's own security settings page offers. See lib/device.ts's own doc comment.
 function DevicesView() {
+  const { t } = useI18n();
   const [devices, setDevices] = useState<TrustedDevice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -21710,7 +21827,7 @@ function DevicesView() {
 
   const load = () => {
     setError(null);
-    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your devices.'));
+    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -21721,7 +21838,7 @@ function DevicesView() {
       await revokeDevice(deviceId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this device.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setRevokingId(null);
     }
@@ -21775,6 +21892,7 @@ function DevicesView() {
 // are enforced), the same honest "demo the part that can be real" convention
 // DemoCardAuthorizationService already established for the merchant-side equivalent.
 function CardView() {
+  const { t } = useI18n();
   const [card, setCard] = useState<Card | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<CardTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -21808,7 +21926,7 @@ function CardView() {
           setCard(null);
           return;
         }
-        setError(err instanceof ApiError ? err.message : 'Could not load your card.');
+        setError(err instanceof ApiError ? err.message : t('common.loadError'));
       });
     fetchCardTransactions().then((r) => setTransactions(r.transactions)).catch(() => {});
     fetchCreditScore()
@@ -21827,7 +21945,7 @@ function CardView() {
       await issueCard();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not issue a card.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -21841,7 +21959,7 @@ function CardView() {
       const updated = card.frozen ? await unfreezeCard() : await freezeCard();
       setCard(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your card.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -21854,7 +21972,7 @@ function CardView() {
       const updated = await setCardLimits(Number(dailyLimitInput), Number(monthlyLimitInput));
       setCard(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your limits.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -21873,7 +21991,7 @@ function CardView() {
       setChargeAmount('');
       load();
     } catch (err) {
-      setChargeError(err instanceof ApiError ? err.message : 'Could not complete this purchase.');
+      setChargeError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22011,6 +22129,7 @@ function CardView() {
 // and iOS never did). Every real P2P transfer rounds up to the chosen increment and
 // deposits the spare change into the chosen goal.
 function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<RoundUpSettings | null | undefined>(undefined);
   const [increment, setIncrement] = useState<number>(100);
   const [goalId, setGoalId] = useState('');
@@ -22035,7 +22154,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
       const updated = await setRoundUpSettings(enabled, increment, enabled ? goalId : (settings?.targetGoalId ?? null));
       setSettings(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update round-up settings.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22091,6 +22210,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
 }
 
 function InterestJarCard() {
+  const { t } = useI18n();
   const [jar, setJar] = useState<InterestJar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
@@ -22099,7 +22219,7 @@ function InterestJarCard() {
 
   const load = () => {
     setError(null);
-    fetchInterestJar().then(setJar).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your Safe Box.'));
+    fetchInterestJar().then(setJar).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -22116,7 +22236,7 @@ function InterestJarCard() {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not claim interest.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setClaiming(false);
@@ -22211,6 +22331,7 @@ function DepositProtectionCard() {
 }
 
 function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => void }) {
+  const { t } = useI18n();
   const [depositing, setDepositing] = useState(false);
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22232,7 +22353,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not deposit.');
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }
     } finally {
       setBusy(false);
@@ -22304,6 +22425,7 @@ type CreateGoalStep = 'closed' | 'name' | 'amount' | 'plan';
 const GOAL_STEP_LABELS = ['Name', 'Amount', 'Auto-save'];
 
 function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [step, setStep] = useState<CreateGoalStep>('closed');
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -22341,7 +22463,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
       reset();
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create goal.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22416,6 +22538,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
 // job is just to reflect that honestly (buttons the caller can't actually use are
 // hidden, not disabled-with-no-explanation).
 function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<GroupAccountDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
@@ -22441,7 +22564,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
 
   const load = () => {
     setError(null);
-    fetchGroupAccount(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group account.'));
+    fetchGroupAccount(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     loadDues();
   };
   useEffect(load, []);
@@ -22455,7 +22578,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       setDuesAmountInput('');
       loadDues();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set the dues amount.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setDuesBusy(false);
     }
@@ -22468,7 +22591,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       await setGroupAccountDuesAmount(id, null);
       loadDues();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not clear the dues amount.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setDuesBusy(false);
     }
@@ -22482,7 +22605,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       const count = await requestUnpaidGroupAccountDues(id);
       setRemindedCount(count);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send reminders.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setDuesBusy(false);
     }
@@ -22502,7 +22625,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleDeposit;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not deposit.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22520,7 +22643,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleWithdraw;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not withdraw.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22535,7 +22658,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       setPhoneNumber('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not invite this member.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22667,6 +22790,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
 }
 
 function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -22694,7 +22818,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this group account.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22716,13 +22840,14 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
 }
 
 function GroupAccountsSection() {
+  const { t } = useI18n();
   const [accounts, setAccounts] = useState<GroupAccount[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyGroupAccounts().then(setAccounts).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your group accounts.'));
+    fetchMyGroupAccounts().then(setAccounts).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -22766,13 +22891,14 @@ function GroupAccountsSection() {
 // currently-live Rwandan financial practice, sibling to GroupAccountsSection above but
 // structurally distinct (a rotating payout recipient, not one permanent owner).
 function IkiminaSection() {
+  const { t } = useI18n();
   const [ikiminas, setIkiminas] = useState<Ikimina[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyIkiminas().then(setIkiminas).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your ikimina groups.'));
+    fetchMyIkiminas().then(setIkiminas).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -22826,6 +22952,7 @@ type CreateIkiminaStep = 'closed' | 'name' | 'contribution' | 'frequency' | 'mem
 const IKIMINA_STEP_LABELS = ['Name', 'Contribution', 'Frequency', 'Members'];
 
 function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [step, setStep] = useState<CreateIkiminaStep>('closed');
   const [name, setName] = useState('');
   const [contributionAmount, setContributionAmount] = useState('');
@@ -22863,7 +22990,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
       reset();
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this ikimina.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -22955,6 +23082,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
 }
 
 function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<IkiminaDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -22964,7 +23092,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 
   const load = () => {
     setError(null);
-    fetchIkimina(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this ikimina.'));
+    fetchIkimina(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -22994,7 +23122,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       setPhoneNumber('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not invite this member.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23007,7 +23135,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       await startIkiminaCycle(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start this cycle.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23027,7 +23155,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       }
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not contribute.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23042,7 +23170,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       setPayoutMessage(`${result.amount.toLocaleString()} RWF paid out for round ${result.ikimina.currentRound - 1}.`);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not trigger the payout yet.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23126,6 +23254,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 // from Toss/Kakao/Naver/Coupang) but a genuinely distinct mechanic: real shares +
 // periodic real dividends, not a rotating pot.
 function SaccoSection() {
+  const { t } = useI18n();
   const [shareholding, setShareholding] = useState<SaccoShareholding | null | undefined>(undefined);
   const [currentValue, setCurrentValue] = useState<number | null>(null);
   const [dividends, setDividends] = useState<SaccoDividendPayout[] | null>(null);
@@ -23137,7 +23266,7 @@ function SaccoSection() {
     setError(null);
     fetchMySaccoShareholding()
       .then((r) => { setShareholding(r.shareholding); setCurrentValue(r.currentValue); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your SACCO shares.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchMySaccoDividendHistory().then(setDividends).catch(() => setDividends([]));
   };
   useEffect(load, []);
@@ -23152,7 +23281,7 @@ function SaccoSection() {
       setAmount('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not buy shares.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23168,7 +23297,7 @@ function SaccoSection() {
       setAmount('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not redeem shares.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23234,6 +23363,7 @@ function escalationLabel(rate: number): string {
 }
 
 function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<WeeklySavingsPlanDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23247,7 +23377,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
   const load = () => {
     setError(null);
-    fetchWeeklySavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this plan.'));
+    fetchWeeklySavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -23267,7 +23397,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleCancel;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23285,7 +23415,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleWithdraw;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not withdraw this plan.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23405,6 +23535,7 @@ type CreateWeeklySavingsPlanStep = 'closed' | 'name' | 'amount' | 'escalation';
 const WEEKLY_SAVINGS_STEP_LABELS = ['Name', 'Amount', 'Escalation'];
 
 function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [step, setStep] = useState<CreateWeeklySavingsPlanStep>('closed');
   const [name, setName] = useState('');
   const [baseWeeklyAmount, setBaseWeeklyAmount] = useState('');
@@ -23440,7 +23571,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       reset();
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23518,13 +23649,14 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
 }
 
 function WeeklySavingsSection() {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<WeeklySavingsPlan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchWeeklySavingsPlans().then(setPlans).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your 26-week savings plans.'));
+    fetchWeeklySavingsPlans().then(setPlans).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -23578,6 +23710,7 @@ function WeeklySavingsSection() {
 // lib/grow31Savings.ts's own doc comment. Distinct from WeeklySavings above: a deposit
 // is an explicit daily user action ("Save today"), not a scheduled auto-debit.
 function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const { t } = useI18n();
   const [detail, setDetail] = useState<Grow31SavingsPlanDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23591,7 +23724,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
   const load = () => {
     setError(null);
-    fetchGrow31SavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this plan.'));
+    fetchGrow31SavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -23607,7 +23740,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleDeposit;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not save today.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23626,7 +23759,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleCancel;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23644,7 +23777,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = handleWithdraw;
         setNeedsDeviceVerification(true);
-      } else setError(err instanceof ApiError ? err.message : 'Could not withdraw this plan.');
+      } else setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23761,6 +23894,7 @@ type CreateGrow31Step = 'closed' | 'name' | 'amount';
 const GROW31_STEP_LABELS = ['Name', 'Daily amount'];
 
 function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [step, setStep] = useState<CreateGrow31Step>('closed');
   const [name, setName] = useState('');
   const [dailyAmount, setDailyAmount] = useState('');
@@ -23794,7 +23928,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       reset();
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -23843,13 +23977,14 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
 }
 
 function Grow31SavingsSection() {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<Grow31SavingsPlan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchGrow31SavingsPlans().then(setPlans).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your 31-day savings plans.'));
+    fetchGrow31SavingsPlans().then(setPlans).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -23904,12 +24039,13 @@ function Grow31SavingsSection() {
 // module where opening pays real, immediately-spendable interest -- distinct from every
 // accrue-then-claim product above (InterestJar/RoundUp/goals/weekly savings).
 function UpfrontDepositSection() {
+  const { t } = useI18n();
   const [deposits, setDeposits] = useState<UpfrontInterestDeposit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyUpfrontDeposits().then(setDeposits).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your 12-month deposits.'));
+    fetchMyUpfrontDeposits().then(setDeposits).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 
@@ -23934,6 +24070,7 @@ function UpfrontDepositSection() {
 }
 
 function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
+  const { t } = useI18n();
   const [principal, setPrincipal] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -23947,7 +24084,7 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
       setPrincipal('');
       onOpened();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open this deposit.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setSubmitting(false);
     }
@@ -23977,6 +24114,7 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
 }
 
 function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDeposit; onChanged: () => void }) {
+  const { t } = useI18n();
   const [withdrawing, setWithdrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const matured = deposit.status === 'MATURED';
@@ -23988,7 +24126,7 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
       await withdrawUpfrontDeposit(deposit.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not withdraw this deposit.');
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setWithdrawing(false);
     }
@@ -24014,12 +24152,13 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
 }
 
 function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void; onNavigateToTab?: (tab: Tab) => void; onNavigateToLoansMode?: (mode: LoansMode) => void; onNavigateToSavingsTarget?: (target: 'sacco' | 'ikimina') => void } = {}) {
+  const { t } = useI18n();
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchGoals().then(setGoals).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your goals.'));
+    fetchGoals().then(setGoals).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
 

@@ -267,7 +267,9 @@ export type TranslationKey =
   | 'autoTopUp.turnOn'
   | 'autoTopUp.checking'
   | 'autoTopUp.checkNow'
-  | 'autoTopUp.checkError';
+  | 'autoTopUp.checkError'
+  | 'common.loadError'
+  | 'common.actionError';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -472,6 +474,17 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'autoTopUp.checking': 'Checking…',
     'autoTopUp.checkNow': 'Check now',
     'autoTopUp.checkError': 'Could not check auto top-up.',
+    // Real shared error-copy system (Toss's own "네비게이팅 에러"/identical-phrasing
+    // standardization principle, toss.tech/article/introducing-toss-error-message-system)
+    // -- see docs/DESIGN_REFERENCES.md's own account. These two replace ~279 distinct,
+    // never-translated, one-off hardcoded English fallback strings across
+    // BankDashboard.tsx's `err instanceof ApiError ? err.message : '...'` sites: the real
+    // backend message is always tried FIRST, this only fires when the backend gave
+    // nothing parseable at all (a genuine connectivity/parse failure), so a specific
+    // per-screen fallback was never more informative than this -- matching the identical
+    // real copy Android's own `SessionManager.kt` IOException fallback already uses.
+    'common.loadError': "Couldn't load this. Check your connection and try again.",
+    'common.actionError': "That couldn't be completed. Check your connection and try again.",
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -675,6 +688,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'autoTopUp.checking': 'Kugenzura…',
     'autoTopUp.checkNow': 'Genzura nonaha',
     'autoTopUp.checkError': 'Ntibishoboka kugenzura kwongera amafaranga byikoresha.',
+    'common.loadError': 'Ntibishoboka kubona ibi. Reba interineti yawe hanyuma wongere ugerageze.',
+    'common.actionError': 'Ibi ntibyashobotse gukorwa. Reba interineti yawe hanyuma wongere ugerageze.',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -878,5 +893,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'autoTopUp.checking': 'Vérification en cours…',
     'autoTopUp.checkNow': 'Vérifier maintenant',
     'autoTopUp.checkError': 'Impossible de vérifier la recharge automatique.',
+    'common.loadError': 'Impossible de charger ceci. Vérifiez votre connexion et réessayez.',
+    'common.actionError': "Cette action n'a pas pu être effectuée. Vérifiez votre connexion et réessayez.",
   },
 };
