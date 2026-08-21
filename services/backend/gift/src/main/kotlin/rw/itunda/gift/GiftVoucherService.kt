@@ -63,6 +63,7 @@ class GiftVoucherService(
     private val messagingService: MessagingService,
     private val rateLimiter: RateLimiter,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of the published range, charged at
@@ -102,8 +103,24 @@ class GiftVoucherService(
             trimmedAmount to null
         }
 
-        val purchaserAccount = accountRepository.findByUserIdAndType(purchaserUserId, AccountType.MAIN)
-            ?: throw GiftVoucherNoAccountException("No account found for this account")
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see MerchantService
+        // .collect()'s own doc comment. Purchasing a gift voucher is real merchant
+        // collection (the purchaser is effectively pre-paying a merchant, held in
+        // escrow until redemption), same as QR/code payment -- draws from the
+        // purchaser's itunda Pay money, auto-topped from Bank (then an external linked
+        // account) if short.
+        var purchaserAccount = accountRepository.findByUserIdAndType(purchaserUserId, AccountType.PAY)
+            ?: throw GiftVoucherNoAccountException("No itunda Pay money found for this account")
+        if (purchaserAccount.availableBalance < amount) {
+            val shortfall = amount.subtract(purchaserAccount.availableBalance)
+            var topUpResult = autoTopUpService.topUpPayFromMain(purchaserUserId, purchaserAccount.id, shortfall)
+            if (!topUpResult.triggered) {
+                topUpResult = autoTopUpService.topUpShortfall(purchaserUserId, purchaserAccount.id, shortfall)
+            }
+            if (topUpResult.triggered) {
+                purchaserAccount = accountRepository.findById(purchaserAccount.id).orElse(purchaserAccount)
+            }
+        }
         if (purchaserAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this gift voucher")
         }
@@ -273,7 +290,10 @@ class GiftVoucherService(
     @Transactional
     fun expireVoucher(voucher: GiftVoucher) {
         if (voucher.status != GiftVoucherStatus.ACTIVE) return
-        val purchaserAccount = accountRepository.findByUserIdAndType(voucher.purchaserId, AccountType.MAIN) ?: return
+        // Refunds back to the same real itunda Pay account the voucher was purchased
+        // from (see purchaseVoucher's own doc comment) -- a refund, so no auto-topup
+        // applies.
+        val purchaserAccount = accountRepository.findByUserIdAndType(voucher.purchaserId, AccountType.PAY) ?: return
 
         val refundAmount = voucher.amount.multiply(GiftVoucher.EXPIRY_REFUND_RATE).setScale(2, RoundingMode.HALF_UP)
         val forfeitedAmount = voucher.amount.subtract(refundAmount)

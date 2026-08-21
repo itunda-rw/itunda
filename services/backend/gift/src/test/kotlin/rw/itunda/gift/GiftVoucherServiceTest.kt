@@ -56,9 +56,11 @@ class GiftVoucherServiceTest : BehaviorSpec({
         messagingService: MessagingService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
+        autoTopUpService: rw.itunda.account.AutoTopUpService = mockk(relaxed = true),
     ) = GiftVoucherService(
         giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository,
         userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine,
+        autoTopUpService,
     )
 
     Given("a real purchaser buying a real product-tied gift voucher for a real recipient") {
@@ -82,7 +84,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
         every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
         every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
-        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "10000")
+        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.PAY) } returns account("account_purchaser", "user_purchaser", "10000")
         every { messagingService.startOrGetConversation("user_purchaser", "user_recipient") } returns conversation
         every { messagingService.sendMessage(any(), any(), any()) } returns message
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -102,7 +104,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
         }
 
         When("the purchaser doesn't have enough balance") {
-            every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "100")
+            every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.PAY) } returns account("account_purchaser", "user_purchaser", "100")
 
             Then("it throws InsufficientFundsException before ever moving real money") {
                 try {
@@ -111,6 +113,28 @@ class GiftVoucherServiceTest : BehaviorSpec({
                 } catch (e: InsufficientFundsException) {
                     // expected
                 }
+            }
+        }
+
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- purchasing a gift voucher
+        // is real merchant collection, same as MerchantService.collect()'s own QR path,
+        // so it gets the same auto-topup-from-Bank-if-short treatment.
+        When("the purchaser's itunda Pay money is short but auto top-up from Bank covers it") {
+            val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+            val svcWithTopUp = service(giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService, autoTopUpService = autoTopUpService)
+            val shortAccount = account("account_purchaser", "user_purchaser", "1000")
+            val toppedUpAccount = account("account_purchaser", "user_purchaser", "10000")
+            every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.PAY) } returns shortAccount
+            every { accountRepository.findById("account_purchaser") } returns Optional.of(toppedUpAccount)
+            every { autoTopUpService.topUpPayFromMain("user_purchaser", "account_purchaser", BigDecimal("2000")) } returns
+                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 2000 RWF from itunda Bank")
+
+            val voucher = svcWithTopUp.purchaseVoucher("user_purchaser", "+250788000002", "merchant_1", "product_1", null)
+
+            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the purchase") {
+                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("user_purchaser", "account_purchaser", BigDecimal("2000")) }
+                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+                voucher.status shouldBe GiftVoucherStatus.ACTIVE
             }
         }
 
@@ -160,7 +184,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
 
         every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "10000")
+        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.PAY) } returns account("account_purchaser", "user_purchaser", "10000")
         every { messagingService.startOrGetConversation("user_purchaser", "user_recipient") } returns conversation
         every { messagingService.sendMessage(any(), any(), any()) } returns message
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -353,7 +377,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
             conversationId = "conversation_1", messageId = "message_1", merchantId = "merchant_1",
             amount = BigDecimal("1000"), holdTransactionId = "ledgertxn_1", expiresAt = Instant.now().minus(1, ChronoUnit.DAYS),
         )
-        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "0")
+        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.PAY) } returns account("account_purchaser", "user_purchaser", "0")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("refundtxn_1", emptyList())
         every { giftVoucherRepository.save(any()) } answers { firstArg() }
