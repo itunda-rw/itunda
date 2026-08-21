@@ -59,10 +59,11 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
         transactionRepository: TransactionRepository = mockk(relaxed = true),
         bookingDepositRepository: BookingDepositRepository = mockk(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
+        autoTopUpService: rw.itunda.account.AutoTopUpService = mockk(relaxed = true),
     ) = MerchantBookingService(
         merchantRepository, merchantProductRepository, availabilityWindowRepository, merchantBookingRepository,
         notificationRepository, accountRepository, ledgerService, transactionRepository, bookingDepositRepository,
-        pushNotificationService,
+        pushNotificationService, autoTopUpService,
     )
 
     Given("real overdue CONFIRMED bookings the poll must sweep, one with a real held deposit") {

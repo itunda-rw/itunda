@@ -111,8 +111,13 @@ class MerchantBillingService(
         val merchant = merchantRepository.findById(plan.merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         if (merchant.ownerUserId == customerId) throw SelfSubscriptionException("Cannot subscribe to your own billing plan")
 
-        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
-            ?: throw BillingNoAccountException("No account found for this account")
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see MerchantService
+        // .collect()'s own doc comment. A recurring subscription charge is real
+        // merchant collection, same as QR/code payment -- draws from the customer's
+        // itunda Pay money, auto-topped from Bank at charge time by
+        // MerchantBillingChargeExecutor.execute, not directly from Bank.
+        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.PAY)
+            ?: throw BillingNoAccountException("No itunda Pay money found for this account")
         val merchantAccount = accountRepository.findById(merchant.accountId).orElse(null)
             ?: throw BillingNoAccountException("Merchant account not found")
 
@@ -165,7 +170,7 @@ class MerchantBillingService(
             return false
         }
         val merchant = merchantRepository.findById(subscription.merchantId).orElse(null)
-        val customerAccount = accountRepository.findByUserIdAndType(subscription.customerId, AccountType.MAIN)
+        val customerAccount = accountRepository.findByUserIdAndType(subscription.customerId, AccountType.PAY)
         val merchantAccount = merchant?.let { accountRepository.findById(it.accountId).orElse(null) }
 
         val succeeded = if (merchant == null || customerAccount == null || merchantAccount == null) {

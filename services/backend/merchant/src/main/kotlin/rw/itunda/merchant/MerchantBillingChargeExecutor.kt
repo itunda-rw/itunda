@@ -18,6 +18,7 @@ import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
@@ -47,6 +48,8 @@ class MerchantBillingChargeExecutor(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val accountRepository: AccountRepository,
+    private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingChargeExecutor::class.java)
 
@@ -64,12 +67,31 @@ class MerchantBillingChargeExecutor(
      */
     @Transactional
     fun execute(subscription: MerchantBillingSubscription, plan: MerchantBillingPlan, merchant: Merchant, customerAccount: Account, merchantAccount: Account) {
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see MerchantService
+        // .collect()'s own doc comment for the full sourced architecture. A recurring
+        // subscription charge is the same real merchant-collection moment collect()
+        // handles for QR payments, so it gets the identical treatment: auto-fund the
+        // shortfall from itunda Bank (then an external linked account) before falling
+        // through to a real, honest InsufficientFundsException. `customerAccount` is
+        // already resolved to the customer's PAY account by both real callers
+        // (MerchantBillingService.subscribe/chargeOne).
+        var resolvedCustomerAccount = customerAccount
+        if (resolvedCustomerAccount.availableBalance < plan.amount) {
+            val shortfall = plan.amount.subtract(resolvedCustomerAccount.availableBalance)
+            var topUpResult = autoTopUpService.topUpPayFromMain(subscription.customerId, resolvedCustomerAccount.id, shortfall)
+            if (!topUpResult.triggered) {
+                topUpResult = autoTopUpService.topUpShortfall(subscription.customerId, resolvedCustomerAccount.id, shortfall)
+            }
+            if (topUpResult.triggered) {
+                resolvedCustomerAccount = accountRepository.findById(resolvedCustomerAccount.id).orElse(resolvedCustomerAccount)
+            }
+        }
         val fee = plan.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = plan.amount.subtract(fee)
         val result = ledgerService.postLedgerTransaction(
-            customerAccount.currency,
+            resolvedCustomerAccount.currency,
             listOf(
-                LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.amount, "Subscription charge - ${plan.name}"),
+                LedgerLeg(resolvedCustomerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.amount, "Subscription charge - ${plan.name}"),
                 LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Subscription collection - ${plan.name}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Subscription fee - ${plan.name}"),
             ),
@@ -79,8 +101,8 @@ class MerchantBillingChargeExecutor(
                 id = result.transactionId,
                 referenceNumber = "BILLING${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = subscription.customerId, recipientId = merchant.ownerUserId,
-                fromAccountId = customerAccount.id, toAccountId = merchantAccount.id,
-                amount = plan.amount, fee = fee, currency = customerAccount.currency,
+                fromAccountId = resolvedCustomerAccount.id, toAccountId = merchantAccount.id,
+                amount = plan.amount, fee = fee, currency = resolvedCustomerAccount.currency,
                 type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
                 description = "Subscription charge - ${plan.name}", channel = "MERCHANT_BILLING",
                 completedAt = Instant.now(),

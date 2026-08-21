@@ -45,10 +45,11 @@ class MerchantBookingServiceSlotsTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val bookingDepositRepository = mockk<BookingDepositRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
             merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
-            transactionRepository, bookingDepositRepository, pushNotificationService,
+            transactionRepository, bookingDepositRepository, pushNotificationService, autoTopUpService,
         )
 
         val service30Min = MerchantProduct(

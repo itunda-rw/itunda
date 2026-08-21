@@ -73,6 +73,7 @@ class MerchantBookingService(
     private val transactionRepository: TransactionRepository,
     private val bookingDepositRepository: BookingDepositRepository,
     private val pushNotificationService: PushNotificationService,
+    private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     companion object {
         // Same real fee rate MerchantService.feeRate/MarketplaceService.ESCROW_FEE_RATE
@@ -197,8 +198,23 @@ class MerchantBookingService(
     }
 
     private fun holdDeposit(booking: MerchantBooking, merchant: Merchant, amount: BigDecimal, customerId: String) {
-        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
-            ?: throw MerchantNoAccountException("No account found for this account")
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see MerchantService
+        // .collect()'s own doc comment. A booking deposit is real merchant collection
+        // (held, then paid out or refunded), same as QR/code payment -- draws from the
+        // customer's itunda Pay money, auto-topped from Bank (then an external linked
+        // account) if short.
+        var customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.PAY)
+            ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
+        if (customerAccount.availableBalance < amount) {
+            val shortfall = amount.subtract(customerAccount.availableBalance)
+            var topUpResult = autoTopUpService.topUpPayFromMain(customerId, customerAccount.id, shortfall)
+            if (!topUpResult.triggered) {
+                topUpResult = autoTopUpService.topUpShortfall(customerId, customerAccount.id, shortfall)
+            }
+            if (topUpResult.triggered) {
+                customerAccount = accountRepository.findById(customerAccount.id).orElse(customerAccount)
+            }
+        }
         val merchantAccount = accountRepository.findById(merchant.accountId)
             .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
         val fee = amount.multiply(DEPOSIT_FEE_RATE).setScale(2, RoundingMode.HALF_UP)
@@ -268,8 +284,10 @@ class MerchantBookingService(
     private fun refundDeposit(booking: MerchantBooking) {
         val deposit = bookingDepositRepository.findByBookingIdForUpdate(booking.id) ?: return
         if (deposit.status != BookingDepositStatus.HELD) return
-        val customerAccount = accountRepository.findByUserIdAndType(deposit.customerId, AccountType.MAIN)
-            ?: throw MerchantNoAccountException("No account found for this account")
+        // Refunds back to the same real itunda Pay account the deposit was held from
+        // (see holdDeposit's own doc comment) -- a refund, so no auto-topup applies.
+        val customerAccount = accountRepository.findByUserIdAndType(deposit.customerId, AccountType.PAY)
+            ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
         val result = ledgerService.postLedgerTransaction(
             customerAccount.currency,
             listOf(
