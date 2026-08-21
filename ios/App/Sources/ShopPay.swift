@@ -91,7 +91,7 @@ struct FacePaySettingsCard: View {
                     Text(error).font(.caption).foregroundColor(.red)
                 }
             }
-            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            .padding(.vertical, 8)
         }
     }
 

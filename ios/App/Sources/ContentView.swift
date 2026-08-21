@@ -260,7 +260,7 @@ struct ContentView: View {
             // HoodScreen's own Picker -- a tab bar inside a tab, noise a flat catalog
             // shouldn't have -- so each is flat instead; see HoodSectionScreen's own
             // doc comment (HoodScreen.swift) for the fuller account.
-            PayScreen()
+            PayScreen(onSwitchToYou: { selectedTab = 4 })
                 .tabItem {
                     Image(systemName: "creditcard.fill")
                     Text("Pay")
@@ -528,21 +528,9 @@ struct HomeTabContent: View {
     }
 }
 
-struct PayScreen: View {
-    @State private var paymentResult: CollectPaymentResultDto?
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HeaderTitle(title: "Itunda Pay")
-                PayAMerchantSection(paymentResult: $paymentResult)
-                    .padding(.horizontal, 20)
-            }
-            .padding(.top, 24)
-        }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
-    }
-}
+// Real Toss Pay home reference (4 screenshots, 2026-08-22) -- PayScreen itself moved to
+// PayHomeExtras.swift (file-size-lint: this file was already over its baseline before
+// this change) alongside RewardsPreviewSection, which it uses directly.
 
 // EntireMenuScreen (the "All" tab) also moved to BenefitsShopAllScreens.swift
 // (2026-07-11) -- same reason as the comment above.

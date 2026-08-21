@@ -3741,6 +3741,22 @@ public struct FacePayEnrollmentDto: Decodable {
 public struct FacePayEnrollmentResponse: Decodable { public let success: Bool; public let enrollment: FacePayEnrollmentDto }
 public struct FacePayStatusResponse: Decodable { public let success: Bool; public let enrolled: Bool; public let enrollment: FacePayEnrollmentDto? }
 
+// Real RewardsService task list -- mirrors bank-mfe's lib/rewards.ts RewardTasksResult
+// and Android's identical RewardTaskDto/RewardTasksResponse (ApiService.kt), added the
+// same session for the real Toss Pay home "Get more rewards" preview.
+public struct RewardTaskDto: Decodable, Identifiable {
+    public let id: String
+    public let title: String
+    public let subtitle: String
+    public let rewardAmount: Double
+    public let claimed: Bool
+    public let claimedAt: String?
+    public let eligible: Bool
+}
+public struct RewardTasksResponse: Decodable { public let success: Bool; public let tasks: [RewardTaskDto]; public let rewardsTotal: Double }
+public struct ClaimRewardTaskRequest: Encodable { public let taskId: String }
+public struct ClaimRewardTaskResponse: Decodable { public let success: Bool; public let message: String; public let rewardAmount: Double; public let newBalance: Double }
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: backend (ProductFavoriteService, 2026-07-20) and bank-mfe already
 // had this; iOS had zero wiring. Mirrors FavoriteListingDto/FavoriteJobPostDto/
@@ -5152,6 +5168,11 @@ extension NetworkClient {
     public func getFacePayStatus() async throws -> FacePayStatusResponse { try await get("api/v1/facepay/status") }
     public func collectWithFacePay(intentId: String) async throws -> CollectPaymentResultDto {
         try await authenticatedPost("api/v1/facepay/collect/\(intentId)", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getRewardTasks() async throws -> RewardTasksResponse { try await get("api/v1/rewards/tasks") }
+    public func claimRewardTask(taskId: String) async throws -> ClaimRewardTaskResponse {
+        try await authenticatedPost("api/v1/rewards/claim", body: ClaimRewardTaskRequest(taskId: taskId), idempotencyKey: UUID().uuidString)
     }
 
     public func placeOrder(_ request: PlaceOrderRequest) async throws -> OrderDetailResponse {
