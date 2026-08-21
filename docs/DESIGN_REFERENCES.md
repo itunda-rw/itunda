@@ -16281,6 +16281,8 @@ changes, not noise), ran the full backend test suite (1,975 tests, all
 green) since this touches every controller's real error contract, then
 committed and pushed.
 
+*Shipped: `services/backend/**` (81 files, commit `3ff7b2fb`).*
+
 ## 257. Every real merchant-collection path now pays from itunda Pay, not Bank
 
 §254 only fixed `MerchantService.collect` (customer-scans-merchant QR/
@@ -16349,4 +16351,58 @@ sweep.
 and Bank account as two separate visible balances (§254's own still-open
 item), and this remains undeployed to the live private cloud.
 
-*Shipped: `services/backend/**` (81 files, commit `3ff7b2fb`).*
+*Shipped: `services/backend/merchant/**`, `services/backend/commerce/**`,
+`services/backend/eats/**`, `services/backend/gift/**` across commits
+`8775bad6`, `5c237c25`, `54997db7`, `b3c3a9b6`, `2c9417a4`.*
+
+## 258. Extracted the duplicated auto-topup block; started the client dual-balance UI fix
+
+The §257 sweep left the identical ~10-line "auto-fund the Pay shortfall
+from Bank, then an external account" block duplicated at 7 call sites
+-- exactly the kind of duplication `scripts/file-size-lint.py` flagged
+several of those files for growing past their own real baseline over.
+Extracted to `AutoTopUpService.ensureSufficientPayBalance(userId,
+account, requiredAmount): Account`, now the single real implementation
+`MerchantService.collect`/`chargeByCustomerCode`,
+`MerchantBillingChargeExecutor`, `MerchantBookingService.holdDeposit`,
+commerce `OrderService.placeOrder`, `EatsOrderService`/
+`DineInOrderService.placeOrder`, and `GiftVoucherService
+.purchaseVoucher` all call. Gave it its own first direct test coverage
+(`AutoTopUpServiceTest`) rather than continuing to re-test the same
+two-tier fallback logic at every consumer. Also split
+`MerchantChargeByCustomerCodeTest.kt` out of the already-oversized
+`MerchantServiceTest.kt` (commit `2eb79d57`).
+
+**Real, honest state of the file-size guardrail after this**: reduced
+several files' overage, but did not bring every file back under its
+recorded baseline -- 21 files remain flagged, roughly half of them
+untouched by this session's Bank/Pay work at all (Android/iOS files
+like `ItundaAppScreen.kt`/`ApiService.kt`/`NetworkClient.swift`, and
+backend files like `AuthService.kt`/`RideTripService.kt`) and clearly
+predating this pass. A full remediation of all 21 needs its own
+dedicated pass with fresh context on each file, not a rushed extraction
+here -- named explicitly rather than bumping the baseline to make the
+check quietly pass.
+
+Also fixed a real, actively-wrong bug found while starting the client
+dual-balance UI item itself: bank-mfe's Pay tab (`PayHub`'s
+`loadAccount`, `MyPaymentCodeCard`'s funding-source default, and
+`AccountCardCarousel`'s per-card label) still resolved/labeled the
+customer's MAIN (Bank) account -- a user opening Pay today saw their
+Bank balance framed as "itunda Pay." Fixed to default to the real PAY
+account, MAIN kept only as a defensive pre-backfill fallback; the
+carousel now correctly distinguishes PAY/MAIN/foreign-currency cards
+instead of labeling every non-foreign-currency card "itunda Pay."
+Found and fixed a real gap this surfaced: `lib/account.ts`'s
+`Account.type` union was still missing `'PAY'` entirely. `tsc -b`
+clean, `vite build` succeeds, accessibility-lint clean (commit
+`d176da04`).
+
+**Still explicitly not done**: a real dedicated "Pay money" balance
+card/screen visually distinct from "Bank account" (this pass only fixed
+the Pay tab's own existing balance to show the RIGHT number, it didn't
+add a new dual-balance view), the same fix on Android/iOS (neither
+touched this pass), the funding-source-carousel's own semantics
+(swiping still charges the swiped account directly with no auto-topup,
+a separate real product question), and the full file-size remediation
+named above.
