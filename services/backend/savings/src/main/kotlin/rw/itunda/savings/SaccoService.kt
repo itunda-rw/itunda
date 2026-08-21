@@ -46,7 +46,7 @@ private const val SACCO_POOL_USER_ID = "sacco_pool_system"
  * ROSCA, no shares/dividends) and from `SavingsService`'s own fixed-rate savings goal.
  * Reuses the exact real ledger-movement shape every other money-moving feature in this
  * backend already uses -- a real Account(type=GROUP) pool, contributions/redemptions/
- * dividend payouts are all real WALLET-to-WALLET ledger transactions.
+ * dividend payouts are all real ACCOUNT-to-ACCOUNT ledger transactions.
  */
 @Service
 class SaccoService(

@@ -34,7 +34,7 @@ enum class MerchantBusinessType { RESTAURANT, SHOP }
  * this repo has no path to certify (see MerchantService.chargeCard's real Luhn-
  * validated demo instead) -- webhooks and B2B payroll don't need one: webhooks are
  * real as of 2026-07-13 (webhookUrl below), and payroll (rw.itunda.merchant.
- * PayrollService, 2026-07-17) is a real WALLET-to-WALLET disbursement to an
+ * PayrollService, 2026-07-17) is a real ACCOUNT-to-ACCOUNT disbursement to an
  * employee's own itunda account, no external rail involved at all. kybVerified
  * (2026-07-17) is flipped by IdentityService.decide the same way User.kycVerified
  * is -- reusing the existing KYC submission/human-review pipeline with a

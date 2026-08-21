@@ -15,9 +15,9 @@ import rw.itunda.core.provider.ProviderDeclinedException
 private fun mapError(e: Exception): Pair<Int, Map<String, Any?>> = when (e) {
     is IdempotencyConflictException -> 409 to mapOf("success" to false, "error" to mapOf("code" to "IDEMPOTENCY_KEY_CONFLICT", "message" to e.message))
     is IdempotencyInProgressException -> 409 to mapOf("success" to false, "error" to mapOf("code" to "IDEMPOTENT_REQUEST_PROCESSING", "message" to e.message))
-    is NoAccountException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_FOUND", "message" to e.message))
+    is NoAccountException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "ACCOUNT_NOT_FOUND", "message" to e.message))
     is InsufficientFundsException -> 422 to mapOf("success" to false, "error" to mapOf("code" to "INSUFFICIENT_FUNDS", "message" to e.message))
-    is AccountFrozenException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_FROZEN", "message" to e.message))
+    is AccountFrozenException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "ACCOUNT_FROZEN", "message" to e.message))
     is ProviderDeclinedException -> 502 to mapOf("success" to false, "error" to mapOf("code" to "PROVIDER_DECLINED", "message" to e.message))
     is IllegalArgumentException -> 400 to mapOf("success" to false, "error" to mapOf("code" to "INVALID_ACTION_BODY", "message" to e.message))
     else -> throw e

@@ -154,7 +154,7 @@ class AuthService(
         )
         // Fixed 2026-07-13, found live: SavingsService.createGoal requires a real
         // AccountType.SAVINGS account and only MAIN was ever provisioned here, so
-        // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user.
+        // POST /api/v1/savings/goals 404'd (ACCOUNT_NOT_FOUND) for every real user.
         val savingsAccount = accountRepository.save(
             Account(
                 id = "account_${UUID.randomUUID()}",
@@ -191,7 +191,7 @@ class AuthService(
         // provisioned" gap as SAVINGS/InterestJar above, one more layer over:
         // StocksService.buyStock requires a real AccountType.INVESTMENT account and only
         // the seeded demo user (SeedDataRunner) ever got one -- POST /api/v1/stocks/buy
-        // 404'd (WALLET_NOT_FOUND, via NoAccountException) for every real registered
+        // 404'd (ACCOUNT_NOT_FOUND, via NoAccountException) for every real registered
         // user, meaning the entire real Toss Securities/Kakao Pay Securities-style
         // stock-buying feature was silently unusable outside the demo account.
         accountRepository.save(

@@ -335,7 +335,7 @@ class RideController(
 
     @ExceptionHandler(RideDriverNoAccountException::class)
     fun handleNoAccount(ex: RideDriverNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RideDriverNotRegisteredException::class)
     fun handleNotRegistered(ex: RideDriverNotRegisteredException) =

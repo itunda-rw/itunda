@@ -56,7 +56,7 @@ private const val MAX_MEMBERS = 15
  * one permanent owner and no rotation; this one has a rotating payout recipient and no
  * permanent single beneficiary. Reuses the exact real ledger-movement shape every
  * other money-moving feature in this backend already uses -- a real Account(type=GROUP)
- * per ikimina, contributions/payouts are real WALLET-to-WALLET ledger transactions.
+ * per ikimina, contributions/payouts are real ACCOUNT-to-ACCOUNT ledger transactions.
  */
 @Service
 class IkiminaService(

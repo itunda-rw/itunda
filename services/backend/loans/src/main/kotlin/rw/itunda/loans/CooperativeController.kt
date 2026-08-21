@@ -107,7 +107,7 @@ class CooperativeController(
     fun handleNotMember(ex: NotMemberException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("NOT_MEMBER", ex.message ?: "Not found"))
 
     @ExceptionHandler(HarvestAdvanceNoAccountException::class)
-    fun handleNoAccount(ex: HarvestAdvanceNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: HarvestAdvanceNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(HarvestAdvanceInvalidAmountException::class)
     fun handleInvalidAmount(ex: HarvestAdvanceInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
@@ -131,5 +131,5 @@ class CooperativeController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

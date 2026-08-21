@@ -89,7 +89,7 @@ class VendorCashAdvanceController(
     fun handleNotFound(ex: VendorCashAdvanceNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("VENDOR_CASH_ADVANCE_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(VendorCashAdvanceNoAccountException::class)
-    fun handleNoAccount(ex: VendorCashAdvanceNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: VendorCashAdvanceNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(VendorCashAdvanceNotRequestedException::class)
     fun handleNotRequested(ex: VendorCashAdvanceNotRequestedException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("VENDOR_CASH_ADVANCE_NOT_REQUESTED", ex.message ?: "Conflict"))
@@ -119,5 +119,5 @@ class VendorCashAdvanceController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

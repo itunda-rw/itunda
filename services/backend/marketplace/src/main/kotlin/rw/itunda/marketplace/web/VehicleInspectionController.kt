@@ -119,11 +119,11 @@ class VehicleInspectionController(
 
     @ExceptionHandler(MechanicNoAccountException::class)
     fun handleMechanicNoAccount(ex: MechanicNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(BuyerNoAccountException::class)
     fun handleBuyerNoAccount(ex: BuyerNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidInspectionFeeException::class)
     fun handleInvalidFee(ex: InvalidInspectionFeeException) =
@@ -151,7 +151,7 @@ class VehicleInspectionController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

@@ -100,11 +100,11 @@ class ForeignCurrencyController(
 
     @ExceptionHandler(ForeignCurrencyAccountAlreadyExistsException::class)
     fun handleAlreadyExists(ex: ForeignCurrencyAccountAlreadyExistsException) =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("FOREIGN_WALLET_ALREADY_EXISTS", ex.message ?: "Conflict"))
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("FOREIGN_ACCOUNT_ALREADY_EXISTS", ex.message ?: "Conflict"))
 
     @ExceptionHandler(ForeignCurrencyAccountNotFoundException::class)
     fun handleNotFound(ex: ForeignCurrencyAccountNotFoundException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("FOREIGN_WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("FOREIGN_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidConversionException::class)
     fun handleInvalidConversion(ex: InvalidConversionException) =
@@ -124,7 +124,7 @@ class ForeignCurrencyController(
 
     @ExceptionHandler(AccountNotFoundException::class)
     fun handleAccountNotFound(ex: AccountNotFoundException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
@@ -132,5 +132,5 @@ class ForeignCurrencyController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

@@ -226,7 +226,7 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
 
     @ExceptionHandler(SplitBillNoAccountException::class)
     fun handleNoAccount(ex: SplitBillNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(SplitBillAlreadySettledException::class)
     fun handleAlreadySettled(ex: SplitBillAlreadySettledException) =

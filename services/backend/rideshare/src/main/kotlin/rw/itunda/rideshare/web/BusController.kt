@@ -115,7 +115,7 @@ class BusController(
     fun handleInvalidTrip(ex: InvalidBusTripException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BUS_TRIP", ex.message ?: "Bad request"))
 
     @ExceptionHandler(BusNoAccountException::class)
-    fun handleNoAccount(ex: BusNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: BusNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientSeatsException::class)
     fun handleInsufficientSeats(ex: InsufficientSeatsException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INSUFFICIENT_SEATS", ex.message ?: "Conflict"))

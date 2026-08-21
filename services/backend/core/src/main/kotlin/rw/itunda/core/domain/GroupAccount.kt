@@ -14,7 +14,7 @@ import java.time.Instant
  * every other invited member can view balance and deposit but cannot withdraw --
  * matching how a real 모임통장 works, not a symmetric joint account. Backed by a real
  * `Account` (AccountType.GROUP) rather than inventing a second balance concept --
- * deposits/withdrawals are the same real ledger-backed WALLET-to-WALLET movement
+ * deposits/withdrawals are the same real ledger-backed ACCOUNT-to-ACCOUNT movement
  * every other real money-moving feature in this backend already uses.
  */
 @Entity

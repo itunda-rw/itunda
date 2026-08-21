@@ -121,7 +121,7 @@ class BikeRentalController(private val bikeRentalService: BikeRentalService) {
     fun handleSelfRental(ex: BikeSelfRentalException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_RENTAL_NOT_ALLOWED", ex.message ?: "Bad request"))
 
     @ExceptionHandler(BikeNoAccountException::class)
-    fun handleNoAccount(ex: BikeNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: BikeNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidBikeLocationException::class)
     fun handleInvalidLocation(ex: InvalidBikeLocationException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LOCATION", ex.message ?: "Bad request"))

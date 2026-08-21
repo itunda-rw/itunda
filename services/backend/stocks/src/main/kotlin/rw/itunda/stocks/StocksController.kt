@@ -182,7 +182,7 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun handleInvalidRange(ex: InvalidPriceHistoryRangeException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_HISTORY_RANGE", ex.message ?: "Bad request"))
 
     @ExceptionHandler(NoAccountException::class)
-    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidFundingAmountException::class)
     fun handleInvalidFunding(ex: InvalidFundingAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
@@ -194,7 +194,7 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(InvalidPriceAlertException::class)
     fun handleInvalidPriceAlert(ex: InvalidPriceAlertException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_ALERT", ex.message ?: "Bad request"))

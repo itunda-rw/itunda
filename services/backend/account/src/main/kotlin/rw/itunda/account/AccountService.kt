@@ -81,7 +81,7 @@ class AccountService(
     // the `transactions` table. Every module (bills, loans, stocks, insurance, savings,
     // rewards, merchant) posts through LedgerService directly; only AccountService.
     // confirmTransfer ever writes a Transaction row, so categorizing by TransactionType
-    // would show ~100% "Transfer" regardless of what a user actually did. Every WALLET-
+    // would show ~100% "Transfer" regardless of what a user actually did. Every ACCOUNT-
     // account DEBIT is real money leaving the account; its sibling ledger legs (same
     // transactionId) reveal what it actually paid for.
     fun getSpendingInsight(userId: String): SpendingInsightResult {
@@ -166,7 +166,7 @@ class AccountService(
             val siblings = siblingsByTransactionId[debit.transactionId] ?: emptyList()
             // Real bug found live during this pass's own verification, unrelated to the
             // N+1 fix above but surfaced by it: a fee-charging transfer posts THREE legs
-            // (WALLET debit, RAIL_SUSPENSE credit, FEE_REVENUE credit), and neither
+            // (ACCOUNT debit, RAIL_SUSPENSE credit, FEE_REVENUE credit), and neither
             // findByTransactionId nor findByTransactionIdIn has an ORDER BY, so plain
             // firstOrNull{} non-deterministically picked FEE_REVENUE over RAIL_SUSPENSE
             // depending on row order -- a real transfer could show up as "Fees" instead
@@ -236,7 +236,7 @@ class AccountService(
                 // Real Korean 지연이체서비스 (Delayed Transfer Service, 2026-08-18) -- see
                 // P2pDelayedTransfer.kt's own doc comment. Same reachable-in-practice
                 // shape CARD_SPEND_EXPENSE/POSTPAID_CREDIT_PAYABLE establish just above:
-                // P2pDelayedTransferService.sendDelayed debits the sender's WALLET and
+                // P2pDelayedTransferService.sendDelayed debits the sender's ACCOUNT and
                 // credits this holding account in the very same transaction, so it
                 // real-appears here and deserves its own category, same as an instant
                 // P2P transfer would (grouped under RAIL_SUSPENSE's "Transfers" case
@@ -244,14 +244,14 @@ class AccountService(
                 LedgerAccountType.P2P_DELAY_HOLDING -> "Transfers"
                 // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
                 // accounts (they pay money *into* a account) -- they'd never realistically be the
-                // counterpart to a WALLET debit here, but the compiler correctly demands every
+                // counterpart to a ACCOUNT debit here, but the compiler correctly demands every
                 // LedgerAccountType be handled since this is an exhaustive `when`. INTEREST_INCOME
                 // (2026-07-27) is the same shape -- OverdraftService.accrueInterest's own real
-                // counterpart leg is LOAN_PAYABLE, never a direct WALLET debit.
+                // counterpart leg is LOAN_PAYABLE, never a direct ACCOUNT debit.
                 // DEPOSIT_PROTECTION_RESERVE/DEPOSIT_PROTECTION_EXPENSE (2026-08-11) -- same
                 // shape as this comment's own reasoning above: DepositProtectionService.
                 // accrueContribution posts between itunda's own two internal accounts, never
-                // touching a user's WALLET debit, so this branch is unreachable in practice
+                // touching a user's ACCOUNT debit, so this branch is unreachable in practice
                 // but still required for exhaustiveness.
                 LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerAccountType.DEPOSIT_PROTECTION_RESERVE, LedgerAccountType.DEPOSIT_PROTECTION_EXPENSE, null -> "Other"
                 LedgerAccountType.WALLET -> "Other"

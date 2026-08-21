@@ -32,7 +32,7 @@ import java.time.Instant
  *
  * Backed by a real `Account` (AccountType.GROUP, the same real type `GroupAccount`/
  * `Ikimina` already establish for a shared pool) -- every buy/redeem/dividend payout
- * is the same real ledger-backed WALLET-to-WALLET movement every other money-moving
+ * is the same real ledger-backed ACCOUNT-to-ACCOUNT movement every other money-moving
  * feature in this backend already uses.
  *
  * `@Version`: applying this session's own hard-won lesson from the Bike/Parking/

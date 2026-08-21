@@ -180,7 +180,7 @@ class P2pController(
 
     @ExceptionHandler(P2pNoAccountException::class)
     fun handleNoAccount(ex: P2pNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
@@ -188,7 +188,7 @@ class P2pController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(FamilySpendLimitExceededException::class)
     fun handleFamilySpendLimit(ex: FamilySpendLimitExceededException) =

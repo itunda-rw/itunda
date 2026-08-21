@@ -30,7 +30,7 @@ enum class IkiminaStatus { FORMING, ACTIVE, COMPLETED }
  *
  * Backed by a real `Account` (AccountType.GROUP, the same real type `GroupAccount`
  * already established -- no new account-type concept needed), so every contribution/
- * payout is the same real ledger-backed WALLET-to-WALLET movement every other
+ * payout is the same real ledger-backed ACCOUNT-to-ACCOUNT movement every other
  * money-moving feature in this backend already uses.
  *
  * `@Version`: the payout trigger is a real check-then-act operation (has every member

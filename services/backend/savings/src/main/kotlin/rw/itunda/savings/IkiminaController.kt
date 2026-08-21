@@ -113,7 +113,7 @@ class IkiminaController(
     fun handleFull(ex: IkiminaFullException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IKIMINA_FULL", ex.message ?: "Conflict"))
 
     @ExceptionHandler(IkiminaNoAccountException::class)
-    fun handleNoAccount(ex: IkiminaNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: IkiminaNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(IkiminaNotFormingException::class)
     fun handleNotForming(ex: IkiminaNotFormingException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IKIMINA_NOT_FORMING", ex.message ?: "Conflict"))

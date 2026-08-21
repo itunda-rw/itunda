@@ -27,7 +27,7 @@ enum class SplitBillMode { EVEN, LADDER }
  * from N named group members. There is no escrow hold here (nothing needs to be "claimed
  * back," the organizer already has the money in hand outside this system); each
  * participant instead pays their own share directly into the organizer's account,
- * mirroring `P2pService.sendDirect`'s real direct WALLET-to-WALLET push, just fanned out
+ * mirroring `P2pService.sendDirect`'s real direct ACCOUNT-to-ACCOUNT push, just fanned out
  * per-participant with a shared parent record for the settlement thread.
  *
  * Even split (v1) has silent rounding-remainder absorption -- one designated

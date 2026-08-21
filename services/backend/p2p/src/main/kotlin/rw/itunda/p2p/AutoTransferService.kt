@@ -28,7 +28,7 @@ class AutoTransferInvalidScheduleException(message: String) : RuntimeException(m
  * Real Toss Bank 자동이체 (auto-transfer) equivalent -- see AutoTransfer.kt's own doc
  * comment. Execution reuses `P2pService.sendDirect` unmodified: a scheduled auto-
  * transfer is not a different kind of money movement, just a different trigger for the
- * exact same real WALLET-to-WALLET ledger pair every direct transfer already uses.
+ * exact same real ACCOUNT-to-ACCOUNT ledger pair every direct transfer already uses.
  */
 @Service
 class AutoTransferService(

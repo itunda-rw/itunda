@@ -134,7 +134,7 @@ class CardServiceTest : BehaviorSpec({
         When("charging a real purchase") {
             val result = service.chargeWithCard("user_1", BigDecimal("5000"), "Kigali Cafe")
 
-            Then("it real-posts a balanced WALLET debit / CARD_SPEND_EXPENSE credit ledger transaction") {
+            Then("it real-posts a balanced ACCOUNT debit / CARD_SPEND_EXPENSE credit ledger transaction") {
                 val legs = legsSlot.first()
                 legs.size shouldBe 2
                 legs.first { it.accountType == LedgerAccountType.WALLET }.direction shouldBe LedgerDirection.DEBIT

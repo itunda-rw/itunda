@@ -179,7 +179,7 @@ class FloatMarketplaceService(
         val accountIds = listOf(listingAgent.cashAccountId, requestingAgent.cashAccountId).sorted()
         val lockedAccounts = accountIds.associateWith { id -> ledgerAccountRepository.findByIdForUpdate(id).orElseThrow { IllegalStateException("Agent cash account is missing") } }
 
-        // postLedgerTransaction only enforces sufficiency for WALLET-typed legs (see
+        // postLedgerTransaction only enforces sufficiency for ACCOUNT-typed legs (see
         // its own loop) -- AGENT_CASH gets no automatic protection, so this mirrors
         // AgentService.cashOut's own explicit availableCash check before posting.
         val listingAvailableCash = lockedAccounts.getValue(listingAgent.cashAccountId).balance.negate()

@@ -118,7 +118,7 @@ class StudentLoanController(
     fun handleNotFound(ex: StudentLoanNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("STUDENT_LOAN_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(StudentLoanNoAccountException::class)
-    fun handleNoAccount(ex: StudentLoanNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: StudentLoanNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(StudentLoanNotRequestedException::class)
     fun handleNotRequested(ex: StudentLoanNotRequestedException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("STUDENT_LOAN_NOT_REQUESTED", ex.message ?: "Conflict"))
@@ -142,5 +142,5 @@ class StudentLoanController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

@@ -109,7 +109,7 @@ class SavingsController(
     fun handleGoalNotFound(ex: GoalNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GOAL_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(NoAccountException::class)
-    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(NoInterestJarException::class)
     fun handleNoJar(ex: NoInterestJarException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("INTEREST_JAR_NOT_FOUND", ex.message ?: "Not found"))
@@ -120,7 +120,7 @@ class SavingsController(
     // that account exists -- an existence-oracle this codebase's own established
     // convention (a stranger gets a real 404, never a 403) exists specifically to avoid.
     @ExceptionHandler(AccountNotOwnedException::class)
-    fun handleNotOwned(ex: AccountNotOwnedException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_OWNED", ex.message ?: "Not found"))
+    fun handleNotOwned(ex: AccountNotOwnedException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_OWNED", ex.message ?: "Not found"))
 
     @ExceptionHandler(NoInterestAvailableException::class)
     fun handleNoInterest(ex: NoInterestAvailableException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_INTEREST_AVAILABLE", ex.message ?: "Conflict"))
@@ -129,7 +129,7 @@ class SavingsController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))

@@ -117,7 +117,7 @@ class AuthServiceTest : BehaviorSpec({
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:register:+250788000001", 3, any()) }
                 val accountSlot = mutableListOf<Account>()
                 // Fixed 2026-07-13: registration used to only provision MAIN, so
-                // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user --
+                // POST /api/v1/savings/goals 404'd (ACCOUNT_NOT_FOUND) for every real user --
                 // this asserts all real accounts exist, not just that *a* account got saved.
                 // INVESTMENT added 2026-07-27: the same real gap, one layer deeper --
                 // StocksService.buyStock required a real INVESTMENT account only the seeded

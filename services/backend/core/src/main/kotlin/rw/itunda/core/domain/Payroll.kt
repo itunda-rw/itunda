@@ -12,7 +12,7 @@ import java.time.Instant
  * fixed recurring salary. Closes the "B2B payroll remains not built" gap named in
  * Merchant.kt's own doc comment: unlike card processing/NIDA/PSP integrations, payroll
  * needs no external credentials at all -- disbursing to an employee's own itunda account
- * is the same real WALLET-to-WALLET ledger movement P2pService.payRequest already does,
+ * is the same real ACCOUNT-to-ACCOUNT ledger movement P2pService.payRequest already does,
  * just to many recipients per run instead of one. See rw.itunda.merchant.PayrollService.
  */
 @Entity

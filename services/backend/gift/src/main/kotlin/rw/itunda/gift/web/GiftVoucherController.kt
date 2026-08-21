@@ -129,7 +129,7 @@ class GiftVoucherController(
 
     @ExceptionHandler(GiftVoucherNoAccountException::class)
     fun handleNoAccount(ex: GiftVoucherNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(GiftVoucherRecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: GiftVoucherRecipientNotFoundException) =

@@ -12,7 +12,7 @@ enum class RiderStatus { ACTIVE, SUSPENDED }
 
 /**
  * A real itunda user who has opted into delivering Eats orders -- reuses the user's own
- * existing MAIN account as the payout destination (same real WALLET-to-WALLET disbursement
+ * existing MAIN account as the payout destination (same real ACCOUNT-to-ACCOUNT disbursement
  * precedent `PayrollService` already established for employee pay), no new account type or
  * external payout rail needed. `available` is a real self-reported online/offline toggle.
  * `currentLatitude`/`currentLongitude` (2026-07-19) close the "no real GPS/location

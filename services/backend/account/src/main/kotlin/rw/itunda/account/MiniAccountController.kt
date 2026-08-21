@@ -58,7 +58,7 @@ class MiniAccountController(
 
     @ExceptionHandler(AccountNotFoundException::class)
     fun handleAccountNotFound(ex: AccountNotFoundException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidMiniAccountDepositAmountException::class)
     fun handleInvalidAmount(ex: InvalidMiniAccountDepositAmountException) =
@@ -66,15 +66,15 @@ class MiniAccountController(
 
     @ExceptionHandler(MiniAccountBalanceCapExceededException::class)
     fun handleBalanceCapExceeded(ex: MiniAccountBalanceCapExceededException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_BALANCE_CAP_EXCEEDED", ex.message ?: "Balance cap exceeded"))
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_BALANCE_CAP_EXCEEDED", ex.message ?: "Balance cap exceeded"))
 
     @ExceptionHandler(MiniAccountDailyLimitExceededException::class)
     fun handleDailyLimitExceeded(ex: MiniAccountDailyLimitExceededException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_DAILY_LIMIT_EXCEEDED", ex.message ?: "Daily limit exceeded"))
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_DAILY_LIMIT_EXCEEDED", ex.message ?: "Daily limit exceeded"))
 
     @ExceptionHandler(MiniAccountMonthlyLimitExceededException::class)
     fun handleMonthlyLimitExceeded(ex: MiniAccountMonthlyLimitExceededException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_MONTHLY_LIMIT_EXCEEDED", ex.message ?: "Monthly limit exceeded"))
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_MONTHLY_LIMIT_EXCEEDED", ex.message ?: "Monthly limit exceeded"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
@@ -82,15 +82,15 @@ class MiniAccountController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(MiniAccountBirthDateRequiredException::class)
     fun handleBirthDateRequired(ex: MiniAccountBirthDateRequiredException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_BIRTH_DATE_REQUIRED", ex.message ?: "Birth date required"))
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_BIRTH_DATE_REQUIRED", ex.message ?: "Birth date required"))
 
     @ExceptionHandler(MiniAccountAgeIneligibleException::class)
     fun handleAgeIneligible(ex: MiniAccountAgeIneligibleException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_AGE_INELIGIBLE", ex.message ?: "Age ineligible"))
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_AGE_INELIGIBLE", ex.message ?: "Age ineligible"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

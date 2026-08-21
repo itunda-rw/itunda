@@ -441,7 +441,7 @@ class MerchantController(
 
     @ExceptionHandler(MerchantNoAccountException::class)
     fun handleNoAccount(ex: MerchantNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(PaymentIntentNotFoundException::class)
     fun handleIntentNotFound(ex: PaymentIntentNotFoundException) =
@@ -461,7 +461,7 @@ class MerchantController(
 
     @ExceptionHandler(PaymentCodeAccountNotOwnedException::class)
     fun handlePaymentCodeAccountNotOwned(ex: PaymentCodeAccountNotOwnedException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_OWNED", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_OWNED", ex.message ?: "Not found"))
 
     @ExceptionHandler(SelfPaymentException::class)
     fun handleSelfPayment(ex: SelfPaymentException) =
@@ -493,7 +493,7 @@ class MerchantController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

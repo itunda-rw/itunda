@@ -115,7 +115,7 @@ class GiftController(private val giftService: GiftService, private val idempoten
 
     @ExceptionHandler(GiftNoAccountException::class)
     fun handleNoAccount(ex: GiftNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(GiftRecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: GiftRecipientNotFoundException) =

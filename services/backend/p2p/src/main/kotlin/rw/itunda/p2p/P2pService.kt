@@ -57,7 +57,7 @@ data class P2pRecipientPreview(val recipientUserId: String, val displayName: Str
  * of whether the recipient happens to be an itunda user too -- there is no account-to-account
  * concept in it at all (confirmed by reading it directly). This is the first real
  * account-to-account money movement in the backend where both sides are known itunda accounts:
- * a direct WALLET-to-WALLET ledger pair, no rail hop, no fee (nothing external to settle).
+ * a direct ACCOUNT-to-ACCOUNT ledger pair, no rail hop, no fee (nothing external to settle).
  * Also the first real Transaction row where recipientId is an actual user id, not "external" --
  * AccountService.getTransactionHistory will show this to both the payer and the requester.
  */
@@ -260,7 +260,7 @@ class P2pService(
      * the *recipient* to first generate a request -- there was no way to just type in
      * someone's phone number or account number and send them money immediately, the
      * single most basic real Toss "Transfer" action. This closes that gap by reusing
-     * `payRequest`'s exact real ledger-movement shape (direct WALLET-to-WALLET pair, no
+     * `payRequest`'s exact real ledger-movement shape (direct ACCOUNT-to-ACCOUNT pair, no
      * fee -- nothing external to settle) with a real recipient resolved by phone number
      * (`UserRepository.findByPhoneNumber`, matching how a user actually thinks of a
      * contact) or, if that misses, by account number (`AccountRepository.

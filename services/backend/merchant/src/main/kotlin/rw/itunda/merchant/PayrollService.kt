@@ -39,7 +39,7 @@ class PayrollRunNotFoundException(message: String) : RuntimeException(message)
  * genuinely needs real PSP-level infrastructure this repo has no path to certify").
  * That's true for card networks and NIDA, which need an external vendor relationship
  * this repo can't obtain -- but payroll disbursed to an employee's own itunda account is
- * a real WALLET-to-WALLET ledger movement between two known itunda accounts, exactly
+ * a real ACCOUNT-to-ACCOUNT ledger movement between two known itunda accounts, exactly
  * what P2pService.payRequest already proved out (its own doc comment: "the first real
  * account-to-account money movement in the backend where both sides are known itunda
  * accounts"). No external credentials, no demo simulation needed -- this is real money

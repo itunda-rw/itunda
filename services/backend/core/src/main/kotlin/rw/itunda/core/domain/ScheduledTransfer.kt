@@ -20,7 +20,7 @@ enum class ScheduledTransferStatus { PENDING, EXECUTED, CANCELLED, FAILED }
  * you pick "1회" and a specific future date; real transfers then run starting 9am on
  * that date, sequentially, with no specific time-of-day selectable, and are cancellable
  * any time before that cutoff). Reuses `P2pService.sendDirect`'s exact real
- * WALLET-to-WALLET ledger movement at execution time -- a scheduled transfer is not a
+ * ACCOUNT-to-ACCOUNT ledger movement at execution time -- a scheduled transfer is not a
  * new kind of money movement, just a different trigger for the same one, the identical
  * reasoning `AutoTransfer.kt`'s own doc comment already gives.
  *

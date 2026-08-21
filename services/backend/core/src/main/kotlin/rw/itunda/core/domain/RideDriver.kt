@@ -17,7 +17,7 @@ enum class RideDriverStatus { ACTIVE, SUSPENDED }
  * rider are genuinely distinct real roles in this backend (an account can register as
  * either or both), matching how Kakao T Driver and Kakao T (delivery isn't even a Kakao
  * T product) are separate real registrations too. Reuses the driver's own existing MAIN
- * account as their payout destination, same real WALLET-to-WALLET disbursement precedent
+ * account as their payout destination, same real ACCOUNT-to-ACCOUNT disbursement precedent
  * `PayrollService`/`RiderService` already established.
  *
  * `totalOffers`/`totalAccepted` back a real, computed acceptance rate -- Kakao's own

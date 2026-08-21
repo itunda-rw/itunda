@@ -33,7 +33,7 @@ enum class WeeklySavingsPlanStatus { ACTIVE, MATURED, CANCELLED }
  * gamification mechanic. Backed by a real dedicated `Account` (AccountType.WEEKLY_SAVINGS)
  * per plan, same "no new balance concept" discipline `GroupAccount` already
  * established -- deposits/interest/withdrawals are the same real ledger-backed
- * WALLET-to-WALLET or clearing-account movement every other money-moving feature here
+ * ACCOUNT-to-ACCOUNT or clearing-account movement every other money-moving feature here
  * already uses.
  */
 @Entity

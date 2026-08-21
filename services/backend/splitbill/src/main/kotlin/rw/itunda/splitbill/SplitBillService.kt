@@ -354,7 +354,7 @@ class SplitBillService(
 
     /**
      * Pay this caller's own real share directly to the organizer -- a direct
-     * WALLET-to-WALLET push, same real shape `P2pService.sendDirect`/`payRequest`
+     * ACCOUNT-to-ACCOUNT push, same real shape `P2pService.sendDirect`/`payRequest`
      * already established (no escrow, no fee: nothing external to settle). A caller who
      * isn't a named participant of this split bill (including the organizer themselves,
      * who was never added as one) gets a real 404, not a fabricated permission error --

@@ -673,15 +673,15 @@ class EatsController(
 
     @ExceptionHandler(RestaurantNoAccountException::class)
     fun handleRestaurantNoAccount(ex: RestaurantNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EatsBuyerNoAccountException::class)
     fun handleBuyerNoAccount(ex: EatsBuyerNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EatsMembershipNoAccountException::class)
     fun handleMembershipNoAccount(ex: EatsMembershipNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidMembershipDurationException::class)
     fun handleInvalidMembershipDuration(ex: InvalidMembershipDurationException) =
@@ -689,7 +689,7 @@ class EatsController(
 
     @ExceptionHandler(PlatformMembershipNoAccountException::class)
     fun handlePlatformMembershipNoAccount(ex: PlatformMembershipNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidPlatformMembershipDurationException::class)
     fun handleInvalidPlatformMembershipDuration(ex: InvalidPlatformMembershipDurationException) =
@@ -837,7 +837,7 @@ class EatsController(
 
     @ExceptionHandler(RiderNoAccountException::class)
     fun handleRiderNoAccount(ex: RiderNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDER_WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDER_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidRiderLocationException::class)
     fun handleInvalidRiderLocation(ex: InvalidRiderLocationException) =
@@ -881,7 +881,7 @@ class EatsController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

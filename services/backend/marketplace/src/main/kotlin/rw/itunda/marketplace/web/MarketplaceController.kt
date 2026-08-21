@@ -522,11 +522,11 @@ class MarketplaceController(
 
     @ExceptionHandler(SellerNoAccountException::class)
     fun handleSellerNoAccount(ex: SellerNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(BuyerNoAccountException::class)
     fun handleBuyerNoAccount(ex: BuyerNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(MarketplaceEscrowNotFoundException::class)
     fun handleEscrowNotFound(ex: MarketplaceEscrowNotFoundException) =
@@ -546,7 +546,7 @@ class MarketplaceController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleIdempotencyConflict(ex: IdempotencyConflictException) =

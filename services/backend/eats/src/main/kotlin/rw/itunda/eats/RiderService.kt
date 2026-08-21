@@ -21,7 +21,7 @@ class InvalidRiderLocationException(message: String) : RuntimeException(message)
  * no separate onboarding/KYC gate beyond the account they already have (matching how
  * light this session's other self-service registrations are, e.g. marketplace listing
  * creation). Reuses the rider's own existing MAIN account as their payout destination --
- * the same real WALLET-to-WALLET disbursement precedent `PayrollService` already
+ * the same real ACCOUNT-to-ACCOUNT disbursement precedent `PayrollService` already
  * established, no new account type or external payout rail needed.
  */
 @Service

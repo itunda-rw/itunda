@@ -127,11 +127,11 @@ class DineInOrderController(
 
     @ExceptionHandler(DineInRestaurantNoAccountException::class)
     fun handleRestaurantNoAccount(ex: DineInRestaurantNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(DineInBuyerNoAccountException::class)
     fun handleBuyerNoAccount(ex: DineInBuyerNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmptyDineInOrderException::class)
     fun handleEmptyOrder(ex: EmptyDineInOrderException) =
@@ -199,5 +199,5 @@ class DineInOrderController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

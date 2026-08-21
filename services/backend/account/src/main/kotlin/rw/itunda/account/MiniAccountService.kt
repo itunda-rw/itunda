@@ -54,7 +54,7 @@ class MiniAccountAgeIneligibleException(message: String) : RuntimeException(mess
  * merchant types needs a real merchant-category classification this codebase doesn't
  * have for card transactions yet). What's real here beyond the caps themselves: a
  * dedicated, real, capped account type any AGE-ELIGIBLE account can open and self-fund
- * from their own `MAIN` account -- the same real `WALLET`-to-`WALLET` ledger movement
+ * from their own `MAIN` account -- the same real `ACCOUNT`-to-`ACCOUNT` ledger movement
  * `StocksService.fundInvestmentAccount` already proved live, just with real spending caps
  * a normal `MAIN`/`SAVINGS` account doesn't carry.
  */
@@ -165,7 +165,7 @@ class MiniAccountService(
                 referenceNumber = "MINI${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = userId, recipientId = userId, fromAccountId = mainAccount.id, toAccountId = miniAccount.id,
                 amount = amount, fee = BigDecimal.ZERO, currency = mainAccount.currency, type = TransactionType.TRANSFER,
-                status = TransactionStatus.COMPLETED, description = "Transfer to Mini account", channel = "MINI_WALLET_DEPOSIT",
+                status = TransactionStatus.COMPLETED, description = "Transfer to Mini account", channel = "MINI_ACCOUNT_DEPOSIT",
                 completedAt = Instant.now(),
             ),
         )

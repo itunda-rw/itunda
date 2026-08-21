@@ -178,7 +178,7 @@ class AccountController(
     fun handleMissingHeader(ex: MissingRequestHeaderException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required to confirm a transfer"))
 
     @ExceptionHandler(AccountNotFoundException::class)
-    fun handleNotFound(ex: AccountNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNotFound(ex: AccountNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(QuoteNotFoundException::class)
     fun handleQuoteNotFound(ex: QuoteNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("QUOTE_NOT_FOUND", ex.message ?: "Not found"))
@@ -193,7 +193,7 @@ class AccountController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     // Same handler as BillsController's -- provider connector wired into confirmTransfer.
     @ExceptionHandler(ProviderDeclinedException::class)

@@ -95,7 +95,7 @@ class CardController(
     fun handleNotFound(ex: CardNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CARD_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(CardNoAccountException::class)
-    fun handleNoAccount(ex: CardNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CARD_NO_WALLET", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: CardNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CARD_NO_ACCOUNT", ex.message ?: "Not found"))
 
     @ExceptionHandler(CardFrozenException::class)
     fun handleFrozen(ex: CardFrozenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_FROZEN", ex.message ?: "Conflict"))
@@ -113,7 +113,7 @@ class CardController(
     fun handleMonthlyLimit(ex: CardMonthlyLimitExceededException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_MONTHLY_LIMIT_EXCEEDED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("WALLET_FROZEN", ex.message ?: "Conflict"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Conflict"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Conflict"))

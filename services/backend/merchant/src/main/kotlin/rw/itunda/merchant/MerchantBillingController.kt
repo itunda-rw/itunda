@@ -107,7 +107,7 @@ class MerchantBillingController(private val merchantBillingService: MerchantBill
 
     @ExceptionHandler(BillingNoAccountException::class)
     fun handleNoAccount(ex: BillingNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

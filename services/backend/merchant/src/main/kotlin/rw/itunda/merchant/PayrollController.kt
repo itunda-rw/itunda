@@ -86,7 +86,7 @@ class PayrollController(
 
     @ExceptionHandler(MerchantNoAccountException::class)
     fun handleMerchantNoAccount(ex: MerchantNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmployeeNotFoundException::class)
     fun handleEmployeeNotFound(ex: EmployeeNotFoundException) =
@@ -102,7 +102,7 @@ class PayrollController(
 
     @ExceptionHandler(EmployeeNoAccountException::class)
     fun handleEmployeeNoAccount(ex: EmployeeNoAccountException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("EMPLOYEE_NO_WALLET", ex.message ?: "Unprocessable"))
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("EMPLOYEE_NO_ACCOUNT", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(InvalidSalaryAmountException::class)
     fun handleInvalidSalary(ex: InvalidSalaryAmountException) =
@@ -138,5 +138,5 @@ class PayrollController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }

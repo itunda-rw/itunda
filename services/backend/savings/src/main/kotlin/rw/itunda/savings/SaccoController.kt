@@ -68,7 +68,7 @@ class SaccoController(
         ResponseEntity.ok(mapOf("success" to true, "payouts" to saccoService.getMyDividendHistory(currentUser.userId)))
 
     @ExceptionHandler(SaccoNoAccountException::class)
-    fun handleNoAccount(ex: SaccoNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: SaccoNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(SaccoNoShareholdingException::class)
     fun handleNoShareholding(ex: SaccoNoShareholdingException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("SACCO_NO_SHAREHOLDING", ex.message ?: "Not found"))

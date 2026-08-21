@@ -107,7 +107,7 @@ class MotoOwnershipController(
     fun handleNotFound(ex: MotoOwnershipPlanNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MOTO_OWNERSHIP_PLAN_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(MotoOwnershipNoAccountException::class)
-    fun handleNoAccount(ex: MotoOwnershipNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: MotoOwnershipNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidMotoOwnershipBikePriceException::class)
     fun handleInvalidBikePrice(ex: InvalidMotoOwnershipBikePriceException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BIKE_PRICE", ex.message ?: "Bad request"))
@@ -146,7 +146,7 @@ class MotoOwnershipController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))

@@ -140,7 +140,7 @@ class VendorCashAdvanceService(
         }
 
     /**
-     * Sums this merchant's real itunda-collected settlement inflow (WALLET CREDIT
+     * Sums this merchant's real itunda-collected settlement inflow (ACCOUNT CREDIT
      * entries whose memo matches `MerchantService.collect`'s "collection -" narration
      * -- see this class's own doc comment, limitation #2) over the trailing 30 days,
      * and counts distinct calendar trading days. Read-only -- never mutates anything.

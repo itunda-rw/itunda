@@ -37,7 +37,7 @@ class EmoticonGiftToSelfException(message: String) : RuntimeException(message)
  * sourcing and honest scoping (no Emoticon Plus subscription tier, still a real,
  * separate, not-attempted-here follow-up). A user buys a pack once through the real
  * account-to-account-style ledger movement every other purchase in this backend already
- * uses (debit the buyer's WALLET, credit the new `EMOTICON_REVENUE` clearing account --
+ * uses (debit the buyer's ACCOUNT, credit the new `EMOTICON_REVENUE` clearing account --
  * itunda's own product, a direct sale, not an escrow hold the way Gift/Marketplace/
  * Booking/Ride money-in-flight is), then can send any emoticon from an owned pack as
  * real message content in both 1:1 and group chat -- structurally distinct from the
@@ -49,7 +49,7 @@ class EmoticonGiftToSelfException(message: String) : RuntimeException(message)
  * `EmoticonPack.kt`'s own two named follow-ups -- `UserEmoticonPack.source`'s
  * `EmoticonAcquisitionSource.GIFTED` value already existed in the schema from day one,
  * just never had a real code path that produced it until now. `giftPack` reuses
- * `purchasePack`'s exact real ledger movement (the giver pays, same WALLET-debit/
+ * `purchasePack`'s exact real ledger movement (the giver pays, same ACCOUNT-debit/
  * `EMOTICON_REVENUE`-credit pair) but credits the *recipient's* `UserEmoticonPack`, not
  * the giver's -- resolved by phone number, the same real convention `P2pService
  * .sendDirect` already establishes for "type in someone's phone number," not a

@@ -20,7 +20,7 @@ import java.time.temporal.ChronoUnit
 // mechanics, itunda's own internal scheme, not a claimed BNR filing). Same three
 // AccountTypes as InterestJar's real accrual base: SAVINGS/WEEKLY_SAVINGS/UPFRONT_DEPOSIT
 // -- MAIN is itunda's separate account/Pay product, not itunda Bank.
-private val COVERED_WALLET_TYPES = listOf(AccountType.SAVINGS, AccountType.WEEKLY_SAVINGS, AccountType.UPFRONT_DEPOSIT)
+private val COVERED_ACCOUNT_TYPES = listOf(AccountType.SAVINGS, AccountType.WEEKLY_SAVINGS, AccountType.UPFRONT_DEPOSIT)
 private const val CONTRIBUTION_INTERVAL_DAYS = 1L
 
 data class DepositProtectionStatus(
@@ -50,7 +50,7 @@ class DepositProtectionService(
 
     fun getStatus(userId: String): DepositProtectionStatus {
         val fund = getOrCreateFund()
-        val yourDeposits = accountRepository.sumBalanceByUserIdAndTypeIn(userId, COVERED_WALLET_TYPES)
+        val yourDeposits = accountRepository.sumBalanceByUserIdAndTypeIn(userId, COVERED_ACCOUNT_TYPES)
         return DepositProtectionStatus(
             fundReserveBalance = fund.reserveBalance,
             coverageCapPerUser = fund.coverageCapPerUser,
@@ -74,7 +74,7 @@ class DepositProtectionService(
     // double-entry ledger transaction, not just a number bumped in place.
     @Transactional
     fun accrueContribution(fund: DepositProtectionFund) {
-        val totalCoveredDeposits = accountRepository.sumBalanceByTypeIn(COVERED_WALLET_TYPES)
+        val totalCoveredDeposits = accountRepository.sumBalanceByTypeIn(COVERED_ACCOUNT_TYPES)
         val dailyRate = BigDecimal(fund.contributionRateBps).divide(BigDecimal(10000), 10, RoundingMode.HALF_UP)
             .divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
         val contribution = totalCoveredDeposits.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)

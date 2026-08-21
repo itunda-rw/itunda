@@ -103,7 +103,7 @@ class EmoticonController(private val emoticonService: EmoticonService) {
 
     @ExceptionHandler(EmoticonNoAccountException::class)
     fun handleNoAccount(ex: EmoticonNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmoticonGiftRecipientNotFoundException::class)
     fun handleGiftRecipientNotFound(ex: EmoticonGiftRecipientNotFoundException) =
@@ -119,7 +119,7 @@ class EmoticonController(private val emoticonService: EmoticonService) {
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

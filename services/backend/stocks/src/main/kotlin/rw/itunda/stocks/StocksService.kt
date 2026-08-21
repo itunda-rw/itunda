@@ -88,7 +88,7 @@ class StocksService(
     // `buyStock` would have real-422'd (InsufficientFundsException) for every real
     // first purchase regardless. A real, honest internal account-to-account transfer,
     // same shape `P2pService.sendDirect` already established for a different pair of
-    // real accounts -- no clearing account needed since both real WALLET-type accounts
+    // real accounts -- no clearing account needed since both real ACCOUNT-type accounts
     // belong to the exact same real user.
     @Transactional
     fun fundInvestmentAccount(userId: String, amount: BigDecimal): Map<String, Any?> {

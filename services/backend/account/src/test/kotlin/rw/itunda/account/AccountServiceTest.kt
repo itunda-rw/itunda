@@ -247,7 +247,7 @@ class AccountServiceTest : BehaviorSpec({
         val transferDebit = entry("e4", "txn_transfer", "account_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "2000", "Transfer to 0788999999")
         val transferCounterpart = entry("e5", "txn_transfer", "rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, "1980")
         // A genuine "no distinguishing counterpart" case -- an internal account-to-account debit
-        // with only another WALLET-type sibling.
+        // with only another ACCOUNT-type sibling.
         val internalDebit = entry("e7", "txn_internal", "account_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "300")
         val internalCounterpart = entry("e7b", "txn_internal", "account_savings_9", LedgerAccountType.WALLET, LedgerDirection.CREDIT, "300")
 
@@ -332,7 +332,7 @@ class AccountServiceTest : BehaviorSpec({
         )
 
         // Real bug found live during this session's own N+1-fix verification: a real
-        // fee-charging transfer posts a WALLET debit, a RAIL_SUSPENSE credit, AND a
+        // fee-charging transfer posts a ACCOUNT debit, a RAIL_SUSPENSE credit, AND a
         // FEE_REVENUE credit in the same transaction -- deliberately using ids where the
         // fee leg sorts first, reproducing the exact real-world ordering that surfaced
         // this bug (MySQL returns rows in no guaranteed order absent an ORDER BY).

@@ -171,11 +171,11 @@ class GroupEatsOrderController(
 
     @ExceptionHandler(RestaurantNoAccountException::class)
     fun handleRestaurantNoAccount(ex: RestaurantNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EatsBuyerNoAccountException::class)
     fun handleBuyerNoAccount(ex: EatsBuyerNoAccountException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidEatsDeliveryAddressException::class)
     fun handleInvalidAddress(ex: InvalidEatsDeliveryAddressException) =
@@ -222,7 +222,7 @@ class GroupEatsOrderController(
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

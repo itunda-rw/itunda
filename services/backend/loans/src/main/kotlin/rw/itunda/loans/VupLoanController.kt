@@ -95,7 +95,7 @@ class VupLoanController(
     fun handleNotFound(ex: VupLoanNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("VUP_LOAN_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(VupLoanNoAccountException::class)
-    fun handleNoAccount(ex: VupLoanNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    fun handleNoAccount(ex: VupLoanNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(VupLoanNotRequestedException::class)
     fun handleNotRequested(ex: VupLoanNotRequestedException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("VUP_LOAN_NOT_REQUESTED", ex.message ?: "Conflict"))
@@ -116,5 +116,5 @@ class VupLoanController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
     @ExceptionHandler(AccountFrozenException::class)
-    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 }
