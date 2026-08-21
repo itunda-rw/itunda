@@ -4030,6 +4030,21 @@ interface ApiService {
     @POST("api/v1/rides/drivers/location")
     suspend fun updateRideDriverLocation(@Body request: UpdateRideDriverLocationRequest): RideDriverResponse
 
+    // Real Uber "Destination Filter" + driver earnings report (uncalled-endpoint
+    // sweep follow-up, item 246) -- see RideDriverService.setDestination/
+    // RideTripService.getMyEarnings's own doc comments. Both real, fully-built
+    // backend endpoints found with zero client anywhere; bank-mfe already has this
+    // (2026-08-21); this is the Android port. A driver heading somewhere real
+    // (e.g. home) sets it here and only gets offered trips heading that direction.
+    @POST("api/v1/rides/drivers/destination")
+    suspend fun setRideDriverDestination(@Body request: SetRideDriverDestinationRequest): RideDriverResponse
+
+    @POST("api/v1/rides/drivers/destination/clear")
+    suspend fun clearRideDriverDestination(): RideDriverResponse
+
+    @GET("api/v1/rides/trips/my-earnings")
+    suspend fun getMyRideEarnings(@Query("from") from: String? = null, @Query("to") to: String? = null): RideEarningsResponse
+
     @POST("api/v1/rides/trips")
     suspend fun requestRideTrip(@Body request: RequestRideTripRequest, @Header("Idempotency-Key") idempotencyKey: String): RideTripResponse
 
@@ -4562,9 +4577,15 @@ data class TransactionHistoryResponse(val success: Boolean, val transactions: Li
 data class RideDriverDto(
     val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean,
     val currentLatitude: Double?, val currentLongitude: Double?, val locationUpdatedAt: String?,
+    // Real Uber "Destination Filter" (item 246) -- see ApiService's own
+    // setRideDriverDestination doc comment.
+    val destinationLatitude: Double? = null, val destinationLongitude: Double? = null,
 )
 data class RideDriverResponse(val success: Boolean, val driver: RideDriverDto)
 data class SetRideDriverAvailabilityRequest(val available: Boolean)
+data class SetRideDriverDestinationRequest(val latitude: Double, val longitude: Double)
+data class RideDailyEarnings(val date: String, val tripCount: Int, val grossFare: java.math.BigDecimal, val platformFees: java.math.BigDecimal, val netEarnings: java.math.BigDecimal)
+data class RideEarningsResponse(val success: Boolean, val from: String, val to: String, val days: List<RideDailyEarnings>)
 data class UpdateRideDriverLocationRequest(val latitude: Double, val longitude: Double)
 data class RideTripDto(
     val id: String, val passengerId: String, val driverId: String?, val pickupAddress: String,

@@ -706,10 +706,23 @@ public struct RideDriverDto: Decodable {
     public let currentLatitude: Double?
     public let currentLongitude: Double?
     public let locationUpdatedAt: String?
+    // Real Uber "Destination Filter" (item 247) -- see NetworkClient's own
+    // setRideDriverDestination doc comment.
+    public let destinationLatitude: Double?
+    public let destinationLongitude: Double?
 }
 public struct RideDriverResponse: Decodable { public let success: Bool; public let driver: RideDriverDto }
 public struct SetRideDriverAvailabilityRequest: Encodable { public let available: Bool }
 public struct UpdateRideDriverLocationRequest: Encodable { public let latitude: Double; public let longitude: Double }
+public struct SetRideDriverDestinationRequest: Encodable { public let latitude: Double; public let longitude: Double }
+public struct RideDailyEarnings: Decodable {
+    public let date: String
+    public let tripCount: Int
+    public let grossFare: Double
+    public let platformFees: Double
+    public let netEarnings: Double
+}
+public struct RideEarningsResponse: Decodable { public let success: Bool; public let from: String; public let to: String; public let days: [RideDailyEarnings] }
 public struct RideTripDto: Decodable {
     public let id: String
     public let passengerId: String
@@ -1284,6 +1297,25 @@ extension NetworkClient {
 
     public func updateRideDriverLocation(latitude: Double, longitude: Double) async throws -> RideDriverResponse {
         try await authenticatedPost("api/v1/rides/drivers/location", body: UpdateRideDriverLocationRequest(latitude: latitude, longitude: longitude))
+    }
+
+    // Real Uber "Destination Filter" + driver earnings report (uncalled-endpoint
+    // sweep follow-up, item 247) -- see RideDriverService.setDestination/
+    // RideTripService.getMyEarnings's own real doc comments. Both real, fully-built
+    // backend endpoints found with zero client anywhere; bank-mfe/Android already
+    // have this; this is the iOS port. A driver heading somewhere real (e.g. home)
+    // sets it here and only gets offered trips heading that direction.
+    public func setRideDriverDestination(latitude: Double, longitude: Double) async throws -> RideDriverResponse {
+        try await authenticatedPost("api/v1/rides/drivers/destination", body: SetRideDriverDestinationRequest(latitude: latitude, longitude: longitude))
+    }
+    public func clearRideDriverDestination() async throws -> RideDriverResponse {
+        try await authenticatedPost("api/v1/rides/drivers/destination/clear", body: EmptyBody())
+    }
+    public func getMyRideEarnings(from: String? = nil, to: String? = nil) async throws -> RideEarningsResponse {
+        try await get("api/v1/rides/trips/my-earnings", query: [
+            URLQueryItem(name: "from", value: from),
+            URLQueryItem(name: "to", value: to),
+        ])
     }
 
     public func requestRideTrip(

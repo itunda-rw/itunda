@@ -51,6 +51,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddRideTrustedContactRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.RequestRideTripRequest
+import rw.itunda.core.network.RideDailyEarnings
 import rw.itunda.core.network.RideDriverDto
 import rw.itunda.core.network.RideDriverRatingResponse
 import rw.itunda.core.network.RideStopRequestDto
@@ -59,6 +60,7 @@ import rw.itunda.core.network.RideTripReviewDto
 import rw.itunda.core.network.RideTripStopDto
 import rw.itunda.core.network.RideTrustedContactDto
 import rw.itunda.core.network.SetRideDriverAvailabilityRequest
+import rw.itunda.core.network.SetRideDriverDestinationRequest
 import rw.itunda.core.network.StartRideTripRequest
 import rw.itunda.core.network.SubmitRideReviewRequest
 import rw.itunda.core.network.UpdateRideDriverLocationRequest
@@ -544,6 +546,18 @@ private fun RideDriverContent() {
     // Real Uber "Verify Your Ride" PIN -- what the driver has typed in for each real
     // active trip, keyed by trip id.
     var startPinInputs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Real Uber "Destination Filter" + earnings report (uncalled-endpoint sweep
+    // follow-up, item 246) -- both real, fully-built backend endpoints found with
+    // zero client anywhere on any platform before bank-mfe's own 2026-08-21 port.
+    // Manual lat/lng entry, matching this same screen's existing dropoff-address
+    // fields exactly -- no real geocoding-search component is reachable from
+    // :app (AddressAutocompleteField lives `internal` inside
+    // :features:eats:impl), so this stays consistent with the sibling input
+    // already on this screen rather than looking more polished than it.
+    var destinationLat by remember { mutableStateOf("") }
+    var destinationLng by remember { mutableStateOf("") }
+    var destinationBusy by remember { mutableStateOf(false) }
+    var earnings by remember { mutableStateOf<List<RideDailyEarnings>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     val requestLocation = rememberRealLocationRequester(
@@ -641,6 +655,50 @@ private fun RideDriverContent() {
         }
     }
 
+    LaunchedEffect(driver?.id) {
+        if (driver == null) return@LaunchedEffect
+        try {
+            earnings = NetworkClient.apiService.getMyRideEarnings().days
+        } catch (_: Exception) {
+            // Non-critical -- the earnings card just stays hidden this pass.
+        }
+    }
+
+    fun setDestination() {
+        val lat = destinationLat.toDoubleOrNull()
+        val lng = destinationLng.toDoubleOrNull()
+        if (lat == null || lng == null) return
+        destinationBusy = true
+        coroutineScope.launch {
+            try {
+                driver = NetworkClient.apiService.setRideDriverDestination(SetRideDriverDestinationRequest(lat, lng)).driver
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                destinationBusy = false
+            }
+        }
+    }
+
+    fun clearDestination() {
+        destinationBusy = true
+        coroutineScope.launch {
+            try {
+                driver = NetworkClient.apiService.clearRideDriverDestination().driver
+                destinationLat = ""
+                destinationLng = ""
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                destinationBusy = false
+            }
+        }
+    }
+
     fun act(tripId: String, action: suspend (String) -> RideTripDto) {
         busyTripId = tripId
         coroutineScope.launch {
@@ -725,6 +783,71 @@ private fun RideDriverContent() {
                                     .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
                                     .clickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        }
+                    }
+                }
+                // Real Uber "Destination Filter" -- see RideDriverDto.destinationLatitude's
+                // own doc comment.
+                item {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("Heading somewhere?", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+                            if (current.destinationLatitude != null) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Only offered trips heading your way.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
+                                            .clickable(enabled = !destinationBusy) { clearDestination() }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    ) { Text(if (destinationBusy) "…" else "Clear", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                }
+                            } else {
+                                Text(
+                                    "Set a destination and you'll only be offered trips heading that direction.",
+                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
+                                )
+                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(10.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    IdsTextField(value = destinationLat, onValueChange = { destinationLat = it }, label = "Destination latitude", modifier = Modifier.weight(1f))
+                                    IdsTextField(value = destinationLng, onValueChange = { destinationLng = it }, label = "Destination longitude", modifier = Modifier.weight(1f))
+                                }
+                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(10.dp))
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                        .background(if (destinationLat.toDoubleOrNull() != null && destinationLng.toDoubleOrNull() != null) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                        .clickable(enabled = !destinationBusy && destinationLat.toDoubleOrNull() != null && destinationLng.toDoubleOrNull() != null) { setDestination() }
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) { Text(if (destinationBusy) "Setting…" else "Set destination", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                            }
+                        }
+                    }
+                }
+                // Real Uber Driver-style earnings report -- see ApiService's own
+                // getMyRideEarnings doc comment. Hidden entirely for a fresh driver with
+                // zero completed trips rather than showing an empty/zero state.
+                val weekEarnings = earnings
+                if (weekEarnings != null && weekEarnings.isNotEmpty()) {
+                    item {
+                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("This week", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(10.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Column {
+                                        Text("Trips", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                        Text("${weekEarnings.sumOf { it.tripCount }}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    }
+                                    Column {
+                                        Text("Gross fare", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                        Text("${weekEarnings.sumOf { it.grossFare }} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    }
+                                    Column {
+                                        Text("Net earnings", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                        Text("${weekEarnings.sumOf { it.netEarnings }} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

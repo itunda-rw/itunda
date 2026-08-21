@@ -483,6 +483,16 @@ private struct RideDriverContent: View {
     // Real Uber "Verify Your Ride" PIN -- what the driver has typed in for each real
     // active trip, keyed by trip id.
     @State private var startPinInputs: [String: String] = [:]
+    // Real Uber "Destination Filter" + earnings report (uncalled-endpoint sweep
+    // follow-up, item 247) -- both real, fully-built backend endpoints found with
+    // zero client anywhere on any platform before bank-mfe's own 2026-08-21 port.
+    // Manual lat/lng entry, matching this same screen's existing `dropoffLat`/
+    // `dropoffLng` fields on `RidePassengerContent` exactly -- no real
+    // geocoding-search component exists on iOS for rides either.
+    @State private var destinationLat = ""
+    @State private var destinationLng = ""
+    @State private var destinationBusy = false
+    @State private var earnings: [RideDailyEarnings]?
 
     private var activeDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" } }
     private var pastDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
@@ -527,6 +537,66 @@ private struct RideDriverContent: View {
                         }
                     }
                     .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+
+                    // Real Uber "Destination Filter" -- see RideDriverDto.destinationLatitude's
+                    // own doc comment.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Heading somewhere?").bold().foregroundColor(IDS.Colors.textPrimary)
+                        if current.destinationLatitude != nil {
+                            HStack {
+                                Text("Only offered trips heading your way.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                Spacer()
+                                Button(action: { Task { await clearDestination() } }) {
+                                    Text(destinationBusy ? "…" : "Clear").bold().foregroundColor(IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 14).padding(.vertical, 8)
+                                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                }
+                                .disabled(destinationBusy)
+                            }
+                        } else {
+                            Text("Set a destination and you'll only be offered trips heading that direction.")
+                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            HStack(spacing: 8) {
+                                TextField("Destination latitude", text: $destinationLat)
+                                    .keyboardType(.decimalPad).padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                TextField("Destination longitude", text: $destinationLng)
+                                    .keyboardType(.decimalPad).padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                            }
+                            Button(action: { Task { await setDestination() } }) {
+                                Text(destinationBusy ? "Setting…" : "Set destination").bold().foregroundColor(IDS.Colors.textPrimary)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                    .background(Double(destinationLat) != nil && Double(destinationLng) != nil ? IDS.Colors.brand.opacity(0.5) : Color(.tertiarySystemBackground)).cornerRadius(10)
+                            }
+                            .disabled(destinationBusy || Double(destinationLat) == nil || Double(destinationLng) == nil)
+                        }
+                    }
+                    .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+
+                    // Real Uber Driver-style earnings report -- see NetworkClient's own
+                    // getMyRideEarnings doc comment. Hidden entirely for a fresh driver
+                    // with zero completed trips rather than showing an empty/zero state.
+                    if let weekEarnings = earnings, !weekEarnings.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("This week").bold().foregroundColor(IDS.Colors.textPrimary)
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text("Trips").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    Text("\(weekEarnings.reduce(0) { $0 + $1.tripCount })").bold().font(.title3).foregroundColor(IDS.Colors.textPrimary)
+                                }
+                                Spacer()
+                                VStack(alignment: .leading) {
+                                    Text("Gross fare").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    Text("\(Int(weekEarnings.reduce(0) { $0 + $1.grossFare })) RWF").bold().font(.title3).foregroundColor(IDS.Colors.textPrimary)
+                                }
+                                Spacer()
+                                VStack(alignment: .leading) {
+                                    Text("Net earnings").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    Text("\(Int(weekEarnings.reduce(0) { $0 + $1.netEarnings })) RWF").bold().font(.title3).foregroundColor(.green)
+                                }
+                            }
+                        }
+                        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    }
 
                     if !activeDriverTrips.isEmpty {
                         Text("Active trips").bold().foregroundColor(IDS.Colors.textPrimary)
@@ -602,6 +672,7 @@ private struct RideDriverContent: View {
         }
         .task {
             await loadDriver()
+            await loadEarnings()
             pollTask = Task {
                 while !Task.isCancelled {
                     if driver != nil { await loadTrips() }
@@ -661,6 +732,33 @@ private struct RideDriverContent: View {
         } catch {
             self.error = "Could not update your availability."
         }
+    }
+
+    private func loadEarnings() async {
+        earnings = try? await NetworkClient.shared.getMyRideEarnings().days
+    }
+
+    private func setDestination() async {
+        guard let lat = Double(destinationLat), let lng = Double(destinationLng) else { return }
+        destinationBusy = true
+        do {
+            driver = try await NetworkClient.shared.setRideDriverDestination(latitude: lat, longitude: lng).driver
+        } catch {
+            self.error = "Could not set your destination."
+        }
+        destinationBusy = false
+    }
+
+    private func clearDestination() async {
+        destinationBusy = true
+        do {
+            driver = try await NetworkClient.shared.clearRideDriverDestination().driver
+            destinationLat = ""
+            destinationLng = ""
+        } catch {
+            self.error = "Could not clear your destination."
+        }
+        destinationBusy = false
     }
 
     private func act(_ tripId: String, _ action: (String) async throws -> RideTripDto) async {

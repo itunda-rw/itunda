@@ -15659,3 +15659,44 @@ specifically -- that's the actual, narrower remaining gap.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/lib/rideshare.ts` +
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.*
+
+## 246-247. Real driver "Destination Filter" + earnings report ported to Android and iOS, closing the uncalled-endpoint sweep completely across all 3 platforms
+
+Both already have the rest of the real ride-hailing driver flow (register/
+accept/decline/availability/ratings, in `RideScreen.kt`/`RideScreenView.swift`
+respectively) -- only these 2 cards were missing, matching §245's corrected
+scope. Added `setRideDriverDestination`/`clearRideDriverDestination`/
+`getMyRideEarnings` to `ApiService.kt` (item 246) and `NetworkClient.swift`
+(item 247), each with a `destinationLatitude`/`destinationLongitude` pair
+added to their respective `RideDriverDto`.
+
+**One deliberate consistency choice, not a shortcut**: rather than build a real
+geocoding-search UI for the destination field, both ports use plain manual
+latitude/longitude text entry -- matching this exact screen's own EXISTING
+`dropoffLat`/`dropoffLng` fields on the passenger side, on both platforms. A
+real geocoding-search component does exist (`AddressAutocompleteField`), but
+it's `internal` inside `:features:eats:impl` on Android with no iOS
+equivalent either -- building or promoting a shared one would be a materially
+bigger, separately-scoped task than "port 2 small cards," and would have made
+the destination field look MORE polished than the sibling dropoff field
+right next to it on the exact same screen, which would read as inconsistent
+rather than better.
+
+**Verification**: `:app:compileDebugKotlin` BUILD SUCCESSFUL (no other module
+needed touching -- both DTOs/endpoints live in `:core:network`, no
+Feature-module boundary crossed, so the Konsist check from item 244 wasn't
+re-run). Full `xcodebuild` (ItundaApp scheme) BUILD SUCCEEDED. Both installed
+and launched on the available Simulator, confirmed via screenshot no crash
+reaching login. Same honest caveat as every other native change this
+session: no physical Android device or interactive Simulator UI automation
+available, so both are compile/launch-verified only, not click-through
+tested.
+
+**This closes [[feedback_uncalled_endpoint_sweep]] completely across all 3
+platforms** -- the original 66-candidate list from the 2026-08-20 sweep
+session has zero remaining real gaps anywhere.
+
+*Shipped: `android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt` +
+`android/app/src/main/java/rw/itunda/app/ui/RideScreen.kt` +
+`ios/Core/Network/Sources/NetworkClient.swift` +
+`ios/App/Sources/RideScreenView.swift`.*
