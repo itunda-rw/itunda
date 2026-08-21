@@ -2,7 +2,7 @@ import SwiftUI
 import CoreDesignSystem
 
 /// Real B2B payroll -- see rw.itunda.merchant.PayrollService's own doc comment for why
-/// this is real wallet-to-wallet money movement, not a demo. merchant-mfe/Android
+/// this is real account-to-account money movement, not a demo. merchant-mfe/Android
 /// already have this; this is the first iOS client.
 struct PayrollTab: View {
     @State private var roster: [PayrollEmployeeDto]?
@@ -58,7 +58,7 @@ private struct AddEmployeeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Add an employee").font(.headline)
-            Text("Must be an existing Itunda user's phone number — payroll pays directly into their wallet.")
+            Text("Must be an existing Itunda user's phone number — payroll pays directly into their account.")
                 .font(.footnote).foregroundColor(.secondary)
             IdsTextField("Phone number (+250788123456)", text: $phoneNumber, keyboardType: .phonePad)
             IdsTextField("Monthly salary (RWF)", text: $salaryAmount, keyboardType: .decimalPad)

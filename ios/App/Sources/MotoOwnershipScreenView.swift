@@ -126,7 +126,7 @@ struct MotoOwnershipScreenView: View {
                                                 .disabled(busyId != nil)
                                             }
                                             if plan.savedAmount >= plan.downPaymentTarget {
-                                                Text("This releases your full \(formatMoneyMoto(plan.bikePrice)) RWF bike price to your wallet (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.")
+                                                Text("This releases your full \(formatMoneyMoto(plan.bikePrice)) RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.")
                                                     .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                                 Button(action: { Task { await convert(plan.id) } }) {
                                                     Text(busyId == plan.id ? "Converting…" : "Convert to loan").bold().font(.footnote).foregroundColor(.white)

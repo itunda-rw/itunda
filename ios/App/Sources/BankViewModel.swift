@@ -4,7 +4,7 @@ import CoreNetwork
 
 /// Real data backing BankView (2026-07-11) -- mirrors Android's MainViewModel.kt.
 /// Lives in the App target, not Features/Banking, because BankView's module can't
-/// depend back on App's NetworkClient/Wallet types (App depends on Feature, never
+/// depend back on App's NetworkClient/Account types (App depends on Feature, never
 /// the reverse -- see Project.swift's featureModules list); ContentView owns this
 /// and passes plain formatted values into BankView, the same way it already passes
 /// plain strings into TransferQuoteScreen.
@@ -119,12 +119,12 @@ final class BankViewModel: ObservableObject {
 
     private func loadInternal() async {
         do {
-            let walletsRes = try await NetworkClient.shared.getWallets()
-            if walletsRes.success, let wallet = walletsRes.wallets.first(where: { $0.type == "MAIN" }) ?? walletsRes.wallets.first {
-                balanceText = formatAmount(wallet.balance, currency: wallet.currency)
-                accountNumber = wallet.accountNumber
-                availableBalance = wallet.availableBalance
-                currentUserId = wallet.userId
+            let accountsRes = try await NetworkClient.shared.getAccounts()
+            if accountsRes.success, let account = accountsRes.accounts.first(where: { $0.type == "MAIN" }) ?? accountsRes.accounts.first {
+                balanceText = formatAmount(account.balance, currency: account.currency)
+                accountNumber = account.accountNumber
+                availableBalance = account.availableBalance
+                currentUserId = account.userId
             }
 
             let transactionsRes = try await NetworkClient.shared.getTransactionHistory()

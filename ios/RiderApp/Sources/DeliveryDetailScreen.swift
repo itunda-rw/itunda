@@ -79,7 +79,7 @@ struct DeliveryDetailScreen: View {
                         .disabled(advancing)
                         .padding(16)
                     } else if current.status == "DELIVERED" {
-                        Text("Delivered -- \(formattedRWF(current.deliveryFee)) RWF paid to your wallet.")
+                        Text("Delivered -- \(formattedRWF(current.deliveryFee)) RWF paid to your account.")
                             .bold().foregroundColor(.blue)
                             .padding(16)
                     }

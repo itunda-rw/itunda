@@ -65,10 +65,10 @@ struct VendorCashAdvanceTab: View {
 
                     if let advance, advance.status == "REQUESTED" {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Your \(Int(advance.principalAmount)) RWF advance was approved and is ready to disburse to your wallet.")
+                            Text("Your \(Int(advance.principalAmount)) RWF advance was approved and is ready to disburse to your account.")
                                 .font(.footnote).foregroundColor(.secondary)
                             Button(action: { Task { await disburse(advance.id) } }) {
-                                Text(busy ? "Disbursing…" : "Disburse to my wallet")
+                                Text(busy ? "Disbursing…" : "Disburse to my account")
                                     .bold().foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)
                                     .background(IDS.Colors.brand).cornerRadius(10)

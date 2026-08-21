@@ -65,7 +65,7 @@ struct ContentView: View {
     @State private var showCommunity = false
     @State private var showJobs = false
     @State private var showProperty = false
-    // Real wallet/savings data (2026-07-11) -- see BankViewModel.swift for why this
+    // Real account/savings data (2026-07-11) -- see BankViewModel.swift for why this
     // lives here rather than inside BankView's own module.
     @StateObject private var bankViewModel = BankViewModel()
     // Real send-money flow (2026-07-12) -- "Send money now" was decorative until
@@ -112,7 +112,7 @@ struct ContentView: View {
     @State private var showHarvestAdvance = false
     // Real itunda Bank product identity (2026-08-11) -- see Android's identical
     // BankHubScreen/BankSummaryCard and bank-mfe's identical SavingsView rebrand for
-    // the full "itunda Bank vs itunda wallet/Pay" research this came out of.
+    // the full "itunda Bank vs itunda account/Pay" research this came out of.
     // LoansScreenView/InvestScreenView already existed (reachable only from
     // EntireMenuScreen's own local @State before this) -- same "each presenting view
     // owns its own sheet state" duplication already used for showSacco above.
@@ -150,7 +150,7 @@ struct ContentView: View {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "harvest_advance")
                 showHarvestAdvance = true
             }),
-            CooperativeRowData(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: Color.accentBlue.opacity(0.15), onTap: {
+            CooperativeRowData(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: Color.accentBlue.opacity(0.15), onTap: {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "loans")
                 showLoans = true
             }),

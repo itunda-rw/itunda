@@ -317,7 +317,7 @@ private struct WeeklySavingsDetailContent: View {
     let onChanged: () -> Void
 
     @State private var plan: WeeklySavingsPlanDto?
-    @State private var walletBalance: Double = 0
+    @State private var accountBalance: Double = 0
     @State private var installments: [WeeklySavingsInstallmentDto] = []
     @State private var loadError: String?
     @State private var actionError: String?
@@ -333,8 +333,8 @@ private struct WeeklySavingsDetailContent: View {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(plan.name).font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
-                        Text("Wallet balance").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        Text("\(formatMoney(walletBalance)) RWF").font(.largeTitle).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text("Account balance").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        Text("\(formatMoney(accountBalance)) RWF").font(.largeTitle).bold().foregroundColor(IDS.Colors.textPrimary)
                         WeeklySavingsProgressBar(progress: Double(plan.weeksElapsed) / Double(WeeklySavingsConstants.termWeeks))
                             .padding(.top, 6)
                         Text("Week \(plan.weeksElapsed)/\(WeeklySavingsConstants.termWeeks) -- \(plan.installmentsCollected) installments collected")
@@ -408,7 +408,7 @@ private struct WeeklySavingsDetailContent: View {
                     if plan.status == "ACTIVE" {
                         if confirmingCancel {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("Cancelling now forfeits the streak bonus for good. You'll get your principal plus base-rate-only interest, paid out immediately to your main wallet.")
+                                Text("Cancelling now forfeits the streak bonus for good. You'll get your principal plus base-rate-only interest, paid out immediately to your main account.")
                                     .font(.caption).foregroundColor(.red)
                                 HStack {
                                     Button("Keep saving") { confirmingCancel = false }
@@ -434,7 +434,7 @@ private struct WeeklySavingsDetailContent: View {
                         }
                     } else if plan.status == "MATURED" && plan.withdrawnAt == nil {
                         Button(action: withdrawPlan) {
-                            Text(submitting ? "Working…" : "Withdraw to main wallet")
+                            Text(submitting ? "Working…" : "Withdraw to main account")
                                 .foregroundColor(.white).bold()
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
@@ -458,7 +458,7 @@ private struct WeeklySavingsDetailContent: View {
                 let res = try await NetworkClient.shared.getWeeklySavingsPlan(id: planId)
                 if res.success {
                     plan = res.plan
-                    walletBalance = res.walletBalance
+                    accountBalance = res.accountBalance
                     installments = res.installments
                 }
                 loadError = nil
@@ -474,7 +474,7 @@ private struct WeeklySavingsDetailContent: View {
             do {
                 let res = try await NetworkClient.shared.cancelWeeklySavingsPlan(id: planId)
                 plan = res.plan
-                walletBalance = res.walletBalance
+                accountBalance = res.accountBalance
                 installments = res.installments
                 confirmingCancel = false
                 actionError = nil
@@ -494,7 +494,7 @@ private struct WeeklySavingsDetailContent: View {
             do {
                 let res = try await NetworkClient.shared.withdrawWeeklySavingsPlan(id: planId)
                 plan = res.plan
-                walletBalance = res.walletBalance
+                accountBalance = res.accountBalance
                 installments = res.installments
                 actionError = nil
                 onChanged()
@@ -509,7 +509,7 @@ private struct WeeklySavingsDetailContent: View {
 
     private static func errorMessage(_ statusCode: Int) -> String {
         switch statusCode {
-        case 404: return "This plan or its wallet couldn't be found."
+        case 404: return "This plan or its account couldn't be found."
         case 409: return "This plan isn't in the right state for that action anymore."
         default: return "Something went wrong. Please try again."
         }

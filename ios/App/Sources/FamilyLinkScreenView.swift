@@ -107,7 +107,7 @@ struct FamilyLinkScreenView: View {
                                     .disabled(busyId == c.link.id)
                                 }
                                 if openOverviewFor == c.link.childUserId, let overview, overview.childUserId == c.link.childUserId {
-                                    Text("Balance: \(Int(overview.walletBalance)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    Text("Balance: \(Int(overview.accountBalance)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                     if overview.recentTransactions.isEmpty {
                                         Text("No transactions yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     } else {

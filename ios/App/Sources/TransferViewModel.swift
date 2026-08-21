@@ -23,7 +23,7 @@ enum MoneyActionResult {
 /// `sendTransfer` switched 2026-07-20 from the previous quote-then-confirm
 /// `quoteTransfer`/`confirmTransfer` pair (built 2026-07-12) to the new `sendDirect`
 /// endpoint: those older endpoints always route through a simulated external rail and
-/// never actually credit another itunda user's wallet, even when the recipient is a real
+/// never actually credit another itunda user's account, even when the recipient is a real
 /// itunda account (confirmed via a direct MySQL check while building the real fix on the
 /// backend one day earlier -- see SendDirectP2pRequest's own doc comment). No quote step
 /// needed here, since there's no external rail decision to quote.

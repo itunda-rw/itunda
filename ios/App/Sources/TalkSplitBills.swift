@@ -8,7 +8,7 @@ import CoreNetwork
 // (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself being
 // fully wired. A flat, even split among picked group members (excluding the
 // organizer); each participant pays their own share directly to the organizer via a
-// real wallet-to-wallet push, no escrow -- see SplitBill.kt's own doc comment.
+// real account-to-account push, no escrow -- see SplitBill.kt's own doc comment.
 struct GroupSplitBillsView: View {
     let groupConversationId: String
     let members: [GroupMemberDto]

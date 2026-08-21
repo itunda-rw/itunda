@@ -283,7 +283,7 @@ private struct Grow31SavingsDetailContent: View {
     let onChanged: () -> Void
 
     @State private var plan: Grow31SavingsPlanDto?
-    @State private var walletBalance: Double = 0
+    @State private var accountBalance: Double = 0
     @State private var deposits: [Grow31SavingsDepositDto] = []
     @State private var loadError: String?
     @State private var actionError: String?
@@ -305,8 +305,8 @@ private struct Grow31SavingsDetailContent: View {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(plan.name).font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
-                        Text("Wallet balance").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        Text("\(formatMoney(walletBalance)) RWF").font(.largeTitle).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text("Account balance").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        Text("\(formatMoney(accountBalance)) RWF").font(.largeTitle).bold().foregroundColor(IDS.Colors.textPrimary)
                         Grow31SavingsProgressBar(progress: Double(plan.daysElapsed) / Double(Grow31SavingsConstants.termDays))
                             .padding(.top, 6)
                         Text("Day \(min(plan.daysElapsed, Grow31SavingsConstants.termDays)) of \(Grow31SavingsConstants.termDays)")
@@ -372,7 +372,7 @@ private struct Grow31SavingsDetailContent: View {
                     if plan.status == "ACTIVE" {
                         if confirmingCancel {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("Cancelling now forfeits your streak bonus for good. You'll get principal plus base-rate-only interest, paid out immediately to your main wallet.")
+                                Text("Cancelling now forfeits your streak bonus for good. You'll get principal plus base-rate-only interest, paid out immediately to your main account.")
                                     .font(.caption).foregroundColor(.red)
                                 HStack {
                                     Button("Keep saving") { confirmingCancel = false }
@@ -415,7 +415,7 @@ private struct Grow31SavingsDetailContent: View {
                         }
                     } else if plan.status == "MATURED" && plan.withdrawnAt == nil {
                         Button(action: withdrawPlan) {
-                            Text(submitting ? "Working…" : "Withdraw to main wallet")
+                            Text(submitting ? "Working…" : "Withdraw to main account")
                                 .foregroundColor(.white).bold()
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
@@ -439,7 +439,7 @@ private struct Grow31SavingsDetailContent: View {
                 let res = try await NetworkClient.shared.getGrow31SavingsPlan(id: planId)
                 if res.success {
                     plan = res.plan
-                    walletBalance = res.walletBalance
+                    accountBalance = res.accountBalance
                     deposits = res.deposits
                 }
                 loadError = nil
@@ -455,7 +455,7 @@ private struct Grow31SavingsDetailContent: View {
             do {
                 let res = try await NetworkClient.shared.depositGrow31SavingsToday(id: planId)
                 plan = res.plan
-                walletBalance = res.walletBalance
+                accountBalance = res.accountBalance
                 deposits = res.deposits
                 actionError = nil
                 onChanged()
@@ -474,7 +474,7 @@ private struct Grow31SavingsDetailContent: View {
             do {
                 let res = try await NetworkClient.shared.cancelGrow31SavingsPlan(id: planId)
                 plan = res.plan
-                walletBalance = res.walletBalance
+                accountBalance = res.accountBalance
                 deposits = res.deposits
                 confirmingCancel = false
                 actionError = nil
@@ -494,7 +494,7 @@ private struct Grow31SavingsDetailContent: View {
             do {
                 let res = try await NetworkClient.shared.withdrawGrow31SavingsPlan(id: planId)
                 plan = res.plan
-                walletBalance = res.walletBalance
+                accountBalance = res.accountBalance
                 deposits = res.deposits
                 actionError = nil
                 onChanged()
@@ -509,7 +509,7 @@ private struct Grow31SavingsDetailContent: View {
 
     private static func errorMessage(_ statusCode: Int) -> String {
         switch statusCode {
-        case 404: return "This plan or its wallet couldn't be found."
+        case 404: return "This plan or its account couldn't be found."
         case 409: return "This plan isn't in the right state for that action anymore."
         case 422: return "Not enough available balance to save today."
         default: return "Something went wrong. Please try again."

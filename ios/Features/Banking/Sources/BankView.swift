@@ -46,8 +46,8 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "notifications": "Notifications",
         "profile": "Profile",
         "totalBalance": "Itunda total balance",
-        "balanceSubtitle": "Wallet, bank and mobile money in one place",
-        "mainWallet": "Main wallet",
+        "balanceSubtitle": "Account, bank and mobile money in one place",
+        "mainAccount": "Main account",
         "spendToday": "Spend today",
         "sendMoneyNow": "Send money now",
         "quickTransfer": "Transfer",
@@ -67,7 +67,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "discoverNew": "NEW",
         "bkAccountTitle": "BK Bank account",
         "bkAccountSubtitle": "Salary and card settlement",
-        "momoSubtitle": "Daily spending wallet",
+        "momoSubtitle": "Daily spending account",
         "airtelTitle": "Airtel Money",
         "airtelSubtitle": "Backup cash-out line",
         "connected": "Connected",
@@ -86,7 +86,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "goalSaverSubtitle": "Rainy day fund progress",
         // Real itunda Bank product identity (2026-08-11) -- see Android's identical
         // BankHubScreen/BankSummaryCard doc comment for the full "itunda Bank vs
-        // itunda wallet/Pay" research (KakaoPay/KakaoBank, Toss's own Payments/Bank)
+        // itunda account/Pay" research (KakaoPay/KakaoBank, Toss's own Payments/Bank)
         // this rebrand came out of. Same rows as before (SACCO/Ikimina/Moto/Harvest,
         // now also Loans/Invest -- see ContentView's own coopRows doc comment), just
         // given the real product identity they were missing.
@@ -98,8 +98,8 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "notifications": "Amamenyesha",
         "profile": "Umwirondoro",
         "totalBalance": "Amafaranga yose ya itunda",
-        "balanceSubtitle": "Wallet, banki na Mobile Money byose hamwe",
-        "mainWallet": "Wallet nyamukuru",
+        "balanceSubtitle": "Account, banki na Mobile Money byose hamwe",
+        "mainAccount": "Account nyamukuru",
         "spendToday": "Wakoresheje uyu munsi",
         "sendMoneyNow": "Ohereza amafaranga",
         "quickTransfer": "Kohereza",
@@ -119,7 +119,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "discoverNew": "GISHYA",
         "bkAccountTitle": "Konti ya BK Bank",
         "bkAccountSubtitle": "Umushahara n'ubwishyu bwa karita",
-        "momoSubtitle": "Wallet yo gukoresha buri munsi",
+        "momoSubtitle": "Account yo gukoresha buri munsi",
         "airtelTitle": "Airtel Money",
         "airtelSubtitle": "Umurongo w'inyongera wo kubikuza",
         "connected": "Byahujwe",
@@ -145,7 +145,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "profile": "Profil",
         "totalBalance": "Solde total itunda",
         "balanceSubtitle": "Portefeuille, banque et mobile money au même endroit",
-        "mainWallet": "Portefeuille principal",
+        "mainAccount": "Portefeuille principal",
         "spendToday": "Dépensé aujourd'hui",
         "sendMoneyNow": "Envoyer de l'argent",
         "quickTransfer": "Virement",
@@ -192,7 +192,7 @@ private func bt(_ key: String, locale: BankingLocale) -> String {
 }
 
 /// A row for BankView's real "Savings" section -- plain primitives, not the App
-/// target's Wallet/SavingsGoal/InterestJar types, because Features/Banking (a Tuist
+/// target's Account/SavingsGoal/InterestJar types, because Features/Banking (a Tuist
 /// Feature module) cannot depend back on App (App depends on Feature, never the
 /// reverse) -- see Project.swift's featureModules list. The caller (ContentView, in
 /// App, which does have access to NetworkClient's real types) is responsible for
@@ -285,7 +285,7 @@ public struct BankView: View {
     /// something sensible without a real backend), but ContentView's real call site
     /// always passes real values from BankViewModel. onSend added 2026-07-12 -- "Send
     /// money now" was a decorative row with no action; it's the real entry point into
-    /// the send-money flow now, matching Android's WalletHeroCard "Send" button.
+    /// the send-money flow now, matching Android's AccountHeroCard "Send" button.
     /// accountNumber added 2026-08-11 -- see AccountSummaryCard's own doc comment.
     public init(
         balanceText: String = "RWF 0",
@@ -425,7 +425,7 @@ private enum BankViewData {
         [
             HomeRowData(title: bt("cashPowerTitle", locale: locale), subtitle: bt("cashPowerSubtitle", locale: locale), trailing: bt("open", locale: locale), symbol: "doc.text", iconBackground: IDS.Colors.warningTint),
             HomeRowData(title: bt("iremboTitle", locale: locale), subtitle: bt("iremboSubtitle", locale: locale), trailing: bt("browse", locale: locale), symbol: "building.columns", iconBackground: IDS.Colors.pressed),
-            HomeRowData(title: bt("mySpendingTitle", locale: locale), subtitle: bt("mySpendingSubtitle", locale: locale), trailing: bt("seeAll", locale: locale), symbol: "wallet.pass", iconBackground: IDS.Colors.backgroundTertiary),
+            HomeRowData(title: bt("mySpendingTitle", locale: locale), subtitle: bt("mySpendingSubtitle", locale: locale), trailing: bt("seeAll", locale: locale), symbol: "account.pass", iconBackground: IDS.Colors.backgroundTertiary),
         ]
     }
 
@@ -524,7 +524,7 @@ private struct AccountSummaryCard: View {
                 // the real account detail screen leads with the account's own real
                 // number ("토스뱅크 1000-3058-1980") directly above the balance --
                 // itunda's real, collision-checked AccountNumberGenerator has produced
-                // a real accountNumber for the MAIN wallet since it was built, but it
+                // a real accountNumber for the MAIN account since it was built, but it
                 // was never actually shown anywhere except when entering someone
                 // ELSE's number to send to. Same fix on Android/web the same day.
                 if let accountNumber {
@@ -541,7 +541,7 @@ private struct AccountSummaryCard: View {
             }
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                BalanceTile(title: bt("mainWallet", locale: locale), amount: balanceText)
+                BalanceTile(title: bt("mainAccount", locale: locale), amount: balanceText)
                 BalanceTile(title: bt("spendToday", locale: locale), amount: "RWF 18,200")
             }
 

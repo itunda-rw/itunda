@@ -508,7 +508,7 @@ private struct RideDriverContent: View {
                 } else if driver == nil {
                     VStack(spacing: 12) {
                         Text("Drive with Itunda").font(.headline).foregroundColor(IDS.Colors.textPrimary)
-                        Text("Earn a real fare for every trip you complete, paid straight to your wallet.")
+                        Text("Earn a real fare for every trip you complete, paid straight to your account.")
                             .font(.footnote).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
                         Button(action: { Task { await register() } }) {
                             Text(registering ? "Registering…" : "Become a driver").bold().foregroundColor(.white)

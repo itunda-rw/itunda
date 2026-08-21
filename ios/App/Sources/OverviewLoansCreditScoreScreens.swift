@@ -18,7 +18,7 @@ private let linkProviders = ["MTN Mobile Money", "Airtel Money", "Bank of Kigali
 private let momoLinkProviders: Set<String> = ["MTN Mobile Money", "Airtel Money"]
 
 // Real second iOS screen localized (2026-08-08), following web/Android's own identical
-// "phase content outward from login into wallet overview" step (docs/DESIGN_REFERENCES.md
+// "phase content outward from login into account overview" step (docs/DESIGN_REFERENCES.md
 // Section 19). Reuses AppLocale/loadStoredLocale from LoginScreen.swift (same target,
 // promoted to internal there for exactly this reuse) rather than duplicating locale
 // detection a second time. Includes overview.verificationFailed from the start -- web's own
@@ -520,7 +520,7 @@ private struct OverdraftPanel: View {
         defer { busy = false }
         do {
             let res = try await NetworkClient.shared.drawOverdraft(amount: amount)
-            if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
+            if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
             drawAmount = ""
             notice = "Drew \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF still available."
         } catch {
@@ -534,7 +534,7 @@ private struct OverdraftPanel: View {
         defer { busy = false }
         do {
             let res = try await NetworkClient.shared.repayOverdraft(amount: amount)
-            if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
+            if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
             repayAmount = ""
             notice = "Repaid \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF now available."
         } catch {
@@ -577,7 +577,7 @@ private struct PostpaidCreditPanel: View {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     IdsTextField("Spend amount (RWF)", text: $spendAmount, keyboardType: .numberPad).disabled(suspended)
                     Button(action: { Task { await spend() } }) {
-                        Text(busy ? "Adding…" : "Add to wallet").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                        Text(busy ? "Adding…" : "Add to account").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                     }
                     .disabled(busy || suspended)
                     IdsTextField("Repay amount (RWF)", text: $repayAmount, keyboardType: .numberPad)
@@ -623,9 +623,9 @@ private struct PostpaidCreditPanel: View {
         defer { busy = false }
         do {
             let res = try await NetworkClient.shared.spendPostpaidCredit(amount: amount)
-            if var current = line { current = PostpaidCreditLineDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: current.status, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt); line = current }
+            if var current = line { current = PostpaidCreditLineDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: current.status, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt); line = current }
             spendAmount = ""
-            notice = "Added \(Int(res.amount)) RWF to your wallet — \(Int(res.availableCredit)) RWF still available."
+            notice = "Added \(Int(res.amount)) RWF to your account — \(Int(res.availableCredit)) RWF still available."
         } catch {
             self.error = "Could not spend from your postpaid credit line."
         }
@@ -639,7 +639,7 @@ private struct PostpaidCreditPanel: View {
             let res = try await NetworkClient.shared.repayPostpaidCredit(amount: amount)
             if var current = line {
                 let newStatus = res.currentBalance <= 0 ? "ACTIVE" : current.status
-                current = PostpaidCreditLineDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: newStatus, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt)
+                current = PostpaidCreditLineDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: newStatus, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt)
                 line = current
             }
             repayAmount = ""

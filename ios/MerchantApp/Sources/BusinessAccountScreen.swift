@@ -4,12 +4,12 @@ import CoreDesignSystem
 /// Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent (item 151)
 /// -- closes a real gap named in the backend's own Merchant.kt doc comment: every
 /// merchant's real card/QR collection has always settled straight into their PERSONAL
-/// main wallet, with business income and personal spending genuinely inseparable.
-/// This tab lets a merchant open a real, dedicated business wallet and deliberately
+/// main account, with business income and personal spending genuinely inseparable.
+/// This tab lets a merchant open a real, dedicated business account and deliberately
 /// move money into/out of it, with its own real transaction history. Mirrors Android
 /// merchantapp's own BusinessAccountScreen.kt (BusinessAccountTab) exactly.
 struct BusinessAccountTab: View {
-    @State private var wallet: BusinessWalletDto?
+    @State private var account: BusinessAccountDto?
     @State private var loaded = false
     @State private var merchant: MerchantDto?
     @State private var transactions: [BusinessLedgerEntryDto] = []
@@ -20,8 +20,8 @@ struct BusinessAccountTab: View {
         Group {
             if !loaded {
                 VStack { Spacer(); ProgressView(); Spacer() }
-            } else if let wallet {
-                accountView(wallet)
+            } else if let account {
+                accountView(account)
             } else {
                 openAccountView
             }
@@ -38,7 +38,7 @@ struct BusinessAccountTab: View {
                 StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
             }
             Text("Business account").font(.title3).bold()
-            Text("Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.")
+            Text("Keep your business money separate from your personal account. Your real card/QR collections still settle to your personal account as before — move money into your business account whenever you're ready to set it aside.")
                 .font(.footnote).foregroundColor(.secondary)
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)
@@ -55,7 +55,7 @@ struct BusinessAccountTab: View {
         .padding(16)
     }
 
-    private func accountView(_ wallet: BusinessWalletDto) -> some View {
+    private func accountView(_ account: BusinessAccountDto) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 if let merchant {
@@ -65,8 +65,8 @@ struct BusinessAccountTab: View {
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Business balance").font(.caption).foregroundColor(.secondary)
-                    Text("\(formattedRWF(wallet.balance)) RWF").font(.title).bold()
-                    Text(wallet.accountNumber).font(.caption).foregroundColor(.secondary)
+                    Text("\(formattedRWF(account.balance)) RWF").font(.title).bold()
+                    Text(account.accountNumber).font(.caption).foregroundColor(.secondary)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -103,11 +103,11 @@ struct BusinessAccountTab: View {
 
     private func load() async {
         do {
-            wallet = try await MerchantNetworkClient.shared.getBusinessAccount().wallet
+            account = try await MerchantNetworkClient.shared.getBusinessAccount().account
             transactions = (try? await MerchantNetworkClient.shared.getBusinessTransactions().transactions) ?? []
             error = nil
         } catch {
-            wallet = nil
+            account = nil
         }
         merchant = try? await MerchantNetworkClient.shared.getMyMerchant().merchant
         loaded = true

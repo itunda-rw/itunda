@@ -12,7 +12,7 @@ private let supportedCurrencies = ["USD", "EUR", "GBP"]
 struct ForeignCurrencyScreenView: View {
     var onBack: () -> Void = {}
 
-    @State private var wallets: [Wallet]?
+    @State private var accounts: [Account]?
     @State private var conversions: [CurrencyConversionDto] = []
     @State private var rateAlerts: [ExchangeRateAlertDto] = []
     @State private var error: String?
@@ -20,8 +20,8 @@ struct ForeignCurrencyScreenView: View {
 
     private func load() async {
         do {
-            let walletsRes = try await NetworkClient.shared.getForeignWallets()
-            wallets = walletsRes.wallets
+            let accountsRes = try await NetworkClient.shared.getForeignAccounts()
+            accounts = accountsRes.accounts
             conversions = (try? await NetworkClient.shared.getMyConversions().conversions) ?? []
             rateAlerts = (try? await NetworkClient.shared.getMyRateAlerts().alerts) ?? []
             error = nil
@@ -30,15 +30,15 @@ struct ForeignCurrencyScreenView: View {
         }
     }
 
-    private func openWallet(_ currency: String) async {
+    private func openAccount(_ currency: String) async {
         openingCurrency = currency
         defer { openingCurrency = nil }
         do {
-            _ = try await NetworkClient.shared.openForeignWallet(OpenForeignWalletRequest(currency: currency))
+            _ = try await NetworkClient.shared.openForeignAccount(OpenForeignAccountRequest(currency: currency))
             await load()
         } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
-            // FOREIGN_WALLET_ALREADY_EXISTS in practice (matches Android's identical
-            // ForeignCurrencyScreen.kt fix, 2026-08-15) -- the wallet genuinely
+            // FOREIGN_ACCOUNT_ALREADY_EXISTS in practice (matches Android's identical
+            // ForeignCurrencyScreen.kt fix, 2026-08-15) -- the account genuinely
             // already exists. Resolve forward: reload and show it instead of a
             // dead-end error.
             await load()
@@ -62,27 +62,27 @@ struct ForeignCurrencyScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
 
-                    if let wallets {
-                        if wallets.isEmpty {
+                    if let accounts {
+                        if accounts.isEmpty {
                             Text("Open a USD, EUR, or GBP account to hold foreign currency and convert between it and RWF at a real live rate.")
                                 .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
                         } else {
-                            ForEach(wallets, id: \.id) { wallet in
+                            ForEach(accounts, id: \.id) { account in
                                 HStack {
-                                    Text(wallet.currency).bold()
+                                    Text(account.currency).bold()
                                     Spacer()
-                                    Text("\(formatFx(wallet.balance)) \(wallet.currency)").bold()
+                                    Text("\(formatFx(account.balance)) \(account.currency)").bold()
                                 }
                                 .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                             }
                         }
 
-                        let openCurrencies = Set(wallets.map { $0.currency })
+                        let openCurrencies = Set(accounts.map { $0.currency })
                         let missing = supportedCurrencies.filter { !openCurrencies.contains($0) }
                         if !missing.isEmpty {
                             HStack(spacing: 8) {
                                 ForEach(missing, id: \.self) { code in
-                                    Button(action: { Task { await openWallet(code) } }) {
+                                    Button(action: { Task { await openAccount(code) } }) {
                                         Text(openingCurrency == code ? "…" : "+ Open \(code)")
                                             .font(.footnote).bold().foregroundColor(.white)
                                             .padding(.horizontal, 14).padding(.vertical, 10)
@@ -93,10 +93,10 @@ struct ForeignCurrencyScreenView: View {
                             }
                         }
 
-                        if !wallets.isEmpty {
-                            ConvertPanel(wallets: wallets, onConverted: { Task { await load() } })
+                        if !accounts.isEmpty {
+                            ConvertPanel(accounts: accounts, onConverted: { Task { await load() } })
                             Text("Rate alerts").bold()
-                            RateAlertsPanel(wallets: wallets, alerts: rateAlerts, onChanged: { Task { await load() } })
+                            RateAlertsPanel(accounts: accounts, alerts: rateAlerts, onChanged: { Task { await load() } })
                         }
                     } else {
                         ProgressView()
@@ -123,7 +123,7 @@ struct ForeignCurrencyScreenView: View {
 }
 
 private struct ConvertPanel: View {
-    let wallets: [Wallet]
+    let accounts: [Account]
     let onConverted: () -> Void
 
     @State private var toForeign = true
@@ -134,10 +134,10 @@ private struct ConvertPanel: View {
     @State private var error: String?
     @State private var success: String?
 
-    init(wallets: [Wallet], onConverted: @escaping () -> Void) {
-        self.wallets = wallets
+    init(accounts: [Account], onConverted: @escaping () -> Void) {
+        self.accounts = accounts
         self.onConverted = onConverted
-        _foreignCurrency = State(initialValue: wallets.first?.currency ?? "USD")
+        _foreignCurrency = State(initialValue: accounts.first?.currency ?? "USD")
     }
 
     private var fromCurrency: String { toForeign ? "RWF" : foreignCurrency }
@@ -156,7 +156,7 @@ private struct ConvertPanel: View {
             .pickerStyle(.segmented)
 
             HStack(spacing: 8) {
-                ForEach(wallets.map { $0.currency }, id: \.self) { code in
+                ForEach(accounts.map { $0.currency }, id: \.self) { code in
                     Button(action: { foreignCurrency = code }) {
                         Text(code).font(.footnote).bold()
                             .foregroundColor(code == foreignCurrency ? .white : IDS.Colors.textPrimary)
@@ -215,7 +215,7 @@ private struct ConvertPanel: View {
 // uncalled-endpoint sweep, same pattern as section 113/167's stock target-price alert
 // (InvestScreenView.swift).
 private struct RateAlertsPanel: View {
-    let wallets: [Wallet]
+    let accounts: [Account]
     let alerts: [ExchangeRateAlertDto]
     let onChanged: () -> Void
 
@@ -225,11 +225,11 @@ private struct RateAlertsPanel: View {
     @State private var submitting = false
     @State private var error: String?
 
-    init(wallets: [Wallet], alerts: [ExchangeRateAlertDto], onChanged: @escaping () -> Void) {
-        self.wallets = wallets
+    init(accounts: [Account], alerts: [ExchangeRateAlertDto], onChanged: @escaping () -> Void) {
+        self.accounts = accounts
         self.alerts = alerts
         self.onChanged = onChanged
-        _currency = State(initialValue: wallets.first?.currency ?? "USD")
+        _currency = State(initialValue: accounts.first?.currency ?? "USD")
     }
 
     private func alert(for code: String) -> ExchangeRateAlertDto? {
@@ -264,7 +264,7 @@ private struct RateAlertsPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(wallets.map { $0.currency }, id: \.self) { code in
+            ForEach(accounts.map { $0.currency }, id: \.self) { code in
                 if let a = alert(for: code) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -282,7 +282,7 @@ private struct RateAlertsPanel: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
-                    ForEach(wallets.map { $0.currency }, id: \.self) { code in
+                    ForEach(accounts.map { $0.currency }, id: \.self) { code in
                         Button(action: { currency = code }) {
                             Text("RWF/\(code)").font(.footnote).bold()
                                 .foregroundColor(code == currency ? .white : IDS.Colors.textPrimary)

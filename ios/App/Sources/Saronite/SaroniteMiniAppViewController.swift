@@ -127,17 +127,17 @@ final class PayBillsMiniAppViewController: SaroniteMiniAppViewController {
     }
 }
 
-/// `wallet-balance`/`reward-tasks`/`insurance` migrated onto the now-proven-working iOS host
+/// `account-balance`/`reward-tasks`/`insurance` migrated onto the now-proven-working iOS host
 /// the same way they migrated onto Android's real granite bridge (2026-07-13→14, see
 /// `docs/ARCHITECTURE.md`'s mini-app host row): zero new native *logic* needed beyond a
 /// concrete subclass naming its own `mainComponentName`/`miniAppScheme` -- the generic base
-/// class and `SaroniteBrownfieldModule`'s full method surface (`getWalletBalance`,
+/// class and `SaroniteBrownfieldModule`'s full method surface (`getAccountBalance`,
 /// `getRewardTasks`/`claimRewardTask`, `getInsurancePlans`/`getMyPolicies`/`enrollInsurance`)
 /// were already built alongside `payBill` during the pay-bills pass, matching Android's own
 /// `SaroniteBridge.kt` one-for-one.
-final class WalletBalanceMiniAppViewController: SaroniteMiniAppViewController {
+final class AccountBalanceMiniAppViewController: SaroniteMiniAppViewController {
     init() {
-        super.init(mainComponentName: "SaroniteWalletBalance", miniAppScheme: "itunda://saronite/wallet-balance")
+        super.init(mainComponentName: "SaroniteAccountBalance", miniAppScheme: "itunda://saronite/account-balance")
     }
 
     @available(*, unavailable)

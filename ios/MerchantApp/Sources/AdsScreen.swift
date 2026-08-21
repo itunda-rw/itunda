@@ -150,7 +150,7 @@ private struct CreateOrExtendAdCard: View {
                 }
             }
             .pickerStyle(.segmented)
-            Text("\(selectedTier.price) RWF will be charged from your wallet. If you already have an active ad, this extends it.")
+            Text("\(selectedTier.price) RWF will be charged from your account. If you already have an active ad, this extends it.")
                 .font(.caption).foregroundColor(.secondary)
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)

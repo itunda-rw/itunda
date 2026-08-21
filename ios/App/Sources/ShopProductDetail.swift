@@ -117,7 +117,7 @@ struct ProductDetailView: View {
 
 /// Real per-seller order splitting -- each merchant group becomes its own real,
 /// independent placeOrder() call. Sequential, not concurrent: these are real
-/// money-moving calls against the same buyer wallet, and a clear one-at-a-time
+/// money-moving calls against the same buyer account, and a clear one-at-a-time
 /// result list is more honest than a swallowed batch result. A failure on one
 /// merchant's order does not block or roll back any other.
 struct MultiCartView: View {

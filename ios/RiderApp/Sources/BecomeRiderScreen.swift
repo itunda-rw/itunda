@@ -13,7 +13,7 @@ struct BecomeRiderScreen: View {
         VStack(alignment: .leading, spacing: 16) {
             Spacer()
             Text("Become an itunda Rider").font(.title2).bold()
-            Text("Deliver real Eats orders and get paid straight to your itunda wallet after every delivery.")
+            Text("Deliver real Eats orders and get paid straight to your itunda account after every delivery.")
                 .font(.subheadline).foregroundColor(.secondary)
 
             if let error {

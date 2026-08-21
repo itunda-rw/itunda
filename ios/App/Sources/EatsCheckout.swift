@@ -8,7 +8,7 @@ import CoreNetwork
 // toggle Android's own EatsCheckoutMode already established: reuses the exact same
 // cart/menu-option selection as delivery, only the checkout step itself diverges (a
 // table number replaces the address, no delivery fee, settles straight to the
-// restaurant's wallet at placement).
+// restaurant's account at placement).
 enum EatsCheckoutMode { case delivery, pickup, dineIn }
 
 struct EatsCheckoutView: View {

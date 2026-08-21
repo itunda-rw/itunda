@@ -3,7 +3,7 @@ import CoreDesignSystem
 import CoreNetwork
 
 /// Real recurring-payment ("subscription") detection over a user's own real transaction
-/// history -- see rw.itunda.wallet.SubscriptionDetectionService's own doc comment. Plus
+/// history -- see rw.itunda.account.SubscriptionDetectionService's own doc comment. Plus
 /// real Kakao Pay 정기결제/Toss 빌링키-style merchant subscriptions the customer actually
 /// authorized (billing-key charges, distinct from the detected-from-history section
 /// above: real active authorizations, not a heuristic guess). bank-mfe/Android already
@@ -70,7 +70,7 @@ struct SubscriptionsScreenView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Merchant subscriptions").font(.headline).foregroundColor(IDS.Colors.textPrimary)
-                        Text("Plans you've subscribed to. These charge your wallet automatically until you cancel.")
+                        Text("Plans you've subscribed to. These charge your account automatically until you cancel.")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         if let error {
                             Text(error).font(.caption).foregroundColor(.red)

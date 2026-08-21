@@ -441,7 +441,7 @@ struct NewAutoTransferScreen: View {
     }
 
     // Statuses mirror AutoTransferController's own real @ExceptionHandler mapping exactly
-    // (INVALID_SCHEDULE/P2P_RECIPIENT_NOT_FOUND/SELF_PAYMENT_NOT_ALLOWED/WALLET_NOT_FOUND/
+    // (INVALID_SCHEDULE/P2P_RECIPIENT_NOT_FOUND/SELF_PAYMENT_NOT_ALLOWED/ACCOUNT_NOT_FOUND/
     // INVALID_AMOUNT all -> 400/404, INSUFFICIENT_FUNDS -> 422, RATE_LIMITED -> 429) --
     // same statusCode-to-message convention this codebase already uses (see
     // CreateWeeklySavingsPlanView.errorMessage in WeeklySavingsScreenView.swift), a
@@ -451,7 +451,7 @@ struct NewAutoTransferScreen: View {
     // bigger, riskier NetworkClient refactor just for this one screen.
     private static func errorMessage(_ statusCode: Int) -> String {
         switch statusCode {
-        case 404: return "Couldn't find that recipient or wallet."
+        case 404: return "Couldn't find that recipient or account."
         case 422: return "Insufficient funds for this auto-transfer."
         case 429: return "Too many requests -- try again in a bit."
         case 400: return "That recipient, amount, or schedule isn't valid."

@@ -56,8 +56,8 @@ public struct PublicUser: Decodable {
     // Real second neighborhood (2026-07-30) -- see AuthService.setSecondNeighborhood's own
     // doc comment. Same real-coordinate, reverse-geocoded-server-side rule as `neighborhood`.
     public let secondNeighborhood: String?
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
-    // MiniWalletService.kt's own doc comment. Set via NetworkClient.setBirthDate.
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
+    // MiniAccountService.kt's own doc comment. Set via NetworkClient.setBirthDate.
     public let birthDate: String?
     // Real email/phone verification (item 169/179) -- see AuthService.requestEmailVerification/
     // requestPhoneVerification's own doc comments. Backend has returned these on every
@@ -90,11 +90,11 @@ public struct SetBirthDateRequest: Encodable {
     public let birthDate: String
 }
 
-// Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
+// Real KakaoBank mini-style capped starter account -- see MiniAccountService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
-public struct OpenMiniWalletResponse: Decodable { public let success: Bool; public let wallet: Wallet }
-public struct DepositMiniWalletRequest: Encodable { public let amount: Double }
-public struct DepositMiniWalletResponse: Decodable { public let success: Bool; public let id: String; public let amount: Double; public let completedAt: String }
+public struct OpenMiniAccountResponse: Decodable { public let success: Bool; public let account: Account }
+public struct DepositMiniAccountRequest: Encodable { public let amount: Double }
+public struct DepositMiniAccountResponse: Decodable { public let success: Bool; public let id: String; public let amount: Double; public let completedAt: String }
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
 // GroupAccount.kt/GroupAccountService.kt exactly.
@@ -102,7 +102,7 @@ public struct GroupAccountDto: Decodable {
     public let id: String
     public let name: String
     public let ownerId: String
-    public let walletId: String
+    public let accountId: String
     public let monthlyDuesAmount: Double?
     public let createdAt: String
 }
@@ -148,7 +148,7 @@ public struct IkiminaDto: Decodable {
     public let id: String
     public let name: String
     public let organizerId: String
-    public let walletId: String
+    public let accountId: String
     public let contributionAmount: Double
     public let cycleFrequencyDays: Int
     public let memberCap: Int
@@ -188,7 +188,7 @@ public struct IkiminaPayoutResponse: Decodable { public let success: Bool; publi
 public struct SaccoShareholdingDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let sharesHeld: Double
     public let totalContributed: Double
     public let createdAt: String
@@ -210,7 +210,7 @@ public struct SaccoDividendPayoutsResponse: Decodable { public let success: Bool
 // Rwanda's own real coffee sector (Rwanda Coffee Cooperatives Federation: 13 member
 // cooperatives, ~19,000 producer members). A direct itunda-to-farmer lending
 // relationship mirroring the regular Loans feature's own loan_payable receivable
-// shape -- never a shared/pooled wallet. Mirrors bank-mfe's lib/harvestAdvance.ts
+// shape -- never a shared/pooled account. Mirrors bank-mfe's lib/harvestAdvance.ts
 // exactly, including the post-fix repay contract (amount must equal the full real
 // outstanding principal, no partial repayment).
 public struct CooperativeDto: Decodable {
@@ -224,14 +224,14 @@ public struct CooperativeMembershipDto: Decodable {
     public let id: String
     public let cooperativeId: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let memberSince: String
     public let active: Bool
 }
 public struct HarvestAdvanceDto: Decodable, Identifiable {
     public let id: String
     public let membershipId: String
-    public let walletId: String
+    public let accountId: String
     public let principalAmount: Double
     public let purpose: String
     public let expectedHarvestDate: String
@@ -341,19 +341,19 @@ public enum NetworkError: Error {
     // mirroring the backend's own DeviceVerificationFilter, which only ever gates
     // requests carrying a real Idempotency-Key header.
     case deviceNotVerified
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- purely additive,
-    // same rationale as deviceNotVerified above: thrown only from the Mini wallet's
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- purely additive,
+    // same rationale as deviceNotVerified above: thrown only from the Mini account's
     // own dedicated request methods, which decode the real ApiError.code on a 422.
-    case miniWalletBirthDateRequired
-    case miniWalletAgeIneligible
+    case miniAccountBirthDateRequired
+    case miniAccountAgeIneligible
     // Real cash-agent operator gate (AgentOperatorController's own
     // AGENT_OPERATOR_NOT_AUTHORIZED, 403) -- purely additive, same rationale as
-    // deviceNotVerified/miniWallet* above. Thrown only from getAgentTill's own
+    // deviceNotVerified/miniAccount* above. Thrown only from getAgentTill's own
     // dedicated request method below, which decodes the real ApiError.code on a 403.
     case agentOperatorNotAuthorized
     // Real gap found 2026-08-08 (Toss Simplicity21 "adding innovation upon innovation"
     // research pass, auditing whether P2P transfer's mature/assumed-solid error handling
-    // actually was): self-payment/wallet-frozen/family-spend-limit/rate-limit declines
+    // actually was): self-payment/account-frozen/family-spend-limit/rate-limit declines
     // all fell through to httpError's bare status code, so TransferViewModel showed a
     // generic "Something went wrong" for all of them even though the backend already
     // sends specific text per decline reason -- bank-mfe's ApiError already surfaced
@@ -512,11 +512,11 @@ public final class NetworkClient {
     }
 }
 
-// Mirrors services/backend/core/.../domain/Wallet.kt / SavingsGoal.kt / InterestJar.kt
+// Mirrors services/backend/core/.../domain/Account.kt / SavingsGoal.kt / InterestJar.kt
 // exactly -- same field names, so JSONDecoder reads the real backend's JSON directly
 // (2026-07-11, alongside BankView.swift's real-data wiring; same DTOs Android's
 // ApiService.kt just gained).
-public struct Wallet: Decodable {
+public struct Account: Decodable {
     public let id: String
     public let userId: String
     public let accountNumber: String
@@ -528,18 +528,18 @@ public struct Wallet: Decodable {
     public let isActive: Bool
 }
 
-public struct WalletsResponse: Decodable { public let success: Bool; public let wallets: [Wallet] }
+public struct AccountsResponse: Decodable { public let success: Bool; public let accounts: [Account] }
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 160) -- see the
-// backend's ForeignCurrencyWalletService.kt doc comment: scoped to USD/EUR/GBP, real
+// backend's ForeignCurrencyAccountService.kt doc comment: scoped to USD/EUR/GBP, real
 // live mid-market rate + a real 1.5% itunda margin, real double-entry conversion
-// entirely between a user's own RWF and foreign-currency wallets. Reuses `Wallet`
-// above for the foreign-currency wallet itself (same real domain shape, `type` ==
+// entirely between a user's own RWF and foreign-currency accounts. Reuses `Account`
+// above for the foreign-currency account itself (same real domain shape, `type` ==
 // "FOREIGN_CURRENCY"). Android's main app already has this (`ForeignCurrencyScreen.kt`);
 // this is the iOS port -- bank-mfe got it in item 154.
-public struct ForeignWalletsResponse: Decodable { public let success: Bool; public let wallets: [Wallet] }
+public struct ForeignAccountsResponse: Decodable { public let success: Bool; public let accounts: [Account] }
 public struct ExchangeRateResponse: Decodable { public let success: Bool; public let from: String; public let to: String; public let rate: Double }
-public struct OpenForeignWalletRequest: Encodable {
+public struct OpenForeignAccountRequest: Encodable {
     public let currency: String
     public init(currency: String) { self.currency = currency }
 }
@@ -586,7 +586,7 @@ public struct RateAlertsResponse: Decodable { public let success: Bool; public l
 // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit) equivalent
 // (item 161) -- see UpfrontInterestDepositService.kt's own doc comment: the full year's
 // 2.80% interest is paid immediately on opening, principal locks in its own dedicated
-// wallet for a genuine 12-month term with deliberately no early withdrawal. Android's
+// account for a genuine 12-month term with deliberately no early withdrawal. Android's
 // main app already has this (`UpfrontDepositScreen.kt`); bank-mfe got it in item 153.
 // This is the iOS port.
 public struct UpfrontDepositDto: Decodable, Identifiable {
@@ -657,7 +657,7 @@ public struct SpendingCategoryDto: Decodable { public let name: String; public l
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
 // Real Kakao Pay 페이아이 소비 리포트 (AI spending report) -- see
-// WalletService.getMonthlySpendingReport's own doc comment on the backend
+// AccountService.getMonthlySpendingReport's own doc comment on the backend
 // ([[project_itunda_monthly_spending_report]], real+live-verified since 2026-08-16).
 // Real on bank-mfe/Android the same day it shipped; iOS never got a client at all
 // despite SpendingScreenView.swift already existing for the neighboring all-time
@@ -679,8 +679,8 @@ public struct MonthlySpendingReportResponse: Decodable {
     public let categories: [SpendingComparisonCategoryDto]
 }
 
-// Real Toss budgets/limits equivalent (item 165/173) -- WalletService.setBudget/
-// getBudgets, exposed on the pre-existing WalletController. bank-mfe (item 165) and
+// Real Toss budgets/limits equivalent (item 165/173) -- AccountService.setBudget/
+// getBudgets, exposed on the pre-existing AccountController. bank-mfe (item 165) and
 // Android (item 172) already have this; this is the iOS port.
 public struct SetBudgetRequest: Encodable { public let category: String?; public let monthlyLimit: Double }
 public struct BudgetViewDto: Decodable, Identifiable {
@@ -700,7 +700,7 @@ public struct SetBudgetResponse: Decodable { public let success: Bool; public le
 public struct RideDriverDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let status: String
     public let available: Bool
     public let currentLatitude: Double?
@@ -822,7 +822,7 @@ public struct SendStatusToTrustedContactsResponse: Decodable { public let succes
 public struct DesignatedDriverDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let licenseNumber: String
     public let available: Bool
     public let currentLatitude: Double?
@@ -875,7 +875,7 @@ public struct RegisterBikeRequest: Encodable { public let type: String; public l
 public struct BikeDto: Decodable, Identifiable {
     public let id: String
     public let ownerUserId: String
-    public let walletId: String
+    public let accountId: String
     public let type: String
     public let currentLatitude: Double
     public let currentLongitude: Double
@@ -916,7 +916,7 @@ public struct RegisterParkingSpotRequest: Encodable { public let address: String
 public struct ParkingSpotDto: Decodable, Identifiable {
     public let id: String
     public let ownerUserId: String
-    public let walletId: String
+    public let accountId: String
     public let address: String
     public let latitude: Double
     public let longitude: Double
@@ -953,7 +953,7 @@ public struct PostBusTripRequest: Encodable {
 public struct BusTripDto: Decodable, Identifiable {
     public let id: String
     public let operatorUserId: String
-    public let walletId: String
+    public let accountId: String
     public let origin: String
     public let destination: String
     public let departureTime: String
@@ -981,7 +981,7 @@ public struct BusBookingResponse: Decodable { public let success: Bool; public l
 public struct BusBookingsResponse: Decodable { public let success: Bool; public let bookings: [BusBookingDto] }
 
 // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a genuinely
-// different shape from the trip/rental structs above: no wallet movement, no location,
+// different shape from the trip/rental structs above: no account movement, no location,
 // just a real question -> competing answers -> asker-adopts-one-best-answer content
 // flow. Mirrors KnowledgeQuestion.kt/KnowledgeAnswer.kt exactly. bank-mfe/Android
 // already have this; this is the first iOS client.
@@ -1018,7 +1018,7 @@ public struct KnowledgeReputationResponse: Decodable { public let success: Bool;
 public struct VehicleInspectionMechanicDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let businessName: String
     public let available: Bool
     public let createdAt: String
@@ -1117,7 +1117,7 @@ public struct FamilyLinkViewDto: Decodable, Identifiable {
 public struct ChildOverviewDto: Decodable {
     public let childUserId: String
     public let childName: String
-    public let walletBalance: Double
+    public let accountBalance: Double
     public let recentTransactions: [TransactionDto]
 }
 public struct FamilyLinkResponse: Decodable { public let success: Bool; public let link: FamilyLinkDto }
@@ -1128,7 +1128,7 @@ public struct ChildOverviewResponse: Decodable { public let success: Bool; publi
 public struct SavingsGoal: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let name: String
     public let targetAmount: Double
     public let currentAmount: Double
@@ -1166,7 +1166,7 @@ public struct KeywordAlertQuietHoursResponse: Decodable { public let success: Bo
 
 public struct InterestJar: Decodable {
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let balance: Double
     public let rate: Double
     public let earnedThisMonth: Double
@@ -1213,43 +1213,43 @@ public struct DiscoverResponse: Decodable { public let success: Bool; public let
 /// Authenticated GET helper for feature screens that need to call the rest of
 /// services/backend's API once logged in -- reads the bearer token from
 /// KeychainTokenStore so callers never have to thread it through manually. First
-/// real use (2026-07-11): BankView.swift's wallet/savings/interest-jar data, closing
+/// real use (2026-07-11): BankView.swift's account/savings/interest-jar data, closing
 /// the "iOS has no real feature data-fetching wired in" gap this comment used to name.
 extension NetworkClient {
-    public func getWallets() async throws -> WalletsResponse { try await get("api/v1/wallet") }
+    public func getAccounts() async throws -> AccountsResponse { try await get("api/v1/account") }
 
-    public func openForeignWallet(_ request: OpenForeignWalletRequest) async throws -> ForeignWalletsResponse {
-        try await authenticatedPost("api/v1/wallet/foreign-currency/wallets", body: request)
+    public func openForeignAccount(_ request: OpenForeignAccountRequest) async throws -> ForeignAccountsResponse {
+        try await authenticatedPost("api/v1/account/foreign-currency/accounts", body: request)
     }
 
-    public func getForeignWallets() async throws -> ForeignWalletsResponse { try await get("api/v1/wallet/foreign-currency/wallets") }
+    public func getForeignAccounts() async throws -> ForeignAccountsResponse { try await get("api/v1/account/foreign-currency/accounts") }
 
     public func getExchangeRate(from: String, to: String) async throws -> ExchangeRateResponse {
-        try await get("api/v1/wallet/foreign-currency/rate", query: [
+        try await get("api/v1/account/foreign-currency/rate", query: [
             URLQueryItem(name: "from", value: from),
             URLQueryItem(name: "to", value: to),
         ])
     }
 
     public func convertCurrency(_ request: ConvertCurrencyRequest) async throws -> ConvertCurrencyResponse {
-        try await authenticatedPost("api/v1/wallet/foreign-currency/convert", body: request)
+        try await authenticatedPost("api/v1/account/foreign-currency/convert", body: request)
     }
 
-    public func getMyConversions() async throws -> CurrencyConversionsResponse { try await get("api/v1/wallet/foreign-currency/conversions") }
+    public func getMyConversions() async throws -> CurrencyConversionsResponse { try await get("api/v1/account/foreign-currency/conversions") }
 
     // SetRateAlertRequest's own doc comment.
     public func setRateAlert(fromCurrency: String, toCurrency: String, targetRate: Double, direction: String) async throws -> SetRateAlertResponse {
-        try await authenticatedPost("api/v1/wallet/foreign-currency/rate-alert", body: SetRateAlertRequest(fromCurrency: fromCurrency, toCurrency: toCurrency, targetRate: targetRate, direction: direction))
+        try await authenticatedPost("api/v1/account/foreign-currency/rate-alert", body: SetRateAlertRequest(fromCurrency: fromCurrency, toCurrency: toCurrency, targetRate: targetRate, direction: direction))
     }
 
     public func clearRateAlert(fromCurrency: String, toCurrency: String) async throws -> SuccessResponse {
-        try await authenticatedDelete("api/v1/wallet/foreign-currency/rate-alert", query: [
+        try await authenticatedDelete("api/v1/account/foreign-currency/rate-alert", query: [
             URLQueryItem(name: "fromCurrency", value: fromCurrency),
             URLQueryItem(name: "toCurrency", value: toCurrency),
         ])
     }
 
-    public func getMyRateAlerts() async throws -> RateAlertsResponse { try await get("api/v1/wallet/foreign-currency/rate-alerts") }
+    public func getMyRateAlerts() async throws -> RateAlertsResponse { try await get("api/v1/account/foreign-currency/rate-alerts") }
 
     public func getUpfrontDeposits() async throws -> UpfrontDepositsResponse { try await get("api/v1/upfront-deposits") }
 
@@ -1268,17 +1268,17 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/upfront-deposits/\(id)/withdraw", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
-    // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
-    // WalletService.getSpendingInsight, real since 2026-07-13) -- first iOS client for
+    // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.
+    // AccountService.getSpendingInsight, real since 2026-07-13) -- first iOS client for
     // this feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/
     // Android ported the same day as items 106/107).
-    public func getSpendingInsight() async throws -> SpendingInsightResponse { try await get("api/v1/wallet/spending") }
-    public func getMonthlySpendingReport() async throws -> MonthlySpendingReportResponse { try await get("api/v1/wallet/spending/monthly-report") }
+    public func getSpendingInsight() async throws -> SpendingInsightResponse { try await get("api/v1/account/spending") }
+    public func getMonthlySpendingReport() async throws -> MonthlySpendingReportResponse { try await get("api/v1/account/spending/monthly-report") }
 
-    public func getBudgets() async throws -> GetBudgetsResponse { try await get("api/v1/wallet/budgets") }
+    public func getBudgets() async throws -> GetBudgetsResponse { try await get("api/v1/account/budgets") }
 
     public func setBudget(category: String?, monthlyLimit: Double) async throws -> SetBudgetResponse {
-        try await authenticatedPost("api/v1/wallet/budgets", body: SetBudgetRequest(category: category, monthlyLimit: monthlyLimit))
+        try await authenticatedPost("api/v1/account/budgets", body: SetBudgetRequest(category: category, monthlyLimit: monthlyLimit))
     }
 
     // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
@@ -1682,7 +1682,7 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/marketplace/keyword-alerts/quiet-hours", body: SetKeywordAlertQuietHoursRequest(startTime: startTime, endTime: endTime, enabled: enabled))
     }
     public func getKeywordAlertQuietHours() async throws -> KeywordAlertQuietHoursResponse { try await get("api/v1/marketplace/keyword-alerts/quiet-hours") }
-    public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/wallet/transactions") }
+    public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/account/transactions") }
     // Real account settings screen (2026-07-12).
     public func getProfile() async throws -> ProfileResponse { try await get("api/v1/auth/profile") }
 
@@ -1710,7 +1710,7 @@ extension NetworkClient {
         try await authenticatedPut("api/v1/auth/profile/photo", body: UpdateProfilePhotoRequest(profilePhotoUrl: profilePhotoUrl))
     }
 
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
     // string ("YYYY-MM-DD").
     public func setBirthDate(_ birthDate: String) async throws -> ProfileResponse {
@@ -1737,24 +1737,24 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/auth/profile/verify-phone/confirm", body: ConfirmPhoneVerificationRequest(code: code))
     }
 
-    // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.
-    // MiniWalletService, 2026-07-28) -- first iOS client for this feature (item 101),
-    // mirroring bank-mfe's lib/miniWallet.ts and Android's ApiService.kt equivalents.
+    // Real KakaoBank mini-style capped starter account (rw.itunda.account.
+    // MiniAccountService, 2026-07-28) -- first iOS client for this feature (item 101),
+    // mirroring bank-mfe's lib/miniAccount.ts and Android's ApiService.kt equivalents.
     // open() carries no Idempotency-Key (a second call naturally just returns the same
-    // real, already-open wallet, no duplicate side effect), so it keeps its own
+    // real, already-open account, no duplicate side effect), so it keeps its own
     // dedicated request path, decoding the real ApiError.code directly on a 422 for the
     // birth-date/age-eligibility cases neither authenticatedPost nor deposit's own error
     // surface needs. deposit() moved to authenticatedPost's idempotency-gated path
     // 2026-08-05 (real bug found live via a repo-wide idempotency-coverage audit):
-    // MiniWalletController.kt's own deposit endpoint posted a real wallet-to-wallet
+    // MiniAccountController.kt's own deposit endpoint posted a real account-to-account
     // ledger transaction on every call with no Idempotency-Key requirement -- a
     // network-timeout retry of the exact same deposit would move the same money twice.
-    public func openMiniWallet() async throws -> OpenMiniWalletResponse {
-        try await postMiniWallet("api/v1/wallet/mini/open", body: EmptyBody())
+    public func openMiniAccount() async throws -> OpenMiniAccountResponse {
+        try await postMiniAccount("api/v1/account/mini/open", body: EmptyBody())
     }
 
-    public func depositMiniWallet(amount: Double) async throws -> DepositMiniWalletResponse {
-        try await authenticatedPost("api/v1/wallet/mini/deposit", body: DepositMiniWalletRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    public func depositMiniAccount(amount: Double) async throws -> DepositMiniAccountResponse {
+        try await authenticatedPost("api/v1/account/mini/deposit", body: DepositMiniAccountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first iOS client for
@@ -1968,7 +1968,7 @@ extension NetworkClient {
         return try decoder.decode(UploadResponse.self, from: responseData)
     }
 
-    private func postMiniWallet<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+    private func postMiniAccount<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -1981,8 +1981,8 @@ extension NetworkClient {
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorBody = try? decoder.decode(ApiErrorBody.self, from: data) {
                 switch errorBody.code {
-                case "MINI_WALLET_BIRTH_DATE_REQUIRED": throw NetworkError.miniWalletBirthDateRequired
-                case "MINI_WALLET_AGE_INELIGIBLE": throw NetworkError.miniWalletAgeIneligible
+                case "MINI_ACCOUNT_BIRTH_DATE_REQUIRED": throw NetworkError.miniAccountBirthDateRequired
+                case "MINI_ACCOUNT_AGE_INELIGIBLE": throw NetworkError.miniAccountAgeIneligible
                 default: break
                 }
             }
@@ -2067,7 +2067,7 @@ extension NetworkClient {
 
     // Dedicated request path for sendDirect/payP2pRequest only -- see
     // NetworkError.httpErrorWithMessage's own doc comment for why this doesn't reuse
-    // authenticatedPost. Mirrors postMiniWallet's own precedent (a dedicated function
+    // authenticatedPost. Mirrors postMiniAccount's own precedent (a dedicated function
     // scoped to the one flow that needs to decode extra fields) rather than widening a
     // shared helper every other endpoint also calls.
     fileprivate func postP2p<Body: Encodable, Response: Decodable>(
@@ -2100,7 +2100,7 @@ extension NetworkClient {
 
 private struct ApiErrorBody: Decodable { let code: String?; let message: String? }
 
-// Mirrors services/backend/wallet's WalletController.kt/TransferQuote.kt and
+// Mirrors services/backend/account's AccountController.kt/TransferQuote.kt and
 // services/backend/savings's SavingsController.kt exactly (2026-07-12) -- wires
 // the real send-money and savings deposit/claim flows, same DTOs Android's
 // ApiService.kt just gained.
@@ -2111,7 +2111,7 @@ public struct QuoteTransferRequest: Encodable {
 
 public struct TransferQuoteDto: Decodable {
     public let id: String
-    public let fromWalletId: String
+    public let fromAccountId: String
     public let recipient: String
     public let amount: Double
     public let fee: Double
@@ -2150,7 +2150,7 @@ public struct ConfirmTransferResponse: Decodable {
 // P2pController's real SendDirectP2pRequest exactly, same as Android's ApiService.kt.
 // Deliberately distinct from QuoteTransferRequest/ConfirmTransferRequest above: those
 // always route through a simulated external rail and never actually credit another
-// itunda user's wallet, even when the recipient is a real itunda account (confirmed via
+// itunda user's account, even when the recipient is a real itunda account (confirmed via
 // a direct MySQL check while building the real fix on the backend one day earlier). This
 // is the real one -- no quote step needed, since there's no external rail decision to
 // quote.
@@ -2159,7 +2159,7 @@ public struct SendDirectP2pRequest: Encodable { public let recipient: String; pu
 // Real fixed-amount person-to-person payment request (item 171) -- the P2P
 // counterpart to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's
 // own doc comment). A real 15-minute-expiring code the requester shares; anyone who
-// has the code can pay it directly, real wallet-to-wallet, no fee. Real (rate-limited,
+// has the code can pay it directly, real account-to-account, no fee. Real (rate-limited,
 // tested, live-verified against a running backend) but had zero client anywhere until
 // bank-mfe/item 167 and Android/item 170 the same session -- this is the iOS port.
 public struct GenerateP2pRequest: Encodable { public let amount: Double; public let description: String }
@@ -2370,12 +2370,12 @@ extension NetworkClient {
 
 extension NetworkClient {
     public func quoteTransfer(amount: Double, recipient: String) async throws -> QuoteTransferResponse {
-        try await authenticatedPost("api/v1/wallet/transfer/quote", body: QuoteTransferRequest(amount: amount, recipient: recipient))
+        try await authenticatedPost("api/v1/account/transfer/quote", body: QuoteTransferRequest(amount: amount, recipient: recipient))
     }
 
     public func confirmTransfer(quoteId: String) async throws -> ConfirmTransferResponse {
         try await authenticatedPost(
-            "api/v1/wallet/transfer/confirm",
+            "api/v1/account/transfer/confirm",
             body: ConfirmTransferRequest(quoteId: quoteId),
             idempotencyKey: UUID().uuidString
         )
@@ -2986,8 +2986,8 @@ public struct FavoriteJobPostDto: Decodable, Identifiable {
 public struct FavoriteJobPostsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteJobPostDto] }
 
 // Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
-// comment. Money leaves the sender's wallet into a real escrow account the moment a
-// gift is sent, and only reaches the recipient's wallet once they explicitly claim it
+// comment. Money leaves the sender's account into a real escrow account the moment a
+// gift is sent, and only reaches the recipient's account once they explicitly claim it
 // (or is auto-refunded after 7 days). Rendered inline as a gift bubble, same "special
 // message body" convention PriceOfferDto already established.
 public struct GiftDto: Decodable, Identifiable {
@@ -3708,14 +3708,14 @@ public struct MerchantCouponsForCustomerResponse: Decodable { public let success
 // `itunda://...` URL wrapping -- matching exactly what the real merchant-side
 // scanner passes through unparsed.
 public struct GenerateCustomerPaymentCodeRequest: Encodable {
-    public let walletId: String?
-    public init(walletId: String? = nil) { self.walletId = walletId }
+    public let accountId: String?
+    public init(accountId: String? = nil) { self.accountId = accountId }
 }
 public struct CustomerPaymentCodeResponse: Decodable {
     public let success: Bool
     public let code: String
     public let expiresAt: String
-    public let walletId: String?
+    public let accountId: String?
 }
 public struct PaymentIntentPreviewResponse: Decodable {
     public let success: Bool
@@ -3880,7 +3880,7 @@ public struct MerchantBillingPlansResponse: Decodable { public let success: Bool
 public struct MerchantBillingSubscriptionResponse: Decodable { public let success: Bool; public let subscription: MerchantBillingSubscriptionDto }
 public struct MerchantBillingSubscriptionsResponse: Decodable { public let success: Bool; public let subscriptions: [MerchantBillingSubscriptionDto] }
 
-// Real recurring-payment ("subscription") detection -- mirrors bank-mfe's lib/wallet.ts
+// Real recurring-payment ("subscription") detection -- mirrors bank-mfe's lib/account.ts
 // DetectedSubscription exactly.
 public struct DetectedSubscriptionDto: Decodable {
     public let displayName: String
@@ -4017,7 +4017,7 @@ public struct EatsOrdersResponse: Decodable { public let success: Bool; public l
 public struct RiderLocationDto: Decodable { public let latitude: Double; public let longitude: Double; public let updatedAt: String }
 public struct EatsRiderLocationResponse: Decodable { public let success: Bool; public let available: Bool; public let location: RiderLocationDto? }
 
-public struct RiderDto: Decodable, Identifiable { public let id: String; public let userId: String; public let walletId: String; public let status: String; public let available: Bool; public let createdAt: String }
+public struct RiderDto: Decodable, Identifiable { public let id: String; public let userId: String; public let accountId: String; public let status: String; public let available: Bool; public let createdAt: String }
 public struct RiderResponse: Decodable { public let success: Bool; public let rider: RiderDto }
 
 // Real bookmarked/favorited restaurants (2026-07-19) -- add/remove are both idempotent
@@ -4122,8 +4122,8 @@ public struct StockPortfolioDto: Decodable {
 public struct StockPortfolioResponse: Decodable { public let success: Bool; public let portfolio: StockPortfolioDto }
 public struct TradeStockRequest: Encodable { public let stockId: String; public let shares: Double }
 public struct TradeStockResponse: Decodable { public let success: Bool; public let message: String }
-// Real Investment-wallet top-up (2026-08-04) -- found via a fresh "defined but
-// uncalled" endpoint sweep: StocksService.fundInvestmentWallet (a real MAIN ->
+// Real Investment-account top-up (2026-08-04) -- found via a fresh "defined but
+// uncalled" endpoint sweep: StocksService.fundInvestmentAccount (a real MAIN ->
 // INVESTMENT internal ledger transfer) had zero client anywhere, so a user with no
 // pre-seeded investment balance had no way to ever actually buy a stock. Ports the
 // same fix already shipped on Android/bank-mfe.
@@ -5120,8 +5120,8 @@ extension NetworkClient {
     // Real customer-presented payment code -- see CustomerPaymentCodeResponse's own
     // doc comment. No Idempotency-Key: this doesn't move money, it just mints a
     // short-lived code (matches bank-mfe's identical generateCustomerPaymentCode).
-    public func generateCustomerPaymentCode(walletId: String? = nil) async throws -> CustomerPaymentCodeResponse {
-        try await authenticatedPost("api/v1/merchant/pay/customer-code", body: GenerateCustomerPaymentCodeRequest(walletId: walletId))
+    public func generateCustomerPaymentCode(accountId: String? = nil) async throws -> CustomerPaymentCodeResponse {
+        try await authenticatedPost("api/v1/merchant/pay/customer-code", body: GenerateCustomerPaymentCodeRequest(accountId: accountId))
     }
     // Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
     // PayByCodeCard's own doc comment previously named. bank-mfe/Android already have
@@ -5245,9 +5245,9 @@ extension NetworkClient {
     }
 
     // Real recurring-payment ("subscription") detection -- see
-    // rw.itunda.wallet.SubscriptionDetectionService's own doc comment. bank-mfe/Android
+    // rw.itunda.account.SubscriptionDetectionService's own doc comment. bank-mfe/Android
     // already have this; this is the first iOS client.
-    public func getDetectedSubscriptions() async throws -> DetectedSubscriptionsResponse { try await get("api/v1/wallet/subscriptions") }
+    public func getDetectedSubscriptions() async throws -> DetectedSubscriptionsResponse { try await get("api/v1/account/subscriptions") }
 
     // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads -- the
     // customer-facing browse half (merchant-mfe owns the paid create/extend side).
@@ -5412,7 +5412,7 @@ extension NetworkClient {
         try await get("api/v1/stocks/portfolio/history", query: [URLQueryItem(name: "days", value: String(days))])
     }
 
-    public func fundInvestmentWallet(amount: Double) async throws -> FundInvestmentResponse {
+    public func fundInvestmentAccount(amount: Double) async throws -> FundInvestmentResponse {
         try await authenticatedPost("api/v1/stocks/fund", body: FundInvestmentRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
@@ -5526,7 +5526,7 @@ public struct LinkedAccountsResponse: Decodable { public let success: Bool; publ
 // Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168/177) -- see
 // AutoTopUpService's own doc comment. bank-mfe (item 168) and Android (item 176)
 // already have this; this is the iOS port. getSetting real-404s
-// (AUTO_TOPUP_SETTING_NOT_FOUND) if this wallet has no setting configured yet.
+// (AUTO_TOPUP_SETTING_NOT_FOUND) if this account has no setting configured yet.
 public struct ConfigureAutoTopUpRequest: Encodable {
     public let linkedAccountId: String
     public let thresholdAmount: Double
@@ -5537,7 +5537,7 @@ public struct ConfigureAutoTopUpRequest: Encodable {
 public struct AutoTopUpSettingDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let linkedAccountId: String
     public let enabled: Bool
     public let thresholdAmount: Double
@@ -5554,7 +5554,7 @@ public struct LoanOfferDto: Decodable, Identifiable { public let id: String; pub
 public struct LenderDto: Decodable, Identifiable { public let id: String; public let name: String; public let kind: String }
 public struct LoanOffersResponse: Decodable { public let success: Bool; public let offers: [LoanOfferDto] }
 public struct LendersResponse: Decodable { public let success: Bool; public let lenders: [LenderDto] }
-public struct LoanAccountDto: Decodable, Identifiable { public let id: String; public let userId: String; public let walletId: String; public let offerId: String; public let principal: Double; public let outstanding: Double; public let interestRate: Double; public let status: String; public let disbursedAt: String }
+public struct LoanAccountDto: Decodable, Identifiable { public let id: String; public let userId: String; public let accountId: String; public let offerId: String; public let principal: Double; public let outstanding: Double; public let interestRate: Double; public let status: String; public let disbursedAt: String }
 public struct MyLoansResponse: Decodable { public let success: Bool; public let loans: [LoanAccountDto] }
 public struct ApplyLoanRequest: Encodable { public let loanId: String; public let amount: Double }
 public struct ApplyLoanResponse: Decodable { public let success: Bool; public let message: String; public let loan: LoanAccountDto }
@@ -5585,7 +5585,7 @@ public struct RefinanceResult: Decodable {
 public struct OverdraftAccountDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let creditLimit: Double
     public let drawnBalance: Double
     public let interestRate: Double
@@ -5594,10 +5594,10 @@ public struct OverdraftAccountDto: Decodable {
     // Explicit memberwise init -- Swift doesn't synthesize a public one across module
     // boundaries, needed so App-side code can construct an updated copy after a
     // draw/repay response.
-    public init(id: String, userId: String, walletId: String, creditLimit: Double, drawnBalance: Double, interestRate: Double, status: String) {
+    public init(id: String, userId: String, accountId: String, creditLimit: Double, drawnBalance: Double, interestRate: Double, status: String) {
         self.id = id
         self.userId = userId
-        self.walletId = walletId
+        self.accountId = accountId
         self.creditLimit = creditLimit
         self.drawnBalance = drawnBalance
         self.interestRate = interestRate
@@ -5630,7 +5630,7 @@ public struct OverdraftRepayResponse: Decodable {
 public struct PostpaidCreditLineDto: Decodable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let creditLimit: Double
     public let currentBalance: Double
     public let status: String
@@ -5641,10 +5641,10 @@ public struct PostpaidCreditLineDto: Decodable {
 
     // Explicit memberwise init -- same real cross-module-construction gotcha
     // OverdraftAccountDto's own doc comment already names.
-    public init(id: String, userId: String, walletId: String, creditLimit: Double, currentBalance: Double, status: String, cycleDueAt: String?, lastLateFeeAccrualAt: String?, createdAt: String, updatedAt: String) {
+    public init(id: String, userId: String, accountId: String, creditLimit: Double, currentBalance: Double, status: String, cycleDueAt: String?, lastLateFeeAccrualAt: String?, createdAt: String, updatedAt: String) {
         self.id = id
         self.userId = userId
-        self.walletId = walletId
+        self.accountId = accountId
         self.creditLimit = creditLimit
         self.currentBalance = currentBalance
         self.status = status
@@ -5826,7 +5826,7 @@ public struct CreateSupportTicketRequest: Encodable { public let transactionId: 
 public struct SupportTicketDto: Decodable, Identifiable {
     public let id: String; public let userId: String; public let transactionId: String; public let category: String; public let description: String
     public let status: String; public let resolution: String?; public let resolutionNotes: String?; public let refundTransactionId: String?
-    public let frozeWalletId: String?; public let dueBy: String; public let reviewedBy: String?; public let createdAt: String; public let resolvedAt: String?
+    public let frozeAccountId: String?; public let dueBy: String; public let reviewedBy: String?; public let createdAt: String; public let resolvedAt: String?
 }
 public struct CreateSupportTicketResponse: Decodable { public let success: Bool; public let ticket: SupportTicketDto }
 public struct SupportTicketsResponse: Decodable { public let success: Bool; public let tickets: [SupportTicketDto] }
@@ -5899,19 +5899,19 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/accounts/link/\(accountId)/unlink", body: EmptyRequest())
     }
 
-    public func getAutoTopUpSetting(walletId: String) async throws -> GetAutoTopUpSettingResponse {
-        try await get("api/v1/wallet/\(walletId)/auto-topup")
+    public func getAutoTopUpSetting(accountId: String) async throws -> GetAutoTopUpSettingResponse {
+        try await get("api/v1/account/\(accountId)/auto-topup")
     }
 
-    public func configureAutoTopUp(walletId: String, linkedAccountId: String, thresholdAmount: Double, topUpAmount: Double, dailyTriggerCap: Int = 3, enabled: Bool = true) async throws -> GetAutoTopUpSettingResponse {
+    public func configureAutoTopUp(accountId: String, linkedAccountId: String, thresholdAmount: Double, topUpAmount: Double, dailyTriggerCap: Int = 3, enabled: Bool = true) async throws -> GetAutoTopUpSettingResponse {
         try await authenticatedPut(
-            "api/v1/wallet/\(walletId)/auto-topup",
+            "api/v1/account/\(accountId)/auto-topup",
             body: ConfigureAutoTopUpRequest(linkedAccountId: linkedAccountId, thresholdAmount: thresholdAmount, topUpAmount: topUpAmount, dailyTriggerCap: dailyTriggerCap, enabled: enabled)
         )
     }
 
-    public func triggerAutoTopUp(walletId: String) async throws -> TriggerAutoTopUpResponse {
-        try await authenticatedPost("api/v1/wallet/\(walletId)/auto-topup/trigger", body: EmptyRequest())
+    public func triggerAutoTopUp(accountId: String) async throws -> TriggerAutoTopUpResponse {
+        try await authenticatedPost("api/v1/account/\(accountId)/auto-topup/trigger", body: EmptyRequest())
     }
 
     public func getLoanOffers(lenderId: String? = nil) async throws -> LoanOffersResponse {
@@ -6180,7 +6180,7 @@ extension NetworkClient {
 public struct WeeklySavingsPlanDto: Decodable, Identifiable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let name: String
     public let baseWeeklyAmount: Double
     public let escalationRate: Double
@@ -6213,7 +6213,7 @@ public struct WeeklySavingsPlansResponse: Decodable { public let success: Bool; 
 public struct WeeklySavingsPlanDetailResponse: Decodable {
     public let success: Bool
     public let plan: WeeklySavingsPlanDto
-    public let walletBalance: Double
+    public let accountBalance: Double
     public let installments: [WeeklySavingsInstallmentDto]
 }
 
@@ -6226,10 +6226,10 @@ public struct CreateWeeklySavingsPlanRequest: Encodable {
 // Real bug found 2026-08-15 (same pass as the Idempotency-Key fix below): the real
 // backend response for POST /weekly-savings/plans is just {success, plan} --
 // WeeklySavingsController.create's own body literal is `mapOf("success" to true,
-// "plan" to plan)`, no message/walletBalance/installments (those only exist on
+// "plan" to plan)`, no message/accountBalance/installments (those only exist on
 // cancel/withdraw's response, see WeeklySavingsActionResponse below). createWeeklySavingsPlan
 // used to declare WeeklySavingsActionResponse as its return type, whose `message`/
-// `walletBalance`/`installments` are all non-optional -- meaning every successful
+// `accountBalance`/`installments` are all non-optional -- meaning every successful
 // creation would still throw a real DecodingError client-side (missing required
 // keys) even after the Idempotency-Key header is sent correctly, silently reporting
 // "couldn't reach itunda" for a plan that actually WAS created server-side. Matches
@@ -6245,7 +6245,7 @@ public struct WeeklySavingsActionResponse: Decodable {
     public let success: Bool
     public let message: String
     public let plan: WeeklySavingsPlanDto
-    public let walletBalance: Double
+    public let accountBalance: Double
     public let installments: [WeeklySavingsInstallmentDto]
 }
 
@@ -6276,7 +6276,7 @@ extension NetworkClient {
     // `@RequestHeader("Idempotency-Key") idempotencyKey: String`, non-nullable) was
     // simply never sent -- every create/cancel/withdraw call on this screen has been
     // silently 400ing with IDEMPOTENCY_KEY_REQUIRED since it shipped. Fixed to match
-    // every other real money-moving call in this file (e.g. depositMiniWallet,
+    // every other real money-moving call in this file (e.g. depositMiniAccount,
     // contributeToIkimina).
     public func createWeeklySavingsPlan(name: String, baseWeeklyAmount: Double, escalationRate: Double) async throws -> CreateWeeklySavingsPlanResponse {
         try await authenticatedPost(
@@ -6304,7 +6304,7 @@ extension NetworkClient {
 public struct Grow31SavingsPlanDto: Decodable, Identifiable {
     public let id: String
     public let userId: String
-    public let walletId: String
+    public let accountId: String
     public let name: String
     public let dailyAmount: Double
     public let startDate: String
@@ -6337,7 +6337,7 @@ public struct Grow31SavingsPlansResponse: Decodable { public let success: Bool; 
 public struct Grow31SavingsPlanDetailResponse: Decodable {
     public let success: Bool
     public let plan: Grow31SavingsPlanDto
-    public let walletBalance: Double
+    public let accountBalance: Double
     public let deposits: [Grow31SavingsDepositDto]
 }
 
@@ -6359,7 +6359,7 @@ public struct Grow31SavingsActionResponse: Decodable {
     public let success: Bool
     public let message: String?
     public let plan: Grow31SavingsPlanDto
-    public let walletBalance: Double
+    public let accountBalance: Double
     public let deposits: [Grow31SavingsDepositDto]
 }
 

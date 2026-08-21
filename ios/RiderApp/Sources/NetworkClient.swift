@@ -29,7 +29,7 @@ struct AuthResponse: Decodable {
 struct RiderDto: Decodable {
     let id: String
     let userId: String
-    let walletId: String
+    let accountId: String
     let status: String
     let available: Bool
     let createdAt: String

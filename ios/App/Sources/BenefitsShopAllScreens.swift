@@ -80,11 +80,11 @@ struct EntireMenuScreen: View {
     // non-functional list rows" gap for real -- the CocoaPods/Tuist bridge plus the real
     // Fabric root-cause fix (see docs/ARCHITECTURE.md's mini-app host row, 2026-07-16→17)
     // makes a real RN root view presentable here. `pay-bills` proved the host out first,
-    // independently verified (`SaroniteMiniAppLiveTest`); `wallet-balance`/`reward-tasks`/
+    // independently verified (`SaroniteMiniAppLiveTest`); `account-balance`/`reward-tasks`/
     // `insurance` followed the same day once the host itself was proven real -- same
     // one-first-then-the-rest rollout Android itself did (2026-07-13→14).
     @State private var showPayBillsMiniApp = false
-    @State private var showWalletBalanceMiniApp = false
+    @State private var showAccountBalanceMiniApp = false
     @State private var showRewardTasksMiniApp = false
     @State private var showInsuranceMiniApp = false
     // Shop/Eats lost their own primary tab the same day (2026-08-10, real user
@@ -120,9 +120,9 @@ struct EntireMenuScreen: View {
     // for this feature (Android since 2026-08-12, bank-mfe since earlier the same
     // session as this).
     @State private var showGrow31Savings = false
-    // Real KakaoBank mini-style capped starter wallet (2026-07-28, item 101) -- last
+    // Real KakaoBank mini-style capped starter account (2026-07-28, item 101) -- last
     // remaining client platform for this feature (bank-mfe/Android already have it).
-    @State private var showMiniWallet = false
+    @State private var showMiniAccount = false
     // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
     // bank-mfe/Android shipped first; this is the last remaining client platform.
     @State private var showCard = false
@@ -249,7 +249,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                 FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
-                FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
+                FlatRow(title: "Mini account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniAccount = true }),
                 FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                 FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
@@ -259,13 +259,13 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
             ]),
             ("Mini apps", [
-                FlatRow(title: "Wallet balance", showChevron: true, action: { showWalletBalanceMiniApp = true }),
+                FlatRow(title: "Account balance", showChevron: true, action: { showAccountBalanceMiniApp = true }),
                 FlatRow(title: "Pay bills", showChevron: true, action: { showPayBillsMiniApp = true }),
                 FlatRow(title: "Reward tasks", showChevron: true, action: { showRewardTasksMiniApp = true }),
                 FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
             ]),
             ("Accounts & cards", [
-                FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
+                FlatRow(title: "Open account", subtitle: "Itunda Account, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
                 FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
                 FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                 FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
@@ -275,7 +275,7 @@ struct EntireMenuScreen: View {
             ("Send & pay", [
                 FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
                 FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentBlue, action: { showRequestMoney = true }),
-                FlatRow(title: "Auto top-up", subtitle: "Refill your wallet automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
+                FlatRow(title: "Auto top-up", subtitle: "Refill your account automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
                 FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal, action: { showPayBillsMiniApp = true }),
             ]),
             ("Save & grow", [
@@ -283,7 +283,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
             ]),
             ("Borrow", [
-                FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                 FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                 FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
             ]),
@@ -305,7 +305,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
             ]),
             ("Switch & save", [
-                FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                 FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
                 FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
             ]),
@@ -325,7 +325,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
             ]),
             ("Foreign currency", [
-                FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
+                FlatRow(title: "Foreign currency account", trailing: "100% rate preference", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
                 FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
             ]),
             ("Grow your money", [
@@ -340,7 +340,7 @@ struct EntireMenuScreen: View {
             ]),
             ("Loans", [
                 FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
-                FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentBlue, action: { showLoans = true }),
             ]),
             ("Notifications & consent", [
                 FlatRow(title: "Notifications", showChevron: true, action: onOpenSettings),
@@ -411,7 +411,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
-                        FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
+                        FlatRow(title: "Mini account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniAccount = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
@@ -436,7 +436,7 @@ struct EntireMenuScreen: View {
                     // All four now open real granite mini-apps (see this file's header) --
                     // matching Android's own real four-mini-app parity.
                     FlatSection(title: "Mini apps", rows: [
-                        FlatRow(title: "Wallet balance", showChevron: true, action: { showWalletBalanceMiniApp = true }),
+                        FlatRow(title: "Account balance", showChevron: true, action: { showAccountBalanceMiniApp = true }),
                         FlatRow(title: "Pay bills", showChevron: true, action: { showPayBillsMiniApp = true }),
                         FlatRow(title: "Reward tasks", showChevron: true, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
@@ -483,7 +483,7 @@ struct EntireMenuScreen: View {
                     // fixes 2 dead taps found the same way Android's were: "Open account"
                     // and "Mobile plan" had no `action:` at all.
                     CollapsibleFlatSection(title: "Accounts & cards", rows: [
-                        FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
+                        FlatRow(title: "Open account", subtitle: "Itunda Account, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
                         FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
@@ -498,7 +498,7 @@ struct EntireMenuScreen: View {
                         // only entry point. See TransferHubScreen.swift's own doc comment.
                         FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
                         FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentBlue, action: { showRequestMoney = true }),
-                        FlatRow(title: "Auto top-up", subtitle: "Refill your wallet automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
+                        FlatRow(title: "Auto top-up", subtitle: "Refill your account automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
                         // MTN/Airtel airtime and broadband are real billers inside the Pay
                         // Bills mini-app -- same real destination "REG & WASAC bills" below
                         // already uses, same fix as Android's identical dead tap.
@@ -509,7 +509,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
                     ], isExpanded: expandedMenuSection == "Save & grow", onToggle: { expandedMenuSection = (expandedMenuSection == "Save & grow") ? nil : "Save & grow" })
                     CollapsibleFlatSection(title: "Borrow", rows: [
-                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
                     ], isExpanded: expandedMenuSection == "Borrow", onToggle: { expandedMenuSection = (expandedMenuSection == "Borrow") ? nil : "Borrow" })
@@ -544,7 +544,7 @@ struct EntireMenuScreen: View {
                     // button), not a separate feature, so they route to the same real
                     // Loans screen every other loan row on this screen already uses.
                     CollapsibleFlatSection(title: "Switch & save", rows: [
-                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
                         FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
                     ], isExpanded: expandedMenuSection == "Switch & save", onToggle: { expandedMenuSection = (expandedMenuSection == "Switch & save") ? nil : "Switch & save" })
@@ -574,10 +574,10 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
                     ], isExpanded: expandedMenuSection == "Services", onToggle: { expandedMenuSection = (expandedMenuSection == "Services") ? nil : "Services" })
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): both rows
-                    // are the same real foreign-currency wallet "Mobile plan"/Send & pay's
+                    // are the same real foreign-currency account "Mobile plan"/Send & pay's
                     // own routing doesn't cover -- this is its own real screen.
                     CollapsibleFlatSection(title: "Foreign currency", rows: [
-                        FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
+                        FlatRow(title: "Foreign currency account", trailing: "100% rate preference", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
                         FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
                     ], isExpanded: expandedMenuSection == "Foreign currency", onToggle: { expandedMenuSection = (expandedMenuSection == "Foreign currency") ? nil : "Foreign currency" })
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): all 4 rows
@@ -595,7 +595,7 @@ struct EntireMenuScreen: View {
                     ], isExpanded: expandedMenuSection == "Pension", onToggle: { expandedMenuSection = (expandedMenuSection == "Pension") ? nil : "Pension" })
                     CollapsibleFlatSection(title: "Loans", rows: [
                         FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
-                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                     ], isExpanded: expandedMenuSection == "Loans", onToggle: { expandedMenuSection = (expandedMenuSection == "Loans") ? nil : "Loans" })
                     // Real fix: "Notifications" now opens Settings, which already has a
                     // real notifications list + mark-as-read (SettingsScreen.swift) --
@@ -652,8 +652,8 @@ struct EntireMenuScreen: View {
         .sheet(isPresented: $showPayBillsMiniApp) {
             SaronitePayBillsView()
         }
-        .sheet(isPresented: $showWalletBalanceMiniApp) {
-            SaroniteWalletBalanceView()
+        .sheet(isPresented: $showAccountBalanceMiniApp) {
+            SaroniteAccountBalanceView()
         }
         .sheet(isPresented: $showRewardTasksMiniApp) {
             SaroniteRewardTasksView()
@@ -712,8 +712,8 @@ struct EntireMenuScreen: View {
         .sheet(isPresented: $showGrow31Savings) {
             Grow31SavingsScreenView(onBack: { showGrow31Savings = false })
         }
-        .sheet(isPresented: $showMiniWallet) {
-            MiniWalletScreenView(onBack: { showMiniWallet = false })
+        .sheet(isPresented: $showMiniAccount) {
+            MiniAccountScreenView(onBack: { showMiniAccount = false })
         }
         .sheet(isPresented: $showCard) {
             CardScreenView(onBack: { showCard = false })

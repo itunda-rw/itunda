@@ -4,7 +4,7 @@ import CoreNetwork
 
 /// Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a genuinely
 /// different shape from RideScreenView/DesignatedDriverScreenView/BikeRentalScreenView/
-/// ParkingScreenView/BusScreenView: no wallet movement, no location -- just a real
+/// ParkingScreenView/BusScreenView: no account movement, no location -- just a real
 /// question -> competing answers -> asker-adopts-one-best-answer content flow.
 /// bank-mfe/Android already have this; this is the first iOS client, mirroring their
 /// Browse/Mine toggle exactly.

@@ -10,7 +10,7 @@ import CoreNetwork
 ///  - TransferAmountScreen: "얼마나 보낼까요?" -- from/to summary with a connector
 ///    line, quick-amount chips, a Next bar, and a keypad.
 ///
-/// Dumb views taking plain primitives + callbacks, not NetworkClient/Wallet types
+/// Dumb views taking plain primitives + callbacks, not NetworkClient/Account types
 /// directly -- this Feature module can't depend back on App (see BankView.swift's
 /// own note on the same constraint). TransferViewModel (App/Sources) owns the real
 /// quoteTransfer/confirmTransfer calls and is the only caller.
@@ -60,7 +60,7 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
         "saveContact": "Save contact",
         "noContacts": "No saved contacts yet.",
         "next": "Next",
-        "fromWallet": "From Itunda Wallet",
+        "fromAccount": "From Itunda Account",
         "availableBalance": "Available RWF %@",
         "toAccount": "To account %@",
         "newRecipient": "New recipient",
@@ -88,7 +88,7 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
         "saveContact": "Bika uyu muntu",
         "noContacts": "Nta bantu wabitse. Ongeraho hejuru kugira ngo wihute ubutaha.",
         "next": "Komeza",
-        "fromWallet": "Biva kuri Wallet ya Itunda",
+        "fromAccount": "Biva kuri Account ya Itunda",
         "availableBalance": "Amafaranga ahari RWF %@",
         "toAccount": "Kuri konti %@",
         "newRecipient": "Uwakira mushya",
@@ -116,7 +116,7 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
         "saveContact": "Enregistrer le contact",
         "noContacts": "Aucun contact enregistré pour l'instant.",
         "next": "Suivant",
-        "fromWallet": "Depuis le portefeuille Itunda",
+        "fromAccount": "Depuis le portefeuille Itunda",
         "availableBalance": "Disponible RWF %@",
         "toAccount": "Vers le compte %@",
         "newRecipient": "Nouveau destinataire",
@@ -352,7 +352,7 @@ public struct TransferAmountScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: pt("fromWallet"), sublabel: pt("availableBalance", formatAmount(Int(availableBalance))), symbol: "creditcard")
+                TransferPartyRow(label: pt("fromAccount"), sublabel: pt("availableBalance", formatAmount(Int(availableBalance))), symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
                 TransferPartyRow(label: pt("toAccount", recipientAccountNumber), sublabel: pt("newRecipient"), symbol: "leaf")
 
@@ -500,7 +500,7 @@ public struct SavingsAmountScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: "From Itunda Wallet", sublabel: "Available RWF \(formatAmount(Int(availableBalance)))", symbol: "creditcard")
+                TransferPartyRow(label: "From Itunda Account", sublabel: "Available RWF \(formatAmount(Int(availableBalance)))", symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
                 TransferPartyRow(label: "To \(goalName)", sublabel: mode == .deposit ? "Savings goal" : "Interest jar", symbol: "leaf")
             }
@@ -509,7 +509,7 @@ public struct SavingsAmountScreen: View {
             Spacer().frame(height: 40)
 
             VStack(spacing: 16) {
-                // Real fix (2026-08-11): interest now auto-credits to the wallet the
+                // Real fix (2026-08-11): interest now auto-credits to the account the
                 // instant it accrues (see backend SavingsService.accrueInterest's own
                 // doc comment, matching real Toss Bank passbook interest) -- this
                 // screen no longer moves money, it just acknowledges what already
@@ -521,7 +521,7 @@ public struct SavingsAmountScreen: View {
                     .font(.system(size: digits.isEmpty ? 32 : 42, weight: .bold))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
                 // Same "the best error is one that never occurs" fix (2026-08-10) as
-                // TransferAmountScreen above -- a deposit larger than the real wallet
+                // TransferAmountScreen above -- a deposit larger than the real account
                 // balance (already known here) previously only surfaced after a
                 // wasted round trip to the backend's 422.
                 if insufficientBalance {

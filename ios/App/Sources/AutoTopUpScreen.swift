@@ -9,19 +9,19 @@ import CoreNetwork
 struct AutoTopUpScreenView: View {
     var onBack: () -> Void = {}
 
-    @State private var walletId: String?
+    @State private var accountId: String?
     @State private var setting: AutoTopUpSettingDto?
     @State private var settingLoaded = false
     @State private var linkedAccounts: [LinkedAccountDto]?
     @State private var error: String?
     @State private var refreshKey = 0
 
-    private func loadWalletAndAccounts() async {
+    private func loadAccountAndAccounts() async {
         do {
-            let wallets = try await NetworkClient.shared.getWallets().wallets
-            walletId = (wallets.first(where: { $0.type == "MAIN" }) ?? wallets.first)?.id
+            let accounts = try await NetworkClient.shared.getAccounts().accounts
+            accountId = (accounts.first(where: { $0.type == "MAIN" }) ?? accounts.first)?.id
         } catch {
-            self.error = "Could not load your wallet."
+            self.error = "Could not load your account."
         }
         do {
             linkedAccounts = try await NetworkClient.shared.getLinkedAccounts().linkedAccounts
@@ -31,10 +31,10 @@ struct AutoTopUpScreenView: View {
     }
 
     private func loadSetting() async {
-        guard let walletId else { return }
+        guard let accountId else { return }
         settingLoaded = false
         do {
-            setting = try await NetworkClient.shared.getAutoTopUpSetting(walletId: walletId).setting
+            setting = try await NetworkClient.shared.getAutoTopUpSetting(accountId: accountId).setting
         } catch let NetworkError.httpError(statusCode) {
             setting = nil
             if statusCode != 404 { error = TalkScreen.errorMessage(statusCode) }
@@ -57,22 +57,22 @@ struct AutoTopUpScreenView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Automatically top up your wallet from a linked account whenever it drops below a threshold you set.")
+                    Text("Automatically top up your account from a linked account whenever it drops below a threshold you set.")
                         .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
 
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
 
-                    if walletId == nil || linkedAccounts == nil || !settingLoaded {
+                    if accountId == nil || linkedAccounts == nil || !settingLoaded {
                         SkeletonBlock(height: 120)
                     } else if let accounts = linkedAccounts, !accounts.contains(where: { $0.status == "LINKED" }) {
                         Text("Link an external account first -- see My > Linked accounts.")
                             .font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
                             .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
-                    } else if let walletId, let accounts = linkedAccounts {
+                    } else if let accountId, let accounts = linkedAccounts {
                         AutoTopUpConfigCard(
-                            walletId: walletId,
+                            accountId: accountId,
                             linkedAccounts: accounts.filter { $0.status == "LINKED" },
                             setting: setting,
                             onChanged: { refreshKey += 1 }
@@ -81,7 +81,7 @@ struct AutoTopUpScreenView: View {
                             Button(action: {
                                 Task {
                                     do {
-                                        _ = try await NetworkClient.shared.triggerAutoTopUp(walletId: walletId)
+                                        _ = try await NetworkClient.shared.triggerAutoTopUp(accountId: accountId)
                                         refreshKey += 1
                                     } catch let NetworkError.httpError(statusCode) {
                                         error = TalkScreen.errorMessage(statusCode)
@@ -101,14 +101,14 @@ struct AutoTopUpScreenView: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task { await loadWalletAndAccounts() }
-        .task(id: walletId) { await loadSetting() }
+        .task { await loadAccountAndAccounts() }
+        .task(id: accountId) { await loadSetting() }
         .task(id: refreshKey) { await loadSetting() }
     }
 }
 
 private struct AutoTopUpConfigCard: View {
-    let walletId: String
+    let accountId: String
     let linkedAccounts: [LinkedAccountDto]
     let setting: AutoTopUpSettingDto?
     let onChanged: () -> Void
@@ -120,8 +120,8 @@ private struct AutoTopUpConfigCard: View {
     @State private var saving = false
     @State private var error: String?
 
-    init(walletId: String, linkedAccounts: [LinkedAccountDto], setting: AutoTopUpSettingDto?, onChanged: @escaping () -> Void) {
-        self.walletId = walletId
+    init(accountId: String, linkedAccounts: [LinkedAccountDto], setting: AutoTopUpSettingDto?, onChanged: @escaping () -> Void) {
+        self.accountId = accountId
         self.linkedAccounts = linkedAccounts
         self.setting = setting
         self.onChanged = onChanged
@@ -156,7 +156,7 @@ private struct AutoTopUpConfigCard: View {
             } else if let account = linkedAccounts.first {
                 Text("\(account.provider) \(account.externalAccountNumberMasked)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             }
-            TextField("Top up when wallet drops below (RWF)", text: $thresholdText)
+            TextField("Top up when account drops below (RWF)", text: $thresholdText)
                 .keyboardType(.decimalPad)
                 .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
             TextField("Amount to top up (RWF)", text: $topUpText)
@@ -189,7 +189,7 @@ private struct AutoTopUpConfigCard: View {
         defer { saving = false }
         do {
             _ = try await NetworkClient.shared.configureAutoTopUp(
-                walletId: walletId, linkedAccountId: selectedAccountId,
+                accountId: accountId, linkedAccountId: selectedAccountId,
                 thresholdAmount: threshold, topUpAmount: topUp, enabled: enabled
             )
             onChanged()

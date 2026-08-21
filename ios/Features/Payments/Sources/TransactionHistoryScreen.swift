@@ -26,7 +26,7 @@ public struct TransactionDisplayItem: Identifiable {
 /// screenshot (user-provided, 2026-07-12): spend-this-month total up top, then a
 /// real list -- an honest empty state ("No transactions yet") when there's nothing,
 /// matching Toss's own "아직 내역이 없어요" rather than inventing fake rows. Backed by
-/// services/backend/wallet's real getTransactionHistory endpoint. No real card
+/// services/backend/account's real getTransactionHistory endpoint. No real card
 /// issuance/network exists, so this is framed as spend history, not a real card.
 public struct TransactionHistoryScreen: View {
     let transactions: [TransactionDisplayItem]

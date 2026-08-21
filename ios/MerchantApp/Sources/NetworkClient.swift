@@ -133,7 +133,7 @@ struct MerchantCouponDto: Decodable, Identifiable {
 struct MerchantCouponResponse: Decodable { let success: Bool; let coupon: MerchantCouponDto }
 struct MerchantCouponsResponse: Decodable { let success: Bool; let coupons: [MerchantCouponDto] }
 
-// Real B2B payroll -- real wallet-to-wallet money movement (see PayrollController.kt's
+// Real B2B payroll -- real account-to-account money movement (see PayrollController.kt's
 // own doc comment), real on merchant-mfe/web + Android only until now -- zero iOS UI.
 struct AddPayrollEmployeeRequest: Encodable { let phoneNumber: String; let salaryAmount: Double }
 struct PayrollEmployeeDto: Decodable, Identifiable {
@@ -344,7 +344,7 @@ struct ReplyToEatsReviewRequest: Encodable { let reply: String }
 // -- see MerchantBusinessAccountService.kt's own doc comment. Android's native
 // merchantapp already has this (BusinessAccountScreen.kt); this is the iOS port,
 // mirroring the same field shapes merchant-mfe's own lib/merchant.ts (item 150) uses.
-struct BusinessWalletDto: Decodable {
+struct BusinessAccountDto: Decodable {
     let id: String
     let userId: String
     let accountNumber: String
@@ -354,7 +354,7 @@ struct BusinessWalletDto: Decodable {
     let availableBalance: Double
     let currency: String
 }
-struct BusinessWalletResponse: Decodable { let success: Bool; let wallet: BusinessWalletDto }
+struct BusinessAccountResponse: Decodable { let success: Bool; let account: BusinessAccountDto }
 
 struct BusinessLedgerEntryDto: Decodable, Identifiable {
     let id: String
@@ -584,11 +584,11 @@ final class MerchantNetworkClient {
         return try await get("api/v1/merchant/reports", query: query)
     }
 
-    func openBusinessAccount() async throws -> BusinessWalletResponse {
+    func openBusinessAccount() async throws -> BusinessAccountResponse {
         try await post("api/v1/merchant/business-account", body: EmptyBody())
     }
 
-    func getBusinessAccount() async throws -> BusinessWalletResponse { try await get("api/v1/merchant/business-account") }
+    func getBusinessAccount() async throws -> BusinessAccountResponse { try await get("api/v1/merchant/business-account") }
 
     func getBusinessTransactions() async throws -> BusinessTransactionsResponse { try await get("api/v1/merchant/business-account/transactions") }
 
@@ -619,11 +619,11 @@ final class MerchantNetworkClient {
         try await post("api/v1/eats/dine-in/orders/\(orderId)/status", body: UpdateDineInOrderStatusRequest(status: status))
     }
 
-    func moveToBusiness(amount: Double) async throws -> BusinessWalletResponse {
+    func moveToBusiness(amount: Double) async throws -> BusinessAccountResponse {
         try await postWithHeader("api/v1/merchant/business-account/move-to-business", body: MoveBusinessMoneyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
     }
 
-    func moveToPersonal(amount: Double) async throws -> BusinessWalletResponse {
+    func moveToPersonal(amount: Double) async throws -> BusinessAccountResponse {
         try await postWithHeader("api/v1/merchant/business-account/move-to-personal", body: MoveBusinessMoneyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
     }
 

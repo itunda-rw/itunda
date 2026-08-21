@@ -1265,7 +1265,7 @@ public struct MapScreenView: View {
                     updated.isPublic = makePublic
                     return updated
                 }
-                guard makePublic, let ownerId = try await NetworkClient.shared.getWallets().wallets.first?.userId else { return }
+                guard makePublic, let ownerId = try await NetworkClient.shared.getAccounts().accounts.first?.userId else { return }
                 let encodedOwner = ownerId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ownerId
                 let encodedFolder = folderName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? folderName
                 let link = "itunda://maps/shared/\(encodedOwner)/\(encodedFolder)"

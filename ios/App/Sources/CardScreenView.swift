@@ -7,7 +7,7 @@ import CoreNetwork
 // own doc comment: itunda has no real card-network partnership, so "paying with your
 // card" below is itunda's own honest, ledger-backed simulation of a card-present
 // purchase. Same no-ViewModel, "call NetworkClient.shared directly from Task {} blocks"
-// convention as MiniWalletScreenView.swift.
+// convention as MiniAccountScreenView.swift.
 private enum CardMode {
     case loading, noCard, active
 }

@@ -6,7 +6,7 @@ import CoreNetwork
 // RoundUpService, real since well before this session) -- first iOS client for this
 // feature (item 113; bank-mfe item 112, Android already had it). Same
 // no-ViewModel, "call NetworkClient.shared directly from Task {} blocks" convention as
-// MiniWalletScreenView.swift/SpendingScreenView.swift. Honest v1 scope, matching
+// MiniAccountScreenView.swift/SpendingScreenView.swift. Honest v1 scope, matching
 // Android/bank-mfe exactly: goal destination only, not the newer stock-destination
 // option.
 struct RoundUpSettingsView: View {

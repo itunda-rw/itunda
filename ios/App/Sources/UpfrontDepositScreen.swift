@@ -62,7 +62,7 @@ struct UpfrontDepositScreenView: View {
                             .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                         } else if let deposits {
                             if deposits.isEmpty {
-                                Text("No deposits yet. Open one and get the full \(termMonths) months' interest (\(annualRate, specifier: "%.2f")% per year) paid to your main wallet immediately -- the principal stays locked for the full term.")
+                                Text("No deposits yet. Open one and get the full \(termMonths) months' interest (\(annualRate, specifier: "%.2f")% per year) paid to your main account immediately -- the principal stays locked for the full term.")
                                     .font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
                             } else {
                                 ForEach(deposits) { deposit in
@@ -114,7 +114,7 @@ private struct UpfrontDepositRow: View {
             if let error { Text(error).font(.caption).foregroundColor(.red) }
             if deposit.status == "MATURED" && deposit.withdrawnAt == nil {
                 Button(action: { Task { await withdraw() } }) {
-                    Text(withdrawing ? "Working…" : "Withdraw to main wallet").bold().foregroundColor(.white)
+                    Text(withdrawing ? "Working…" : "Withdraw to main account").bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
                         .background(IDS.Colors.brand).cornerRadius(10)
                 }
@@ -151,7 +151,7 @@ private struct UpfrontDepositCreateView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Unlike a regular fixed deposit, you get the full \(termMonths) months' interest paid to your main wallet the moment you open this -- not at maturity. In exchange, the principal is locked for the full \(termMonths) months with no early withdrawal.")
+            Text("Unlike a regular fixed deposit, you get the full \(termMonths) months' interest paid to your main account the moment you open this -- not at maturity. In exchange, the principal is locked for the full \(termMonths) months with no early withdrawal.")
                 .font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             TextField("Deposit amount (RWF)", text: $principalText)
                 .keyboardType(.decimalPad)

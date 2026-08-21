@@ -173,14 +173,14 @@ private final class MyPaymentCodeLocationFetcher: NSObject, ObservableObject, CL
 
 /// Real swipeable funding-source cards -- see `MyPaymentCodeCard`'s own doc
 /// comment for why this stays a deliberate, honest simplification of the real
-/// reference's mixed wallet/card/membership row (itunda has no Samsung-Pay NFC
+/// reference's mixed account/card/membership row (itunda has no Samsung-Pay NFC
 /// or membership equivalent to include honestly). Settling on a card is a real
-/// selection: it's the walletId `MyPaymentCodeCard`'s own code is generated
+/// selection: it's the accountId `MyPaymentCodeCard`'s own code is generated
 /// against. `TabView` with `.page` style is SwiftUI's real equivalent of
 /// Android's `HorizontalPager` -- no extra dependency needed.
-private struct WalletCardCarousel: View {
-    let wallets: [Wallet]
-    let selectedWalletId: String?
+private struct AccountCardCarousel: View {
+    let accounts: [Account]
+    let selectedAccountId: String?
     let onSelect: (String) -> Void
 
     private func cardColor(_ currency: String) -> Color {
@@ -195,10 +195,10 @@ private struct WalletCardCarousel: View {
 
     var body: some View {
         TabView(selection: Binding(
-            get: { selectedWalletId ?? wallets.first?.id ?? "" },
+            get: { selectedAccountId ?? accounts.first?.id ?? "" },
             set: { onSelect($0) }
         )) {
-            ForEach(wallets, id: \.id) { w in
+            ForEach(accounts, id: \.id) { w in
                 VStack(alignment: .leading) {
                     // Small light rectangle mimicking a real card's EMV chip -- a
                     // cheap, honest visual cue that reads as "card" at a glance,
@@ -247,16 +247,16 @@ struct MyPaymentCodeCard: View {
     @State private var qrImage: UIImage?
     @State private var error: String?
     @State private var secondsLeft = 0
-    @State private var wallets: [Wallet] = []
-    @State private var selectedWalletId: String?
+    @State private var accounts: [Account] = []
+    @State private var selectedAccountId: String?
     @State private var linkedAccount: LinkedAccountDto?
     @State private var nearbyAds: [NearbyMerchantAdDto] = []
     @State private var refreshTask: Task<Void, Never>?
     @State private var countdownTask: Task<Void, Never>?
     @StateObject private var locationFetcher = MyPaymentCodeLocationFetcher()
 
-    private var wallet: Wallet? {
-        wallets.first(where: { $0.id == selectedWalletId }) ?? wallets.first(where: { $0.type == "MAIN" }) ?? wallets.first
+    private var account: Account? {
+        accounts.first(where: { $0.id == selectedAccountId }) ?? accounts.first(where: { $0.type == "MAIN" }) ?? accounts.first
     }
 
     var body: some View {
@@ -314,11 +314,11 @@ struct MyPaymentCodeCard: View {
             }
             .frame(minHeight: 140)
 
-            if let wallet {
+            if let account {
                 HStack {
                     Text("itunda Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
-                    Text("\(Int(wallet.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("\(Int(account.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                 }
             }
             if let linkedAccount {
@@ -346,13 +346,13 @@ struct MyPaymentCodeCard: View {
                     }
                 }
             }
-            if wallets.count > 1 {
-                WalletCardCarousel(wallets: wallets, selectedWalletId: selectedWalletId) { selectedWalletId = $0 }
+            if accounts.count > 1 {
+                AccountCardCarousel(accounts: accounts, selectedAccountId: selectedAccountId) { selectedAccountId = $0 }
             }
         }
         .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         .task {
-            wallets = (try? await NetworkClient.shared.getWallets().wallets) ?? []
+            accounts = (try? await NetworkClient.shared.getAccounts().accounts) ?? []
             linkedAccount = (try? await NetworkClient.shared.getLinkedAccounts().linkedAccounts.first(where: { $0.status == "LINKED" })) ?? nil
             locationFetcher.requestLocation()
         }
@@ -377,7 +377,7 @@ struct MyPaymentCodeCard: View {
         refreshTask = Task {
             while !Task.isCancelled {
                 do {
-                    let result = try await NetworkClient.shared.generateCustomerPaymentCode(walletId: wallet?.id)
+                    let result = try await NetworkClient.shared.generateCustomerPaymentCode(accountId: account?.id)
                     code = result
                     error = nil
                     // Real contract: both encode the RAW code, no itunda://...

@@ -7,7 +7,7 @@ import CoreNetwork
 // mobile" gaps: bank-mfe has had this since well before this session, Android ported
 // the same day as item 104). Same no-ViewModel, "call NetworkClient.shared directly
 // from Task {} blocks" convention as WeeklySavingsScreenView.swift/
-// MiniWalletScreenView.swift. Mirrors bank-mfe's GroupAccountsSection/
+// MiniAccountScreenView.swift. Mirrors bank-mfe's GroupAccountsSection/
 // GroupAccountDetailView/CreateGroupAccountForm exactly.
 
 struct GroupAccountScreenView: View {

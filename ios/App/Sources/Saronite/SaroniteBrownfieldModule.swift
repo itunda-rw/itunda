@@ -80,27 +80,27 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
-    @objc func getWalletBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
-        authorizedCall(path: "api/v1/wallet", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+    @objc func getAccountBalance(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/account", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             var totalBalance = 0.0
             var currency = "RWF"
-            let wallets = ((root["wallets"] as? [[String: Any]]) ?? []).map { w -> [String: Any] in
+            let accounts = ((root["accounts"] as? [[String: Any]]) ?? []).map { w -> [String: Any] in
                 let balance = (w["balance"] as? NSNumber)?.doubleValue ?? 0
-                let walletCurrency = w["currency"] as? String ?? currency
+                let accountCurrency = w["currency"] as? String ?? currency
                 totalBalance += balance
-                currency = walletCurrency
+                currency = accountCurrency
                 return [
                     "id": w["id"] as? String ?? "",
                     "type": w["type"] as? String ?? "",
                     "name": w["accountName"] as? String ?? "",
                     "number": w["accountNumber"] as? String ?? "",
                     "balance": balance,
-                    "currency": walletCurrency,
+                    "currency": accountCurrency,
                     "icon": "",
                     "connected": true,
                 ]
             }
-            return ["totalBalance": totalBalance, "currency": currency, "wallets": wallets]
+            return ["totalBalance": totalBalance, "currency": currency, "accounts": accounts]
         }
     }
 
@@ -328,7 +328,7 @@ final class SaroniteBrownfieldModule: NSObject {
         authorizedCall(path: "api/v1/insurance/premium-funds/\(fundId)/contribute", method: "POST", body: ["amount": amount], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
     }
 
-    // Also money movement (refunds currentAmount back to the MAIN wallet) -- same real
+    // Also money movement (refunds currentAmount back to the MAIN account) -- same real
     // Idempotency-Key requirement as contributeToFund. body: [:] (not nil), same reasoning
     // as requestEmailVerification above -- this is a real POST even with nothing to send.
     @objc func cancelFund(_ fundId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {

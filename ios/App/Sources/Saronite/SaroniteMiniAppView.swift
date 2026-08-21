@@ -12,12 +12,12 @@ struct SaronitePayBillsView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: PayBillsMiniAppViewController, context: Context) {}
 }
 
-struct SaroniteWalletBalanceView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> WalletBalanceMiniAppViewController {
-        WalletBalanceMiniAppViewController()
+struct SaroniteAccountBalanceView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> AccountBalanceMiniAppViewController {
+        AccountBalanceMiniAppViewController()
     }
 
-    func updateUIViewController(_ uiViewController: WalletBalanceMiniAppViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: AccountBalanceMiniAppViewController, context: Context) {}
 }
 
 struct SaroniteRewardTasksView: UIViewControllerRepresentable {

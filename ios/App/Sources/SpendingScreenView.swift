@@ -2,12 +2,12 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
-// Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
-// WalletService.getSpendingInsight, real since 2026-07-13) -- first iOS client for this
+// Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.
+// AccountService.getSpendingInsight, real since 2026-07-13) -- first iOS client for this
 // feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/Android
 // ported the same day as items 106/107). Same no-ViewModel,
 // "call NetworkClient.shared directly from Task {} blocks" convention as
-// MiniWalletScreenView.swift/GroupAccountScreenView.swift.
+// MiniAccountScreenView.swift/GroupAccountScreenView.swift.
 struct SpendingScreenView: View {
     var onBack: () -> Void = {}
     @State private var insight: SpendingInsightResponse?
@@ -56,14 +56,14 @@ struct SpendingScreenView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Total spent, all time").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text("\(formatMoneySpending(insight.totalSpent)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
-                            Text("Real, ledger-based -- what every wallet debit actually paid for.")
+                            Text("Real, ledger-based -- what every account debit actually paid for.")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
 
                         if insight.categories.isEmpty {
-                            EmptyStateView("No spending recorded yet — your breakdown will show up here once you use your wallet.")
+                            EmptyStateView("No spending recorded yet — your breakdown will show up here once you use your account.")
                         } else {
                             let maxAmount = max(insight.categories.map(\.amount).max() ?? 1, 1)
                             VStack(alignment: .leading, spacing: 12) {

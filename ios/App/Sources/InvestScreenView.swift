@@ -260,7 +260,7 @@ private struct HoldingRow: View {
     }
 }
 
-// Real Investment-wallet top-up (2026-08-04) -- see NetworkClient.swift's own
+// Real Investment-account top-up (2026-08-04) -- see NetworkClient.swift's own
 // FundInvestmentRequest doc comment. Without this, a user with no pre-seeded
 // investment balance had no in-app way to ever actually buy a stock.
 private struct AddFundsCard: View {
@@ -280,7 +280,7 @@ private struct AddFundsCard: View {
                 Button(expanded ? "Cancel" : "Add funds") { expanded.toggle(); error = nil }
                     .font(.caption).bold().foregroundColor(IDS.Colors.brand)
             }
-            Text("Move money from your main wallet into your investment account.")
+            Text("Move money from your main account into your investment account.")
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             if expanded {
                 HStack {
@@ -323,7 +323,7 @@ private struct AddFundsCard: View {
         needsDeviceVerification = false
         Task {
             do {
-                _ = try await NetworkClient.shared.fundInvestmentWallet(amount: value)
+                _ = try await NetworkClient.shared.fundInvestmentAccount(amount: value)
                 amount = ""
                 expanded = false
                 error = nil
