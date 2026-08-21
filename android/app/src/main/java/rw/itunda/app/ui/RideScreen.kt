@@ -749,7 +749,7 @@ private fun RideDriverContent() {
                         Text("Drive with Itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "Earn a real fare for every trip you complete, paid straight to your wallet.",
+                            "Earn a real fare for every trip you complete, paid straight to your account.",
                             color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))

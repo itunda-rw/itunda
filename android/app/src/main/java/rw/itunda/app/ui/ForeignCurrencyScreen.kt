@@ -44,9 +44,9 @@ import rw.itunda.core.network.ConvertCurrencyRequest
 import rw.itunda.core.network.CurrencyConversionDto
 import rw.itunda.core.network.ExchangeRateAlertDto
 import rw.itunda.core.network.NetworkClient
-import rw.itunda.core.network.OpenForeignWalletRequest
+import rw.itunda.core.network.OpenForeignAccountRequest
 import rw.itunda.core.network.SetRateAlertRequest
-import rw.itunda.core.network.Wallet as WalletDto
+import rw.itunda.core.network.Account as AccountDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 
@@ -54,8 +54,8 @@ import java.io.IOException
 // USD/EUR/GBP, the currencies real Rwandan diaspora remittance corridors (US,
 // Eurozone/Belgium, UK) actually run through, not Toss's real 17-currency breadth. Real
 // live conversion rate (ForeignCurrencyRateClient, a free keyless public FX feed) plus
-// itunda's own real margin -- honestly a conversion between the user's OWN wallets, not
-// a cross-border receiving rail (see backend ForeignCurrencyWalletService's own doc
+// itunda's own real margin -- honestly a conversion between the user's OWN accounts, not
+// a cross-border receiving rail (see backend ForeignCurrencyAccountService's own doc
 // comment for why that part stays out of scope). Same no-ViewModel, NetworkClient-direct
 // shape as UpfrontDepositScreen.kt.
 private val SUPPORTED_CURRENCIES = listOf("USD", "EUR", "GBP")
@@ -63,7 +63,7 @@ private val SUPPORTED_CURRENCIES = listOf("USD", "EUR", "GBP")
 @Composable
 fun ForeignCurrencyScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    var wallets by remember { mutableStateOf<List<WalletDto>?>(null) }
+    var accounts by remember { mutableStateOf<List<AccountDto>?>(null) }
     var conversions by remember { mutableStateOf<List<CurrencyConversionDto>?>(null) }
     var rateAlerts by remember { mutableStateOf<List<ExchangeRateAlertDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -74,8 +74,8 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
     fun load() {
         coroutineScope.launch {
             try {
-                val walletsRes = NetworkClient.apiService.getForeignWallets()
-                if (walletsRes.success) wallets = walletsRes.wallets
+                val accountsRes = NetworkClient.apiService.getForeignAccounts()
+                if (accountsRes.success) accounts = accountsRes.accounts
                 val conversionsRes = NetworkClient.apiService.getMyConversions()
                 if (conversionsRes.success) conversions = conversionsRes.conversions
                 val alertsRes = NetworkClient.apiService.getMyRateAlerts()
@@ -90,15 +90,15 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(refreshKey) { load() }
 
-    fun openWallet(currency: String) {
+    fun openAccount(currency: String) {
         openingCurrency = currency
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.openForeignWallet(OpenForeignWalletRequest(currency))
+                NetworkClient.apiService.openForeignAccount(OpenForeignAccountRequest(currency))
                 refreshKey++
             } catch (e: HttpException) {
-                if (rw.itunda.core.network.apiErrorCode(e) == "FOREIGN_WALLET_ALREADY_EXISTS") {
-                    // Real Toss-style resolution, not a dead-end error: the wallet
+                if (rw.itunda.core.network.apiErrorCode(e) == "FOREIGN_ACCOUNT_ALREADY_EXISTS") {
+                    // Real Toss-style resolution, not a dead-end error: the account
                     // genuinely already exists -- reload and show it instead of
                     // erroring on every retry.
                     refreshKey++
@@ -122,11 +122,11 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
         ) {
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
 
-            val list = wallets
+            val list = accounts
             if (list == null) {
                 item { SkeletonBlock(height = 80.dp) }
             } else {
-                items(list, key = { it.id }) { wallet ->
+                items(list, key = { it.id }) { account ->
                     Card(
                         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
@@ -137,8 +137,8 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(wallet.currency, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text("${formatFx(wallet.balance)} ${wallet.currency}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(account.currency, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("${formatFx(account.balance)} ${account.currency}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
                 }
@@ -152,7 +152,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(if (openingCurrency == code) Ids.colors.textTertiary else Ids.colors.brand)
-                                        .clickable(enabled = openingCurrency == null) { openWallet(code) }
+                                        .clickable(enabled = openingCurrency == null) { openAccount(code) }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                 ) { Text("+ Open $code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
@@ -161,17 +161,17 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                 }
             }
 
-            if (!wallets.isNullOrEmpty()) {
+            if (!accounts.isNullOrEmpty()) {
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Convert", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
-                item { ConvertPanel(wallets = wallets.orEmpty(), onConverted = { refreshKey++ }) }
+                item { ConvertPanel(accounts = accounts.orEmpty(), onConverted = { refreshKey++ }) }
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Rate alerts", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
-                item { RateAlertsPanel(wallets = wallets.orEmpty(), alerts = rateAlerts, onChanged = { refreshKey++ }) }
+                item { RateAlertsPanel(accounts = accounts.orEmpty(), alerts = rateAlerts, onChanged = { refreshKey++ }) }
             }
 
             val history = conversions
@@ -194,9 +194,9 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
+private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
     var direction by remember { mutableStateOf(true) } // true = RWF -> foreign, false = foreign -> RWF
-    var foreignCurrency by remember { mutableStateOf(wallets.first().currency) }
+    var foreignCurrency by remember { mutableStateOf(accounts.first().currency) }
     var amountText by remember { mutableStateOf("") }
     var rate by remember { mutableStateOf<Double?>(null) }
     var submitting by remember { mutableStateOf(false) }
@@ -232,7 +232,7 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                wallets.map { it.currency }.forEach { code ->
+                accounts.map { it.currency }.forEach { code ->
                     val selected = code == foreignCurrency
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
@@ -291,8 +291,8 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
 // found via a fresh uncalled-endpoint sweep, same pattern as section 113/167's stock
 // target-price alert (InvestScreen.kt).
 @Composable
-private fun RateAlertsPanel(wallets: List<WalletDto>, alerts: List<ExchangeRateAlertDto>, onChanged: () -> Unit) {
-    var currency by remember(wallets) { mutableStateOf(wallets.firstOrNull()?.currency ?: "") }
+private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRateAlertDto>, onChanged: () -> Unit) {
+    var currency by remember(accounts) { mutableStateOf(accounts.firstOrNull()?.currency ?: "") }
     var direction by remember { mutableStateOf(true) } // true = ABOVE, false = BELOW
     var targetText by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
@@ -336,11 +336,11 @@ private fun RateAlertsPanel(wallets: List<WalletDto>, alerts: List<ExchangeRateA
             }
         }
 
-        if (wallets.isNotEmpty()) {
+        if (accounts.isNotEmpty()) {
             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        wallets.map { it.currency }.forEach { code ->
+                        accounts.map { it.currency }.forEach { code ->
                             val selected = code == currency
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)

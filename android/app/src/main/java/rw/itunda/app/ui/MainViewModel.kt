@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import rw.itunda.core.network.Wallet
+import rw.itunda.core.network.Account
 import rw.itunda.core.network.SavingsGoal
 import rw.itunda.core.network.InterestJar
 import rw.itunda.core.network.RoundUpSettingsDto
@@ -52,8 +52,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _pendingActionCount = MutableStateFlow(offlineQueue.peekAll().size)
     val pendingActionCount: StateFlow<Int> = _pendingActionCount
-    private val _primaryWallet = MutableStateFlow<Wallet?>(null)
-    val primaryWallet: StateFlow<Wallet?> = _primaryWallet
+    private val _primaryAccount = MutableStateFlow<Account?>(null)
+    val primaryAccount: StateFlow<Account?> = _primaryAccount
 
     private val _savingsGoals = MutableStateFlow<List<SavingsGoal>>(emptyList())
     val savingsGoals: StateFlow<List<SavingsGoal>> = _savingsGoals
@@ -71,7 +71,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val transactions: StateFlow<List<rw.itunda.core.network.TransactionDto>> = _transactions
 
     // Real Toss-style home-screen spending insight (2026-08-03) -- GET
-    // /api/v1/wallet/spending, backed by WalletService.getSpendingInsight, has been
+    // /api/v1/account/spending, backed by AccountService.getSpendingInsight, has been
     // real since 2026-07-13 and already had its own dedicated SpendingScreen.kt, but
     // was never fetched here for the Home tab, which instead showed a hardcoded
     // "RWF 463,022 / Spent in July" placeholder explicitly commented as illustrative.
@@ -138,9 +138,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
-                val walletRes = NetworkClient.apiService.getWallets()
-                if (walletRes.success) {
-                    _primaryWallet.value = walletRes.wallets.firstOrNull { it.type == "MAIN" } ?: walletRes.wallets.firstOrNull()
+                val accountRes = NetworkClient.apiService.getAccounts()
+                if (accountRes.success) {
+                    _primaryAccount.value = accountRes.accounts.firstOrNull { it.type == "MAIN" } ?: accountRes.accounts.firstOrNull()
                 }
 
                 val savingsRes = NetworkClient.apiService.getSavingsGoals()
@@ -211,7 +211,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: retrofit2.HttpException) {
                 // Real stale-session crash (found 2026-07-22): a cached access token
                 // that's no longer valid against the backend (e.g. after a DB reset or
-                // redeploy) makes this function's first call, getWallets() above, come
+                // redeploy) makes this function's first call, getAccounts() above, come
                 // back with a genuine 401 -- the correct response is a real logout
                 // back to the login screen.
                 //
@@ -243,7 +243,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun showOfflinePlaceholder() {
         _isOffline.value = true
-        _primaryWallet.value = Wallet(
+        _primaryAccount.value = Account(
             id = "w_offline_placeholder",
             userId = "",
             accountNumber = "----",
@@ -318,7 +318,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * Real direct P2P push-transfer (2026-07-20) -- switched from the previous
      * quote-then-confirm `quoteTransfer`/`confirmTransfer` pair (built 2026-07-12) to
      * the new `sendDirect` endpoint: those older endpoints always route through a
-     * simulated external rail and never actually credit another itunda user's wallet,
+     * simulated external rail and never actually credit another itunda user's account,
      * even when the recipient is a real itunda account (confirmed via a direct MySQL
      * check while building the real fix on the backend one day earlier -- see
      * SendDirectP2pRequest's own doc comment). No quote step needed here, since there's
@@ -596,7 +596,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Real gap found 2026-08-08 (Toss Simplicity21 research): this used to switch on
     // HTTP status code alone, a 4-case map that fell through to a generic message for
-    // every other real decline (self-payment, wallet-frozen, family spend limit, rate
+    // every other real decline (self-payment, account-frozen, family spend limit, rate
     // limit) even though the backend already sends specific text for each -- bank-mfe's
     // ApiError already showed that real text, this didn't. Now prefers the real backend
     // message (rw.itunda.core.network.apiErrorMessage) and only falls back to a

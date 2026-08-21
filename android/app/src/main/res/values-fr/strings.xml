@@ -112,7 +112,7 @@
     <string name="home_current_account">Compte courant</string>
     <string name="home_demo_balance_unavailable">Solde de démonstration indisponible</string>
     <string name="home_link_another_account">+ Lier un autre compte</string>
-    <string name="home_wallet">itunda Pay</string>
+    <string name="home_account">itunda Pay</string>
     <string name="home_offline_banner">Vous êtes hors ligne. Affichage de données limitées, non en direct.</string>
     <string name="home_search_placeholder">Rechercher sur itunda</string>
     <string name="home_search_description">Rechercher sur itunda</string>
@@ -183,7 +183,7 @@
     <string name="home_round_up_on">Activé</string>
     <string name="home_round_up_set_up">Configurer</string>
     <string name="bank_title">itunda Bank</string>
-    <string name="bank_wallet_account">itunda wallet</string>
+    <string name="bank_account_account">itunda account</string>
     <string name="bank_total_saved">Total épargné</string>
     <string name="bank_save_grow">Épargner et faire fructifier</string>
     <string name="bank_borrow">Emprunter</string>

@@ -44,8 +44,8 @@ import rw.itunda.core.network.SpendingInsightResponse
 import java.math.BigDecimal
 import rw.itunda.core.designsystem.components.EmptyState
 
-// Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
-// WalletService.getSpendingInsight, real since 2026-07-13) -- first Android client for
+// Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.
+// AccountService.getSpendingInsight, real since 2026-07-13) -- first Android client for
 // this feature (item 107, found backend-only via a fresh matrix scan; bank-mfe ported
 // the same day as item 106). Same plain-Material3, no-Toss-color-alias convention as
 // CreditScoreScreen.kt (a direct sibling: a real financial-insight read screen, no
@@ -80,14 +80,14 @@ fun SpendingScreen(onBack: () -> Unit) {
                             Text("Total spent, all time", style = MaterialTheme.typography.labelMedium)
                             Text("${formatMoneySpending(current.totalSpent)} RWF", style = MaterialTheme.typography.headlineMedium)
                             Text(
-                                "Real, ledger-based -- what every wallet debit actually paid for.",
+                                "Real, ledger-based -- what every account debit actually paid for.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
                     }
                 }
                 if (current.categories.isEmpty()) {
-                    item { EmptyState("No spending recorded yet — your breakdown will show up here once you use your wallet.") }
+                    item { EmptyState("No spending recorded yet — your breakdown will show up here once you use your account.") }
                 } else {
                     item { Text("By category", style = MaterialTheme.typography.titleMedium) }
                     val maxAmount = current.categories.maxOf { it.amount }.let { if (it > BigDecimal.ZERO) it else BigDecimal.ONE }
@@ -119,7 +119,7 @@ fun SpendingScreen(onBack: () -> Unit) {
     }
 }
 
-// Real Toss budgets/limits equivalent (item 172) -- WalletService.setBudget/
+// Real Toss budgets/limits equivalent (item 172) -- AccountService.setBudget/
 // getBudgets via ApiService.getBudgets/setBudget. Mirrors bank-mfe's own
 // BudgetsSection/SetBudgetForm (item 165): per-category or overall (category == null)
 // monthly limit, color-coded by UNDER/NEAR(>=80%)/OVER(>=100%) status.

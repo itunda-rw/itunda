@@ -117,7 +117,7 @@ fun UpfrontDepositScreen(onBack: () -> Unit) {
                     deposits!!.isEmpty() -> item {
                         Text(
                             "No deposits yet. Open one and get the full $TERM_MONTHS months' interest " +
-                                "($ANNUAL_RATE% per year) paid to your main wallet immediately -- the principal " +
+                                "($ANNUAL_RATE% per year) paid to your main account immediately -- the principal " +
                                 "stays locked for the full term.",
                             color = Ids.colors.textSecondary, fontSize = 14.sp,
                         )
@@ -172,7 +172,7 @@ private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit)
                         }.padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (withdrawing) "Working…" else "Withdraw to main wallet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(if (withdrawing) "Working…" else "Withdraw to main account", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             }
         }
@@ -231,7 +231,7 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
     ) {
         Text(
             "Unlike a regular fixed deposit, you get the full $TERM_MONTHS months' interest paid to your main " +
-                "wallet the moment you open this -- not at maturity. In exchange, the principal is locked for " +
+                "account the moment you open this -- not at maturity. In exchange, the principal is locked for " +
                 "the full $TERM_MONTHS months with no early withdrawal.",
             color = Ids.colors.textSecondary, fontSize = 13.sp,
         )

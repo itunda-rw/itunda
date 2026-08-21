@@ -54,7 +54,7 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
         Text("Become an itunda Rider", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            "Deliver real Eats orders and get paid straight to your itunda wallet after every delivery.",
+            "Deliver real Eats orders and get paid straight to your itunda account after every delivery.",
             style = MaterialTheme.typography.bodyMedium,
         )
         error?.let {

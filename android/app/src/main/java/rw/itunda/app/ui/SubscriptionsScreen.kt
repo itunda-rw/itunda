@@ -39,7 +39,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
 
 // Real recurring-payment ("subscription") detection over a user's own real transaction
-// history -- see rw.itunda.wallet.SubscriptionDetectionService's own doc comment. Plus
+// history -- see rw.itunda.account.SubscriptionDetectionService's own doc comment. Plus
 // real Kakao Pay 정기결제/Toss 빌링키-style merchant subscriptions the customer actually
 // authorized (billing-key charges, distinct from the detected-from-history section
 // above: real active authorizations, not a heuristic guess). bank-mfe already has both
@@ -133,7 +133,7 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Merchant subscriptions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
-                            "Plans you've subscribed to. These charge your wallet automatically until you cancel.",
+                            "Plans you've subscribed to. These charge your account automatically until you cancel.",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
                         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }

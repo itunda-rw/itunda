@@ -36,7 +36,7 @@ import rw.itunda.merchant.network.PayrollRunResponse
 import rw.itunda.merchant.network.isDeviceNotVerifiedError
 
 // Real B2B payroll -- see rw.itunda.merchant.PayrollService's own doc comment for why
-// this is real wallet-to-wallet money movement, not a demo. merchant-mfe already has
+// this is real account-to-account money movement, not a demo. merchant-mfe already has
 // this (PayrollScreen.tsx); this is the first native client (Android/iOS).
 @Composable
 fun PayrollTab() {
@@ -92,7 +92,7 @@ private fun AddEmployeeCard(onAdded: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Add an employee", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
-                "Must be an existing Itunda user's phone number -- payroll pays directly into their wallet.",
+                "Must be an existing Itunda user's phone number -- payroll pays directly into their account.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.fillMaxWidth())

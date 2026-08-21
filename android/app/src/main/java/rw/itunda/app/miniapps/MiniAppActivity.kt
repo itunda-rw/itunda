@@ -63,8 +63,8 @@ abstract class SaroniteMiniAppActivity : ReactActivity(), BrickModuleRegistrar {
 // in each mini-app's own app.tsx, 2026-07-13) -- this `getMainComponentName()` must match that
 // `appName` exactly, same requirement as the old plain `AppRegistry.registerComponent` name it
 // replaced (granite calls that same underlying API internally, confirmed by reading its source).
-class WalletBalanceMiniAppActivity : SaroniteMiniAppActivity() {
-    override fun getMainComponentName(): String = "SaroniteWalletBalance"
+class AccountBalanceMiniAppActivity : SaroniteMiniAppActivity() {
+    override fun getMainComponentName(): String = "SaroniteAccountBalance"
 }
 
 class PayBillsMiniAppActivity : SaroniteMiniAppActivity() {
@@ -93,7 +93,7 @@ class InsuranceMiniAppActivity : SaroniteMiniAppActivity() {
  * documented in docs/TOSS_PARITY_MATRIX.md's Partner SDK row, not hidden.
  *
  * `onDestroy` restores the shared ReactHost back to the first-party bundle so
- * Wallet/PayBills/RewardTasks/Insurance keep working the next time any of them opens --
+ * Account/PayBills/RewardTasks/Insurance keep working the next time any of them opens --
  * without this, the host would stay pointed at the partner's bundle forever and every
  * first-party mini-app Activity would try (and fail) to find its own component name in
  * JS that no longer registers it. Fired via `PartnerMiniAppLoader`'s own

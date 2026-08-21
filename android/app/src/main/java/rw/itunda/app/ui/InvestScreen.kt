@@ -306,8 +306,8 @@ private fun PortfolioContent() {
     }
 }
 
-// Real Investment-wallet top-up (2026-08-04) -- see ApiService.kt's own
-// FundInvestmentRequest doc comment: StocksService.fundInvestmentWallet (a real MAIN
+// Real Investment-account top-up (2026-08-04) -- see ApiService.kt's own
+// FundInvestmentRequest doc comment: StocksService.fundInvestmentAccount (a real MAIN
 // -> INVESTMENT internal transfer) had zero client anywhere, so a user with no
 // pre-seeded investment balance had no in-app way to ever actually buy a stock.
 @Composable
@@ -328,7 +328,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
         busy = true
         needsDeviceVerification = false
         try {
-            NetworkClient.apiService.fundInvestmentWallet(UUID.randomUUID().toString(), FundInvestmentRequest(value))
+            NetworkClient.apiService.fundInvestmentAccount(UUID.randomUUID().toString(), FundInvestmentRequest(value))
             amount = ""
             expanded = false
             error = null
@@ -352,7 +352,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
                     modifier = Modifier.clickable { expanded = !expanded; error = null },
                 )
             }
-            Text("Move money from your main wallet into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            Text("Move money from your main account into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
             if (expanded) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

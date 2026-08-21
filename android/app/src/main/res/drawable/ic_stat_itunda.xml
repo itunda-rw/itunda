@@ -2,7 +2,7 @@
 <!-- Real Android status-bar push icon (2026-08-12), see ItundaMessagingService.kt's
      own doc comment. Android draws status-bar/notification small icons from the alpha
      channel only (fillColor is ignored and forced to white/theme-tinted by the OS), so
-     a single flat silhouette is all this needs to be: a simple coin/wallet mark, this
+     a single flat silhouette is all this needs to be: a simple coin/account mark, this
      app's first icon asset of any kind (there was previously no res/drawable or
      res/mipmap directory in this module at all; the launcher icon gap is a separate,
      pre-existing issue, out of this change's scope). -->

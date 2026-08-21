@@ -39,7 +39,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OverviewResponse
 
 // Real Toss-style unified account overview (2026-07-22) -- found fully built on the
-// backend (rw.itunda.overview) with zero client UI anywhere. Aggregates wallets,
+// backend (rw.itunda.overview) with zero client UI anywhere. Aggregates accounts,
 // savings, loans, investments, insurance, and linked external bank/MoMo accounts in
 // one screen, matching Toss's own real "전체" home tab. See OverviewService.kt's own
 // doc comment for why insurance is excluded from net worth (a sunk expense, not an

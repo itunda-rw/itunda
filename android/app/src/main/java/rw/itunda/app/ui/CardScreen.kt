@@ -55,7 +55,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 // Android client, direct port of bank-mfe's CardView. See backend DebitCard.kt's own
 // doc comment: itunda has no real card-network partnership, so "paying with your card"
 // below is itunda's own honest, ledger-backed simulation of a card-present purchase.
-// Same no-ViewModel, NetworkClient-direct-from-Composable shape as MiniWalletScreen.kt.
+// Same no-ViewModel, NetworkClient-direct-from-Composable shape as MiniAccountScreen.kt.
 private enum class CardMode { LOADING, NO_CARD, ACTIVE }
 
 @Composable

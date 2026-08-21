@@ -179,11 +179,11 @@ fun VendorCashAdvanceTab(merchantId: String) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Your ${"%,.0f".format(currentAdvance.principalAmount)} RWF advance was approved and is ready to disburse to your wallet.",
+                        "Your ${"%,.0f".format(currentAdvance.principalAmount)} RWF advance was approved and is ready to disburse to your account.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    IdsButton(text = if (busy) "Disbursing…" else "Disburse to my wallet", enabled = !busy, onClick = { disburse(currentAdvance.id) })
+                    IdsButton(text = if (busy) "Disbursing…" else "Disburse to my account", enabled = !busy, onClick = { disburse(currentAdvance.id) })
                 }
             }
         }

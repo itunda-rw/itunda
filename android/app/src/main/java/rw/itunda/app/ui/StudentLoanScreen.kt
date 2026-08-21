@@ -203,7 +203,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                         Text(
                             "Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate, " +
                                 "with a grace period after graduation before repayment starts. Declared household income is self-declared -- not verified against BRD's real " +
-                                "Financial Means Testing process. Repayment here is user-initiated from your wallet -- itunda cannot deduct from your paycheck like the real " +
+                                "Financial Means Testing process. Repayment here is user-initiated from your account -- itunda cannot deduct from your paycheck like the real " +
                                 "8%-of-income scheme BRD uses.",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )

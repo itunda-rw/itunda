@@ -153,8 +153,8 @@ internal fun ProductDetailScreen(
 /**
  * Real per-seller order splitting -- the merchant-grouped cart's checkout screen.
  * Each merchant group becomes its own real, independent placeOrder() call (its own
- * Idempotency-Key, its own wallet-to-wallet ledger transaction) -- sequential, not
- * parallel: these are real money-moving calls against the same buyer wallet, and a
+ * Idempotency-Key, its own account-to-account ledger transaction) -- sequential, not
+ * parallel: these are real money-moving calls against the same buyer account, and a
  * clear one-at-a-time result list is more honest than a swallowed batch result. A
  * failure on one merchant's order does not block or roll back any other, matching
  * how a real multi-seller checkout behaves (each seller is charged/fulfilled

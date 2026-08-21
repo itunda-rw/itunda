@@ -58,7 +58,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 // this feature (item 104, found via a fresh matrix scan for still-open "zero client on
 // mobile" gaps: bank-mfe has had this since well before this session, Android/iOS never
 // did). Same no-ViewModel, direct-NetworkClient-call convention as
-// WeeklySavingsScreen.kt/MiniWalletScreen.kt. Mirrors bank-mfe's
+// WeeklySavingsScreen.kt/MiniAccountScreen.kt. Mirrors bank-mfe's
 // GroupAccountsSection/GroupAccountDetailView/CreateGroupAccountForm exactly.
 private enum class GroupAccountMode { LIST, DETAIL }
 

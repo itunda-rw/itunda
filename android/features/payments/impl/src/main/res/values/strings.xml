@@ -30,7 +30,7 @@
     <string name="transfer_save_contact">Save contact</string>
     <string name="transfer_no_contacts">No saved contacts yet — add one above to send faster next time.</string>
     <string name="transfer_next">Next</string>
-    <string name="transfer_from_wallet">From Itunda Wallet</string>
+    <string name="transfer_from_account">From Itunda Account</string>
     <string name="transfer_available_balance">Available RWF %1$s</string>
     <string name="transfer_to_account">To account %1$s</string>
     <string name="transfer_new_recipient">New recipient</string>

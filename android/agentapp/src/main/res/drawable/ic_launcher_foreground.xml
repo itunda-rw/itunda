@@ -4,7 +4,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- A plain wallet-plus-coin glyph, matching merchantapp's storefront glyph and
+    <!-- A plain account-plus-coin glyph, matching merchantapp's storefront glyph and
          riderapp's scooter glyph: one hand-authored role icon per standalone app,
          same real itunda blue family, simple enough to hand-author as vector paths. -->
     <path

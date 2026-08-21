@@ -164,7 +164,7 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
             )
         } else if (current.status == "DELIVERED") {
             Text(
-                "Delivered -- ${"%,.0f".format(current.deliveryFee)} RWF paid to your wallet.",
+                "Delivered -- ${"%,.0f".format(current.deliveryFee)} RWF paid to your account.",
                 modifier = Modifier.padding(16.dp),
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,

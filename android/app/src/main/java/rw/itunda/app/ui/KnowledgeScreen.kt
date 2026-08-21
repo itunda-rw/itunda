@@ -49,7 +49,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a genuinely
 // different shape from RideScreen.kt/DesignatedDriverScreen.kt/BikeRentalScreen.kt/
-// ParkingScreen.kt/BusScreen.kt above: no wallet movement, no location -- just a real
+// ParkingScreen.kt/BusScreen.kt above: no account movement, no location -- just a real
 // question -> competing answers -> asker-adopts-one-best-answer content flow. bank-mfe
 // already has this; this is the first Android client, mirroring its Browse/Mine toggle
 // exactly.

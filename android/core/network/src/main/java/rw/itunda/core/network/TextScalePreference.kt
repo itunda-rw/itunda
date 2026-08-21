@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 // accessibility text-scale toggle, reachable without any family-link setup. The
 // larger "request a ride on someone else's behalf" half of that same research was
 // deliberately scoped and NOT built (needs real design decisions on rider-of-record/
-// payer-wallet routing) -- this is the separable, architecturally simpler half.
+// payer-account routing) -- this is the separable, architecturally simpler half.
 enum class TextScaleOption(val multiplier: Float, val label: String) {
     DEFAULT(1.0f, "Default"),
     LARGE(1.15f, "Large"),

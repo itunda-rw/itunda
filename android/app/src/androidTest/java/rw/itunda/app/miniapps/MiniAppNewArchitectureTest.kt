@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
  * the mini-app's own bridge calls will correctly fail with "no active session"
  * without a login, exactly as already documented elsewhere in this repo).
  *
- * Extended to all four mini-apps (2026-07-13) now that wallet-balance/reward-tasks/
+ * Extended to all four mini-apps (2026-07-13) now that account-balance/reward-tasks/
  * insurance all migrated onto real granite alongside pay-bills -- each one was also
  * separately live-verified end-to-end (real data load, real writes: a reward claim
  * and an insurance enrollment, both confirmed via direct MySQL queries afterward,
@@ -58,8 +58,8 @@ class MiniAppNewArchitectureTest {
     }
 
     @Test
-    fun walletBalanceMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
-        assertActivityAliveUnderNewArchitecture(WalletBalanceMiniAppActivity::class.java)
+    fun accountBalanceMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
+        assertActivityAliveUnderNewArchitecture(AccountBalanceMiniAppActivity::class.java)
     }
 
     @Test

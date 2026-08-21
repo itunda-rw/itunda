@@ -174,7 +174,7 @@ fun CommerceShopContent(
 
     // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
     // see backend ShoppingMissionService's own doc comment. Every mission credits real
-    // RWF to the real wallet; itunda has never had a separate points currency.
+    // RWF to the real account; itunda has never had a separate points currency.
     var missions by remember { mutableStateOf<List<rw.itunda.core.network.ShoppingMissionDto>>(emptyList()) }
     var spinOutcomes by remember { mutableStateOf<List<rw.itunda.core.network.SpinOutcomeDto>>(emptyList()) }
     var missionFeedback by remember { mutableStateOf<String?>(null) }

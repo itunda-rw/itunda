@@ -55,7 +55,7 @@ fun SavingsAmountScreen(
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(
-                label = "From Itunda Wallet",
+                label = "From Itunda Account",
                 sublabel = "Available RWF ${rwfFormatter.format(availableBalanceLong)}",
                 icon = Icons.Outlined.AccountBalanceWallet
             )
@@ -86,7 +86,7 @@ fun SavingsAmountScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                // Real fix (2026-08-11): interest now auto-credits to the wallet the
+                // Real fix (2026-08-11): interest now auto-credits to the account the
                 // instant it accrues (see backend SavingsService.accrueInterest's own
                 // doc comment, matching real Toss Bank passbook interest) -- this
                 // screen no longer moves money, it just acknowledges what already

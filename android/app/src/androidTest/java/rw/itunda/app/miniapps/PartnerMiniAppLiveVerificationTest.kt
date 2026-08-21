@@ -26,7 +26,7 @@ import rw.itunda.core.network.SessionManager
  *    `BuildConfig.API_BASE_URL`'s own default already uses).
  *  - A real partner (`partner_4a7583d8-...`) registered via `POST
  *    /api/v1/partners/register`, a real mini-app manifest submitted via `POST
- *    /api/v1/partners/mini-apps` (permissions: `wallet:read`) pointing at a real
+ *    /api/v1/partners/mini-apps` (permissions: `account:read`) pointing at a real
  *    `bundleUrl` serving a real, independently-built RN bundle
  *    (packages/saronite/mini-apps/partner-demo, bundled standalone via `react-native
  *    bundle --entry-file index.partner-demo.js` -- deliberately NOT part of itunda's
@@ -83,7 +83,7 @@ class PartnerMiniAppLiveVerificationTest {
                     // this host machine over the USB connection, same convention
                     // BuildConfig.API_BASE_URL's own physical-device override already uses.
                     bundleUrl = "http://localhost:8098/partner-demo.bundle.js",
-                    permissions = "wallet:read",
+                    permissions = "account:read",
                     status = "APPROVED",
                     createdAt = "2026-07-17T14:41:38.290861Z",
                 ),

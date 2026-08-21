@@ -66,8 +66,8 @@ data class PublicUser(
     // Real dual-neighborhood support (2026-08-04) -- see AuthService.setSecondNeighborhood's
     // own doc comment. Same real reverse-geocode-only provenance as neighborhood above.
     val secondNeighborhood: String? = null,
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
-    // MiniWalletService.kt's own doc comment. Set via AuthApi.setBirthDate.
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
+    // MiniAccountService.kt's own doc comment. Set via AuthApi.setBirthDate.
     val birthDate: String? = null,
     // Real email/phone verification (item 169/178) -- see AuthService.requestEmailVerification/
     // requestPhoneVerification's own doc comments. Backend has returned these on every
@@ -151,7 +151,7 @@ interface AuthApi {
     @PUT("api/v1/auth/profile/photo")
     suspend fun updateProfilePhoto(@Body request: UpdateProfilePhotoRequest): ProfileResponse
 
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
     // string ("YYYY-MM-DD").
     @POST("api/v1/auth/profile/birth-date")
@@ -250,13 +250,13 @@ data class RegisterDeviceKeyRequest(val publicKey: String, val password: String)
 data class DeviceChallengeResponse(val success: Boolean, val challenge: String)
 data class VerifyDeviceSignatureRequest(val signature: String)
 
-// Mirrors services/backend/core/.../domain/Wallet.kt exactly (2026-07-11 fix) --
+// Mirrors services/backend/core/.../domain/Account.kt exactly (2026-07-11 fix) --
 // the previous shape (currency/balance/isPrimary only) didn't match the real
-// backend's serialized Wallet entity at all -- there is no "isPrimary" field on
-// the real backend, so `wallets.firstOrNull { it.isPrimary }` silently always
-// returned null and fell through to whatever wallet happened to be first, not
+// backend's serialized Account entity at all -- there is no "isPrimary" field on
+// the real backend, so `accounts.firstOrNull { it.isPrimary }` silently always
+// returned null and fell through to whatever account happened to be first, not
 // actually the primary one. `type == "MAIN"` is the real signal.
-data class Wallet(
+data class Account(
     val id: String,
     val userId: String,
     val accountNumber: String,
@@ -268,19 +268,19 @@ data class Wallet(
     val isActive: Boolean,
 )
 
-data class WalletResponse(
+data class AccountResponse(
     val success: Boolean,
-    val wallets: List<Wallet>
+    val accounts: List<Account>
 )
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
-// rw.itunda.wallet.ForeignCurrencyWalletService on the backend for the full account,
+// rw.itunda.account.ForeignCurrencyAccountService on the backend for the full account,
 // incl. why USD/EUR/GBP specifically (real Rwandan diaspora remittance corridors) and
-// why this is real-rate conversion between a user's own wallets, not a cross-border
+// why this is real-rate conversion between a user's own accounts, not a cross-border
 // receiving rail.
-data class OpenForeignWalletRequest(val currency: String)
-data class ForeignWalletResponse(val success: Boolean, val wallet: Wallet)
-data class ForeignWalletsResponse(val success: Boolean, val wallets: List<Wallet>)
+data class OpenForeignAccountRequest(val currency: String)
+data class ForeignAccountResponse(val success: Boolean, val account: Account)
+data class ForeignAccountsResponse(val success: Boolean, val accounts: List<Account>)
 data class ExchangeRateResponse(val success: Boolean, val from: String, val to: String, val rate: Double)
 data class ConvertCurrencyRequest(val fromCurrency: String, val toCurrency: String, val amount: Double)
 data class CurrencyConversionDto(
@@ -308,7 +308,7 @@ data class RateAlertsResponse(val success: Boolean, val alerts: List<ExchangeRat
 data class SavingsGoal(
     val id: String,
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val name: String,
     val targetAmount: Double,
     val currentAmount: Double,
@@ -340,7 +340,7 @@ data class CreateSavingsGoalResponse(val success: Boolean, val goal: SavingsGoal
 
 data class InterestJar(
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val balance: Double,
     val rate: Double,
     val earnedThisMonth: Double,
@@ -386,15 +386,15 @@ data class DiscoverResponse(
     val items: List<DiscoverItem>
 )
 
-// Mirrors services/backend/wallet's WalletController/TransferQuote.kt exactly
+// Mirrors services/backend/account's AccountController/TransferQuote.kt exactly
 // (2026-07-12) -- the real transfer flow (RecipientEntryScreen/TransferAmountScreen
 // in :features:payments:impl) was UI-only until now; these are what wire it to the
 // actual quoteTransfer/confirmTransfer endpoints.
-data class QuoteTransferRequest(val amount: java.math.BigDecimal, val recipient: String, val fromWalletId: String? = null, val description: String? = null)
+data class QuoteTransferRequest(val amount: java.math.BigDecimal, val recipient: String, val fromAccountId: String? = null, val description: String? = null)
 
 data class TransferQuoteDto(
     val id: String,
-    val fromWalletId: String,
+    val fromAccountId: String,
     val recipient: String,
     val amount: Double,
     val fee: Double,
@@ -425,7 +425,7 @@ data class ConfirmTransferResponse(val success: Boolean, val message: String, va
 // Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- mirrors
 // P2pController's real SendDirectP2pRequest exactly. Deliberately distinct from
 // QuoteTransferRequest/ConfirmTransferRequest above: those always route through a
-// simulated external rail and never actually credit another itunda user's wallet, even
+// simulated external rail and never actually credit another itunda user's account, even
 // when the recipient is a real itunda account (confirmed via a direct MySQL check while
 // building this on the backend/bank-mfe side one day earlier). This is the real one --
 // no quote step needed, since there's no external rail decision to quote.
@@ -441,7 +441,7 @@ data class SendToFamilyMemberResponse(val success: Boolean, val message: String,
 // Real fixed-amount person-to-person payment request (item 170) -- the P2P counterpart
 // to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's own doc
 // comment). A real 15-minute-expiring code the requester shares; anyone who has the
-// code can pay it directly, real wallet-to-wallet, no fee. Real (rate-limited, tested,
+// code can pay it directly, real account-to-account, no fee. Real (rate-limited, tested,
 // live-verified against a running backend) but had zero client anywhere until now.
 data class GenerateP2pRequest(val amount: java.math.BigDecimal, val description: String)
 data class P2pPaymentRequestDto(
@@ -529,7 +529,7 @@ data class ScamReportResponse(val success: Boolean, val report: ScamReportDto)
 data class ScamReportsListResponse(val success: Boolean, val reports: List<ScamReportDto>)
 
 // Mirrors services/backend/savings's SavingsController.kt.
-data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromWalletId: String? = null)
+data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromAccountId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
 data class ClaimInterestResponse(val success: Boolean, val message: String, val claimed: Double? = null)
 
@@ -904,8 +904,8 @@ data class PriceOffersResponse(val success: Boolean, val offers: List<PriceOffer
 data class ContactSellerResponse(val success: Boolean, val conversation: ConversationDto)
 
 // Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
-// comment. Money leaves the sender's wallet into a real escrow account the moment a
-// gift is sent, and only reaches the recipient's wallet once they explicitly claim it
+// comment. Money leaves the sender's account into a real escrow account the moment a
+// gift is sent, and only reaches the recipient's account once they explicitly claim it
 // (or is auto-refunded after 7 days). Rendered inline as a gift bubble, same "special
 // message body" convention PriceOfferDto already established.
 data class GiftDto(
@@ -1220,7 +1220,7 @@ data class ShoppingBannersResponse(val success: Boolean, val banners: List<TimeD
 
 // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
 // see backend ShoppingMissionService's own doc comment. Every mission pays real RWF
-// straight into the real wallet -- itunda has never had a separate "points" currency.
+// straight into the real account -- itunda has never had a separate "points" currency.
 data class ShoppingMissionDto(
     val type: String,
     val label: String,
@@ -1230,7 +1230,7 @@ data class ShoppingMissionDto(
 )
 data class SpinOutcomeDto(val amount: java.math.BigDecimal, val odds: Double)
 data class ShoppingMissionsResponse(val success: Boolean, val missions: List<ShoppingMissionDto>, val spinOutcomes: List<SpinOutcomeDto>)
-data class MissionCompleteResponse(val success: Boolean, val type: String, val amountEarned: java.math.BigDecimal, val newWalletBalance: java.math.BigDecimal)
+data class MissionCompleteResponse(val success: Boolean, val type: String, val amountEarned: java.math.BigDecimal, val newAccountBalance: java.math.BigDecimal)
 
 // Real Coupang 정기배송 (subscribe & save)-style recurring product delivery
 // (rw.itunda.commerce's ProductSubscriptionService) -- real on bank-mfe since
@@ -1450,8 +1450,8 @@ data class CollectPaymentRequest(val couponId: String? = null)
 data class StaticQrPayRequest(val amount: java.math.BigDecimal, val description: String? = null)
 // Real customer-presented payment code (2026-08-11) -- see backend's
 // MerchantService.generateCustomerPaymentCode/chargeByCustomerCode doc comments.
-data class CustomerPaymentCodeResponse(val success: Boolean, val code: String, val expiresAt: String, val walletId: String? = null)
-data class GenerateCustomerPaymentCodeRequest(val walletId: String? = null)
+data class CustomerPaymentCodeResponse(val success: Boolean, val code: String, val expiresAt: String, val accountId: String? = null)
+data class GenerateCustomerPaymentCodeRequest(val accountId: String? = null)
 data class ChargeByCustomerCodeRequest(val code: String, val amount: java.math.BigDecimal)
 data class CollectPaymentResultDto(
     val success: Boolean, val transactionId: String, val merchantName: String,
@@ -1614,7 +1614,7 @@ data class MerchantBillingPlansResponse(val success: Boolean, val plans: List<Me
 data class MerchantBillingSubscriptionResponse(val success: Boolean, val subscription: MerchantBillingSubscriptionDto)
 data class MerchantBillingSubscriptionsResponse(val success: Boolean, val subscriptions: List<MerchantBillingSubscriptionDto>)
 
-// Real recurring-payment ("subscription") detection -- mirrors bank-mfe's lib/wallet.ts
+// Real recurring-payment ("subscription") detection -- mirrors bank-mfe's lib/account.ts
 // DetectedSubscription exactly.
 data class DetectedSubscriptionDto(
     val displayName: String, val amount: java.math.BigDecimal, val cadence: String, val occurrenceCount: Int,
@@ -1776,7 +1776,7 @@ data class DineInOrderItemDto(
 data class DineInOrderDetailResponse(val success: Boolean, val order: DineInOrderDto, val items: List<DineInOrderItemDto>)
 data class DineInOrdersResponse(val success: Boolean, val orders: List<DineInOrderDto>)
 
-data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
+data class RiderDto(val id: String, val userId: String, val accountId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
 
 // Real bookmarked/favorited restaurants (2026-07-19) -- add/remove are both idempotent
@@ -1824,8 +1824,8 @@ data class StockPortfolioDto(val totalValue: Double, val totalReturn: Double, va
 data class StockPortfolioResponse(val success: Boolean, val portfolio: StockPortfolioDto)
 data class TradeStockRequest(val stockId: String, val shares: Double)
 data class TradeStockResponse(val success: Boolean, val message: String)
-// Real Investment-wallet top-up (2026-08-04) -- found via a fresh "defined but
-// uncalled" endpoint sweep: StocksService.fundInvestmentWallet (a real MAIN ->
+// Real Investment-account top-up (2026-08-04) -- found via a fresh "defined but
+// uncalled" endpoint sweep: StocksService.fundInvestmentAccount (a real MAIN ->
 // INVESTMENT internal ledger transfer) had zero client anywhere, meaning a user with
 // no pre-seeded investment balance had no in-app way to ever actually buy a stock.
 data class FundInvestmentRequest(val amount: Double)
@@ -1850,7 +1850,7 @@ data class SetPriceAlertResponse(val success: Boolean, val watch: StockWatchAler
 
 // Real Toss-style unified account overview (rw.itunda.overview.OverviewService) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere (Android,
-// iOS, or bank-mfe web). Aggregates wallets/savings/loans/investments/insurance/linked
+// iOS, or bank-mfe web). Aggregates accounts/savings/loans/investments/insurance/linked
 // external accounts in one call; see OverviewService.kt's own doc comment for why
 // insurance is excluded from netWorth (a sunk expense, not an asset).
 data class AccountSummaryDto(val id: String, val type: String, val name: String, val balance: java.math.BigDecimal, val currency: String)
@@ -1899,7 +1899,7 @@ data class LoanOfferDto(val id: String, val lenderId: String, val lenderName: St
 data class LenderDto(val id: String, val name: String, val kind: String)
 data class LoanOffersResponse(val success: Boolean, val offers: List<LoanOfferDto>)
 data class LendersResponse(val success: Boolean, val lenders: List<LenderDto>)
-data class LoanAccountDto(val id: String, val userId: String, val walletId: String, val offerId: String, val principal: java.math.BigDecimal, val outstanding: java.math.BigDecimal, val interestRate: Double, val status: String, val disbursedAt: String)
+data class LoanAccountDto(val id: String, val userId: String, val accountId: String, val offerId: String, val principal: java.math.BigDecimal, val outstanding: java.math.BigDecimal, val interestRate: Double, val status: String, val disbursedAt: String)
 data class MyLoansResponse(val success: Boolean, val loans: List<LoanAccountDto>)
 data class ApplyLoanRequest(val loanId: String, val amount: java.math.BigDecimal)
 data class ApplyLoanResponse(val success: Boolean, val message: String, val loan: LoanAccountDto)
@@ -1931,7 +1931,7 @@ data class RefinanceResult(
 data class OverdraftAccountDto(
     val id: String,
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val creditLimit: java.math.BigDecimal,
     val drawnBalance: java.math.BigDecimal,
     val interestRate: Double,
@@ -1963,7 +1963,7 @@ data class OverdraftRepayResponse(
 data class PostpaidCreditLineDto(
     val id: String,
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val creditLimit: java.math.BigDecimal,
     val currentBalance: java.math.BigDecimal,
     val status: String,
@@ -2022,7 +2022,7 @@ data class CreateSupportTicketRequest(val transactionId: String, val category: S
 data class SupportTicketDto(
     val id: String, val userId: String, val transactionId: String, val category: String, val description: String,
     val status: String, val resolution: String?, val resolutionNotes: String?, val refundTransactionId: String?,
-    val frozeWalletId: String?, val dueBy: String, val reviewedBy: String?, val createdAt: String, val resolvedAt: String?,
+    val frozeAccountId: String?, val dueBy: String, val reviewedBy: String?, val createdAt: String, val resolvedAt: String?,
 )
 data class CreateSupportTicketResponse(val success: Boolean, val ticket: SupportTicketDto)
 data class SupportTicketsResponse(val success: Boolean, val tickets: List<SupportTicketDto>)
@@ -2149,7 +2149,7 @@ data class IdentityStatusResponse(val success: Boolean, val submissions: List<Ky
 // wired. See SplitBill.kt's own doc comment: a flat, even split with the rounding
 // remainder silently absorbed into one participant's share so shares always sum
 // exactly to totalAmount; each participant pays their own share directly to the
-// organizer via a real wallet-to-wallet push, no escrow.
+// organizer via a real account-to-account push, no escrow.
 data class CreateSplitBillRequest(
     val totalAmount: java.math.BigDecimal, val description: String, val participantUserIds: List<String>,
     // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see backend
@@ -2213,7 +2213,7 @@ data class AddContactResponse(val success: Boolean, val contact: ContactDto)
 data class WeeklySavingsPlanDto(
     val id: String,
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val name: String,
     val baseWeeklyAmount: Double,
     val escalationRate: Double,
@@ -2246,7 +2246,7 @@ data class WeeklySavingsPlansResponse(val success: Boolean, val plans: List<Week
 data class WeeklySavingsPlanDetailResponse(
     val success: Boolean,
     val plan: WeeklySavingsPlanDto,
-    val walletBalance: Double,
+    val accountBalance: Double,
     val installments: List<WeeklySavingsInstallmentDto>,
 )
 
@@ -2257,7 +2257,7 @@ data class CreateWeeklySavingsPlanRequest(
 )
 
 // POST /plans's real response shape is just {success, plan} -- unlike get/cancel/
-// withdraw it never returns walletBalance/installments (a brand-new plan's wallet is
+// withdraw it never returns accountBalance/installments (a brand-new plan's account is
 // always empty and has no installments yet), so this gets its own response type
 // rather than reusing WeeklySavingsPlanDetailResponse with fields that would silently
 // come back null/0.0 via Gson's reflection-based construction.
@@ -2267,7 +2267,7 @@ data class WeeklySavingsActionResponse(
     val success: Boolean,
     val message: String,
     val plan: WeeklySavingsPlanDto,
-    val walletBalance: Double,
+    val accountBalance: Double,
     val installments: List<WeeklySavingsInstallmentDto>,
 )
 
@@ -2281,7 +2281,7 @@ data class WeeklySavingsActionResponse(
 data class Grow31SavingsPlanDto(
     val id: String,
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val name: String,
     val dailyAmount: Double,
     val startDate: String,
@@ -2314,14 +2314,14 @@ data class Grow31SavingsPlansResponse(val success: Boolean, val plans: List<Grow
 data class Grow31SavingsPlanDetailResponse(
     val success: Boolean,
     val plan: Grow31SavingsPlanDto,
-    val walletBalance: Double,
+    val accountBalance: Double,
     val deposits: List<Grow31SavingsDepositDto>,
 )
 
 data class CreateGrow31SavingsPlanRequest(val name: String, val dailyAmount: java.math.BigDecimal)
 
 // POST /plans's real response shape is just {success, plan} -- same "brand-new plan has
-// no wallet balance/deposits yet" reasoning CreateWeeklySavingsPlanResponse's own doc
+// no account balance/deposits yet" reasoning CreateWeeklySavingsPlanResponse's own doc
 // comment names.
 data class CreateGrow31SavingsPlanResponse(val success: Boolean, val plan: Grow31SavingsPlanDto)
 
@@ -2329,7 +2329,7 @@ data class Grow31SavingsActionResponse(
     val success: Boolean,
     val message: String? = null,
     val plan: Grow31SavingsPlanDto,
-    val walletBalance: Double,
+    val accountBalance: Double,
     val deposits: List<Grow31SavingsDepositDto>,
 )
 
@@ -2346,72 +2346,72 @@ interface ApiService {
     @POST("api/v1/analytics/events")
     suspend fun recordAnalyticsEvent(@Body request: RecordAnalyticsEventRequest): SuccessResponse
 
-    @GET("api/v1/wallet")
-    suspend fun getWallets(): WalletResponse
+    @GET("api/v1/account")
+    suspend fun getAccounts(): AccountResponse
 
-    // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
-    // WalletService.getSpendingInsight, real since 2026-07-13) -- first Android client
+    // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.
+    // AccountService.getSpendingInsight, real since 2026-07-13) -- first Android client
     // for this feature (item 107, found backend-only via a fresh matrix scan; bank-mfe
     // ported the same day as item 106). Ledger-based, not the transactions table -- see
     // the backend's own doc comment for the full account.
-    @GET("api/v1/wallet/spending")
+    @GET("api/v1/account/spending")
     suspend fun getSpendingInsight(): SpendingInsightResponse
 
     // Real business expense summary (2026-08-11) -- see backend's
-    // WalletService.getBusinessExpenseSummary doc comment for the real Toss Bank
+    // AccountService.getBusinessExpenseSummary doc comment for the real Toss Bank
     // 세금 신고용 이용내역 자동발송 (tax-filing usage summary) pattern this closes the
-    // honest slice of: a categorized, period-scoped summary of the BUSINESS wallet's
+    // honest slice of: a categorized, period-scoped summary of the BUSINESS account's
     // own real ledger history, same categorization as getSpendingInsight above.
-    @GET("api/v1/wallet/business-expense-summary")
+    @GET("api/v1/account/business-expense-summary")
     suspend fun getBusinessExpenseSummary(@Query("sinceMonthsAgo") sinceMonthsAgo: Long = 3): BusinessExpenseSummaryResponse
 
-    // Real Toss budgets/limits equivalent (item 165/172) -- WalletService.setBudget/
-    // getBudgets, exposed on the pre-existing WalletController (no dedicated
+    // Real Toss budgets/limits equivalent (item 165/172) -- AccountService.setBudget/
+    // getBudgets, exposed on the pre-existing AccountController (no dedicated
     // controller). Per-category or overall (category == null) monthly limit, with
     // a real 80%/100%-threshold in-app Notification + push (maybeNotifyBudgetThreshold).
-    @GET("api/v1/wallet/budgets")
+    @GET("api/v1/account/budgets")
     suspend fun getBudgets(): GetBudgetsResponse
 
-    @POST("api/v1/wallet/budgets")
+    @POST("api/v1/account/budgets")
     suspend fun setBudget(@Body request: SetBudgetRequest): SetBudgetResponse
 
     // Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168/176) -- see
     // AutoTopUpService's own doc comment. getSetting real-404s (AUTO_TOPUP_SETTING_NOT_
-    // FOUND) if this wallet has no setting configured yet -- normal, not caught here.
-    @GET("api/v1/wallet/{walletId}/auto-topup")
-    suspend fun getAutoTopUpSetting(@Path("walletId") walletId: String): GetAutoTopUpSettingResponse
+    // FOUND) if this account has no setting configured yet -- normal, not caught here.
+    @GET("api/v1/account/{accountId}/auto-topup")
+    suspend fun getAutoTopUpSetting(@Path("accountId") accountId: String): GetAutoTopUpSettingResponse
 
-    @PUT("api/v1/wallet/{walletId}/auto-topup")
-    suspend fun configureAutoTopUp(@Path("walletId") walletId: String, @Body request: ConfigureAutoTopUpRequest): GetAutoTopUpSettingResponse
+    @PUT("api/v1/account/{accountId}/auto-topup")
+    suspend fun configureAutoTopUp(@Path("accountId") accountId: String, @Body request: ConfigureAutoTopUpRequest): GetAutoTopUpSettingResponse
 
-    @POST("api/v1/wallet/{walletId}/auto-topup/trigger")
-    suspend fun triggerAutoTopUp(@Path("walletId") walletId: String): TriggerAutoTopUpResponse
+    @POST("api/v1/account/{accountId}/auto-topup/trigger")
+    suspend fun triggerAutoTopUp(@Path("accountId") accountId: String): TriggerAutoTopUpResponse
 
     // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
-    // rw.itunda.wallet.web.ForeignCurrencyController.
-    @POST("api/v1/wallet/foreign-currency/wallets")
-    suspend fun openForeignWallet(@Body request: OpenForeignWalletRequest): ForeignWalletResponse
+    // rw.itunda.account.web.ForeignCurrencyController.
+    @POST("api/v1/account/foreign-currency/accounts")
+    suspend fun openForeignAccount(@Body request: OpenForeignAccountRequest): ForeignAccountResponse
 
-    @GET("api/v1/wallet/foreign-currency/wallets")
-    suspend fun getForeignWallets(): ForeignWalletsResponse
+    @GET("api/v1/account/foreign-currency/accounts")
+    suspend fun getForeignAccounts(): ForeignAccountsResponse
 
-    @GET("api/v1/wallet/foreign-currency/rate")
+    @GET("api/v1/account/foreign-currency/rate")
     suspend fun getExchangeRate(@Query("from") from: String, @Query("to") to: String): ExchangeRateResponse
 
-    @POST("api/v1/wallet/foreign-currency/convert")
+    @POST("api/v1/account/foreign-currency/convert")
     suspend fun convertCurrency(@Body request: ConvertCurrencyRequest): CurrencyConversionResponse
 
-    @GET("api/v1/wallet/foreign-currency/conversions")
+    @GET("api/v1/account/foreign-currency/conversions")
     suspend fun getMyConversions(): CurrencyConversionsResponse
 
     // SetRateAlertRequest's own doc comment.
-    @POST("api/v1/wallet/foreign-currency/rate-alert")
+    @POST("api/v1/account/foreign-currency/rate-alert")
     suspend fun setRateAlert(@Body request: SetRateAlertRequest): SetRateAlertResponse
 
-    @DELETE("api/v1/wallet/foreign-currency/rate-alert")
+    @DELETE("api/v1/account/foreign-currency/rate-alert")
     suspend fun clearRateAlert(@Query("fromCurrency") fromCurrency: String, @Query("toCurrency") toCurrency: String): SimpleSuccessResponse
 
-    @GET("api/v1/wallet/foreign-currency/rate-alerts")
+    @GET("api/v1/account/foreign-currency/rate-alerts")
     suspend fun getMyRateAlerts(): RateAlertsResponse
 
     @GET("api/v1/discover")
@@ -2452,10 +2452,10 @@ interface ApiService {
     @GET("api/v1/savings/deposit-protection")
     suspend fun getDepositProtectionStatus(): DepositProtectionStatusResponse
 
-    @POST("api/v1/wallet/transfer/quote")
+    @POST("api/v1/account/transfer/quote")
     suspend fun quoteTransfer(@Body request: QuoteTransferRequest): QuoteTransferResponse
 
-    @POST("api/v1/wallet/transfer/confirm")
+    @POST("api/v1/account/transfer/confirm")
     suspend fun confirmTransfer(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ConfirmTransferRequest): ConfirmTransferResponse
 
     // Real direct P2P push-transfer (2026-07-20) -- see SendDirectP2pRequest's own doc
@@ -2533,21 +2533,21 @@ interface ApiService {
     @POST("api/v1/savings/round-up")
     suspend fun setRoundUpSettings(@Body request: SetRoundUpSettingsRequest): RoundUpSettingsResponse
 
-    @POST("api/v1/wallet/agent-withdrawal-authorizations")
+    @POST("api/v1/account/agent-withdrawal-authorizations")
     suspend fun createAgentWithdrawalAuthorization(
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body request: CreateAgentWithdrawalAuthorizationRequest,
     ): AgentWithdrawalAuthorizationResponse
 
-    @GET("api/v1/wallet/agent-withdrawal-authorizations")
+    @GET("api/v1/account/agent-withdrawal-authorizations")
     suspend fun getAgentWithdrawalAuthorizations(): AgentWithdrawalAuthorizationsResponse
 
-    @POST("api/v1/wallet/agent-withdrawal-authorizations/cancel")
+    @POST("api/v1/account/agent-withdrawal-authorizations/cancel")
     suspend fun cancelAgentWithdrawalAuthorization(@Body request: CancelAgentWithdrawalAuthorizationRequest): AgentWithdrawalAuthorizationResponse
 
     // Real transaction history (2026-07-12) -- backs the new card/transaction-
-    // history screen; see services/backend/wallet's new WalletController endpoint.
-    @GET("api/v1/wallet/transactions")
+    // history screen; see services/backend/account's new AccountController endpoint.
+    @GET("api/v1/account/transactions")
     suspend fun getTransactionHistory(): TransactionHistoryResponse
 
     @GET("api/v1/notifications")
@@ -3547,9 +3547,9 @@ interface ApiService {
     suspend fun cancelBillingSubscription(@Path("subscriptionId") subscriptionId: String): MerchantBillingSubscriptionResponse
 
     // Real recurring-payment ("subscription") detection over a user's own real
-    // transaction history -- see rw.itunda.wallet.SubscriptionDetectionService's own
+    // transaction history -- see rw.itunda.account.SubscriptionDetectionService's own
     // doc comment. bank-mfe already has this; this is the first Android client.
-    @GET("api/v1/wallet/subscriptions")
+    @GET("api/v1/account/subscriptions")
     suspend fun getDetectedSubscriptions(): DetectedSubscriptionsResponse
 
     // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads -- the
@@ -3702,7 +3702,7 @@ interface ApiService {
     suspend fun getPortfolioHistory(@Query("days") days: Int = 30): PortfolioHistoryResponse
 
     @POST("api/v1/stocks/fund")
-    suspend fun fundInvestmentWallet(@Header("Idempotency-Key") idempotencyKey: String, @Body request: FundInvestmentRequest): FundInvestmentResponse
+    suspend fun fundInvestmentAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: FundInvestmentRequest): FundInvestmentResponse
 
     @POST("api/v1/stocks/buy")
     suspend fun buyStock(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TradeStockRequest): TradeStockResponse
@@ -4005,14 +4005,14 @@ interface ApiService {
     @POST("api/v1/upfront-deposits/{id}/withdraw")
     suspend fun withdrawUpfrontDeposit(@Path("id") id: String): UpfrontDepositResponse
 
-    // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.
-    // MiniWalletService, 2026-07-28) -- first mobile client for this feature (item 100),
-    // mirroring bank-mfe's lib/miniWallet.ts equivalent added one item earlier.
-    @POST("api/v1/wallet/mini/open")
-    suspend fun openMiniWallet(): OpenMiniWalletResponse
+    // Real KakaoBank mini-style capped starter account (rw.itunda.account.
+    // MiniAccountService, 2026-07-28) -- first mobile client for this feature (item 100),
+    // mirroring bank-mfe's lib/miniAccount.ts equivalent added one item earlier.
+    @POST("api/v1/account/mini/open")
+    suspend fun openMiniAccount(): OpenMiniAccountResponse
 
-    @POST("api/v1/wallet/mini/deposit")
-    suspend fun depositMiniWallet(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositMiniWalletRequest): DepositMiniWalletResponse
+    @POST("api/v1/account/mini/deposit")
+    suspend fun depositMiniAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositMiniAccountRequest): DepositMiniAccountResponse
 
     // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
     // first Android client for this feature (item 109, found via a fresh matrix scan:
@@ -4259,7 +4259,7 @@ interface ApiService {
     suspend fun getMyBusBookings(): BusBookingsResponse
 
     // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a
-    // genuinely different shape from the trip/rental features above: no wallet
+    // genuinely different shape from the trip/rental features above: no account
     // movement, no location, just a real question -> competing answers ->
     // asker-adopts-one-best-answer content flow. First Android client. bank-mfe
     // already has this; mirrors lib/knowledge.ts exactly.
@@ -4563,7 +4563,7 @@ interface ApiService {
 }
 
 data class UpfrontDepositDto(
-    val id: String, val userId: String, val walletId: String, val principal: Double,
+    val id: String, val userId: String, val accountId: String, val principal: Double,
     val interestRate: Double, val interestPaid: Double, val status: String,
     val openedAt: String, val maturesAt: String, val maturedAt: String? = null, val withdrawnAt: String? = null,
 )
@@ -4575,7 +4575,7 @@ data class TransactionHistoryResponse(val success: Boolean, val transactions: Li
 
 // Real Kakao T-style ride-hailing -- mirrors RideDriver.kt/RideTrip.kt exactly.
 data class RideDriverDto(
-    val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean,
+    val id: String, val userId: String, val accountId: String, val status: String, val available: Boolean,
     val currentLatitude: Double?, val currentLongitude: Double?, val locationUpdatedAt: String?,
     // Real Uber "Destination Filter" (item 246) -- see ApiService's own
     // setRideDriverDestination doc comment.
@@ -4631,7 +4631,7 @@ data class SendStatusToTrustedContactsResponse(val success: Boolean, val sentCou
 // from ride-hailing above (driver uses their own vehicle). Mirrors
 // DesignatedDriver.kt/DesignatedDriverTrip.kt exactly.
 data class DesignatedDriverDto(
-    val id: String, val userId: String, val walletId: String, val licenseNumber: String, val available: Boolean,
+    val id: String, val userId: String, val accountId: String, val licenseNumber: String, val available: Boolean,
     val currentLatitude: Double?, val currentLongitude: Double?, val createdAt: String,
 )
 data class DesignatedDriverResponse(val success: Boolean, val driver: DesignatedDriverDto?)
@@ -4659,7 +4659,7 @@ data class RequestDesignatedDriverTripRequest(
 // Mirrors Bike.kt/BikeRentalSession.kt exactly.
 data class RegisterBikeRequest(val type: String, val latitude: Double, val longitude: Double)
 data class BikeDto(
-    val id: String, val ownerUserId: String, val walletId: String, val type: String,
+    val id: String, val ownerUserId: String, val accountId: String, val type: String,
     val currentLatitude: Double, val currentLongitude: Double, val available: Boolean, val createdAt: String,
 )
 data class BikeResponse(val success: Boolean, val bike: BikeDto)
@@ -4684,7 +4684,7 @@ data class BikeRentalsResponse(val success: Boolean, val rentals: List<BikeRenta
 // ParkingSession.kt exactly.
 data class RegisterParkingSpotRequest(val address: String, val latitude: Double, val longitude: Double, val hourlyRate: java.math.BigDecimal)
 data class ParkingSpotDto(
-    val id: String, val ownerUserId: String, val walletId: String, val address: String,
+    val id: String, val ownerUserId: String, val accountId: String, val address: String,
     val latitude: Double, val longitude: Double, val hourlyRate: java.math.BigDecimal,
     val available: Boolean, val createdAt: String,
 )
@@ -4709,7 +4709,7 @@ data class PostBusTripRequest(
     val totalSeats: Int, val farePerSeat: java.math.BigDecimal,
 )
 data class BusTripDto(
-    val id: String, val operatorUserId: String, val walletId: String, val origin: String, val destination: String,
+    val id: String, val operatorUserId: String, val accountId: String, val origin: String, val destination: String,
     val departureTime: String, val totalSeats: Int, val availableSeats: Int, val farePerSeat: java.math.BigDecimal,
     val createdAt: String,
 )
@@ -4726,7 +4726,7 @@ data class BusBookingsResponse(val success: Boolean, val bookings: List<BusBooki
 
 // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- see the
 // backend's KnowledgeQuestion.kt/KnowledgeAnswer.kt doc comments for the full sourced
-// account. A genuinely different shape from the trip/rental DTOs above -- no wallet
+// account. A genuinely different shape from the trip/rental DTOs above -- no account
 // movement, no location. Mirrors those entities' field names exactly.
 data class KnowledgeCategory(val id: String, val label: String)
 data class KnowledgeCategoriesResponse(val success: Boolean, val categories: List<KnowledgeCategory>)
@@ -4760,7 +4760,7 @@ data class RideDriverReviewsResponse(val success: Boolean, val reviews: List<Rid
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly.
 data class VehicleInspectionMechanicDto(
-    val id: String, val userId: String, val walletId: String, val businessName: String,
+    val id: String, val userId: String, val accountId: String, val businessName: String,
     val available: Boolean, val createdAt: String,
 )
 data class RegisterInspectionMechanicRequest(val businessName: String)
@@ -4813,7 +4813,7 @@ data class FamilyLinkDto(
     val dailySpendLimit: java.math.BigDecimal? = null,
 )
 data class FamilyLinkViewDto(val link: FamilyLinkDto, val guardianName: String, val childName: String)
-data class ChildOverviewDto(val childUserId: String, val childName: String, val walletBalance: Double, val recentTransactions: List<TransactionDto>)
+data class ChildOverviewDto(val childUserId: String, val childName: String, val accountBalance: Double, val recentTransactions: List<TransactionDto>)
 data class FamilyLinkResponse(val success: Boolean, val link: FamilyLinkDto)
 data class FamilyLinksResponse(val success: Boolean, val invites: List<FamilyLinkDto>)
 data class FamilyLinkViewsResponse(val success: Boolean, val children: List<FamilyLinkViewDto> = emptyList(), val guardians: List<FamilyLinkViewDto> = emptyList())
@@ -4847,7 +4847,7 @@ data class ConfigureAutoTopUpRequest(
 data class AutoTopUpSettingDto(
     val id: String,
     val userId: String,
-    val walletId: String,
+    val accountId: String,
     val linkedAccountId: String,
     val enabled: Boolean,
     val thresholdAmount: java.math.BigDecimal,
@@ -4862,7 +4862,7 @@ data class TriggerAutoTopUpResponse(val success: Boolean, val triggered: Boolean
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
 // GroupAccount.kt/GroupAccountService.kt exactly.
-data class GroupAccountDto(val id: String, val name: String, val ownerId: String, val walletId: String, val monthlyDuesAmount: java.math.BigDecimal?, val createdAt: String)
+data class GroupAccountDto(val id: String, val name: String, val ownerId: String, val accountId: String, val monthlyDuesAmount: java.math.BigDecimal?, val createdAt: String)
 data class GroupAccountMemberDto(val userId: String, val firstName: String, val lastName: String, val isOwner: Boolean, val joinedAt: String)
 data class CreateGroupAccountRequest(val name: String)
 data class CreateGroupAccountResponse(val success: Boolean, val groupAccount: GroupAccountDto)
@@ -4885,7 +4885,7 @@ data class RemindUnpaidDuesResponse(val success: Boolean, val remindedCount: Int
 // first feature in this codebase not sourced from Toss/Kakao/Naver/Coupang. Mirrors
 // bank-mfe's lib/ikimina.ts exactly.
 data class IkiminaDto(
-    val id: String, val name: String, val organizerId: String, val walletId: String,
+    val id: String, val name: String, val organizerId: String, val accountId: String,
     val contributionAmount: java.math.BigDecimal, val cycleFrequencyDays: Int, val memberCap: Int,
     val currentRound: Int, val status: String, val createdAt: String,
 )
@@ -4912,7 +4912,7 @@ data class IkiminaPayoutResponse(val success: Boolean, val ikimina: IkiminaDto, 
 // distributions tied to the pool's real performance. Mirrors bank-mfe's lib/sacco.ts
 // exactly.
 data class SaccoShareholdingDto(
-    val id: String, val userId: String, val walletId: String,
+    val id: String, val userId: String, val accountId: String,
     val sharesHeld: java.math.BigDecimal, val totalContributed: java.math.BigDecimal, val createdAt: String,
 )
 data class SaccoAmountRequest(val amount: java.math.BigDecimal)
@@ -4928,18 +4928,18 @@ data class SaccoDividendPayoutsResponse(val success: Boolean, val payouts: List<
 // Rwanda's own real coffee sector (Rwanda Coffee Cooperatives Federation: 13 member
 // cooperatives, ~19,000 producer members). A direct itunda-to-farmer lending
 // relationship mirroring the regular Loans feature's own loan_payable receivable
-// shape -- never a shared/pooled wallet. Mirrors bank-mfe's lib/harvestAdvance.ts
+// shape -- never a shared/pooled account. Mirrors bank-mfe's lib/harvestAdvance.ts
 // exactly, including the post-fix repay contract (amount must equal the full real
 // outstanding principal, no partial repayment).
 data class CooperativeDto(
     val id: String, val name: String, val cropType: String, val registrationNumber: String?, val createdAt: String,
 )
 data class CooperativeMembershipDto(
-    val id: String, val cooperativeId: String, val userId: String, val walletId: String,
+    val id: String, val cooperativeId: String, val userId: String, val accountId: String,
     val memberSince: String, val active: Boolean,
 )
 data class HarvestAdvanceDto(
-    val id: String, val membershipId: String, val walletId: String, val principalAmount: java.math.BigDecimal,
+    val id: String, val membershipId: String, val accountId: String, val principalAmount: java.math.BigDecimal,
     val purpose: String, val expectedHarvestDate: String, val repaymentDueDate: String, val status: String,
     val disbursedAt: String?, val repaidAt: String?, val createdAt: String,
 )
@@ -5029,11 +5029,11 @@ data class RepayMotoOwnershipPlanRequest(val amount: java.math.BigDecimal)
 data class MotoOwnershipPlanResponse(val success: Boolean, val plan: MotoOwnershipPlanDto)
 data class MotoOwnershipPlansResponse(val success: Boolean, val plans: List<MotoOwnershipPlanDto>)
 
-// Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
+// Real KakaoBank mini-style capped starter account -- see MiniAccountService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
-data class OpenMiniWalletResponse(val success: Boolean, val wallet: Wallet)
-data class DepositMiniWalletRequest(val amount: java.math.BigDecimal)
-data class DepositMiniWalletResponse(val success: Boolean, val id: String, val amount: java.math.BigDecimal, val completedAt: String)
+data class OpenMiniAccountResponse(val success: Boolean, val account: Account)
+data class DepositMiniAccountRequest(val amount: java.math.BigDecimal)
+data class DepositMiniAccountResponse(val success: Boolean, val id: String, val amount: java.math.BigDecimal, val completedAt: String)
 
 // Real offline-action-queue replay (2026-07-13) -- mirrors
 // services/backend/offline/src/main/kotlin/rw/itunda/offline/web/ActionsBatchController.kt
@@ -5088,7 +5088,7 @@ fun isKycRequiredError(e: retrofit2.HttpException): Boolean {
 }
 
 // Generic form of isDeviceNotVerifiedError/isKycRequiredError above, for call sites
-// (like the Mini wallet's birth-date/age gate, 2026-07-28) that need to distinguish
+// (like the Mini account's birth-date/age gate, 2026-07-28) that need to distinguish
 // between multiple real ApiError codes on the same HTTP status rather than just a
 // single yes/no check.
 fun apiErrorCode(e: retrofit2.HttpException): String? = try {
@@ -5103,7 +5103,7 @@ fun apiErrorCode(e: retrofit2.HttpException): String? = try {
 // research pass, checking whether P2P transfer's own mature/assumed-solid error
 // handling actually was): bank-mfe's ApiError already parses and shows this real
 // backend text (lib/api.ts), but MainViewModel.backendErrorMessage's status-code-only
-// switch meant a wallet-frozen/family-spend-limit/self-payment/rate-limit decline all
+// switch meant a account-frozen/family-spend-limit/self-payment/rate-limit decline all
 // fell through to a generic "Something went wrong" on Android (and iOS, mirrored) --
 // distinct backend errors the sender could otherwise never tell apart.
 fun apiErrorMessage(e: retrofit2.HttpException): String? = try {

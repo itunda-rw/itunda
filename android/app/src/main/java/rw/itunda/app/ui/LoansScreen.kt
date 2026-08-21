@@ -493,7 +493,7 @@ private fun PostpaidCreditPanel() {
             IdsTextField(value = spendAmount, onValueChange = { spendAmount = it }, label = "Spend amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(
-                text = if (busy) "Adding…" else "Add to wallet",
+                text = if (busy) "Adding…" else "Add to account",
                 enabled = !busy && !suspended,
                 onClick = {
                     val amount = spendAmount.toBigDecimalOrNull()
@@ -506,7 +506,7 @@ private fun PostpaidCreditPanel() {
                             val res = NetworkClient.apiService.spendPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
                             line = current.copy(currentBalance = res.currentBalance)
                             spendAmount = ""
-                            notice = "Added RWF ${res.amount} to your wallet -- RWF ${res.availableCredit} still available."
+                            notice = "Added RWF ${res.amount} to your account -- RWF ${res.availableCredit} still available."
                         } catch (_: Exception) {
                             error = "Could not spend from your postpaid credit line."
                         } finally { busy = false }

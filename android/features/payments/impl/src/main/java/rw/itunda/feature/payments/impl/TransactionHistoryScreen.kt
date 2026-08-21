@@ -46,7 +46,7 @@ data class TransactionDisplayItem(
  * screenshot (user-provided, 2026-07-12): spend-this-month total up top, then a
  * real list -- "아직 내역이 없어요" (no history yet) when empty, matching Toss's own
  * empty state exactly rather than inventing fake rows to fill the screen. Backed
- * by services/backend/wallet's real getTransactionHistory endpoint (previously a
+ * by services/backend/account's real getTransactionHistory endpoint (previously a
  * dead repository method with no controller ever calling it) -- no card issuance
  * or card network exists, so this is framed as spend history, not a real card.
  *

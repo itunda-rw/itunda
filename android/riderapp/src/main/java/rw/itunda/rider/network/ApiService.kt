@@ -40,7 +40,7 @@ interface AuthApi {
 // Mirrors rw.itunda.eats's real Rider/EatsOrder entities exactly (same field names
 // as the consumer app's own rw.itunda.app.network.ApiService equivalents) -- trimmed
 // to only the fields this app's UI actually reads.
-data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
+data class RiderDto(val id: String, val userId: String, val accountId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
 
 // Real rider rating (item 142) -- see EatsController.getRiderRating's own doc

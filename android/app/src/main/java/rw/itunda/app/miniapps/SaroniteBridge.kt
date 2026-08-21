@@ -88,7 +88,7 @@ class SaroniteBrownfieldModule(
     // outbound navigation to a pre-declared domain allowlist): this was the one bridge
     // method with no requireScope gate at all -- every sibling method in this file
     // checks it (see MiniAppSecurityContext's own doc comment, which already claimed
-    // "every SaroniteBrownfieldModule method except getWalletBalance" is gated, an
+    // "every SaroniteBrownfieldModule method except getAccountBalance" is gated, an
     // oversight this file itself didn't match) -- and no scheme/domain restriction,
     // so any mini-app's JS could launch an arbitrary http(s) URL, tel:, or another
     // installed app's custom intent scheme. Today's real callers are itunda's own
@@ -126,22 +126,22 @@ class SaroniteBrownfieldModule(
     }
 
     @ReactMethod
-    fun getWalletBalance(promise: Promise) {
+    fun getAccountBalance(promise: Promise) {
         // The one bridge call a partner mini-app can actually be granted today --
-        // PartnerMiniAppPermissions.ALLOWED's "wallet:read" scope maps directly onto this
+        // PartnerMiniAppPermissions.ALLOWED's "account:read" scope maps directly onto this
         // real read-only endpoint. See requireScope's own doc comment.
-        if (!requireScope("wallet:read", promise)) return
-        authorizedCall(get("api/v1/wallet"), promise, ::parseWalletBalance)
+        if (!requireScope("account:read", promise)) return
+        authorizedCall(get("api/v1/account"), promise, ::parseAccountBalance)
     }
 
     @ReactMethod
     fun getPendingBills(promise: Promise) {
         // No real backend scope covers bill data at all (PartnerMiniAppPermissions.ALLOWED
-        // is wallet:read/transactions:read/profile:read only) -- always denied for a
+        // is account:read/transactions:read/profile:read only) -- always denied for a
         // partner mini-app, unconditionally, not gated behind a scope name that doesn't exist.
         if (!requireScope(null, promise)) return
         // Real bug fixed (2026-07-13): was missing the /api/v1 prefix every other
-        // endpoint on this same class already uses correctly (getWalletBalance) --
+        // endpoint on this same class already uses correctly (getAccountBalance) --
         // resolved to the wrong URL relative to BuildConfig.API_BASE_URL and 404'd
         // against the real backend (services/backend/bills, @RequestMapping("/api/v1/bills")).
         authorizedCall(get("api/v1/bills/pending"), promise, ::parsePendingBills)
@@ -263,7 +263,7 @@ class SaroniteBrownfieldModule(
         authorizedCall(post("api/v1/insurance/premium-funds/$fundId/contribute", body), promise, ::parsePremiumFundResult)
     }
 
-    // Also money movement (refunds currentAmount back to the MAIN wallet) -- same real
+    // Also money movement (refunds currentAmount back to the MAIN account) -- same real
     // Idempotency-Key requirement as contributeToFund.
     @ReactMethod
     fun cancelFund(fundId: String, promise: Promise) {
@@ -487,41 +487,41 @@ class SaroniteBrownfieldModule(
     }
 
     // Real bug fixed (2026-07-13): never set top-level `totalBalance`/`currency`,
-    // which WalletBalanceResult (the TS spec this bridge implements --
+    // which AccountBalanceResult (the TS spec this bridge implements --
     // packages/saronite/packages/brownfield-module/src/spec/SaroniteBrownfieldModule.ts)
-    // requires and wallet-balance/pages/index.tsx actually reads
+    // requires and account-balance/pages/index.tsx actually reads
     // (`balance.totalBalance.toLocaleString()`) -- would throw on any successful
-    // fetch. Also only populated 3 of WalletSummary's 8 fields; the real backend
-    // (services/backend's Wallet entity) has real values for all of them except
+    // fetch. Also only populated 3 of AccountSummary's 8 fields; the real backend
+    // (services/backend's Account entity) has real values for all of them except
     // `icon` (no such concept server-side -- left honestly empty rather than
-    // invented) and `connected` (always true: these are itunda's own wallets,
+    // invented) and `connected` (always true: these are itunda's own accounts,
     // not an externally-linked account with a real connection-status concept).
-    private fun parseWalletBalance(json: String): WritableMap {
+    private fun parseAccountBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
-        val wallets = Arguments.createArray()
+        val accounts = Arguments.createArray()
         var totalBalance = 0.0
         var currency = "RWF"
-        root.getAsJsonArray("wallets")?.forEach { element ->
+        root.getAsJsonArray("accounts")?.forEach { element ->
             val w = element.asJsonObject
             val balance = w.get("balance").asDouble
-            val walletCurrency = w.get("currency")?.asString ?: currency
-            val walletMap = Arguments.createMap()
-            walletMap.putString("id", w.get("id").asString)
-            walletMap.putString("type", w.get("type")?.asString ?: "")
-            walletMap.putString("name", w.get("accountName")?.asString ?: "")
-            walletMap.putString("number", w.get("accountNumber")?.asString ?: "")
-            walletMap.putDouble("balance", balance)
-            walletMap.putString("currency", walletCurrency)
-            walletMap.putString("icon", "")
-            walletMap.putBoolean("connected", true)
-            wallets.pushMap(walletMap)
+            val accountCurrency = w.get("currency")?.asString ?: currency
+            val accountMap = Arguments.createMap()
+            accountMap.putString("id", w.get("id").asString)
+            accountMap.putString("type", w.get("type")?.asString ?: "")
+            accountMap.putString("name", w.get("accountName")?.asString ?: "")
+            accountMap.putString("number", w.get("accountNumber")?.asString ?: "")
+            accountMap.putDouble("balance", balance)
+            accountMap.putString("currency", accountCurrency)
+            accountMap.putString("icon", "")
+            accountMap.putBoolean("connected", true)
+            accounts.pushMap(accountMap)
             totalBalance += balance
-            currency = walletCurrency
+            currency = accountCurrency
         }
         result.putDouble("totalBalance", totalBalance)
         result.putString("currency", currency)
-        result.putArray("wallets", wallets)
+        result.putArray("accounts", accounts)
         return result
     }
 

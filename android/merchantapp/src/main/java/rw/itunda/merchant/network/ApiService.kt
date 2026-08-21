@@ -135,7 +135,7 @@ data class MerchantCouponDto(
 data class MerchantCouponResponse(val success: Boolean, val coupon: MerchantCouponDto)
 data class MerchantCouponsResponse(val success: Boolean, val coupons: List<MerchantCouponDto>)
 
-// Real B2B payroll -- real wallet-to-wallet money movement (see PayrollController.kt's
+// Real B2B payroll -- real account-to-account money movement (see PayrollController.kt's
 // own doc comment), real on merchant-mfe/web only until now -- zero native UI on
 // either merchantapp or ItundaMerchantApp despite the backend being mature.
 data class AddPayrollEmployeeRequest(val phoneNumber: String, val salaryAmount: java.math.BigDecimal)
@@ -409,11 +409,11 @@ data class UpdateDineInOrderStatusRequest(val status: String)
 
 // Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent
 // (2026-07-25) -- see rw.itunda.merchant.MerchantBusinessAccountService on the backend.
-data class BusinessWalletDto(
+data class BusinessAccountDto(
     val id: String, val userId: String, val accountNumber: String, val accountName: String, val type: String,
     val balance: Double, val availableBalance: Double, val currency: String,
 )
-data class BusinessWalletResponse(val success: Boolean, val wallet: BusinessWalletDto)
+data class BusinessAccountResponse(val success: Boolean, val account: BusinessAccountDto)
 data class BusinessLedgerEntryDto(
     val id: String, val transactionId: String, val accountId: String, val direction: String,
     val amount: Double, val currency: String, val balanceAfter: Double, val memo: String, val createdAt: String,
@@ -422,7 +422,7 @@ data class BusinessTransactionsResponse(val success: Boolean, val transactions: 
 data class MoveBusinessMoneyRequest(val amount: Double)
 
 // Real business expense summary (2026-08-11) -- see backend's
-// WalletService.getBusinessExpenseSummary doc comment for the real Toss Bank
+// AccountService.getBusinessExpenseSummary doc comment for the real Toss Bank
 // 세금 신고용 이용내역 자동발송 (tax-filing usage summary) pattern this closes the
 // honest slice of.
 data class BusinessExpenseCategoryDto(val name: String, val amount: Double)
@@ -553,26 +553,26 @@ interface ApiService {
     // Real business banking for sole proprietors (2026-07-25) -- see
     // rw.itunda.merchant.MerchantBusinessAccountController.
     @POST("api/v1/merchant/business-account")
-    suspend fun openBusinessAccount(): BusinessWalletResponse
+    suspend fun openBusinessAccount(): BusinessAccountResponse
 
     @GET("api/v1/merchant/business-account")
-    suspend fun getBusinessAccount(): BusinessWalletResponse
+    suspend fun getBusinessAccount(): BusinessAccountResponse
 
     @GET("api/v1/merchant/business-account/transactions")
     suspend fun getBusinessTransactions(): BusinessTransactionsResponse
 
-    // Real business expense summary (2026-08-11) -- see WalletService.
-    // getBusinessExpenseSummary's own doc comment. Lives under /api/v1/wallet, not
-    // /api/v1/merchant/business-account, since it's WalletController's own endpoint
+    // Real business expense summary (2026-08-11) -- see AccountService.
+    // getBusinessExpenseSummary's own doc comment. Lives under /api/v1/account, not
+    // /api/v1/merchant/business-account, since it's AccountController's own endpoint
     // (real, same-backend, cross-controller call -- Retrofit doesn't care).
-    @GET("api/v1/wallet/business-expense-summary")
+    @GET("api/v1/account/business-expense-summary")
     suspend fun getBusinessExpenseSummary(@Query("sinceMonthsAgo") sinceMonthsAgo: Long = 3): BusinessExpenseSummaryResponse
 
     @POST("api/v1/merchant/business-account/move-to-business")
-    suspend fun moveToBusiness(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessWalletResponse
+    suspend fun moveToBusiness(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessAccountResponse
 
     @POST("api/v1/merchant/business-account/move-to-personal")
-    suspend fun moveToPersonal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessWalletResponse
+    suspend fun moveToPersonal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessAccountResponse
 
     // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
     // see rw.itunda.merchant.MerchantFeeWaiverService's own doc comment. merchant-mfe

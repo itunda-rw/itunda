@@ -4,7 +4,7 @@ import java.math.BigDecimal
 
 /**
  * Represents a single ledger account in the double-entry system.
- * This can represent a user's wallet, a bank account, or a system holding account.
+ * This can represent a user's account, a bank account, or a system holding account.
  */
 data class LedgerAccount(
     val id: String,

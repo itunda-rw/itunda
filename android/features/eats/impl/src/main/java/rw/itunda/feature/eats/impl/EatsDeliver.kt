@@ -190,7 +190,7 @@ internal fun DeliverContent() {
                 Text("Deliver with Itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Earn a real delivery fee for every order you deliver, paid straight to your wallet.",
+                    "Earn a real delivery fee for every order you deliver, paid straight to your account.",
                     color = Ids.colors.textSecondary,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,

@@ -36,10 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.core.network.DepositMiniWalletRequest
+import rw.itunda.core.network.DepositMiniAccountRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetBirthDateRequest
-import rw.itunda.core.network.Wallet
+import rw.itunda.core.network.Account
 import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.designsystem.theme.Ids
@@ -47,17 +47,17 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import java.io.IOException
 import java.util.UUID
 
-// Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.MiniWalletService,
+// Real KakaoBank mini-style capped starter account (rw.itunda.account.MiniAccountService,
 // 2026-07-28) -- first mobile client for this feature (item 100), a direct port of
-// bank-mfe's MiniWalletCard (item 99) onto Android. Same no-ViewModel,
+// bank-mfe's MiniAccountCard (item 99) onto Android. Same no-ViewModel,
 // NetworkClient-direct-from-Composable shape as WeeklySavingsScreen.kt.
-private enum class MiniWalletMode { LOADING, NEEDS_BIRTH_DATE, NOT_OPEN, OPEN }
+private enum class MiniAccountMode { LOADING, NEEDS_BIRTH_DATE, NOT_OPEN, OPEN }
 
 @Composable
-fun MiniWalletScreen(onBack: () -> Unit) {
+fun MiniAccountScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    var mode by remember { mutableStateOf(MiniWalletMode.LOADING) }
-    var wallet by remember { mutableStateOf<Wallet?>(null) }
+    var mode by remember { mutableStateOf(MiniAccountMode.LOADING) }
+    var account by remember { mutableStateOf<Account?>(null) }
     var birthDate by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -67,10 +67,10 @@ fun MiniWalletScreen(onBack: () -> Unit) {
     fun load() {
         coroutineScope.launch {
             try {
-                val wallets = NetworkClient.apiService.getWallets().wallets
-                val existing = wallets.find { it.type == "MINI" }
-                wallet = existing
-                mode = if (existing != null) MiniWalletMode.OPEN else MiniWalletMode.NOT_OPEN
+                val accounts = NetworkClient.apiService.getAccounts().accounts
+                val existing = accounts.find { it.type == "MINI" }
+                account = existing
+                mode = if (existing != null) MiniAccountMode.OPEN else MiniAccountMode.NOT_OPEN
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
@@ -80,17 +80,17 @@ fun MiniWalletScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { load() }
 
-    fun openWallet() {
+    fun openAccount() {
         busy = true
         error = null
         coroutineScope.launch {
             try {
-                wallet = NetworkClient.apiService.openMiniWallet().wallet
-                mode = MiniWalletMode.OPEN
+                account = NetworkClient.apiService.openMiniAccount().account
+                mode = MiniAccountMode.OPEN
             } catch (e: HttpException) {
                 when (apiErrorCode(e)) {
-                    "MINI_WALLET_BIRTH_DATE_REQUIRED" -> mode = MiniWalletMode.NEEDS_BIRTH_DATE
-                    "MINI_WALLET_AGE_INELIGIBLE" -> error = "Mini accounts are only available for ages 7-18."
+                    "MINI_ACCOUNT_BIRTH_DATE_REQUIRED" -> mode = MiniAccountMode.NEEDS_BIRTH_DATE
+                    "MINI_ACCOUNT_AGE_INELIGIBLE" -> error = "Mini accounts are only available for ages 7-18."
                     else -> error = superAppErrorMessage(e)
                 }
             } catch (e: IOException) {
@@ -108,7 +108,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 NetworkClient.authApi.setBirthDate(SetBirthDateRequest(birthDate.trim()))
-                openWallet()
+                openAccount()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
                 busy = false
@@ -129,7 +129,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.depositMiniWallet(UUID.randomUUID().toString(), DepositMiniWalletRequest(parsedAmount))
+                NetworkClient.apiService.depositMiniAccount(UUID.randomUUID().toString(), DepositMiniAccountRequest(parsedAmount))
                 amount = ""
                 load()
             } catch (e: HttpException) {
@@ -151,31 +151,31 @@ fun MiniWalletScreen(onBack: () -> Unit) {
         ) {
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
             when (mode) {
-                MiniWalletMode.LOADING -> item {
+                MiniAccountMode.LOADING -> item {
                     SkeletonBlock(height = 120.dp)
                 }
-                MiniWalletMode.NOT_OPEN -> item {
+                MiniAccountMode.NOT_OPEN -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
                             "A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF " +
                                 "daily and 2,000,000 RWF monthly deposit limits.",
                             color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
-                        MiniWalletActionButton(if (busy) "Opening…" else "Open a Mini account", enabled = !busy) { openWallet() }
+                        MiniAccountActionButton(if (busy) "Opening…" else "Open a Mini account", enabled = !busy) { openAccount() }
                     }
                 }
-                MiniWalletMode.NEEDS_BIRTH_DATE -> item {
+                MiniAccountMode.NEEDS_BIRTH_DATE -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Enter your birth date to check eligibility.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         IdsTextField(value = birthDate, onValueChange = { birthDate = it }, label = "Birth date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
                         // Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11),
-                        // matching the identical fix on web's own MiniWalletCard the same day:
+                        // matching the identical fix on web's own MiniAccountCard the same day:
                         // "Continue" doesn't say what happens -- the text above already names
                         // the real outcome.
-                        MiniWalletActionButton(if (busy) "Checking…" else "Check eligibility", enabled = !busy) { submitBirthDateAndOpen() }
+                        MiniAccountActionButton(if (busy) "Checking…" else "Check eligibility", enabled = !busy) { submitBirthDateAndOpen() }
                     }
                 }
-                MiniWalletMode.OPEN -> {
+                MiniAccountMode.OPEN -> {
                     item {
                         Card(
                             shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
@@ -183,8 +183,8 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
-                                Text("${formatMoneyMini(wallet?.balance ?: 0.0)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                                Text(wallet?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                Text("${formatMoneyMini(account?.balance ?: 0.0)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                                Text(account?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                         }
                     }
@@ -194,7 +194,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                                 digits = amount, onDigitsChange = { amount = it },
                                 quickAmounts = listOf(1_000L, 5_000L),
                             )
-                            MiniWalletActionButton(if (busy) "Adding…" else "Add money", enabled = !busy) { deposit() }
+                            MiniAccountActionButton(if (busy) "Adding…" else "Add money", enabled = !busy) { deposit() }
                         }
                     }
                 }
@@ -204,7 +204,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun MiniWalletActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun MiniAccountActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
             .background(Ids.colors.brand).clickable(enabled = enabled, onClick = onClick)

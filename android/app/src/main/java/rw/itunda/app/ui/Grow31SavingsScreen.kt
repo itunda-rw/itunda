@@ -307,7 +307,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
             try {
                 val idempotencyKey = UUID.randomUUID().toString()
                 val res = NetworkClient.apiService.depositGrow31SavingsToday(planId, idempotencyKey)
-                detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.deposits)
+                detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.accountBalance, res.deposits)
                 actionError = null
                 onChanged()
             } catch (e: HttpException) {
@@ -326,7 +326,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
             try {
                 val idempotencyKey = UUID.randomUUID().toString()
                 val res = NetworkClient.apiService.cancelGrow31SavingsPlan(planId, idempotencyKey)
-                detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.deposits)
+                detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.accountBalance, res.deposits)
                 actionError = null
                 confirmingCancel = false
                 onChanged()
@@ -346,7 +346,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
             try {
                 val idempotencyKey = UUID.randomUUID().toString()
                 val res = NetworkClient.apiService.withdrawGrow31SavingsPlan(planId, idempotencyKey)
-                detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.deposits)
+                detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.accountBalance, res.deposits)
                 actionError = null
                 withdrawSuccess = res.plan.totalSaved to (res.plan.totalInterestPaid ?: 0.0)
                 onChanged()
@@ -364,9 +364,9 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
         rw.itunda.core.designsystem.components.IdsCelebrationScreen(
             headline = "${formatMoneyGrow31(totalSaved)} RWF saved",
             message = if (interestPaid > 0.0) {
-                "31-day challenge complete -- ${formatMoneyGrow31(interestPaid)} RWF bonus interest is in your wallet."
+                "31-day challenge complete -- ${formatMoneyGrow31(interestPaid)} RWF bonus interest is in your account."
             } else {
-                "31-day challenge complete -- moved to your main wallet."
+                "31-day challenge complete -- moved to your main account."
             },
             celebratory = true,
             onDone = { withdrawSuccess = null },
@@ -395,8 +395,8 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("${formatMoneyGrow31(current.walletBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                            Text("Wallet balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("${formatMoneyGrow31(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                            Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(12.dp))
                             Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
                             Spacer(modifier = Modifier.height(6.dp))
@@ -458,10 +458,10 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                             }
                         }
                         plan.status == "MATURED" && plan.withdrawnAt == null -> ActionButtonGrow31(
-                            "Withdraw to main wallet", color = Ids.colors.brand, enabled = !submitting,
+                            "Withdraw to main account", color = Ids.colors.brand, enabled = !submitting,
                         ) { withdraw() }
                         else -> Text(
-                            if (plan.status == "CANCELLED") "This plan was cancelled." else "This plan has been withdrawn to your main wallet.",
+                            if (plan.status == "CANCELLED") "This plan was cancelled." else "This plan has been withdrawn to your main account.",
                             color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
                     }

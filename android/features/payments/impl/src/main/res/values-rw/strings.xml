@@ -24,7 +24,7 @@
     <string name="transfer_save_contact">Bika uyu muntu</string>
     <string name="transfer_no_contacts">Nta bantu wabitse. Ongeraho hejuru kugira ngo wihute ubutaha.</string>
     <string name="transfer_next">Komeza</string>
-    <string name="transfer_from_wallet">Biva kuri Wallet ya Itunda</string>
+    <string name="transfer_from_account">Biva kuri Account ya Itunda</string>
     <string name="transfer_available_balance">Amafaranga ahari RWF %1$s</string>
     <string name="transfer_to_account">Kuri konti %1$s</string>
     <string name="transfer_new_recipient">Uwakira mushya</string>

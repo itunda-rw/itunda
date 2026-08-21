@@ -238,7 +238,7 @@ internal enum class ItundaTab(val label: String, val icon: androidx.compose.ui.g
  * Real top-level navigation for the transfer flow -- a full-screen takeover
  * over the tab scaffold, matching how the reference screenshots show it
  * (no bottom nav visible during recipient/amount entry). Genuinely wired
- * to a visible entry point (WalletHeroCard's "Send" button), not built and
+ * to a visible entry point (AccountHeroCard's "Send" button), not built and
  * left unreachable like the screens it replaces.
  */
 // Serializable so rememberSaveable can survive process death mid-flow (2026-07-12)
@@ -355,7 +355,7 @@ fun ItundaAppScreen(
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
         // Real itunda Bank product hub (2026-08-11) -- see the "itunda Bank vs itunda
-        // wallet" naming correction earlier this session: KakaoPay/KakaoBank and Toss's
+        // account" naming correction earlier this session: KakaoPay/KakaoBank and Toss's
         // own Payments/Bank are genuinely distinct products, not just a generic/specific
         // naming pair. itunda's savings, SACCO, Ikimina, loans, and investment features
         // were real and already built, but scattered as flat rows with no product
@@ -367,10 +367,10 @@ fun ItundaAppScreen(
         // Real Toss Bank account-detail screen (2026-08-13, 3 direct user
         // screenshots of their own real Toss Bank account: "when you click on bank
         // accounts that what you should see"). AccountSwitcherSheet's own "itunda
-        // wallet" row (below) had never been clickable at all -- tapping it did
+        // account" row (below) had never been clickable at all -- tapping it did
         // nothing. That real screen is a balance + unclaimed-interest + real
         // transaction ledger (with a running per-row balance and date-grouped
-        // history), distinct from both HomeTab's compact wallet card and
+        // history), distinct from both HomeTab's compact account card and
         // BankHubScreen's product catalog -- see AccountDetailScreen's own doc
         // comment.
         var showAccountDetail by rememberSaveable { mutableStateOf(false) }
@@ -396,7 +396,7 @@ fun ItundaAppScreen(
         // screen (2026-07-25) -- same "backend existed with zero mobile UI" gap
         // WeeklySavingsScreen closed above.
         var showUpfrontDeposit by rememberSaveable { mutableStateOf(false) }
-        var showMiniWallet by rememberSaveable { mutableStateOf(false) }
+        var showMiniAccount by rememberSaveable { mutableStateOf(false) }
         var showGroupAccounts by rememberSaveable { mutableStateOf(false) }
         // Real ikimina (Rwanda's own rotating savings & credit association) -- the
         // first feature in this codebase not sourced from Toss/Kakao/Naver/Coupang.
@@ -516,7 +516,7 @@ fun ItundaAppScreen(
         val step = transferStep
         var isSendingTransfer by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
-        val primaryWalletForTransfer by viewModel.primaryWallet.collectAsState()
+        val primaryAccountForTransfer by viewModel.primaryAccount.collectAsState()
         // Real saved-contacts list (found 2026-07-22 fully built on the backend with
         // zero client UI anywhere) -- fetched when the recipient screen opens rather
         // than eagerly on app launch, since it's only ever needed here.
@@ -586,7 +586,7 @@ fun ItundaAppScreen(
                 is TransferStep.Amount -> {
                     rw.itunda.feature.payments.impl.TransferAmountScreen(
                         recipientAccountNumber = step.accountNumber,
-                        availableBalance = primaryWalletForTransfer?.availableBalance ?: 0.0,
+                        availableBalance = primaryAccountForTransfer?.availableBalance ?: 0.0,
                         isSubmitting = isSendingTransfer,
                         scamWarning = scamReportCount?.let { rw.itunda.feature.payments.impl.ScamWarningUi(it) },
                         scamReported = scamReported,
@@ -743,7 +743,7 @@ fun ItundaAppScreen(
         val savingsStep = savingsFlowStep
         var isSavingsSubmitting by remember { mutableStateOf(false) }
         var savingsError by remember { mutableStateOf<String?>(null) }
-        val availableBalanceForSavings by viewModel.primaryWallet.collectAsState()
+        val availableBalanceForSavings by viewModel.primaryAccount.collectAsState()
         val savingsContext = androidx.compose.ui.platform.LocalContext.current
         if (savingsStep != null) {
             BackHandler { savingsFlowStep = null }
@@ -892,7 +892,7 @@ fun ItundaAppScreen(
         if (showTransactionHistory) {
             BackHandler { showTransactionHistory = false }
             val transactionsForHistory by viewModel.transactions.collectAsState()
-            val currentUserIdForHistory by viewModel.primaryWallet.collectAsState()
+            val currentUserIdForHistory by viewModel.primaryAccount.collectAsState()
             val transactionHistoryRefreshing by viewModel.isRefreshing.collectAsState()
             rw.itunda.feature.payments.impl.TransactionHistoryScreen(
                 transactions = transactionsForHistory.map { tx ->
@@ -1163,11 +1163,11 @@ fun ItundaAppScreen(
             UpfrontDepositScreen(onBack = { showUpfrontDeposit = false })
             return@IdsTheme
         }
-        // Real KakaoBank mini-style capped starter wallet screen (2026-07-28, item 100)
+        // Real KakaoBank mini-style capped starter account screen (2026-07-28, item 100)
         // -- first mobile client for this feature. Same pattern.
-        if (showMiniWallet) {
-            BackHandler { showMiniWallet = false }
-            MiniWalletScreen(onBack = { showMiniWallet = false })
+        if (showMiniAccount) {
+            BackHandler { showMiniAccount = false }
+            MiniAccountScreen(onBack = { showMiniAccount = false })
             return@IdsTheme
         }
         // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
@@ -1384,15 +1384,15 @@ fun ItundaAppScreen(
                         onOpenIdentity = { showIdentity = true },
                         onOpenLoans = { showLoans = true },
                         // Real fix (2026-08-14, direct user complaint: "when user click on
-                        // that itunda wallet is when they see itunda bank details that's
-                        // wrong bank details suppose to be accessed from bank not wallet
+                        // that itunda account is when they see itunda bank details that's
+                        // wrong bank details suppose to be accessed from bank not account
                         // right"). AccountDetailScreen is a real Toss BANK account-detail
                         // view (interest jar, Card/Manage, full ledger) -- same category of
                         // mistake this file's own onOpenCreditScore/onOpenSpendingInsight/
                         // autoTransferCount comments already document being caught and moved
-                        // off Home once before. Tapping "itunda wallet" in the account
+                        // off Home once before. Tapping "itunda account" in the account
                         // switcher now goes to Bank (its real home) instead of opening the
-                        // ledger directly over Home; Bank's own new wallet-account card
+                        // ledger directly over Home; Bank's own new account-account card
                         // below is what actually opens AccountDetailScreen.
                         onOpenAccountDetail = { showBank = true },
                         // Real Naver-style Home redesign (2026-08-14, direct user
@@ -1460,7 +1460,7 @@ fun ItundaAppScreen(
                             onOpenWeeklySavings = { showWeeklySavings = true },
                             onOpenGrow31Savings = { showGrow31Savings = true },
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
-                            onOpenMiniWallet = { showMiniWallet = true },
+                            onOpenMiniAccount = { showMiniAccount = true },
                             onOpenCard = { showCard = true },
                             onOpenGroupAccounts = { showGroupAccounts = true },
                             onOpenIkimina = { showIkimina = true },
@@ -1580,7 +1580,7 @@ private fun HomeTab(
     val discoverItems by viewModel.discoverItems.collectAsState()
     val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
     val isOffline by viewModel.isOffline.collectAsState()
-    val primaryWallet by viewModel.primaryWallet.collectAsState()
+    val primaryAccount by viewModel.primaryAccount.collectAsState()
     // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
     // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
     // recordAnalyticsEvent's own doc comment. Fired once per real composition of
@@ -1752,7 +1752,7 @@ private fun HomeTab(
         // comment even claims this screen is "labeled via isOffline rather than
         // presented as real") -- but nothing anywhere in this file actually read
         // it. A genuinely offline user saw normal-looking placeholder data (a
-        // "RWF 0" wallet, a fixed 3-item Discover feed) with zero indication any of
+        // "RWF 0" account, a fixed 3-item Discover feed) with zero indication any of
         // it wasn't real.
         if (isOffline) {
             item {
@@ -1818,7 +1818,7 @@ private fun HomeTab(
         // a tab that's meant to be a generic access point, not itself a product. All
         // three moved into BankHubScreen (see its own doc comment), which is now the
         // one complete, self-contained place for everything Bank. The itunda Pay
-        // wallet card (balance, Cash out/Send, recent transactions) had the exact
+        // account card (balance, Cash out/Send, recent transactions) had the exact
         // same problem -- direct user follow-up after the Bank fix, pointing at a
         // screenshot still showing this card on Home: "this is bank features
         // remained in home tab move them keep each feature independent and isolated."
@@ -1837,12 +1837,12 @@ private fun HomeTab(
         if (remainingDiscoverItems.isNotEmpty()) {
             item { DiscoverSection(remainingDiscoverItems) }
         }
-        // Real market widget row (2026-08-14) -- wallet balance (real, already
+        // Real market widget row (2026-08-14) -- account balance (real, already
         // fetched) plus real RSE stock ticker chips (getStocks, InvestScreen's own
         // real data source), matching Naver's own weather/stock-index widget row
         // structurally without inventing weather data itunda has no source for.
-        if (primaryWallet != null || stocks.isNotEmpty()) {
-            item { HomeMarketWidgetRow(primaryWallet, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
+        if (primaryAccount != null || stocks.isNotEmpty()) {
+            item { HomeMarketWidgetRow(primaryAccount, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
         }
         if (trendingListings.isNotEmpty()) {
             item { HomeTrendingGrid(trendingListings, onOpenMarketplace = onOpenMarketplace) }
@@ -1949,18 +1949,18 @@ private fun HomeSearchResultRow(result: rw.itunda.core.network.ProductSearchResu
 
 // Real market widget row (2026-08-14) -- Naver's own weather/stock-index widget
 // row, filled with itunda's real equivalents instead of fabricated weather: the
-// spendable wallet balance (already fetched) and real RSE stock chips (getStocks,
+// spendable account balance (already fetched) and real RSE stock chips (getStocks,
 // InvestScreen's own real data source, arrow+percent styled the same way real
 // stock tickers signal direction).
 @Composable
 private fun HomeMarketWidgetRow(
-    primaryWallet: rw.itunda.core.network.Wallet?,
+    primaryAccount: rw.itunda.core.network.Account?,
     stocks: List<rw.itunda.core.network.StockDto>,
     onOpenBank: () -> Unit,
     onOpenInvest: () -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (primaryWallet != null) {
+        if (primaryAccount != null) {
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -1969,8 +1969,8 @@ private fun HomeMarketWidgetRow(
                     .clickable(onClick = onOpenBank)
                     .padding(14.dp),
             ) {
-                Text(stringResource(R.string.bank_wallet_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
-                Text("${primaryWallet.currency} %,.0f".format(primaryWallet.balance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.bank_account_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${primaryAccount.currency} %,.0f".format(primaryAccount.balance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         stocks.forEach { stock ->
@@ -2137,7 +2137,7 @@ private const val BANK_HUB_GROW31_MAX_BONUS_RATE = 10.0
 private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80
 
 // Real itunda Bank product hub (2026-08-11) -- see the doc comment on the showBank
-// state var in ItundaAppScreen for the full "itunda Bank vs itunda Pay/wallet"
+// state var in ItundaAppScreen for the full "itunda Bank vs itunda Pay/account"
 // naming research this came out of. Every row here is a real, already-built screen
 // (see LoansScreen.kt/InvestScreen.kt/SaccoScreen.kt/IkiminaScreen.kt/etc.'s own doc
 // comments) -- this just gives them a shared front door with real aggregate data,
@@ -2173,7 +2173,7 @@ private fun BankHubScreen(
     // real mistake: "you mixed itunda bank with home screen") -- the real "Auto
     // Transfer / N Items" row belongs on the real Toss BANK account-detail screen,
     // not the super-app Home tab. Was briefly (and wrongly) added to HomeTab's
-    // WalletHeroCard instead -- moved here, its real home, using the same real
+    // AccountHeroCard instead -- moved here, its real home, using the same real
     // autoTransferCount data (AutoTransferListScreen) already fetched at the top
     // level for exactly this purpose.
     autoTransferCount: Int = 0,
@@ -2181,12 +2181,12 @@ private fun BankHubScreen(
     onOpenCreditScore: () -> Unit = {},
     onOpenSpendingInsight: () -> Unit = {},
     // Real fix (2026-08-14) -- see HomeTab's own onOpenAccountDetail comment for the
-    // full story: this is Bank's real home for the wallet-account ledger view, not
+    // full story: this is Bank's real home for the account-account ledger view, not
     // Home's account switcher.
     onOpenAccountDetail: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
-    val primaryWallet by viewModel.primaryWallet.collectAsState()
+    val primaryAccount by viewModel.primaryAccount.collectAsState()
     val savingsGoals by viewModel.savingsGoals.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
     val roundUpSettings by viewModel.roundUpSettings.collectAsState()
@@ -2242,10 +2242,10 @@ private fun BankHubScreen(
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
             // Real fix (2026-08-14, direct user complaint) -- the actual spendable
-            // wallet balance + real transaction ledger (AccountDetailScreen) used to
+            // account balance + real transaction ledger (AccountDetailScreen) used to
             // only be reachable from Home's account switcher. This card is its real
             // home now: tapping it is the one way into that ledger.
-            if (primaryWallet != null) {
+            if (primaryAccount != null) {
                 item {
                     IdsCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                         Row(
@@ -2254,10 +2254,10 @@ private fun BankHubScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column {
-                                Text(stringResource(R.string.bank_wallet_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
+                                Text(stringResource(R.string.bank_account_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "${primaryWallet!!.currency} %,.0f".format(primaryWallet!!.balance),
+                                    "${primaryAccount!!.currency} %,.0f".format(primaryAccount!!.balance),
                                     fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                                 )
                             }
@@ -2508,7 +2508,7 @@ private fun BankHubScreen(
             // only, never built. This exact screen has carried the "itunda Bank" name
             // on every platform since the same day AccountSwitcherSheet's own doc
             // comment (above) reasoned that label risks a real regulatory overclaim
-            // for the wallet row -- with no disclosure anywhere clarifying itunda's
+            // for the account row -- with no disclosure anywhere clarifying itunda's
             // actual (unlicensed) status.
             //
             // Real Deposit Protection Fund card (2026-08-11) -- see
@@ -2778,7 +2778,7 @@ private fun HomeTopBar(
     // (rw.itunda.overview.LinkedAccountController, GET/POST /api/v1/accounts/linked,
     // consumed today only inside AutoTopUpScreen/OverviewScreen, never surfaced as a
     // top-level switcher). Deliberately does NOT let a linked account's demoBalance
-    // replace Home's own real wallet balance -- LinkedAccount.kt's own doc comment
+    // replace Home's own real account balance -- LinkedAccount.kt's own doc comment
     // draws a hard, deliberate line ("Never counted in real netWorth") against
     // blending real and demo money, so this is a real browse/manage sheet, not a
     // literal "switch which balance Home shows" control.
@@ -2890,13 +2890,13 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                 // item, which first read as reason to rename this row to match. Corrected after
                 // checking TOSS_PARITY_MATRIX.md -- the doc that tracks what's actually built and
                 // live-verified -- which has zero real banking-license implementation anywhere;
-                // this Wallet(MAIN) row is itunda's real, currently-built general-purpose e-money
-                // wallet. Confirmed against real KakaoPay vs KakaoBank sourcing: KakaoPay is a
-                // real e-wallet embedded in KakaoTalk, KakaoBank a separately, actually-licensed
+                // this Account(MAIN) row is itunda's real, currently-built general-purpose e-money
+                // account. Confirmed against real KakaoPay vs KakaoBank sourcing: KakaoPay is a
+                // real e-account embedded in KakaoTalk, KakaoBank a separately, actually-licensed
                 // digital bank -- genuinely distinct regulated products, not a generic/specific
                 // pair. Calling this row "Itunda Bank" would have been a real overclaim of
                 // regulatory status the product doesn't have, not a naming nitpick.
-                Text("itunda wallet", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("itunda account", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Icon(Icons.Outlined.CheckCircle, contentDescription = stringResource(R.string.home_current_account), modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
             }
             when {
@@ -2938,18 +2938,18 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
 
 // Real Toss Bank account-detail screen (2026-08-13, 3 direct user screenshots of
 // their own real Toss Bank account: "when you click on bank accounts that what
-// you should see"). Reached by tapping the "itunda wallet" row in
+// you should see"). Reached by tapping the "itunda account" row in
 // AccountSwitcherSheet above, which had never actually been clickable before this.
-// Distinct from both HomeTab's compact WalletHeroCard (a Home-tab summary, not a
+// Distinct from both HomeTab's compact AccountHeroCard (a Home-tab summary, not a
 // full ledger) and BankHubScreen's product catalog (savings goals/loans, not this
-// wallet's own transaction history) -- this is the one real screen that shows
+// account's own transaction history) -- this is the one real screen that shows
 // balance + unclaimed interest + the actual transaction ledger for the account,
 // matching the reference's header (back arrow, "Card"/"Manage"), balance block,
 // interest row with its own "Get interest" CTA, Top up/Send buttons, and a
 // date-grouped transaction list with a running balance on every row.
 //
-// Reuses only real, already-fetched data (MainViewModel.primaryWallet/.interestJar/
-// .transactions, the same GET /api/v1/wallet/transactions this file's other
+// Reuses only real, already-fetched data (MainViewModel.primaryAccount/.interestJar/
+// .transactions, the same GET /api/v1/account/transactions this file's other
 // screens already call) -- no new backend endpoint. TransactionDto carries no
 // balance-snapshot-per-row field (confirmed by reading ApiService.kt), so each
 // row's running balance is derived client-side by walking the real transaction
@@ -2966,12 +2966,12 @@ private fun AccountDetailScreen(
     onClaimInterest: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    val primaryWallet by viewModel.primaryWallet.collectAsState()
+    val primaryAccount by viewModel.primaryAccount.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
-    val balance = primaryWallet?.balance ?: 0.0
-    val currency = primaryWallet?.currency ?: "RWF"
-    val currentUserId = primaryWallet?.userId
+    val balance = primaryAccount?.balance ?: 0.0
+    val currency = primaryAccount?.currency ?: "RWF"
+    val currentUserId = primaryAccount?.userId
 
     val sorted = remember(transactions) { transactions.sortedByDescending { it.createdAt } }
     val withBalance = remember(sorted, balance, currentUserId) {
@@ -3022,9 +3022,9 @@ private fun AccountDetailScreen(
         ) {
             item {
                 Column(modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
-                    if (primaryWallet != null) {
+                    if (primaryAccount != null) {
                         Text(
-                            "itunda ${primaryWallet!!.accountNumber.chunked(4).joinToString("-")}",
+                            "itunda ${primaryAccount!!.accountNumber.chunked(4).joinToString("-")}",
                             fontSize = 13.sp, color = Ids.colors.textSecondary,
                         )
                     }
@@ -3084,7 +3084,7 @@ private fun AccountDetailScreen(
 
 // Real Toss Bank reference: every transaction row shows the account's real balance
 // AFTER that transaction directly under the signed amount, not just the amount
-// alone -- reuses WalletMiniRow's own signed-amount/icon convention (see its doc
+// alone -- reuses AccountMiniRow's own signed-amount/icon convention (see its doc
 // comment) and adds that second line.
 @Composable
 private fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String) {
@@ -3092,7 +3092,7 @@ private fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto,
     // Real fix (2026-08-14, direct user screenshots of their own real Toss Bank
     // ledger): incoming amounts are tinted the real brand blue there, not a generic
     // green success color -- this file's own earlier claim otherwise (see
-    // WalletMiniRow's doc comment below) was never actually checked against a real
+    // AccountMiniRow's doc comment below) was never actually checked against a real
     // reference until now.
     val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     Row(
@@ -3142,7 +3142,7 @@ private fun ledgerTimeOfDay(iso: String): String =
     }
 
 @Composable
-private fun WalletHeroCard(
+private fun AccountHeroCard(
     balanceText: String,
     accountNumber: String?,
     onSend: () -> Unit,
@@ -3160,17 +3160,17 @@ private fun WalletHeroCard(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
+            // Real Toss reference (user-provided, 2026-08-03): the real Home account
             // card header is the account name plus how much interest it's earned so
-            // far this period ("에릭 +이자 7원"), not just a plain static "Wallet"
+            // far this period ("에릭 +이자 7원"), not just a plain static "Account"
             // label -- InterestJar.earnedThisMonth was already fetched
-            // (MainViewModel.interestJar, real GET /api/v1/wallet/interest-jar) and
+            // (MainViewModel.interestJar, real GET /api/v1/account/interest-jar) and
             // already shown further down this tab's savings section, just never in
-            // this header. Only shown once it's actually > 0 -- a brand-new wallet
+            // this header. Only shown once it's actually > 0 -- a brand-new account
             // with nothing earned yet keeps the plain label rather than a "+RWF 0"
             // that reads as broken.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.home_wallet), fontSize = 14.sp, color = Ids.colors.textSecondary)
+                Text(stringResource(R.string.home_account), fontSize = 14.sp, color = Ids.colors.textSecondary)
                 if (earnedThisMonth > 0.0) {
                     Text(
                         "  +RWF %,.0f".format(earnedThisMonth),
@@ -3184,7 +3184,7 @@ private fun WalletHeroCard(
             // real account detail screen leads with the account's own real number
             // ("토스뱅크 1000-3058-1980") directly above the balance -- itunda's real,
             // collision-checked AccountNumberGenerator (see its own doc comment) has
-            // produced a real accountNumber for every wallet since it was built, but
+            // produced a real accountNumber for every account since it was built, but
             // it was never actually shown anywhere except when entering someone
             // ELSE's number to send to. Grouped in 4-digit blocks for readability,
             // same shape as the reference.
@@ -3199,7 +3199,7 @@ private fun WalletHeroCard(
             // .LargeAmount exists specifically for "the single most important number
             // on the screen" (see its own doc comment, written for
             // AgentHomeScreen.kt's till total) and is itself 34sp, so the visual size
-            // is unchanged; this just makes the hero wallet balance -- itunda's own
+            // is unchanged; this just makes the hero account balance -- itunda's own
             // most important number on the Home tab -- use the real token instead of
             // a number that happens to currently match it.
             Text(balanceText, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
@@ -3208,12 +3208,12 @@ private fun WalletHeroCard(
             // both used to render here. A closer direct comparison against the real
             // Toss SUPER-APP Home tab (12 images, light+dark) -- as opposed to the
             // separate real Toss BANK account-detail screen those two rows were
-            // actually sourced from -- confirms Home's own real compact wallet row
+            // actually sourced from -- confirms Home's own real compact account row
             // has neither: no unclaimed-interest CTA, no Auto Transfer entry point.
             // Both are real Toss Bank features, correctly homed on BankHubScreen
             // instead (Interest jar already lived there before this session; Auto
             // Transfer is added there now, see BankHubScreen's own doc comment).
-            // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
+            // Real Toss reference (user-provided, 2026-08-03): the real Home account
             // card's own two buttons ("+ 채우기" / "↗ 보내기") both carry a leading
             // glyph -- IdsButton's icon param is new this pass (see its own doc
             // comment) specifically for this.
@@ -3224,7 +3224,7 @@ private fun WalletHeroCard(
             // Real fix, 2026-08-03: these two rows used to be hardcoded literal
             // strings ("Bravo Korea parking" / "Savings deposit") baked into every
             // account regardless of whose it was -- viewModel.transactions
-            // (GET /api/v1/wallet/transactions) was already fetched and already
+            // (GET /api/v1/account/transactions) was already fetched and already
             // powered the real TransactionHistoryScreen reachable from "See all"
             // below, just never shown here. Only rendered once real transactions
             // exist, matching the Savings section's own "don't show an empty
@@ -3232,7 +3232,7 @@ private fun WalletHeroCard(
             if (recentTransactions.isNotEmpty()) {
                 Divider(color = Ids.colors.divider)
                 recentTransactions.forEach { tx ->
-                    WalletMiniRow(
+                    AccountMiniRow(
                         transaction = tx,
                         isOutgoing = tx.senderId == currentUserId,
                         onClick = onSeeAll,
@@ -3256,7 +3256,7 @@ private fun WalletHeroCard(
 }
 
 @Composable
-private fun WalletMiniRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, onClick: () -> Unit) {
+private fun AccountMiniRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, onClick: () -> Unit) {
     // Real Toss-style signed amount (2026-08-03) -- outgoing money is prefixed "-"
     // in the normal text color, incoming is prefixed "+" and tinted with the real
     // brand blue (corrected 2026-08-14: this used Ids.colors.success/green until a
@@ -3400,36 +3400,36 @@ private fun PayTab(
     // still the honest baseline until real camera scanning exists on that side too.
     var mode by remember { mutableStateOf(PayTabMode.MY_CODE) }
     // Real architectural move (2026-08-13, direct user directive -- see HomeTab's
-    // own doc comment at its WalletHeroCard removal site): the itunda Pay balance
+    // own doc comment at its AccountHeroCard removal site): the itunda Pay balance
     // card (balance, Cash out/Send, recent transactions) used to render on Home,
     // duplicating real Pay-product content onto a tab meant to be a generic access
-    // point. Pay is itunda's actual complete, self-contained wallet product, so
+    // point. Pay is itunda's actual complete, self-contained account product, so
     // this is where that card belongs now.
-    val primaryWallet by viewModel.primaryWallet.collectAsState()
-    val payBalanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
+    val primaryAccount by viewModel.primaryAccount.collectAsState()
+    val payBalanceText = primaryAccount?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
     val interestJar by viewModel.interestJar.collectAsState()
     val recentTransactions by viewModel.transactions.collectAsState()
     // Real swipeable funding-source cards (2026-08-11) -- the user's own KakaoPay
     // reference screenshot's bottom card carousel. The real, buildable slice of that:
-    // itunda's own real wallets (MAIN + any opened foreign-currency ones,
-    // ForeignCurrencyWalletService) as distinct swipeable cards, where the settled
-    // card is the one CustomerPaymentCode.walletId actually funds the QR from -- see
+    // itunda's own real accounts (MAIN + any opened foreign-currency ones,
+    // ForeignCurrencyAccountService) as distinct swipeable cards, where the settled
+    // card is the one CustomerPaymentCode.accountId actually funds the QR from -- see
     // MerchantService.generateCustomerPaymentCode's own doc comment. No fabricated
     // membership/deal cards: itunda has no real backend for those as payment sources.
-    var wallets by remember { mutableStateOf<List<rw.itunda.core.network.Wallet>>(emptyList()) }
-    var selectedWalletId by remember { mutableStateOf<String?>(null) }
+    var accounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
+    var selectedAccountId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         try {
-            val main = rw.itunda.core.network.NetworkClient.apiService.getWallets().wallets.filter { it.type == "MAIN" }
-            val foreign = rw.itunda.core.network.NetworkClient.apiService.getForeignWallets().wallets
-            wallets = main + foreign
+            val main = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.filter { it.type == "MAIN" }
+            val foreign = rw.itunda.core.network.NetworkClient.apiService.getForeignAccounts().accounts
+            accounts = main + foreign
         } catch (e: Exception) {
             // Real, non-critical -- MyPaymentCodeCard falls back to the backend's own
-            // MAIN default when wallets never load.
+            // MAIN default when accounts never load.
         }
     }
-    LaunchedEffect(wallets) {
-        if (selectedWalletId == null) selectedWalletId = wallets.firstOrNull { it.type == "MAIN" }?.id
+    LaunchedEffect(accounts) {
+        if (selectedAccountId == null) selectedAccountId = accounts.firstOrNull { it.type == "MAIN" }?.id
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
@@ -3437,13 +3437,13 @@ private fun PayTab(
     ) {
         item { PlainTopBar("Pay") }
         item {
-            WalletHeroCard(
+            AccountHeroCard(
                 balanceText = payBalanceText,
-                accountNumber = primaryWallet?.accountNumber,
+                accountNumber = primaryAccount?.accountNumber,
                 onSend = onSend,
                 onCashOutAtAgent = onCashOutAtAgent,
                 recentTransactions = recentTransactions.take(2),
-                currentUserId = primaryWallet?.userId,
+                currentUserId = primaryAccount?.userId,
                 onSeeAll = onOpenTransactionHistory,
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
             )
@@ -3481,15 +3481,15 @@ private fun PayTab(
             PayTabMode.MY_CODE -> {
                 item {
                     MyPaymentCodeCard(
-                        selectedWallet = wallets.find { it.id == selectedWalletId },
+                        selectedAccount = accounts.find { it.id == selectedAccountId },
                     )
                 }
-                if (wallets.size > 1) {
+                if (accounts.size > 1) {
                     item {
-                        WalletCardCarousel(
-                            wallets = wallets,
-                            selectedWalletId = selectedWalletId,
-                            onSelect = { selectedWalletId = it },
+                        AccountCardCarousel(
+                            accounts = accounts,
+                            selectedAccountId = selectedAccountId,
+                            onSelect = { selectedAccountId = it },
                         )
                     }
                 }
@@ -3512,7 +3512,7 @@ private fun PayTab(
 //
 // Rebuilt 2026-08-11 to closely match the user's own real KakaoPay screenshot
 // (not an invented layout -- see feedback_dont_imagine_use_real_reference memory):
-// one white card holding the masked pay button, the wallet balance, the funding
+// one white card holding the masked pay button, the account balance, the funding
 // account, and nearby benefits, in that order. The card is pinned to raw IdsColors
 // light values (White/Grey100/Gray900 etc.) rather than the theme-adaptive
 // Ids.colors -- the reference screenshot itself is shown against a dark system
@@ -3520,7 +3520,7 @@ private fun PayTab(
 // read against white under a POS scanner regardless of phone theme" reasoning
 // IdsSemanticColors.kt's own light-palette comment already documents.
 @Composable
-private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
+private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?) {
     var revealed by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAtMillis by remember { mutableStateOf(0L) }
@@ -3530,15 +3530,15 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
     var nearbyAds by remember { mutableStateOf<List<rw.itunda.core.network.NearbyMerchantAdDto>>(emptyList()) }
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
-    // Re-keyed on selectedWallet.id (not just `revealed`): swiping WalletCardCarousel
-    // to a different real wallet while the code is already showing must regenerate it
-    // against the newly-selected wallet, not silently keep charging the old one.
-    LaunchedEffect(revealed, selectedWallet?.id) {
+    // Re-keyed on selectedAccount.id (not just `revealed`): swiping AccountCardCarousel
+    // to a different real account while the code is already showing must regenerate it
+    // against the newly-selected account, not silently keep charging the old one.
+    LaunchedEffect(revealed, selectedAccount?.id) {
         if (!revealed) return@LaunchedEffect
         while (true) {
             try {
                 val res = rw.itunda.core.network.NetworkClient.apiService.generateCustomerPaymentCode(
-                    rw.itunda.core.network.GenerateCustomerPaymentCodeRequest(walletId = selectedWallet?.id),
+                    rw.itunda.core.network.GenerateCustomerPaymentCodeRequest(accountId = selectedAccount?.id),
                 )
                 code = res.code
                 expiresAtMillis = java.time.Instant.parse(res.expiresAt).toEpochMilli()
@@ -3675,17 +3675,17 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
             }
         }
 
-        if (selectedWallet != null) {
+        if (selectedAccount != null) {
             Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (selectedWallet.type == "MAIN") "itunda Pay" else "itunda Pay (${selectedWallet.currency})",
+                    if (selectedAccount.type == "MAIN") "itunda Pay" else "itunda Pay (${selectedAccount.currency})",
                     color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 )
                 Text(
-                    "${selectedWallet.currency} ${
-                        if (selectedWallet.currency == "RWF") "%,.0f".format(selectedWallet.availableBalance)
-                        else "%,.2f".format(selectedWallet.availableBalance)
+                    "${selectedAccount.currency} ${
+                        if (selectedAccount.currency == "RWF") "%,.0f".format(selectedAccount.availableBalance)
+                        else "%,.2f".format(selectedAccount.availableBalance)
                     }",
                     color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 )
@@ -3740,7 +3740,7 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
     }
 }
 
-private fun walletCardColor(currency: String): androidx.compose.ui.graphics.Color = when (currency) {
+private fun accountCardColor(currency: String): androidx.compose.ui.graphics.Color = when (currency) {
     "RWF" -> IdsColors.Blue600
     "USD" -> IdsColors.Green500
     "EUR" -> androidx.compose.ui.graphics.Color(0xFF7C5CFC)
@@ -3749,24 +3749,24 @@ private fun walletCardColor(currency: String): androidx.compose.ui.graphics.Colo
 }
 
 // Real swipeable funding-source cards (2026-08-11) -- see PayTab's own doc comment on
-// `wallets`/`selectedWalletId` for why these are itunda's own real wallets (MAIN +
+// `accounts`/`selectedAccountId` for why these are itunda's own real accounts (MAIN +
 // any opened foreign-currency ones) and not fabricated membership/deal cards.
 // Settling the pager on a card is a real selection, not cosmetic: it's propagated
-// back up to PayTab and becomes the walletId MyPaymentCodeCard's QR is generated
+// back up to PayTab and becomes the accountId MyPaymentCodeCard's QR is generated
 // against, matching the "swipe to choose what you pay with" real KakaoPay behavior
 // the user's own reference screenshot showed.
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun WalletCardCarousel(
-    wallets: List<rw.itunda.core.network.Wallet>,
-    selectedWalletId: String?,
+private fun AccountCardCarousel(
+    accounts: List<rw.itunda.core.network.Account>,
+    selectedAccountId: String?,
     onSelect: (String) -> Unit,
 ) {
-    val initialPage = wallets.indexOfFirst { it.id == selectedWalletId }.coerceAtLeast(0)
-    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialPage) { wallets.size }
+    val initialPage = accounts.indexOfFirst { it.id == selectedAccountId }.coerceAtLeast(0)
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialPage) { accounts.size }
     LaunchedEffect(pagerState) {
         androidx.compose.runtime.snapshotFlow { pagerState.settledPage }.collect { page ->
-            wallets.getOrNull(page)?.let { onSelect(it.id) }
+            accounts.getOrNull(page)?.let { onSelect(it.id) }
         }
     }
     Column {
@@ -3779,12 +3779,12 @@ private fun WalletCardCarousel(
             // closer to the user's own KakaoPay reference screenshot's card thumbnails.
             modifier = Modifier.fillMaxWidth().height(148.dp),
         ) { page ->
-            val w = wallets[page]
+            val w = accounts[page]
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(walletCardColor(w.currency))
+                    .background(accountCardColor(w.currency))
                     .padding(18.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -3813,7 +3813,7 @@ private fun WalletCardCarousel(
         }
         Spacer(Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            wallets.indices.forEach { i ->
+            accounts.indices.forEach { i ->
                 val active = i == pagerState.currentPage
                 Box(
                     modifier = Modifier
@@ -3855,7 +3855,7 @@ private fun MenuScreen(
     onOpenWeeklySavings: () -> Unit = {},
     onOpenGrow31Savings: () -> Unit = {},
     onOpenUpfrontDeposit: () -> Unit = {},
-    onOpenMiniWallet: () -> Unit = {},
+    onOpenMiniAccount: () -> Unit = {},
     onOpenCard: () -> Unit = {},
     onOpenGroupAccounts: () -> Unit = {},
     onOpenIkimina: () -> Unit = {},
@@ -3951,7 +3951,7 @@ private fun MenuScreen(
         FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
     )
     val accountsRows = listOf(
-        FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue, onClick = onOpenOverview),
+        FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue, onClick = onOpenOverview),
         FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
         FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
         FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
@@ -3964,7 +3964,7 @@ private fun MenuScreen(
     val sendPayRows = listOf(
         FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
         FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentBlue, onClick = onOpenRequestMoney),
-        FlatRow("Auto top-up", subtitle = "Refill your wallet automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
+        FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
         FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
@@ -3973,7 +3973,7 @@ private fun MenuScreen(
         FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
         FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
         FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
-        FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
+        FlatRow("Mini account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniAccount),
         FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
         FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
     )
@@ -4018,7 +4018,7 @@ private fun MenuScreen(
         FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
-        // Real fix (2026-08-11): interest now auto-credits to the wallet the instant
+        // Real fix (2026-08-11): interest now auto-credits to the account the instant
         // it accrues (see backend SavingsService.accrueInterest's own doc comment) --
         // "Claim interest now" overclaimed a pending action that no longer exists.
         FlatRow("Interest earned this month", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
@@ -4028,7 +4028,7 @@ private fun MenuScreen(
         FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
     )
     val foreignCurrencyRows = listOf(
-        FlatRow("Foreign currency wallet", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple, onClick = onOpenForeignCurrency),
+        FlatRow("Foreign currency account", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple, onClick = onOpenForeignCurrency),
         FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue, onClick = onOpenForeignCurrency)
     )
     val growMoneyRows = listOf(
@@ -4126,7 +4126,7 @@ private fun MenuScreen(
                 // Real fix (2026-08-13, direct user report: "entire app is still
                 // messy... keep fixing"): this whole grid had no onItemClick at all --
                 // IconGridSection's default is a silent no-op, so all 4 tiles here were
-                // dead taps. "Mini" (real MiniWalletScreen, ages 7-18 capped account)
+                // dead taps. "Mini" (real MiniAccountScreen, ages 7-18 capped account)
                 // and "Bank" (real itunda Bank hub) both already have working
                 // destinations elsewhere in this file, just never wired here. "Games"
                 // is honestly still unbuilt -- this same file's own MenuScreen doc
@@ -4143,7 +4143,7 @@ private fun MenuScreen(
                     ),
                     onItemClick = { label ->
                         when (label) {
-                            "Mini" -> onOpenMiniWallet()
+                            "Mini" -> onOpenMiniAccount()
                             "Bank" -> onOpenBank()
                         }
                     },
@@ -4175,14 +4175,14 @@ private fun MenuScreen(
             // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
             // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
             // reachable as a real row instead of being dropped. Mini apps' own 4 rows
-            // (Wallet balance/Pay bills/Reward tasks/Insurance) merged in here too
+            // (Account balance/Pay bills/Reward tasks/Insurance) merged in here too
             // (2026-08-12), not kept as their own separate "Mini apps" header.
             item {
                 FlatSection(
                     "Quick links",
                     quickLinksRows + listOf(
-                        FlatRow("Wallet balance", onClick = {
-                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.WalletBalanceMiniAppActivity::class.java))
+                        FlatRow("Account balance", onClick = {
+                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.AccountBalanceMiniAppActivity::class.java))
                         }),
                         FlatRow("Pay bills", onClick = {
                             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))

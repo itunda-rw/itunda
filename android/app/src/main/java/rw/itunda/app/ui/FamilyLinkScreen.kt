@@ -310,7 +310,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             if (openOverviewFor == c.link.childUserId) {
                                 val o = overview
                                 if (o != null && o.childUserId == c.link.childUserId) {
-                                    Text("Balance: ${"%,.0f".format(o.walletBalance)} RWF", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("Balance: ${"%,.0f".format(o.accountBalance)} RWF", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     if (o.recentTransactions.isEmpty()) {
                                         Text("No transactions yet.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     } else {

@@ -60,11 +60,11 @@ class MainActivity : FragmentActivity() {
 
         // Real screenshot/screen-recording protection (2026-08-09) -- found missing during a
         // Toss-parity security audit: zero FLAG_SECURE usage existed anywhere in this codebase,
-        // meaning every screen (wallet balance, transfer amounts, card details, PIN/password
+        // meaning every screen (account balance, transfer amounts, card details, PIN/password
         // entry) was screenshottable and screen-recordable by any other app or the OS itself,
         // and would appear as plaintext in the recent-apps task switcher thumbnail. Every real
         // fintech app (Toss included) blocks this app-wide, not per-screen -- itunda shows a
-        // real balance on nearly every tab (see HomeTab's WalletHeroCard), so a per-screen
+        // real balance on nearly every tab (see HomeTab's AccountHeroCard), so a per-screen
         // allowlist would be both more fragile and less protective than a blanket flag set once
         // here, before setContent, so it also covers the task-switcher thumbnail.
         // Skipped in debug builds only (2026-08-11): a live UI-consistency audit against real

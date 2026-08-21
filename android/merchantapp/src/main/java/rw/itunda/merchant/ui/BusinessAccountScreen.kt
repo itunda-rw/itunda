@@ -34,7 +34,7 @@ import rw.itunda.merchant.network.BusinessLedgerEntryDto
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ReceiptLong
 import rw.itunda.core.designsystem.components.EmptyState
-import rw.itunda.merchant.network.BusinessWalletDto
+import rw.itunda.merchant.network.BusinessAccountDto
 import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.MoveBusinessMoneyRequest
 import rw.itunda.merchant.network.NetworkClient
@@ -44,13 +44,13 @@ import java.util.UUID
  * Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent
  * (2026-07-25) -- closes a real gap named in the backend's own Merchant.kt doc comment:
  * every merchant's real card/QR collection has always settled straight into their
- * PERSONAL main wallet, with business income and personal spending genuinely
- * inseparable. This tab lets a merchant open a real, dedicated business wallet and
+ * PERSONAL main account, with business income and personal spending genuinely
+ * inseparable. This tab lets a merchant open a real, dedicated business account and
  * deliberately move money into/out of it, with its own real transaction history.
  */
 @Composable
 fun BusinessAccountTab() {
-    var wallet by remember { mutableStateOf<BusinessWalletDto?>(null) }
+    var account by remember { mutableStateOf<BusinessAccountDto?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var merchant by remember { mutableStateOf<MerchantDto?>(null) }
     var transactions by remember { mutableStateOf<List<BusinessLedgerEntryDto>?>(null) }
@@ -81,11 +81,11 @@ fun BusinessAccountTab() {
     fun load() {
         scope.launch {
             try {
-                wallet = NetworkClient.apiService.getBusinessAccount().wallet
+                account = NetworkClient.apiService.getBusinessAccount().account
                 transactions = try { NetworkClient.apiService.getBusinessTransactions().transactions } catch (e: Exception) { emptyList() }
                 error = null
             } catch (e: Exception) {
-                wallet = null
+                account = null
             } finally {
                 loaded = true
             }
@@ -154,7 +154,7 @@ fun BusinessAccountTab() {
         return
     }
 
-    val current = wallet
+    val current = account
     if (current == null) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             merchant?.let { m -> FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) }
@@ -163,8 +163,8 @@ fun BusinessAccountTab() {
             merchant?.let { m -> StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) }
             Text("Business account", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
-                "Keep your business money separate from your personal wallet. Your real card/QR " +
-                    "collections still settle to your personal wallet as before -- move money into your " +
+                "Keep your business money separate from your personal account. Your real card/QR " +
+                    "collections still settle to your personal account as before -- move money into your " +
                     "business account whenever you're ready to set it aside.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -236,7 +236,7 @@ fun BusinessAccountTab() {
             // Real copy-voice fix (item 244, round 7 of the empty-state pass -- native
             // MerchantApp had the same bare strings web's merchant-mfe just had, never
             // reached by the mobile-app copy-voice rounds either): auto-recorded, not
-            // user-initiated setup, matching WalletTransactionsView's own precedent.
+            // user-initiated setup, matching AccountTransactionsView's own precedent.
             item { EmptyState("No business transactions yet — once you send or receive money, it'll show up here.", icon = Icons.Outlined.ReceiptLong) }
         } else {
             items(txns, key = { it.id }) { entry ->
@@ -263,10 +263,10 @@ fun BusinessAccountTab() {
 }
 
 /**
- * Real business expense summary (2026-08-11) -- see backend's WalletService.
+ * Real business expense summary (2026-08-11) -- see backend's AccountService.
  * getBusinessExpenseSummary doc comment for the real Toss Bank 세금 신고용 이용내역
  * 자동발송 (tax-filing usage summary) pattern this closes the honest slice of: a
- * categorized breakdown of the business wallet's own real spend over the last few
+ * categorized breakdown of the business account's own real spend over the last few
  * months, so a sole proprietor doesn't have to reconstruct it from raw transactions
  * by hand. Not a real Rwanda Revenue Authority filing integration -- itunda has no
  * access to file into (same genuinely-blocked-external-access category as NIDA/PSP

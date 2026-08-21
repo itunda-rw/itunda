@@ -352,7 +352,7 @@ fun TransferAmountScreen(
     // phone-or-account-number lookup, so gift mode comes with an explicit "phone
     // number only" note rather than a separate screen.
     onConfirm: (amountRwf: Long, isGift: Boolean, note: String?, theme: String?) -> Unit,
-    // Real wallet balance + real in-flight state (2026-07-12) -- previously this
+    // Real account balance + real in-flight state (2026-07-12) -- previously this
     // screen hardcoded "RWF 112,242" regardless of the actual signed-in user's
     // balance, and had no way to show that a real network call was in progress.
     availableBalance: Double = 0.0,
@@ -387,7 +387,7 @@ fun TransferAmountScreen(
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(
-                label = stringResource(R.string.transfer_from_wallet),
+                label = stringResource(R.string.transfer_from_account),
                 sublabel = stringResource(R.string.transfer_available_balance, rwfFormatter.format(availableBalanceLong)),
                 icon = Icons.Outlined.AccountBalanceWallet
             )

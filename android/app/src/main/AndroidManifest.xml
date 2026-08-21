@@ -77,7 +77,7 @@
 
         <!-- Apps-in-Itunda mini-app host activities, see miniapps/MiniAppActivity.kt -->
         <activity
-            android:name=".miniapps.WalletBalanceMiniAppActivity"
+            android:name=".miniapps.AccountBalanceMiniAppActivity"
             android:theme="@style/Theme.Itunda.MiniApp"
             android:exported="false" />
         <activity

@@ -25,7 +25,7 @@
     <string name="transfer_save_contact">Enregistrer le contact</string>
     <string name="transfer_no_contacts">Aucun contact enregistré pour l\'instant — ajoutez-en un ci-dessus pour envoyer plus vite la prochaine fois.</string>
     <string name="transfer_next">Suivant</string>
-    <string name="transfer_from_wallet">Depuis le portefeuille Itunda</string>
+    <string name="transfer_from_account">Depuis le portefeuille Itunda</string>
     <string name="transfer_available_balance">Disponible RWF %1$s</string>
     <string name="transfer_to_account">Vers le compte %1$s</string>
     <string name="transfer_new_recipient">Nouveau destinataire</string>

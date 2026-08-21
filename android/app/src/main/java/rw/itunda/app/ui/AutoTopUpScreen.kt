@@ -49,14 +49,14 @@ import java.math.BigDecimal
 
 // Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168/176) -- see
 // AutoTopUpService's own doc comment: a real background scheduler already pulls from a
-// linked external account whenever the wallet drops below a threshold, plus a real
+// linked external account whenever the account drops below a threshold, plus a real
 // topUpShortfall hook wired into P2pService.sendDirect. Fully real but had zero mobile
 // UI anywhere until now -- bank-mfe got its own client the same session (item 168). Same
 // no-ViewModel, NetworkClient-direct shape as RequestMoneyScreen.kt/ForeignCurrencyScreen.kt.
 @Composable
 fun AutoTopUpScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    var walletId by remember { mutableStateOf<String?>(null) }
+    var accountId by remember { mutableStateOf<String?>(null) }
     var setting by remember { mutableStateOf<AutoTopUpSettingDto?>(null) }
     var settingLoaded by remember { mutableStateOf(false) }
     var linkedAccounts by remember { mutableStateOf<List<LinkedAccountEntityDto>?>(null) }
@@ -66,10 +66,10 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         try {
-            val wallets = NetworkClient.apiService.getWallets()
-            walletId = (wallets.wallets.firstOrNull { it.type == "MAIN" } ?: wallets.wallets.firstOrNull())?.id
+            val accounts = NetworkClient.apiService.getAccounts()
+            accountId = (accounts.accounts.firstOrNull { it.type == "MAIN" } ?: accounts.accounts.firstOrNull())?.id
         } catch (e: Exception) {
-            error = "Could not load your wallet."
+            error = "Could not load your account."
         }
         try {
             linkedAccounts = NetworkClient.apiService.getLinkedAccounts().linkedAccounts
@@ -78,8 +78,8 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(walletId, refreshKey) {
-        val id = walletId ?: return@LaunchedEffect
+    LaunchedEffect(accountId, refreshKey) {
+        val id = accountId ?: return@LaunchedEffect
         settingLoaded = false
         setting = try {
             NetworkClient.apiService.getAutoTopUpSetting(id).setting
@@ -101,14 +101,14 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
         ) {
             item {
                 Text(
-                    "Automatically top up your wallet from a linked account whenever it drops below a threshold you set.",
+                    "Automatically top up your account from a linked account whenever it drops below a threshold you set.",
                     color = Ids.colors.textSecondary,
                     fontSize = 13.sp,
                 )
             }
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
             val accounts = linkedAccounts
-            val id = walletId
+            val id = accountId
             if (id == null || accounts == null || !settingLoaded) {
                 item { SkeletonBlock(height = 120.dp) }
             } else if (accounts.none { it.status == "LINKED" }) {
@@ -125,7 +125,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
             } else {
                 item {
                     AutoTopUpConfigCard(
-                        walletId = id,
+                        accountId = id,
                         linkedAccounts = accounts.filter { it.status == "LINKED" },
                         setting = setting,
                         onChanged = { refreshKey++ },
@@ -160,7 +160,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
 
 @Composable
 private fun AutoTopUpConfigCard(
-    walletId: String,
+    accountId: String,
     linkedAccounts: List<LinkedAccountEntityDto>,
     setting: AutoTopUpSettingDto?,
     onChanged: () -> Unit,
@@ -201,7 +201,7 @@ private fun AutoTopUpConfigCard(
             } else {
                 Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             }
-            IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when wallet drops below (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when account drops below (RWF)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             if (setting != null) {
                 Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -222,7 +222,7 @@ private fun AutoTopUpConfigCard(
                         coroutineScope.launch {
                             try {
                                 NetworkClient.apiService.configureAutoTopUp(
-                                    walletId,
+                                    accountId,
                                     ConfigureAutoTopUpRequest(selectedAccountId, thresholdBd, topUpBd, enabled = enabled),
                                 )
                                 onChanged()

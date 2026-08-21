@@ -166,7 +166,7 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
                 onSelect = { days = it },
             )
             Text(
-                "${selectedTier.price} RWF will be charged from your wallet. If you already have an active ad, this extends it.",
+                "${selectedTier.price} RWF will be charged from your account. If you already have an active ad, this extends it.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

@@ -187,7 +187,7 @@ object PartnerMiniAppLoader {
  * call, exactly as before this pass. A non-null set means a partner bundle is the one
  * currently loaded into the shared ReactHost, holding exactly the real scopes
  * `PartnerMiniAppPermissions.ALLOWED` let it request at submission time
- * (`wallet:read`/`transactions:read`/`profile:read` -- see
+ * (`account:read`/`transactions:read`/`profile:read` -- see
  * services/backend/partners/.../PartnerService.kt).
  *
  * Deliberately a single process-wide var, not per-ReactContext state: there is only ever
@@ -202,7 +202,7 @@ object MiniAppSecurityContext {
     /**
      * `null` [requiredScope] means "no real backend scope covers this bridge call at
      * all" -- today that's every `SaroniteBrownfieldModule` method except
-     * `getWalletBalance` (see that file's own per-method comments), since
+     * `getAccountBalance` (see that file's own per-method comments), since
      * `PartnerMiniAppPermissions.ALLOWED` is a deliberately small, conservative,
      * read-only allow-list that doesn't yet cover bill payment, reward claims, insurance
      * enrollment, or profile writes. A first-party mini-app (activeScopes == null) is

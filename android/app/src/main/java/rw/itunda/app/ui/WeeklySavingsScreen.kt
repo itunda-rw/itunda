@@ -326,7 +326,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.cancelWeeklySavingsPlan(planId)
-                detail = WeeklySavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.installments)
+                detail = WeeklySavingsPlanDetailResponse(res.success, res.plan, res.accountBalance, res.installments)
                 actionError = null
                 confirmingCancel = false
                 onChanged()
@@ -345,7 +345,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.withdrawWeeklySavingsPlan(planId)
-                detail = WeeklySavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.installments)
+                detail = WeeklySavingsPlanDetailResponse(res.success, res.plan, res.accountBalance, res.installments)
                 actionError = null
                 withdrawSuccess = res.plan.currentAmount to (res.plan.totalInterestPaid ?: 0.0)
                 onChanged()
@@ -363,9 +363,9 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
         rw.itunda.core.designsystem.components.IdsCelebrationScreen(
             headline = "${formatMoneyWeekly(totalSaved)} RWF saved",
             message = if (interestPaid > 0.0) {
-                "26-week challenge complete -- ${formatMoneyWeekly(interestPaid)} RWF bonus interest is in your wallet."
+                "26-week challenge complete -- ${formatMoneyWeekly(interestPaid)} RWF bonus interest is in your account."
             } else {
-                "26-week challenge complete -- moved to your main wallet."
+                "26-week challenge complete -- moved to your main account."
             },
             celebratory = true,
             onDone = { withdrawSuccess = null },
@@ -392,8 +392,8 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("${formatMoneyWeekly(current.walletBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                            Text("Wallet balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text("${formatMoneyWeekly(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                            Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(12.dp))
                             WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
                             Spacer(modifier = Modifier.height(6.dp))
@@ -454,10 +454,10 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                             }
                         }
                         plan.status == "MATURED" && plan.withdrawnAt == null -> ActionButtonWeekly(
-                            "Withdraw to main wallet", color = Ids.colors.brand, enabled = !submitting,
+                            "Withdraw to main account", color = Ids.colors.brand, enabled = !submitting,
                         ) { withdraw() }
                         else -> Text(
-                            if (plan.status == "CANCELLED") "This plan was cancelled." else "This plan has been withdrawn to your main wallet.",
+                            if (plan.status == "CANCELLED") "This plan was cancelled." else "This plan has been withdrawn to your main account.",
                             color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
                     }

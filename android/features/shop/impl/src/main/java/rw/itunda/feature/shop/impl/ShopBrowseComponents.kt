@@ -114,7 +114,7 @@ internal fun ShoppingBannerCarousel(banners: List<rw.itunda.core.network.TimeDea
 // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row -- see
 // backend ShoppingMissionService's own doc comment. Every icon here is a real,
 // backend-tracked once-per-day (or once-ever, for the welcome bonus) claim that
-// credits real RWF straight into the real wallet -- no fabricated points currency.
+// credits real RWF straight into the real account -- no fabricated points currency.
 @Composable
 internal fun ShoppingPointsRow(
     missions: List<rw.itunda.core.network.ShoppingMissionDto>,
