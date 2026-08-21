@@ -262,6 +262,31 @@ public struct DiscoverRowData: Identifiable {
     }
 }
 
+/// Real Toss Bank reference (20 screenshots, 2026-08-21): backs
+/// AccountLedgerDetailView, the real ledger drill-in reached by tapping
+/// AccountSummaryCard's balance (not inline on BankView itself -- see that
+/// struct's own doc comment for the direct user correction that moved it here).
+/// Plain display model (not CoreNetwork's own TransactionDto) matching this
+/// file's established SavingsRowData/DiscoverRowData/CooperativeRowData
+/// convention -- the App target maps the real transactions before calling in,
+/// same pattern TransactionHistoryScreen's own TransactionDisplayItem already
+/// establishes.
+public struct RecentTransactionRowData: Identifiable {
+    public let id: String
+    public let title: String
+    public let subtitle: String
+    public let amountText: String
+    public let isOutgoing: Bool
+
+    public init(id: String, title: String, subtitle: String, amountText: String, isOutgoing: Bool) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.amountText = amountText
+        self.isOutgoing = isOutgoing
+    }
+}
+
 public struct BankView: View {
     @State private var locale: BankingLocale = loadBankingLocale()
     // Real Deposit Protection Fund status (2026-08-11) -- see backend's
@@ -269,11 +294,16 @@ public struct BankView: View {
     // "each screen fetches its own minimal real data" shape `locale` above already
     // establishes for this view.
     @State private var depositProtection: DepositProtectionStatus?
+    // Real Toss Bank reference (20 screenshots, 2026-08-21) -- see
+    // AccountSummaryCard's own doc comment: opens AccountLedgerDetailView, the
+    // real ledger drill-in, rather than rendering it inline on this screen.
+    @State private var showAccountDetail = false
     private let balanceText: String
     private let accountNumber: String?
     private let savingsRows: [SavingsRowData]
     private let discoverRows: [DiscoverRowData]
     private let coopRows: [CooperativeRowData]
+    private let recentTransactions: [RecentTransactionRowData]
     private let onSend: () -> Void
     private let onOpenTransactionHistory: () -> Void
     private let onOpenNotifications: () -> Void
@@ -293,6 +323,7 @@ public struct BankView: View {
         savingsRows: [SavingsRowData] = [],
         discoverRows: [DiscoverRowData] = [],
         coopRows: [CooperativeRowData] = [],
+        recentTransactions: [RecentTransactionRowData] = [],
         onSend: @escaping () -> Void = {},
         onOpenTransactionHistory: @escaping () -> Void = {},
         onOpenNotifications: @escaping () -> Void = {},
@@ -303,6 +334,7 @@ public struct BankView: View {
         self.savingsRows = savingsRows
         self.discoverRows = discoverRows
         self.coopRows = coopRows
+        self.recentTransactions = recentTransactions
         self.onSend = onSend
         self.onOpenTransactionHistory = onOpenTransactionHistory
         self.onOpenNotifications = onOpenNotifications
@@ -313,7 +345,16 @@ public struct BankView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
                 HomeTopBar(locale: locale, onOpenNotifications: onOpenNotifications, onOpenProfile: onOpenProfile)
-                AccountSummaryCard(balanceText: balanceText, accountNumber: accountNumber, onSend: onSend, locale: locale)
+                // Real Toss Bank reference (20 screenshots, 2026-08-21): the account
+                // ledger was first built inline right here, flat, directly below the
+                // balance card -- the user's own direct follow-up ("those below they
+                // are not supposed to be in itunda account details screen ... they
+                // suppose to be in itunda bank home screen like toss does") corrected
+                // that on the identical Android build: real Toss keeps the ledger on
+                // its own separate screen, reached by a tap on the balance, not folded
+                // into this catalog/home screen. AccountSummaryCard is now that tap
+                // target; AccountLedgerDetailView (below) is the real drill-in.
+                AccountSummaryCard(balanceText: balanceText, accountNumber: accountNumber, onSend: onSend, onOpenDetail: { showAccountDetail = true }, locale: locale)
                 QuickActionsRow(locale: locale)
                 if !coopRows.isEmpty {
                     HomeSectionCard(
@@ -404,6 +445,17 @@ public struct BankView: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task {
             depositProtection = try? await NetworkClient.shared.getDepositProtectionStatus().status
+        }
+        .fullScreenCover(isPresented: $showAccountDetail) {
+            NavigationStack {
+                AccountLedgerDetailView(
+                    balanceText: balanceText,
+                    accountNumber: accountNumber,
+                    transactions: recentTransactions,
+                    onBack: { showAccountDetail = false },
+                    onSend: onSend
+                )
+            }
         }
     }
 }
@@ -512,33 +564,42 @@ private struct AccountSummaryCard: View {
     let balanceText: String
     let accountNumber: String?
     let onSend: () -> Void
+    // Real Toss Bank reference (20 screenshots, 2026-08-21) -- see this file's
+    // own header doc comment on BankView: tapping the balance opens the real
+    // ledger drill-in (AccountLedgerDetailView), matching the direct user
+    // correction that moved the ledger off this home screen.
+    let onOpenDetail: () -> Void
     let locale: BankingLocale
 
     var body: some View {
         VStack(alignment: .leading, spacing: IDS.Layout.cardGap) {
-            VStack(alignment: .leading, spacing: IDS.Layout.tightGap) {
-                Text(bt("totalBalance", locale: locale))
-                    .font(IDS.Typography.sectionLabel)
-                    .foregroundColor(IDS.Colors.textSecondary)
-                // Real Toss Bank reference (user-provided screenshots, 2026-08-11):
-                // the real account detail screen leads with the account's own real
-                // number ("토스뱅크 1000-3058-1980") directly above the balance --
-                // itunda's real, collision-checked AccountNumberGenerator has produced
-                // a real accountNumber for the MAIN account since it was built, but it
-                // was never actually shown anywhere except when entering someone
-                // ELSE's number to send to. Same fix on Android/web the same day.
-                if let accountNumber {
-                    Text("itunda \(accountNumber.chunked(4).joined(separator: "-"))")
-                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
-                        .foregroundColor(IDS.Colors.textTertiary)
+            Button(action: onOpenDetail) {
+                VStack(alignment: .leading, spacing: IDS.Layout.tightGap) {
+                    Text(bt("totalBalance", locale: locale))
+                        .font(IDS.Typography.sectionLabel)
+                        .foregroundColor(IDS.Colors.textSecondary)
+                    // Real Toss Bank reference (user-provided screenshots, 2026-08-11):
+                    // the real account detail screen leads with the account's own real
+                    // number ("토스뱅크 1000-3058-1980") directly above the balance --
+                    // itunda's real, collision-checked AccountNumberGenerator has produced
+                    // a real accountNumber for the MAIN account since it was built, but it
+                    // was never actually shown anywhere except when entering someone
+                    // ELSE's number to send to. Same fix on Android/web the same day.
+                    if let accountNumber {
+                        Text("itunda \(accountNumber.chunked(4).joined(separator: "-"))")
+                            .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
+                            .foregroundColor(IDS.Colors.textTertiary)
+                    }
+                    Text(balanceText)
+                        .font(IDS.Typography.largeAmount)
+                        .foregroundColor(IDS.Colors.textPrimary)
+                    Text(bt("balanceSubtitle", locale: locale))
+                        .font(IDS.Typography.bodyMedium)
+                        .foregroundColor(IDS.Colors.textSecondary)
                 }
-                Text(balanceText)
-                    .font(IDS.Typography.largeAmount)
-                    .foregroundColor(IDS.Colors.textPrimary)
-                Text(bt("balanceSubtitle", locale: locale))
-                    .font(IDS.Typography.bodyMedium)
-                    .foregroundColor(IDS.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .buttonStyle(.plain)
 
             HStack(spacing: IDS.Layout.inlineGap) {
                 BalanceTile(title: bt("mainAccount", locale: locale), amount: balanceText)
@@ -711,8 +772,10 @@ struct BankView_Previews: PreviewProvider {
 
 // Real account-number display grouping (2026-08-11) -- see AccountSummaryCard's own
 // doc comment. Matches Android's `accountNumber.chunked(4)` and web's
-// `.match(/.{1,4}/g)` -- same 4-digit grouping on all 3 platforms.
-private extension String {
+// `.match(/.{1,4}/g)` -- same 4-digit grouping on all 3 platforms. Internal (not
+// fileprivate) since 2026-08-21 -- AccountLedgerDetailView.swift, a separate file
+// in this same module, needs it too for the identical account-number display.
+extension String {
     func chunked(_ size: Int) -> [String] {
         guard size > 0 else { return [self] }
         var result: [String] = []

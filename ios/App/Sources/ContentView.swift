@@ -293,6 +293,16 @@ struct ContentView: View {
                             savingsRows: savingsRows,
                             discoverRows: bankViewModel.discoverRows,
                             coopRows: coopRows,
+                            recentTransactions: bankViewModel.transactions.map { tx in
+                                let isOutgoing = tx.senderId == bankViewModel.currentUserId
+                                return RecentTransactionRowData(
+                                    id: tx.id,
+                                    title: tx.description,
+                                    subtitle: tx.status.capitalized,
+                                    amountText: "\(isOutgoing ? "-" : "+")\(Int(tx.amount)) \(tx.currency)",
+                                    isOutgoing: isOutgoing
+                                )
+                            },
                             onSend: { showTransferFlow = true },
                             onOpenTransactionHistory: { showTransactionHistory = true },
                             onOpenNotifications: { showBankSettings = true },
