@@ -54,6 +54,14 @@ class AccountController(
     fun getTransactionHistory(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "transactions" to accountService.getTransactionHistory(currentUser.userId)))
 
+    // Real Toss Bank/Toss Pay separation follow-up (2026-08-21) -- see
+    // AccountService.getAccountTransactionHistory's own doc comment. Backs a real
+    // "itunda Pay Money" detail screen showing only that account's own transactions,
+    // separate from the user-wide list above.
+    @GetMapping("/{id}/transactions")
+    fun getAccountTransactionHistory(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to accountService.getAccountTransactionHistory(currentUser.userId, id)))
+
     // Real Toss Timeline-style unusual-spend flag (2026-07-26) -- see
     // AccountService.getTransactionTimeline's own doc comment. A new, separate read path
     // over the exact same real transactions -- /transactions above is unchanged.

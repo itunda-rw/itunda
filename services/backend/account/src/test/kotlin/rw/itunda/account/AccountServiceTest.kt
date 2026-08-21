@@ -8,6 +8,9 @@ import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
@@ -18,6 +21,7 @@ import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.Optional
 
 /**
@@ -204,6 +208,54 @@ class AccountServiceTest : BehaviorSpec({
     // Spending-insight/budget coverage (getSpendingInsight, getBudgets) now lives in
     // SpendingInsightServiceTest.kt, following SpendingInsightService.kt's own
     // extraction out of AccountService.kt.
+
+    // Real Toss Bank/Toss Pay separation follow-up (2026-08-21) -- the real "Toss Pay
+    // Money" detail screen shows only that account's own transactions, not every
+    // account's mixed together. Previously zero test coverage existed for
+    // getAccountTransactionHistory at all.
+    Given("a real account-scoped transaction history lookup") {
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
+
+        When("a user requests their own real account's transaction history") {
+            val payAccount = account("account_pay", "user_1", "5000")
+            every { accountRepository.findById("account_pay") } returns Optional.of(payAccount)
+            val txns = listOf(
+                Transaction(
+                    id = "txn_1", referenceNumber = "REF1", senderId = "user_1", recipientId = "merchant_1",
+                    fromAccountId = "account_pay", toAccountId = "account_merchant", amount = BigDecimal("500"),
+                    fee = BigDecimal("0"), currency = "RWF", type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
+                    description = "Coffee", createdAt = Instant.now(),
+                ),
+            )
+            every { transactionRepository.findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc("account_pay", "account_pay") } returns txns
+
+            val result = service.getAccountTransactionHistory("user_1", "account_pay")
+
+            Then("it returns exactly that real account's own transactions") {
+                result shouldBe txns
+            }
+        }
+
+        When("a user requests transaction history for a real account that belongs to someone else") {
+            val otherAccount = account("account_other", "user_2", "5000")
+            every { accountRepository.findById("account_other") } returns Optional.of(otherAccount)
+
+            Then("it throws AccountNotFoundException, never revealing the account exists or leaking its history") {
+                try {
+                    service.getAccountTransactionHistory("user_1", "account_other")
+                    error("expected AccountNotFoundException")
+                } catch (e: AccountNotFoundException) {
+                    verify(exactly = 0) { transactionRepository.findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc(any(), any()) }
+                }
+            }
+        }
+    }
 
     Given("a real Toss Timeline-style unusual-spend check over a user's own transaction history") {
         val accountRepository = mockk<AccountRepository>()

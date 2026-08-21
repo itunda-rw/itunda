@@ -325,6 +325,16 @@ interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliat
 
 interface TransactionRepository : JpaRepository<Transaction, String> {
     fun findBySenderIdOrRecipientIdOrderByCreatedAtDesc(senderId: String, recipientId: String): List<Transaction>
+    // Real Toss Bank/Toss Pay separation follow-up (2026-08-21, user-provided real
+    // screenshots): the real Toss Bank account detail screen and the real "Toss Pay
+    // Money" detail screen each show their OWN separate transaction ledger, not one
+    // shared user-wide list -- findBySenderIdOrRecipientIdOrderByCreatedAtDesc above
+    // mixes every account's transactions together, which is honest for a general
+    // history view but wrong for either detail screen specifically. accountId is
+    // matched against the real fromAccountId/toAccountId columns every Transaction
+    // row already carries (see MerchantService.collect/AccountService.confirmTransfer
+    // etc. -- every money-moving write already sets one or both).
+    fun findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc(fromAccountId: String, toAccountId: String): List<Transaction>
     fun existsBySenderIdAndTypeAndStatus(senderId: String, type: TransactionType, status: TransactionStatus): Boolean
 
     /** Operations dashboard: settled volume belongs to the day a transaction completed. */

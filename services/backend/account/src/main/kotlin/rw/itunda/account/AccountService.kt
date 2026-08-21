@@ -72,6 +72,18 @@ class AccountService(
     fun getTransactionHistory(userId: String): List<Transaction> =
         transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(userId, userId)
 
+    // Real Toss Bank/Toss Pay separation follow-up (2026-08-21, user-provided real
+    // screenshots of both the Toss Bank AND the real "Toss Pay Money" detail screens):
+    // each shows its own separate transaction ledger, not the one shared user-wide
+    // list getTransactionHistory above returns. getAccountById re-verifies real
+    // ownership first (same IDOR-safety discipline this class already applies
+    // everywhere else a client-supplied accountId is trusted), so an accountId
+    // belonging to a different user real-404s rather than leaking their history.
+    fun getAccountTransactionHistory(userId: String, accountId: String): List<Transaction> {
+        val account = getAccountById(accountId, userId)
+        return transactionRepository.findByFromAccountIdOrToAccountIdOrderByCreatedAtDesc(account.id, account.id)
+    }
+
     /**
      * Real Toss Timeline (타임라인)-style unusual-spend flag (2026-07-26) -- see
      * blog.toss.im/2020/01/09/toss/experience/toss-user-interview-timeline (Toss's own
