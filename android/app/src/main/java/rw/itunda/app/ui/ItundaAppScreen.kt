@@ -3405,31 +3405,38 @@ private fun PayTab(
     // duplicating real Pay-product content onto a tab meant to be a generic access
     // point. Pay is itunda's actual complete, self-contained account product, so
     // this is where that card belongs now.
-    val primaryAccount by viewModel.primaryAccount.collectAsState()
-    val payBalanceText = primaryAccount?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
+    // Real Toss Bank/Toss Pay separation (2026-08-21) -- this is the real itunda Pay
+    // money balance (payAccount), NOT the Bank account (primaryAccount) -- was wrongly
+    // reusing primaryAccount, meaning Pay showed the Bank balance under its own label
+    // (same bug found+fixed on bank-mfe's PayHub the same session, see
+    // MainViewModel.payAccount's own doc comment).
+    val payAccount by viewModel.payAccount.collectAsState()
+    val payBalanceText = payAccount?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
     val interestJar by viewModel.interestJar.collectAsState()
     val recentTransactions by viewModel.transactions.collectAsState()
     // Real swipeable funding-source cards (2026-08-11) -- the user's own KakaoPay
     // reference screenshot's bottom card carousel. The real, buildable slice of that:
-    // itunda's own real accounts (MAIN + any opened foreign-currency ones,
+    // itunda's own real accounts (PAY + any opened foreign-currency ones,
     // ForeignCurrencyAccountService) as distinct swipeable cards, where the settled
     // card is the one CustomerPaymentCode.accountId actually funds the QR from -- see
     // MerchantService.generateCustomerPaymentCode's own doc comment. No fabricated
     // membership/deal cards: itunda has no real backend for those as payment sources.
+    // Defaults to PAY (2026-08-21 fix), not MAIN -- matches MerchantService.collect/
+    // chargeByCustomerCode's own real default funding source post-separation.
     var accounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
     var selectedAccountId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         try {
-            val main = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.filter { it.type == "MAIN" }
+            val pay = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.filter { it.type == "PAY" }
             val foreign = rw.itunda.core.network.NetworkClient.apiService.getForeignAccounts().accounts
-            accounts = main + foreign
+            accounts = pay + foreign
         } catch (e: Exception) {
             // Real, non-critical -- MyPaymentCodeCard falls back to the backend's own
-            // MAIN default when accounts never load.
+            // PAY default when accounts never load.
         }
     }
     LaunchedEffect(accounts) {
-        if (selectedAccountId == null) selectedAccountId = accounts.firstOrNull { it.type == "MAIN" }?.id
+        if (selectedAccountId == null) selectedAccountId = accounts.firstOrNull { it.type == "PAY" }?.id
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
@@ -3439,11 +3446,11 @@ private fun PayTab(
         item {
             AccountHeroCard(
                 balanceText = payBalanceText,
-                accountNumber = primaryAccount?.accountNumber,
+                accountNumber = payAccount?.accountNumber,
                 onSend = onSend,
                 onCashOutAtAgent = onCashOutAtAgent,
                 recentTransactions = recentTransactions.take(2),
-                currentUserId = primaryAccount?.userId,
+                currentUserId = payAccount?.userId,
                 onSeeAll = onOpenTransactionHistory,
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
             )
@@ -3679,7 +3686,7 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?) 
             Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (selectedAccount.type == "MAIN") "itunda Pay" else "itunda Pay (${selectedAccount.currency})",
+                    if (selectedAccount.type == "PAY") "itunda Pay" else "itunda Pay (${selectedAccount.currency})",
                     color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 )
                 Text(
@@ -3799,7 +3806,7 @@ private fun AccountCardCarousel(
                 )
                 Column {
                     Text(
-                        if (w.type == "MAIN") "itunda Pay" else "itunda Pay ${w.currency}",
+                        if (w.type == "PAY") "itunda Pay" else "itunda Pay ${w.currency}",
                         color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                     )
                     Text(
