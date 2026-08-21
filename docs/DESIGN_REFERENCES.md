@@ -16557,4 +16557,85 @@ REST controller isn't worth fragmenting over 4 lines), so both are
 named, honest follow-ups alongside the rest of the backlog rather than
 selectively excepted.
 
+## 262. Real Toss Pay Money detail screen, and a real-screenshot correction to the Pay home screen -- all 3 platforms, flat design
+
+Two rounds of real screenshots from the user's own live Toss Bank/Toss
+Pay app (22, then a mid-session correction of 3 more) closed a gap
+`feedback_dont_imagine_use_real_reference` exists specifically to catch:
+itunda's Pay tab led with an invented "account hero card" (balance,
+account number, animated count-up, a "Get interest" teaser) that has no
+real Toss Pay equivalent. The real Pay home screen is map-centric --
+nearby-merchant rewards leading straight into the Facepay/QR
+funding-method picker, no balance shown at all. `AccountBalance`
+(bank-mfe `BankDashboard.tsx`) and `AccountHeroCard`/`AccountMiniRow`
+(Android `ItundaAppScreen.kt`) were deleted outright, along with the
+now-fully-unused `MainViewModel.payAccount` StateFlow the §259 fix had
+just added the session before. `MyPaymentCodeCard`, which already
+carried the real funding-source picker and nearby-benefits row on both
+platforms, became the real equivalent of Toss Pay's own map+rewards
+surface -- no capability lost, iOS never had the invented card in the
+first place (`PayScreen` was already title + `PayAMerchantSection`).
+
+The second screenshot batch showed this was only half the real
+picture: Toss Pay also has a separate "Toss Pay Money" DETAIL page,
+reached by drilling into the home screen's balance row, not shown on
+the home screen itself -- balance headline, Send/Add money buttons, a
+month filter, a "see payment history only" toggle, and a real
+date-grouped transaction statement. Structurally parallel to the real
+Toss Bank account-detail screen, just scoped to this one account.
+itunda had no backend capability to fetch a *single account's* own
+transactions (only the user-wide, every-account-mixed-together
+`getTransactionHistory`) -- new `AccountService
+.getAccountTransactionHistory(userId, accountId)` (IDOR-safe via the
+existing `getAccountById` ownership check, 404s rather than leaks) backs
+a new `GET /api/v1/account/{id}/transactions`, with full Kotest coverage
+including a `verify(exactly = 0)` check that a non-owner's request never
+even queries the repository.
+
+Built on all 3 clients, each reached by tapping the balance row inside
+`MyPaymentCodeCard`: bank-mfe's `PayMoneyDetail.tsx` (own file, kept
+`BankDashboard.tsx` under its file-size-lint baseline), Android's
+`PayMoneyDetailScreen.kt` (own file; reuses `AccountDetailScreen`'s own
+`AccountLedgerRow`/`ledgerDateHeader`, now `internal` instead of
+`private` so this file can share them; full en/fr/rw localization), and
+iOS's `PayMoneyDetailScreen.swift` (`Features/Payments/Sources`, takes
+plain values rather than the App target's `Account`/`TransactionDto`
+directly -- same module-dependency-direction constraint
+`TransactionHistoryScreen`'s own `TransactionDisplayItem` already
+established, which gained a `type`/`createdAt` field for this). "Add
+money" is a real, honestly-scoped-out gap on all 3: itunda has no
+self-service "pull an amount from my linked account right now" flow,
+only `AutoTopUpCard`'s threshold-based auto top-up -- each closes back
+to Pay rather than routing somewhere unrelated. iOS's "Send" is
+additionally scoped out: this leaf card has no wired Send/transfer
+entry point to reuse (iOS's Pay tab is pay-a-merchant-only; Send lives
+under the Bank tab's own top-level state).
+
+A third, standalone instruction landed mid-build, looking at the real
+Toss Pay Money screenshot: "that's how I want our all designs to be
+(flat and beautiful) like that" -- that screen has no card container
+anywhere, just the page background with a thin section rule and
+per-row borders. Documented as `docs/UI_UX_GUIDELINES.md` §10 (flat over
+card-heavy, applied going forward on new/touched screens, not a
+retroactive sweep) and built into all 3 `PayMoneyDetailScreen`s from the
+start -- Android's version follows `AccountDetailScreen`'s own
+already-flat precedent rather than introducing a new pattern.
+
+Two incidental file-size-lint extractions came out of building this on
+already-large files: Android's `ItundaAppScreen.kt` (`PayMoneyDetailScreen`
+moved to its own file) and iOS's `ShopPay.swift`, which had already
+crossed the 500-line guideline before this change and would have grown
+further -- `MyPaymentCodeCard`/`AccountCardCarousel`/
+`MyPaymentCodeLocationFetcher` (the largest, most self-contained piece)
+moved to `MyPaymentCodeCard.swift`, bringing `ShopPay.swift` back under
+(723 -> 393 lines). bank-mfe's `BankDashboard.tsx` got the same
+treatment for the new work (`PayMoneyDetail.tsx`) rather than growing
+further past its own already-large baseline.
+
+*Shipped: `services/backend/account/**`, bank-mfe `PayHub`/
+`MyPaymentCodeCard`/`PayMoneyDetail.tsx`, Android `PayTab`/
+`MyPaymentCodeCard`/`PayMoneyDetailScreen.kt`, iOS `MyPaymentCodeCard.swift`/
+`PayMoneyDetailScreen.swift` (commits `793fd232`, `f2cf626c`, `8b65c3d6`,
+`10979a5e`, `81bee1a0`, `47870805`).*
+
 *Shipped: `services/backend/auth/**` (commit `7c7dfda7`).*
