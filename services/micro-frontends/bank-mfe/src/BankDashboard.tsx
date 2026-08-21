@@ -11,6 +11,7 @@ import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchAccounts, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Account } from './lib/account';
+import { PayMoneyDetail } from './PayMoneyDetail';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
@@ -1137,6 +1138,10 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   const [showTransfer, setShowTransfer] = useState(false);
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
   const [facePayEnrolled, setFacePayEnrolled] = useState(false);
+  // Real "Toss Pay Money" detail/statement screen -- see PayMoneyDetail's own doc
+  // comment. Holds the specific account drilled into, not just a boolean, since
+  // MyPaymentCodeCard's own real funding-source picker can select MAIN too.
+  const [openAccountDetail, setOpenAccountDetail] = useState<Account | null>(null);
 
   // Real architectural fix (2026-08-13) -- see HomeView's own doc comment for why
   // the account balance, quick actions, and transaction history moved here from
@@ -1167,6 +1172,24 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 
   if (paymentResult) return <PaymentConfirmation result={paymentResult} onDone={() => { setPaymentResult(null); loadAccount(); }} />;
 
+  if (openAccountDetail) {
+    return (
+      <PayMoneyDetail
+        account={openAccountDetail}
+        onBack={() => setOpenAccountDetail(null)}
+        onSend={() => { setOpenAccountDetail(null); setShowTransfer(true); }}
+        // Real gap, honestly scoped out for now: itunda has no self-service
+        // "pull an amount from my linked account right now" flow -- only
+        // AutoTopUpCard's threshold-based auto top-up exists (configureAutoTopUp/
+        // triggerAutoTopUp below), which isn't the same real capability the
+        // reference's "Add money" button performs. Closing back to PayHub, where
+        // AutoTopUpCard is already visible, rather than routing this button
+        // somewhere unrelated (e.g. Bills) that would silently do the wrong thing.
+        onAddMoney={() => setOpenAccountDetail(null)}
+      />
+    );
+  }
+
   return (
     <div>
       <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
@@ -1183,7 +1206,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           capability lost), and the real interest-claim card lives on the Bank tab's
           own InterestJarCard, which was always the true owner of that Savings-side
           concept -- Pay money doesn't earn interest in the real Toss model either. */}
-      <MyPaymentCodeCard accounts={accounts} />
+      <MyPaymentCodeCard accounts={accounts} onOpenAccountDetail={setOpenAccountDetail} />
       {showTransfer && (
         <TransferFlow
           accountBalance={account?.balance ?? 0}
@@ -6894,7 +6917,7 @@ async function shareOrCopyLink(url: string, title: string, text: string): Promis
 //   Android's own account-only carousel was already an honest, deliberate
 //   simplification of that row, not an inaccuracy -- kept as-is when this pass
 //   restores everything else.
-function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
+function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Account[]; onOpenAccountDetail: (account: Account) => void }) {
   const [revealed, setRevealed] = useState(false);
   const [code, setCode] = useState<CustomerPaymentCode | null>(null);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
@@ -7023,10 +7046,17 @@ function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
         )}
       </div>
       {account && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+        // Real drill-in to the "Toss Pay Money" detail/statement screen (user
+        // screenshots, 2026-08-21) -- see PayMoneyDetail's own doc comment.
+        <button
+          onClick={() => onOpenAccountDetail(account)}
+          style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '16px', padding: '4px 0' }}
+        >
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>itunda Pay</span>
-          <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{account.balance.toLocaleString()} RWF</span>
-        </div>
+          <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {account.balance.toLocaleString()} RWF <ChevronRight size={16} color="var(--itunda-grey-500)" />
+          </span>
+        </button>
       )}
       {linkedAccount && (
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>

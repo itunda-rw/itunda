@@ -40,6 +40,12 @@ export const fetchAccounts = () =>
 export const fetchTransactions = () =>
   apiFetch<{ success: boolean; transactions: Transaction[] }>('/api/v1/account/transactions').then((r) => r.transactions);
 
+// Real Toss Pay Money detail screen (user screenshots, 2026-08-21) needs its own
+// scoped ledger, not fetchTransactions' user-wide mix of every account -- see
+// AccountService.getAccountTransactionHistory's own doc comment on the backend.
+export const fetchAccountTransactions = (accountId: string) =>
+  apiFetch<{ success: boolean; transactions: Transaction[] }>(`/api/v1/account/${accountId}/transactions`).then((r) => r.transactions);
+
 // Real Toss Timeline-style unusual-spend flag -- see AccountService.getTransactionTimeline's
 // own doc comment for the full sourced account.
 export interface TransactionTimelineEntry {
