@@ -2689,6 +2689,15 @@ public struct GroupSummaryDto: Decodable, Identifiable {
 public struct SetGroupPhotoUrlRequest: Encodable { public let photoUrl: String }
 public struct SetGroupDescriptionRequest: Encodable { public let description: String }
 public struct GroupSummaryResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
+
+// Real open-group DTOs -- distinct shape from GroupSummaryDto (a real joinCode,
+// but no memberCount/lastMessage/etc. yet since the group was just created).
+public struct CreateOpenGroupRequest: Encodable { public let name: String }
+public struct OpenGroupDto: Decodable { public let id: String; public let name: String; public let joinCode: String }
+public struct OpenGroupResponse: Decodable { public let success: Bool; public let group: OpenGroupDto }
+public struct JoinGroupByCodeRequest: Encodable { public let joinCode: String }
+public struct JoinedGroupDto: Decodable { public let id: String; public let name: String }
+public struct JoinGroupResponse: Decodable { public let success: Bool; public let group: JoinedGroupDto }
 public struct GroupMessageDto: Decodable, Identifiable {
     public let id: String
     public let groupConversationId: String
@@ -4211,6 +4220,19 @@ extension NetworkClient {
     }
 
     public func getMyGroups() async throws -> GroupsResponse { try await get("api/v1/messages/groups") }
+
+    // Real KakaoTalk 오픈채팅-style open group (Talk-parity port, §243) -- see
+    // GroupMessagingService.createOpenGroup's own doc comment. bank-mfe already
+    // has this (2026-08-19); this is the first iOS client. Anyone with the real
+    // joinCode can join without being invited by phone number first -- distinct
+    // from createGroup above, which requires knowing everyone's real number
+    // up front.
+    public func createOpenGroup(name: String) async throws -> OpenGroupResponse {
+        try await authenticatedPost("api/v1/messages/groups/open", body: CreateOpenGroupRequest(name: name))
+    }
+    public func joinGroupByCode(joinCode: String) async throws -> JoinGroupResponse {
+        try await authenticatedPost("api/v1/messages/groups/join", body: JoinGroupByCodeRequest(joinCode: joinCode))
+    }
 
     public func getGroupMessages(groupId: String) async throws -> GroupMessagesResponse {
         try await get("api/v1/messages/groups/\(groupId)/messages")

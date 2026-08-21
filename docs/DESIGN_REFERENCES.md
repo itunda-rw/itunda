@@ -15505,3 +15505,42 @@ session. [[project_itunda_pay_kakaopay_parity]] gets the same correction.
 
 *Shipped: `android/app/src/main/java/rw/itunda/app/ui/PayQrCodeUtil.kt` +
 `android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt`.*
+
+## 243. Real KakaoTalk 오픈채팅-style Open Chat ported to iOS -- bank-mfe-only since 2026-08-19, closing the gap
+
+[[project_itunda_open_chat]] shipped join-by-code Open Chat to bank-mfe only,
+explicitly recording "Android/iOS not ported." Closed the iOS half.
+
+Added `createOpenGroup`/`joinGroupByCode` to `NetworkClient.swift` (real
+`POST /api/v1/messages/groups/open` / `/join`, matching bank-mfe's
+`lib/messaging.ts` exactly) with their own DTOs (`OpenGroupDto` has a real
+`joinCode`, distinct from the regular `GroupSummaryDto`). Built `OpenChatCard`
+in `TalkGroupsBrowse.swift`, reusing `QrScanCameraView`/`generateQrImage`/
+`parseQrParam` from `QrScanCamera.swift` -- the same real scanning/generation
+infrastructure §237/§239 already built for Pay, not duplicated. Wired into
+`GroupsList`, matching bank-mfe's placement in the Groups tab exactly.
+
+**One deliberate, named scope-down vs bank-mfe**: bank-mfe's own "share invite
+link" step builds a tap-to-join URL back to the web app's own `window.location`
+-- itunda has no real universal-link/app-link association configured for iOS
+(the exact same gap `MerchantDetailView`'s own affiliate-link share already
+named: "no deep-link precedent exists on this app"). Rather than fabricate a
+link that would just open Safari instead of the app, iOS shares the plain join
+CODE via the real native share sheet -- honest about what iOS can actually do
+today, not a copy of a mechanism that wouldn't work here.
+
+**Verification**: full `xcodebuild` build -- BUILD SUCCEEDED. Simulator
+install+launch+screenshot confirmed no crash reaching login. Same honest
+caveat as every other camera/QR feature this session: no interactive
+click-through into create/join/scan itself, no visible Simulator window for UI
+automation in this headless environment.
+
+**Still open**: Android has the identical gap -- `:app` (the consumer app) has
+ZERO camera capability of any kind (confirmed via grep before starting; only
+`:merchantapp` has real CameraX+ML Kit, for payment-code scanning). Porting
+Open Chat there needs that camera infrastructure built for the consumer app
+for the first time, a bigger lift than iOS's port (which reused
+`QrScanCameraView` already built for Pay) -- scoped but not started this pass.
+
+*Shipped: `ios/Core/Network/Sources/NetworkClient.swift` +
+`ios/App/Sources/TalkGroupsBrowse.swift`.*
