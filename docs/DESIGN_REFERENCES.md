@@ -16262,3 +16262,23 @@ All 3 passing. `:app:compileKotlin` clean.
 Pay money and Bank account as two separate visible balances, and this is
 still not deployed to the live private cloud (deploying now only needs
 the 4 client builds pushed together -- the backfill blocker is resolved).
+
+## 256. §254's second rename pass was sitting uncommitted -- found and shipped (commit `3ff7b2fb`)
+
+A `git status` check right after §255 turned up 81 modified backend
+files with no commit -- the real `ApiError.code` STRING rename
+(`WALLET_NOT_FOUND`/`WALLET_FROZEN`/`MINI_WALLET_*` ->
+`ACCOUNT_NOT_FOUND`/`ACCOUNT_FROZEN`/`MINI_ACCOUNT_*`, across every
+controller in the backend) had been done in the working tree during
+§254's session but never committed before that session was interrupted.
+Since the 3 client rename commits (web/Android/iOS, already pushed)
+already expect the NEW `ACCOUNT_*` codes, the previously-pushed backend
+was silently still serving the OLD `WALLET_*` codes -- a real,
+already-relied-upon contract gap between backend and already-shipped
+clients, invisible until this check. Verified via `git diff` that the
+uncommitted content was genuine (real `ApiError(...)` string-literal
+changes, not noise), ran the full backend test suite (1,975 tests, all
+green) since this touches every controller's real error contract, then
+committed and pushed.
+
+*Shipped: `services/backend/**` (81 files, commit `3ff7b2fb`).*
