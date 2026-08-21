@@ -62,6 +62,7 @@ class SelfPaymentException(message: String) : RuntimeException(message)
 class CustomerPaymentCodeNotFoundException(message: String) : RuntimeException(message)
 class CustomerPaymentCodeNotPayableException(message: String) : RuntimeException(message)
 class PaymentCodeAccountNotOwnedException(message: String) : RuntimeException(message)
+class PaymentCodeAccountNotEligibleException(message: String) : RuntimeException(message)
 class CardDeclinedException(message: String) : RuntimeException(message)
 class InvalidWebhookUrlException(message: String) : RuntimeException(message)
 class InvalidApiKeyException(message: String) : RuntimeException(message)
@@ -145,6 +146,18 @@ class MerchantService(
     // range is used rather than inventing a number the way the old
     // MERCHANT_SERVICES.md spec's "QR payments: 1.5%" did independently.
     private val feeRate = BigDecimal("0.015")
+
+    // Real Toss Bank/Toss Pay separation follow-up (2026-08-21, direct user
+    // confirmation) -- a real, pre-existing gap noticed while fixing the "My code"
+    // funding-source default: generateCustomerPaymentCode's own accountId param took
+    // ANY of a customer's real accounts with no type restriction at all, meaning a
+    // SAVINGS/INVESTMENT/LOAN/GROUP account could genuinely fund a merchant payment
+    // if selected -- accounts that were never meant to be payment sources. Matches
+    // real KakaoPay/Toss Pay's own scoped funding-source picker (bank accounts/cards
+    // linked to Pay, never a savings/investment product). PAY is the real default;
+    // MAIN/FOREIGN_CURRENCY are the two real "connected to different bank accounts
+    // and different cards" alternatives the user's own original description named.
+    private val PAYMENT_ELIGIBLE_ACCOUNT_TYPES = setOf(AccountType.PAY, AccountType.MAIN, AccountType.FOREIGN_CURRENCY)
 
     // Real Toss Payments-sourced grace period (2026-07-28) -- see generateApiKey's own
     // doc comment for the citation.
@@ -944,6 +957,9 @@ class MerchantService(
         if (accountId != null) {
             val account = accountRepository.findById(accountId).orElseThrow { MerchantNoAccountException("Account not found") }
             if (account.userId != userId) throw PaymentCodeAccountNotOwnedException("That account does not belong to you")
+            if (account.type !in PAYMENT_ELIGIBLE_ACCOUNT_TYPES) {
+                throw PaymentCodeAccountNotEligibleException("This account can't be used to pay a merchant")
+            }
         }
         customerPaymentCodeRepository.invalidateUnusedByUserId(userId)
         val codeBytes = ByteArray(24)
@@ -1002,6 +1018,14 @@ class MerchantService(
         var payerAccount = paymentCode.accountId?.let { accountRepository.findById(it).orElse(null) }
             ?: accountRepository.findByUserIdAndType(payerUserId, AccountType.PAY)
             ?: throw MerchantNoAccountException("No itunda Pay money found for this account")
+        // Defense in depth for the same real allowlist generateCustomerPaymentCode's
+        // own doc comment establishes -- this should be unreachable in practice
+        // (generation already rejects an ineligible accountId), but a payment code
+        // is a real bearer credential that could in principle predate this check, so
+        // charge time re-verifies rather than trusting generation time alone.
+        if (payerAccount.type !in PAYMENT_ELIGIBLE_ACCOUNT_TYPES) {
+            throw PaymentCodeAccountNotEligibleException("This account can't be used to pay a merchant")
+        }
         if (paymentCode.accountId == null) {
             payerAccount = autoTopUpService.ensureSufficientPayBalance(payerUserId, payerAccount, amount)
         }

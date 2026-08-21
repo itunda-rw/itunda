@@ -155,6 +155,62 @@ class MerchantChargeByCustomerCodeTest : BehaviorSpec({
                 verify(exactly = 0) { accountRepository.findByUserIdAndType("payer_code_3", AccountType.PAY) }
             }
         }
+
+        // Real gap found+fixed (2026-08-21, direct user confirmation): the funding-
+        // source picker had no account-type restriction at all -- a customer could
+        // generate a code funded by a SAVINGS/INVESTMENT/LOAN account, none of which
+        // are real payment-eligible products. See PAYMENT_ELIGIBLE_ACCOUNT_TYPES's
+        // own doc comment.
+        When("generating a payment code explicitly funded by a real non-payment-eligible account") {
+            val savingsAccount = account("account_savings", "payer_code_4").also { it.type = AccountType.SAVINGS }
+            every { accountRepository.findById("account_savings") } returns Optional.of(savingsAccount)
+
+            Then("it rejects loudly at generation time, not silently at charge time") {
+                try {
+                    service.generateCustomerPaymentCode("payer_code_4", "account_savings")
+                    error("expected PaymentCodeAccountNotEligibleException")
+                } catch (e: PaymentCodeAccountNotEligibleException) {
+                    // expected
+                }
+                verify(exactly = 0) { customerPaymentCodeRepository.save(any()) }
+            }
+        }
+
+        When("generating a payment code explicitly funded by a real MAIN or FOREIGN_CURRENCY account") {
+            val mainAccount = account("account_main_5", "payer_code_5").also { it.type = AccountType.MAIN }
+            every { accountRepository.findById("account_main_5") } returns Optional.of(mainAccount)
+
+            Then("it's accepted -- MAIN and FOREIGN_CURRENCY are real payment-eligible funding sources") {
+                val code = service.generateCustomerPaymentCode("payer_code_5", "account_main_5")
+                code.accountId shouldBe "account_main_5"
+            }
+        }
+
+        // Defense-in-depth coverage for the charge-time re-check -- unreachable via
+        // generateCustomerPaymentCode alone (which already rejects this), but a
+        // payment code is a real bearer credential this service re-verifies rather
+        // than trusting generation time alone.
+        When("charging a customer's code whose stored account somehow carries a non-eligible type") {
+            val savingsAccount = account("account_savings_6", "payer_code_6").also { it.type = AccountType.SAVINGS }
+            val paymentCode = CustomerPaymentCode(
+                id = "cpc_6", userId = "payer_code_6", code = "code_6", expiresAt = Instant.now().plusSeconds(600),
+                accountId = "account_savings_6",
+            )
+            every { customerPaymentCodeRepository.findByCode("code_6") } returns paymentCode
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { accountRepository.findById("account_savings_6") } returns Optional.of(savingsAccount)
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
+
+            Then("it rejects before ever posting a real ledger transaction") {
+                try {
+                    service.chargeByCustomerCode("owner_1", "code_6", BigDecimal("3000"))
+                    error("expected PaymentCodeAccountNotEligibleException")
+                } catch (e: PaymentCodeAccountNotEligibleException) {
+                    // expected
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
     }
 }) {
     // Same reasoning as MerchantServiceTest.kt/LedgerServiceTest.kt: fresh mocks per

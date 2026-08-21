@@ -463,6 +463,10 @@ class MerchantController(
     fun handlePaymentCodeAccountNotOwned(ex: PaymentCodeAccountNotOwnedException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_OWNED", ex.message ?: "Not found"))
 
+    @ExceptionHandler(PaymentCodeAccountNotEligibleException::class)
+    fun handlePaymentCodeAccountNotEligible(ex: PaymentCodeAccountNotEligibleException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("ACCOUNT_NOT_PAYMENT_ELIGIBLE", ex.message ?: "Unprocessable"))
+
     @ExceptionHandler(SelfPaymentException::class)
     fun handleSelfPayment(ex: SelfPaymentException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_PAYMENT_NOT_ALLOWED", ex.message ?: "Bad request"))
