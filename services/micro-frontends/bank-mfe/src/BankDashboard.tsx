@@ -2,7 +2,8 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { FacePayStatusRow, RewardsPreviewSection } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -936,41 +937,38 @@ function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
   const { t } = useI18n();
 
   return (
-    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-      <motion.div
-        whileTap={{ scale: 0.96 }}
-        className="itunda-card"
-        onClick={onCardsClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardsClick(); } }}
-        style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
-      >
-        <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: 'rgba(138, 43, 226, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <AccountIcon size={24} color="#8A2BE2" />
-        </div>
-        <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
-      </motion.div>
-    </div>
+    <motion.div
+      whileTap={{ scale: 0.98 }}
+      className="itunda-flat-section"
+      onClick={onCardsClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardsClick(); } }}
+      style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+    >
+      <div style={{ width: '38px', height: '38px', borderRadius: '999px', backgroundColor: 'rgba(138, 43, 226, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <AccountIcon size={18} color="#8A2BE2" />
+      </div>
+      <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
+    </motion.div>
   );
 }
 
 function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions: Transaction[]; unusuallyLargeIds?: Set<string> }) {
   const { t } = useI18n();
+  // Real Toss Pay home reference (2026-08-22): "Payment history", flat, not the
+  // generic itunda-card TransactionHistory previously used.
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
-      className="itunda-card"
-      style={{ padding: '24px 20px' }}
+      className="itunda-flat-section"
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 4px' }}>
-        <h3 style={{ color: 'var(--itunda-grey-900)', margin: 0, fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: '700' }}>{t('home.recentActivity')}</h3>
-      </div>
+      <h3 style={{ color: 'var(--itunda-grey-500)', margin: '0 0 12px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: '600' }}>Payment history</h3>
 
       {transactions.length === 0 ? (
-        <EmptyState message={t('home.noTransactions')} />
+        <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-500)' }}>{t('home.noTransactions')}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <AnimatePresence>
@@ -1137,6 +1135,18 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   const [showTransfer, setShowTransfer] = useState(false);
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
   const [facePayEnrolled, setFacePayEnrolled] = useState(false);
+  const [facePayBusy, setFacePayBusy] = useState(false);
+  // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
+  // "our pay home screen should also look 100% like toss pay home screen"): the real
+  // screen's "Get more rewards" list is itunda's own already-real RewardsService task
+  // list (RewardsView, reachable from Explore -> Trust & community), never surfaced on
+  // Pay before -- shown here as a real preview (unclaimed + eligible tasks only, capped
+  // at 3) rather than fabricating Toss-specific rows itunda has no backend for ("4%
+  // back with Toss Prime", "Google gift codes"). "Your Coupons" (a cross-merchant
+  // coupon wallet) and "How to pay online" (external online-merchant integrations) are
+  // honestly scoped out -- itunda has no real backend for either (coupons only exist
+  // scoped to one merchant at a time, fetchCouponsForCustomer(merchantId)).
+  const [rewardsPreview, setRewardsPreview] = useState<RewardTasksResult | null>(null);
   // Real "Toss Pay Money" detail/statement screen -- see PayMoneyDetail's own doc
   // comment. Holds the specific account drilled into, not just a boolean, since
   // MyPaymentCodeCard's own real funding-source picker can select MAIN too.
@@ -1167,7 +1177,20 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   useEffect(() => {
     loadAccount();
     fetchFacePayStatus().then((result) => setFacePayEnrolled(result.enrolled)).catch(() => setFacePayEnrolled(false));
+    fetchRewardTasks().then(setRewardsPreview).catch(() => setRewardsPreview(null));
   }, []);
+
+  const handleFacePayToggle = async () => {
+    setFacePayBusy(true);
+    try {
+      if (facePayEnrolled) await revokeFacePay(); else await enrollFacePay();
+      setFacePayEnrolled((v) => !v);
+    } catch {
+      // Non-critical -- the row just keeps showing the last-known enrollment state.
+    } finally {
+      setFacePayBusy(false);
+    }
+  };
 
   if (paymentResult) return <PaymentConfirmation result={paymentResult} onDone={() => { setPaymentResult(null); loadAccount(); }} />;
 
@@ -1191,20 +1214,18 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 
   return (
     <div>
-      <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
-      {/* Real Toss Pay reference (user-provided screenshots, 2026-08-21): the real Pay
-          home screen has no headline balance card at all -- it's a nearby-merchant-
-          rewards surface leading straight into the payment-method picker (Facepay/QR
-          sheet: linked bank account or card, no separate "Pay Money" balance shown
-          anywhere). The account-hero-card this tab used to lead with (real balance,
-          "Get interest" teaser) was itunda's own invented pattern, not a real Toss Pay
-          one -- removed. MyPaymentCodeCard already carries both the real funding-
-          source picker and the real nearby-merchant-benefits row, so it's the real
-          equivalent of Toss Pay's own map+rewards home surface. The Send/Bills quick
-          actions right below already cover AccountBalance's old Transfer button (no
-          capability lost), and the real interest-claim card lives on the Bank tab's
-          own InterestJarCard, which was always the true owner of that Savings-side
-          concept -- Pay money doesn't earn interest in the real Toss model either. */}
+      {/* Real Toss Pay home reference (4 screenshots, 2026-08-22): a bold "Pay"
+          wordmark plus a settings icon, not the generic ProductPageHeader every
+          other tab uses -- itunda has no dedicated Pay-settings screen yet, so this
+          honestly routes to the You tab (the closest real settings destination)
+          rather than fabricating one. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 4px 16px' }}>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>Pay</h2>
+        <button onClick={() => onNavigateToTab('YOU')} aria-label="Pay settings" style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}>
+          <Settings size={20} />
+        </button>
+      </div>
+      <FacePayStatusRow enrolled={facePayEnrolled} busy={facePayBusy} onToggle={handleFacePayToggle} />
       <MyPaymentCodeCard accounts={accounts} onOpenAccountDetail={setOpenAccountDetail} />
       {showTransfer && (
         <TransferFlow
@@ -1214,15 +1235,16 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           onSuccess={() => { setShowTransfer(false); loadAccount(); }}
         />
       )}
-      <div className="itunda-card" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
-        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!account} style={{ minHeight: '52px' }}>
+      <div style={{ display: 'flex', gap: '8px', margin: '4px 0 16px' }}>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!account} style={{ flex: 1, minHeight: '48px' }}>
           <Send size={17} /> Send money
         </button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => onNavigateToTab('BILLS')} style={{ minHeight: '52px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => onNavigateToTab('BILLS')} style={{ flex: 1, minHeight: '48px' }}>
           <Receipt size={17} /> Bills & airtime
         </button>
       </div>
       <QuickActions onCardsClick={onNavigateToCard} />
+      {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
       <RequestMoneyCard />
       <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
       <PayByStaticQrCard onPaid={setPaymentResult} />
@@ -1230,6 +1252,12 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       <DelayedTransfersCard />
       {account && <AutoTopUpCard accountId={account.id} />}
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
+      {/* Real "FAQ / Send feedback" (2026-08-22) -- itunda has no FAQ-content system,
+          so this honestly routes to the real Support tab rather than fabricating
+          static FAQ copy. */}
+      <button onClick={() => onNavigateToTab('SUPPORT')} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '14px 4px', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+        Get help
+      </button>
     </div>
   );
 }
