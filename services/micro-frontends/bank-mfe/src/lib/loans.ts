@@ -26,7 +26,7 @@ export interface Lender {
 export interface LoanAccount {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   offerId: string;
   principal: number;
   outstanding: number;
@@ -90,7 +90,7 @@ export const refinanceLoan = (loanId: string) =>
 export interface OverdraftAccount {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   creditLimit: number;
   drawnBalance: number;
   interestRate: number;
@@ -144,7 +144,7 @@ export const repayOverdraft = (amount: number) =>
 export interface PostpaidCreditLine {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   creditLimit: number;
   currentBalance: number;
   status: 'ACTIVE' | 'SUSPENDED';

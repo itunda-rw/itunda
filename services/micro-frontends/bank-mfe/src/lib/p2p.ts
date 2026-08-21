@@ -1,11 +1,11 @@
 import { apiFetch } from './api';
 import { randomUUID } from './uuid';
-import type { Transaction } from './wallet';
+import type { Transaction } from './account';
 
 // Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- see
 // P2pService.sendDirect's own doc comment. A real recipient (by phone number or account
 // number) in one step, no pre-existing payment request needed and no quote step (unlike
-// WalletService.confirmTransfer, there's no external rail decision to quote -- the
+// AccountService.confirmTransfer, there's no external rail decision to quote -- the
 // recipient is either a real itunda account or a real, honest 404).
 
 // Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
@@ -32,7 +32,7 @@ export const sendDirect = (recipient: string, amount: number, description: strin
 // entity-cross-reference discovery sweep) -- the person-to-person counterpart to a
 // merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's own doc comment).
 // A requester generates a real, 15-minute-expiring request; anyone who has the code
-// can pay it directly, real wallet-to-wallet, no fee. Real (rate-limited, tested,
+// can pay it directly, real account-to-account, no fee. Real (rate-limited, tested,
 // live-verified against a real backend in a past session) but had zero client
 // anywhere until now.
 export type P2pPaymentRequestStatus = 'PENDING' | 'COMPLETED' | 'EXPIRED';

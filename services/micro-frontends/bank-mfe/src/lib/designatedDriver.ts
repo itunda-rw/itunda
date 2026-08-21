@@ -33,7 +33,7 @@ export interface DesignatedDriverTrip {
 export interface DesignatedDriver {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   licenseNumber: string;
   available: boolean;
   currentLatitude: number | null;

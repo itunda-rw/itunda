@@ -20,7 +20,7 @@ export interface CooperativeMembership {
   id: string;
   cooperativeId: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   memberSince: string;
   active: boolean;
 }
@@ -30,7 +30,7 @@ export type HarvestAdvanceStatus = 'REQUESTED' | 'DISBURSED' | 'REPAID' | 'OVERD
 export interface HarvestAdvance {
   id: string;
   membershipId: string;
-  walletId: string;
+  accountId: string;
   principalAmount: number;
   purpose: string;
   expectedHarvestDate: string;

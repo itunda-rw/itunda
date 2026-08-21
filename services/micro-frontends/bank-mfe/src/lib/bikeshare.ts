@@ -13,7 +13,7 @@ export type BikeAssetRentalStatus = 'ACTIVE' | 'COMPLETED';
 export interface BikeAsset {
   id: string;
   ownerUserId: string;
-  walletId: string;
+  accountId: string;
   type: BikeAssetType;
   currentLatitude: number;
   currentLongitude: number;

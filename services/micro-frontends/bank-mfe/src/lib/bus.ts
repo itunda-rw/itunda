@@ -13,7 +13,7 @@ export type BusBookingStatus = 'BOOKED' | 'CANCELLED';
 export interface BusTrip {
   id: string;
   operatorUserId: string;
-  walletId: string;
+  accountId: string;
   origin: string;
   destination: string;
   departureTime: string;

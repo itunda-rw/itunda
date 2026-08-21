@@ -265,7 +265,7 @@ export interface RatingSummary {
 // account of the real bug this fixes (every PICKUP order was previously unreviewable).
 // Real Uber Eats post-delivery tip -- see backend EatsOrderService.tipRider's own doc
 // comment. Found via scripts/uncalled-endpoint-sweep.py: fully built (real
-// already-tipped guard, real TIP_WINDOW, real wallet-to-wallet ledger legs) with zero
+// already-tipped guard, real TIP_WINDOW, real account-to-account ledger legs) with zero
 // client anywhere, mirroring the real gap this session already closed for
 // RideTripService.tipDriver. Real backend shape: no Idempotency-Key required here
 // (unlike the ride tip), matching this exact endpoint's own real signature.

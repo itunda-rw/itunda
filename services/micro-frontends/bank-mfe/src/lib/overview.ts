@@ -2,7 +2,7 @@ import { apiFetch } from './api';
 
 // Real Toss-style unified account overview (rw.itunda.overview.OverviewService) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere (Android,
-// iOS, or bank-mfe) until the Android port the same day. Aggregates wallets, savings,
+// iOS, or bank-mfe) until the Android port the same day. Aggregates accounts, savings,
 // loans, investments, insurance, and linked external bank/MoMo accounts in one call.
 // See OverviewService.kt's own doc comment for why insurance is excluded from net
 // worth (a sunk expense, not an asset).

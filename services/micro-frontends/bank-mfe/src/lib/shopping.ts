@@ -189,13 +189,13 @@ export const payByStaticQr = (merchantId: string, amount: number, description?: 
 export interface CustomerPaymentCode {
   code: string;
   expiresAt: string;
-  walletId: string | null;
+  accountId: string | null;
 }
 
-export const generateCustomerPaymentCode = (walletId?: string) =>
+export const generateCustomerPaymentCode = (accountId?: string) =>
   apiFetch<{ success: boolean } & CustomerPaymentCode>('/api/v1/merchant/pay/customer-code', {
     method: 'POST',
-    body: JSON.stringify({ walletId }),
+    body: JSON.stringify({ accountId }),
   });
 
 // Real read-only preview (item 149) -- see backend MerchantService.previewIntent's own
@@ -255,7 +255,7 @@ export const unfollowMerchant = (merchantId: string) =>
 // built the merchant-owner plan-management side on merchant-mfe) -- this is the
 // customer-facing half: browse a merchant's own active plans and subscribe. Subscribing
 // charges the first cycle immediately (real "인증 + 첫결제"), then itunda charges the
-// same wallet automatically every intervalDays with zero further approval, distinct
+// same account automatically every intervalDays with zero further approval, distinct
 // from SubscriptionsView's own "detected from payment history" read-only insight above.
 export interface MerchantBillingPlan {
   id: string;

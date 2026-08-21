@@ -16,7 +16,7 @@ export type WeeklySavingsPlanStatus = 'ACTIVE' | 'MATURED' | 'CANCELLED';
 export interface WeeklySavingsPlan {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   name: string;
   baseWeeklyAmount: number;
   escalationRate: number;
@@ -46,7 +46,7 @@ export interface WeeklySavingsInstallment {
 
 export interface WeeklySavingsPlanDetail {
   plan: WeeklySavingsPlan;
-  walletBalance: number;
+  accountBalance: number;
   installments: WeeklySavingsInstallment[];
 }
 

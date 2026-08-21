@@ -57,7 +57,7 @@ export const clearSecondNeighborhood = () =>
     method: 'DELETE',
   }).then((r) => r.user);
 
-// Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+// Real age-eligibility gate for the Mini account (2026-07-28) -- see
 // rw.itunda.auth.AuthService.setBirthDate's own doc comment. birthDate is an
 // ISO-8601 date string ("YYYY-MM-DD").
 export const setBirthDate = (birthDate: string) =>

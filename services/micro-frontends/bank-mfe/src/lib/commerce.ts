@@ -26,7 +26,7 @@ export interface CommerceProduct {
   stockQuantity?: number | null;
   // Real bookable-service marker (see MerchantBooking.kt's own doc comment) -- a
   // product with durationMinutes set is bookable via lib/booking.ts; requiresPrepay
-  // means booking it holds a real deposit from the customer's wallet automatically.
+  // means booking it holds a real deposit from the customer's account automatically.
   durationMinutes?: number | null;
   requiresPrepay?: boolean;
   // Real Coupang WING 상품분석 (product analytics) view count (2026-08-16) -- see

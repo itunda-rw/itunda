@@ -11,7 +11,7 @@ import type { EatsOrder, EatsOrderStatus } from './eats';
 export interface Rider {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   status: 'ACTIVE' | 'SUSPENDED';
   available: boolean;
   createdAt: string;

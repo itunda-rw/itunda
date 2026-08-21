@@ -13,7 +13,7 @@ export type ParkingSessionStatus = 'ACTIVE' | 'COMPLETED';
 export interface ParkingSpot {
   id: string;
   ownerUserId: string;
-  walletId: string;
+  accountId: string;
   address: string;
   latitude: number;
   longitude: number;

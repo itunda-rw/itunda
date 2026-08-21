@@ -44,7 +44,7 @@ export type TranslationKey =
   | 'login.signIn'
   | 'login.createAccount'
   | 'login.connectionError'
-  // Real second slice (2026-08-08): wallet overview, itunda's own second-highest-traffic
+  // Real second slice (2026-08-08): account overview, itunda's own second-highest-traffic
   // screen (the one every user lands on right after login) -- following the exact phased
   // rollout named in docs/DESIGN_REFERENCES.md Section 19's own "real next steps" list.
   // Several of these carry a dynamic amount/count, hence the `{{placeholder}}` support
@@ -107,7 +107,7 @@ export type TranslationKey =
   | 'transfer.stepAmount'
   | 'transfer.stepConfirm'
   // The real entry point INTO the transfer flow above -- a separate component
-  // (AccountBalance, the wallet card), found while verifying the transfer screen live:
+  // (AccountBalance, the account card), found while verifying the transfer screen live:
   // translating the flow itself but leaving its own trigger button in English would
   // have been the same "translated the destination, not the door" gap as the missing
   // overview.verificationFailed key. "Top up" included even though it's a real,
@@ -141,7 +141,7 @@ export type TranslationKey =
   | 'home.noTransactions'
   | 'home.unusuallyLarge'
   // Real 6th-localization-pass additions (2026-08-09) -- the remaining HomeView cards
-  // named as open follow-ups two passes ago: DiscoverSection, MiniWalletCard,
+  // named as open follow-ups two passes ago: DiscoverSection, MiniAccountCard,
   // ScheduledTransfersCard, AutoTransfersCard, RequestMoneyCard, AutoTopUpCard.
   | 'discover.title'
   | 'discover.new'
@@ -156,22 +156,22 @@ export type TranslationKey =
   | 'coopRail.harvestAdvance.title'
   | 'coopRail.harvestAdvance.subtitle'
   | 'coopRail.seeAll'
-  | 'miniWallet.title'
-  | 'miniWallet.cancel'
-  | 'miniWallet.addMoney'
-  | 'miniWallet.ageIneligible'
-  | 'miniWallet.openError'
-  | 'miniWallet.birthDateError'
-  | 'miniWallet.depositError'
-  | 'miniWallet.description'
-  | 'miniWallet.opening'
-  | 'miniWallet.open'
-  | 'miniWallet.birthDatePrompt'
-  | 'miniWallet.checking'
-  | 'miniWallet.checkEligibility'
-  | 'miniWallet.amountPlaceholder'
-  | 'miniWallet.adding'
-  | 'miniWallet.add'
+  | 'miniAccount.title'
+  | 'miniAccount.cancel'
+  | 'miniAccount.addMoney'
+  | 'miniAccount.ageIneligible'
+  | 'miniAccount.openError'
+  | 'miniAccount.birthDateError'
+  | 'miniAccount.depositError'
+  | 'miniAccount.description'
+  | 'miniAccount.opening'
+  | 'miniAccount.open'
+  | 'miniAccount.birthDatePrompt'
+  | 'miniAccount.checking'
+  | 'miniAccount.checkEligibility'
+  | 'miniAccount.amountPlaceholder'
+  | 'miniAccount.adding'
+  | 'miniAccount.add'
   | 'scheduledTransfers.title'
   | 'scheduledTransfers.cancel'
   | 'scheduledTransfers.schedule'
@@ -362,22 +362,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.harvestAdvance.title': 'Harvest advance',
     'coopRail.harvestAdvance.subtitle': 'Input financing from your coffee cooperative',
     'coopRail.seeAll': 'See all in itunda Bank',
-    'miniWallet.title': 'Mini account',
-    'miniWallet.cancel': 'Cancel',
-    'miniWallet.addMoney': '+ Add money',
-    'miniWallet.ageIneligible': 'Mini accounts are only available for ages 7-18.',
-    'miniWallet.openError': 'Could not open a Mini account.',
-    'miniWallet.birthDateError': 'Could not save your birth date.',
-    'miniWallet.depositError': 'Could not add money to your Mini account.',
-    'miniWallet.description': 'A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.',
-    'miniWallet.opening': 'Opening…',
-    'miniWallet.open': 'Open a Mini account',
-    'miniWallet.birthDatePrompt': 'Enter your birth date to check eligibility.',
-    'miniWallet.checking': 'Checking…',
-    'miniWallet.checkEligibility': 'Check eligibility',
-    'miniWallet.amountPlaceholder': 'Amount (RWF)',
-    'miniWallet.adding': 'Adding…',
-    'miniWallet.add': 'Add',
+    'miniAccount.title': 'Mini account',
+    'miniAccount.cancel': 'Cancel',
+    'miniAccount.addMoney': '+ Add money',
+    'miniAccount.ageIneligible': 'Mini accounts are only available for ages 7-18.',
+    'miniAccount.openError': 'Could not open a Mini account.',
+    'miniAccount.birthDateError': 'Could not save your birth date.',
+    'miniAccount.depositError': 'Could not add money to your Mini account.',
+    'miniAccount.description': 'A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.',
+    'miniAccount.opening': 'Opening…',
+    'miniAccount.open': 'Open a Mini account',
+    'miniAccount.birthDatePrompt': 'Enter your birth date to check eligibility.',
+    'miniAccount.checking': 'Checking…',
+    'miniAccount.checkEligibility': 'Check eligibility',
+    'miniAccount.amountPlaceholder': 'Amount (RWF)',
+    'miniAccount.adding': 'Adding…',
+    'miniAccount.add': 'Add',
     'scheduledTransfers.title': 'Scheduled transfers',
     'scheduledTransfers.cancel': 'Cancel',
     'scheduledTransfers.schedule': '+ Schedule',
@@ -576,22 +576,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.harvestAdvance.title': 'Inguzanyo yo gutera imbere isarura',
     'coopRail.harvestAdvance.subtitle': "Inguzanyo y'ibikoresho biva kuri koperative y'ikawa",
     'coopRail.seeAll': 'Reba byose muri itunda Bank',
-    'miniWallet.title': 'Konti ntoya',
-    'miniWallet.cancel': 'Hagarika',
-    'miniWallet.addMoney': '+ Ongeraho amafaranga',
-    'miniWallet.ageIneligible': 'Konti ntoya ziboneka gusa ku myaka 7-18.',
-    'miniWallet.openError': 'Ntibishoboka gufungura konti ntoya.',
-    'miniWallet.birthDateError': 'Ntibishoboka kubika itariki y\'amavuko yawe.',
-    'miniWallet.depositError': 'Ntibishoboka kongeraho amafaranga kuri konti ntoya.',
-    'miniWallet.description': "Konti ntoya y'itangira ku myaka 7-18 -- ntirengeje 500,000 RWF, ntirengeje 300,000 RWF ku munsi cyangwa 2,000,000 RWF ku kwezi.",
-    'miniWallet.opening': 'Gufungura…',
-    'miniWallet.open': 'Fungura konti ntoya',
-    'miniWallet.birthDatePrompt': "Andika itariki y'amavuko yawe kugira ngo tumenye niba ubishoboye.",
-    'miniWallet.checking': 'Kugenzura…',
-    'miniWallet.checkEligibility': 'Genzura niba wemerewe',
-    'miniWallet.amountPlaceholder': 'Amafaranga (RWF)',
-    'miniWallet.adding': 'Kongeraho…',
-    'miniWallet.add': 'Ongeraho',
+    'miniAccount.title': 'Konti ntoya',
+    'miniAccount.cancel': 'Hagarika',
+    'miniAccount.addMoney': '+ Ongeraho amafaranga',
+    'miniAccount.ageIneligible': 'Konti ntoya ziboneka gusa ku myaka 7-18.',
+    'miniAccount.openError': 'Ntibishoboka gufungura konti ntoya.',
+    'miniAccount.birthDateError': 'Ntibishoboka kubika itariki y\'amavuko yawe.',
+    'miniAccount.depositError': 'Ntibishoboka kongeraho amafaranga kuri konti ntoya.',
+    'miniAccount.description': "Konti ntoya y'itangira ku myaka 7-18 -- ntirengeje 500,000 RWF, ntirengeje 300,000 RWF ku munsi cyangwa 2,000,000 RWF ku kwezi.",
+    'miniAccount.opening': 'Gufungura…',
+    'miniAccount.open': 'Fungura konti ntoya',
+    'miniAccount.birthDatePrompt': "Andika itariki y'amavuko yawe kugira ngo tumenye niba ubishoboye.",
+    'miniAccount.checking': 'Kugenzura…',
+    'miniAccount.checkEligibility': 'Genzura niba wemerewe',
+    'miniAccount.amountPlaceholder': 'Amafaranga (RWF)',
+    'miniAccount.adding': 'Kongeraho…',
+    'miniAccount.add': 'Ongeraho',
     'scheduledTransfers.title': 'Kohereza byateganyijwe',
     'scheduledTransfers.cancel': 'Hagarika',
     'scheduledTransfers.schedule': '+ Tegura',
@@ -781,22 +781,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.harvestAdvance.title': 'Avance sur récolte',
     'coopRail.harvestAdvance.subtitle': 'Financement d’intrants par votre coopérative de café',
     'coopRail.seeAll': 'Tout voir dans itunda Bank',
-    'miniWallet.title': 'Mini-compte',
-    'miniWallet.cancel': 'Annuler',
-    'miniWallet.addMoney': '+ Ajouter de l’argent',
-    'miniWallet.ageIneligible': 'Les mini-comptes sont réservés aux 7-18 ans.',
-    'miniWallet.openError': 'Impossible d’ouvrir un Mini-compte.',
-    'miniWallet.birthDateError': 'Impossible d’enregistrer votre date de naissance.',
-    'miniWallet.depositError': 'Impossible d’ajouter de l’argent à votre Mini-compte.',
-    'miniWallet.description': 'Un compte de départ plafonné pour les 7-18 ans -- solde plafonné à 500 000 RWF, dépôts limités à 300 000 RWF/jour et 2 000 000 RWF/mois.',
-    'miniWallet.opening': 'Ouverture en cours…',
-    'miniWallet.open': 'Ouvrir un Mini-compte',
-    'miniWallet.birthDatePrompt': 'Saisissez votre date de naissance pour vérifier votre éligibilité.',
-    'miniWallet.checking': 'Vérification en cours…',
-    'miniWallet.checkEligibility': 'Vérifier l’éligibilité',
-    'miniWallet.amountPlaceholder': 'Montant (RWF)',
-    'miniWallet.adding': 'Ajout en cours…',
-    'miniWallet.add': 'Ajouter',
+    'miniAccount.title': 'Mini-compte',
+    'miniAccount.cancel': 'Annuler',
+    'miniAccount.addMoney': '+ Ajouter de l’argent',
+    'miniAccount.ageIneligible': 'Les mini-comptes sont réservés aux 7-18 ans.',
+    'miniAccount.openError': 'Impossible d’ouvrir un Mini-compte.',
+    'miniAccount.birthDateError': 'Impossible d’enregistrer votre date de naissance.',
+    'miniAccount.depositError': 'Impossible d’ajouter de l’argent à votre Mini-compte.',
+    'miniAccount.description': 'Un compte de départ plafonné pour les 7-18 ans -- solde plafonné à 500 000 RWF, dépôts limités à 300 000 RWF/jour et 2 000 000 RWF/mois.',
+    'miniAccount.opening': 'Ouverture en cours…',
+    'miniAccount.open': 'Ouvrir un Mini-compte',
+    'miniAccount.birthDatePrompt': 'Saisissez votre date de naissance pour vérifier votre éligibilité.',
+    'miniAccount.checking': 'Vérification en cours…',
+    'miniAccount.checkEligibility': 'Vérifier l’éligibilité',
+    'miniAccount.amountPlaceholder': 'Montant (RWF)',
+    'miniAccount.adding': 'Ajout en cours…',
+    'miniAccount.add': 'Ajouter',
     'scheduledTransfers.title': 'Transferts programmés',
     'scheduledTransfers.cancel': 'Annuler',
     'scheduledTransfers.schedule': '+ Programmer',

@@ -57,7 +57,7 @@ export type RideDriverStatus = 'ACTIVE' | 'SUSPENDED';
 export interface RideDriver {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   status: RideDriverStatus;
   available: boolean;
   currentLatitude: number | null;
@@ -193,7 +193,7 @@ export const cancelRideTrip = (tripId: string) =>
 
 // Real Uber post-trip tipping -- see backend RideTripService.tipDriver's own doc
 // comment. Found via scripts/uncalled-endpoint-sweep.py: fully built on the backend
-// (real TIP_WINDOW, real already-tipped guard, real wallet-to-wallet ledger legs)
+// (real TIP_WINDOW, real already-tipped guard, real account-to-account ledger legs)
 // with zero client anywhere.
 export const tipDriver = (tripId: string, amount: number) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/tip`, {

@@ -9,7 +9,7 @@ export interface GroupAccount {
   id: string;
   name: string;
   ownerId: string;
-  walletId: string;
+  accountId: string;
   monthlyDuesAmount: number | null;
   createdAt: string;
 }

@@ -62,12 +62,12 @@ export const fetchPortfolio = () => apiFetch<{ success: boolean; portfolio: Port
 export const fetchPortfolioHistory = (days = 30) =>
   apiFetch<{ success: boolean; history: PortfolioValuePoint[] }>(`/api/v1/stocks/portfolio/history?days=${days}`).then((r) => r.history);
 
-// Real Investment-wallet top-up (2026-08-04) -- found via a fresh "defined but
-// uncalled" endpoint sweep: StocksService.fundInvestmentWallet (a real MAIN ->
+// Real Investment-account top-up (2026-08-04) -- found via a fresh "defined but
+// uncalled" endpoint sweep: StocksService.fundInvestmentAccount (a real MAIN ->
 // INVESTMENT internal ledger transfer) had zero client anywhere, so a user with no
 // pre-seeded investment balance had no way to ever actually buy a stock. Ports the
 // same fix already shipped on Android's InvestScreen.
-export const fundInvestmentWallet = (amount: number) =>
+export const fundInvestmentAccount = (amount: number) =>
   apiFetch<{ success: boolean; transaction: { id: string; amount: number; completedAt: string } }>('/api/v1/stocks/fund', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },

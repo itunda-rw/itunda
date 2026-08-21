@@ -7,7 +7,7 @@ import { randomUUID } from './uuid';
 // wired. See SplitBill.kt's own doc comment: a flat, even split with the rounding
 // remainder silently absorbed into one participant's share so shares always sum
 // exactly to totalAmount; each participant pays their own share directly to the
-// organizer via a real wallet-to-wallet push, no escrow.
+// organizer via a real account-to-account push, no escrow.
 
 export interface SplitBill {
   id: string;

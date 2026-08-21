@@ -9,7 +9,7 @@ import { randomUUID } from './uuid';
 export interface VehicleInspectionMechanic {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   businessName: string;
   available: boolean;
   createdAt: string;

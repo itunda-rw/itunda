@@ -98,7 +98,7 @@ export default function InsuranceView() {
     setMessage(null);
     try {
       await cancelFund(fundId);
-      setMessage('Premium fund cancelled and refunded to your wallet.');
+      setMessage('Premium fund cancelled and refunded to your account.');
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not cancel this premium fund.');
@@ -342,7 +342,7 @@ function CropWeatherIndexSection() {
     setMessage(null);
     try {
       const policy = await enrollInCropIndexPolicy(cropType, district.trim(), season.trim(), amountNum);
-      setMessage(`Enrolled — premium ${policy.premiumAmount.toLocaleString()} RWF charged to your wallet.`);
+      setMessage(`Enrolled — premium ${policy.premiumAmount.toLocaleString()} RWF charged to your account.`);
       setDistrict('');
       load();
     } catch (err) {
@@ -358,7 +358,7 @@ function CropWeatherIndexSection() {
     setMessage(null);
     try {
       await cancelCropIndexPolicy(policyId);
-      setMessage('Policy cancelled and premium refunded to your wallet.');
+      setMessage('Policy cancelled and premium refunded to your account.');
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not cancel this policy.');
@@ -431,7 +431,7 @@ function CropWeatherIndexSection() {
           onChange={(e) => setInsuredAmount(e.target.value)}
           style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
         />
-        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your wallet.</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your account.</p>
         <button className="itunda-btn itunda-btn-secondary" disabled={enrolling} onClick={handleEnroll}>
           {enrolling ? '...' : 'Enroll'}
         </button>

@@ -1,5 +1,5 @@
 import { apiFetch } from './api';
-import type { Transaction } from './wallet';
+import type { Transaction } from './account';
 
 // Real Toss 유스 (Toss Youth)-style guardian-child account link -- see backend
 // FamilyLinkService's own doc comment for the full sourced account and honest scope
@@ -27,7 +27,7 @@ export interface FamilyLinkView {
 export interface ChildOverview {
   childUserId: string;
   childName: string;
-  walletBalance: number;
+  accountBalance: number;
   recentTransactions: Transaction[];
 }
 

@@ -9,7 +9,7 @@ import { randomUUID } from './uuid';
 export interface SavingsGoal {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   name: string;
   targetAmount: number;
   currentAmount: number;
@@ -25,7 +25,7 @@ export interface SavingsGoal {
 
 export interface InterestJar {
   userId: string;
-  walletId: string;
+  accountId: string;
   balance: number;
   rate: number;
   earnedThisMonth: number;
@@ -50,11 +50,11 @@ export const createGoal = (name: string, targetAmount: number, monthlyContributi
     body: JSON.stringify({ name, targetAmount, monthlyContribution, targetDate, category }),
   }).then((r) => r.goal);
 
-export const depositToGoal = (goalId: string, amount: number, fromWalletId?: string) =>
+export const depositToGoal = (goalId: string, amount: number, fromAccountId?: string) =>
   apiFetch<{ success: boolean; message: string; goal: SavingsGoal }>('/api/v1/savings/deposit', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ goalId, amount, fromWalletId }),
+    body: JSON.stringify({ goalId, amount, fromAccountId }),
   });
 
 export const fetchInterestJar = () =>

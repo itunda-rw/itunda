@@ -1,10 +1,10 @@
 import { apiFetch } from './api';
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 154) -- see the
-// backend's ForeignCurrencyWalletService.kt doc comment: scoped to USD/EUR/GBP, the
+// backend's ForeignCurrencyAccountService.kt doc comment: scoped to USD/EUR/GBP, the
 // three currencies real Rwandan diaspora remittance corridors (US, Eurozone/Belgium,
 // UK) actually run through, not Toss's full 17-currency breadth. A conversion moves
-// real money entirely between the caller's OWN RWF and foreign-currency wallets at a
+// real money entirely between the caller's OWN RWF and foreign-currency accounts at a
 // real live mid-market rate plus a real, transparent 1.5% itunda margin (a genuine
 // forex spread, not a flat fee) -- NOT a cross-border receiving/SWIFT rail, which would
 // need a real correspondent-banking relationship this backend has no path to. Found
@@ -12,7 +12,7 @@ import { apiFetch } from './api';
 export const FOREIGN_CURRENCY_SUPPORTED = ['USD', 'EUR', 'GBP'] as const;
 export type ForeignCurrencyCode = (typeof FOREIGN_CURRENCY_SUPPORTED)[number];
 
-export interface ForeignCurrencyWallet {
+export interface ForeignCurrencyAccount {
   id: string;
   userId: string;
   accountNumber: string;
@@ -36,30 +36,30 @@ export interface CurrencyConversion {
   createdAt: string;
 }
 
-export const openForeignCurrencyWallet = (currency: ForeignCurrencyCode) =>
-  apiFetch<{ success: boolean; wallet: ForeignCurrencyWallet }>('/api/v1/wallet/foreign-currency/wallets', {
+export const openForeignCurrencyAccount = (currency: ForeignCurrencyCode) =>
+  apiFetch<{ success: boolean; account: ForeignCurrencyAccount }>('/api/v1/account/foreign-currency/accounts', {
     method: 'POST',
     body: JSON.stringify({ currency }),
-  }).then((r) => r.wallet);
+  }).then((r) => r.account);
 
-export const fetchMyForeignCurrencyWallets = () =>
-  apiFetch<{ success: boolean; wallets: ForeignCurrencyWallet[] }>('/api/v1/wallet/foreign-currency/wallets').then((r) => r.wallets);
+export const fetchMyForeignCurrencyAccounts = () =>
+  apiFetch<{ success: boolean; accounts: ForeignCurrencyAccount[] }>('/api/v1/account/foreign-currency/accounts').then((r) => r.accounts);
 
 // Real live mid-market rate, before itunda's own margin -- backs a quote preview before
 // committing to convertCurrency.
 export const fetchExchangeRate = (from: string, to: string) =>
   apiFetch<{ success: boolean; from: string; to: string; rate: number }>(
-    `/api/v1/wallet/foreign-currency/rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    `/api/v1/account/foreign-currency/rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
   );
 
 export const convertCurrency = (fromCurrency: string, toCurrency: string, amount: number) =>
-  apiFetch<{ success: boolean; conversion: CurrencyConversion }>('/api/v1/wallet/foreign-currency/convert', {
+  apiFetch<{ success: boolean; conversion: CurrencyConversion }>('/api/v1/account/foreign-currency/convert', {
     method: 'POST',
     body: JSON.stringify({ fromCurrency, toCurrency, amount }),
   }).then((r) => r.conversion);
 
 export const fetchMyCurrencyConversions = () =>
-  apiFetch<{ success: boolean; conversions: CurrencyConversion[] }>('/api/v1/wallet/foreign-currency/conversions').then((r) => r.conversions);
+  apiFetch<{ success: boolean; conversions: CurrencyConversion[] }>('/api/v1/account/foreign-currency/conversions').then((r) => r.conversions);
 
 // Real Toss 외환 환율 알림 (exchange rate alert, section 121) -- see the backend's
 // ExchangeRateAlert.kt doc comment: set a target rate on RWF vs. one supported foreign
@@ -77,16 +77,16 @@ export interface ExchangeRateAlert {
 }
 
 export const setRateAlert = (fromCurrency: string, toCurrency: string, targetRate: number, direction: 'ABOVE' | 'BELOW') =>
-  apiFetch<{ success: boolean; alert: ExchangeRateAlert }>('/api/v1/wallet/foreign-currency/rate-alert', {
+  apiFetch<{ success: boolean; alert: ExchangeRateAlert }>('/api/v1/account/foreign-currency/rate-alert', {
     method: 'POST',
     body: JSON.stringify({ fromCurrency, toCurrency, targetRate, direction }),
   }).then((r) => r.alert);
 
 export const clearRateAlert = (fromCurrency: string, toCurrency: string) =>
   apiFetch<{ success: boolean }>(
-    `/api/v1/wallet/foreign-currency/rate-alert?fromCurrency=${encodeURIComponent(fromCurrency)}&toCurrency=${encodeURIComponent(toCurrency)}`,
+    `/api/v1/account/foreign-currency/rate-alert?fromCurrency=${encodeURIComponent(fromCurrency)}&toCurrency=${encodeURIComponent(toCurrency)}`,
     { method: 'DELETE' },
   );
 
 export const fetchMyRateAlerts = () =>
-  apiFetch<{ success: boolean; alerts: ExchangeRateAlert[] }>('/api/v1/wallet/foreign-currency/rate-alerts').then((r) => r.alerts);
+  apiFetch<{ success: boolean; alerts: ExchangeRateAlert[] }>('/api/v1/account/foreign-currency/rate-alerts').then((r) => r.alerts);

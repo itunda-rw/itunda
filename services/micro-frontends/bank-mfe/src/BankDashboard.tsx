@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useCountUp } from './hooks/useCountUp';
 import { recordEvent } from './lib/analytics';
@@ -11,7 +11,7 @@ import { LOCALES, type TranslationKey } from './i18n/translations';
 import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
-import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
+import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchAccounts, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Account } from './lib/account';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
@@ -86,8 +86,8 @@ import {
   type UpfrontInterestDeposit,
 } from './lib/upfrontDeposit';
 import {
-  clearRateAlert, convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyWallets, fetchMyRateAlerts, openForeignCurrencyWallet, setRateAlert,
-  FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ExchangeRateAlert, type ForeignCurrencyCode, type ForeignCurrencyWallet,
+  clearRateAlert, convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyAccounts, fetchMyRateAlerts, openForeignCurrencyAccount, setRateAlert,
+  FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ExchangeRateAlert, type ForeignCurrencyCode, type ForeignCurrencyAccount,
 } from './lib/foreignCurrency';
 import {
   advanceDineInOrderStatus, cancelDineInOrder, fetchMyDineInOrders, fetchRestaurantDineInOrders, placeDineInOrder,
@@ -102,7 +102,7 @@ import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
   buyStock, clearPriceAlert, fetchPortfolio, fetchPortfolioHistory, fetchPriceAlert, fetchStockHistory, fetchStocks, fetchWatchlist,
-  fundInvestmentWallet,
+  fundInvestmentAccount,
   sellStock, setPriceAlert, unwatchStock, watchStock,
   type Portfolio, type PortfolioValuePoint, type PriceAlert, type PricePoint, type Stock,
 } from './lib/stocks';
@@ -129,7 +129,7 @@ import {
 } from './lib/marketplace';
 import { clearSecondNeighborhood, fetchProfile, setBirthDate, setNeighborhood, setSecondNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
-import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
+import { depositToMiniAccount, openMiniAccount } from './lib/miniAccount';
 import { claimGift, fetchGiftsForConversation, sendGift, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
 import {
   addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommentNotificationsEnabled, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
@@ -275,7 +275,7 @@ const readTabFromUrl = (): Tab => {
   }
 };
 
-function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: Wallet | null; onTransferClick: () => void; onClaimInterest: () => void }) {
+function AccountBalance({ account, onTransferClick, onClaimInterest }: { account: Account | null; onTransferClick: () => void; onClaimInterest: () => void }) {
   const { t } = useI18n();
   // Real Toss Bank reference (user-provided, 2026-08-12): the account detail screen
   // shows a small "Get interest" prompt (unclaimed balance + claim button) directly
@@ -283,7 +283,7 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
   // data (fetchInterestJar, the same call InterestJarCard on the itunda Bank tab
   // already makes) and a real claim destination (SavingsView's own InterestJarCard,
   // reached via onNavigateToTab('SAVINGS')), just never surfaced here on Home. Same
-  // fix as Android's identical WalletHeroCard addition the same day. Only shown once
+  // fix as Android's identical AccountHeroCard addition the same day. Only shown once
   // there's a real unclaimed balance, matching this file's own "don't show an empty
   // section" convention.
   const [jar, setJar] = useState<InterestJar | null>(null);
@@ -291,7 +291,7 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
   // Real Toss motion pattern -- see useCountUp's own doc comment for the full sourced
   // account. Balance changes now count up/down to their new value instead of
   // instantly snapping, on this app's single most looked-at real number.
-  const animatedBalance = useCountUp(wallet?.balance ?? 0);
+  const animatedBalance = useCountUp(account?.balance ?? 0);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -301,7 +301,7 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
       style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <p style={{ color: 'var(--itunda-grey-700)', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: '600' }}>{wallet?.accountName ?? t('dashboard.mainAccount')}</p>
+        <p style={{ color: 'var(--itunda-grey-700)', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: '600' }}>{account?.accountName ?? t('dashboard.mainAccount')}</p>
         <ShieldCheck size={20} color="var(--itunda-green)" />
       </div>
 
@@ -309,12 +309,12 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
           account detail screen leads with the account's own real number ("토스뱅크
           1000-3058-1980") directly above the balance -- itunda's real, collision-
           checked AccountNumberGenerator has produced a real accountNumber for every
-          wallet since it was built, but it was never actually shown anywhere except
+          account since it was built, but it was never actually shown anywhere except
           when entering someone ELSE's number to send to. Same fix on Android/iOS the
           same day. */}
-      {wallet?.accountNumber && (
+      {account?.accountNumber && (
         <p style={{ color: 'var(--itunda-grey-500)', fontSize: 'var(--itunda-type-scale-12-size)', margin: '0 0 4px' }}>
-          itunda {wallet.accountNumber.match(/.{1,4}/g)?.join('-')}
+          itunda {account.accountNumber.match(/.{1,4}/g)?.join('-')}
         </p>
       )}
 
@@ -336,7 +336,7 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
           gap: '4px',
         }}
       >
-        {animatedBalance.toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-20-size)', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
+        {animatedBalance.toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-20-size)', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{account?.currency ?? 'RWF'}</span>
       </h1>
 
       {/* Real fix (2026-08-13, direct live-testing catch): this used to show
@@ -377,9 +377,9 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
 }
 
 // Real direct itunda-to-itunda push-transfer (2026-07-20) -- closes a real gap found
-// live while first wiring this exact button: WalletController's quote/confirm transfer
+// live while first wiring this exact button: AccountController's quote/confirm transfer
 // (used by Android/iOS's sendTransfer) always routes through a simulated external rail
-// and never actually credits another itunda user's wallet, even when the recipient is a
+// and never actually credits another itunda user's account, even when the recipient is a
 // real itunda account (confirmed via direct MySQL query: recipientId stayed "external").
 // This now calls the new real rw.itunda.p2p.sendDirect instead -- a real recipient
 // resolved by phone number or account number, credited immediately, no fee (nothing
@@ -575,7 +575,7 @@ function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; 
 
 type TransferStep = 'recipient' | 'amount' | 'confirm' | 'sending' | 'success';
 
-function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; walletBalance: number }) {
+function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; accountBalance: number }) {
   const { t } = useI18n();
   const TRANSFER_STEP_LABELS = [t('transfer.stepRecipient'), t('transfer.stepAmount'), t('transfer.stepConfirm')];
   const [step, setStep] = useState<TransferStep>('recipient');
@@ -606,7 +606,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   // Real standalone "gift" send (KakaoTalk 선물하기-style, GiftController's own
   // POST /api/v1/gifts) -- found fully built server-side with zero client caller
   // anywhere; only the chat-embedded sibling had a UI. Money moves into escrow, not
-  // straight to the recipient's wallet, until they explicitly claim it -- so this
+  // straight to the recipient's account, until they explicitly claim it -- so this
   // reuses the same recipient/amount fields as a plain transfer but branches at
   // confirm-time into a different backend call and a different result panel.
   const [isGift, setIsGift] = useState(false);
@@ -630,10 +630,10 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
 
   // Real gap found live (2026-08-10), applying Toss Tech's own "the best error is
   // one that never occurs" principle (toss.tech/article/21021, "좋은 에러 메시지를
-  // 만드는 6가지 원칙"): walletBalance is already known here (AccountBalance renders
+  // 만드는 6가지 원칙"): accountBalance is already known here (AccountBalance renders
   // it right above this form), yet an amount larger than it previously round-tripped
   // to the backend's 422 before saying anything. Same fix as Android/iOS.
-  const insufficientBalance = Number(amount || 0) > 0 && Number(amount || 0) > walletBalance;
+  const insufficientBalance = Number(amount || 0) > 0 && Number(amount || 0) > accountBalance;
   const recipientName = recipientPreview?.displayName ?? recipient;
 
   const selectRecipient = (identifier: string) => {
@@ -880,13 +880,13 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
             {amount === '' ? '0' : Number(amount).toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
           </span>
           <div>
-            <button type="button" onClick={() => setAmount(String(walletBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
-              {t('transfer.balanceLabel', { amount: walletBalance.toLocaleString() })}
+            <button type="button" onClick={() => setAmount(String(accountBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
+              {t('transfer.balanceLabel', { amount: accountBalance.toLocaleString() })}
             </button>
           </div>
           {insufficientBalance && (
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', margin: '4px 0 0' }}>
-              {t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() })}
+              {t('transfer.insufficientBalance', { amount: accountBalance.toLocaleString() })}
             </p>
           )}
         </div>
@@ -1046,7 +1046,7 @@ function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
         style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
       >
         <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: 'rgba(138, 43, 226, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <WalletIcon size={24} color="#8A2BE2" />
+          <AccountIcon size={24} color="#8A2BE2" />
         </div>
         <span style={{ fontWeight: '600', fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{t('quickActions.cards')}</span>
       </motion.div>
@@ -1187,13 +1187,13 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
 // Real architectural fix (2026-08-13, matching the identical Android/iOS fix same
 // session, direct user directive): "all itunda product features are independent
 // and isolated -- itunda bank is a complete product... tabs are not products, are
-// just access points." This tab used to render the wallet balance, transfer flow,
+// just access points." This tab used to render the account balance, transfer flow,
 // quick actions, coop-savings teaser, transaction history, scheduled/auto
-// transfers, auto top-up, request-money, and the Mini wallet card directly --
+// transfers, auto top-up, request-money, and the Mini account card directly --
 // real Bank- and Pay-product content baked into what's meant to be a generic
 // access point. AccountBalance/QuickActions/TransactionHistory/RequestMoneyCard/
 // AutoTopUpCard/ScheduledTransfersCard moved into PayHub (itunda's real,
-// self-contained wallet product); AutoTransfersCard/MiniWalletCard moved into
+// self-contained account product); AutoTransfersCard/MiniAccountCard moved into
 // SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
@@ -1223,13 +1223,13 @@ function ProductPageHeader({ title, subtitle }: { title: string; subtitle: strin
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
 function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
-  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
-  // WalletCardCarousel's own doc comment. The full real wallet list (MAIN + any
-  // opened foreign-currency ones), not just the single MAIN wallet AccountBalance
-  // shows -- kept alongside `wallet` rather than replacing it, since every other
+  // AccountCardCarousel's own doc comment. The full real account list (MAIN + any
+  // opened foreign-currency ones), not just the single MAIN account AccountBalance
+  // shows -- kept alongside `account` rather than replacing it, since every other
   // card on this screen (Send/Bills/Transfer) is deliberately still MAIN-only.
-  const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
   const [showTransfer, setShowTransfer] = useState(false);
@@ -1237,46 +1237,46 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   const [facePayEnrolled, setFacePayEnrolled] = useState(false);
 
   // Real architectural fix (2026-08-13) -- see HomeView's own doc comment for why
-  // the wallet balance, quick actions, and transaction history moved here from
+  // the account balance, quick actions, and transaction history moved here from
   // Home: this is itunda's real, complete Pay product now, matching Android's
-  // identical WalletHeroCard -> PayTab move the same session.
-  const loadWallet = () => {
-    Promise.all([fetchWallets(), fetchTransactions()])
-      .then(([fetchedWallets, txs]) => {
-        setWallet(fetchedWallets.find((item) => item.type === 'MAIN') ?? fetchedWallets[0] ?? null);
-        setWallets(fetchedWallets);
+  // identical AccountHeroCard -> PayTab move the same session.
+  const loadAccount = () => {
+    Promise.all([fetchAccounts(), fetchTransactions()])
+      .then(([fetchedAccounts, txs]) => {
+        setAccount(fetchedAccounts.find((item) => item.type === 'MAIN') ?? fetchedAccounts[0] ?? null);
+        setAccounts(fetchedAccounts);
         setTransactions(txs);
       })
-      .catch(() => setWallet(null));
+      .catch(() => setAccount(null));
     // Real Toss Timeline-style unusual-spend flag -- fetched independently of the main
-    // wallet/transactions load so a failure here never blocks the core balance view.
+    // account/transactions load so a failure here never blocks the core balance view.
     fetchTransactionTimeline()
       .then((entries) => setUnusuallyLargeIds(new Set(entries.filter((e) => e.unusuallyLarge).map((e) => e.transaction.id))))
       .catch(() => {});
   };
 
   useEffect(() => {
-    loadWallet();
+    loadAccount();
     fetchFacePayStatus().then((result) => setFacePayEnrolled(result.enrolled)).catch(() => setFacePayEnrolled(false));
   }, []);
 
-  if (paymentResult) return <PaymentConfirmation result={paymentResult} onDone={() => { setPaymentResult(null); loadWallet(); }} />;
+  if (paymentResult) return <PaymentConfirmation result={paymentResult} onDone={() => { setPaymentResult(null); loadAccount(); }} />;
 
   return (
     <div>
       <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
-      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
-      <MyPaymentCodeCard wallets={wallets} />
+      <AccountBalance account={account} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
+      <MyPaymentCodeCard accounts={accounts} />
       {showTransfer && (
         <TransferFlow
-          walletBalance={wallet?.balance ?? 0}
+          accountBalance={account?.balance ?? 0}
           onClose={() => setShowTransfer(false)}
-          onBalanceRefresh={loadWallet}
-          onSuccess={() => { setShowTransfer(false); loadWallet(); }}
+          onBalanceRefresh={loadAccount}
+          onSuccess={() => { setShowTransfer(false); loadAccount(); }}
         />
       )}
       <div className="itunda-card" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
-        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!wallet} style={{ minHeight: '52px' }}>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!account} style={{ minHeight: '52px' }}>
           <Send size={17} /> Send money
         </button>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => onNavigateToTab('BILLS')} style={{ minHeight: '52px' }}>
@@ -1289,7 +1289,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       <PayByStaticQrCard onPaid={setPaymentResult} />
       <ScheduledTransfersCard />
       <DelayedTransfersCard />
-      {wallet && <AutoTopUpCard walletId={wallet.id} />}
+      {account && <AutoTopUpCard accountId={account.id} />}
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
     </div>
   );
@@ -1484,12 +1484,12 @@ function DiscoverSection() {
   );
 }
 
-// Real KakaoBank mini-style capped starter wallet -- see lib/miniWallet.ts's own doc
+// Real KakaoBank mini-style capped starter account -- see lib/miniAccount.ts's own doc
 // comment. First client UI for this backend feature on any platform (item 99, found
 // with zero client anywhere despite the backend being real and live since 2026-07-28).
-function MiniWalletCard() {
+function MiniAccountCard() {
   const { t } = useI18n();
-  const [miniWallet, setMiniWallet] = useState<Wallet | null | undefined>(undefined);
+  const [miniAccount, setMiniAccount] = useState<Account | null | undefined>(undefined);
   const [needsBirthDate, setNeedsBirthDate] = useState(false);
   const [birthDate, setBirthDateInput] = useState('');
   const [amount, setAmount] = useState('');
@@ -1498,7 +1498,7 @@ function MiniWalletCard() {
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
-    fetchWallets().then((wallets) => setMiniWallet(wallets.find((w) => w.type === 'MINI') ?? null)).catch(() => setMiniWallet(null));
+    fetchAccounts().then((accounts) => setMiniAccount(accounts.find((w) => w.type === 'MINI') ?? null)).catch(() => setMiniAccount(null));
   };
 
   useEffect(load, []);
@@ -1507,16 +1507,16 @@ function MiniWalletCard() {
     setBusy(true);
     setError(null);
     try {
-      const wallet = await openMiniWallet();
-      setMiniWallet(wallet);
+      const account = await openMiniAccount();
+      setMiniAccount(account);
       setNeedsBirthDate(false);
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'MINI_WALLET_BIRTH_DATE_REQUIRED') {
+      if (err instanceof ApiError && err.code === 'MINI_ACCOUNT_BIRTH_DATE_REQUIRED') {
         setNeedsBirthDate(true);
-      } else if (err instanceof ApiError && err.code === 'MINI_WALLET_AGE_INELIGIBLE') {
-        setError(t('miniWallet.ageIneligible'));
+      } else if (err instanceof ApiError && err.code === 'MINI_ACCOUNT_AGE_INELIGIBLE') {
+        setError(t('miniAccount.ageIneligible'));
       } else {
-        setError(err instanceof ApiError ? err.message : t('miniWallet.openError'));
+        setError(err instanceof ApiError ? err.message : t('miniAccount.openError'));
       }
     } finally {
       setBusy(false);
@@ -1532,7 +1532,7 @@ function MiniWalletCard() {
       await setBirthDate(birthDate);
       await handleOpen();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('miniWallet.birthDateError'));
+      setError(err instanceof ApiError ? err.message : t('miniAccount.birthDateError'));
       setBusy(false);
     }
   };
@@ -1544,44 +1544,44 @@ function MiniWalletCard() {
     setBusy(true);
     setError(null);
     try {
-      await depositToMiniWallet(parsedAmount);
+      await depositToMiniAccount(parsedAmount);
       setAmount('');
       setShowDeposit(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('miniWallet.depositError'));
+      setError(err instanceof ApiError ? err.message : t('miniAccount.depositError'));
     } finally {
       setBusy(false);
     }
   };
 
-  if (miniWallet === undefined) return null;
+  if (miniAccount === undefined) return null;
 
   return (
     <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('miniWallet.title')}</h3>
-        {miniWallet && (
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('miniAccount.title')}</h3>
+        {miniAccount && (
           <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-            {showDeposit ? t('miniWallet.cancel') : t('miniWallet.addMoney')}
+            {showDeposit ? t('miniAccount.cancel') : t('miniAccount.addMoney')}
           </button>
         )}
       </div>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
-      {!miniWallet && !needsBirthDate && (
+      {!miniAccount && !needsBirthDate && (
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-            {t('miniWallet.description')}
+            {t('miniAccount.description')}
           </p>
-          <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('miniWallet.opening') : t('miniWallet.open')}</button>
+          <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('miniAccount.opening') : t('miniAccount.open')}</button>
         </div>
       )}
 
-      {!miniWallet && needsBirthDate && (
+      {!miniAccount && needsBirthDate && (
         <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('miniWallet.birthDatePrompt')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('miniAccount.birthDatePrompt')}</p>
           <input
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
@@ -1589,21 +1589,21 @@ function MiniWalletCard() {
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
               doesn't say what happens next -- the paragraph above already names the real
               outcome ("check eligibility"), so the button says it too. */}
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniWallet.checking') : t('miniWallet.checkEligibility')}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniAccount.checking') : t('miniAccount.checkEligibility')}</button>
         </form>
       )}
 
-      {miniWallet && (
+      {miniAccount && (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{miniWallet.balance.toLocaleString()} RWF</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{miniWallet.accountNumber}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{miniAccount.balance.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{miniAccount.accountNumber}</p>
           {showDeposit && (
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
-                type="number" placeholder={t('miniWallet.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+                type="number" placeholder={t('miniAccount.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
                 style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
-              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniWallet.adding') : t('miniWallet.add')}</button>
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniAccount.adding') : t('miniAccount.add')}</button>
             </form>
           )}
         </div>
@@ -2072,7 +2072,7 @@ const P2P_REQUEST_STATUS_KEY: Record<P2pPaymentRequestStatus, TranslationKey> = 
 // own doc comment. A real 15-minute-expiring code the requester shares (typed/pasted,
 // same real manual-code-entry convention MerchantController.collect's own bank-mfe
 // client already established -- this app has no camera QR scanner anywhere); anyone
-// who has the code can pay it directly, real wallet-to-wallet, no fee.
+// who has the code can pay it directly, real account-to-account, no fee.
 function RequestMoneyCard() {
   const { t } = useI18n();
   const [requests, setRequests] = useState<P2pPaymentRequestDto[] | null>(null);
@@ -2197,8 +2197,8 @@ function RequestMoneyCard() {
 }
 
 // Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168) -- see
-// lib/wallet.ts's own doc comment.
-function AutoTopUpCard({ walletId }: { walletId: string }) {
+// lib/account.ts's own doc comment.
+function AutoTopUpCard({ accountId }: { accountId: string }) {
   const { t } = useI18n();
   const [setting, setSetting] = useState<AutoTopUpSetting | null | undefined>(undefined);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
@@ -2213,12 +2213,12 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
-    fetchAutoTopUpSetting(walletId)
+    fetchAutoTopUpSetting(accountId)
       .then(setSetting)
       .catch(() => setSetting(null));
     fetchLinkedAccounts().then((accounts) => setLinkedAccounts(accounts.filter((a) => a.status === 'LINKED'))).catch(() => {});
   };
-  useEffect(load, [walletId]);
+  useEffect(load, [accountId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2228,7 +2228,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
     setBusy(true);
     setError(null);
     try {
-      await configureAutoTopUp(walletId, linkedAccountId, threshold, topUp, Number(dailyTriggerCap) || 3, true);
+      await configureAutoTopUp(accountId, linkedAccountId, threshold, topUp, Number(dailyTriggerCap) || 3, true);
       setShowForm(false);
       load();
     } catch (err) {
@@ -2243,7 +2243,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
     setBusy(true);
     setError(null);
     try {
-      await configureAutoTopUp(walletId, setting.linkedAccountId, setting.thresholdAmount, setting.topUpAmount, setting.dailyTriggerCap, !setting.enabled);
+      await configureAutoTopUp(accountId, setting.linkedAccountId, setting.thresholdAmount, setting.topUpAmount, setting.dailyTriggerCap, !setting.enabled);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('autoTopUp.saveError'));
@@ -2256,7 +2256,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
     setTriggering(true);
     setTriggerResult(null);
     try {
-      const r = await triggerAutoTopUp(walletId);
+      const r = await triggerAutoTopUp(accountId);
       setTriggerResult(r.reason);
       load();
     } catch (err) {
@@ -3048,7 +3048,7 @@ function PostpaidCreditView() {
       const res = await spendPostpaidCredit(amount);
       setLine((prev) => (prev ? { ...prev, currentBalance: res.currentBalance } : prev));
       setSpendAmount('');
-      setNotice(`Added ${res.amount.toLocaleString()} RWF to your wallet -- ${res.availableCredit.toLocaleString()} RWF still available.`);
+      setNotice(`Added ${res.amount.toLocaleString()} RWF to your account -- ${res.availableCredit.toLocaleString()} RWF still available.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -3110,7 +3110,7 @@ function PostpaidCreditView() {
         disabled={line.status === 'SUSPENDED'}
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', width: '100%', boxSizing: 'border-box' }}
       />
-      <button className="itunda-btn itunda-btn-primary" disabled={busy || line.status === 'SUSPENDED'} onClick={handleSpend}>{busy ? 'Adding…' : 'Add to wallet'}</button>
+      <button className="itunda-btn itunda-btn-primary" disabled={busy || line.status === 'SUSPENDED'} onClick={handleSpend}>{busy ? 'Adding…' : 'Add to account'}</button>
       <input
         type="number" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Repay amount (RWF)"
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', width: '100%', boxSizing: 'border-box' }}
@@ -3123,7 +3123,7 @@ function PostpaidCreditView() {
 // Real Rwanda coffee-cooperative harvest-advance / input financing -- see
 // lib/harvestAdvance.ts's own doc comment for the full sourced account. Sourced beyond
 // this session's usual Toss/Kakao/Naver/Coupang reference ecosystems. Itunda is the
-// sole real lender here (the same real underwriting-free wallet-to-wallet pattern the
+// sole real lender here (the same real underwriting-free account-to-account pattern the
 // Offers/My-loans views above already use for itunda's own book), disbursed from
 // itunda's own real loan_payable receivable -- never a shared pool, distinct from the
 // Ikimina/SACCO shapes above.
@@ -3575,7 +3575,7 @@ function StudentLoanView() {
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate,
           {' '}with a grace period after graduation before repayment starts. Declared household income is self-declared -- not verified against BRD's real
-          {' '}Financial Means Testing process. Repayment here is user-initiated from your wallet -- itunda cannot deduct from your paycheck like the real
+          {' '}Financial Means Testing process. Repayment here is user-initiated from your account -- itunda cannot deduct from your paycheck like the real
           {' '}8%-of-income scheme BRD uses.
         </p>
         {hasActiveLoan ? (
@@ -3842,7 +3842,7 @@ function MotoOwnershipView() {
                         {plan.savedAmount >= plan.downPaymentTarget && (
                           <>
                             <p style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
-                              This releases your full {plan.bikePrice.toLocaleString()} RWF bike price to your wallet (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.
+                              This releases your full {plan.bikePrice.toLocaleString()} RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.
                             </p>
                             <button className="itunda-btn itunda-btn-primary" disabled={busyId === plan.id} onClick={() => handleConvert(plan.id)}>
                               {busyId === plan.id ? 'Converting…' : 'Convert to loan'}
@@ -4848,36 +4848,36 @@ function UssdSettingsView() {
 // lib/foreignCurrency.ts's own doc comment.
 function ForeignCurrencyView() {
   const { t } = useI18n();
-  const [wallets, setWallets] = useState<ForeignCurrencyWallet[] | null>(null);
+  const [accounts, setAccounts] = useState<ForeignCurrencyAccount[] | null>(null);
   const [conversions, setConversions] = useState<CurrencyConversion[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
-    fetchMyForeignCurrencyWallets()
-      .then(setWallets)
+    fetchMyForeignCurrencyAccounts()
+      .then(setAccounts)
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchMyCurrencyConversions().then(setConversions).catch(() => setConversions([]));
   };
   useEffect(load, []);
 
-  if (wallets === null) {
+  if (accounts === null) {
     return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   }
 
-  const openCurrencies = new Set(wallets.map((w) => w.currency));
+  const openCurrencies = new Set(accounts.map((w) => w.currency));
   const availableToOpen = FOREIGN_CURRENCY_SUPPORTED.filter((c) => !openCurrencies.has(c));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {wallets.length === 0 ? (
+      {accounts.length === 0 ? (
         <div className="itunda-card">
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
             Open a USD, EUR, or GBP account to hold foreign currency and convert between it and RWF at a real live rate.
           </p>
         </div>
       ) : (
-        wallets.map((w) => (
+        accounts.map((w) => (
           <div key={w.id} className="itunda-card" style={{ padding: '20px' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{w.currency} account</p>
             <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{w.balance.toLocaleString()} {w.currency}</h2>
@@ -4886,9 +4886,9 @@ function ForeignCurrencyView() {
         ))
       )}
 
-      {availableToOpen.length > 0 && <OpenForeignWalletCard currencies={availableToOpen} onOpened={load} />}
-      {wallets.length > 0 && <ConvertCurrencyCard wallets={wallets} onConverted={load} />}
-      {wallets.length > 0 && <RateAlertCard wallets={wallets} />}
+      {availableToOpen.length > 0 && <OpenForeignAccountCard currencies={availableToOpen} onOpened={load} />}
+      {accounts.length > 0 && <ConvertCurrencyCard accounts={accounts} onConverted={load} />}
+      {accounts.length > 0 && <RateAlertCard accounts={accounts} />}
 
       {conversions.length > 0 && (
         <div className="itunda-card">
@@ -4905,7 +4905,7 @@ function ForeignCurrencyView() {
   );
 }
 
-function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly ForeignCurrencyCode[]; onOpened: () => void }) {
+function OpenForeignAccountCard({ currencies, onOpened }: { currencies: readonly ForeignCurrencyCode[]; onOpened: () => void }) {
   const { t } = useI18n();
   const [opening, setOpening] = useState<ForeignCurrencyCode | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -4914,7 +4914,7 @@ function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly 
     setError(null);
     setOpening(currency);
     try {
-      await openForeignCurrencyWallet(currency);
+      await openForeignCurrencyAccount(currency);
       onOpened();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -4944,10 +4944,10 @@ function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly 
   );
 }
 
-function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrencyWallet[]; onConverted: () => void }) {
+function ConvertCurrencyCard({ accounts, onConverted }: { accounts: ForeignCurrencyAccount[]; onConverted: () => void }) {
   const { t } = useI18n();
   const [direction, setDirection] = useState<'TO_FOREIGN' | 'TO_RWF'>('TO_FOREIGN');
-  const [currency, setCurrency] = useState(wallets[0]?.currency ?? '');
+  const [currency, setCurrency] = useState(accounts[0]?.currency ?? '');
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -4984,7 +4984,7 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Convert</h3>
       <div style={{ display: 'flex', gap: '8px' }}>
         <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
-          {wallets.map((w) => <option key={w.currency} value={w.currency}>{w.currency}</option>)}
+          {accounts.map((w) => <option key={w.currency} value={w.currency}>{w.currency}</option>)}
         </select>
         <select value={direction} onChange={(e) => setDirection(e.target.value as 'TO_FOREIGN' | 'TO_RWF')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
           <option value="TO_FOREIGN">RWF → {currency}</option>
@@ -5021,10 +5021,10 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
 // lib/foreignCurrency.ts's own doc comment for why this is the first client wiring
 // for a backend feature that shipped fully with a live-verified-safe scheduler but
 // zero callers anywhere.
-function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
+function RateAlertCard({ accounts }: { accounts: ForeignCurrencyAccount[] }) {
   const { t } = useI18n();
   const [alerts, setAlerts] = useState<ExchangeRateAlert[] | null>(null);
-  const [currency, setCurrency] = useState(wallets[0]?.currency ?? '');
+  const [currency, setCurrency] = useState(accounts[0]?.currency ?? '');
   const [target, setTarget] = useState('');
   const [direction, setDirection] = useState<'ABOVE' | 'BELOW'>('ABOVE');
   const [expanded, setExpanded] = useState(false);
@@ -5071,7 +5071,7 @@ function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Rate alerts</h3>
-      {wallets.map((w) => {
+      {accounts.map((w) => {
         const a = alertFor(w.currency);
         return a ? (
           <div key={w.currency} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -5090,7 +5090,7 @@ function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
         <form onSubmit={handleSet}>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
             <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
-              {wallets.map((w) => <option key={w.currency} value={w.currency}>RWF/{w.currency}</option>)}
+              {accounts.map((w) => <option key={w.currency} value={w.currency}>RWF/{w.currency}</option>)}
             </select>
             <div style={{ display: 'flex', gap: '4px', padding: '4px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
               {(['ABOVE', 'BELOW'] as const).map((d) => (
@@ -5127,7 +5127,7 @@ function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
 }
 
 // Real Kakao Pay 페이아이 소비 리포트 (AI spending report, sourced 2026-08) -- see
-// lib/wallet.ts's own doc comment for the full account. A real month-over-month
+// lib/account.ts's own doc comment for the full account. A real month-over-month
 // comparison, never a fabricated AI narrative.
 function MonthlySpendingReportCard() {
   const { t } = useI18n();
@@ -5167,7 +5167,7 @@ function MonthlySpendingReportCard() {
 }
 
 // Real Kakao Pay 소비 리포트-style spending categorization (2026-07-13, wired 2026-07-28
-// as item 106) -- see lib/wallet.ts's own doc comment. Found backend-only via a fresh
+// as item 106) -- see lib/account.ts's own doc comment. Found backend-only via a fresh
 // matrix scan: real, ledger-based, and live since well before this session, but never
 // wired to any client anywhere.
 function SpendingInsightView() {
@@ -5194,12 +5194,12 @@ function SpendingInsightView() {
       <div className="itunda-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total spent, all time</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{totalSpent.toLocaleString()} RWF</h2>
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Real, ledger-based -- what every wallet debit actually paid for.</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Real, ledger-based -- what every account debit actually paid for.</p>
       </div>
       <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>By category</h3>
         {categories.length === 0 ? (
-          <EmptyState message="No spending recorded yet — your breakdown will show up here once you use your wallet." />
+          <EmptyState message="No spending recorded yet — your breakdown will show up here once you use your account." />
         ) : (
           categories.map((c) => (
             <div key={c.name} style={{ padding: '8px 0' }}>
@@ -5219,8 +5219,8 @@ function SpendingInsightView() {
   );
 }
 
-// Real Toss-style monthly budgets/limits (item 165) -- see lib/wallet.ts's own doc
-// comment. `WalletService.setBudget/getBudgets` (including real 80%/100%-threshold
+// Real Toss-style monthly budgets/limits (item 165) -- see lib/account.ts's own doc
+// comment. `AccountService.setBudget/getBudgets` (including real 80%/100%-threshold
 // notifications, wired since 2026-07-28) had zero client anywhere until now.
 function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
   const { t } = useI18n();
@@ -5389,7 +5389,7 @@ function SubscriptionsView() {
       <div className="itunda-card" style={{ padding: '24px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '4px' }}>Merchant subscriptions</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
-          Plans you've subscribed to. These charge your wallet automatically until you cancel.
+          Plans you've subscribed to. These charge your account automatically until you cancel.
         </p>
         {billingError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{billingError}</p>}
         {billingSubs === null && !billingError ? (
@@ -6495,7 +6495,7 @@ function FamilyLinkCard() {
               </div>
               {openOverviewFor === c.link.childUserId && overview && (
                 <div style={{ marginTop: '6px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-                  <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.walletBalance.toLocaleString()} RWF</strong></p>
+                  <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.accountBalance.toLocaleString()} RWF</strong></p>
                   {overview.recentTransactions.slice(0, 5).map((t) => (
                     <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
                   ))}
@@ -6969,15 +6969,15 @@ async function shareOrCopyLink(url: string, title: string, text: string): Promis
 //   "supplementary," but the real reference confirms they're part of the actual
 //   core screen, not optional extras.
 // - A real "포인트 사용" (use points) toggle exists in the reference, but itunda has
-//   no separate points balance (cashback credits straight to the wallet, same
+//   no separate points balance (cashback credits straight to the account, same
 //   honest scope-down Android's own original MyPaymentCodeCard already
 //   established) -- deliberately still not faked here.
-// - The real screen's bottom card row mixes wallet + real linked bank cards +
+// - The real screen's bottom card row mixes account + real linked bank cards +
 //   Samsung-Pay NFC + membership -- itunda has no NFC/membership equivalent, so
-//   Android's own wallet-only carousel was already an honest, deliberate
+//   Android's own account-only carousel was already an honest, deliberate
 //   simplification of that row, not an inaccuracy -- kept as-is when this pass
 //   restores everything else.
-function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
+function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
   const [revealed, setRevealed] = useState(false);
   const [code, setCode] = useState<CustomerPaymentCode | null>(null);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
@@ -6988,8 +6988,8 @@ function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
   const [nearbyAds, setNearbyAds] = useState<NearbyMerchantAd[]>([]);
   // Real swipeable funding-source selection (§240) -- defaults to MAIN, same as
   // before this pass; explicit user selection only kicks in once they swipe.
-  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-  const wallet = wallets.find((w) => w.id === selectedWalletId) ?? wallets.find((w) => w.type === 'MAIN') ?? wallets[0] ?? null;
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const account = accounts.find((w) => w.id === selectedAccountId) ?? accounts.find((w) => w.type === 'MAIN') ?? accounts[0] ?? null;
 
   // Real auto-refresh shortly before the code's own real 2-minute expiry, matching
   // Android's identical MyPaymentCodeCard -- a customer standing at a register
@@ -7000,7 +7000,7 @@ function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
     let timeoutId: ReturnType<typeof setTimeout>;
 
     const refresh = () => {
-      generateCustomerPaymentCode(wallet?.id)
+      generateCustomerPaymentCode(account?.id)
         .then((result) => {
           if (cancelled) return;
           setCode(result);
@@ -7013,12 +7013,12 @@ function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
     refresh();
 
     return () => { cancelled = true; clearTimeout(timeoutId); };
-    // Re-fetches against the newly-selected wallet if `wallet` changes while
-    // already revealed, same real "don't silently keep charging the old wallet"
-    // discipline Android's own LaunchedEffect(revealed, selectedWallet?.id) key
+    // Re-fetches against the newly-selected account if `account` changes while
+    // already revealed, same real "don't silently keep charging the old account"
+    // discipline Android's own LaunchedEffect(revealed, selectedAccount?.id) key
     // establishes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealed, wallet?.id]);
+  }, [revealed, account?.id]);
 
   useEffect(() => {
     if (!code) { setBarcodeDataUrl(null); setQrDataUrl(null); return; }
@@ -7104,10 +7104,10 @@ function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
         )}
       </div>
-      {wallet && (
+      {account && (
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>itunda Pay</span>
-          <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{wallet.balance.toLocaleString()} RWF</span>
+          <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{account.balance.toLocaleString()} RWF</span>
         </div>
       )}
       {linkedAccount && (
@@ -7132,8 +7132,8 @@ function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
           </div>
         </div>
       )}
-      {wallets.length > 1 && (
-        <WalletCardCarousel wallets={wallets} selectedWalletId={wallet?.id ?? null} onSelect={setSelectedWalletId} />
+      {accounts.length > 1 && (
+        <AccountCardCarousel accounts={accounts} selectedAccountId={account?.id ?? null} onSelect={setSelectedAccountId} />
       )}
     </div>
   );
@@ -7141,21 +7141,21 @@ function MyPaymentCodeCard({ wallets }: { wallets: Wallet[] }) {
 
 // Real swipeable funding-source cards -- see MyPaymentCodeCard's own doc comment
 // for why this stays a deliberate, honest simplification of the real reference's
-// mixed wallet/card/membership row (itunda has no Samsung-Pay NFC or membership
+// mixed account/card/membership row (itunda has no Samsung-Pay NFC or membership
 // equivalent to include honestly). Settling on a card is a real selection: it's
-// the walletId MyPaymentCodeCard's own code is generated against, matching the
+// the accountId MyPaymentCodeCard's own code is generated against, matching the
 // real "swipe to choose what you pay with" KakaoPay behavior. CSS scroll-snap is
 // the web equivalent of Android's HorizontalPager -- no extra dependency needed.
-function WalletCardCarousel({ wallets, selectedWalletId, onSelect }: { wallets: Wallet[]; selectedWalletId: string | null; onSelect: (id: string) => void }) {
+function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accounts: Account[]; selectedAccountId: string | null; onSelect: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
     const el = containerRef.current;
-    if (!el || wallets.length === 0) return;
-    const cardWidth = el.scrollWidth / wallets.length;
-    const index = Math.min(Math.round(el.scrollLeft / cardWidth), wallets.length - 1);
-    const w = wallets[index];
-    if (w && w.id !== selectedWalletId) onSelect(w.id);
+    if (!el || accounts.length === 0) return;
+    const cardWidth = el.scrollWidth / accounts.length;
+    const index = Math.min(Math.round(el.scrollLeft / cardWidth), accounts.length - 1);
+    const w = accounts[index];
+    if (w && w.id !== selectedAccountId) onSelect(w.id);
   };
 
   return (
@@ -7165,12 +7165,12 @@ function WalletCardCarousel({ wallets, selectedWalletId, onSelect }: { wallets: 
         onScroll={handleScroll}
         style={{ display: 'flex', gap: '12px', overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: '4px' }}
       >
-        {wallets.map((w) => (
+        {accounts.map((w) => (
           <div
             key={w.id}
             style={{
               scrollSnapAlign: 'center', flexShrink: 0, width: '220px', height: '148px', borderRadius: '16px',
-              backgroundColor: walletCardColor(w.currency), padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              backgroundColor: accountCardColor(w.currency), padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
             }}
           >
             {/* Small light rectangle mimicking a real card's EMV chip -- a cheap,
@@ -7187,12 +7187,12 @@ function WalletCardCarousel({ wallets, selectedWalletId, onSelect }: { wallets: 
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
-        {wallets.map((w) => (
+        {accounts.map((w) => (
           <div
             key={w.id}
             style={{
-              width: w.id === selectedWalletId ? '8px' : '6px', height: w.id === selectedWalletId ? '8px' : '6px',
-              borderRadius: '999px', backgroundColor: w.id === selectedWalletId ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)',
+              width: w.id === selectedAccountId ? '8px' : '6px', height: w.id === selectedAccountId ? '8px' : '6px',
+              borderRadius: '999px', backgroundColor: w.id === selectedAccountId ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)',
             }}
           />
         ))}
@@ -7201,7 +7201,7 @@ function WalletCardCarousel({ wallets, selectedWalletId, onSelect }: { wallets: 
   );
 }
 
-function walletCardColor(currency: string): string {
+function accountCardColor(currency: string): string {
   switch (currency) {
     case 'RWF': return '#2272EB';
     case 'USD': return '#04C065';
@@ -7877,8 +7877,8 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   );
 }
 
-// Real Investment-wallet top-up (2026-08-04) -- see lib/stocks.ts's own
-// fundInvestmentWallet doc comment. Without this, a user with no pre-seeded
+// Real Investment-account top-up (2026-08-04) -- see lib/stocks.ts's own
+// fundInvestmentAccount doc comment. Without this, a user with no pre-seeded
 // investment balance had no in-app way to ever actually buy a stock.
 function AddFundsCard({ onFunded }: { onFunded: () => void }) {
   const { t } = useI18n();
@@ -7899,7 +7899,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
     }
     setBusy(true);
     try {
-      await fundInvestmentWallet(value);
+      await fundInvestmentAccount(value);
       setAmount('');
       setExpanded(false);
       onFunded();
@@ -7922,7 +7922,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
           {expanded ? 'Cancel' : 'Add funds'}
         </button>
       </div>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Move money from your main wallet into your investment account.</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Move money from your main account into your investment account.</p>
       {expanded && (
         <form onSubmit={handleFund} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
           <input
@@ -10650,7 +10650,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
 // (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself being
 // fully wired. A flat, even split among picked group members (excluding the
 // organizer); each participant pays their own share directly to the organizer via a
-// real wallet-to-wallet push, no escrow -- see SplitBill.kt's own doc comment.
+// real account-to-account push, no escrow -- see SplitBill.kt's own doc comment.
 function GroupSplitBillsView({
   groupConversationId, members, currentUserId, onBack,
 }: { groupConversationId: string; members: GroupMember[]; currentUserId: string | null; onBack: () => void }) {
@@ -16812,7 +16812,7 @@ function DeliverView() {
         <Bike size={32} color="var(--itunda-blue)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '6px' }}>Deliver with Itunda</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          Earn a real delivery fee for every order you deliver, paid straight to your wallet.
+          Earn a real delivery fee for every order you deliver, paid straight to your account.
         </p>
         <button className="itunda-btn itunda-btn-primary" onClick={handleRegister} disabled={registering}>
           {registering ? 'Registering…' : 'Become a rider'}
@@ -17191,7 +17191,7 @@ const TIP_PRESETS = [500, 1000, 2000];
 // Real Uber post-trip tipping -- see lib/rideshare.ts's own doc comment. Found via
 // scripts/uncalled-endpoint-sweep.py: fully built on the backend with zero client
 // anywhere. Same real device step-up pattern every other money-moving action in this
-// file already needs (tip is a real wallet-to-wallet transfer, gated by
+// file already needs (tip is a real account-to-account transfer, gated by
 // DeviceVerificationFilter same as TransferFlow/DelayedTransfersCard).
 function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped: () => void }) {
   const { t } = useI18n();
@@ -17822,7 +17822,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               <Car size={32} color="var(--itunda-blue)" style={{ marginBottom: '10px' }} />
               <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '6px' }}>Drive with Itunda</h3>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-                Earn a real fare for every trip you complete, paid straight to your wallet.
+                Earn a real fare for every trip you complete, paid straight to your account.
               </p>
               <button className="itunda-btn itunda-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver}>
                 {registeringDriver ? 'Registering…' : 'Become a driver'}
@@ -19716,7 +19716,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Book an appointment ({product.durationMinutes} min)</p>
       {product.requiresPrepay && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-          Requesting this slot holds a {product.price.toLocaleString()} RWF deposit from your wallet.
+          Requesting this slot holds a {product.price.toLocaleString()} RWF deposit from your account.
         </p>
       )}
       <input
@@ -20900,9 +20900,9 @@ function MultiCartView({
   );
 
   // Real per-seller order splitting -- each merchant group becomes its own real,
-  // independent placeOrder() call (its own Idempotency-Key, its own wallet-to-wallet
+  // independent placeOrder() call (its own Idempotency-Key, its own account-to-account
   // ledger transaction). Sequential, not Promise.all: these are real money-moving
-  // calls against the same buyer wallet, and a clear one-at-a-time result list is
+  // calls against the same buyer account, and a clear one-at-a-time result list is
   // more honest than a swallowed Promise.allSettled. A failure on one merchant's
   // order does not block or roll back any other -- exactly how a real multi-seller
   // checkout behaves (each seller is charged/fulfilled independently in real life).
@@ -21292,7 +21292,7 @@ function ShopView() {
 
   // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
   // see backend ShoppingMissionService.kt's own doc comment. Every mission credits real
-  // RWF to the real wallet; itunda has never had a separate points currency.
+  // RWF to the real account; itunda has never had a separate points currency.
   const [missions, setMissions] = useState<ShoppingMission[]>([]);
   const [spinOutcomes, setSpinOutcomes] = useState<SpinOutcome[]>([]);
   const [missionBusyType, setMissionBusyType] = useState<string | null>(null);
@@ -21402,7 +21402,7 @@ function ShopView() {
   const handleCheckedOut = (checkoutResults: CommerceCheckoutResult[]) => {
     // Only clear the merchants that actually succeeded -- a failed group's items
     // stay in the cart so the buyer doesn't lose their selection and can retry
-    // (e.g. after fixing the delivery address or topping up their wallet).
+    // (e.g. after fixing the delivery address or topping up their account).
     setCart((prev) => {
       const next = { ...prev };
       checkoutResults.filter((r) => r.success).forEach((r) => delete next[r.merchantId]);
@@ -22122,7 +22122,7 @@ function CardView() {
 }
 
 // Real Kakao Bank SafeBox (세이프박스) equivalent -- claim-anytime interest that grows
-// for real off the actual SAVINGS wallet balance (InterestAccrualScheduler, 2026-07-20).
+// for real off the actual SAVINGS account balance (InterestAccrualScheduler, 2026-07-20).
 // Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving -- see
 // lib/savings.ts's own doc comment. First client UI for this feature anywhere
 // (item 112, found via a content-grep sweep: Android has a real client, bank-mfe
@@ -22263,7 +22263,7 @@ function InterestJarCard() {
       <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
         <div>
-          {/* Real fix (2026-08-11): interest now auto-credits to the wallet the
+          {/* Real fix (2026-08-11): interest now auto-credits to the account the
               instant it accrues (see backend SavingsService.accrueInterest's own
               doc comment, matching real Toss Bank passbook interest) -- this money
               is already in jar.balance above, not sitting unclaimed. */}
@@ -23383,7 +23383,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
   // Same real device step-up gate as GroupAccountDetailView/GoalCard's deposit/
   // withdraw handlers above -- cancel/withdraw both move real money out of this
-  // plan's wallet, so an untrusted device hits the same DEVICE_NOT_VERIFIED 403.
+  // plan's account, so an untrusted device hits the same DEVICE_NOT_VERIFIED 403.
   const handleCancel = async () => {
     setBusy(true);
     setError(null);
@@ -23431,7 +23431,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   }
   if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
-  const { plan, walletBalance, installments } = detail;
+  const { plan, accountBalance, installments } = detail;
   const pct = Math.min(100, Math.round((plan.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
   const currentRate = plan.streakBroken ? plan.baseRate : plan.baseRate + plan.bonusRate;
 
@@ -23441,7 +23441,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
       <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>{plan.name} · Week {plan.weeksElapsed} of {WEEKLY_SAVINGS_TERM_WEEKS}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{walletBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString()} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fff' }} />
         </div>
@@ -23509,7 +23509,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
           {plan.status === 'MATURED' && !plan.withdrawnAt && (
             <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
-              {busy ? '…' : `Withdraw ${walletBalance.toLocaleString()} RWF to main wallet`}
+              {busy ? '…' : `Withdraw ${accountBalance.toLocaleString()} RWF to main account`}
             </button>
           )}
         </>
@@ -23589,7 +23589,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
             </button>
           </div>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-            A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
+            A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main account
             and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
           </p>
           <input
@@ -23793,7 +23793,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   }
   if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
-  const { plan, walletBalance, deposits } = detail;
+  const { plan, accountBalance, deposits } = detail;
   const pct = Math.min(100, Math.round((plan.daysElapsed / GROW31_TERM_DAYS) * 100));
   const bonus = grow31BonusRateForStreak(plan.longestStreak);
   const today = new Date().toISOString().slice(0, 10);
@@ -23805,7 +23805,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
       <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>{plan.name} · Day {Math.min(plan.daysElapsed, GROW31_TERM_DAYS)} of {GROW31_TERM_DAYS}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{walletBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString()} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fff' }} />
         </div>
@@ -23878,7 +23878,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
           {plan.status === 'MATURED' && !plan.withdrawnAt && (
             <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
-              {busy ? '…' : `Withdraw ${walletBalance.toLocaleString()} RWF to main wallet`}
+              {busy ? '…' : `Withdraw ${accountBalance.toLocaleString()} RWF to main account`}
             </button>
           )}
         </>
@@ -24093,7 +24093,7 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-        {UPFRONT_DEPOSIT_ANNUAL_RATE}% interest for the full year, paid to your wallet today. Principal is locked for 12 months — no early withdrawal.
+        {UPFRONT_DEPOSIT_ANNUAL_RATE}% interest for the full year, paid to your account today. Principal is locked for 12 months — no early withdrawal.
       </p>
       <input
         type="number"
@@ -24236,15 +24236,15 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
         <UpfrontDepositSection />
       </div>
       {/* Real architectural fix (2026-08-13) -- see this view's own coop-rail doc
-          comment above: AutoTransfersCard (recurring 자동이체) and MiniWalletCard (a
-          capped starter wallet) both used to render on Home too, same "real Bank-
+          comment above: AutoTransfersCard (recurring 자동이체) and MiniAccountCard (a
+          capped starter account) both used to render on Home too, same "real Bank-
           product content on a generic access point" violation. Homed here now,
           matching Android's identical "Auto Transfer -> BankHubScreen" move. */}
       <div style={{ marginTop: '24px' }}>
         <AutoTransfersCard />
       </div>
       <div style={{ marginTop: '24px' }}>
-        <MiniWalletCard />
+        <MiniAccountCard />
       </div>
       {onNavigateToTab && (
         <div className="itunda-card" style={{ marginTop: '24px', padding: '20px' }}>
@@ -24519,7 +24519,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // category when browsed and a different one when searched.
   const PRIMARY_TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
     { id: 'HOME', label: 'Home', icon: HomeIcon },
-    { id: 'PAY', label: 'Pay', icon: WalletIcon },
+    { id: 'PAY', label: 'Pay', icon: AccountIcon },
     { id: 'EXPLORE', label: 'Explore', icon: LayoutGrid },
     { id: 'MESSAGES', label: 'Messages', icon: MessageCircle },
     { id: 'YOU', label: 'You', icon: User },

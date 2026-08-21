@@ -7,7 +7,7 @@ import { randomUUID } from './uuid';
 // GET /api/v1/shopping/merchants/{id}/products catalog endpoints lib/eats.ts already
 // uses (a restaurant IS a Merchant, a menu item IS a MerchantProduct) -- only order
 // placement/tracking is genuinely new here. No delivery address, no rider: payment
-// settles straight into the restaurant's wallet at placement, and a table number
+// settles straight into the restaurant's account at placement, and a table number
 // (free text off a physical table tag/QR code) replaces the delivery address entirely.
 export type DineInOrderStatus = 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'SERVED' | 'CANCELLED';
 

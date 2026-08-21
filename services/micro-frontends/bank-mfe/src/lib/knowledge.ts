@@ -3,7 +3,7 @@ import { apiFetch } from './api';
 // Real Naver 지식iN (Knowledge iN)-style open-topic community Q&A (item 225) -- see
 // the backend's KnowledgeService doc comment for the full sourced account. A
 // genuinely different shape from the trip/rental features (Rides, Bike, Parking,
-// Bus): no wallet movement, no location -- a content + social-reputation mechanic.
+// Bus): no account movement, no location -- a content + social-reputation mechanic.
 
 export interface KnowledgeCategory {
   id: string;

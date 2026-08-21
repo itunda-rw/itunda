@@ -2,8 +2,8 @@ import { apiFetch } from './api';
 import { randomUUID } from './uuid';
 
 // Real KakaoTalk-style "선물하기" money gift (rw.itunda.gift, 2026-07-20) -- see
-// GiftService's own doc comment. Money leaves the sender's wallet into a real escrow
-// account the moment a gift is sent, and only reaches the recipient's wallet once they
+// GiftService's own doc comment. Money leaves the sender's account into a real escrow
+// account the moment a gift is sent, and only reaches the recipient's account once they
 // explicitly claim it (or is auto-refunded after 7 days). Rendered inline as a gift
 // bubble in the Talk thread, same "special message body" convention PriceOfferService
 // established for price offers.

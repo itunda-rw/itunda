@@ -16,7 +16,7 @@ export interface Ikimina {
   id: string;
   name: string;
   organizerId: string;
-  walletId: string;
+  accountId: string;
   contributionAmount: number;
   cycleFrequencyDays: number;
   memberCap: number;

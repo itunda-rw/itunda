@@ -2,9 +2,9 @@
 // (item 153) -- see the backend's UpfrontInterestDeposit.kt / UpfrontInterestDepositService.kt
 // doc comments for the full sourced mechanics and the no-early-withdrawal design choice
 // this depends on: the full year's 2.80% interest is paid the moment the deposit opens
-// (straight to the main wallet, immediately spendable), not at maturity like every other
+// (straight to the main account, immediately spendable), not at maturity like every other
 // savings product (WeeklySavingsPlan/InterestJar/SavingsGoal) -- the principal itself
-// stays locked in its own dedicated wallet for the full 12-month term with no early exit,
+// stays locked in its own dedicated account for the full 12-month term with no early exit,
 // the one real design choice this product depends on to not be a money-printing exploit.
 // Backend has been real (ledger-backed) but had zero client anywhere until now.
 
@@ -15,7 +15,7 @@ export type UpfrontDepositStatus = 'ACTIVE' | 'MATURED';
 export interface UpfrontInterestDeposit {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   principal: number;
   interestRate: number;
   interestPaid: number;

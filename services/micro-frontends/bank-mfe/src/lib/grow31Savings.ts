@@ -14,7 +14,7 @@ export type Grow31SavingsPlanStatus = 'ACTIVE' | 'MATURED' | 'CANCELLED';
 export interface Grow31SavingsPlan {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   name: string;
   dailyAmount: number;
   startDate: string;
@@ -44,7 +44,7 @@ export interface Grow31SavingsDeposit {
 
 export interface Grow31SavingsPlanDetail {
   plan: Grow31SavingsPlan;
-  walletBalance: number;
+  accountBalance: number;
   deposits: Grow31SavingsDeposit[];
 }
 
@@ -95,7 +95,7 @@ export const cancelGrow31SavingsPlan = (id: string) =>
     headers: { 'Idempotency-Key': randomUUID() },
   });
 
-// Withdraws an already-MATURED plan's full balance to the main wallet.
+// Withdraws an already-MATURED plan's full balance to the main account.
 export const withdrawGrow31SavingsPlan = (id: string) =>
   apiFetch<{ success: boolean; message: string } & Grow31SavingsPlanDetail>(`/api/v1/grow31-savings/plans/${id}/withdraw`, {
     method: 'POST',

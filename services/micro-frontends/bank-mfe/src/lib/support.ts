@@ -18,7 +18,7 @@ export interface SupportTicket {
   resolution: string | null;
   resolutionNotes: string | null;
   refundTransactionId: string | null;
-  frozeWalletId: string | null;
+  frozeAccountId: string | null;
   dueBy: string;
   reviewedBy: string | null;
   createdAt: string;

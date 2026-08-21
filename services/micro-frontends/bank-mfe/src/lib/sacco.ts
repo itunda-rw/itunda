@@ -13,7 +13,7 @@ import { randomUUID } from './uuid';
 export interface SaccoShareholding {
   id: string;
   userId: string;
-  walletId: string;
+  accountId: string;
   sharesHeld: number;
   totalContributed: number;
   createdAt: string;
