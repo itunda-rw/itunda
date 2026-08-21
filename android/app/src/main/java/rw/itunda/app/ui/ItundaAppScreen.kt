@@ -3114,7 +3114,7 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
 // name specifically. Real category colors, not per-merchant logos itunda has no
 // real artwork for.
 @Composable
-private fun ledgerRowIcon(transaction: rw.itunda.core.network.TransactionDto): Pair<androidx.compose.ui.graphics.vector.ImageVector, Color> {
+internal fun ledgerRowIcon(transaction: rw.itunda.core.network.TransactionDto): Pair<androidx.compose.ui.graphics.vector.ImageVector, Color> {
     val d = transaction.description.lowercase()
     return when {
         d.contains("ride") -> Icons.Outlined.DirectionsCar to AccentBlue
@@ -3269,6 +3269,7 @@ private fun PayTab(
     var facePayEnrolled by remember { mutableStateOf(false) }
     var facePayBusy by remember { mutableStateOf(false) }
     var rewardTasks by remember { mutableStateOf<List<rw.itunda.core.network.RewardTaskDto>>(emptyList()) }
+    var rewardsTotal by remember { mutableStateOf(0.0) }
     var claimingRewardId by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         try {
@@ -3277,11 +3278,16 @@ private fun PayTab(
             // Non-critical -- the row just keeps showing the last-known state.
         }
         try {
-            rewardTasks = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks().tasks
+            val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
+            rewardTasks = result.tasks
+            rewardsTotal = result.rewardsTotal
         } catch (e: Exception) {
             // Non-critical -- the preview section just stays hidden.
         }
     }
+    // Real "345 stores nearby" banner -- see PayHomeExtras.kt's rememberNearbyMerchants.
+    val nearbyMerchants = rememberNearbyMerchants()
+    val payTabTransactions by viewModel.transactions.collectAsState()
     // Real fix (2026-08-11, same session -- direct user pushback: "why is itunda pay
     // have no simplicity at all pay by code?"): PAY_MERCHANT (manual merchant-ID/
     // amount entry) was the ONLY way to pay -- real friction Toss's own "Postel's
@@ -3354,7 +3360,9 @@ private fun PayTab(
                     java.util.UUID.randomUUID().toString(),
                     rw.itunda.core.network.ClaimRewardTaskRequest(taskId),
                 )
-                rewardTasks = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks().tasks
+                val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
+                rewardTasks = result.tasks
+                rewardsTotal = result.rewardsTotal
             } catch (e: Exception) {
                 // Non-critical -- the row just stays claimable, retryable on next tap.
             } finally {
@@ -3377,7 +3385,15 @@ private fun PayTab(
                 IdsIconButton(icon = Icons.Outlined.Settings, contentDescription = "Pay settings", onClick = { onSwitchTab(ItundaTab.You) })
             }
         }
-        item { FacePayStatusRow(enrolled = facePayEnrolled, busy = facePayBusy, onToggle = handleFacePayToggle) }
+        item { NearbyMerchantsBanner(merchants = nearbyMerchants) }
+        item {
+            FacePayStatusRow(
+                enrolled = facePayEnrolled,
+                busy = facePayBusy,
+                cashbackRatePercent = nearbyMerchants.takeIf { it.isNotEmpty() }?.let { list -> list.sumOf { it.cashbackRate } / list.size * 100.0 },
+                onToggle = handleFacePayToggle,
+            )
+        }
         // Real Toss Pay reference (user-provided screenshots, 2026-08-21): the real Pay
         // home screen has no headline balance card at all -- it's a nearby-merchant-
         // rewards surface leading straight into the payment-method picker (Facepay/QR
@@ -3452,16 +3468,10 @@ private fun PayTab(
                 )
             }
         }
+        item { RewardsSummaryRow(rewardsTotal = rewardsTotal, payBalance = accounts.find { it.type == "PAY" }?.balance) }
         item { RewardsPreviewSection(tasks = rewardTasks, claimingId = claimingRewardId, onClaim = handleClaimReward) }
-        // Real "FAQ / Send feedback" (2026-08-22) -- itunda has no FAQ-content system,
-        // so this honestly routes to the real Support screen rather than fabricating
-        // static FAQ copy.
-        item {
-            Text(
-                "Get help", fontSize = 13.sp, color = Ids.colors.textSecondary,
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenSupport).padding(vertical = 14.dp, horizontal = 4.dp),
-            )
-        }
+        item { PaymentHistorySection(transactions = payTabTransactions) }
+        item { GetHelpLinks(onOpenSupport = onOpenSupport) }
     }
 }
 

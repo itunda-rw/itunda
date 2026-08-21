@@ -1635,6 +1635,11 @@ data class NearbyAdDto(val id: String, val merchantId: String, val title: String
 data class NearbyMerchantAdDto(val ad: NearbyAdDto, val businessName: String, val distanceKm: Double)
 data class NearbyMerchantAdsResponse(val success: Boolean, val ads: List<NearbyMerchantAdDto>)
 
+// Real Toss Pay home reference -- mirrors backend's MerchantDiscoveryService.kt
+// NearbyMerchant exactly.
+data class NearbyMerchantDto(val id: String, val businessName: String, val category: String?, val cashbackRate: Double, val latitude: Double, val longitude: Double, val distanceKm: Double)
+data class NearbyMerchantsResponse(val success: Boolean, val merchants: List<NearbyMerchantDto>)
+
 // Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
 // folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
@@ -3582,6 +3587,17 @@ interface ApiService {
     // bank-mfe already has this; this is the first Android client.
     @GET("api/v1/merchant/ads/nearby")
     suspend fun getNearbyMerchantAds(@Query("latitude") latitude: Double, @Query("longitude") longitude: Double): NearbyMerchantAdsResponse
+
+    // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
+    // "it should look 100% like toss pay UI/UX features everything") -- the reference's
+    // own "345 stores nearby where you can earn rewards" banner. Distinct from
+    // getNearbyMerchantAds above -- that's paid ad placements (a subset), this is every
+    // real ACTIVE merchant nearby (MerchantDiscoveryService.kt), which is what "how many
+    // stores can I actually pay near me" honestly means. Every merchant earns the payer
+    // real cashback on collect() (ShoppingCashbackService), so "earn cashback" is a true
+    // claim for all of them, not just FacePay-enrolled ones.
+    @GET("api/v1/merchant/nearby")
+    suspend fun getNearbyMerchants(@Query("latitude") latitude: Double, @Query("longitude") longitude: Double, @Query("radiusKm") radiusKm: Double = 5.0): NearbyMerchantsResponse
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
     // (ProductFavoriteService), bank-mfe wired the same day; this closes the
