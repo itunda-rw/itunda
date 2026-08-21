@@ -419,10 +419,7 @@ public struct BankView: View {
                         Text("Covered up to \(Int(dp.coverageCapPerUser)) RWF per user").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
                         Text("itunda's reserve: \(Int(dp.fundReserveBalance)) RWF").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
                     }
-                    .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
                 }
                 // Real licensed-bank disclosure (2026-08-11) -- see
                 // docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-
@@ -622,10 +619,7 @@ private struct AccountSummaryCard: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(IDS.Layout.cardPadding)
-        .background(IDS.Colors.raisedCard)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-        .shadow(color: IDS.Colors.shadow, radius: 10, x: 0, y: 4)
+        .padding(.bottom, IDS.Layout.cardPadding)
     }
 }
 
@@ -684,6 +678,12 @@ private struct QuickActionsRow: View {
     }
 }
 
+// Flattened 2026-08-22 (direct user directive: "our bank home screen should
+// look 100% like toss bank screen") -- real Toss Bank's own product catalog
+// renders as one continuous flat list, not a grid of separate white shadowed
+// cards. Matches the identical flat-conversion of Android's ShellSection and
+// bank-mfe's .itunda-flat-section shipped the same session: no background/
+// cornerRadius/shadow, just a thin bottom divider between whole sections.
 private struct HomeSectionCard: View {
     let title: String
     let actionLabel: String
@@ -711,10 +711,10 @@ private struct HomeSectionCard: View {
                 }
             }
         }
-        .padding(IDS.Layout.cardPadding)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.sectionCornerRadius)
-        .shadow(color: IDS.Colors.shadow.opacity(0.7), radius: 8, x: 0, y: 3)
+        .padding(.bottom, IDS.Layout.cardPadding)
+        .overlay(alignment: .bottom) {
+            Divider().overlay(IDS.Colors.divider)
+        }
     }
 }
 
