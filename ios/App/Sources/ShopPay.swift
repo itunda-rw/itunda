@@ -18,6 +18,11 @@ import CoreNetwork
 // from there too, same App-target file as this one.
 struct PayAMerchantSection: View {
     @Binding var paymentResult: CollectPaymentResultDto?
+    // Real Toss Pay home reference (2026-08-22) -- derived from real fetched
+    // nearby-merchant data (PayScreen's own NearbyMerchantsLoader) when the caller has
+    // it; nil for callers that don't (e.g. ShopScreen's own PayAMerchantSection use),
+    // in which case FacePaySettingsCard just omits the cashback-rate line.
+    var cashbackRatePercent: Double? = nil
     // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
     // here, same as bank-mfe's own ShoppingView, so this card and PayByCodeCard don't
     // each fetch enrollment status independently.
@@ -42,7 +47,7 @@ struct PayAMerchantSection: View {
         } else {
             VStack(alignment: .leading, spacing: 10) {
                 MyPaymentCodeCard()
-                FacePaySettingsCard(enrolled: facePayEnrolled, onChanged: { Task { await loadFacePayStatus() } })
+                FacePaySettingsCard(enrolled: facePayEnrolled, cashbackRatePercent: cashbackRatePercent, onChanged: { Task { await loadFacePayStatus() } })
                 PayByCodeCard(facePayEnrolled: facePayEnrolled ?? false, onPaid: { paymentResult = $0 })
                 PayByStaticQrCard(onPaid: { paymentResult = $0 })
             }
@@ -60,8 +65,14 @@ struct PayAMerchantSection: View {
 /// Enrolling swaps Pay-by-code's own collect call to the Face Pay channel -- same manual
 /// code entry, just a different real ledger channel label, matching bank-mfe's own
 /// honest scope exactly (no device biometric prompt gates it on any client, itunda's own).
+/// cashbackRatePercent (2026-08-22) is itunda's real per-merchant cashback rate,
+/// averaged across real fetched nearby merchants -- never hardcoded, stated as a
+/// general "earn on payments" fact (true regardless of FacePay enrollment, since
+/// cashback applies to every collect() channel), not a fabricated FacePay-exclusive
+/// rate the way the real Toss reference's own "Earning 3%" implies.
 struct FacePaySettingsCard: View {
     let enrolled: Bool?
+    var cashbackRatePercent: Double? = nil
     let onChanged: () -> Void
 
     @State private var busy = false
@@ -75,7 +86,7 @@ struct FacePaySettingsCard: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("😊 Face Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                        Text(enrolled == true ? "Enabled — authorize payment codes with your face, no code re-entry needed" : "Not enabled on this account")
+                        Text(facePaySubtitle)
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     }
                     Spacer()
@@ -93,6 +104,15 @@ struct FacePaySettingsCard: View {
             }
             .padding(.vertical, 8)
         }
+    }
+
+    private var facePaySubtitle: String {
+        if let rate = cashbackRatePercent {
+            let enrolledLabel = enrolled == true ? "Enabled" : "Not enabled"
+            let suffix = enrolled == true ? "" : " either way"
+            return "\(enrolledLabel) — earn \(rate.formatted())% cashback on payments\(suffix)"
+        }
+        return enrolled == true ? "Enabled — authorize payment codes with your face, no code re-entry needed" : "Not enabled on this account"
     }
 
     private func toggle() async {

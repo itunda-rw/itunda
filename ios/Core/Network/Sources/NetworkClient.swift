@@ -3933,6 +3933,19 @@ public struct NearbyMerchantAdDto: Decodable, Identifiable {
 }
 public struct NearbyMerchantAdsResponse: Decodable { public let success: Bool; public let ads: [NearbyMerchantAdDto] }
 
+// Real Toss Pay home reference -- mirrors bank-mfe/Android's identical
+// NearbyMerchant/NearbyMerchantDto exactly (MerchantDiscoveryService.kt).
+public struct NearbyMerchantDto: Decodable, Identifiable {
+    public let id: String
+    public let businessName: String
+    public let category: String?
+    public let cashbackRate: Double
+    public let latitude: Double
+    public let longitude: Double
+    public let distanceKm: Double
+}
+public struct NearbyMerchantsResponse: Decodable { public let success: Bool; public let merchants: [NearbyMerchantDto] }
+
 /// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
 /// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
 /// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
@@ -5279,6 +5292,10 @@ extension NetworkClient {
     // bank-mfe/Android already have this; this is the first iOS client.
     public func getNearbyMerchantAds(latitude: Double, longitude: Double) async throws -> NearbyMerchantAdsResponse {
         try await get("api/v1/merchant/ads/nearby", query: [URLQueryItem(name: "latitude", value: "\(latitude)"), URLQueryItem(name: "longitude", value: "\(longitude)")])
+    }
+
+    public func getNearbyMerchants(latitude: Double, longitude: Double, radiusKm: Double = 5.0) async throws -> NearbyMerchantsResponse {
+        try await get("api/v1/merchant/nearby", query: [URLQueryItem(name: "latitude", value: "\(latitude)"), URLQueryItem(name: "longitude", value: "\(longitude)"), URLQueryItem(name: "radiusKm", value: "\(radiusKm)")])
     }
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
