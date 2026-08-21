@@ -106,6 +106,7 @@ class OrderService(
     private val pushNotificationService: PushNotificationService,
     private val timeDealRepository: TimeDealRepository,
     private val affiliateService: AffiliateService,
+    private val autoTopUpService: rw.itunda.account.AutoTopUpService,
 ) {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
 
@@ -162,8 +163,14 @@ class OrderService(
 
         val merchantAccount = accountRepository.findById(merchant.accountId)
             .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
-        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
-            ?: throw BuyerNoAccountException("No account found for this account")
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- see
+        // MerchantService.collect()'s own doc comment for the full sourced
+        // architecture. A Commerce order is real merchant collection, same as
+        // QR/code payment -- draws from the buyer's itunda Pay money, auto-topped
+        // from Bank (then an external linked account) if short at checkout time
+        // (see the auto-topup block right before this order's ledger post below).
+        var buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.PAY)
+            ?: throw BuyerNoAccountException("No itunda Pay money found for this account")
 
         // Real prices read from the live catalog row -- never trusted from the client
         // (see this class's own doc comment on why) -- and snapshotted onto each
@@ -273,6 +280,17 @@ class OrderService(
 
         val fee = totalAmount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = totalAmount.subtract(fee)
+
+        if (buyerAccount.availableBalance < totalAmount) {
+            val shortfall = totalAmount.subtract(buyerAccount.availableBalance)
+            var topUpResult = autoTopUpService.topUpPayFromMain(buyerId, buyerAccount.id, shortfall)
+            if (!topUpResult.triggered) {
+                topUpResult = autoTopUpService.topUpShortfall(buyerId, buyerAccount.id, shortfall)
+            }
+            if (topUpResult.triggered) {
+                buyerAccount = accountRepository.findById(buyerAccount.id).orElse(buyerAccount)
+            }
+        }
 
         val result = ledgerService.postLedgerTransaction(
             buyerAccount.currency,

@@ -71,7 +71,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         When("subscribing to a real product with a valid interval") {
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 2)), "KG 123 St") } returns OrderDetail(order, emptyList())
-            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.PAY) } returns customerAccount
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
             val subscription = service.subscribe("customer_1", "merchant_1", "product_1", 2, 30, "KG 123 St")
@@ -172,7 +172,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
 
         When("the recurring delivery succeeds") {
             every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St") } returns OrderDetail(order, emptyList())
-            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.PAY) } returns customerAccount
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
             val succeeded = service.executeOne(subscription)
@@ -205,7 +205,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
 
         When("the recurring delivery succeeds a second time") {
             every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St") } returns OrderDetail(order, emptyList())
-            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.PAY) } returns customerAccount
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
             service.executeOne(subscription)

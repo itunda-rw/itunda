@@ -18,6 +18,12 @@ dependencies {
     // MerchantService.collect() already established for QR-payment cashback, not a
     // second discount pipeline.
     implementation(project(":merchant"))
+    // For AutoTopUpService.topUpPayFromMain/topUpShortfall -- OrderService.pay now
+    // draws from the customer's real itunda Pay money (auto-topped from Bank if
+    // short), same as MerchantService.collect()'s own QR-payment treatment, see
+    // OrderService.kt's own doc comment. No circular dependency: :account only
+    // depends on :core.
+    implementation(project(":account"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

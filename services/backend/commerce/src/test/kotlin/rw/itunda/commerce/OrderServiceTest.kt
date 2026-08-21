@@ -77,16 +77,17 @@ class OrderServiceTest : BehaviorSpec({
         every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
         val affiliateService = mockk<AffiliateService>()
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService,
+            timeDealRepository, affiliateService, autoTopUpService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val merchantAccount = account("account_merchant", "seller_1")
-        val buyerAccount = account("account_buyer", "buyer_1")
+        val buyerAccount = account("account_buyer", "buyer_1").also { it.type = AccountType.PAY }
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Coffee beans", price = BigDecimal("2000"))
 
         When("a buyer requests more than the finite catalog stock") {
@@ -96,7 +97,7 @@ class OrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_stocked") } returns Optional.of(stockedProduct)
 
             Then("it rejects before debiting a account or mutating the available stock") {
@@ -170,7 +171,7 @@ class OrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_soldout") } returns Optional.of(soldOutProduct)
 
             Then("it rejects with ProductSoldOutException before debiting a account") {
@@ -198,7 +199,7 @@ class OrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_expired_surplus") } returns Optional.of(expiredDealProduct)
 
             Then("it rejects with SurplusDealExpiredException before debiting a account or decrementing stock") {
@@ -224,7 +225,7 @@ class OrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_active_surplus") } returns Optional.of(activeDealProduct)
             every { merchantProductRepository.saveAll(any<List<MerchantProduct>>()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_test2", emptyList())
@@ -240,7 +241,7 @@ class OrderServiceTest : BehaviorSpec({
         When("a real buyer places a real order for 3 units") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_test", emptyList())
@@ -274,10 +275,36 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- a Commerce order is real
+        // merchant collection, same as MerchantService.collect()'s own QR path, so it
+        // gets the same auto-topup-from-Bank-if-short treatment.
+        When("a real buyer's itunda Pay money is short but auto top-up from Bank covers it") {
+            val shortAccount = account("account_buyer_short", "buyer_short").also { it.availableBalance = BigDecimal("1000") }
+            val toppedUpAccount = account("account_buyer_short", "buyer_short").also { it.availableBalance = BigDecimal("10000") }
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_short", AccountType.PAY) } returns shortAccount
+            every { accountRepository.findById("account_buyer_short") } returns Optional.of(toppedUpAccount)
+            every { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) } returns
+                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 5000 RWF from itunda Bank")
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_topup", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            service.placeOrder("buyer_short", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "KG 123 St")
+
+            Then("it calls topUpPayFromMain for exactly the real shortfall, then completes the order") {
+                verify(exactly = 1) { autoTopUpService.topUpPayFromMain("buyer_short", "account_buyer_short", BigDecimal("5000")) }
+                verify(exactly = 0) { autoTopUpService.topUpShortfall(any(), any(), any()) }
+                legsSlot.captured.first { it.accountId == "account_buyer_short" }.amount shouldBe BigDecimal("6000")
+            }
+        }
+
         When("a marketplace order is still inside its payment transaction") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -314,7 +341,7 @@ class OrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
 
             Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
@@ -334,7 +361,7 @@ class OrderServiceTest : BehaviorSpec({
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -349,7 +376,7 @@ class OrderServiceTest : BehaviorSpec({
         When("a real active time deal exists for the product with enough remaining quantity") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_deal", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -373,7 +400,7 @@ class OrderServiceTest : BehaviorSpec({
         When("a real time deal exists but doesn't have enough remaining quantity for the whole line") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_falloff", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -409,7 +436,7 @@ class OrderServiceTest : BehaviorSpec({
             val otherProduct = MerchantProduct(id = "product_2", merchantId = "merchant_OTHER", name = "Not this store's item", price = BigDecimal("500"))
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
             every { merchantProductRepository.findById("product_2") } returns Optional.of(otherProduct)
 
             Then("it throws OrderProductNotFoundException, not silently mixing merchants into one order") {
@@ -425,7 +452,7 @@ class OrderServiceTest : BehaviorSpec({
         When("ordering with zero quantity") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
-            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
 
             Then("it throws InvalidQuantityException") {
                 try {
@@ -482,11 +509,12 @@ class OrderServiceTest : BehaviorSpec({
         every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
         val affiliateService = mockk<AffiliateService>()
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService,
+            timeDealRepository, affiliateService, autoTopUpService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -676,11 +704,12 @@ class OrderServiceTest : BehaviorSpec({
         every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
         val affiliateService = mockk<AffiliateService>()
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService,
+            timeDealRepository, affiliateService, autoTopUpService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)

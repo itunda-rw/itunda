@@ -71,7 +71,12 @@ class ProductSubscriptionService(
 
         val orderDetail = orderService.placeOrder(customerId, merchantId, listOf(OrderItemRequest(productId, quantity)), deliveryAddress)
 
-        val buyerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
+        // Real Toss Bank/Toss Pay separation (2026-08-21) -- orderService.placeOrder
+        // now charges the customer's itunda Pay money (see its own doc comment), so the
+        // cashback this order earns needs to land in that same account, not Bank --
+        // otherwise a real, already-shipped-and-paid-for order's own discount would
+        // silently credit the wrong account.
+        val buyerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.PAY)
         val merchant = merchantRepository.findById(merchantId).orElse(null)
         if (buyerAccount != null && merchant != null) {
             try {
@@ -193,7 +198,9 @@ class ProductSubscriptionService(
             val orderDetail = orderService.placeOrder(
                 subscription.customerId, subscription.merchantId, listOf(OrderItemRequest(subscription.productId, subscription.quantity)), subscription.deliveryAddress,
             )
-            val buyerAccount = accountRepository.findByUserIdAndType(subscription.customerId, AccountType.MAIN)
+            // Same real fix as subscribe() above -- cashback lands in the same itunda
+            // Pay account placeOrder actually charged, not Bank.
+            val buyerAccount = accountRepository.findByUserIdAndType(subscription.customerId, AccountType.PAY)
             val merchant = merchantRepository.findById(subscription.merchantId).orElse(null)
             if (buyerAccount != null && merchant != null) {
                 try {
