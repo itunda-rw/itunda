@@ -42,6 +42,18 @@ class HoodReportService(
     private val groupMessageRepository: GroupMessageRepository,
     private val rateLimiter: RateLimiter,
 ) {
+    companion object {
+        // itunda's own reasoned threshold, carried over from the now-retired
+        // MarketplaceService.REPORT_THRESHOLD/CommunityService.REPORT_THRESHOLD (Karrot's
+        // own real accumulate-then-auto-hide number isn't published, so this was never a
+        // copied real figure): high enough that one grudge-report can't silently take
+        // down a legitimate listing/post, low enough that a real problem one doesn't sit
+        // live for long. `EatsReviewService.REPORT_THRESHOLD` uses the same value for the
+        // same reason but stays a separate, still-live constant -- reviews aren't a
+        // HoodReport target type.
+        private const val REPORT_THRESHOLD = 3
+    }
+
     @Transactional
     fun report(reporterId: String, targetType: HoodReportTargetType, targetId: String, reason: String): HoodReport {
         require(targetId.isNotBlank()) { "A report target is required" }
@@ -70,7 +82,35 @@ class HoodReportService(
         if (repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus(reporterId, targetType, targetId, HoodReportStatus.OPEN) != null) {
             throw HoodReportAlreadyOpenException("You already have an open report for this post")
         }
-        return repository.save(HoodReport("hood_report_${UUID.randomUUID()}", reporterId, targetType, targetId, reason.trim()))
+        val saved = repository.save(HoodReport("hood_report_${UUID.randomUUID()}", reporterId, targetType, targetId, reason.trim()))
+
+        // Real 당근마켓 auto-hide-at-threshold behavior, ported here from the now-retired
+        // CommunityController.reportPost/MarketplaceController.reportListing (see
+        // docs/DESIGN_REFERENCES.md Section 249) -- those shipped with real, sourced
+        // "once REPORT_THRESHOLD distinct reporters accumulate, silently remove, no
+        // reviewer needed" auto-moderation, but nothing ever called them: this unified
+        // HoodReport endpoint (item 156) is the one every real client (Android/iOS/
+        // bank-mfe) actually calls, and it only ever supported reviewer-driven
+        // removeTarget. Folding the real auto-threshold behavior in here instead of
+        // just deleting it as dead code. Deliberately NOT extended to JOB_POST/
+        // PROPERTY_LISTING/messages -- those target types never had this behavior, only
+        // ever reviewer-driven removal, so this doesn't invent new behavior for them.
+        if (targetType == HoodReportTargetType.MARKETPLACE_LISTING || targetType == HoodReportTargetType.COMMUNITY_POST) {
+            val openReports = repository.findByTargetTypeAndTargetIdAndStatus(targetType, targetId, HoodReportStatus.OPEN)
+            if (openReports.size >= REPORT_THRESHOLD) {
+                when (targetType) {
+                    HoodReportTargetType.MARKETPLACE_LISTING -> listingRepository.findById(targetId).ifPresent {
+                        if (it.status == ListingStatus.ACTIVE) { it.status = ListingStatus.REMOVED; listingRepository.save(it) }
+                    }
+                    HoodReportTargetType.COMMUNITY_POST -> communityPostRepository.findById(targetId).ifPresent {
+                        if (it.status == CommunityPostStatus.ACTIVE) { it.status = CommunityPostStatus.REMOVED; communityPostRepository.save(it) }
+                    }
+                    else -> {}
+                }
+            }
+        }
+
+        return saved
     }
 
     fun queue(pageable: Pageable): Page<HoodReport> = repository.findByStatusOrderByCreatedAtAsc(HoodReportStatus.OPEN, pageable)

@@ -15758,6 +15758,79 @@ AND whether the money-posting call joins the same transaction (default
 error-quality improvement, not a fund-leak, and should be described that
 way.
 
+## 249. Found a real content-moderation "gap" that turned out to be dead, duplicate backend code instead -- retired it and ported its one real distinguishing behavior into the system every client actually calls
+
+A fresh uncalled-endpoint sweep flagged `CommunityController.reportPost`
+(`POST /api/v1/community/posts/{postId}/report`) and
+`MarketplaceController.reportListing`
+(`POST /api/v1/marketplace/listings/{listingId}/report`) as having zero
+callers anywhere -- read at face value, that looked like "no client lets a
+user report a post or listing," a real safety gap. **It wasn't.** Both
+target types are already fully covered by the separate, unified
+`HoodReportService`/`POST /api/v1/hood/reports` (item 156) -- Android
+(`HoodShared.kt`'s `HoodReportAction`), iOS (`HoodScreen.swift`), and
+bank-mfe (`HoodReportButton`, already wired on Marketplace/Community/Jobs/
+Property cards) all call it, plus a real ops-mfe-adjacent admin queue
+(`GET /api/v1/system/hood-reports`). `CommunityController.reportPost`/
+`MarketplaceController.reportListing` were a genuinely separate, older,
+parallel implementation (own `CommunityPostReport`/`MarketplaceListingReport`
+entities) that nothing ever called and nothing ever read -- not a missing-UI
+gap, dead/duplicate code.
+
+**One real behavior was worth keeping, not just deleting.** The old pair
+had a real, sourced, distinguishing feature `HoodReportService` never had:
+once `REPORT_THRESHOLD` (3) distinct reporters accumulated on a still-ACTIVE
+listing/post, it silently auto-removed -- no reviewer needed. `HoodReportService`
+was reviewer-driven only (`removeTarget`). Ported the auto-threshold check
+directly into `HoodReportService.report()`, scoped to exactly
+`MARKETPLACE_LISTING`/`COMMUNITY_POST` (the only two target types that ever
+had this behavior) -- `JOB_POST`/`PROPERTY_LISTING`/messages still only get
+reviewer-driven removal, deliberately not inventing new behavior for them.
+Counts OPEN reports specifically (not all-time), a small deliberate
+improvement over the old all-time count: a report a reviewer already looked
+at and resolved without removal shouldn't keep counting toward a future
+auto-removal.
+
+**Then retired the dead pair for real**, not just left unused: removed both
+controller endpoints + their request DTOs + service methods + their
+now-orphaned `CommunityPostReport`/`MarketplaceListingReport` entities and
+repositories + their exception classes + the matching test coverage,
+across `community`/`marketplace`/`core`. Left the DB tables themselves
+alone (harmless under `ddl-auto: validate`, dropping them is a separate,
+more invasive step nobody asked for).
+
+**Verification**: `:core:compileKotlin`/`:community:compileKotlin`/
+`:community:compileTestKotlin`/`:marketplace:compileKotlin`/
+`:marketplace:compileTestKotlin`/`:system:compileKotlin`/
+`:system:compileTestKotlin`/`:app:compileKotlin` all BUILD SUCCESSFUL.
+`:community:test` 44/44, `:marketplace:test` 91/91, `:system:test` 23/23
+(pre-existing coverage, now minus the removed report tests) all pass. Added
+2 new real tests to `HoodReportServiceTest` for the ported behavior: a 3rd
+distinct open report on a listing auto-removes it, and the same on a job
+post does NOT (auto-removal never extends past its original 2 target
+types) -- `:system:test --tests HoodReportServiceTest` 8/8 (was 6).
+
+**Lesson for future audits of this codebase**: an "uncalled endpoint" isn't
+automatically a missing-UI gap -- it can be a superseded duplicate of a
+capability that's actually already live somewhere else under a different
+name. Before building new UI against a zero-caller endpoint, grep for
+whether the SAME user-facing capability already exists via a different
+backend path first (here: `grep -rn "report" bank-mfe/src android ios` for
+existing report UI would have surfaced `HoodReportButton`/`HoodReportAction`
+immediately) -- building a second UI against the wrong/dead endpoint would
+have been actively worse than doing nothing.
+
+*Shipped: `services/backend/system/src/main/kotlin/rw/itunda/system/HoodReportService.kt` +
+`services/backend/system/src/test/kotlin/rw/itunda/system/HoodReportServiceTest.kt` +
+`services/backend/community/src/main/kotlin/rw/itunda/community/CommunityService.kt` +
+`services/backend/community/src/main/kotlin/rw/itunda/community/web/CommunityController.kt` +
+`services/backend/community/src/test/kotlin/rw/itunda/community/CommunityServiceTest.kt` +
+`services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/MarketplaceService.kt` +
+`services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/web/MarketplaceController.kt` +
+`services/backend/marketplace/src/test/kotlin/rw/itunda/marketplace/MarketplaceServiceTest.kt` +
+deleted `core/.../domain/CommunityPostReport.kt` + `core/.../domain/MarketplaceListingReport.kt` +
+`core/.../repository/CommunityPostReportRepository.kt` + `core/.../repository/MarketplaceListingReportRepository.kt`.*
+
 *Shipped: `services/backend/core/src/main/kotlin/rw/itunda/core/repository/GiftVoucherRepository.kt` +
 `services/backend/gift/src/main/kotlin/rw/itunda/gift/GiftVoucherService.kt` +
 `services/backend/gift/src/test/kotlin/rw/itunda/gift/GiftVoucherServiceTest.kt`.*

@@ -28,14 +28,11 @@ import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.domain.ListingLike
-import rw.itunda.core.domain.MarketplaceListingReport
-import rw.itunda.core.domain.MarketplaceReportReason
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.ListingFavoriteRepository
 import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
-import rw.itunda.core.repository.MarketplaceListingReportRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.search.FullTextSearchUtil
 import rw.itunda.core.repository.TransactionRepository
@@ -65,8 +62,6 @@ class MarketplaceEscrowNotFoundException(message: String) : RuntimeException(mes
 class InvalidEscrowStatusException(message: String) : RuntimeException(message)
 class InvalidDisputeReasonException(message: String) : RuntimeException(message)
 class ListingBumpCooldownException(message: String) : RuntimeException(message)
-class OwnListingReportException(message: String) : RuntimeException(message)
-class ListingAlreadyReportedException(message: String) : RuntimeException(message)
 class InvalidListingPriceException(message: String) : RuntimeException(message)
 
 /**
@@ -102,7 +97,6 @@ class MarketplaceService(
     private val marketplaceEscrowRepository: MarketplaceEscrowRepository,
     private val listingLikeRepository: ListingLikeRepository,
     private val fraudRuleEngine: FraudRuleEngine,
-    private val marketplaceListingReportRepository: MarketplaceListingReportRepository,
     private val listingFavoriteRepository: ListingFavoriteRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
@@ -114,14 +108,6 @@ class MarketplaceService(
         // per-request load -- beyond this, nearby() quietly stays on the already-honest
         // Haversine ranking rather than risking an oversized request.
         private const val MAX_OSRM_TABLE_CANDIDATES = 100
-
-        // itunda's own reasoned threshold -- Karrot's own real accumulate-then-auto-hide
-        // number isn't published (see MarketplaceListingReport.kt's own doc comment for
-        // the real sourcing), so this is itunda's own honest choice, not a copied real
-        // figure: enough distinct reporters that a single bad-faith report can never
-        // silently take down a legitimate listing, but low enough that a real
-        // problem listing doesn't sit live for long.
-        private const val REPORT_THRESHOLD = 3
 
         // Same real 1.5% fee-schedule reasoning OrderService.feeRate/EatsOrderService
         // .platformFeeRate already use -- reused rather than inventing a different
@@ -385,38 +371,12 @@ class MarketplaceService(
         }
     }
 
-    // Real 당근마켓 신고하기 (report a listing) -- see MarketplaceListingReport.kt's own
-    // doc comment for the real sourcing. One real report per (listing, reporter), same
-    // DB-unique concurrency guard toggleLike's own ListingLike already establishes.
-    // Once REPORT_THRESHOLD distinct reporters accumulate, the listing is silently
-    // hidden (status -> REMOVED, the same real effect a seller's own manual removal
-    // already has) -- no notification to anyone, matching the sourced real Karrot
-    // silence rather than inventing a friendlier flow.
-    @Transactional
-    fun reportListing(reporterId: String, listingId: String, reason: MarketplaceReportReason, details: String?): MarketplaceListingReport {
-        val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
-        if (listing.sellerId == reporterId) {
-            throw OwnListingReportException("You can't report your own listing")
-        }
-        if (marketplaceListingReportRepository.findByListingIdAndReporterId(listingId, reporterId) != null) {
-            throw ListingAlreadyReportedException("You've already reported this listing")
-        }
-        rateLimiter.checkLimit("marketplace:report:$reporterId", limit = 20, window = Duration.ofMinutes(1))
-
-        val saved = marketplaceListingReportRepository.save(
-            MarketplaceListingReport(
-                id = "listing_report_${UUID.randomUUID()}", listingId = listingId, reporterId = reporterId,
-                reason = reason, details = details?.trim()?.take(500)?.ifBlank { null },
-            ),
-        )
-
-        if (listing.status == ListingStatus.ACTIVE && marketplaceListingReportRepository.countByListingId(listingId) >= REPORT_THRESHOLD) {
-            listing.status = ListingStatus.REMOVED
-            listingRepository.save(listing)
-        }
-
-        return saved
-    }
+    // Real 당근마켓 신고하기 (report a listing) used to live here as its own endpoint --
+    // retired in favor of the unified HoodReportService (`POST /api/v1/hood/reports`,
+    // HoodReportTargetType.MARKETPLACE_LISTING), which is the one every real client
+    // (Android/iOS/bank-mfe) actually calls; this one had zero callers. Its real
+    // auto-hide-at-threshold behavior was ported into HoodReportService.report rather
+    // than lost -- see docs/DESIGN_REFERENCES.md Section 249.
 
     /**
      * Real seller-paid sponsored placement -- see `Listing.boostedUntil`'s own doc

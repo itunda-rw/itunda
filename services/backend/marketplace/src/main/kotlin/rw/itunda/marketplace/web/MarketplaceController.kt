@@ -48,7 +48,6 @@ import rw.itunda.marketplace.InvalidListingPriceException
 import rw.itunda.marketplace.InvalidOfferAmountException
 import rw.itunda.marketplace.KeywordAlertService
 import rw.itunda.marketplace.ListingFavoriteService
-import rw.itunda.marketplace.ListingAlreadyReportedException
 import rw.itunda.marketplace.ListingBumpCooldownException
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
@@ -58,12 +57,10 @@ import rw.itunda.marketplace.NeighborhoodNotSetException
 import rw.itunda.marketplace.OfferAlreadyResolvedException
 import rw.itunda.marketplace.OfferResponseAction
 import rw.itunda.marketplace.OwnListingException
-import rw.itunda.marketplace.OwnListingReportException
 import rw.itunda.marketplace.OwnOfferException
 import rw.itunda.marketplace.PriceOfferNotFoundException
 import rw.itunda.marketplace.PriceOfferService
 import rw.itunda.marketplace.SellerNoWalletException
-import rw.itunda.core.domain.MarketplaceReportReason
 import java.math.BigDecimal
 
 data class CreateListingRequest(
@@ -76,10 +73,6 @@ data class CreateListingRequest(
     val meetingPlace: String? = null,
     val photoUrl: String? = null,
 )
-
-// Real 당근마켓 신고하기 (report a listing) -- see MarketplaceListingReport.kt's own doc
-// comment.
-data class ReportListingRequest(val reason: MarketplaceReportReason, val details: String? = null)
 
 data class MakeOfferRequest(val amount: BigDecimal)
 data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmount: BigDecimal? = null)
@@ -229,18 +222,10 @@ class MarketplaceController(
         return ResponseEntity.ok(mapOf("success" to true, "liked" to liked))
     }
 
-    // Real 당근마켓 신고하기 (report a listing) -- see MarketplaceService.reportListing's
-    // own doc comment. Not money-moving, so no Idempotency-Key required, same simpler
-    // discipline toggleLike above already follows.
-    @PostMapping("/listings/{listingId}/report")
-    fun reportListing(
-        @PathVariable listingId: String,
-        @RequestBody request: ReportListingRequest,
-        @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> {
-        val report = marketplaceService.reportListing(currentUser.userId, listingId, request.reason, request.details)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "report" to report))
-    }
+    // Real 당근마켓 신고하기 (report a listing) moved to the unified
+    // POST /api/v1/hood/reports (HoodReportController) -- see docs/DESIGN_REFERENCES.md
+    // Section 249 for why this endpoint was retired rather than kept as a second,
+    // uncalled reporting path.
 
     // Real 당근마켓 끌어올리기 (bump to top of feed) -- see MarketplaceService
     // .bumpListing's own doc comment. Free and self-serve (unlike boost below), so no
@@ -486,14 +471,6 @@ class MarketplaceController(
     @ExceptionHandler(OwnListingException::class)
     fun handleOwnListing(ex: OwnListingException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_LISTING", ex.message ?: "Bad request"))
-
-    @ExceptionHandler(OwnListingReportException::class)
-    fun handleOwnListingReport(ex: OwnListingReportException) =
-        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_LISTING_REPORT", ex.message ?: "Bad request"))
-
-    @ExceptionHandler(ListingAlreadyReportedException::class)
-    fun handleListingAlreadyReported(ex: ListingAlreadyReportedException) =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("LISTING_ALREADY_REPORTED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(ListingBumpCooldownException::class)
     fun handleBumpCooldown(ex: ListingBumpCooldownException) =

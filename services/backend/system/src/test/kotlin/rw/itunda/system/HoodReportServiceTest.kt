@@ -16,6 +16,8 @@ import rw.itunda.core.domain.HoodReportTargetType
 import rw.itunda.core.domain.JobPayType
 import rw.itunda.core.domain.JobPost
 import rw.itunda.core.domain.JobPostStatus
+import rw.itunda.core.domain.Listing
+import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.repository.HoodReportRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.CommunityPostRepository
@@ -140,6 +142,54 @@ class HoodReportServiceTest : BehaviorSpec({
                 resolved.status shouldBe HoodReportStatus.RESOLVED
                 resolved.reviewedBy shouldBe "admin_1"
                 verify { jobs.save(job) }
+            }
+        }
+    }
+
+    // Real 당근마켓 auto-hide-at-threshold behavior, ported into this unified endpoint
+    // from the now-retired MarketplaceService.reportListing/CommunityService.reportPost
+    // (see docs/DESIGN_REFERENCES.md Section 249) -- those had zero real callers, this
+    // one is what every real client (Android/iOS/bank-mfe) actually calls.
+    Given("a marketplace listing's 3rd distinct open report, reaching the real auto-hide threshold") {
+        val repository = mockk<HoodReportRepository>()
+        val listings = mockk<ListingRepository>()
+        val service = HoodReportService(repository, listings, mockk(), mockk(), mockk(), mockk(), mockk(), mockk(relaxed = true))
+        val listing = Listing(id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc", price = BigDecimal("15000"), category = "sports")
+        val savedSlot = slot<HoodReport>()
+
+        When("a third distinct reporter files an open report") {
+            every { listings.existsById("listing_1") } returns true
+            every { repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus("reporter_3", HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", HoodReportStatus.OPEN) } returns null
+            every { repository.save(capture(savedSlot)) } answers { firstArg() }
+            every { repository.findByTargetTypeAndTargetIdAndStatus(HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", HoodReportStatus.OPEN) } returns
+                listOf(mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+            every { listings.findById("listing_1") } returns Optional.of(listing)
+            every { listings.save(any()) } answers { firstArg() }
+
+            service.report("reporter_3", HoodReportTargetType.MARKETPLACE_LISTING, "listing_1", "Looks like a scam")
+
+            Then("the listing is silently auto-hidden -- real status REMOVED, no reviewer action needed") {
+                listing.status shouldBe ListingStatus.REMOVED
+                verify(exactly = 1) { listings.save(listing) }
+            }
+        }
+    }
+
+    Given("a job post's 3rd distinct open report -- auto-hide was never extended to this target type") {
+        val repository = mockk<HoodReportRepository>()
+        val jobs = mockk<JobPostRepository>()
+        val service = HoodReportService(repository, mockk(), mockk(), jobs, mockk(), mockk(), mockk(), mockk(relaxed = true))
+
+        When("a third distinct reporter files an open report") {
+            every { jobs.existsById("job_1") } returns true
+            every { repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus("reporter_3", HoodReportTargetType.JOB_POST, "job_1", HoodReportStatus.OPEN) } returns null
+            every { repository.save(any()) } answers { firstArg() }
+
+            service.report("reporter_3", HoodReportTargetType.JOB_POST, "job_1", "Asks for a fee")
+
+            Then("no auto-removal is attempted -- only reviewer-driven removeTarget applies to job posts") {
+                verify(exactly = 0) { repository.findByTargetTypeAndTargetIdAndStatus(any(), any(), any()) }
+                verify(exactly = 0) { jobs.save(any()) }
             }
         }
     }

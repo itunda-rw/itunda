@@ -10,9 +10,7 @@ import rw.itunda.core.domain.CommunityComment
 import rw.itunda.core.domain.CommunityLike
 import rw.itunda.core.domain.CommunityNotificationPreference
 import rw.itunda.core.domain.CommunityPost
-import rw.itunda.core.domain.CommunityPostReport
 import rw.itunda.core.domain.CommunityPostStatus
-import rw.itunda.core.domain.CommunityReportReason
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.MeetupAttendance
@@ -25,7 +23,6 @@ import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityNotificationPreferenceRepository
 import rw.itunda.core.repository.CommunityPostRepository
-import rw.itunda.core.repository.CommunityPostReportRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
 import rw.itunda.core.repository.MeetupAttendanceRepository
@@ -53,8 +50,6 @@ class MeetupSessionNotFoundException(message: String) : RuntimeException(message
 class MeetupAttendanceAlreadyCheckedInException(message: String) : RuntimeException(message)
 class MeetupAttendanceNotAMemberException(message: String) : RuntimeException(message)
 class InvalidGroupBuyFinalizeException(message: String) : RuntimeException(message)
-class OwnCommunityPostReportException(message: String) : RuntimeException(message)
-class CommunityPostAlreadyReportedException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -92,13 +87,8 @@ class CommunityService(
     private val pushNotificationService: PushNotificationService,
     private val splitBillService: SplitBillService,
     private val communityNotificationPreferenceRepository: CommunityNotificationPreferenceRepository,
-    private val communityPostReportRepository: CommunityPostReportRepository,
 ) {
     companion object {
-        // Same real threshold + reasoning MarketplaceService.REPORT_THRESHOLD (Section
-        // 140) and EatsReviewService.REPORT_THRESHOLD (Section 141) already established.
-        private const val REPORT_THRESHOLD = 3
-
         val CATEGORIES = listOf(
             CommunityCategory("question", "Question"),
             CommunityCategory("news", "Neighborhood news"),
@@ -290,39 +280,12 @@ class CommunityService(
         return postRepository.save(post)
     }
 
-    // Real 동네생활 신고하기 (report a post) -- see CommunityPostReport.kt's own doc
-    // comment for the real sourcing. One real report per (post, reporter), same
-    // DB-unique concurrency guard toggleLike's own CommunityLike already establishes.
-    // Once REPORT_THRESHOLD distinct reporters accumulate, the post is silently removed
-    // (status -> REMOVED, the same real effect the author's own removePost already
-    // has -- every browse/search/myNeighborhood/nearby/upcomingMeetups query already
-    // filters on status = ACTIVE, so no read-path changes needed) -- no notification to
-    // anyone, matching the sourced real silence rather than inventing a friendlier flow.
-    @Transactional
-    fun reportPost(reporterId: String, postId: String, reason: CommunityReportReason, details: String?): CommunityPostReport {
-        val post = postRepository.findById(postId).orElseThrow { CommunityPostNotFoundException("Post not found") }
-        if (post.authorId == reporterId) {
-            throw OwnCommunityPostReportException("You can't report your own post")
-        }
-        if (communityPostReportRepository.findByPostIdAndReporterId(postId, reporterId) != null) {
-            throw CommunityPostAlreadyReportedException("You've already reported this post")
-        }
-        rateLimiter.checkLimit("community:report:$reporterId", limit = 20, window = Duration.ofMinutes(1))
-
-        val saved = communityPostReportRepository.save(
-            CommunityPostReport(
-                id = "community_post_report_${UUID.randomUUID()}", postId = postId, reporterId = reporterId,
-                reason = reason, details = details?.trim()?.take(500)?.ifBlank { null },
-            ),
-        )
-
-        if (post.status == CommunityPostStatus.ACTIVE && communityPostReportRepository.countByPostId(postId) >= REPORT_THRESHOLD) {
-            post.status = CommunityPostStatus.REMOVED
-            postRepository.save(post)
-        }
-
-        return saved
-    }
+    // Real 동네생활 신고하기 (report a post) used to live here as its own endpoint --
+    // retired in favor of the unified HoodReportService (`POST /api/v1/hood/reports`,
+    // HoodReportTargetType.COMMUNITY_POST), which is the one every real client
+    // (Android/iOS/bank-mfe) actually calls; this one had zero callers. Its real
+    // auto-hide-at-threshold behavior was ported into HoodReportService.report rather
+    // than lost -- see docs/DESIGN_REFERENCES.md Section 249.
 
     // Real 같이해요 (join-together) group chat (2026-07-24) -- closes
     // docs/DESIGN_REFERENCES.md Section 4 recommendation #4's "joining their group chat
