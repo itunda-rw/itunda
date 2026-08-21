@@ -3629,12 +3629,40 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
                     val currentCode = code
                     when {
                         currentCode != null -> {
+                            // Real correction (product-feel audit, item 242): this
+                            // was QR-only -- KakaoPay's own real screenshots (App
+                            // Store listing + 3 real screenshots of the user's own
+                            // live app, fetched/sent this session) show the primary
+                            // code is a real linear BARCODE (Code128) with a small
+                            // QR secondary, not QR alone. Same real correction just
+                            // made on bank-mfe/iOS -- see PayQrCodeUtil.kt's own
+                            // generatePayBarcodeBitmap doc comment.
+                            val barcode = remember(currentCode) { generatePayBarcodeBitmap(currentCode) }
                             val qr = remember(currentCode) { generatePayQrBitmap(currentCode) }
-                            androidx.compose.foundation.Image(
-                                bitmap = qr,
-                                contentDescription = "Your payment QR code",
-                                modifier = Modifier.size(180.dp).clip(RoundedCornerShape(8.dp)),
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                androidx.compose.foundation.Image(
+                                    bitmap = barcode,
+                                    contentDescription = "Your payment barcode",
+                                    // Real fix: FillBounds (not the default Fit) so the
+                                    // barcode always exactly fills whatever weighted
+                                    // width this card actually has, no letterboxing --
+                                    // safe specifically for a 1D barcode since a real
+                                    // scanner only reads the bar-WIDTH sequence along
+                                    // one scan line, not the image's aspect ratio, so a
+                                    // horizontal-only stretch never breaks decodability.
+                                    contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                                    modifier = Modifier.weight(1f).height(60.dp).clip(RoundedCornerShape(6.dp)).background(IdsColors.White),
+                                )
+                                androidx.compose.foundation.Image(
+                                    bitmap = qr,
+                                    contentDescription = "Your payment QR code",
+                                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(6.dp)).background(IdsColors.White),
+                                )
+                            }
                             Text(
                                 if (secondsLeft > 0) "Refreshes in ${secondsLeft}s" else "Refreshing…",
                                 color = IdsColors.Gray600, fontSize = 12.sp,

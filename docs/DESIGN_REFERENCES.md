@@ -15468,3 +15468,40 @@ KakaoPay's official App Store listing), not invented or assumed from an
 in-repo comment.
 
 *Shipped: `ios/App/Sources/ShopPay.swift` + `ios/App/Sources/QrScanCamera.swift`.*
+
+## 242. Self-correction: Android's ORIGINAL "My code" was QR-only too -- §240/§241 wrongly assumed it was already right
+
+While researching a follow-up (porting itunda's Open Chat feature to Android/
+iOS), re-read Android's own `MyPaymentCodeCard` (`ItundaAppScreen.kt`) source
+directly rather than trusting §240/§241's own claim that "Android's own
+original screenshot-grounded build already has the richer version and does not
+need this correction." That claim was WRONG on the single most important point:
+`val qr = remember(currentCode) { generatePayQrBitmap(currentCode) }` -- Android
+was QR-only too, the exact same gap just fixed on bank-mfe/iOS. The funding-
+account/wallet-carousel parts of that §240/§241 claim were correct (those were
+already real and right); only the barcode-vs-QR half of the claim was false.
+
+Fixed the same way: added `generatePayBarcodeBitmap` to `PayQrCodeUtil.kt` using
+ZXing's `Code128Writer` -- the exact same real dependency `generatePayQrBitmap`
+already uses for QR, just a different encoder class, no new dependency needed.
+Rendered barcode (primary, `Modifier.weight(1f)`) + QR (secondary, 56dp) side by
+side in a `Row`, matching bank-mfe/iOS exactly. Used `ContentScale.FillBounds`
+(not Compose's default `Fit`) specifically to avoid the same underfill/
+letterboxing bank-mfe's own flexbox bug caused -- safe here because a real 1D
+barcode scanner only reads the bar-WIDTH sequence along one scan line, so a
+horizontal-only stretch never breaks decodability, unlike stretching a QR
+(2D, would break) or a photo.
+
+**Verification**: `:app:compileDebugKotlin` BUILD SUCCESSFUL, no new warnings.
+No physical device or emulator available this pass (`adb devices` returned
+empty) -- compile-verified only, not visually confirmed on-device. Re-verify
+live next time a device is available, per the same honest caveat this session's
+other camera/QR work already carries.
+
+**Lesson reinforced**: this file's own prior claim about "already correct" code
+was itself unverified -- always re-read the actual current source before citing
+a memory/doc claim as settled fact, even one written earlier in the SAME
+session. [[project_itunda_pay_kakaopay_parity]] gets the same correction.
+
+*Shipped: `android/app/src/main/java/rw/itunda/app/ui/PayQrCodeUtil.kt` +
+`android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt`.*
