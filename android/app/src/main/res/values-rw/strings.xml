@@ -155,6 +155,10 @@
     <string name="account_detail_interest_prefix">Inyungu</string>
     <string name="account_detail_manage">Gucunga</string>
     <string name="account_detail_top_up">Ongeramo amafaranga</string>
+    <string name="pay_money_detail_title">itunda Pay Money</string>
+    <string name="pay_money_add">Ongeramo amafaranga</string>
+    <string name="pay_money_history_only">Reba amakuru y\'ubwishyu gusa</string>
+    <string name="pay_money_empty">Nta makuru abonetse</string>
     <string name="back">Subira inyuma</string>
     <string name="bank_borrow">Kuguza</string>
     <string name="bank_deposit_protection_cap">Birinzwe kugeza kuri RWF %1$s kuri buri mukoresha</string>

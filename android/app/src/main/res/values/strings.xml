@@ -194,6 +194,10 @@
     <string name="account_detail_get_interest">Get interest</string>
     <string name="account_detail_interest_prefix">Interest</string>
     <string name="account_detail_empty">No transactions yet</string>
+    <string name="pay_money_detail_title">itunda Pay Money</string>
+    <string name="pay_money_add">Add money</string>
+    <string name="pay_money_history_only">See payment history only</string>
+    <string name="pay_money_empty">No details found</string>
     <string name="home_coop_rail_title">Built for how Rwanda saves</string>
     <string name="home_coop_rail_sacco_title">SACCO shares</string>
     <string name="home_coop_rail_sacco_subtitle">Buy cooperative shares, earn a real dividend</string>

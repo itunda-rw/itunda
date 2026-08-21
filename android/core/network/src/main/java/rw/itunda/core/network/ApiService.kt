@@ -2550,6 +2550,12 @@ interface ApiService {
     @GET("api/v1/account/transactions")
     suspend fun getTransactionHistory(): TransactionHistoryResponse
 
+    // Real "Toss Pay Money" detail/statement screen (user screenshots, 2026-08-21) --
+    // scoped to one account's own transactions, not getTransactionHistory's mix of
+    // every account. See AccountService.getAccountTransactionHistory on the backend.
+    @GET("api/v1/account/{id}/transactions")
+    suspend fun getAccountTransactionHistory(@retrofit2.http.Path("id") id: String): TransactionHistoryResponse
+
     @GET("api/v1/notifications")
     suspend fun getNotifications(): NotificationsResponse
 

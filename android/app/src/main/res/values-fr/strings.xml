@@ -155,6 +155,10 @@
     <string name="account_detail_get_interest">Obtenir des intérêts</string>
     <string name="account_detail_interest_prefix">Intérêts</string>
     <string name="account_detail_empty">Aucune transaction pour l\'instant</string>
+    <string name="pay_money_detail_title">itunda Pay Money</string>
+    <string name="pay_money_add">Ajouter de l\'argent</string>
+    <string name="pay_money_history_only">Voir uniquement l\'historique des paiements</string>
+    <string name="pay_money_empty">Aucun détail trouvé</string>
     <string name="home_coop_rail_title">Conçu pour l\'épargne à la rwandaise</string>
     <string name="home_coop_rail_sacco_title">Parts SACCO</string>
     <string name="home_coop_rail_sacco_subtitle">Achetez des parts coopératives, gagnez un vrai dividende</string>

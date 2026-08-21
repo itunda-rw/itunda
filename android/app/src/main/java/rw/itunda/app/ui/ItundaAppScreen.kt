@@ -3086,7 +3086,7 @@ private fun AccountDetailScreen(
 // alone -- reuses AccountMiniRow's own signed-amount/icon convention (see its doc
 // comment) and adds that second line.
 @Composable
-private fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String) {
+internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String) {
     val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
     // Real fix (2026-08-14, direct user screenshots of their own real Toss Bank
     // ledger): incoming amounts are tinted the real brand blue there, not a generic
@@ -3124,7 +3124,7 @@ private fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto,
 // rendered "8월 13" even though the rest of this app's UI is fixed English
 // (strings.xml has no localization at all). Locale.ENGLISH keeps it consistent
 // with itunda's own actual language, not whatever the phone happens to be set to.
-private fun ledgerDateHeader(iso: String): String =
+internal fun ledgerDateHeader(iso: String): String =
     try {
         java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault())
             .format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.ENGLISH))
@@ -3271,6 +3271,22 @@ private fun PayTab(
     LaunchedEffect(accounts) {
         if (selectedAccountId == null) selectedAccountId = accounts.firstOrNull { it.type == "PAY" }?.id
     }
+    // Real "Toss Pay Money" detail/statement screen (user screenshots, 2026-08-21) --
+    // see PayMoneyDetailScreen's own doc comment.
+    var openAccountDetail by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
+    if (openAccountDetail != null) {
+        PayMoneyDetailScreen(
+            account = openAccountDetail!!,
+            onBack = { openAccountDetail = null },
+            onSend = { openAccountDetail = null; onSend() },
+            // Real gap, honestly scoped out for now (same as bank-mfe's identical
+            // choice): itunda has no self-service "pull an amount from my linked
+            // account right now" flow, only AutoTopUpCard's threshold-based auto
+            // top-up. Closing back to Pay rather than routing somewhere unrelated.
+            onAddMoney = { openAccountDetail = null },
+        )
+        return
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
@@ -3329,6 +3345,7 @@ private fun PayTab(
                 item {
                     MyPaymentCodeCard(
                         selectedAccount = accounts.find { it.id == selectedAccountId },
+                        onOpenAccountDetail = { openAccountDetail = it },
                     )
                 }
                 if (accounts.size > 1) {
@@ -3367,7 +3384,7 @@ private fun PayTab(
 // read against white under a POS scanner regardless of phone theme" reasoning
 // IdsSemanticColors.kt's own light-palette comment already documents.
 @Composable
-private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?) {
+private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, onOpenAccountDetail: (rw.itunda.core.network.Account) -> Unit) {
     var revealed by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAtMillis by remember { mutableStateOf(0L) }
@@ -3524,18 +3541,26 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?) 
 
         if (selectedAccount != null) {
             Spacer(Modifier.height(20.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            // Real drill-in to the "Toss Pay Money" detail/statement screen (user
+            // screenshots, 2026-08-21) -- see PayMoneyDetailScreen's own doc comment.
+            Row(
+                Modifier.fillMaxWidth().clickable { onOpenAccountDetail(selectedAccount) },
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     if (selectedAccount.type == "PAY") "itunda Pay" else "itunda Pay (${selectedAccount.currency})",
                     color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 )
-                Text(
-                    "${selectedAccount.currency} ${
-                        if (selectedAccount.currency == "RWF") "%,.0f".format(selectedAccount.availableBalance)
-                        else "%,.2f".format(selectedAccount.availableBalance)
-                    }",
-                    color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${selectedAccount.currency} ${
+                            if (selectedAccount.currency == "RWF") "%,.0f".format(selectedAccount.availableBalance)
+                            else "%,.2f".format(selectedAccount.availableBalance)
+                        }",
+                        color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                    )
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = IdsColors.Gray500)
+                }
             }
             val account = linkedAccount
             if (account != null) {
