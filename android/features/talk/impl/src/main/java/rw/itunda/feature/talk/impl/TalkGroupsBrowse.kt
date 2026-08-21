@@ -231,6 +231,7 @@ internal fun GroupsList(
                 }
             }
         }
+        item { OpenChatCard(onCreated = onCreated, onJoined = onCreated) }
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (groups == null) {
@@ -239,6 +240,185 @@ internal fun GroupsList(
             item { EmptyState("No groups yet — start one to chat with more than one person at a time.", icon = Icons.Outlined.ChatBubbleOutline) }
         } else {
             items(groups, key = { it.groupId }) { g -> GroupRow(g, onClick = { onOpen(g.groupId) }) }
+        }
+    }
+}
+
+// Real KakaoTalk 오픈채팅-style open group (Talk-parity port, item 244) -- see
+// GroupMessagingService.createOpenGroup's own doc comment for the full sourced
+// feature. bank-mfe/iOS already have this; this is the Android port. Reuses the
+// real `CameraQrScanner`/`generateQrBitmap` promoted to :core:designsystem this
+// same pass (item 244) once this became a real second Feature-module need
+// beyond Pay's own scan-a-merchant's-QR flow -- not duplicated.
+//
+// Honest scope-down vs bank-mfe's own "share invite link" step (same as iOS's
+// identical scope-down, see TalkGroupsBrowse.swift's own doc comment): bank-mfe's
+// `buildJoinUrl` builds a tap-to-join link back to the WEB app's own
+// `window.location` -- itunda has no real deep-link precedent on this app either
+// (same gap `ShopMerchantDetail.kt`'s own affiliate-link share already named).
+// Shares the plain join CODE via the real Android share sheet instead of a
+// fabricated non-functional link.
+private enum class OpenChatMode { CLOSED, CREATE, JOIN }
+
+@Composable
+internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Unit) {
+    var mode by remember { mutableStateOf(OpenChatMode.CLOSED) }
+    var name by remember { mutableStateOf("") }
+    var joinCode by remember { mutableStateOf("") }
+    var created by remember { mutableStateOf<rw.itunda.core.network.OpenGroupDto?>(null) }
+    var qrBitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+    var scanUnavailable by remember { mutableStateOf(false) }
+    var manualJoinEntry by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    fun submitJoinCode(raw: String) {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) return
+        error = null
+        submitting = true
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.joinGroupByCode(rw.itunda.core.network.JoinGroupByCodeRequest(trimmed))
+                if (res.success) {
+                    joinCode = ""
+                    mode = OpenChatMode.CLOSED
+                    onJoined(res.group.id)
+                }
+            } catch (e: Exception) {
+                error = "No open chat found for this code."
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    when {
+        mode == OpenChatMode.CLOSED -> {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                IdsButton(text = "🌐 Start an open chat", onClick = { mode = OpenChatMode.CREATE }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+                IdsButton(text = "📷 Join an open chat", onClick = { mode = OpenChatMode.JOIN }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+            }
+        }
+        created != null -> {
+            val group = created!!
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Send friends the code — they can join instantly, wherever they are", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    IdsButton(
+                        text = "🔗 Share code",
+                        onClick = {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, "Join my open chat on itunda — use code ${group.joinCode} in the Talk tab.")
+                            }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Share invite code"))
+                        },
+                        size = IdsButtonSize.Medium,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text("Or, if they're standing right next to you:", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    qrBitmap?.let {
+                        androidx.compose.foundation.Image(bitmap = it, contentDescription = "QR code to join ${group.joinCode}", modifier = Modifier.size(140.dp).clip(RoundedCornerShape(12.dp)))
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Or read them this code:", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Text(group.joinCode, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = 4.sp)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    IdsButton(
+                        text = "Done",
+                        onClick = { val id = group.id; created = null; mode = OpenChatMode.CLOSED; onCreated(id) },
+                        size = IdsButtonSize.Medium,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+        else -> {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    if (mode == OpenChatMode.CREATE) {
+                        Text("Start an open chat", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Anyone with the code can join — no phone numbers needed.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
+                        IdsTextField(value = name, onValueChange = { name = it }, label = "Open chat name", modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            IdsButton(text = "Cancel", onClick = { mode = OpenChatMode.CLOSED }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+                            IdsButton(
+                                text = if (submitting) "Creating…" else "Create",
+                                enabled = !submitting && name.isNotBlank(),
+                                onClick = {
+                                    error = null
+                                    submitting = true
+                                    coroutineScope.launch {
+                                        try {
+                                            val res = NetworkClient.apiService.createOpenGroup(rw.itunda.core.network.CreateOpenGroupRequest(name.trim()))
+                                            if (res.success) {
+                                                name = ""
+                                                created = res.group
+                                                // Real contract: unlike Pay codes, this QR encodes a
+                                                // real itunda://join-chat?code=... URL, not the raw
+                                                // code -- matches bank-mfe/iOS exactly.
+                                                qrBitmap = rw.itunda.core.designsystem.components.generateQrBitmap("itunda://join-chat?code=${res.group.joinCode}")
+                                            }
+                                        } catch (e: Exception) {
+                                            error = "Could not create this open chat."
+                                        } finally {
+                                            submitting = false
+                                        }
+                                    }
+                                },
+                                size = IdsButtonSize.Medium,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    } else if (!manualJoinEntry) {
+                        Text("Scan to join", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        if (!scanUnavailable && !submitting) {
+                            rw.itunda.core.designsystem.components.CameraQrScanner(
+                                onScanned = { raw ->
+                                    val match = Regex("[?&]code=([^&]+)").find(raw)
+                                    submitJoinCode(match?.groupValues?.get(1) ?: raw)
+                                },
+                                modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(12.dp)),
+                            )
+                        }
+                        if (submitting) Text("Joining…", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            IdsButton(text = "Cancel", onClick = { mode = OpenChatMode.CLOSED }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+                            IdsButton(
+                                text = if (scanUnavailable) "Enter code manually" else "No camera? Enter code",
+                                onClick = { manualJoinEntry = true },
+                                size = IdsButtonSize.Medium,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    } else {
+                        Text("Join by code", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        IdsTextField(value = joinCode, onValueChange = { joinCode = it.uppercase() }, label = "6-character code", modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            IdsButton(text = "Cancel", onClick = { mode = OpenChatMode.CLOSED }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+                            IdsButton(
+                                text = if (submitting) "Joining…" else "Join",
+                                enabled = !submitting && joinCode.isNotBlank(),
+                                onClick = { submitJoinCode(joinCode) },
+                                size = IdsButtonSize.Medium,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+                }
+            }
         }
     }
 }

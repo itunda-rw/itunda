@@ -42,17 +42,10 @@ dependencies {
     // Real camera-based QR scanning (2026-08-11) -- lets a customer scan a merchant's
     // own itunda://pay?intentId= QR directly instead of typing the payment code (see
     // PayByCodeCard's own doc comment for that typed flow, still kept as the fallback
-    // when a camera isn't usable). Same CameraX + ML Kit combination merchantapp's
-    // CameraQrScanner.kt already established for the reverse direction (merchant
-    // scanning a customer's code) -- this app has its own copy rather than a shared
-    // module, same "duplicate for money-critical safety, separate apps" precedent
-    // PayQrCodeUtil.kt/QrCodeUtil.kt already set.
-    // 1.4.2, not 1.3.4: CameraX 1.3.x ships libimage_processing_util_jni.so built
-    // without 16KB-page alignment (real, confirmed via readelf on our own APK
-    // 2026-08-12) -- Google fixed this starting 1.4.0.
-    implementation("androidx.camera:camera-core:1.4.2")
-    implementation("androidx.camera:camera-camera2:1.4.2")
-    implementation("androidx.camera:camera-lifecycle:1.4.2")
-    implementation("androidx.camera:camera-view:1.4.2")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    // when a camera isn't usable). `CameraQrScanner` itself moved to
+    // :core:designsystem (item 244, 2026-08-21) once :features:talk:impl needed the
+    // identical capability for Open Chat -- this module now only calls the shared
+    // composable (see the CameraQrScanner import in ShopPayCards.kt), so the
+    // CameraX/ML Kit dependencies themselves live in :core:designsystem's own
+    // build.gradle.kts instead of being redeclared here.
 }

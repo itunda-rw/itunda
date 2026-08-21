@@ -1,4 +1,4 @@
-package rw.itunda.feature.shop.impl
+package rw.itunda.core.designsystem.components
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -32,18 +32,24 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 
 /**
- * Real camera-based QR scanning (2026-08-11) -- lets a customer scan a merchant's own
- * itunda://pay?intentId= QR directly instead of typing the payment code, see
- * PayByScanCard's own doc comment. Same CameraX (real camera preview/frame pipeline) +
- * ML Kit Barcode Scanning (on-device decoding, no network round-trip) combination
- * merchantapp's own CameraQrScanner.kt already established for the reverse direction
- * -- this is a separate copy, not a shared module, matching the "duplicate for
- * money-critical safety, separate apps" precedent PayQrCodeUtil.kt/QrCodeUtil.kt
- * already set.
+ * Real camera-based QR scanning -- relocated here (item 244) from
+ * :features:shop:impl (where it was built 2026-08-11 for Pay's scan-a-merchant's-
+ * QR flow) once a real second Feature module (:features:talk:impl, Open Chat's
+ * join-by-scan) needed the identical capability. Feature-module isolation
+ * (Konsist-enforced, see root CLAUDE.md) forbids :features:talk:impl importing
+ * :features:shop:impl's impl directly, so a shared home was the only compliant
+ * option once this second real need existed -- same "promote once 2+ real needs
+ * exist" precedent RouteMiniMap.kt/HoodShared.kt/IdsAvatar.kt in this same
+ * package already establish. `merchantapp`'s own separate copy (a different
+ * Gradle application entirely) stays a deliberate duplicate, out of scope for
+ * this promotion.
+ *
+ * CameraX for the real camera preview/frame pipeline, ML Kit Barcode Scanning
+ * for on-device (no network round-trip, no per-scan cost) QR decoding.
  *
  * `onScanned` fires at most once per composition of this scanner (guarded
- * internally) -- the caller owns what happens next, this composable's only job is
- * "find a QR, report its raw text."
+ * internally) -- the caller owns what happens next, this composable's only job
+ * is "find a QR, report its raw text."
  */
 @Composable
 fun CameraQrScanner(
@@ -63,7 +69,7 @@ fun CameraQrScanner(
 
     if (!hasPermission) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Camera permission is needed to scan a merchant's QR code.", style = MaterialTheme.typography.bodyMedium)
+            Text("Camera permission is needed to scan a QR code.", style = MaterialTheme.typography.bodyMedium)
         }
         return
     }
@@ -113,7 +119,7 @@ fun CameraQrScanner(
                         // Real, non-critical -- e.g. no back camera on this device. The
                         // permission-denied empty state above already covers the other
                         // real "can't scan" case; this one just leaves a blank preview
-                        // rather than crashing the checkout flow.
+                        // rather than crashing the caller's flow.
                     }
                 },
                 ContextCompat.getMainExecutor(ctx),

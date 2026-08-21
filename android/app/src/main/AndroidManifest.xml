@@ -10,7 +10,10 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Real camera-based QR scanning (2026-08-11): a customer scanning a merchant's
-         itunda://pay QR directly, see features/shop/impl's own CameraQrScanner.kt. -->
+         itunda://pay QR directly, or (item 244) joining a KakaoTalk 오픈채팅-style
+         Open Chat by scanning its QR. See core/designsystem's own shared
+         CameraQrScanner.kt (moved there from features/shop/impl once
+         features/talk/impl needed the same capability). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Real push notifications (2026-08-12): Android 13+ (API 33+) requires this

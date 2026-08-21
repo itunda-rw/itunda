@@ -310,10 +310,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
-    // Real customer-presented payment code QR rendering (2026-08-11) -- ZXing core
-    // only, same as merchantapp's own QR generation (QrCodeUtil.kt) -- no camera/
-    // scanning dependency needed here, this app only ever DISPLAYS a QR, never scans
-    // one.
+    // Real customer-presented payment code QR/barcode rendering (2026-08-11, barcode
+    // added item 242) -- ZXing core only, same as merchantapp's own QR generation
+    // (QrCodeUtil.kt).
     implementation("com.google.zxing:core:3.5.3")
 
     // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the

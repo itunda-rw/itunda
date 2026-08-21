@@ -753,6 +753,16 @@ data class GroupMessageDto(
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
+
+// Real open-group DTOs (item 244) -- distinct shape from GroupSummaryDto (a real
+// joinCode, but no memberCount/lastMessage/etc. yet since the group was just
+// created).
+data class CreateOpenGroupRequest(val name: String)
+data class OpenGroupDto(val id: String, val name: String, val joinCode: String)
+data class OpenGroupResponse(val success: Boolean, val group: OpenGroupDto)
+data class JoinGroupByCodeRequest(val joinCode: String)
+data class JoinedGroupDto(val id: String, val name: String)
+data class JoinGroupResponse(val success: Boolean, val group: JoinedGroupDto)
 // Real group-chat pin (2026-08-04) -- see ApiService's own getPinnedGroupMessage doc
 // comment. Mirrors PinnedMessageResponse's own 1:1 shape.
 data class GroupPinnedMessageResponse(val success: Boolean, val message: GroupMessageDto?)
@@ -2657,6 +2667,17 @@ interface ApiService {
 
     @GET("api/v1/messages/groups")
     suspend fun getMyGroups(): GroupsResponse
+
+    // Real KakaoTalk 오픈채팅-style open group (Talk-parity port, item 244) -- see
+    // GroupMessagingService.createOpenGroup's own doc comment. bank-mfe/iOS already
+    // have this; this is the Android port. Anyone with the real joinCode can join
+    // without being invited by phone number first -- distinct from createGroup
+    // above, which requires knowing everyone's real number up front.
+    @POST("api/v1/messages/groups/open")
+    suspend fun createOpenGroup(@Body request: CreateOpenGroupRequest): OpenGroupResponse
+
+    @POST("api/v1/messages/groups/join")
+    suspend fun joinGroupByCode(@Body request: JoinGroupByCodeRequest): JoinGroupResponse
 
     @GET("api/v1/messages/groups/{id}/messages")
     suspend fun getGroupMessages(@Path("id") groupId: String): GroupMessagesResponse

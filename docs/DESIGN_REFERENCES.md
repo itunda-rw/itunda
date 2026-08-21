@@ -15544,3 +15544,70 @@ for the first time, a bigger lift than iOS's port (which reused
 
 *Shipped: `ios/Core/Network/Sources/NetworkClient.swift` +
 `ios/App/Sources/TalkGroupsBrowse.swift`.*
+
+## 244. Real Open Chat ported to Android too, plus a real second correction: Android's consumer app already had camera scanning, in :features:shop:impl -- just not where an earlier grep looked
+
+§243 recorded "Android has the identical gap -- `:app` has ZERO camera
+capability of any kind (confirmed via grep before starting)." That grep was
+scoped only to `android/app`, missing every Feature module entirely. Rereading
+`AndroidManifest.xml`'s own real `CAMERA` permission comment ("see
+features/shop/impl's own CameraQrScanner.kt") surfaced the mistake: a real,
+working `CameraQrScanner.kt` already existed in `:features:shop:impl` (built
+2026-08-11 for Pay's scan-a-merchant's-QR flow). Android's consumer app was
+never actually missing camera capability -- only my own repo-wide search was
+incomplete.
+
+**Real architectural move, not just a bugfix**: `:features:talk:impl` needing
+the identical scanning capability for Open Chat is exactly the "second real
+cross-Feature need" trigger this codebase's own established precedent already
+uses for promoting a component to `:core:designsystem` (RouteMiniMap.kt/
+HoodShared.kt/IdsAvatar.kt all moved there the same way, each with its own doc
+comment recording why). Feature-module isolation (Konsist-enforced) forbids
+`:features:talk:impl` importing `:features:shop:impl`'s impl directly, so a
+shared home was the only compliant option once this second need existed.
+Moved `CameraQrScanner.kt` to `:core:designsystem/components`, moved its real
+CameraX/ML Kit dependencies from `:features:shop:impl`'s `build.gradle.kts` to
+`:core:designsystem`'s, updated `ShopPayCards.kt`'s import, removed two now-
+unused imports left over in that file. Also added a new shared
+`generateQrBitmap` there for non-money-critical QR generation (a chat join
+code carries no money, so the "duplicate per app for money-critical safety"
+precedent `PayQrCodeUtil.kt`/merchantapp's `QrCodeUtil.kt` establish doesn't
+apply -- a single shared generator is the honest, simpler choice here).
+`merchantapp`'s own separate `CameraQrScanner.kt` copy stays untouched --
+correctly out of scope, a different Gradle application entirely.
+
+Built `OpenChatCard` in `TalkGroupsBrowse.kt` (Android's real `ApiService.kt`
+gained `createOpenGroup`/`joinGroupByCode` + DTOs, matching bank-mfe/iOS
+exactly), wired into `GroupsList` right after the "New group" card. Same
+deliberate scope-down as iOS: shares the plain join CODE via the real Android
+share sheet (`Intent.ACTION_SEND`), not a fabricated deep link -- itunda has no
+real deep-link precedent on this app either (the exact same gap
+`ShopMerchantDetail.kt`'s own affiliate-link share already named).
+
+**A second, smaller real bug caught during this pass**: my own edit to
+`AndroidManifest.xml`'s camera-permission comment initially broke the build --
+introduced a literal `--` inside an XML comment, which the XML spec forbids
+anywhere in comment content (not just as a delimiter), unlike every
+Kotlin/Swift/TS comment elsewhere in this codebase that uses ` -- ` freely.
+`processDebugMainManifest` failed with a real parse error; fixed by rewording
+to avoid the double-hyphen.
+
+**Verification**: `:core:designsystem:compileDebugKotlin`, `:features:shop:
+impl:compileDebugKotlin`, `:features:talk:impl:compileDebugKotlin`, full
+`:app:compileDebugKotlin` + `:merchantapp:compileDebugKotlin`, and
+`:architecture-test:test` (the real Konsist Feature-isolation check, force-
+rerun rather than trusting a stale UP-TO-DATE result) all clean. No physical
+device or emulator available this pass (`adb devices` empty) -- compile +
+architecture-boundary verified only, not visually confirmed on-device.
+
+**This closes the KakaoTalk 오픈채팅-parity thread across all 3 platforms** --
+[[project_itunda_open_chat]] gets the update.
+
+*Shipped: `android/core/designsystem/build.gradle.kts` +
+`android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/CameraQrScanner.kt` (new, moved) +
+`android/core/designsystem/src/main/java/rw/itunda/core/designsystem/components/QrCodeGenerator.kt` (new) +
+`android/features/shop/impl/build.gradle.kts` +
+`android/features/shop/impl/src/main/java/rw/itunda/feature/shop/impl/ShopPayCards.kt` +
+`android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/TalkGroupsBrowse.kt` +
+`android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt` +
+`android/app/src/main/AndroidManifest.xml`.*

@@ -1,7 +1,5 @@
 package rw.itunda.feature.shop.impl
 
-import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -79,6 +77,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.CameraQrScanner
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.StatusBadge
 import kotlin.math.roundToInt
