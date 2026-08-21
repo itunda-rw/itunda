@@ -31,7 +31,7 @@ enum class FloatTransferRequestStatus { REQUESTED, ACCEPTED, DECLINED }
  * Money moves directly between the two real agents' own `Agent.cashAccountId`
  * `LedgerAccount` rows (the same real AGENT_CASH account `fundTill`/`cashIn`/
  * `cashOut` already use), never a pooled/shared account -- this session's SACCO
- * dividend bug (draining a shared wallet instead of a dedicated expense account)
+ * dividend bug (draining a shared account instead of a dedicated expense account)
  * is a different shape, but the same discipline applies: know exactly which real
  * account each leg touches.
  *

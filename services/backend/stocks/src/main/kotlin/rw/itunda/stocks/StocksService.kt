@@ -8,7 +8,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -16,7 +16,7 @@ import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -25,7 +25,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 
 class StockNotFoundException(message: String) : RuntimeException(message)
-class NoWalletException(message: String) : RuntimeException(message)
+class NoAccountException(message: String) : RuntimeException(message)
 class NotEnoughSharesException(message: String) : RuntimeException(message)
 class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
 class InvalidFundingAmountException(message: String) : RuntimeException(message)
@@ -36,7 +36,7 @@ data class PortfolioValuePoint(val date: LocalDate, val value: BigDecimal)
 /** Port of backend/src/controllers/stock.controller.ts. */
 @Service
 class StocksService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val holdingRepository: HoldingRepository,
     private val ledgerService: LedgerService,
     private val stockWatchlistRepository: StockWatchlistRepository,
@@ -82,25 +82,25 @@ class StocksService(
     }
 
     // Real bug found and fixed 2026-07-27, alongside the same-day AuthService.register
-    // fix that finally provisions a real WalletType.INVESTMENT wallet for every new
-    // user: even with that wallet now provisioned, it starts at a real zero balance,
+    // fix that finally provisions a real AccountType.INVESTMENT account for every new
+    // user: even with that account now provisioned, it starts at a real zero balance,
     // and nothing anywhere in this codebase ever let a user move money INTO it -- so
     // `buyStock` would have real-422'd (InsufficientFundsException) for every real
-    // first purchase regardless. A real, honest internal wallet-to-wallet transfer,
+    // first purchase regardless. A real, honest internal account-to-account transfer,
     // same shape `P2pService.sendDirect` already established for a different pair of
-    // real wallets -- no clearing account needed since both real WALLET-type accounts
+    // real accounts -- no clearing account needed since both real WALLET-type accounts
     // belong to the exact same real user.
     @Transactional
-    fun fundInvestmentWallet(userId: String, amount: BigDecimal): Map<String, Any?> {
+    fun fundInvestmentAccount(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw InvalidFundingAmountException("Amount must be greater than zero")
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val investmentWallet = walletRepository.findByUserIdAndType(userId, WalletType.INVESTMENT) ?: throw NoWalletException("No investment wallet found for this account")
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val investmentAccount = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
 
         val result = ledgerService.postLedgerTransaction(
-            mainWallet.currency,
+            mainAccount.currency,
             listOf(
-                LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer to investment account"),
-                LedgerLeg(investmentWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer to investment account"),
+                LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer to investment account"),
+                LedgerLeg(investmentAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer to investment account"),
             ),
         )
         return mapOf("id" to result.transactionId, "amount" to amount, "completedAt" to Instant.now().toString())
@@ -109,7 +109,7 @@ class StocksService(
     @Transactional
     fun buyStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.INVESTMENT) ?: throw NoWalletException("No investment wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
         // Real bug found and fixed 2026-07-27: shares is caller-supplied BigDecimal with
         // no scale constraint (round-up-to-invest passes real fractional shares scaled to
         // 6dp) -- an unrounded cost could carry more than RWF's real 2 decimal places,
@@ -120,15 +120,15 @@ class StocksService(
         val cost = shares.multiply(stock.price).setScale(2, RoundingMode.HALF_UP)
 
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, cost, "Buy $shares ${stock.symbol}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, cost, "Buy $shares ${stock.symbol}"),
                 LedgerLeg("securities_suspense", LedgerAccountType.SECURITIES_SUSPENSE, LedgerDirection.CREDIT, cost, "Custody for $shares ${stock.symbol}"),
             ),
         )
 
         val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
-            ?: Holding(id = "hold_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, stockId = stock.id, shares = BigDecimal.ZERO, avgPrice = stock.price)
+            ?: Holding(id = "hold_${UUID.randomUUID()}", userId = userId, accountId = account.id, stockId = stock.id, shares = BigDecimal.ZERO, avgPrice = stock.price)
         val totalCostBasis = holding.shares.multiply(holding.avgPrice).add(cost)
         holding.shares = holding.shares.add(shares)
         holding.avgPrice = totalCostBasis.divide(holding.shares, 4, RoundingMode.HALF_UP)
@@ -158,7 +158,7 @@ class StocksService(
             "RWF",
             listOf(
                 LedgerLeg("securities_suspense", LedgerAccountType.SECURITIES_SUSPENSE, LedgerDirection.DEBIT, proceeds, "Release custody for $shares ${stock.symbol}"),
-                LedgerLeg(holding.walletId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, proceeds, "Sell $shares ${stock.symbol}"),
+                LedgerLeg(holding.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, proceeds, "Sell $shares ${stock.symbol}"),
             ),
         )
 

@@ -52,7 +52,7 @@ data class CancelPaymentRequest(
  *    a `paymentKey` + `checkoutUrl`.
  * 2. The merchant's website redirects the customer's browser to `checkoutUrl` (a real
  *    itunda-hosted page, see `itunda.pay.checkout-base-url`) -- or, since this is real
- *    money movement into an itunda wallet balance, not a card network, the customer
+ *    money movement into an itunda account balance, not a card network, the customer
  *    completes it the same way every other itunda QR/deep-link payment already works:
  *    scanning it with their itunda app. No new payment mechanism was invented, only a
  *    new, non-interactive way for an external server to create/check the same real

@@ -13,14 +13,14 @@ import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -29,13 +29,13 @@ import java.util.Optional
 /** First test coverage for savings goals and the interest jar. */
 class SavingsServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
         type = type, balance = balance, availableBalance = balance,
     )
 
     Given("a user with a savings goal and an interest jar") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -43,16 +43,16 @@ class SavingsServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
-        When("depositing to an owned goal from the default MAIN wallet") {
+        When("depositing to an owned goal from the default MAIN account") {
             val goal = SavingsGoal(
-                id = "sg_1", userId = "user_1", walletId = "wallet_savings", name = "Emergency Fund",
+                id = "sg_1", userId = "user_1", accountId = "account_savings", name = "Emergency Fund",
                 targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("100000"),
                 monthlyContribution = BigDecimal("50000"), interestRate = 7.5, createdAt = Instant.now(),
             )
             every { savingsGoalRepository.findById("sg_1") } returns Optional.of(goal)
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }
 
@@ -67,12 +67,12 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("a deposit reaches the goal's target amount") {
             val goal = SavingsGoal(
-                id = "sg_2", userId = "user_1", walletId = "wallet_savings", name = "New Laptop",
+                id = "sg_2", userId = "user_1", accountId = "account_savings", name = "New Laptop",
                 targetAmount = BigDecimal("250000"), currentAmount = BigDecimal("240000"),
                 monthlyContribution = BigDecimal("30000"), interestRate = 7.5, createdAt = Instant.now(),
             )
             every { savingsGoalRepository.findById("sg_2") } returns Optional.of(goal)
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }
 
@@ -84,20 +84,20 @@ class SavingsServiceTest : BehaviorSpec({
             }
         }
 
-        When("depositing from an explicit wallet that belongs to someone else") {
+        When("depositing from an explicit account that belongs to someone else") {
             val goal = SavingsGoal(
-                id = "sg_3", userId = "user_1", walletId = "wallet_savings", name = "Goal",
+                id = "sg_3", userId = "user_1", accountId = "account_savings", name = "Goal",
                 targetAmount = BigDecimal("100000"), currentAmount = BigDecimal.ZERO,
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
             )
             every { savingsGoalRepository.findById("sg_3") } returns Optional.of(goal)
-            every { walletRepository.findById("wallet_other") } returns Optional.of(wallet("wallet_other", "someone_else"))
+            every { accountRepository.findById("account_other") } returns Optional.of(account("account_other", "someone_else"))
 
-            Then("it throws WalletNotOwnedException before touching the ledger") {
+            Then("it throws AccountNotOwnedException before touching the ledger") {
                 try {
-                    service.depositToGoal("user_1", "sg_3", BigDecimal("1000"), "wallet_other")
-                    error("expected WalletNotOwnedException")
-                } catch (e: WalletNotOwnedException) {
+                    service.depositToGoal("user_1", "sg_3", BigDecimal("1000"), "account_other")
+                    error("expected AccountNotOwnedException")
+                } catch (e: AccountNotOwnedException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -105,13 +105,13 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("depositing to a goal that belongs to someone else") {
             val goal = SavingsGoal(
-                id = "sg_4", userId = "owner_1", walletId = "wallet_savings", name = "Goal",
+                id = "sg_4", userId = "owner_1", accountId = "account_savings", name = "Goal",
                 targetAmount = BigDecimal("100000"), currentAmount = BigDecimal.ZERO,
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
             )
             every { savingsGoalRepository.findById("sg_4") } returns Optional.of(goal)
 
-            Then("it throws GoalNotFoundException, not a distinct ownership error -- same 404-not-403 pattern as wallet lookups") {
+            Then("it throws GoalNotFoundException, not a distinct ownership error -- same 404-not-403 pattern as account lookups") {
                 try {
                     service.depositToGoal("attacker", "sg_4", BigDecimal("1000"), null)
                     error("expected GoalNotFoundException")
@@ -123,16 +123,16 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("claiming available interest") {
             val jar = InterestJar(
-                userId = "user_1", walletId = "wallet_1", balance = BigDecimal("45000"), rate = 7.5,
+                userId = "user_1", accountId = "account_1", balance = BigDecimal("45000"), rate = 7.5,
                 earnedThisMonth = BigDecimal("2500"), earnedTotal = BigDecimal("45000"),
             )
             every { interestJarRepository.findById("user_1") } returns Optional.of(jar)
-            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
             every { interestJarRepository.save(any()) } answers { firstArg() }
 
             val result = service.claimInterest("user_1")
 
-            // Real fix (2026-08-11): interest now auto-credits the wallet the instant
+            // Real fix (2026-08-11): interest now auto-credits the account the instant
             // it accrues (see accrueInterest's own doc comment) -- claimInterest no
             // longer posts a second ledger transaction for money that already
             // arrived, it just clears the running display counter.
@@ -145,7 +145,7 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("claiming interest with nothing earned this month") {
             val jar = InterestJar(
-                userId = "user_1", walletId = "wallet_1", balance = BigDecimal("45000"), rate = 7.5,
+                userId = "user_1", accountId = "account_1", balance = BigDecimal("45000"), rate = 7.5,
                 earnedThisMonth = BigDecimal.ZERO, earnedTotal = BigDecimal("45000"),
             )
             every { interestJarRepository.findById("user_1") } returns Optional.of(jar)
@@ -162,11 +162,11 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("a second claim immediately follows a successful one (double-claim attempt)") {
             val jar = InterestJar(
-                userId = "user_1", walletId = "wallet_1", balance = BigDecimal("45000"), rate = 7.5,
+                userId = "user_1", accountId = "account_1", balance = BigDecimal("45000"), rate = 7.5,
                 earnedThisMonth = BigDecimal("2500"), earnedTotal = BigDecimal("45000"),
             )
             every { interestJarRepository.findById("user_1") } returns Optional.of(jar)
-            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
             every { interestJarRepository.save(any()) } answers { firstArg() }
             service.claimInterest("user_1")
 
@@ -182,7 +182,7 @@ class SavingsServiceTest : BehaviorSpec({
     }
 
     Given("goals due for real recurring auto-save") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -190,10 +190,10 @@ class SavingsServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
         fun goal(id: String, monthlyContribution: String, lastAutoContributionAt: Instant?, status: SavingsGoalStatus = SavingsGoalStatus.active) = SavingsGoal(
-            id = id, userId = "user_1", walletId = "wallet_savings", name = "Goal $id",
+            id = id, userId = "user_1", accountId = "account_savings", name = "Goal $id",
             targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("10000"),
             monthlyContribution = BigDecimal(monthlyContribution), interestRate = 7.5,
             status = status, lastAutoContributionAt = lastAutoContributionAt,
@@ -217,7 +217,7 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("auto-contributing to a goal with sufficient funds") {
             val g = goal("sg_ok", "20000", null)
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_auto", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }
 
@@ -233,7 +233,7 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("auto-contributing to a goal without enough balance") {
             val g = goal("sg_poor", "999999999", null)
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
 
             val succeeded = service.autoContribute(g)
 
@@ -246,7 +246,7 @@ class SavingsServiceTest : BehaviorSpec({
     }
 
     Given("interest jars due for real daily accrual") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -254,10 +254,10 @@ class SavingsServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
         fun jar(userId: String, nextPayoutAt: Instant, rate: Double = 7.5) = InterestJar(
-            userId = userId, walletId = "wallet_$userId", balance = BigDecimal.ZERO, rate = rate,
+            userId = userId, accountId = "account_$userId", balance = BigDecimal.ZERO, rate = rate,
             earnedThisMonth = BigDecimal.ZERO, earnedTotal = BigDecimal.ZERO,
             lastPaidAt = Instant.now(), nextPayoutAt = nextPayoutAt,
         )
@@ -276,14 +276,14 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("accruing interest for a jar backed by a real nonzero savings balance") {
             val theJar = jar("user_1", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
-            every { walletRepository.findById("wallet_user_1") } returns Optional.of(wallet("wallet_user_1", "user_1", WalletType.SAVINGS, BigDecimal("36500")))
+            every { accountRepository.findById("account_user_1") } returns Optional.of(account("account_user_1", "user_1", AccountType.SAVINGS, BigDecimal("36500")))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_interest_1", emptyList())
             every { interestJarRepository.save(any()) } answers { firstArg() }
             every { transactionRepository.save(any()) } answers { firstArg() }
 
             service.accrueInterest(theJar)
 
-            Then("it grows earnedThisMonth/earnedTotal off the real wallet balance, syncs the cached balance, and advances a real day") {
+            Then("it grows earnedThisMonth/earnedTotal off the real account balance, syncs the cached balance, and advances a real day") {
                 // 36500 * 7.5% / 365 = 7.50 per day
                 theJar.earnedThisMonth shouldBe BigDecimal("7.50")
                 theJar.earnedTotal shouldBe BigDecimal("7.50")
@@ -291,7 +291,7 @@ class SavingsServiceTest : BehaviorSpec({
                 verify(exactly = 1) { interestJarRepository.save(theJar) }
             }
 
-            // Real fix (2026-08-11): interest now credits the real wallet balance the
+            // Real fix (2026-08-11): interest now credits the real account balance the
             // instant it accrues, matching real Toss Bank passbook interest (user-
             // provided screenshots) posting as its own real transaction-history line
             // item, not a separate manually-claimed jar. Replaces the old "unclaimed
@@ -305,10 +305,10 @@ class SavingsServiceTest : BehaviorSpec({
             }
         }
 
-        When("accruing interest for a jar whose savings wallet is still empty") {
+        When("accruing interest for a jar whose savings account is still empty") {
             val originalNextPayoutAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS)
             val theJar = jar("user_2", originalNextPayoutAt)
-            every { walletRepository.findById("wallet_user_2") } returns Optional.of(wallet("wallet_user_2", "user_2", WalletType.SAVINGS, BigDecimal.ZERO))
+            every { accountRepository.findById("account_user_2") } returns Optional.of(account("account_user_2", "user_2", AccountType.SAVINGS, BigDecimal.ZERO))
             every { interestJarRepository.save(any()) } answers { firstArg() }
 
             service.accrueInterest(theJar)
@@ -322,7 +322,7 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("accruing across repeated real days keeps building on top of the running total") {
             val theJar = jar("user_3", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
-            every { walletRepository.findById("wallet_user_3") } returns Optional.of(wallet("wallet_user_3", "user_3", WalletType.SAVINGS, BigDecimal("36500")))
+            every { accountRepository.findById("account_user_3") } returns Optional.of(account("account_user_3", "user_3", AccountType.SAVINGS, BigDecimal("36500")))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_interest_3", emptyList())
             every { interestJarRepository.save(any()) } answers { firstArg() }
             every { transactionRepository.save(any()) } answers { firstArg() }
@@ -343,7 +343,7 @@ class SavingsServiceTest : BehaviorSpec({
     }
 
     Given("a real user exceeds the real goal-creation rate limit") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -351,7 +351,7 @@ class SavingsServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
         every { rateLimiter.checkLimit("savings:goal:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to create another real goal") {
@@ -367,7 +367,7 @@ class SavingsServiceTest : BehaviorSpec({
     }
 
     Given("a real KB국민은행-style savings goal maturity reminder") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -376,10 +376,10 @@ class SavingsServiceTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>()
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
         fun goalWithTarget(id: String, userId: String, targetDate: String?, status: SavingsGoalStatus = SavingsGoalStatus.active, maturityNotifiedAt: Instant? = null) = SavingsGoal(
-            id = id, userId = userId, walletId = "wallet_$userId", name = "Goal $id",
+            id = id, userId = userId, accountId = "account_$userId", name = "Goal $id",
             targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("500000"),
             monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, targetDate = targetDate,
             status = status, maturityNotifiedAt = maturityNotifiedAt,

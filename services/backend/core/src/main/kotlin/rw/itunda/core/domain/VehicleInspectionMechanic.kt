@@ -29,8 +29,8 @@ class VehicleInspectionMechanic(
     @Column(name = "user_id", nullable = false, unique = true, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "business_name", nullable = false, length = 200)
     val businessName: String,
@@ -41,5 +41,5 @@ class VehicleInspectionMechanic(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "", businessName = "")
+    protected constructor() : this(id = "", userId = "", accountId = "", businessName = "")
 }

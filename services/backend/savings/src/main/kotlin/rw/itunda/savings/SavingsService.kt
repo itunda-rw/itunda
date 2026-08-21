@@ -13,7 +13,7 @@ import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -21,7 +21,7 @@ import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -35,14 +35,14 @@ private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 private const val INTEREST_ACCRUAL_INTERVAL_DAYS = 1L
 
 class GoalNotFoundException(message: String) : RuntimeException(message)
-class WalletNotOwnedException(message: String) : RuntimeException(message)
-class NoWalletException(message: String) : RuntimeException(message)
+class AccountNotOwnedException(message: String) : RuntimeException(message)
+class NoAccountException(message: String) : RuntimeException(message)
 class NoInterestJarException(message: String) : RuntimeException(message)
 class NoInterestAvailableException(message: String) : RuntimeException(message)
 
 /**
  * Port of backend/src/controllers/savings.controller.ts, with the same ownership check
- * added to the Express fix: a caller can only deposit from a wallet they actually own.
+ * added to the Express fix: a caller can only deposit from a account they actually own.
  * Unlike the Express version's single hardcoded interestJar object (one user's data,
  * gated to that owner after the fix), InterestJar here is a real per-user table from the
  * start — a new user simply doesn't have a row yet (404) rather than being blocked from
@@ -50,7 +50,7 @@ class NoInterestAvailableException(message: String) : RuntimeException(message)
  */
 @Service
 class SavingsService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
     private val interestJarRepository: InterestJarRepository,
     private val ledgerService: LedgerService,
@@ -69,10 +69,10 @@ class SavingsService(
         // deposit/claim (both money-moving, both already Idempotency-Key protected),
         // goal creation is free row creation with zero protection of any kind.
         rateLimiter.checkLimit("savings:goal:$userId", limit = 10, window = Duration.ofHours(1))
-        val savingsWallet = walletRepository.findByUserIdAndType(userId, WalletType.SAVINGS) ?: throw NoWalletException("No savings wallet found for this account")
+        val savingsAccount = accountRepository.findByUserIdAndType(userId, AccountType.SAVINGS) ?: throw NoAccountException("No savings account found for this account")
         return savingsGoalRepository.save(
             SavingsGoal(
-                id = "sg_${UUID.randomUUID()}", userId = userId, walletId = savingsWallet.id, name = name,
+                id = "sg_${UUID.randomUUID()}", userId = userId, accountId = savingsAccount.id, name = name,
                 targetAmount = targetAmount, currentAmount = BigDecimal.ZERO,
                 monthlyContribution = monthlyContribution ?: BigDecimal.ZERO, interestRate = 7.5,
                 targetDate = targetDate, category = category ?: "general",
@@ -81,21 +81,21 @@ class SavingsService(
     }
 
     @Transactional
-    fun depositToGoal(userId: String, goalId: String, amount: BigDecimal, fromWalletId: String?): SavingsGoal {
+    fun depositToGoal(userId: String, goalId: String, amount: BigDecimal, fromAccountId: String?): SavingsGoal {
         val goal = savingsGoalRepository.findById(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
 
-        val sourceWallet = if (fromWalletId != null) {
-            val wallet = walletRepository.findById(fromWalletId).orElseThrow { NoWalletException("Wallet not found") }
-            if (wallet.userId != userId) throw WalletNotOwnedException("That wallet does not belong to you")
-            wallet
+        val sourceAccount = if (fromAccountId != null) {
+            val account = accountRepository.findById(fromAccountId).orElseThrow { NoAccountException("Account not found") }
+            if (account.userId != userId) throw AccountNotOwnedException("That account does not belong to you")
+            account
         } else {
-            walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+            accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
         }
 
         ledgerService.postLedgerTransaction(
-            sourceWallet.currency,
+            sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Deposit to ${goal.name}"),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Deposit to ${goal.name}"),
                 LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, amount, "Deposit to ${goal.name}"),
             ),
         )
@@ -124,16 +124,16 @@ class SavingsService(
     // rather than failing loudly for something that isn't the user's fault mid-batch.
     @Transactional
     fun autoContribute(goal: SavingsGoal): Boolean {
-        val sourceWallet = walletRepository.findByUserIdAndType(goal.userId, WalletType.MAIN)
-        if (sourceWallet == null || sourceWallet.availableBalance < goal.monthlyContribution) {
-            log.info("Skipping auto-contribution for goal {} -- insufficient funds or no MAIN wallet", goal.id)
+        val sourceAccount = accountRepository.findByUserIdAndType(goal.userId, AccountType.MAIN)
+        if (sourceAccount == null || sourceAccount.availableBalance < goal.monthlyContribution) {
+            log.info("Skipping auto-contribution for goal {} -- insufficient funds or no MAIN account", goal.id)
             return false
         }
 
         ledgerService.postLedgerTransaction(
-            sourceWallet.currency,
+            sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
                 LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
             ),
         )
@@ -152,21 +152,21 @@ class SavingsService(
         val jar = interestJarRepository.findById(userId).orElseThrow { NoInterestJarException("No interest jar found for this account") }
         if (jar.earnedThisMonth <= BigDecimal.ZERO) throw NoInterestAvailableException("No interest available to claim")
 
-        // Real fix (2026-08-11): interest now auto-credits the real wallet balance
+        // Real fix (2026-08-11): interest now auto-credits the real account balance
         // the instant it accrues (see accrueInterest's own doc comment, matching real
         // Toss Bank passbook interest -- "통장 이자" posts directly, no manual claim
         // step exists in a real bank). Posting a SECOND ledger credit here for the
         // same already-arrived money would be a real double-credit bug -- this now
         // just clears the running "earned this month" display counter, the same
         // "mark as seen" shape a notification-read flag has, not a real second
-        // transfer. The wallet balance genuinely doesn't change here anymore.
+        // transfer. The account balance genuinely doesn't change here anymore.
         val claimed = jar.earnedThisMonth
-        val wallet = walletRepository.findById(jar.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val account = accountRepository.findById(jar.accountId).orElseThrow { NoAccountException("Account not found") }
         jar.earnedThisMonth = BigDecimal.ZERO
         jar.lastPaidAt = Instant.now()
         interestJarRepository.save(jar)
 
-        return mapOf("claimed" to claimed, "newBalance" to wallet.balance)
+        return mapOf("claimed" to claimed, "newBalance" to account.balance)
     }
 
     // Real daily interest accrual (2026-07-20) -- found live: earnedThisMonth/earnedTotal
@@ -182,28 +182,28 @@ class SavingsService(
 
     // Real Toss Bank passbook interest semantics (user-provided screenshots,
     // 2026-08-11 -- "통장 이자" +36원/+19원 posting directly into the real transaction
-    // history the moment it accrues): interest now credits the real wallet balance
+    // history the moment it accrues): interest now credits the real account balance
     // and creates a real Transaction row on EVERY accrual, not just a display-only
     // `earnedThisMonth` counter requiring a separate manual claim. This replaces the
-    // previous "accrue into a jar, then claim into the wallet" two-step flow --
+    // previous "accrue into a jar, then claim into the account" two-step flow --
     // real bank passbook interest has no manual claim step at all, it just appears.
     // `earnedThisMonth`/`earnedTotal` are kept as running display totals of interest
     // ALREADY credited (not pending), still useful for the Interest jar summary card.
-    // jar.balance stays a synced display cache of the real wallet balance, never the
+    // jar.balance stays a synced display cache of the real account balance, never the
     // source of truth. nextPayoutAt advances by exactly one real day (not "now + 1
     // day") so a scheduler catch-up after downtime doesn't silently shrink the
     // accrual window.
     @Transactional
     fun accrueInterest(jar: InterestJar) {
-        val wallet = walletRepository.findById(jar.walletId).orElse(null) ?: return
+        val account = accountRepository.findById(jar.accountId).orElse(null) ?: return
         val dailyRate = BigDecimal.valueOf(jar.rate).divide(BigDecimal(100), 10, RoundingMode.HALF_UP).divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
-        val accrued = wallet.balance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
+        val accrued = account.balance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
         if (accrued > BigDecimal.ZERO) {
             val ledger = ledgerService.postLedgerTransaction(
                 "RWF",
                 listOf(
                     LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, accrued, "Savings interest"),
-                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, accrued, "Savings interest"),
+                    LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, accrued, "Savings interest"),
                 ),
             )
             transactionRepository.save(
@@ -212,7 +212,7 @@ class SavingsService(
                     referenceNumber = "INTEREST${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                     senderId = "system_interest",
                     recipientId = jar.userId,
-                    toWalletId = wallet.id,
+                    toAccountId = account.id,
                     amount = accrued,
                     fee = BigDecimal.ZERO,
                     currency = "RWF",
@@ -225,8 +225,8 @@ class SavingsService(
             jar.earnedThisMonth = jar.earnedThisMonth.add(accrued)
             jar.earnedTotal = jar.earnedTotal.add(accrued)
         }
-        val updatedWallet = walletRepository.findById(jar.walletId).orElse(wallet)
-        jar.balance = updatedWallet.balance
+        val updatedAccount = accountRepository.findById(jar.accountId).orElse(account)
+        jar.balance = updatedAccount.balance
         jar.nextPayoutAt = jar.nextPayoutAt.plus(INTEREST_ACCRUAL_INTERVAL_DAYS, ChronoUnit.DAYS)
         interestJarRepository.save(jar)
     }

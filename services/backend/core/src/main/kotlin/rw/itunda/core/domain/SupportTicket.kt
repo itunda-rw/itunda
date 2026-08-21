@@ -67,11 +67,11 @@ class SupportTicket(
     @Column(name = "refund_transaction_id", length = 64)
     var refundTransactionId: String? = null,
 
-    // Set true when this ticket's category caused the transaction's source wallet to be
-    // frozen (Wallet.isActive = false) as the real account-takeover response; resolve()
+    // Set true when this ticket's category caused the transaction's source account to be
+    // frozen (Account.isActive = false) as the real account-takeover response; resolve()
     // unfreezes it regardless of decision, since a ticket is always the end of the review.
-    @Column(name = "froze_wallet_id", length = 64)
-    var frozeWalletId: String? = null,
+    @Column(name = "froze_account_id", length = 64)
+    var frozeAccountId: String? = null,
 
     @Column(name = "due_by", nullable = false)
     val dueBy: Instant,

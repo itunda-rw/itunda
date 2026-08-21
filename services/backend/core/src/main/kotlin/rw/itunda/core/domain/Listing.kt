@@ -117,7 +117,7 @@ class Listing(
     // Real optimistic lock (2026-08-02) -- payEscrow/markSold/boostListing/markTaken
     // all read-then-mutate status with no concurrency guard; two concurrent payEscrow
     // calls on the same ACTIVE listing could both read ACTIVE and both win, each
-    // debiting a buyer's wallet and creating its own MarketplaceEscrow row. See
+    // debiting a buyer's account and creating its own MarketplaceEscrow row. See
     // SavingsGoal.version's own doc comment for the same real "manual and scheduled
     // paths share one balance" shape this codebase has fixed this way repeatedly.
     @Version

@@ -26,7 +26,7 @@ enum class PriceOfferStatus { PENDING, ACCEPTED, REJECTED, COUNTERED }
  * survives and each amount can be traced back to its own real message.
  *
  * Honestly scoped: accepting an offer only marks it real-agreed in the conversation --
- * no wallet money moves, no listing status changes automatically. Real 당근마켓 itself
+ * no account money moves, no listing status changes automatically. Real 당근마켓 itself
  * treats price agreement and the actual in-person/off-platform exchange as separate
  * steps; a seller who wants to close the listing still uses the existing real
  * `MarketplaceService.markSold`, unmodified by this feature.

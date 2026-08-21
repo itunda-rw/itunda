@@ -18,7 +18,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -59,7 +59,7 @@ class StocksController(private val stocksService: StocksService, private val ide
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "history" to stocksService.getPortfolioHistory(currentUser.userId, days)))
 
-    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentWallet's own doc
+    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentAccount's own doc
     // comment. Real money-moving internal transfer, so Idempotency-Key required, same
     // convention as every other money-moving POST in this codebase.
     @PostMapping("/fund")
@@ -69,7 +69,7 @@ class StocksController(private val stocksService: StocksService, private val ide
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/stocks/fund", idempotencyKey, request) {
-            val transaction = stocksService.fundInvestmentWallet(currentUser.userId, request.amount)
+            val transaction = stocksService.fundInvestmentAccount(currentUser.userId, request.amount)
             200 to mapOf("success" to true, "transaction" to transaction)
         }
         return ResponseEntity.status(status).body(body)
@@ -181,8 +181,8 @@ class StocksController(private val stocksService: StocksService, private val ide
     @ExceptionHandler(InvalidPriceHistoryRangeException::class)
     fun handleInvalidRange(ex: InvalidPriceHistoryRangeException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_HISTORY_RANGE", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidFundingAmountException::class)
     fun handleInvalidFunding(ex: InvalidFundingAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
@@ -193,8 +193,8 @@ class StocksController(private val stocksService: StocksService, private val ide
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(InvalidPriceAlertException::class)
     fun handleInvalidPriceAlert(ex: InvalidPriceAlertException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_ALERT", ex.message ?: "Bad request"))

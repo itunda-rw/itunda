@@ -13,7 +13,7 @@ import java.time.Instant
  * mechanics: the creator (organizer/총무) holds real withdrawal/settlement authority,
  * every other invited member can view balance and deposit but cannot withdraw --
  * matching how a real 모임통장 works, not a symmetric joint account. Backed by a real
- * `Wallet` (WalletType.GROUP) rather than inventing a second balance concept --
+ * `Account` (AccountType.GROUP) rather than inventing a second balance concept --
  * deposits/withdrawals are the same real ledger-backed WALLET-to-WALLET movement
  * every other real money-moving feature in this backend already uses.
  */
@@ -30,8 +30,8 @@ class GroupAccount(
     @Column(name = "owner_id", nullable = false, length = 64)
     val ownerId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     // Real KakaoBank 회비 (dues) amount, null until the organizer sets one -- see
     // GroupAccountService.setDuesAmount's own doc comment.
@@ -41,5 +41,5 @@ class GroupAccount(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", name = "", ownerId = "", walletId = "")
+    protected constructor() : this(id = "", name = "", ownerId = "", accountId = "")
 }

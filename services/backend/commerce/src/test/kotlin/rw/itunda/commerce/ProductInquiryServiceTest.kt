@@ -29,7 +29,7 @@ class ProductInquiryServiceTest : BehaviorSpec({
         val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Widget", price = BigDecimal("2000"))
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
 
         When("asking a real question -- no order or purchase involved at all") {
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
@@ -90,7 +90,7 @@ class ProductInquiryServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
         val inquiry = ProductInquiry(id = "product_inquiry_1", productId = "product_1", merchantId = "merchant_1", buyerId = "shopper_1", question = "Is this in blue?")
 
         When("the real owner answers") {
@@ -125,7 +125,7 @@ class ProductInquiryServiceTest : BehaviorSpec({
         }
 
         When("a different merchant's owner tries to answer this question") {
-            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_2", businessName = "Other Shop", status = MerchantStatus.ACTIVE)
+            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Other Shop", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("owner_2") } returns otherMerchant
             every { productInquiryRepository.findById("product_inquiry_1") } returns Optional.of(inquiry)
 

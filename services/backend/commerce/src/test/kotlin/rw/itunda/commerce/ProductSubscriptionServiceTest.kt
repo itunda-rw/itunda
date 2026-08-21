@@ -13,15 +13,15 @@ import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.ProductSubscriptionStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductSubscriptionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.merchant.ShoppingCashbackService
 import java.math.BigDecimal
 import java.time.Instant
@@ -38,9 +38,9 @@ import java.util.Optional
  */
 class ProductSubscriptionServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
     Given("a real merchant product and a real customer") {
@@ -48,7 +48,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         every { productSubscriptionRepository.save(any()) } answers { firstArg() }
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val orderService = mockk<OrderService>()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
@@ -56,13 +56,13 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductSubscriptionService(
-            productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+            productSubscriptionRepository, merchantRepository, merchantProductRepository, accountRepository, orderService, shoppingCashbackService, rateLimiter,
             notificationRepository, pushNotificationService,
         )
 
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Tissue paper", price = BigDecimal("5000"))
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Mart", status = MerchantStatus.ACTIVE)
-        val customerWallet = wallet("wallet_customer", "customer_1")
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Mart", status = MerchantStatus.ACTIVE)
+        val customerAccount = account("account_customer", "customer_1")
         val order = Order(
             id = "order_1", buyerId = "customer_1", merchantId = "merchant_1", deliveryAddress = "KG 123 St",
             totalAmount = BigDecimal("10000"), fee = BigDecimal("150"), transactionId = "ledgertxn_1",
@@ -71,7 +71,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         When("subscribing to a real product with a valid interval") {
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 2)), "KG 123 St") } returns OrderDetail(order, emptyList())
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
             val subscription = service.subscribe("customer_1", "merchant_1", "product_1", 2, 30, "KG 123 St")
@@ -83,7 +83,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
             }
 
             Then("it awards the real 5% subscription discount on the real order total") {
-                verify(exactly = 1) { shoppingCashbackService.awardCashback(customerWallet, BigDecimal("10000"), "Kigali Mart", ProductSubscriptionService.SUBSCRIPTION_DISCOUNT_RATE) }
+                verify(exactly = 1) { shoppingCashbackService.awardCashback(customerAccount, BigDecimal("10000"), "Kigali Mart", ProductSubscriptionService.SUBSCRIPTION_DISCOUNT_RATE) }
             }
         }
 
@@ -147,7 +147,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         every { productSubscriptionRepository.save(any()) } answers { firstArg() }
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val orderService = mockk<OrderService>()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
@@ -155,12 +155,12 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductSubscriptionService(
-            productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+            productSubscriptionRepository, merchantRepository, merchantProductRepository, accountRepository, orderService, shoppingCashbackService, rateLimiter,
             notificationRepository, pushNotificationService,
         )
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Mart", status = MerchantStatus.ACTIVE)
-        val customerWallet = wallet("wallet_customer", "customer_1")
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Mart", status = MerchantStatus.ACTIVE)
+        val customerAccount = account("account_customer", "customer_1")
         val order = Order(
             id = "order_2", buyerId = "customer_1", merchantId = "merchant_1", deliveryAddress = "KG 123 St",
             totalAmount = BigDecimal("5000"), fee = BigDecimal("75"), transactionId = "ledgertxn_2",
@@ -172,7 +172,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
 
         When("the recurring delivery succeeds") {
             every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St") } returns OrderDetail(order, emptyList())
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
             val succeeded = service.executeOne(subscription)
@@ -205,7 +205,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
 
         When("the recurring delivery succeeds a second time") {
             every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St") } returns OrderDetail(order, emptyList())
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
             service.executeOne(subscription)
@@ -228,7 +228,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         every { productSubscriptionRepository.save(any()) } answers { firstArg() }
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val orderService = mockk<OrderService>()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
@@ -236,7 +236,7 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductSubscriptionService(
-            productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+            productSubscriptionRepository, merchantRepository, merchantProductRepository, accountRepository, orderService, shoppingCashbackService, rateLimiter,
             notificationRepository, pushNotificationService,
         )
 

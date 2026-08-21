@@ -3,7 +3,7 @@ rootProject.name = "itunda-backend"
 include(
     ":core",
     ":auth",
-    ":wallet",
+    ":account",
     ":bills",
     ":loans",
     ":stocks",

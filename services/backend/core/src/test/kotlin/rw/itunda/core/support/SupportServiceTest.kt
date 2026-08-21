@@ -16,38 +16,38 @@ import rw.itunda.core.domain.SupportTicketStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.SupportTicketRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
 
 class SupportServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
     )
 
     Given("a real transaction between two users") {
         val supportTicketRepository = mockk<SupportTicketRepository>()
         val transactionRepository = mockk<TransactionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = SupportService(supportTicketRepository, transactionRepository, walletRepository, ledgerEntryRepository, ledgerService)
+        val service = SupportService(supportTicketRepository, transactionRepository, accountRepository, ledgerEntryRepository, ledgerService)
 
-        val payerWallet = wallet("wallet_payer", "user_1")
+        val payerAccount = account("account_payer", "user_1")
         val transaction = Transaction(
             id = "ledgertxn_1", referenceNumber = "TXN1", senderId = "user_1", recipientId = "user_2",
-            fromWalletId = "wallet_payer", toWalletId = "wallet_recipient", amount = BigDecimal("5000"),
+            fromAccountId = "account_payer", toAccountId = "account_recipient", amount = BigDecimal("5000"),
             fee = BigDecimal("50"), currency = "RWF", type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
             description = "test payment",
         )
@@ -58,10 +58,10 @@ class SupportServiceTest : BehaviorSpec({
         When("the sender files a GENERAL ticket about it") {
             val ticket = service.createTicket("user_1", "ledgertxn_1", SupportTicketCategory.GENERAL, "Wrong amount")
 
-            Then("a real ticket is created, unresolved, with no wallet frozen") {
+            Then("a real ticket is created, unresolved, with no account frozen") {
                 ticket.userId shouldBe "user_1"
                 ticket.status shouldBe SupportTicketStatus.OPEN
-                ticket.frozeWalletId shouldBe null
+                ticket.frozeAccountId shouldBe null
             }
             Then("its SLA due date is real itunda policy for GENERAL (72 hours)") {
                 val hoursUntilDue = java.time.Duration.between(Instant.now(), ticket.dueBy).toHours()
@@ -76,8 +76,8 @@ class SupportServiceTest : BehaviorSpec({
                 val hoursUntilDue = java.time.Duration.between(Instant.now(), ticket.dueBy).toHours()
                 (hoursUntilDue in 23..24) shouldBe true
             }
-            Then("it does not freeze any wallet, unlike ACCOUNT_TAKEOVER") {
-                ticket.frozeWalletId shouldBe null
+            Then("it does not freeze any account, unlike ACCOUNT_TAKEOVER") {
+                ticket.frozeAccountId shouldBe null
             }
         }
 
@@ -96,14 +96,14 @@ class SupportServiceTest : BehaviorSpec({
         }
 
         When("the sender files an ACCOUNT_TAKEOVER ticket") {
-            every { walletRepository.findById("wallet_payer") } returns Optional.of(payerWallet)
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.findById("account_payer") } returns Optional.of(payerAccount)
+            every { accountRepository.save(any()) } answers { firstArg() }
 
             val ticket = service.createTicket("user_1", "ledgertxn_1", SupportTicketCategory.ACCOUNT_TAKEOVER, "I never sent this")
 
-            Then("it real-freezes the sender's own wallet from this transaction") {
-                payerWallet.isActive shouldBe false
-                ticket.frozeWalletId shouldBe "wallet_payer"
+            Then("it real-freezes the sender's own account from this transaction") {
+                payerAccount.isActive shouldBe false
+                ticket.frozeAccountId shouldBe "account_payer"
             }
             Then("its SLA due date is the tighter 4-hour ACCOUNT_TAKEOVER policy") {
                 val hoursUntilDue = java.time.Duration.between(Instant.now(), ticket.dueBy).toHours()
@@ -115,27 +115,27 @@ class SupportServiceTest : BehaviorSpec({
     Given("an open ticket for a real transaction with real ledger legs") {
         val supportTicketRepository = mockk<SupportTicketRepository>()
         val transactionRepository = mockk<TransactionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = SupportService(supportTicketRepository, transactionRepository, walletRepository, ledgerEntryRepository, ledgerService)
+        val service = SupportService(supportTicketRepository, transactionRepository, accountRepository, ledgerEntryRepository, ledgerService)
 
-        val frozenWallet = wallet("wallet_payer", "user_1").apply { isActive = false }
+        val frozenAccount = account("account_payer", "user_1").apply { isActive = false }
         val ticket = SupportTicket(
             id = "ticket_1", userId = "user_1", transactionId = "ledgertxn_1",
             category = SupportTicketCategory.ACCOUNT_TAKEOVER, description = "unauthorized",
-            frozeWalletId = "wallet_payer", dueBy = Instant.now().plusSeconds(3600),
+            frozeAccountId = "account_payer", dueBy = Instant.now().plusSeconds(3600),
         )
         val originalLegs = listOf(
-            LedgerEntry(id = "e1", transactionId = "ledgertxn_1", accountId = "wallet_payer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("5000"), currency = "RWF", balanceAfter = BigDecimal("5000"), memo = "payment to user_2"),
-            LedgerEntry(id = "e2", transactionId = "ledgertxn_1", accountId = "wallet_recipient", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5000"), currency = "RWF", balanceAfter = BigDecimal("5000"), memo = "payment received"),
+            LedgerEntry(id = "e1", transactionId = "ledgertxn_1", accountId = "account_payer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("5000"), currency = "RWF", balanceAfter = BigDecimal("5000"), memo = "payment to user_2"),
+            LedgerEntry(id = "e2", transactionId = "ledgertxn_1", accountId = "account_recipient", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5000"), currency = "RWF", balanceAfter = BigDecimal("5000"), memo = "payment received"),
         )
 
         every { supportTicketRepository.findById("ticket_1") } returns Optional.of(ticket)
         every { supportTicketRepository.save(any()) } answers { firstArg() }
         every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalLegs
-        every { walletRepository.findById("wallet_payer") } returns Optional.of(frozenWallet)
-        every { walletRepository.save(any()) } answers { firstArg() }
+        every { accountRepository.findById("account_payer") } returns Optional.of(frozenAccount)
+        every { accountRepository.save(any()) } answers { firstArg() }
 
         When("an admin resolves it with REFUNDED") {
             val legsSlot = slot<List<LedgerLeg>>()
@@ -163,8 +163,8 @@ class SupportServiceTest : BehaviorSpec({
             Then("it posts a real reversing ledger transaction with every leg flipped") {
                 val legs = legsSlot.captured
                 legs.size shouldBe 2
-                val payerLeg = legs.first { it.accountId == "wallet_payer" }
-                val recipientLeg = legs.first { it.accountId == "wallet_recipient" }
+                val payerLeg = legs.first { it.accountId == "account_payer" }
+                val recipientLeg = legs.first { it.accountId == "account_recipient" }
                 payerLeg.direction shouldBe LedgerDirection.CREDIT
                 recipientLeg.direction shouldBe LedgerDirection.DEBIT
             }
@@ -174,8 +174,8 @@ class SupportServiceTest : BehaviorSpec({
                 resolved.refundTransactionId shouldBe "ledgertxn_refund"
                 resolved.reviewedBy shouldBe "admin_1"
             }
-            Then("the frozen wallet is real-unfrozen") {
-                frozenWallet.isActive shouldBe true
+            Then("the frozen account is real-unfrozen") {
+                frozenAccount.isActive shouldBe true
             }
         }
 

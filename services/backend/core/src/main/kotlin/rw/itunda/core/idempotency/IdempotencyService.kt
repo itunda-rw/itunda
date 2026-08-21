@@ -193,7 +193,7 @@ class IdempotencyService(
 
     /**
      * Shared shape for every money-moving controller. `endpoint` (e.g.
-     * `"POST /api/v1/wallet/transfer/confirm"`) scopes the key per route, and the claim
+     * `"POST /api/v1/account/transfer/confirm"`) scopes the key per route, and the claim
      * step closes a real race: two simultaneous requests with the same key used to both
      * find no completed record and both run the business action concurrently.
      *

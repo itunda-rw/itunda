@@ -17,7 +17,7 @@ enum class PostpaidCreditLineStatus { ACTIVE, SUSPENDED }
  * user-requestable increase; a real 12% annual late fee on overdue principal, service
  * suspended while overdue; no interest at all for on-time repayment, unlike a credit
  * card). Adopted as itunda's own honest RWF-scoped numbers (the same "reuse the sourced
- * structure, itunda's own currency figures" discipline `MiniWalletService`/
+ * structure, itunda's own currency figures" discipline `MiniAccountService`/
  * `AgentCommissionSchedule` already establish), not presented as a real published Rwanda
  * figure.
  *
@@ -46,8 +46,8 @@ class PostpaidCreditLine(
     @Column(name = "user_id", nullable = false, unique = true, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "credit_limit", nullable = false, precision = 18, scale = 2)
     var creditLimit: BigDecimal,
@@ -87,5 +87,5 @@ class PostpaidCreditLine(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "", creditLimit = BigDecimal.ZERO)
+    protected constructor() : this(id = "", userId = "", accountId = "", creditLimit = BigDecimal.ZERO)
 }

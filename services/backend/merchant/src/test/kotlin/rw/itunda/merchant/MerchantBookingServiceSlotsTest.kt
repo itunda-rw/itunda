@@ -18,7 +18,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -40,14 +40,14 @@ class MerchantBookingServiceSlotsTest : BehaviorSpec({
         val availabilityWindowRepository = mockk<MerchantAvailabilityWindowRepository>()
         val merchantBookingRepository = mockk<MerchantBookingRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val bookingDepositRepository = mockk<BookingDepositRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MerchantBookingService(
             merchantRepository, merchantProductRepository, availabilityWindowRepository,
-            merchantBookingRepository, notificationRepository, walletRepository, ledgerService,
+            merchantBookingRepository, notificationRepository, accountRepository, ledgerService,
             transactionRepository, bookingDepositRepository, pushNotificationService,
         )
 

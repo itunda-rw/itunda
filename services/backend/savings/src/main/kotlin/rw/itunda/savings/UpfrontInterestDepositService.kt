@@ -8,13 +8,13 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.UpfrontInterestDeposit
 import rw.itunda.core.domain.UpfrontInterestDepositStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.UpfrontInterestDepositRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -36,7 +36,7 @@ class UpfrontDepositAlreadyWithdrawnException(message: String) : RuntimeExceptio
  * Real Toss Bank 먼저 이자받는 정기예금 equivalent -- see `UpfrontInterestDeposit`'s own
  * doc comment for the full sourced mechanics and the no-early-withdrawal design choice
  * this service depends on. Mirrors `WeeklySavingsService`'s own established shape: a
- * dedicated per-deposit `Wallet` (real "no new balance concept" discipline), real
+ * dedicated per-deposit `Account` (real "no new balance concept" discipline), real
  * `LedgerService` double-entry postings, a scheduler-polls-a-due-list maturity path plus
  * a manually-triggerable one for testing a real 12-month term without waiting real
  * wall-clock months (same as `WeeklySavingsScheduler`/`WeeklySavingsController.processDue`).
@@ -44,7 +44,7 @@ class UpfrontDepositAlreadyWithdrawnException(message: String) : RuntimeExceptio
 @Service
 class UpfrontInterestDepositService(
     private val depositRepository: UpfrontInterestDepositRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val accountNumberGenerator: AccountNumberGenerator,
@@ -65,42 +65,42 @@ class UpfrontInterestDepositService(
         // creation endpoint in this module already established.
         rateLimiter.checkLimit("upfront-deposit:open:$userId", limit = 10, window = Duration.ofHours(1))
 
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val depositWallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val depositAccount = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = userId,
                 accountNumber = accountNumberGenerator.generate(2026300000L),
                 accountName = "12-Month Deposit",
-                type = WalletType.UPFRONT_DEPOSIT,
+                type = AccountType.UPFRONT_DEPOSIT,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
         )
 
-        // Real principal lock: MAIN -> the new dedicated wallet. Naturally throws
-        // InsufficientFundsException/WalletFrozenException via LedgerService if the
+        // Real principal lock: MAIN -> the new dedicated account. Naturally throws
+        // InsufficientFundsException/AccountFrozenException via LedgerService if the
         // user can't actually afford it -- same "let the ledger enforce it" discipline
         // SavingsService.depositToGoal already established.
         ledgerService.postLedgerTransaction(
-            mainWallet.currency,
+            mainAccount.currency,
             listOf(
-                LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, principal, "12-month deposit opened"),
-                LedgerLeg(depositWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, principal, "12-month deposit opened"),
+                LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, principal, "12-month deposit opened"),
+                LedgerLeg(depositAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, principal, "12-month deposit opened"),
             ),
         )
 
         // Real upfront interest payout: the whole point of this product. Paid straight
         // to MAIN as real, immediately spendable money -- not into the locked deposit
-        // wallet -- which is exactly what makes this different from every other
+        // account -- which is exactly what makes this different from every other
         // savings product here (and exactly why the deposit side has no early-exit).
         val interest = computeUpfrontInterest(principal)
         if (interest > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                mainWallet.currency,
+                mainAccount.currency,
                 listOf(
                     LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, interest, "12-month deposit: interest paid upfront"),
-                    LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "12-month deposit: interest paid upfront"),
+                    LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "12-month deposit: interest paid upfront"),
                 ),
             )
         }
@@ -108,7 +108,7 @@ class UpfrontInterestDepositService(
         val now = Instant.now()
         val deposit = depositRepository.save(
             UpfrontInterestDeposit(
-                id = "upfront_deposit_${UUID.randomUUID()}", userId = userId, walletId = depositWallet.id,
+                id = "upfront_deposit_${UUID.randomUUID()}", userId = userId, accountId = depositAccount.id,
                 principal = principal, interestRate = ANNUAL_RATE, interestPaid = interest,
                 openedAt = now, maturesAt = now.plus(TERM_MONTHS * 30, ChronoUnit.DAYS),
             ),
@@ -131,7 +131,7 @@ class UpfrontInterestDepositService(
     }
 
     /** Real maturity: only flips status. The principal itself stays in the deposit's own
-     * wallet until a real, explicit withdraw() call -- matching WeeklySavingsPlan's own
+     * account until a real, explicit withdraw() call -- matching WeeklySavingsPlan's own
      * "maturity is a system event, withdrawal is a user action" split. */
     @Transactional
     fun matureDeposit(deposit: UpfrontInterestDeposit) {
@@ -147,15 +147,15 @@ class UpfrontInterestDepositService(
         if (deposit.status != UpfrontInterestDepositStatus.MATURED) throw UpfrontDepositNotMaturedException("This deposit has not matured yet")
         if (deposit.withdrawnAt != null) throw UpfrontDepositAlreadyWithdrawnException("This deposit has already been withdrawn")
 
-        val depositWallet = walletRepository.findById(deposit.walletId).orElseThrow { NoWalletException("Wallet not found") }
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val payout = depositWallet.balance
+        val depositAccount = accountRepository.findById(deposit.accountId).orElseThrow { NoAccountException("Account not found") }
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val payout = depositAccount.balance
         if (payout > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                depositWallet.currency,
+                depositAccount.currency,
                 listOf(
-                    LedgerLeg(deposit.walletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Matured 12-month deposit withdrawal"),
-                    LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Matured 12-month deposit withdrawal"),
+                    LedgerLeg(deposit.accountId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Matured 12-month deposit withdrawal"),
+                    LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Matured 12-month deposit withdrawal"),
                 ),
             )
         }

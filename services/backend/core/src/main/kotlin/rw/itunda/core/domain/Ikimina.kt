@@ -28,8 +28,8 @@ enum class IkiminaStatus { FORMING, ACTIVE, COMPLETED }
  * order anywhere in it. An ikimina is peer-governed with a rotating beneficiary, a
  * structurally different primitive that needs its own entity, not a reused one.
  *
- * Backed by a real `Wallet` (WalletType.GROUP, the same real type `GroupAccount`
- * already established -- no new wallet-type concept needed), so every contribution/
+ * Backed by a real `Account` (AccountType.GROUP, the same real type `GroupAccount`
+ * already established -- no new account-type concept needed), so every contribution/
  * payout is the same real ledger-backed WALLET-to-WALLET movement every other
  * money-moving feature in this backend already uses.
  *
@@ -51,8 +51,8 @@ class Ikimina(
     @Column(name = "organizer_id", nullable = false, length = 64)
     val organizerId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "contribution_amount", nullable = false, precision = 18, scale = 2)
     val contributionAmount: BigDecimal,
@@ -83,7 +83,7 @@ class Ikimina(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", name = "", organizerId = "", walletId = "", contributionAmount = BigDecimal.ZERO,
+        id = "", name = "", organizerId = "", accountId = "", contributionAmount = BigDecimal.ZERO,
         cycleFrequencyDays = 30, memberCap = 15,
     )
 }

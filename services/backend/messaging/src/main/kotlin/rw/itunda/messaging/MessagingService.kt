@@ -62,7 +62,7 @@ data class TalkContact(val userId: String, val name: String)
  *
  * Honestly scoped like every other module this session: real conversations, real
  * persisted messages, real unread tracking, real spam rate-limiting. This pass also
- * reuses the existing real `Notification` system (the same one `WalletService`'s
+ * reuses the existing real `Notification` system (the same one `AccountService`'s
  * budget alerts already use) so a new message always surfaces as a real in-app
  * notification, regardless of whether the recipient has a live connection open.
  *
@@ -358,7 +358,7 @@ class MessagingService(
     // listTalkContacts already establishes (a contact must be a saved phone contact who
     // is also a real itunda user -- never a public search that would leak a stranger's
     // birthday) and the real, already-settable User.birthDate
-    // (POST /auth/profile/birth-date, previously only used for Mini-wallet age-
+    // (POST /auth/profile/birth-date, previously only used for Mini-account age-
     // eligibility). Only ever compares month+day, never year, since a birthday recurs
     // annually regardless of age. Africa/Kigali local date, same real-timezone
     // convention Merchant.isClosedToday() already established.

@@ -109,7 +109,7 @@ class CertificateServiceTest : BehaviorSpec({
             }
             // Real bug found live (2026-08-02): see CertificateService.issue's own doc
             // comment. This asserts the actual fix mechanism -- the same "lock a
-            // different already-existing row" precedent WalletRepository/
+            // different already-existing row" precedent AccountRepository/
             // UserRepository.findByIdForUpdate's own identical-shaped fixes establish
             // for a check-then-act race on a "one active row per user" invariant.
             Then("it real-locks the user's own row before touching the certificate") {

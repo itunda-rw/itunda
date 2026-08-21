@@ -13,7 +13,7 @@ import rw.itunda.core.events.LedgerPostedLeg
 import rw.itunda.core.events.TOPIC_LEDGER_POSTED
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.LedgerEntryRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -32,14 +32,14 @@ data class LedgerPostResult(val transactionId: String, val entries: List<LedgerE
  * Direct Kotlin port of backend/src/services/ledger.ts's postLedgerTransaction, with one
  * upgrade the Express/in-memory version explicitly could not have: this runs inside a
  * real database transaction with row-level locks (see Repositories.kt's findByIdForUpdate),
- * so two concurrent transfers touching the same wallet or clearing account serialize
+ * so two concurrent transfers touching the same account or clearing account serialize
  * instead of racing. Same invariant as the original: legs must balance (debits == credits)
- * and a wallet debit that would overdraw is rejected — both checked before anything is
+ * and a account debit that would overdraw is rejected — both checked before anything is
  * written, so a rejected transaction never partially applies.
  */
 @Service
 class LedgerService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val eventPublisher: EventPublisher,
@@ -60,12 +60,12 @@ class LedgerService(
 
         // Lock every account touched, in a stable order (by id) to avoid deadlocking
         // against another transfer that touches the same two accounts in reverse order.
-        val walletIds = legs.filter { it.accountType == LedgerAccountType.WALLET }.map { it.accountId }.distinct().sorted()
+        val accountIds = legs.filter { it.accountType == LedgerAccountType.WALLET }.map { it.accountId }.distinct().sorted()
         val clearingIds = legs.filter { it.accountType != LedgerAccountType.WALLET }.map { it.accountId }.distinct().sorted()
 
-        // Real lost-update bug found live (2026-08-09): a caller that reads a wallet
+        // Real lost-update bug found live (2026-08-09): a caller that reads a account
         // WITHOUT a lock earlier in the SAME transaction (e.g. P2pService.sendDirect's
-        // own pre-check `walletRepository.findByUserIdAndType(...)` before ever calling
+        // own pre-check `accountRepository.findByUserIdAndType(...)` before ever calling
         // here) leaves that entity managed in the shared persistence context. Hibernate
         // genuinely acquires the real row lock below (confirmed live via
         // information_schema.innodb_trx showing real LOCK WAIT states between
@@ -75,7 +75,7 @@ class LedgerService(
         // pitfall (a lock mode escalates the lock, it does not by itself refresh
         // already-managed state).
         //
-        // A first attempt fixed this with a bare `entityManager.refresh(wallet)` --
+        // A first attempt fixed this with a bare `entityManager.refresh(account)` --
         // still wrong, confirmed live via SQL trace: a plain (unlocked) refresh() issues
         // a plain SELECT with no `for update`, and under MySQL's default REPEATABLE READ
         // isolation, a PLAIN read anywhere in an already-open transaction is still bound
@@ -91,32 +91,32 @@ class LedgerService(
         // snapshot value, so only one of several concurrent debits actually persisted --
         // a real, silent lost transfer with no error surfaced anywhere, on both the
         // first (wrong) fix attempt and the original bug.
-        val lockedWallets = walletIds.associateWith {
-            walletRepository.findByIdForUpdate(it).orElseThrow { IllegalStateException("Unknown wallet account $it") }
-                .also { wallet -> entityManager.refresh(wallet, LockModeType.PESSIMISTIC_WRITE) }
+        val lockedUserAccounts = accountIds.associateWith {
+            accountRepository.findByIdForUpdate(it).orElseThrow { IllegalStateException("Unknown account $it") }
+                .also { account -> entityManager.refresh(account, LockModeType.PESSIMISTIC_WRITE) }
         }
-        val lockedAccounts = clearingIds.associateWith {
+        val lockedClearingAccounts = clearingIds.associateWith {
             ledgerAccountRepository.findByIdForUpdate(it).orElseThrow { IllegalStateException("Unknown ledger account $it") }
                 .also { account -> entityManager.refresh(account, LockModeType.PESSIMISTIC_WRITE) }
         }
 
         for (leg in legs) {
             if (leg.accountType == LedgerAccountType.WALLET && leg.direction == LedgerDirection.DEBIT) {
-                val wallet = lockedWallets.getValue(leg.accountId)
-                // Real enforcement of Wallet.isActive (2026-07-13) -- this field existed
+                val account = lockedUserAccounts.getValue(leg.accountId)
+                // Real enforcement of Account.isActive (2026-07-13) -- this field existed
                 // on the entity already but was never read anywhere in the codebase
                 // (confirmed by a repo-wide grep), making it purely cosmetic. Enforced
                 // here, the single choke point every money-moving flow already passes
-                // through, so freezing a wallet (SupportService's real account-takeover
+                // through, so freezing a account (SupportService's real account-takeover
                 // response) actually blocks every outgoing debit system-wide rather than
                 // only whichever specific endpoint happened to check it. Incoming
                 // credits are still allowed -- a frozen account can still receive a
                 // refund or an incoming transfer while under review, matching how real
                 // account-freeze responses work.
-                if (!wallet.isActive) {
-                    throw WalletFrozenException("Wallet ${leg.accountId} is frozen pending review")
+                if (!account.isActive) {
+                    throw AccountFrozenException("Account ${leg.accountId} is frozen pending review")
                 }
-                if (wallet.availableBalance < leg.amount) {
+                if (account.availableBalance < leg.amount) {
                     throw InsufficientFundsException("Insufficient available balance in ${leg.accountId}")
                 }
             }
@@ -127,12 +127,12 @@ class LedgerService(
         val entries = legs.map { leg ->
             val signedAmount = if (leg.direction == LedgerDirection.CREDIT) leg.amount else leg.amount.negate()
             val balanceAfter: BigDecimal = if (leg.accountType == LedgerAccountType.WALLET) {
-                val wallet = lockedWallets.getValue(leg.accountId)
-                wallet.balance = wallet.balance.add(signedAmount)
-                wallet.availableBalance = wallet.balance
-                wallet.balance
+                val account = lockedUserAccounts.getValue(leg.accountId)
+                account.balance = account.balance.add(signedAmount)
+                account.availableBalance = account.balance
+                account.balance
             } else {
-                val account = lockedAccounts.getValue(leg.accountId)
+                val account = lockedClearingAccounts.getValue(leg.accountId)
                 account.balance = account.balance.add(signedAmount)
                 account.balance
             }

@@ -14,7 +14,7 @@ import rw.itunda.core.domain.SplitBillStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -22,7 +22,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.SplitBillParticipantRepository
 import rw.itunda.core.repository.SplitBillRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.GroupMessagingService
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -35,7 +35,7 @@ class SplitBillInvalidAmountException(message: String) : RuntimeException(messag
 class SplitBillNeedsParticipantsException(message: String) : RuntimeException(message)
 class SplitBillParticipantNotGroupMemberException(message: String) : RuntimeException(message)
 class SplitBillAlreadyPaidException(message: String) : RuntimeException(message)
-class SplitBillNoWalletException(message: String) : RuntimeException(message)
+class SplitBillNoAccountException(message: String) : RuntimeException(message)
 class SplitBillDescriptionRequiredException(message: String) : RuntimeException(message)
 class SplitBillInvalidVarianceLevelException(message: String) : RuntimeException(message)
 class SplitBillInvalidReceiptUrlException(message: String) : RuntimeException(message)
@@ -65,7 +65,7 @@ data class SplitBillWithParticipants(val splitBill: SplitBill, val participants:
 class SplitBillService(
     private val splitBillRepository: SplitBillRepository,
     private val splitBillParticipantRepository: SplitBillParticipantRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val groupMessagingService: GroupMessagingService,
@@ -374,19 +374,19 @@ class SplitBillService(
         // money-movement endpoint.
         rateLimiter.checkLimit("splitbill:pay:$payerUserId", limit = 30, window = Duration.ofHours(1))
 
-        val payerWallet = walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
-            ?: throw SplitBillNoWalletException("No wallet found for this account")
-        val organizerWallet = walletRepository.findByUserIdAndType(splitBill.organizerId, WalletType.MAIN)
-            ?: throw SplitBillNoWalletException("Organizer has no wallet to receive this payment")
-        if (payerWallet.availableBalance < participant.shareAmount) {
+        val payerAccount = accountRepository.findByUserIdAndType(payerUserId, AccountType.MAIN)
+            ?: throw SplitBillNoAccountException("No account found for this account")
+        val organizerAccount = accountRepository.findByUserIdAndType(splitBill.organizerId, AccountType.MAIN)
+            ?: throw SplitBillNoAccountException("Organizer has no account to receive this payment")
+        if (payerAccount.availableBalance < participant.shareAmount) {
             throw InsufficientFundsException("Insufficient available balance for this payment")
         }
 
         val result = ledgerService.postLedgerTransaction(
-            payerWallet.currency,
+            payerAccount.currency,
             listOf(
-                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, participant.shareAmount, "Split bill share - ${splitBill.description}"),
-                LedgerLeg(organizerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, participant.shareAmount, "Split bill share received - ${splitBill.description}"),
+                LedgerLeg(payerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, participant.shareAmount, "Split bill share - ${splitBill.description}"),
+                LedgerLeg(organizerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, participant.shareAmount, "Split bill share received - ${splitBill.description}"),
             ),
         )
         val transaction = Transaction(
@@ -394,11 +394,11 @@ class SplitBillService(
             referenceNumber = "SPLITBILL${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = payerUserId,
             recipientId = splitBill.organizerId,
-            fromWalletId = payerWallet.id,
-            toWalletId = organizerWallet.id,
+            fromAccountId = payerAccount.id,
+            toAccountId = organizerAccount.id,
             amount = participant.shareAmount,
             fee = BigDecimal.ZERO,
-            currency = payerWallet.currency,
+            currency = payerAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Split bill share - ${splitBill.description}",

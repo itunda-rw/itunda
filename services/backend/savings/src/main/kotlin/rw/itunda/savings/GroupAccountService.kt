@@ -10,8 +10,8 @@ import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -22,8 +22,8 @@ import rw.itunda.core.repository.GroupAccountMemberRepository
 import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -38,7 +38,7 @@ class GroupAccountNotMemberException(message: String) : RuntimeException(message
 class GroupAccountRecipientNotFoundException(message: String) : RuntimeException(message)
 class GroupAccountAlreadyMemberException(message: String) : RuntimeException(message)
 class GroupAccountFullException(message: String) : RuntimeException(message)
-class GroupAccountNoWalletException(message: String) : RuntimeException(message)
+class GroupAccountNoAccountException(message: String) : RuntimeException(message)
 
 data class GroupAccountView(val account: GroupAccount, val balance: BigDecimal, val members: List<GroupAccountMemberView>)
 data class GroupAccountMemberView(val userId: String, val firstName: String, val lastName: String, val isOwner: Boolean, val joinedAt: Instant)
@@ -53,7 +53,7 @@ data class GroupAccountDuesMemberView(val userId: String, val firstName: String,
  * own published product page). Reuses the exact real recipient-resolution shape
  * P2pService.sendDirect established (findByPhoneNumber, real 404 on no match) and the
  * exact real ledger-movement shape every other money-moving feature in this backend
- * already uses -- no new balance concept, just a real Wallet(type=GROUP).
+ * already uses -- no new balance concept, just a real Account(type=GROUP).
  */
 @Service
 class GroupAccountService(
@@ -61,7 +61,7 @@ class GroupAccountService(
     private val groupAccountMemberRepository: GroupAccountMemberRepository,
     private val groupAccountContributionRepository: GroupAccountContributionRepository,
     private val groupAccountDuesReminderRepository: GroupAccountDuesReminderRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
     private val ledgerService: LedgerService,
@@ -79,19 +79,19 @@ class GroupAccountService(
         rateLimiter.checkLimit("group-account:create:$ownerId", limit = 10, window = Duration.ofHours(1))
         val owner = userRepository.findById(ownerId).orElseThrow { GroupAccountNotFoundException("Account not found") }
 
-        val wallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        val userAccount = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = ownerId,
                 accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "$name (Group Account)",
-                type = WalletType.GROUP,
+                type = AccountType.GROUP,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
         )
         val account = groupAccountRepository.save(
-            GroupAccount(id = "grp_${UUID.randomUUID()}", name = name, ownerId = ownerId, walletId = wallet.id),
+            GroupAccount(id = "grp_${UUID.randomUUID()}", name = name, ownerId = ownerId, accountId = userAccount.id),
         )
         groupAccountMemberRepository.save(
             GroupAccountMember(id = "grpmem_${UUID.randomUUID()}", groupAccountId = account.id, userId = ownerId),
@@ -108,7 +108,7 @@ class GroupAccountService(
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
             ?: throw GroupAccountNotMemberException("You are not a member of this group account")
-        val wallet = walletRepository.findById(account.walletId).orElseThrow { GroupAccountNoWalletException("Wallet not found") }
+        val userAccount = accountRepository.findById(account.accountId).orElseThrow { GroupAccountNoAccountException("Account not found") }
 
         val members = groupAccountMemberRepository.findByGroupAccountId(groupAccountId)
         // Batch-resolved, same no-N+1 discipline as ProductFavoriteService.getMyFavorites.
@@ -117,7 +117,7 @@ class GroupAccountService(
             val u = users[m.userId]
             GroupAccountMemberView(userId = m.userId, firstName = u?.firstName ?: "", lastName = u?.lastName ?: "", isOwner = m.userId == account.ownerId, joinedAt = m.joinedAt)
         }
-        return GroupAccountView(account = account, balance = wallet.balance, members = memberViews)
+        return GroupAccountView(account = account, balance = userAccount.balance, members = memberViews)
     }
 
     @Transactional
@@ -158,15 +158,15 @@ class GroupAccountService(
         groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
             ?: throw GroupAccountNotMemberException("You are not a member of this group account")
 
-        val sourceWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw GroupAccountNoWalletException("No wallet found for this account")
-        val groupWallet = walletRepository.findById(account.walletId).orElseThrow { GroupAccountNoWalletException("Wallet not found") }
+        val sourceAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw GroupAccountNoAccountException("No account found for this account")
+        val groupAccount = accountRepository.findById(account.accountId).orElseThrow { GroupAccountNoAccountException("Account not found") }
 
         ledgerService.postLedgerTransaction(
-            sourceWallet.currency,
+            sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Deposit to \"${account.name}\""),
-                LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Deposit to \"${account.name}\""),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Deposit to \"${account.name}\""),
+                LedgerLeg(groupAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Deposit to \"${account.name}\""),
             ),
         )
         // Real dues tracking (2026-07-26) -- see getDuesStatus's own doc comment. Every
@@ -187,18 +187,18 @@ class GroupAccountService(
         // organizer only, unlike deposit which any real member can do.
         if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can withdraw")
 
-        val groupWallet = walletRepository.findById(account.walletId).orElseThrow { GroupAccountNoWalletException("Wallet not found") }
-        val ownerWallet = walletRepository.findByUserIdAndType(ownerId, WalletType.MAIN)
-            ?: throw GroupAccountNoWalletException("No wallet found for this account")
-        if (groupWallet.availableBalance < amount) {
+        val groupAccount = accountRepository.findById(account.accountId).orElseThrow { GroupAccountNoAccountException("Account not found") }
+        val ownerAccount = accountRepository.findByUserIdAndType(ownerId, AccountType.MAIN)
+            ?: throw GroupAccountNoAccountException("No account found for this account")
+        if (groupAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance in this group account")
         }
 
         ledgerService.postLedgerTransaction(
-            groupWallet.currency,
+            groupAccount.currency,
             listOf(
-                LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Withdrawal from \"${account.name}\""),
-                LedgerLeg(ownerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Withdrawal from \"${account.name}\""),
+                LedgerLeg(groupAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Withdrawal from \"${account.name}\""),
+                LedgerLeg(ownerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Withdrawal from \"${account.name}\""),
             ),
         )
         notifyOtherMembers(account, actorId = ownerId, title = "Withdrawal from \"${account.name}\"", body = "${amount.toPlainString()} RWF was withdrawn by the organizer.")

@@ -20,7 +20,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
-import rw.itunda.rideshare.BikeNoWalletException
+import rw.itunda.rideshare.BikeNoAccountException
 import rw.itunda.rideshare.BikeNotAvailableException
 import rw.itunda.rideshare.BikeNotFoundException
 import rw.itunda.rideshare.BikeRentalAlreadyEndedException
@@ -120,8 +120,8 @@ class BikeRentalController(private val bikeRentalService: BikeRentalService) {
     @ExceptionHandler(BikeSelfRentalException::class)
     fun handleSelfRental(ex: BikeSelfRentalException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_RENTAL_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(BikeNoWalletException::class)
-    fun handleNoWallet(ex: BikeNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(BikeNoAccountException::class)
+    fun handleNoAccount(ex: BikeNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidBikeLocationException::class)
     fun handleInvalidLocation(ex: InvalidBikeLocationException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LOCATION", ex.message ?: "Bad request"))

@@ -7,14 +7,14 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.SeasonRainfallIndex
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.WeatherIndexCropType
 import rw.itunda.core.domain.WeatherIndexPolicy
 import rw.itunda.core.domain.WeatherIndexPolicyStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.SeasonRainfallIndexRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.WeatherIndexPolicyRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -70,7 +70,7 @@ class InvalidWeatherIndexEnrollmentException(message: String) : RuntimeException
 class WeatherIndexInsuranceService(
     private val weatherIndexPolicyRepository: WeatherIndexPolicyRepository,
     private val seasonRainfallIndexRepository: SeasonRainfallIndexRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val payoutExecutor: WeatherIndexPayoutExecutor,
@@ -114,19 +114,19 @@ class WeatherIndexInsuranceService(
         // Real anti-spam limit, same convention as InsuranceService.submitClaim/createPremiumFund.
         rateLimiter.checkLimit("weather-index:enroll:$userId", limit = 10, window = Duration.ofDays(1))
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw NoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw NoAccountException("No account found for this account")
 
         val premiumAmount = insuredAmount.multiply(rateFor(cropType)).divide(BigDecimal(100)).setScale(2, RoundingMode.HALF_UP)
         val memo = "Crop weather-index premium - $cropType, $trimmedDistrict $trimmedSeason"
 
-        // Same DEBIT wallet / CREDIT insurance_premium_revenue ledger shape as
+        // Same DEBIT account / CREDIT insurance_premium_revenue ledger shape as
         // InsuranceService.enrollInPlan's first-premium leg -- see this module's own
         // insurance_premium_revenue account.
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, premiumAmount, memo),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, premiumAmount, memo),
                 LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, premiumAmount, memo),
             ),
         )
@@ -156,16 +156,16 @@ class WeatherIndexInsuranceService(
         if (policy.status != WeatherIndexPolicyStatus.ENROLLED) {
             throw WeatherIndexPolicyNotCancellableException("Cannot cancel a ${policy.status} policy")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw NoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw NoAccountException("No account found for this account")
         val memo = "Crop weather-index premium refund - ${policy.cropType}, ${policy.district} ${policy.season}"
-        // Full refund -- same DEBIT insurance_premium_revenue / CREDIT wallet shape
+        // Full refund -- same DEBIT insurance_premium_revenue / CREDIT account shape
         // InsuranceService.cancelFund already establishes for a premium refund.
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
                 LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.DEBIT, policy.premiumAmount, memo),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, policy.premiumAmount, memo),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, policy.premiumAmount, memo),
             ),
         )
         policy.status = WeatherIndexPolicyStatus.CANCELLED
@@ -207,9 +207,9 @@ class WeatherIndexInsuranceService(
      * Every ENROLLED policy matching this exact district+season is evaluated once,
      * independent of any other district/season's policies. Below the drought threshold,
      * every one is paid its full insured amount from insurance_claims_expense straight into
-     * the farmer's MAIN wallet (same approve-path ledger shape as
+     * the farmer's MAIN account (same approve-path ledger shape as
      * InsuranceService.decideClaim). At or above the threshold, the season simply ends with
-     * no payout. A single farmer with no MAIN wallet, or any other single-policy failure,
+     * no payout. A single farmer with no MAIN account, or any other single-policy failure,
      * genuinely cannot take down another farmer's already-paid settlement or the index row.
      */
     fun publishSeasonIndex(adminId: String, district: String, season: String, rainfallIndexPercent: Double, droughtThresholdPercent: Double): SeasonRainfallIndex {

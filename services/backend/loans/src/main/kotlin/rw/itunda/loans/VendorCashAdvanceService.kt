@@ -13,7 +13,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.VendorCashAdvanceRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -27,7 +27,7 @@ class VendorCashAdvanceNotRepayableException(message: String) : RuntimeException
 class VendorCashAdvanceAlreadyActiveException(message: String) : RuntimeException(message)
 class VendorCashAdvanceNotEligibleException(message: String) : RuntimeException(message)
 class VendorCashAdvanceInvalidAmountException(message: String) : RuntimeException(message)
-class VendorCashAdvanceNoWalletException(message: String) : RuntimeException(message)
+class VendorCashAdvanceNoAccountException(message: String) : RuntimeException(message)
 
 private val ACTIVE_STATUSES = listOf(VendorCashAdvanceStatus.REQUESTED, VendorCashAdvanceStatus.DISBURSED)
 
@@ -98,8 +98,8 @@ private val MIN_COLLECTION_INTERVAL: Duration = Duration.ofHours(24)
  *    named honestly rather than pretending it's a structured settlement-category
  *    field.
  * 3. Collection is always capped at
- *    `min(collectionRatePercent x inflow, remainingOwed, currentWalletBalance)` -- it
- *    can never push a merchant's wallet negative or over-collect beyond what's
+ *    `min(collectionRatePercent x inflow, remainingOwed, currentAccountBalance)` -- it
+ *    can never push a merchant's account negative or over-collect beyond what's
  *    actually owed, even if a vendor's balance briefly looks inflated from a
  *    non-sales top-up.
  */
@@ -107,7 +107,7 @@ private val MIN_COLLECTION_INTERVAL: Duration = Duration.ofHours(24)
 class VendorCashAdvanceService(
     private val vendorCashAdvanceRepository: VendorCashAdvanceRepository,
     private val merchantRepository: MerchantRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val rateLimiter: RateLimiter,
@@ -134,9 +134,9 @@ class VendorCashAdvanceService(
         return advance to merchant
     }
 
-    private fun requireWallet(merchant: Merchant) =
-        walletRepository.findById(merchant.walletId).orElseThrow {
-            VendorCashAdvanceNoWalletException("Merchant settlement wallet not found")
+    private fun requireAccount(merchant: Merchant) =
+        accountRepository.findById(merchant.accountId).orElseThrow {
+            VendorCashAdvanceNoAccountException("Merchant settlement account not found")
         }
 
     /**
@@ -157,10 +157,10 @@ class VendorCashAdvanceService(
      */
     fun getOffer(userId: String, merchantId: String): Map<String, Any?> {
         val merchant = getOwnedMerchant(userId, merchantId)
-        val wallet = requireWallet(merchant)
+        val account = requireAccount(merchant)
 
         val since = Instant.now().minus(Duration.ofDays(LOOKBACK_DAYS))
-        val settlementCredits = ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(wallet.id, since)
+        val settlementCredits = ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(account.id, since)
             .filter { it.direction == LedgerDirection.CREDIT && it.memo.contains("collection -") }
 
         val tradingDays = settlementCredits.map { it.createdAt.atZone(ZoneOffset.UTC).toLocalDate() }.distinct().size
@@ -188,15 +188,15 @@ class VendorCashAdvanceService(
 
     // Real "reject if already active" check-then-CREATE race this session has hit
     // repeatedly (VupLoanService.applyForLoan/StudentLoanService.applyForLoan/
-    // MotoOwnershipService.createPlan) -- locking the merchant's own wallet row
+    // MotoOwnershipService.createPlan) -- locking the merchant's own account row
     // BEFORE checking for an existing active advance serializes two concurrent
     // applications for the same merchant, closing the same class of race those three
     // features already needed this exact fix for.
     @Transactional
     fun applyForAdvance(userId: String, merchantId: String): VendorCashAdvance {
         val merchant = getOwnedMerchant(userId, merchantId)
-        val wallet = requireWallet(merchant)
-        walletRepository.findByIdForUpdate(wallet.id)
+        val account = requireAccount(merchant)
+        accountRepository.findByIdForUpdate(account.id)
 
         val activeAdvances = vendorCashAdvanceRepository.findByMerchantIdAndStatusIn(merchantId, ACTIVE_STATUSES)
         if (activeAdvances.isNotEmpty()) {
@@ -232,7 +232,7 @@ class VendorCashAdvanceService(
     // `totalOwed = principalAmount + feeAmount`. The fee itself is never disbursed as
     // cash -- it's recognized as itunda's revenue immediately at disbursement time, in
     // the SAME balanced transaction:
-    //   - wallet: CREDIT principalAmount (the real cash movement, mirrors every other
+    //   - account: CREDIT principalAmount (the real cash movement, mirrors every other
     //     disburse in this codebase exactly)
     //   - loan_payable: DEBIT principalAmount (the real principal now owed)
     //   - loan_payable: DEBIT feeAmount (the fee, added to what's owed, with no cash
@@ -240,7 +240,7 @@ class VendorCashAdvanceService(
     //   - fee_revenue: CREDIT feeAmount (recognized as itunda's revenue immediately)
     // Net loan_payable position across both legs = principalAmount + feeAmount =
     // totalOwed, exactly matching remainingOwed. Debits (principalAmount + feeAmount
-    // twice, once each to loan_payable) equal credits (principalAmount to wallet +
+    // twice, once each to loan_payable) equal credits (principalAmount to account +
     // feeAmount to fee_revenue) for any principal/fee split -- the same "verify the
     // debit/credit directions net to the right final owed amount" discipline
     // `MotoOwnershipService.convertToLoan`'s own doc comment documents having to
@@ -252,12 +252,12 @@ class VendorCashAdvanceService(
         if (advance.status != VendorCashAdvanceStatus.REQUESTED) {
             throw VendorCashAdvanceNotRequestedException("Only a REQUESTED vendor cash advance can be disbursed")
         }
-        val wallet = requireWallet(merchant)
+        val account = requireAccount(merchant)
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, advance.principalAmount, "Isoko Vendor Cash Advance disbursement"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, advance.principalAmount, "Isoko Vendor Cash Advance disbursement"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, advance.principalAmount, "Isoko Vendor Cash Advance principal owed"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, advance.feeAmount, "Isoko Vendor Cash Advance fee owed"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, advance.feeAmount, "Isoko Vendor Cash Advance fee revenue"),
@@ -299,7 +299,7 @@ class VendorCashAdvanceService(
         }
         if (amount <= BigDecimal.ZERO) throw VendorCashAdvanceInvalidAmountException("Repayment amount must be positive")
 
-        val wallet = requireWallet(merchant)
+        val account = requireAccount(merchant)
 
         // Clamp BEFORE ever touching the ledger -- the exact overshoot-clamp lesson
         // from InsuranceService.contributeToFund/VupLoanService.repay/
@@ -307,9 +307,9 @@ class VendorCashAdvanceService(
         val actualAmount = amount.min(advance.remainingOwed)
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Isoko Vendor Cash Advance repayment"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Isoko Vendor Cash Advance repayment"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Isoko Vendor Cash Advance repayment"),
             ),
         )
@@ -329,28 +329,28 @@ class VendorCashAdvanceService(
      * Sums this merchant's real itunda-collected settlement inflow since the last
      * collection (or since disbursal, if never collected -- see limitations #1/#2 on
      * this class's own doc comment), sweeps
-     * `min(collectionRatePercent x inflow, remainingOwed, currentWalletBalance)`
+     * `min(collectionRatePercent x inflow, remainingOwed, currentAccountBalance)`
      * toward `remainingOwed`. Skips (returns false) rather than posting a zero/negative
      * leg when there's nothing real to collect.
      */
     @Transactional
     fun runDailyCollection(advance: VendorCashAdvance): Boolean {
         val merchant = merchantRepository.findById(advance.merchantId).orElse(null) ?: return false
-        val wallet = walletRepository.findById(merchant.walletId).orElse(null) ?: return false
+        val account = accountRepository.findById(merchant.accountId).orElse(null) ?: return false
 
         val since = advance.lastCollectionAt ?: advance.disbursedAt ?: advance.requestedAt
-        val settlementCredits = ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(wallet.id, since)
+        val settlementCredits = ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(account.id, since)
             .filter { it.direction == LedgerDirection.CREDIT && it.memo.contains("collection -") }
         val inflow = settlementCredits.sumOf { it.amount }
 
         val rateShare = inflow.multiply(BigDecimal.valueOf(advance.collectionRatePercent)).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)
-        val collectAmount = rateShare.min(advance.remainingOwed).min(wallet.availableBalance)
+        val collectAmount = rateShare.min(advance.remainingOwed).min(account.availableBalance)
         if (collectAmount <= BigDecimal.ZERO) return false
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, collectAmount, "Isoko Vendor Cash Advance collection"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, collectAmount, "Isoko Vendor Cash Advance collection"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, collectAmount, "Isoko Vendor Cash Advance collection"),
             ),
         )

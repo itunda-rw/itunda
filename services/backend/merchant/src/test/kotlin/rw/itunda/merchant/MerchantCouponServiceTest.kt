@@ -41,7 +41,7 @@ class MerchantCouponServiceTest : BehaviorSpec({
             transactionRepository, notificationRepository, pushNotificationService,
         )
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
         When("a real active coupon's real expiresAt is already inside the 3-day reminder window") {
             val soon = couponWithExpiry("coupon_soon", "merchant_1", Instant.now().plus(1, ChronoUnit.DAYS))

@@ -20,7 +20,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.rideshare.InvalidParkingLocationException
-import rw.itunda.rideshare.ParkingNoWalletException
+import rw.itunda.rideshare.ParkingNoAccountException
 import rw.itunda.rideshare.ParkingSelfRentalException
 import rw.itunda.rideshare.ParkingService
 import rw.itunda.rideshare.ParkingSessionAlreadyEndedException
@@ -106,8 +106,8 @@ class ParkingController(private val parkingService: ParkingService) {
     @ExceptionHandler(ParkingSelfRentalException::class)
     fun handleSelfRental(ex: ParkingSelfRentalException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_RENTAL_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(ParkingNoWalletException::class)
-    fun handleNoWallet(ex: ParkingNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(ParkingNoAccountException::class)
+    fun handleNoAccount(ex: ParkingNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidParkingLocationException::class)
     fun handleInvalidLocation(ex: InvalidParkingLocationException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LOCATION", ex.message ?: "Bad request"))

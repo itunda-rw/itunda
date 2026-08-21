@@ -19,8 +19,8 @@ import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.TimeDeal
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -36,15 +36,15 @@ import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TimeDealRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
 class OrderServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
     Given("a real merchant with a real product catalog") {
@@ -52,12 +52,12 @@ class OrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val orderRepository = mockk<OrderRepository>()
         val orderItemRepository = mockk<OrderItemRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         // Not relaxed for save() specifically: mockk's relaxed default can't correctly
         // infer JpaRepository's generic `<S extends T> S save(S)` signature, returning a
         // raw mock Object that then fails a real ClassCastException back in the caller --
-        // same reason MerchantServiceTest/WalletServiceTest explicitly stub this too.
+        // same reason MerchantServiceTest/AccountServiceTest explicitly stub this too.
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
@@ -79,14 +79,14 @@ class OrderServiceTest : BehaviorSpec({
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
-            walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
+            accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
             timeDealRepository, affiliateService,
         )
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
-        val merchantWallet = wallet("wallet_merchant", "seller_1")
-        val buyerWallet = wallet("wallet_buyer", "buyer_1")
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchantAccount = account("account_merchant", "seller_1")
+        val buyerAccount = account("account_buyer", "buyer_1")
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Coffee beans", price = BigDecimal("2000"))
 
         When("a buyer requests more than the finite catalog stock") {
@@ -95,11 +95,11 @@ class OrderServiceTest : BehaviorSpec({
                 price = BigDecimal("2000"), stockQuantity = 2,
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_stocked") } returns Optional.of(stockedProduct)
 
-            Then("it rejects before debiting a wallet or mutating the available stock") {
+            Then("it rejects before debiting a account or mutating the available stock") {
                 try {
                     service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_stocked", 3)), "KG 123 St")
                     error("expected InsufficientProductStockException")
@@ -118,17 +118,17 @@ class OrderServiceTest : BehaviorSpec({
             // this proves the Commerce checkout, which shares the same Merchant catalog,
             // now enforces it too.
             val pausedMerchant = Merchant(
-                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store",
                 status = MerchantStatus.ACTIVE, isAcceptingOrders = false,
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(pausedMerchant)
 
-            Then("it throws MerchantNotAcceptingOrdersException before ever resolving the merchant's wallet") {
+            Then("it throws MerchantNotAcceptingOrdersException before ever resolving the merchant's account") {
                 try {
                     service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St")
                     error("expected MerchantNotAcceptingOrdersException")
                 } catch (e: MerchantNotAcceptingOrdersException) {
-                    verify(exactly = 0) { walletRepository.findById("wallet_merchant") }
+                    verify(exactly = 0) { accountRepository.findById("account_merchant") }
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -142,17 +142,17 @@ class OrderServiceTest : BehaviorSpec({
             // fake date.
             val todayWeekday = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali")).dayOfWeek.value
             val closedTodayMerchant = Merchant(
-                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store",
                 status = MerchantStatus.ACTIVE, closedWeekdays = "$todayWeekday",
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(closedTodayMerchant)
 
-            Then("it throws MerchantNotAcceptingOrdersException before ever resolving the merchant's wallet") {
+            Then("it throws MerchantNotAcceptingOrdersException before ever resolving the merchant's account") {
                 try {
                     service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St")
                     error("expected MerchantNotAcceptingOrdersException")
                 } catch (e: MerchantNotAcceptingOrdersException) {
-                    verify(exactly = 0) { walletRepository.findById("wallet_merchant") }
+                    verify(exactly = 0) { accountRepository.findById("account_merchant") }
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -169,11 +169,11 @@ class OrderServiceTest : BehaviorSpec({
                 price = BigDecimal("2000"), soldOut = true,
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_soldout") } returns Optional.of(soldOutProduct)
 
-            Then("it rejects with ProductSoldOutException before debiting a wallet") {
+            Then("it rejects with ProductSoldOutException before debiting a account") {
                 try {
                     service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_soldout", 1)), "KG 123 St")
                     error("expected ProductSoldOutException")
@@ -197,11 +197,11 @@ class OrderServiceTest : BehaviorSpec({
                 stockQuantity = 5,
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_expired_surplus") } returns Optional.of(expiredDealProduct)
 
-            Then("it rejects with SurplusDealExpiredException before debiting a wallet or decrementing stock") {
+            Then("it rejects with SurplusDealExpiredException before debiting a account or decrementing stock") {
                 try {
                     service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_expired_surplus", 1)), "KG 123 St")
                     error("expected SurplusDealExpiredException")
@@ -223,8 +223,8 @@ class OrderServiceTest : BehaviorSpec({
                 stockQuantity = 5,
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_active_surplus") } returns Optional.of(activeDealProduct)
             every { merchantProductRepository.saveAll(any<List<MerchantProduct>>()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_test2", emptyList())
@@ -239,8 +239,8 @@ class OrderServiceTest : BehaviorSpec({
 
         When("a real buyer places a real order for 3 units") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_test", emptyList())
@@ -256,8 +256,8 @@ class OrderServiceTest : BehaviorSpec({
                 detail.items.first().quantity shouldBe 3
 
                 val legs = legsSlot.captured
-                val buyerLeg = legs.first { it.accountId == "wallet_buyer" }
-                val merchantLeg = legs.first { it.accountId == "wallet_merchant" }
+                val buyerLeg = legs.first { it.accountId == "account_buyer" }
+                val merchantLeg = legs.first { it.accountId == "account_merchant" }
                 val feeLeg = legs.first { it.accountId == "fee_revenue" }
                 buyerLeg.amount shouldBe BigDecimal("6000")
                 merchantLeg.amount shouldBe BigDecimal("5910.00")
@@ -276,8 +276,8 @@ class OrderServiceTest : BehaviorSpec({
 
         When("a marketplace order is still inside its payment transaction") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -309,12 +309,12 @@ class OrderServiceTest : BehaviorSpec({
 
         When("a real buyer's order falls below the merchant's real minimum order amount") {
             val merchantWithMin = Merchant(
-                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store",
                 status = MerchantStatus.ACTIVE, minOrderAmount = BigDecimal("10000"),
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
 
             Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
@@ -329,12 +329,12 @@ class OrderServiceTest : BehaviorSpec({
 
         When("a real buyer's order meets the merchant's real minimum order amount exactly") {
             val merchantWithMin = Merchant(
-                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store",
                 status = MerchantStatus.ACTIVE, minOrderAmount = BigDecimal("6000"),
             )
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -348,8 +348,8 @@ class OrderServiceTest : BehaviorSpec({
 
         When("a real active time deal exists for the product with enough remaining quantity") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_deal", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -372,8 +372,8 @@ class OrderServiceTest : BehaviorSpec({
 
         When("a real time deal exists but doesn't have enough remaining quantity for the whole line") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_falloff", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
@@ -408,8 +408,8 @@ class OrderServiceTest : BehaviorSpec({
         When("ordering a product that belongs to a DIFFERENT merchant") {
             val otherProduct = MerchantProduct(id = "product_2", merchantId = "merchant_OTHER", name = "Not this store's item", price = BigDecimal("500"))
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("product_2") } returns Optional.of(otherProduct)
 
             Then("it throws OrderProductNotFoundException, not silently mixing merchants into one order") {
@@ -424,8 +424,8 @@ class OrderServiceTest : BehaviorSpec({
 
         When("ordering with zero quantity") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
 
             Then("it throws InvalidQuantityException") {
                 try {
@@ -465,7 +465,7 @@ class OrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val orderRepository = mockk<OrderRepository>()
         val orderItemRepository = mockk<OrderItemRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
@@ -484,11 +484,11 @@ class OrderServiceTest : BehaviorSpec({
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
-            walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
+            accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
             timeDealRepository, affiliateService,
         )
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
             id = "order_1", buyerId = "buyer_1", merchantId = "merchant_1", deliveryAddress = "addr",
             totalAmount = BigDecimal("6000"), fee = BigDecimal("90"), transactionId = "ledgertxn_1", status = OrderStatus.PLACED,
@@ -567,8 +567,8 @@ class OrderServiceTest : BehaviorSpec({
             every { orderRepository.findById("order_1") } returns Optional.of(order)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             val originalEntries = listOf(
-                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
-                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Order collection - Kigali Store"),
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "account_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "account_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Order collection - Kigali Store"),
                 LedgerEntry(id = "le_3", transactionId = "ledgertxn_1", accountId = "fee_revenue", accountType = LedgerAccountType.FEE_REVENUE, direction = LedgerDirection.CREDIT, amount = BigDecimal("90.00"), currency = "RWF", balanceAfter = BigDecimal("90.00"), memo = "Order fee - Kigali Store"),
             )
             every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
@@ -592,8 +592,8 @@ class OrderServiceTest : BehaviorSpec({
                 result.refundTransactionId shouldBe "refund_txn_1"
 
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_buyer" }.direction shouldBe LedgerDirection.CREDIT
-                legs.first { it.accountId == "wallet_merchant" }.direction shouldBe LedgerDirection.DEBIT
+                legs.first { it.accountId == "account_buyer" }.direction shouldBe LedgerDirection.CREDIT
+                legs.first { it.accountId == "account_merchant" }.direction shouldBe LedgerDirection.DEBIT
                 legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
             }
 
@@ -610,8 +610,8 @@ class OrderServiceTest : BehaviorSpec({
             every { orderRepository.findById("order_1") } returns Optional.of(order)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             val originalEntries = listOf(
-                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
-                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Order collection - Kigali Store"),
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "account_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "account_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Order collection - Kigali Store"),
             )
             every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_2", emptyList())
@@ -662,7 +662,7 @@ class OrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val orderRepository = mockk<OrderRepository>()
         val orderItemRepository = mockk<OrderItemRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
@@ -678,12 +678,12 @@ class OrderServiceTest : BehaviorSpec({
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
-            walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
+            accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
             timeDealRepository, affiliateService,
         )
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
-        val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val packedOrder = Order(
             id = "order_1", buyerId = "buyer_1", merchantId = "merchant_1", deliveryAddress = "addr",
             totalAmount = BigDecimal("6000"), fee = BigDecimal("90"), transactionId = "ledgertxn_1", status = OrderStatus.PACKED,
@@ -724,7 +724,7 @@ class OrderServiceTest : BehaviorSpec({
         }
 
         When("an offline rider tries to claim a delivery") {
-            val offlineRider = Rider(id = "rider_2", userId = "rider_user_2", walletId = "wallet_rider_2", available = false)
+            val offlineRider = Rider(id = "rider_2", userId = "rider_user_2", accountId = "account_rider_2", available = false)
             every { riderRepository.findByUserId("rider_user_2") } returns offlineRider
 
             Then("it throws RiderNotAvailableException") {
@@ -775,7 +775,7 @@ class OrderServiceTest : BehaviorSpec({
                 totalAmount = BigDecimal("6000"), fee = BigDecimal("90"), transactionId = "ledgertxn_1",
                 status = OrderStatus.SHIPPED, riderId = "rider_1",
             )
-            val otherRider = Rider(id = "rider_2", userId = "rider_user_2", walletId = "wallet_rider_2", available = true)
+            val otherRider = Rider(id = "rider_2", userId = "rider_user_2", accountId = "account_rider_2", available = true)
             every { riderRepository.findByUserId("rider_user_2") } returns otherRider
             every { orderRepository.findById("order_1") } returns Optional.of(shippedOrder)
 
@@ -809,7 +809,7 @@ class OrderServiceTest : BehaviorSpec({
         }
 
         When("a rider requests available deliveries with no known location") {
-            val noLocationRider = Rider(id = "rider_3", userId = "rider_user_3", walletId = "wallet_rider_3", available = true)
+            val noLocationRider = Rider(id = "rider_3", userId = "rider_user_3", accountId = "account_rider_3", available = true)
             every { riderRepository.findByUserId("rider_user_3") } returns noLocationRider
             every {
                 orderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(OrderStatus.PACKED, any())

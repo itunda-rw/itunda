@@ -18,7 +18,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.family.FamilySpendLimitExceededException
@@ -26,7 +26,7 @@ import rw.itunda.p2p.P2pDelayedTransferNotCancellableException
 import rw.itunda.p2p.P2pDelayedTransferNotFoundException
 import rw.itunda.p2p.P2pDelayedTransferService
 import rw.itunda.p2p.P2pInvalidAmountException
-import rw.itunda.p2p.P2pNoWalletException
+import rw.itunda.p2p.P2pNoAccountException
 import rw.itunda.p2p.P2pRecipientNotFoundException
 import rw.itunda.p2p.P2pRequestNotFoundException
 import rw.itunda.p2p.P2pRequestNotPayableException
@@ -178,17 +178,17 @@ class P2pController(
     fun handleSelfPayment(ex: P2pSelfPaymentException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_PAYMENT_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(P2pNoWalletException::class)
-    fun handleNoWallet(ex: P2pNoWalletException) =
+    @ExceptionHandler(P2pNoAccountException::class)
+    fun handleNoAccount(ex: P2pNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(FamilySpendLimitExceededException::class)
     fun handleFamilySpendLimit(ex: FamilySpendLimitExceededException) =

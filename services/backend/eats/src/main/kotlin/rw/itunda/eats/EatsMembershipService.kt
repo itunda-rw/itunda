@@ -6,19 +6,19 @@ import rw.itunda.core.domain.EatsMembership
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsMembershipRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class EatsMembershipNoWalletException(message: String) : RuntimeException(message)
+class EatsMembershipNoAccountException(message: String) : RuntimeException(message)
 class InvalidMembershipDurationException(message: String) : RuntimeException(message)
 
 /**
@@ -29,7 +29,7 @@ class InvalidMembershipDurationException(message: String) : RuntimeException(mes
 @Service
 class EatsMembershipService(
     private val eatsMembershipRepository: EatsMembershipRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
@@ -54,13 +54,13 @@ class EatsMembershipService(
         val price = MEMBERSHIP_TIERS[days]
             ?: throw InvalidMembershipDurationException("Choose a real membership duration -- ${MEMBERSHIP_TIERS.keys.sorted().joinToString()} days")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw EatsMembershipNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw EatsMembershipNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Eats membership for $days days"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Eats membership for $days days"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, price, "Eats membership fee"),
             ),
         )

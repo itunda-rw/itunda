@@ -16,6 +16,11 @@ dependencies {
     // needs the same real anti-abuse rate limit PartnerService/CertificateService
     // already use, see MerchantService.kt's own doc comment on that call site.
     implementation(project(":auth"))
+    // For AutoTopUpService.topUpShortfall -- MerchantService.collect reuses the same
+    // real Naver Pay Money "결제 시 부족분 자동 충전" mechanic P2pService.sendDirect
+    // already uses, see MerchantService.kt's own doc comment on that call site. No
+    // circular dependency: :account only depends on :core.
+    implementation(project(":account"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

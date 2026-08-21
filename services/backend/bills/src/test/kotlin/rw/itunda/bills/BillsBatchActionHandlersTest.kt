@@ -59,7 +59,7 @@ class BillsBatchActionHandlersTest : BehaviorSpec({
         }
     }
 
-    Given("a bill payment the wallet can't afford") {
+    Given("a bill payment the account can't afford") {
         val billsService = mockk<BillsService>()
         val idempotencyService = idempotencyServiceThatJustRuns()
         val handler = PayBillBatchActionHandler(billsService, idempotencyService)

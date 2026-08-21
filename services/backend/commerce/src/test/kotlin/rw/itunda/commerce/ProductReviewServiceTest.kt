@@ -167,7 +167,7 @@ class ProductReviewServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val review = ProductReview(
             id = "product_review_1", orderItemId = "order_item_1", orderId = "order_1", buyerId = "buyer_1",
             productId = "product_1", merchantId = "merchant_1", rating = 5, comment = "Great!",
@@ -205,7 +205,7 @@ class ProductReviewServiceTest : BehaviorSpec({
         }
 
         When("a different merchant's owner tries to reply to this review") {
-            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_2", businessName = "Other Store", status = MerchantStatus.ACTIVE)
+            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Other Store", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("owner_2") } returns otherMerchant
             every { productReviewRepository.findById("product_review_1") } returns Optional.of(review)
 

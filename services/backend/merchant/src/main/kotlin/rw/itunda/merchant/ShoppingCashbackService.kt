@@ -7,7 +7,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.TransactionRepository
@@ -38,18 +38,18 @@ import java.util.UUID
  * same real kind of expense, just earned by shopping instead of completing a task.
  *
  * Deliberately called from `MerchantService.collect()` (QR payments only, where a real
- * itunda payer wallet exists) wrapped in a try/catch at the call site -- a cashback
+ * itunda payer account exists) wrapped in a try/catch at the call site -- a cashback
  * failure must never roll back or fail the real payment that already succeeded, same
  * "auxiliary side-effect can't block real money movement" discipline already applied to
- * webhook delivery. Not applied to `chargeCard()`: a card payer has no itunda wallet at
+ * webhook delivery. Not applied to `chargeCard()`: a card payer has no itunda account at
  * all (`senderId = "external_card_..."`), so there's nothing real to credit.
  *
  * Deliberately plain `@Transactional` (default `REQUIRED` propagation), joining the
  * caller's existing transaction rather than `REQUIRES_NEW` -- a real bug caught live
  * during this pass's own verification: `REQUIRES_NEW` opens a genuinely separate DB
  * transaction/connection while `collect()`'s own transaction is still open and already
- * holds a row lock on this exact payer wallet (`LedgerService.postLedgerTransaction`'s
- * `findByIdForUpdate`), so awarding cashback to the *same* wallet self-deadlocked on a
+ * holds a row lock on this exact payer account (`LedgerService.postLedgerTransaction`'s
+ * `findByIdForUpdate`), so awarding cashback to the *same* account self-deadlocked on a
  * real `Lock wait timeout exceeded` MySQL error. `REQUIRES_NEW` was also wrong on the
  * merits, not just slow: it would let cashback survive even if the payment itself
  * rolled back afterward -- rewarding a purchase that never actually completed. Joining
@@ -66,7 +66,7 @@ import java.util.UUID
  * cashback payout is also capped at [MAX_CASHBACK_PER_TRANSACTION] -- itunda's own
  * honest scoping choice, not a currency-converted reuse of Naver's real 20,000원 cap
  * (this backend has no real KRW/RWF conversion path; see
- * `ForeignCurrencyWalletService`'s own supported-currency list, which doesn't include
+ * `ForeignCurrencyAccountService`'s own supported-currency list, which doesn't include
  * KRW -- reusing the raw number as RWF would misrepresent a sourced fact).
  *
  * **Real Naver Pay 멤버십 데이 (Membership Day) boost added 2026-07-31** -- Naver Pay's
@@ -77,7 +77,7 @@ import java.util.UUID
  * same source) with no fixed rule this backend could honestly replicate -- itunda's own
  * choice instead is a real, fixed, computable day: the first Monday of each month
  * (`isMembershipDay`), same "reuse the sourced structure (multiplier value, monthly
- * cadence), itunda's own specific rule" discipline `MiniWalletService`'s age
+ * cadence), itunda's own specific rule" discipline `MiniAccountService`'s age
  * range/`AgentCommissionSchedule`'s bands already establish. [MEMBERSHIP_DAY_MULTIPLIER]
  * is Naver's own real sourced ceiling (5x, not a fabricated number); the existing
  * [MAX_CASHBACK_PER_TRANSACTION] cap still applies on a boosted day, matching how a
@@ -104,7 +104,7 @@ class ShoppingCashbackService(
 
     @Transactional
     fun awardCashback(
-        payerWallet: Wallet,
+        payerAccount: Account,
         purchaseAmount: BigDecimal,
         merchantName: String,
         rate: BigDecimal = DEFAULT_CASHBACK_RATE,
@@ -119,15 +119,15 @@ class ShoppingCashbackService(
         if (cashbackAmount <= BigDecimal.ZERO) return BigDecimal.ZERO
 
         val result = ledgerService.postLedgerTransaction(
-            payerWallet.currency,
+            payerAccount.currency,
             listOf(
-                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cashbackAmount, "Shopping cashback - $merchantName"),
+                LedgerLeg(payerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cashbackAmount, "Shopping cashback - $merchantName"),
                 LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, cashbackAmount, "Shopping cashback - $merchantName"),
             ),
         )
 
         // A real Transaction row -- not just ledger entries -- so cashback shows up in
-        // the payer's own real transaction history (WalletService.getTransactionHistory
+        // the payer's own real transaction history (AccountService.getTransactionHistory
         // reads the transactions table, not ledger_entries directly). channel =
         // "CASHBACK" keeps it out of MerchantService.getReport()'s revenue report,
         // which only counts type == PAYMENT -- this is a DEPOSIT, a real, separate fact.
@@ -136,12 +136,12 @@ class ShoppingCashbackService(
                 id = result.transactionId,
                 referenceNumber = "CASHBACK${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = "system_shopping_cashback",
-                recipientId = payerWallet.userId,
-                fromWalletId = null,
-                toWalletId = payerWallet.id,
+                recipientId = payerAccount.userId,
+                fromAccountId = null,
+                toAccountId = payerAccount.id,
                 amount = cashbackAmount,
                 fee = BigDecimal.ZERO,
-                currency = payerWallet.currency,
+                currency = payerAccount.currency,
                 type = TransactionType.DEPOSIT,
                 status = TransactionStatus.COMPLETED,
                 description = "Shopping cashback - $merchantName",

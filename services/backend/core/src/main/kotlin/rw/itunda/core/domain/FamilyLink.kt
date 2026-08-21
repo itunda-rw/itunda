@@ -24,7 +24,7 @@ enum class FamilyLinkStatus { PENDING, ACTIVE, DECLINED, REVOKED }
  * flow, a physical prepaid card (₩500,000 cap), and real spend-limit enforcement at
  * the card-network level. itunda has none of that infrastructure -- this is a real
  * link between two ORDINARY existing itunda accounts (no separate "minor account"
- * type), giving the guardian real read-only oversight (child's wallet balance + real
+ * type), giving the guardian real read-only oversight (child's account balance + real
  * transaction history) via `FamilyLinkService.getChildOverview`. Allowance itself
  * needs no new mechanism at all -- the guardian just points the already-real
  * `AutoTransfer`/`ScheduledTransfer` features at the child's phone number, the same

@@ -105,8 +105,8 @@ class MerchantBillingController(private val merchantBillingService: MerchantBill
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(BillingNoWalletException::class)
-    fun handleNoWallet(ex: BillingNoWalletException) =
+    @ExceptionHandler(BillingNoAccountException::class)
+    fun handleNoAccount(ex: BillingNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RateLimitExceededException::class)

@@ -18,8 +18,8 @@ import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.GiftVoucher
 import rw.itunda.core.domain.GiftVoucherStatus
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
@@ -29,7 +29,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.time.Instant
@@ -38,9 +38,9 @@ import java.util.Optional
 
 class GiftVoucherServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, balance: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
+    fun account(id: String, userId: String, balance: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
     )
 
     fun user(id: String, phone: String) = User(id = id, phoneNumber = phone, firstName = "Test", lastName = "User", passwordHash = "hash")
@@ -49,7 +49,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
         giftVoucherRepository: GiftVoucherRepository = mockk(),
         merchantRepository: MerchantRepository = mockk(),
         merchantProductRepository: MerchantProductRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         userRepository: UserRepository = mockk(),
         transactionRepository: TransactionRepository = mockk(relaxed = true),
         ledgerService: LedgerService = mockk(),
@@ -57,7 +57,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
         rateLimiter: RateLimiter = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
     ) = GiftVoucherService(
-        giftVoucherRepository, merchantRepository, merchantProductRepository, walletRepository,
+        giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository,
         userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine,
     )
 
@@ -65,15 +65,15 @@ class GiftVoucherServiceTest : BehaviorSpec({
         val giftVoucherRepository = mockk<GiftVoucherRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
-        val svc = service(giftVoucherRepository, merchantRepository, merchantProductRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService)
+        val svc = service(giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Iced Latte", price = BigDecimal("3000"))
         val recipient = user("user_recipient", "+250788000002")
         val conversation = Conversation(id = "conversation_1", participantAId = "user_recipient", participantBId = "user_purchaser")
@@ -82,7 +82,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
         every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
         every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
-        every { walletRepository.findByUserIdAndType("user_purchaser", WalletType.MAIN) } returns wallet("wallet_purchaser", "user_purchaser", "10000")
+        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "10000")
         every { messagingService.startOrGetConversation("user_purchaser", "user_recipient") } returns conversation
         every { messagingService.sendMessage(any(), any(), any()) } returns message
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -102,7 +102,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
         }
 
         When("the purchaser doesn't have enough balance") {
-            every { walletRepository.findByUserIdAndType("user_purchaser", WalletType.MAIN) } returns wallet("wallet_purchaser", "user_purchaser", "100")
+            every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "100")
 
             Then("it throws InsufficientFundsException before ever moving real money") {
                 try {
@@ -145,22 +145,22 @@ class GiftVoucherServiceTest : BehaviorSpec({
         val giftVoucherRepository = mockk<GiftVoucherRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
-        val svc = service(giftVoucherRepository, merchantRepository, merchantProductRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService)
+        val svc = service(giftVoucherRepository, merchantRepository, merchantProductRepository, accountRepository, userRepository, transactionRepository, ledgerService, messagingService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val recipient = user("user_recipient", "+250788000002")
         val conversation = Conversation(id = "conversation_1", participantAId = "user_recipient", participantBId = "user_purchaser")
         val message = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_purchaser", body = "voucher")
 
         every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-        every { walletRepository.findByUserIdAndType("user_purchaser", WalletType.MAIN) } returns wallet("wallet_purchaser", "user_purchaser", "10000")
+        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "10000")
         every { messagingService.startOrGetConversation("user_purchaser", "user_recipient") } returns conversation
         every { messagingService.sendMessage(any(), any(), any()) } returns message
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -191,14 +191,14 @@ class GiftVoucherServiceTest : BehaviorSpec({
     Given("a real merchant redeeming a real ACTIVE gift voucher") {
         val giftVoucherRepository = mockk<GiftVoucherRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val svc = service(giftVoucherRepository = giftVoucherRepository, merchantRepository = merchantRepository, walletRepository = walletRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService)
+        val svc = service(giftVoucherRepository = giftVoucherRepository, merchantRepository = merchantRepository, accountRepository = accountRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val voucher = GiftVoucher(
             id = "giftvoucher_1", purchaserId = "user_purchaser", recipientId = "user_recipient",
             conversationId = "conversation_1", messageId = "message_1", merchantId = "merchant_1",
@@ -207,7 +207,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
 
         every { giftVoucherRepository.findByIdForUpdate("giftvoucher_1") } returns Optional.of(voucher)
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-        every { walletRepository.findById("wallet_merchant") } returns Optional.of(wallet("wallet_merchant", "seller_1", "0"))
+        every { accountRepository.findById("account_merchant") } returns Optional.of(account("account_merchant", "seller_1", "0"))
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("redeemtxn_1", emptyList())
         every { giftVoucherRepository.save(any()) } answers { firstArg() }
@@ -219,7 +219,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
                 result.status shouldBe GiftVoucherStatus.REDEEMED
                 result.redeemTransactionId shouldBe "redeemtxn_1"
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_merchant" }.amount shouldBe BigDecimal("2955.00")
+                legs.first { it.accountId == "account_merchant" }.amount shouldBe BigDecimal("2955.00")
                 legs.first { it.accountId == "fee_revenue" }.amount shouldBe BigDecimal("45.00")
             }
 
@@ -341,19 +341,19 @@ class GiftVoucherServiceTest : BehaviorSpec({
 
     Given("a real unredeemed voucher past its real expiry") {
         val giftVoucherRepository = mockk<GiftVoucherRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val svc = service(giftVoucherRepository = giftVoucherRepository, walletRepository = walletRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService)
+        val svc = service(giftVoucherRepository = giftVoucherRepository, accountRepository = accountRepository, transactionRepository = transactionRepository, ledgerService = ledgerService, messagingService = messagingService)
 
         val voucher = GiftVoucher(
             id = "giftvoucher_1", purchaserId = "user_purchaser", recipientId = "user_recipient",
             conversationId = "conversation_1", messageId = "message_1", merchantId = "merchant_1",
             amount = BigDecimal("1000"), holdTransactionId = "ledgertxn_1", expiresAt = Instant.now().minus(1, ChronoUnit.DAYS),
         )
-        every { walletRepository.findByUserIdAndType("user_purchaser", WalletType.MAIN) } returns wallet("wallet_purchaser", "user_purchaser", "0")
+        every { accountRepository.findByUserIdAndType("user_purchaser", AccountType.MAIN) } returns account("account_purchaser", "user_purchaser", "0")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("refundtxn_1", emptyList())
         every { giftVoucherRepository.save(any()) } answers { firstArg() }
@@ -364,7 +364,7 @@ class GiftVoucherServiceTest : BehaviorSpec({
             Then("it real-refunds exactly the sourced 90% (900 RWF) and forfeits the other 10% (100 RWF) as real fee revenue") {
                 voucher.status shouldBe GiftVoucherStatus.EXPIRED
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_purchaser" }.amount shouldBe BigDecimal("900.00")
+                legs.first { it.accountId == "account_purchaser" }.amount shouldBe BigDecimal("900.00")
                 legs.first { it.accountId == "fee_revenue" }.amount shouldBe BigDecimal("100.00")
             }
         }

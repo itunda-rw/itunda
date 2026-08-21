@@ -33,11 +33,11 @@ class Transaction(
     @Column(name = "recipient_id", nullable = false, length = 64)
     val recipientId: String,
 
-    @Column(name = "from_wallet_id", length = 64)
-    val fromWalletId: String? = null,
+    @Column(name = "from_account_id", length = 64)
+    val fromAccountId: String? = null,
 
-    @Column(name = "to_wallet_id", length = 64)
-    val toWalletId: String? = null,
+    @Column(name = "to_account_id", length = 64)
+    val toAccountId: String? = null,
 
     @Column(nullable = false, precision = 18, scale = 2)
     val amount: BigDecimal,

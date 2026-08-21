@@ -25,9 +25,9 @@ enum class MerchantStatus { ACTIVE, SUSPENDED }
 enum class MerchantBusinessType { RESTAURANT, SHOP }
 
 /**
- * A real, minimal merchant record -- registration + a settlement wallet reference.
- * Reuses the owner's existing MAIN wallet as the settlement wallet rather than
- * introducing a new WalletType, since AuthService.register already provisions one
+ * A real, minimal merchant record -- registration + a settlement account reference.
+ * Reuses the owner's existing MAIN account as the settlement account rather than
+ * introducing a new AccountType, since AuthService.register already provisions one
  * for every user. See rw.itunda.merchant.MerchantService for the real subset of
  * docs/MERCHANT_SERVICES.md this implements (QR-style payment collection). Card
  * network/PSP integration stays genuinely blocked on a real commercial relationship
@@ -52,8 +52,8 @@ class Merchant(
     @Column(name = "owner_user_id", nullable = false, unique = true, length = 64)
     val ownerUserId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "business_name", nullable = false)
     var businessName: String,
@@ -271,7 +271,7 @@ class Merchant(
     @Column(name = "pickup_discount_percent", nullable = true)
     var pickupDiscountPercent: Int? = null,
 ) {
-    protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
+    protected constructor() : this(id = "", ownerUserId = "", accountId = "", businessName = "")
 
     // Single real source of truth for "is this restaurant closed on its own recurring
     // schedule right now" -- shared by EatsOrderService.placeOrder's own server-side

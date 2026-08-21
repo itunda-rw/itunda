@@ -18,7 +18,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -105,14 +105,14 @@ class BillsController(
     @ExceptionHandler(MissingRequestHeaderException::class)
     fun handleMissingHeader(ex: MissingRequestHeaderException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(ProviderDeclinedException::class)
     fun handleProviderDeclined(ex: ProviderDeclinedException) = ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiError("PROVIDER_DECLINED", ex.message ?: "Provider declined"))

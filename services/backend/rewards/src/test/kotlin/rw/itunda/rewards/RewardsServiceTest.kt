@@ -12,8 +12,8 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.RewardClaim
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -25,20 +25,20 @@ import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 
 class RewardsServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
     )
 
     Given("a user who hasn't claimed anything yet and hasn't done any of the checkable tasks") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -46,7 +46,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.findByUserId("user_1") } returns emptyList()
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_1", any(), TransactionStatus.COMPLETED) } returns false
@@ -81,7 +81,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a real Coupang/Baemin-style photo-review reward: a user who submitted an Eats review with a real photo") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -89,10 +89,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_12", "task_first_photo_review") } returns false
-        every { walletRepository.findByUserIdAndType("user_12", WalletType.MAIN) } returns wallet("wallet_main", "user_12")
+        every { accountRepository.findByUserIdAndType("user_12", AccountType.MAIN) } returns account("account_main", "user_12")
         every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_5", emptyList())
         every { rewardClaimRepository.save(any()) } answers { firstArg() }
         every { rewardClaimRepository.findByUserId("user_12") } returns listOf(
@@ -126,7 +126,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user with a real profile photo and a verified email, claiming task_profile for the first time") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -134,7 +134,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         val completeUser = User(
             id = "user_10", phoneNumber = "+250788000095", firstName = "Eve", lastName = "R",
@@ -142,7 +142,7 @@ class RewardsServiceTest : BehaviorSpec({
         )
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_10", "task_profile") } returns false
         every { userRepository.findById("user_10") } returns java.util.Optional.of(completeUser)
-        every { walletRepository.findByUserIdAndType("user_10", WalletType.MAIN) } returns wallet("wallet_main", "user_10")
+        every { accountRepository.findByUserIdAndType("user_10", AccountType.MAIN) } returns account("account_main", "user_10")
         every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
         every { rewardClaimRepository.save(any()) } answers { firstArg() }
         every { rewardClaimRepository.findByUserId("user_10") } returns listOf(
@@ -161,7 +161,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a real Naver Pay-style non-transactional engagement reward: a user whose Community Q&A answer was adopted") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -169,10 +169,10 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_11", "task_knowledge_answer_adopted") } returns false
-        every { walletRepository.findByUserIdAndType("user_11", WalletType.MAIN) } returns wallet("wallet_main", "user_11")
+        every { accountRepository.findByUserIdAndType("user_11", AccountType.MAIN) } returns account("account_main", "user_11")
         every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
         every { rewardClaimRepository.save(any()) } answers { firstArg() }
         every { rewardClaimRepository.findByUserId("user_11") } returns listOf(
@@ -205,7 +205,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user with a profile photo but an unverified email, trying to claim task_profile") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -213,7 +213,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         val partialUser = User(
             id = "user_11", phoneNumber = "+250788000094", firstName = "Frank", lastName = "R",
@@ -237,7 +237,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user who referred a friend, and that friend has completed a real transfer") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -245,7 +245,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         val friend = User(
             id = "user_friend", phoneNumber = "+250788000099", firstName = "Alice", lastName = "R",
@@ -255,7 +255,7 @@ class RewardsServiceTest : BehaviorSpec({
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_7", "task_referral") } returns false
         every { userRepository.findAllByReferredByUserId("user_7") } returns listOf(friend)
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_friend", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns true
-        every { walletRepository.findByUserIdAndType("user_7", WalletType.MAIN) } returns wallet("wallet_main", "user_7")
+        every { accountRepository.findByUserIdAndType("user_7", AccountType.MAIN) } returns account("account_main", "user_7")
         every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { rewardClaimRepository.save(any()) } answers { firstArg() }
         every { rewardClaimRepository.findByUserId("user_7") } returns listOf(
@@ -274,7 +274,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user who referred a friend, but that friend hasn't transacted yet") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -282,7 +282,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         val friend = User(
             id = "user_friend_2", phoneNumber = "+250788000098", firstName = "Bob", lastName = "R",
@@ -308,7 +308,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user with a real referral code and one referred friend who hasn't transacted") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -316,7 +316,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         val self = User(
             id = "user_9", phoneNumber = "+250788000097", firstName = "Carol", lastName = "R",
@@ -343,7 +343,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user who has completed a real transfer, claiming task_first_transfer for the first time") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -351,11 +351,11 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_2", "task_first_transfer") } returns false
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_2", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns true
-        every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns wallet("wallet_main", "user_2")
+        every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns account("account_main", "user_2")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { rewardClaimRepository.save(any()) } answers { firstArg() }
@@ -366,16 +366,16 @@ class RewardsServiceTest : BehaviorSpec({
         When("claiming task_first_transfer (1,000 RWF)") {
             val result = service.claim("user_2", "task_first_transfer")
 
-            Then("it debits rewards_expense and credits the MAIN wallet for the exact same amount") {
+            Then("it debits rewards_expense and credits the MAIN account for the exact same amount") {
                 val expenseLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.REWARDS_EXPENSE }
                 expenseLeg.accountId shouldBe "rewards_expense"
                 expenseLeg.direction shouldBe LedgerDirection.DEBIT
                 expenseLeg.amount shouldBe BigDecimal("1000")
 
-                val walletLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
-                walletLeg.accountId shouldBe "wallet_main"
-                walletLeg.direction shouldBe LedgerDirection.CREDIT
-                walletLeg.amount shouldBe BigDecimal("1000")
+                val accountLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
+                accountLeg.accountId shouldBe "account_main"
+                accountLeg.direction shouldBe LedgerDirection.CREDIT
+                accountLeg.amount shouldBe BigDecimal("1000")
             }
             Then("it saves a real claim record and returns the new total") {
                 result.rewardAmount shouldBe BigDecimal("1000")
@@ -387,7 +387,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user who has NOT completed a real transfer, trying to claim task_first_transfer") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -395,18 +395,18 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_6", "task_first_transfer") } returns false
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_6", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns false
 
         When("claiming it") {
-            Then("it throws RewardTaskNotEligibleException before ever touching the wallet or ledger -- this is the real fix for the honor-system gap") {
+            Then("it throws RewardTaskNotEligibleException before ever touching the account or ledger -- this is the real fix for the honor-system gap") {
                 try {
                     service.claim("user_6", "task_first_transfer")
                     error("expected RewardTaskNotEligibleException")
                 } catch (e: RewardTaskNotEligibleException) {
-                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                    verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                     verify(exactly = 0) { rewardClaimRepository.save(any()) }
                 }
@@ -416,7 +416,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a task that's already been claimed") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -424,7 +424,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_3", "task_profile") } returns true
 
@@ -443,7 +443,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a task ID that isn't in the catalog") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -451,7 +451,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         When("claiming it") {
             Then("it throws RewardTaskNotFoundException before checking claim status at all") {
@@ -465,9 +465,9 @@ class RewardsServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a user with no wallet at all") {
+    Given("a user with no account at all") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -475,7 +475,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_5", "task_profile") } returns false
         every { userRepository.findById("user_5") } returns java.util.Optional.of(
@@ -484,14 +484,14 @@ class RewardsServiceTest : BehaviorSpec({
                 passwordHash = "unused", profilePhotoUrl = "https://cdn.itunda.rw/avatars/user_5.jpg", emailVerified = true,
             ),
         )
-        every { walletRepository.findByUserIdAndType("user_5", WalletType.MAIN) } returns null
+        every { accountRepository.findByUserIdAndType("user_5", AccountType.MAIN) } returns null
 
         When("claiming a valid, unclaimed task") {
-            Then("it throws RewardsNoWalletException before touching the ledger") {
+            Then("it throws RewardsNoAccountException before touching the ledger") {
                 try {
                     service.claim("user_5", "task_profile")
-                    error("expected RewardsNoWalletException")
-                } catch (e: RewardsNoWalletException) {
+                    error("expected RewardsNoAccountException")
+                } catch (e: RewardsNoAccountException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -500,7 +500,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a brand new user with zero real reward activity") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -508,7 +508,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.findByUserId("user_6") } returns emptyList()
         every { dailyStepRewardRepository.countByUserId("user_6") } returns 0L
@@ -527,7 +527,7 @@ class RewardsServiceTest : BehaviorSpec({
 
     Given("a user with 2 real claimed tasks and 5 real active reward days") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
@@ -535,7 +535,7 @@ class RewardsServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val knowledgeAnswerRepository = mockk<KnowledgeAnswerRepository>()
         val eatsReviewRepository = mockk<EatsReviewRepository>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
+        val service = RewardsService(rewardClaimRepository, accountRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository, dailyStepRewardRepository, knowledgeAnswerRepository, eatsReviewRepository)
 
         every { rewardClaimRepository.findByUserId("user_7") } returns listOf(
             RewardClaim(id = "claim_1", userId = "user_7", taskId = "task_profile", amount = BigDecimal("500"), claimedAt = Instant.now()),

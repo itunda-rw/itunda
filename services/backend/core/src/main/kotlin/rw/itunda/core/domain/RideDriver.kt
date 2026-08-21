@@ -17,7 +17,7 @@ enum class RideDriverStatus { ACTIVE, SUSPENDED }
  * rider are genuinely distinct real roles in this backend (an account can register as
  * either or both), matching how Kakao T Driver and Kakao T (delivery isn't even a Kakao
  * T product) are separate real registrations too. Reuses the driver's own existing MAIN
- * wallet as their payout destination, same real WALLET-to-WALLET disbursement precedent
+ * account as their payout destination, same real WALLET-to-WALLET disbursement precedent
  * `PayrollService`/`RiderService` already established.
  *
  * `totalOffers`/`totalAccepted` back a real, computed acceptance rate -- Kakao's own
@@ -38,8 +38,8 @@ class RideDriver(
     @Column(name = "user_id", nullable = false, unique = true, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -86,5 +86,5 @@ class RideDriver(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "")
+    protected constructor() : this(id = "", userId = "", accountId = "")
 }

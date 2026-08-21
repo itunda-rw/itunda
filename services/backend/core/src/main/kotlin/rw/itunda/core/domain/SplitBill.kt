@@ -26,7 +26,7 @@ enum class SplitBillMode { EVEN, LADDER }
  * organizer already fronted the whole bill in real life, and is now requesting it back
  * from N named group members. There is no escrow hold here (nothing needs to be "claimed
  * back," the organizer already has the money in hand outside this system); each
- * participant instead pays their own share directly into the organizer's wallet,
+ * participant instead pays their own share directly into the organizer's account,
  * mirroring `P2pService.sendDirect`'s real direct WALLET-to-WALLET push, just fanned out
  * per-participant with a shared parent record for the settlement thread.
  *
@@ -114,7 +114,7 @@ class SplitBill(
  * One real named participant's share of a [SplitBill] -- never includes the organizer
  * themselves (they fronted the bill, they don't owe their own request). `shareAmount` is
  * this participant's exact, already-rounding-reconciled portion; `status` flips to PAID
- * the moment their own direct wallet-to-wallet payment posts, mirroring
+ * the moment their own direct account-to-account payment posts, mirroring
  * `P2pPaymentRequestStatus`'s own PENDING/COMPLETED shape but per-participant rather than
  * a single request/payer pair.
  */

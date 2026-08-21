@@ -16,7 +16,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.insurance.ClaimNotFoundException
 import rw.itunda.insurance.ClaimNotPendingException
 import rw.itunda.insurance.InsuranceService
-import rw.itunda.insurance.NoWalletException
+import rw.itunda.insurance.NoAccountException
 
 data class DecideClaimRequest(val approve: Boolean, val reason: String? = null)
 
@@ -48,8 +48,8 @@ class InsuranceClaimsAdminController(private val insuranceService: InsuranceServ
     fun handleNotPending(ex: ClaimNotPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CLAIM_NOT_PENDING", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) =
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)

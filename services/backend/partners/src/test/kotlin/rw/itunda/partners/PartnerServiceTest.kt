@@ -80,13 +80,13 @@ class PartnerServiceTest : BehaviorSpec({
         When("submitting with only real, allowed permission scopes") {
             val miniApp = service.submitMiniApp(
                 "sk_test_real_key", "Acme Delivery", "Order food in Kigali", null, "https://acme.rw/bundle.js",
-                listOf("wallet:read", "profile:read"),
+                listOf("account:read", "profile:read"),
             )
 
             Then("a real PENDING submission is created, not auto-approved") {
                 miniApp.status shouldBe PartnerMiniAppStatus.PENDING
                 miniApp.partnerId shouldBe "partner_1"
-                miniApp.permissions shouldBe "wallet:read,profile:read"
+                miniApp.permissions shouldBe "account:read,profile:read"
             }
         }
 
@@ -95,7 +95,7 @@ class PartnerServiceTest : BehaviorSpec({
                 try {
                     service.submitMiniApp(
                         "sk_test_real_key", "Acme Delivery", "desc", null, "https://acme.rw/bundle.js",
-                        listOf("wallet:write", "admin:everything"),
+                        listOf("account:write", "admin:everything"),
                     )
                     error("expected InvalidPermissionScopeException")
                 } catch (e: InvalidPermissionScopeException) {
@@ -154,7 +154,7 @@ class PartnerServiceTest : BehaviorSpec({
 
         val miniApp = PartnerMiniApp(
             id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc",
-            bundleUrl = "https://acme.rw/bundle.js", permissions = "wallet:read", status = PartnerMiniAppStatus.PENDING,
+            bundleUrl = "https://acme.rw/bundle.js", permissions = "account:read", status = PartnerMiniAppStatus.PENDING,
         )
         every { partnerMiniAppRepository.findById("partner_app_1") } returns Optional.of(miniApp)
         val savedSlot = slot<PartnerMiniApp>()

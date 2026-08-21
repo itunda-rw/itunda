@@ -51,8 +51,8 @@ class Grow31SavingsPlan(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, length = 255)
     var name: String,
@@ -108,7 +108,7 @@ class Grow31SavingsPlan(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", name = "", dailyAmount = BigDecimal.ZERO,
+        id = "", userId = "", accountId = "", name = "", dailyAmount = BigDecimal.ZERO,
         startDate = LocalDate.now(), baseRate = 0.0,
     )
 }

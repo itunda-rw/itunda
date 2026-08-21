@@ -8,8 +8,8 @@ import java.math.BigDecimal
 import java.time.Instant
 
 /**
- * A real conversion record between a user's own MAIN (RWF) wallet and one of their
- * FOREIGN_CURRENCY wallets -- see `ForeignCurrencyWalletService.convert`'s own doc
+ * A real conversion record between a user's own MAIN (RWF) account and one of their
+ * FOREIGN_CURRENCY accounts -- see `ForeignCurrencyAccountService.convert`'s own doc
  * comment for the real two-ledger-transaction mechanics this snapshots. `rate` is the
  * real live mid-market rate at conversion time (before itunda's own margin);
  * `marginAmount` is itunda's real spread, denominated in `toCurrency`.

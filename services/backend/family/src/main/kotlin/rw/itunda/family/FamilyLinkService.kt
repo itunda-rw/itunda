@@ -9,13 +9,13 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.FamilyLinkRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -34,7 +34,7 @@ class FamilyLinkInvalidSpendLimitException(message: String) : RuntimeException(m
 class FamilySpendLimitExceededException(message: String) : RuntimeException(message)
 
 data class FamilyLinkView(val link: FamilyLink, val guardianName: String, val childName: String)
-data class ChildOverview(val childUserId: String, val childName: String, val walletBalance: BigDecimal, val recentTransactions: List<Transaction>)
+data class ChildOverview(val childUserId: String, val childName: String, val accountBalance: BigDecimal, val recentTransactions: List<Transaction>)
 
 /**
  * Real Toss 유스 (Toss Youth)-style guardian-child account link -- see FamilyLink.kt's
@@ -47,7 +47,7 @@ data class ChildOverview(val childUserId: String, val childName: String, val wal
 class FamilyLinkService(
     private val familyLinkRepository: FamilyLinkRepository,
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
@@ -158,7 +158,7 @@ class FamilyLinkService(
     // Real spend-limit enforcement -- see FamilyLink.kt's own doc comment. Called from
     // P2pService.sendDirect before the real ledger movement, matching this codebase's
     // "the real gate must fire before money moves" discipline used everywhere else
-    // (WalletFrozenException, minOrderAmount, etc). A no-op (not an exception) when the
+    // (AccountFrozenException, minOrderAmount, etc). A no-op (not an exception) when the
     // sender isn't a child on any ACTIVE link with a real limit set -- the overwhelming
     // common case, and this must stay cheap for every single real P2P send in the app.
     //
@@ -171,16 +171,16 @@ class FamilyLinkService(
     // exact method as a known-but-deferred instance of the identical race). Without a
     // lock, two real concurrent transfers by the same linked child could both read the
     // same pre-transfer daily sum and both pass, together exceeding the guardian-set
-    // `dailySpendLimit`. `walletRepository.findByIdForUpdate(childWalletId)` locks the
-    // child's own wallet row for the rest of this ambient transaction -- the same row
+    // `dailySpendLimit`. `accountRepository.findByIdForUpdate(childAccountId)` locks the
+    // child's own account row for the rest of this ambient transaction -- the same row
     // `P2pTransferLimitService.enforce` (called moments later in `sendDirect`) and
     // `LedgerService.postLedgerTransaction` both also lock; re-acquiring an
     // already-held row lock in the same transaction is a no-op, not a second lock or a
     // deadlock risk, same reasoning those two already establish.
-    fun enforceSpendLimit(childUserId: String, childWalletId: String, amount: BigDecimal) {
+    fun enforceSpendLimit(childUserId: String, childAccountId: String, amount: BigDecimal) {
         val link = familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull(childUserId, FamilyLinkStatus.ACTIVE) ?: return
         val limit = link.dailySpendLimit ?: return
-        walletRepository.findByIdForUpdate(childWalletId)
+        accountRepository.findByIdForUpdate(childAccountId)
         val startOfDayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant()
         val spentToday = transactionRepository
             .findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(childUserId, TransactionType.TRANSFER, TransactionStatus.COMPLETED, startOfDayUtc)
@@ -190,19 +190,19 @@ class FamilyLinkService(
         }
     }
 
-    // Real read-only oversight -- the guardian's own view of a real child's wallet
+    // Real read-only oversight -- the guardian's own view of a real child's account
     // balance and transaction history, gated by a real ACTIVE FamilyLink, never a
     // spend-limit enforcement mechanism (see FamilyLink.kt's own doc comment for why).
     fun getChildOverview(guardianUserId: String, childUserId: String): ChildOverview {
         val link = familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus(guardianUserId, childUserId, FamilyLinkStatus.ACTIVE)
             ?: throw FamilyLinkUnauthorizedException("No active family link with this account")
         val child = userRepository.findById(childUserId).orElseThrow { FamilyLinkChildNotFoundException("Child account not found") }
-        val wallet = walletRepository.findByUserIdAndType(childUserId, WalletType.MAIN)
+        val account = accountRepository.findByUserIdAndType(childUserId, AccountType.MAIN)
         val transactions = transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(childUserId, childUserId).take(20)
         return ChildOverview(
             childUserId = childUserId,
             childName = "${child.firstName} ${child.lastName}",
-            walletBalance = wallet?.balance ?: BigDecimal.ZERO,
+            accountBalance = account?.balance ?: BigDecimal.ZERO,
             recentTransactions = transactions,
         )
     }

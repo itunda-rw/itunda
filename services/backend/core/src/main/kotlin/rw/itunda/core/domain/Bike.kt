@@ -36,8 +36,8 @@ class Bike(
     @Column(name = "owner_user_id", nullable = false, length = 64)
     val ownerUserId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
@@ -72,5 +72,5 @@ class Bike(
     @Column(nullable = false)
     var version: Long = 0,
 ) {
-    protected constructor() : this(id = "", ownerUserId = "", walletId = "", type = BikeType.REGULAR, currentLatitude = 0.0, currentLongitude = 0.0)
+    protected constructor() : this(id = "", ownerUserId = "", accountId = "", type = BikeType.REGULAR, currentLatitude = 0.0, currentLongitude = 0.0)
 }

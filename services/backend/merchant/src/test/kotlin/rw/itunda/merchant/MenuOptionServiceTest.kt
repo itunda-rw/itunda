@@ -23,7 +23,7 @@ import java.util.Optional
  */
 class MenuOptionServiceTest : BehaviorSpec({
 
-    val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
+    val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
     val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Burger", price = BigDecimal("3000"))
 
     Given("a restaurant owner adding a real required option group to their own menu item") {

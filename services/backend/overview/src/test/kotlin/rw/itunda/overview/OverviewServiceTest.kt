@@ -13,40 +13,40 @@ import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.domain.LinkedAccount
 import rw.itunda.core.domain.LinkedAccountStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.LinkedAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 
 class OverviewServiceTest : BehaviorSpec({
 
     Given("a user with real activity across every real itunda product") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
         val linkedAccountRepository = mockk<LinkedAccountRepository>()
-        val service = OverviewService(walletRepository, savingsGoalRepository, loanAccountRepository, holdingRepository, insurancePolicyRepository, linkedAccountRepository)
+        val service = OverviewService(accountRepository, savingsGoalRepository, loanAccountRepository, holdingRepository, insurancePolicyRepository, linkedAccountRepository)
 
-        every { walletRepository.findByUserId("user_1") } returns listOf(
-            Wallet(id = "w1", userId = "user_1", accountNumber = "ACC1", accountName = "Main", type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000")),
+        every { accountRepository.findByUserId("user_1") } returns listOf(
+            Account(id = "w1", userId = "user_1", accountNumber = "ACC1", accountName = "Main", type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000")),
         )
         every { savingsGoalRepository.findByUserId("user_1") } returns listOf(
-            SavingsGoal(id = "g1", userId = "user_1", walletId = "w1", name = "Rainy day", targetAmount = BigDecimal("100000"), currentAmount = BigDecimal("20000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
+            SavingsGoal(id = "g1", userId = "user_1", accountId = "w1", name = "Rainy day", targetAmount = BigDecimal("100000"), currentAmount = BigDecimal("20000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
         )
         every { loanAccountRepository.findByUserId("user_1") } returns listOf(
-            LoanAccount(id = "l1", userId = "user_1", walletId = "w1", offerId = "offer_1", principal = BigDecimal("30000"), outstanding = BigDecimal("15000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
-            LoanAccount(id = "l2", userId = "user_1", walletId = "w1", offerId = "offer_2", principal = BigDecimal("10000"), outstanding = BigDecimal.ZERO, interestRate = 0.1, status = LoanStatus.PAID),
+            LoanAccount(id = "l1", userId = "user_1", accountId = "w1", offerId = "offer_1", principal = BigDecimal("30000"), outstanding = BigDecimal("15000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
+            LoanAccount(id = "l2", userId = "user_1", accountId = "w1", offerId = "offer_2", principal = BigDecimal("10000"), outstanding = BigDecimal.ZERO, interestRate = 0.1, status = LoanStatus.PAID),
         )
         every { holdingRepository.findByUserId("user_1") } returns listOf(
-            Holding(id = "h1", userId = "user_1", walletId = "w1", stockId = "BOA", shares = BigDecimal("10"), avgPrice = BigDecimal("500")),
+            Holding(id = "h1", userId = "user_1", accountId = "w1", stockId = "BOA", shares = BigDecimal("10"), avgPrice = BigDecimal("500")),
         )
         every { insurancePolicyRepository.findByUserId("user_1") } returns listOf(
             InsurancePolicy(id = "p1", userId = "user_1", planId = "ins_1", planName = "Health Shield", category = "health", status = "active", startDate = LocalDate.now(), endDate = LocalDate.now().plusYears(1), monthlyPremium = BigDecimal("15000"), nextPaymentDate = LocalDate.now(), policyNumber = "POL-1"),
@@ -62,8 +62,8 @@ class OverviewServiceTest : BehaviorSpec({
         When("computing the overview") {
             val result = service.getOverview("user_1")
 
-            Then("net worth is wallets + savings + investment cost basis - active loan outstanding, not double-counted") {
-                // 50000 (wallet) + 20000 (savings) + 5000 (10 shares * 500 avgPrice) - 15000 (only the ACTIVE loan, not the PAID one) = 60000
+            Then("net worth is accounts + savings + investment cost basis - active loan outstanding, not double-counted") {
+                // 50000 (account) + 20000 (savings) + 5000 (10 shares * 500 avgPrice) - 15000 (only the ACTIVE loan, not the PAID one) = 60000
                 // Deliberately does NOT include the linked account's real 450000 demo balance below --
                 // that's the actual point of the assertion two blocks down.
                 result.netWorth shouldBe BigDecimal("60000")
@@ -95,15 +95,15 @@ class OverviewServiceTest : BehaviorSpec({
     }
 
     Given("a brand new user with nothing at all") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
         val linkedAccountRepository = mockk<LinkedAccountRepository>()
-        val service = OverviewService(walletRepository, savingsGoalRepository, loanAccountRepository, holdingRepository, insurancePolicyRepository, linkedAccountRepository)
+        val service = OverviewService(accountRepository, savingsGoalRepository, loanAccountRepository, holdingRepository, insurancePolicyRepository, linkedAccountRepository)
 
-        every { walletRepository.findByUserId("user_2") } returns emptyList()
+        every { accountRepository.findByUserId("user_2") } returns emptyList()
         every { savingsGoalRepository.findByUserId("user_2") } returns emptyList()
         every { loanAccountRepository.findByUserId("user_2") } returns emptyList()
         every { holdingRepository.findByUserId("user_2") } returns emptyList()

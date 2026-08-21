@@ -31,7 +31,7 @@ import rw.itunda.splitbill.SplitBillInvalidVarianceLevelException
 import rw.itunda.splitbill.SplitBillMaxRoundsReachedException
 import rw.itunda.splitbill.SplitBillNeedsParticipantsException
 import rw.itunda.splitbill.SplitBillNoPendingParticipantsException
-import rw.itunda.splitbill.SplitBillNoWalletException
+import rw.itunda.splitbill.SplitBillNoAccountException
 import rw.itunda.splitbill.SplitBillNotFoundException
 import rw.itunda.splitbill.SplitBillParticipantNotGroupMemberException
 import rw.itunda.splitbill.SplitBillService
@@ -224,8 +224,8 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
     fun handleAlreadyPaid(ex: SplitBillAlreadyPaidException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SPLIT_BILL_SHARE_ALREADY_PAID", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(SplitBillNoWalletException::class)
-    fun handleNoWallet(ex: SplitBillNoWalletException) =
+    @ExceptionHandler(SplitBillNoAccountException::class)
+    fun handleNoAccount(ex: SplitBillNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(SplitBillAlreadySettledException::class)

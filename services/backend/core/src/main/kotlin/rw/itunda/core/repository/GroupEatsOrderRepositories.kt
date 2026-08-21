@@ -20,7 +20,7 @@ interface GroupEatsOrderRepository : JpaRepository<GroupEatsOrder, String> {
     // pass the check, and both call EatsOrderService.placeOrder + createDirectSplitBill
     // -- two real orders, two real ledger charges, duplicate split-bill requests --
     // before either committed FINALIZED. Same findByIdForUpdate convention
-    // WalletRepository/FraudFlagRepository/DebitCardRepository already establish for
+    // AccountRepository/FraudFlagRepository/DebitCardRepository already establish for
     // this exact class of bug.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select g from GroupEatsOrder g where g.id = :id")

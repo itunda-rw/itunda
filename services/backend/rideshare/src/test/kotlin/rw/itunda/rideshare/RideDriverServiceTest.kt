@@ -7,7 +7,7 @@ import io.mockk.mockk
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.repository.RideDriverRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -22,14 +22,14 @@ class RideDriverServiceTest : BehaviorSpec({
 
     fun newService(
         rideDriverRepository: RideDriverRepository = mockk(),
-        walletRepository: WalletRepository = mockk(relaxed = true),
+        accountRepository: AccountRepository = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = RideDriverService(rideDriverRepository, walletRepository, rateLimiter)
+    ) = RideDriverService(rideDriverRepository, accountRepository, rateLimiter)
 
     Given("a real registered driver with no active Destination Filter") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository)
-        val driver = RideDriver(id = "driver_1", userId = "driver_user_1", walletId = "wallet_1")
+        val driver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_1")
         every { rideDriverRepository.findByUserId("driver_user_1") } returns driver
         every { rideDriverRepository.save(any()) } answers { firstArg() }
 
@@ -75,7 +75,7 @@ class RideDriverServiceTest : BehaviorSpec({
         val rideDriverRepository = mockk<RideDriverRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository)
         val driver = RideDriver(
-            id = "driver_2", userId = "driver_user_2", walletId = "wallet_2",
+            id = "driver_2", userId = "driver_user_2", accountId = "account_2",
             destinationUsesToday = 2, destinationUsesResetDate = LocalDate.now(ZoneId.of("Africa/Kigali")),
         )
         every { rideDriverRepository.findByUserId("driver_user_2") } returns driver
@@ -96,7 +96,7 @@ class RideDriverServiceTest : BehaviorSpec({
         val rideDriverRepository = mockk<RideDriverRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository)
         val driver = RideDriver(
-            id = "driver_3", userId = "driver_user_3", walletId = "wallet_3",
+            id = "driver_3", userId = "driver_user_3", accountId = "account_3",
             destinationUsesToday = 2, destinationUsesResetDate = LocalDate.now(ZoneId.of("Africa/Kigali")).minusDays(1),
         )
         every { rideDriverRepository.findByUserId("driver_user_3") } returns driver

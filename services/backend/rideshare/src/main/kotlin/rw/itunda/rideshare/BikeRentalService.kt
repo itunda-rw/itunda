@@ -11,13 +11,13 @@ import rw.itunda.core.domain.BikeRentalStatus
 import rw.itunda.core.domain.BikeType
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BikeRentalSessionRepository
 import rw.itunda.core.repository.BikeRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -26,7 +26,7 @@ import java.time.Instant
 class BikeNotFoundException(message: String) : RuntimeException(message)
 class BikeNotAvailableException(message: String) : RuntimeException(message)
 class BikeSelfRentalException(message: String) : RuntimeException(message)
-class BikeNoWalletException(message: String) : RuntimeException(message)
+class BikeNoAccountException(message: String) : RuntimeException(message)
 class InvalidBikeLocationException(message: String) : RuntimeException(message)
 class BikeRentalNotFoundException(message: String) : RuntimeException(message)
 class BikeRentalAlreadyEndedException(message: String) : RuntimeException(message)
@@ -43,7 +43,7 @@ class BikeRentalAlreadyEndedException(message: String) : RuntimeException(messag
 class BikeRentalService(
     private val bikeRepository: BikeRepository,
     private val bikeRentalSessionRepository: BikeRentalSessionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -72,10 +72,10 @@ class BikeRentalService(
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidBikeLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
-        val wallet = walletRepository.findByUserIdAndType(ownerUserId, WalletType.MAIN)
-            ?: throw BikeNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(ownerUserId, AccountType.MAIN)
+            ?: throw BikeNoAccountException("No account found for this account")
         return bikeRepository.save(
-            Bike(id = "bike_${java.util.UUID.randomUUID()}", ownerUserId = ownerUserId, walletId = wallet.id, type = type, currentLatitude = latitude, currentLongitude = longitude),
+            Bike(id = "bike_${java.util.UUID.randomUUID()}", ownerUserId = ownerUserId, accountId = account.id, type = type, currentLatitude = latitude, currentLongitude = longitude),
         )
     }
 
@@ -146,12 +146,12 @@ class BikeRentalService(
         if (bikeRentalSessionRepository.findByBikeIdAndStatus(bikeId, BikeRentalStatus.ACTIVE) != null) {
             throw BikeNotAvailableException("This bike is already rented")
         }
-        // A real rider needs a wallet to be billed at rental end -- checked up front so
+        // A real rider needs a account to be billed at rental end -- checked up front so
         // a rider without one never gets to physically "unlock" a bike they can't pay
         // for, same defensive-but-real reasoning every other opt-in feature in this
         // backend already gives for this exact check.
-        walletRepository.findByUserIdAndType(riderUserId, WalletType.MAIN)
-            ?: throw BikeNoWalletException("No wallet found for this account")
+        accountRepository.findByUserIdAndType(riderUserId, AccountType.MAIN)
+            ?: throw BikeNoAccountException("No account found for this account")
 
         bike.available = false
         bikeRepository.save(bike)
@@ -169,7 +169,7 @@ class BikeRentalService(
 
     /** Real settlement -- the only point this feature ever touches the ledger, since
      * the fare genuinely isn't known until the rider parks the bike. One real
-     * transaction: rider wallet DEBIT the full fare, owner wallet CREDIT net of
+     * transaction: rider account DEBIT the full fare, owner account CREDIT net of
      * itunda's real platform fee, `fee_revenue` CREDIT the fee -- the same real
      * 3-leg settlement shape `DesignatedDriverService.completeTrip` already
      * establishes, just without a prior escrow hold to release. */
@@ -209,7 +209,7 @@ class BikeRentalService(
      * acting, same one-shot re-check discipline every other scheduler-driven per-item
      * method in this codebase already uses -- a rider who taps "end rental" a moment
      * before the scheduler runs can never be double-charged, and a still-genuinely-due
-     * row missing its bike/wallet is skipped rather than thrown, so one bad row never
+     * row missing its bike/account is skipped rather than thrown, so one bad row never
      * corrupts a real, valid settlement.
      */
     @Transactional
@@ -227,10 +227,10 @@ class BikeRentalService(
     // `forceEndAbandonedRental` so the two real triggers can never drift into two
     // different billing outcomes for the same kind of session.
     private fun settleRental(session: BikeRentalSession, bike: Bike, endLatitude: Double, endLongitude: Double): BikeRentalSession {
-        val riderWallet = walletRepository.findByUserIdAndType(session.riderUserId, WalletType.MAIN)
-            ?: throw BikeNoWalletException("No wallet found for this account")
-        val ownerWallet = walletRepository.findById(bike.walletId)
-            .orElseThrow { BikeNoWalletException("Bike owner's settlement wallet not found") }
+        val riderAccount = accountRepository.findByUserIdAndType(session.riderUserId, AccountType.MAIN)
+            ?: throw BikeNoAccountException("No account found for this account")
+        val ownerAccount = accountRepository.findById(bike.accountId)
+            .orElseThrow { BikeNoAccountException("Bike owner's settlement account not found") }
 
         val endedAt = Instant.now()
         // Real minutes billed round UP to the next full minute -- the same honest
@@ -244,10 +244,10 @@ class BikeRentalService(
         val netToOwner = totalFare.subtract(platformFee)
 
         val result = ledgerService.postLedgerTransaction(
-            riderWallet.currency,
+            riderAccount.currency,
             listOf(
-                LedgerLeg(riderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalFare, "Bike rental (${bike.type})"),
-                LedgerLeg(ownerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToOwner, "Bike rental payout"),
+                LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalFare, "Bike rental (${bike.type})"),
+                LedgerLeg(ownerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToOwner, "Bike rental payout"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Bike rental platform fee"),
             ),
         )

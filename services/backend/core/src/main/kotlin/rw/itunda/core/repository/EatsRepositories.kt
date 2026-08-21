@@ -49,7 +49,7 @@ interface EatsOrderRepository : JpaRepository<EatsOrder, String> {
 
     // Real lost-update fix (product-feel-audit-adjacent concurrency sweep, §236): see
     // EatsOrderService.tipRider's own doc comment. Same findByIdForUpdate convention
-    // WalletRepository/FraudFlagRepository/DebitCardRepository/CommunityPostRepository
+    // AccountRepository/FraudFlagRepository/DebitCardRepository/CommunityPostRepository
     // already establish for a check-then-act-then-write row.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from EatsOrder o where o.id = :id")

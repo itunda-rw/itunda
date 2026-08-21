@@ -24,7 +24,7 @@ import java.time.Instant
  *
  * Unlike Bike/Parking (duration unknown at start, billed at checkout), a real bus
  * ticket's fare IS known at booking time (seatCount * farePerSeat) -- so this bills
- * immediately at booking, the same direct wallet-to-wallet-at-purchase shape
+ * immediately at booking, the same direct account-to-account-at-purchase shape
  * `MerchantService.collect` already establishes, not the settle-at-end pattern.
  *
  * `@Version` guards `availableSeats` against a real concurrent-booking race (two
@@ -42,8 +42,8 @@ class BusTrip(
     @Column(name = "operator_user_id", nullable = false, length = 64)
     val operatorUserId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, length = 200)
     val origin: String,
@@ -71,7 +71,7 @@ class BusTrip(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", operatorUserId = "", walletId = "", origin = "", destination = "",
+        id = "", operatorUserId = "", accountId = "", origin = "", destination = "",
         departureTime = Instant.EPOCH, totalSeats = 0, availableSeats = 0, farePerSeat = BigDecimal.ZERO,
     )
 }

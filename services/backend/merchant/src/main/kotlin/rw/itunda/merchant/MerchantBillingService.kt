@@ -8,14 +8,14 @@ import rw.itunda.core.domain.MerchantBillingPlan
 import rw.itunda.core.domain.MerchantBillingSubscription
 import rw.itunda.core.domain.MerchantBillingSubscriptionStatus
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantBillingPlanRepository
 import rw.itunda.core.repository.MerchantBillingSubscriptionRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -26,12 +26,12 @@ class InvalidBillingPlanException(message: String) : RuntimeException(message)
 class BillingPlanNotFoundException(message: String) : RuntimeException(message)
 class BillingSubscriptionNotFoundException(message: String) : RuntimeException(message)
 class SelfSubscriptionException(message: String) : RuntimeException(message)
-class BillingNoWalletException(message: String) : RuntimeException(message)
+class BillingNoAccountException(message: String) : RuntimeException(message)
 
 /**
  * Real Kakao Pay 정기결제/Toss Payments billing-key-style recurring merchant billing --
  * see `MerchantBillingPlan.kt`/`MerchantBillingSubscription.kt`'s own doc comments for
- * the full account. Reuses the exact real wallet-to-wallet ledger movement
+ * the full account. Reuses the exact real account-to-account ledger movement
  * `MerchantService.collect()` already established for QR payments -- a recurring
  * charge is not a new kind of money movement, just a different trigger for the same
  * real transaction shape. The actual charge-posting step lives in
@@ -43,7 +43,7 @@ class MerchantBillingService(
     private val merchantBillingPlanRepository: MerchantBillingPlanRepository,
     private val merchantBillingSubscriptionRepository: MerchantBillingSubscriptionRepository,
     private val merchantRepository: MerchantRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val chargeExecutor: MerchantBillingChargeExecutor,
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
@@ -111,16 +111,16 @@ class MerchantBillingService(
         val merchant = merchantRepository.findById(plan.merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
         if (merchant.ownerUserId == customerId) throw SelfSubscriptionException("Cannot subscribe to your own billing plan")
 
-        val customerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
-            ?: throw BillingNoWalletException("No wallet found for this account")
-        val merchantWallet = walletRepository.findById(merchant.walletId).orElse(null)
-            ?: throw BillingNoWalletException("Merchant wallet not found")
+        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
+            ?: throw BillingNoAccountException("No account found for this account")
+        val merchantAccount = accountRepository.findById(merchant.accountId).orElse(null)
+            ?: throw BillingNoAccountException("Merchant account not found")
 
         val subscription = MerchantBillingSubscription(
             id = "billing_sub_${UUID.randomUUID()}", planId = plan.id, merchantId = plan.merchantId, customerId = customerId,
             nextChargeAt = Instant.now(),
         )
-        chargeExecutor.execute(subscription, plan, merchant, customerWallet, merchantWallet)
+        chargeExecutor.execute(subscription, plan, merchant, customerAccount, merchantAccount)
         subscription.nextChargeAt = subscription.nextChargeAt.plus(plan.intervalDays.toLong(), ChronoUnit.DAYS)
         return merchantBillingSubscriptionRepository.save(subscription)
     }
@@ -142,7 +142,7 @@ class MerchantBillingService(
 
     /**
      * Real recurring charge -- returns false (never throws) on a genuine, honest
-     * failure (insufficient funds, closed wallet) so the scheduler's per-item loop is
+     * failure (insufficient funds, closed account) so the scheduler's per-item loop is
      * never blocked by one bad subscription, same discipline `AutoTransferService
      * .executeOne` already establishes for a different real recurring flow. A failed
      * charge is skipped, not retried same-cycle: the schedule still advances to the
@@ -165,15 +165,15 @@ class MerchantBillingService(
             return false
         }
         val merchant = merchantRepository.findById(subscription.merchantId).orElse(null)
-        val customerWallet = walletRepository.findByUserIdAndType(subscription.customerId, WalletType.MAIN)
-        val merchantWallet = merchant?.let { walletRepository.findById(it.walletId).orElse(null) }
+        val customerAccount = accountRepository.findByUserIdAndType(subscription.customerId, AccountType.MAIN)
+        val merchantAccount = merchant?.let { accountRepository.findById(it.accountId).orElse(null) }
 
-        val succeeded = if (merchant == null || customerWallet == null || merchantWallet == null) {
-            subscription.lastFailureReason = "Merchant or wallet no longer available"
+        val succeeded = if (merchant == null || customerAccount == null || merchantAccount == null) {
+            subscription.lastFailureReason = "Merchant or account no longer available"
             false
         } else {
             try {
-                chargeExecutor.execute(subscription, resolvedPlan, merchant, customerWallet, merchantWallet)
+                chargeExecutor.execute(subscription, resolvedPlan, merchant, customerAccount, merchantAccount)
                 true
             } catch (e: InsufficientFundsException) {
                 subscription.lastFailureReason = "Insufficient balance"

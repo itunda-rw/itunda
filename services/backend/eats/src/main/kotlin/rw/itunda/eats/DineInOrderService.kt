@@ -16,7 +16,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -30,7 +30,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -43,8 +43,8 @@ class DineInMenuItemNotFoundException(message: String) : RuntimeException(messag
 class DineInMenuItemSoldOutException(message: String) : RuntimeException(message)
 class DineInMenuItemSurplusDealExpiredException(message: String) : RuntimeException(message)
 class DineInRestaurantNotFoundException(message: String) : RuntimeException(message)
-class DineInRestaurantNoWalletException(message: String) : RuntimeException(message)
-class DineInBuyerNoWalletException(message: String) : RuntimeException(message)
+class DineInRestaurantNoAccountException(message: String) : RuntimeException(message)
+class DineInBuyerNoAccountException(message: String) : RuntimeException(message)
 class SelfDineInOrderException(message: String) : RuntimeException(message)
 class DineInOrderNotFoundException(message: String) : RuntimeException(message)
 class InvalidDineInStatusTransitionException(message: String) : RuntimeException(message)
@@ -60,9 +60,9 @@ data class DineInOrderDetail(val order: DineInOrder, val items: List<DineInOrder
  * reusing the exact same real `Merchant`/`MerchantProduct` catalog and the exact same
  * real menu-options resolution, but with no delivery address, no rider, and no delivery
  * fee/holding leg at all: `totalAmount` == `itemsSubtotal` (platformFee comes out of the
- * restaurant's own share), settled straight into the restaurant's wallet in one atomic
- * ledger post at placement time, same as `MerchantService.collect()`'s own real wallet-to-
- * wallet movement. See `DineInOrder.kt`'s own doc comment for the full account of why this
+ * restaurant's own share), settled straight into the restaurant's account in one atomic
+ * ledger post at placement time, same as `MerchantService.collect()`'s own real account-to-
+ * account movement. See `DineInOrder.kt`'s own doc comment for the full account of why this
  * is a separate entity rather than an extension of `EatsOrder`.
  */
 @Service
@@ -73,7 +73,7 @@ class DineInOrderService(
     private val dineInOrderItemRepository: DineInOrderItemRepository,
     private val menuOptionGroupRepository: MenuOptionGroupRepository,
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
@@ -136,10 +136,10 @@ class DineInOrderService(
             throw DineInRestaurantNotAcceptingOrdersException("This restaurant is closed today")
         }
 
-        val restaurantWallet = walletRepository.findById(restaurant.walletId)
-            .orElseThrow { DineInRestaurantNoWalletException("Restaurant settlement wallet not found") }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw DineInBuyerNoWalletException("No wallet found for this account")
+        val restaurantAccount = accountRepository.findById(restaurant.accountId)
+            .orElseThrow { DineInRestaurantNoAccountException("Restaurant settlement account not found") }
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw DineInBuyerNoAccountException("No account found for this account")
 
         val distinctMenuItemIds = items.map { it.menuItemId }.distinct()
         val groupsByProduct = if (distinctMenuItemIds.isNotEmpty()) {
@@ -215,10 +215,10 @@ class DineInOrderService(
         val totalAmount = itemsSubtotal
 
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Dine-in order - ${restaurant.businessName}"),
-                LedgerLeg(restaurantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToRestaurant, "Dine-in order collection - ${restaurant.businessName}"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Dine-in order - ${restaurant.businessName}"),
+                LedgerLeg(restaurantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToRestaurant, "Dine-in order collection - ${restaurant.businessName}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Dine-in platform fee - ${restaurant.businessName}"),
             ),
         )
@@ -228,11 +228,11 @@ class DineInOrderService(
             referenceNumber = "DINEIN${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = buyerId,
             recipientId = restaurant.ownerUserId,
-            fromWalletId = buyerWallet.id,
-            toWalletId = restaurantWallet.id,
+            fromAccountId = buyerAccount.id,
+            toAccountId = restaurantAccount.id,
             amount = totalAmount,
             fee = platformFee,
-            currency = buyerWallet.currency,
+            currency = buyerAccount.currency,
             type = TransactionType.PAYMENT,
             status = TransactionStatus.COMPLETED,
             description = "Dine-in order - ${restaurant.businessName}",

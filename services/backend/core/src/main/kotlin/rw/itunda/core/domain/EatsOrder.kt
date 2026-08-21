@@ -14,7 +14,7 @@ import java.time.Instant
 // states are restaurant-driven (PLACED -> ACCEPTED -> PREPARING -> READY_FOR_PICKUP), the
 // next three are rider-driven (a rider claims a READY_FOR_PICKUP order, moving it to
 // RIDER_ASSIGNED, then PICKED_UP, then DELIVERED -- the transition that triggers the real
-// delivery-fee payout out of `eats_delivery_holding` into the rider's own wallet). A real
+// delivery-fee payout out of `eats_delivery_holding` into the rider's own account). A real
 // CANCELLED terminal state (2026-07-18) is reachable only from PLACED -- before the
 // restaurant has started real fulfillment work and before any rider is involved, the
 // safest and simplest real scope. See EatsOrderService.cancelOrder's own doc comment for
@@ -43,7 +43,7 @@ enum class EatsFulfillmentType { DELIVERY, PICKUP }
  * already named for the neighborhood marketplace) -- it's held in the real
  * `eats_delivery_holding` clearing account from placement until a real rider completes
  * the delivery, at which point `EatsOrderService` posts a second real ledger transaction
- * paying it straight into that rider's own wallet.
+ * paying it straight into that rider's own account.
  */
 @Entity
 @Table(name = "eats_orders")

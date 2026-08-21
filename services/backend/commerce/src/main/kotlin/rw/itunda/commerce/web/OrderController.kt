@@ -21,11 +21,11 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
-import rw.itunda.commerce.BuyerNoWalletException
+import rw.itunda.commerce.BuyerNoAccountException
 import rw.itunda.commerce.DeliveryAlreadyClaimedException
 import rw.itunda.commerce.EmptyOrderException
 import rw.itunda.commerce.FavoriteProductNotFoundException
@@ -36,7 +36,7 @@ import rw.itunda.commerce.InvalidProductReviewReplyException
 import rw.itunda.commerce.InvalidQuantityException
 import rw.itunda.commerce.InsufficientProductStockException
 import rw.itunda.commerce.InvalidReturnReasonException
-import rw.itunda.commerce.MerchantNoWalletException
+import rw.itunda.commerce.MerchantNoAccountException
 import rw.itunda.commerce.MerchantNotAcceptingOrdersException
 import rw.itunda.commerce.MerchantNotFoundException
 import rw.itunda.commerce.MinOrderAmountNotMetException
@@ -406,12 +406,12 @@ class OrderController(
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleMerchantNoWallet(ex: MerchantNoWalletException) =
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleMerchantNoAccount(ex: MerchantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(BuyerNoWalletException::class)
-    fun handleBuyerNoWallet(ex: BuyerNoWalletException) =
+    @ExceptionHandler(BuyerNoAccountException::class)
+    fun handleBuyerNoAccount(ex: BuyerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmptyOrderException::class)
@@ -522,7 +522,7 @@ class OrderController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 }

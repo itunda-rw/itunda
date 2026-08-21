@@ -10,13 +10,13 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.OverdraftAccount
 import rw.itunda.core.domain.OverdraftAccountStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OverdraftAccountRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -29,7 +29,7 @@ class OverdraftApplicationDeclinedException(message: String) : RuntimeException(
 class OverdraftNotActiveException(message: String) : RuntimeException(message)
 class OverdraftLimitExceededException(message: String) : RuntimeException(message)
 class OverdraftInvalidAmountException(message: String) : RuntimeException(message)
-class OverdraftNoWalletException(message: String) : RuntimeException(message)
+class OverdraftNoAccountException(message: String) : RuntimeException(message)
 
 /**
  * Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
@@ -39,7 +39,7 @@ class OverdraftNoWalletException(message: String) : RuntimeException(message)
 @Service
 class OverdraftService(
     private val overdraftAccountRepository: OverdraftAccountRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
@@ -73,11 +73,11 @@ class OverdraftService(
             throw OverdraftApplicationDeclinedException("Credit score $score is below the minimum $MIN_SCORE_TO_QUALIFY required")
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw OverdraftNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw OverdraftNoAccountException("No account found for this account")
 
-        val account = overdraftAccountRepository.save(
+        val overdraftAccount = overdraftAccountRepository.save(
             OverdraftAccount(
-                id = "overdraft_${UUID.randomUUID()}", userId = userId, walletId = wallet.id,
+                id = "overdraft_${UUID.randomUUID()}", userId = userId, accountId = account.id,
                 creditLimit = requestedLimit, interestRate = ANNUAL_INTEREST_RATE,
             ),
         )
@@ -92,12 +92,12 @@ class OverdraftService(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "OVERDRAFT_OPENED",
                 title = title, body = body,
-                isRead = false, createdAt = Instant.now(), dataJson = "{\"overdraftId\":\"${account.id}\"}",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"overdraftId\":\"${overdraftAccount.id}\"}",
             ),
         )
-        sendOverdraftOpenedPushAfterCommit(userId, title, body, account.id)
+        sendOverdraftOpenedPushAfterCommit(userId, title, body, overdraftAccount.id)
 
-        return account
+        return overdraftAccount
     }
 
     /** Do not send a credit-product security alert until its account creation commits. */
@@ -115,45 +115,45 @@ class OverdraftService(
     @Transactional
     fun draw(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw OverdraftInvalidAmountException("Amount must be greater than zero")
-        val account = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
+        val overdraftAccount = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
             ?: throw OverdraftNotActiveException("No active overdraft account found")
 
-        val availableCredit = account.creditLimit.subtract(account.drawnBalance)
+        val availableCredit = overdraftAccount.creditLimit.subtract(overdraftAccount.drawnBalance)
         if (amount > availableCredit) {
             throw OverdraftLimitExceededException("Requested amount exceeds your real available credit of $availableCredit RWF")
         }
 
-        val wallet = walletRepository.findById(account.walletId).orElseThrow { OverdraftNoWalletException("Wallet not found") }
+        val account = accountRepository.findById(overdraftAccount.accountId).orElseThrow { OverdraftNoAccountException("Account not found") }
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Overdraft draw ${account.id}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Overdraft draw ${account.id}"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, amount, "Overdraft draw ${account.id}"),
             ),
         )
 
-        account.drawnBalance = account.drawnBalance.add(amount)
-        account.updatedAt = Instant.now()
-        overdraftAccountRepository.save(account)
+        overdraftAccount.drawnBalance = overdraftAccount.drawnBalance.add(amount)
+        overdraftAccount.updatedAt = Instant.now()
+        overdraftAccountRepository.save(overdraftAccount)
 
         return mapOf(
             "transactionId" to result.transactionId, "amount" to amount,
-            "drawnBalance" to account.drawnBalance, "availableCredit" to account.creditLimit.subtract(account.drawnBalance),
+            "drawnBalance" to overdraftAccount.drawnBalance, "availableCredit" to overdraftAccount.creditLimit.subtract(overdraftAccount.drawnBalance),
         )
     }
 
     @Transactional
     fun repay(userId: String, amount: BigDecimal): Map<String, Any?> {
         if (amount <= BigDecimal.ZERO) throw OverdraftInvalidAmountException("Amount must be greater than zero")
-        val account = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
+        val overdraftAccount = overdraftAccountRepository.findByUserIdAndStatus(userId, OverdraftAccountStatus.ACTIVE)
             ?: throw OverdraftNotActiveException("No active overdraft account found")
 
-        val repayAmount = amount.min(account.drawnBalance)
-        val wallet = walletRepository.findById(account.walletId).orElseThrow { OverdraftNoWalletException("Wallet not found") }
+        val repayAmount = amount.min(overdraftAccount.drawnBalance)
+        val account = accountRepository.findById(overdraftAccount.accountId).orElseThrow { OverdraftNoAccountException("Account not found") }
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, repayAmount, "Overdraft repayment ${account.id}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, repayAmount, "Overdraft repayment ${account.id}"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, repayAmount, "Overdraft repayment ${account.id}"),
             ),
         )
@@ -163,15 +163,15 @@ class OverdraftService(
         // real zero drawn balance -- it just frees up real available credit
         // (creditLimit - drawnBalance) to draw again, the defining real "revolving"
         // behavior neither bank's own real term-loan product has.
-        account.drawnBalance = account.drawnBalance.subtract(repayAmount)
-        account.updatedAt = Instant.now()
-        overdraftAccountRepository.save(account)
-        val updatedWallet = walletRepository.findById(account.walletId).orElseThrow { OverdraftNoWalletException("Wallet not found") }
+        overdraftAccount.drawnBalance = overdraftAccount.drawnBalance.subtract(repayAmount)
+        overdraftAccount.updatedAt = Instant.now()
+        overdraftAccountRepository.save(overdraftAccount)
+        val updatedAccount = accountRepository.findById(overdraftAccount.accountId).orElseThrow { OverdraftNoAccountException("Account not found") }
 
         return mapOf(
             "transactionId" to result.transactionId, "amount" to repayAmount,
-            "drawnBalance" to account.drawnBalance, "availableCredit" to account.creditLimit.subtract(account.drawnBalance),
-            "newBalance" to updatedWallet.balance,
+            "drawnBalance" to overdraftAccount.drawnBalance, "availableCredit" to overdraftAccount.creditLimit.subtract(overdraftAccount.drawnBalance),
+            "newBalance" to updatedAccount.balance,
         )
     }
 

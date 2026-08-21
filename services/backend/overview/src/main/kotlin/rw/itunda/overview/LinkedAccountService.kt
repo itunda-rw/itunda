@@ -77,8 +77,8 @@ class LinkedAccountService(
         // (POST /api/v1/accounts/link/{accountId}/unlink), directly probeable/
         // enumerable -- a linked account belonging to a DIFFERENT user used to throw
         // LinkedAccountNotOwnedException, mapped to a real 403 that confirmed the id
-        // was real. Same real-existence-confirming probe WalletService.getWalletById's
-        // own doc comment already documents fixing for wallet lookups; same fix here.
+        // was real. Same real-existence-confirming probe AccountService.getAccountById's
+        // own doc comment already documents fixing for account lookups; same fix here.
         if (account.userId != userId) {
             throw LinkedAccountNotFoundException("Linked account not found")
         }

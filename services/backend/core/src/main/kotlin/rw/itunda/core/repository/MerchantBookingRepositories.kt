@@ -60,7 +60,7 @@ interface BookingDepositRepository : JpaRepository<BookingDeposit, String> {
     // blocks the second caller from even reading a stale HELD status until the first
     // transaction commits, so it correctly no-ops via the status check before ever
     // touching the ledger, rather than posting real money and only failing at the
-    // final save. Same findByIdForUpdate convention WalletRepository/
+    // final save. Same findByIdForUpdate convention AccountRepository/
     // FraudFlagRepository/DebitCardRepository/GroupEatsOrderRepository already
     // establish for this exact class of bug.
     @Lock(LockModeType.PESSIMISTIC_WRITE)

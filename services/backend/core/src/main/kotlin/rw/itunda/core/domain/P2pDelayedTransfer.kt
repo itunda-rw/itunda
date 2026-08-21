@@ -11,7 +11,7 @@ import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 
-// PENDING: real money already left the sender's wallet, held in p2p_delay_holding.
+// PENDING: real money already left the sender's account, held in p2p_delay_holding.
 // COMPLETED: the real delay window elapsed and the scheduler released it to the
 // recipient. CANCELLED: the sender cancelled within the window and got a real refund.
 enum class P2pDelayedTransferStatus { PENDING, COMPLETED, CANCELLED }
@@ -37,7 +37,7 @@ enum class P2pDelayedTransferStatus { PENDING, COMPLETED, CANCELLED }
  * wanted.
  *
  * Same real escrow-clearing-account shape `MarketplaceEscrow`/`BookingDeposit` already
- * establish: the sender's real money already left their wallet at request time, it
+ * establish: the sender's real money already left their account at request time, it
  * just hasn't reached the recipient yet. Deliberately simpler than either of those:
  * cancellable any time up to release (real KakaoBank/IBK practice cuts cancellation
  * off 30 minutes before the final release instant -- itunda's own honest v1 is
@@ -62,14 +62,14 @@ class P2pDelayedTransfer(
     @Column(name = "sender_user_id", nullable = false, length = 64)
     val senderUserId: String,
 
-    @Column(name = "sender_wallet_id", nullable = false, length = 64)
-    val senderWalletId: String,
+    @Column(name = "sender_account_id", nullable = false, length = 64)
+    val senderAccountId: String,
 
     @Column(name = "recipient_user_id", nullable = false, length = 64)
     val recipientUserId: String,
 
-    @Column(name = "recipient_wallet_id", nullable = false, length = 64)
-    val recipientWalletId: String,
+    @Column(name = "recipient_account_id", nullable = false, length = 64)
+    val recipientAccountId: String,
 
     @Column(nullable = false, precision = 18, scale = 2)
     val amount: BigDecimal,
@@ -101,7 +101,7 @@ class P2pDelayedTransfer(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", senderUserId = "", senderWalletId = "", recipientUserId = "", recipientWalletId = "",
+        id = "", senderUserId = "", senderAccountId = "", recipientUserId = "", recipientAccountId = "",
         amount = BigDecimal.ZERO, description = "", holdTransactionId = "", releaseAt = Instant.EPOCH,
     )
 

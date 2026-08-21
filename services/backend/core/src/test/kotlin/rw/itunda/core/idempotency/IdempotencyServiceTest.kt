@@ -38,7 +38,7 @@ class IdempotencyServiceTest : BehaviorSpec({
 
         When("the mobile client retries the request") {
             val result = service.replayOrExecute(
-                "POST /api/v1/wallet/agent-withdrawal-authorizations", "retry-key", mapOf("amount" to 5000),
+                "POST /api/v1/account/agent-withdrawal-authorizations", "retry-key", mapOf("amount" to 5000),
             ) { error("a replay must not create a second authorization") }
 
             Then("it returns the original response without executing the money action") {
@@ -57,7 +57,7 @@ class IdempotencyServiceTest : BehaviorSpec({
         Then("it rejects the request before a second code can be created") {
             shouldThrow<IdempotencyConflictException> {
                 service.replayOrExecute(
-                    "POST /api/v1/wallet/agent-withdrawal-authorizations", "retry-key", mapOf("amount" to 7000),
+                    "POST /api/v1/account/agent-withdrawal-authorizations", "retry-key", mapOf("amount" to 7000),
                 ) { error("a conflicted key must not execute") }
             }
         }

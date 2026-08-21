@@ -6,12 +6,12 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.ShoppingMissionReward
 import rw.itunda.core.domain.ShoppingWelcomeBonusClaim
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ShoppingMissionRewardRepository
 import rw.itunda.core.repository.ShoppingWelcomeBonusClaimRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.security.SecureRandom
 import java.time.Instant
@@ -49,13 +49,13 @@ val SPIN_OUTCOMES = listOf(
     SpinOutcome(BigDecimal("300"), 0.05),
 )
 
-data class MissionClaimResult(val type: ShoppingMissionType, val amountEarned: BigDecimal, val newWalletBalance: BigDecimal)
+data class MissionClaimResult(val type: ShoppingMissionType, val amountEarned: BigDecimal, val newAccountBalance: BigDecimal)
 data class MissionStatusEntry(val type: ShoppingMissionType, val label: String, val rewardAmount: BigDecimal, val completedToday: Boolean, val claimedEver: Boolean = false)
 
 /**
  * Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row -- see
  * `ShoppingMissionReward`'s own doc comment for the full sourced account. Every mission
- * pays real RWF straight into the user's real wallet via `LedgerService`, following
+ * pays real RWF straight into the user's real account via `LedgerService`, following
  * `StepRewardService`'s exact established architecture rather than inventing a second,
  * separate "points" currency this app has never had.
  */
@@ -63,7 +63,7 @@ data class MissionStatusEntry(val type: ShoppingMissionType, val label: String, 
 class ShoppingMissionService(
     private val missionRepository: ShoppingMissionRewardRepository,
     private val welcomeBonusRepository: ShoppingWelcomeBonusClaimRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val random: java.util.Random = SecureRandom(),
 ) {
@@ -104,7 +104,7 @@ class ShoppingMissionService(
         // own flat, disclosed rewardAmount.
         val amount = if (type == ShoppingMissionType.SPIN) drawSpinReward() else type.rewardAmount
 
-        val newBalance = creditWallet(userId, amount, "Shopping mission - ${type.name}")
+        val newBalance = creditAccount(userId, amount, "Shopping mission - ${type.name}")
         when (type) {
             ShoppingMissionType.CHECK_IN -> reward.checkedIn = true
             ShoppingMissionType.SCROLL -> reward.scrolled = true
@@ -120,7 +120,7 @@ class ShoppingMissionService(
     @Transactional
     fun claimWelcomeBonus(userId: String): MissionClaimResult {
         if (welcomeBonusRepository.existsById(userId)) throw MissionAlreadyCompletedException("Welcome bonus already claimed")
-        val newBalance = creditWallet(userId, ShoppingMissionType.WELCOME_BONUS.rewardAmount, "Shopping mission - WELCOME_BONUS")
+        val newBalance = creditAccount(userId, ShoppingMissionType.WELCOME_BONUS.rewardAmount, "Shopping mission - WELCOME_BONUS")
         // The real once-ever guard: a second concurrent claim fails this unique-PK
         // insert instead of racing an app-level boolean check.
         welcomeBonusRepository.save(ShoppingWelcomeBonusClaim(userId = userId))
@@ -137,16 +137,16 @@ class ShoppingMissionService(
         return SPIN_OUTCOMES.last().amount
     }
 
-    private fun creditWallet(userId: String, amount: BigDecimal, memo: String): BigDecimal {
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw RewardsNoWalletException("No wallet found for this account")
+    private fun creditAccount(userId: String, amount: BigDecimal, memo: String): BigDecimal {
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw RewardsNoAccountException("No account found for this account")
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
                 LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, amount, memo),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, memo),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, memo),
             ),
         )
-        return walletRepository.findByUserIdAndType(userId, WalletType.MAIN)?.balance ?: wallet.balance
+        return accountRepository.findByUserIdAndType(userId, AccountType.MAIN)?.balance ?: account.balance
     }
 }

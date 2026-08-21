@@ -16,7 +16,7 @@ import java.time.Instant
  *
  * `maxAmount` is a real, sourced safety cap (Kakao Pay's own auto-pay lets a user
  * bound the maximum they'll ever be auto-charged, so a real unusually large bill still
- * requires a manual review rather than silently draining the wallet) -- a due
+ * requires a manual review rather than silently draining the account) -- a due
  * [rw.itunda.bills.BillsCatalog] `PendingBill` whose real amount exceeds this cap is
  * honestly skipped, never auto-paid anyway.
  *

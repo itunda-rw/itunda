@@ -16,7 +16,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -27,7 +27,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.DayOfWeek
@@ -68,7 +68,7 @@ class MerchantBookingService(
     private val availabilityWindowRepository: MerchantAvailabilityWindowRepository,
     private val merchantBookingRepository: MerchantBookingRepository,
     private val notificationRepository: NotificationRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val bookingDepositRepository: BookingDepositRepository,
@@ -197,16 +197,16 @@ class MerchantBookingService(
     }
 
     private fun holdDeposit(booking: MerchantBooking, merchant: Merchant, amount: BigDecimal, customerId: String) {
-        val customerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
-            ?: throw MerchantNoWalletException("No wallet found for this account")
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
+            ?: throw MerchantNoAccountException("No account found for this account")
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
         val fee = amount.multiply(DEPOSIT_FEE_RATE).setScale(2, RoundingMode.HALF_UP)
 
         val result = ledgerService.postLedgerTransaction(
-            customerWallet.currency,
+            customerAccount.currency,
             listOf(
-                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Booking deposit - ${booking.serviceName}"),
+                LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Booking deposit - ${booking.serviceName}"),
                 LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.CREDIT, amount, "Booking deposit held - ${booking.serviceName}"),
             ),
         )
@@ -216,11 +216,11 @@ class MerchantBookingService(
                 referenceNumber = "BKDEP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = customerId,
                 recipientId = merchant.ownerUserId,
-                fromWalletId = customerWallet.id,
-                toWalletId = merchantWallet.id,
+                fromAccountId = customerAccount.id,
+                toAccountId = merchantAccount.id,
                 amount = amount,
                 fee = fee,
-                currency = customerWallet.currency,
+                currency = customerAccount.currency,
                 type = TransactionType.PAYMENT,
                 status = TransactionStatus.COMPLETED,
                 description = "Booking deposit - ${booking.serviceName}",
@@ -245,14 +245,14 @@ class MerchantBookingService(
     private fun payOutDeposit(booking: MerchantBooking, merchant: Merchant, resultStatus: BookingDepositStatus) {
         val deposit = bookingDepositRepository.findByBookingIdForUpdate(booking.id) ?: return
         if (deposit.status != BookingDepositStatus.HELD) return
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
         val netToMerchant = deposit.amount.subtract(deposit.fee)
         val result = ledgerService.postLedgerTransaction(
-            merchantWallet.currency,
+            merchantAccount.currency,
             listOf(
                 LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.DEBIT, deposit.amount, "Booking deposit ${resultStatus.name.lowercase()}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Booking deposit ${resultStatus.name.lowercase()}"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Booking deposit ${resultStatus.name.lowercase()}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, deposit.fee, "Booking deposit fee"),
             ),
         )
@@ -268,13 +268,13 @@ class MerchantBookingService(
     private fun refundDeposit(booking: MerchantBooking) {
         val deposit = bookingDepositRepository.findByBookingIdForUpdate(booking.id) ?: return
         if (deposit.status != BookingDepositStatus.HELD) return
-        val customerWallet = walletRepository.findByUserIdAndType(deposit.customerId, WalletType.MAIN)
-            ?: throw MerchantNoWalletException("No wallet found for this account")
+        val customerAccount = accountRepository.findByUserIdAndType(deposit.customerId, AccountType.MAIN)
+            ?: throw MerchantNoAccountException("No account found for this account")
         val result = ledgerService.postLedgerTransaction(
-            customerWallet.currency,
+            customerAccount.currency,
             listOf(
                 LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.DEBIT, deposit.amount, "Booking deposit refunded"),
-                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, deposit.amount, "Booking deposit refund"),
+                LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, deposit.amount, "Booking deposit refund"),
             ),
         )
         deposit.status = BookingDepositStatus.REFUNDED
@@ -411,7 +411,7 @@ class MerchantBookingService(
      * 130's own "exhaustive audit" checked `BookingNoShowScheduler` and marked it
      * clean, but that audit specifically looked for the narrower self-invocation
      * `UnexpectedRollbackException` shape -- this was the OTHER variant of the same
-     * bug class: a single bad row (e.g. a booking whose merchant's settlement wallet
+     * bug class: a single bad row (e.g. a booking whose merchant's settlement account
      * went missing, throwing from `payOutDeposit`) rolled back every OTHER real due
      * booking's no-show status change and forfeit payout in the same poll, not just
      * the bad one -- the identical "one bad row blocks the sweep for every other real

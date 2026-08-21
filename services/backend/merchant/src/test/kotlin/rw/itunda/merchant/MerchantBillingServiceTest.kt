@@ -15,8 +15,8 @@ import rw.itunda.core.domain.MerchantBillingPlan
 import rw.itunda.core.domain.MerchantBillingSubscription
 import rw.itunda.core.domain.MerchantBillingSubscriptionStatus
 import rw.itunda.core.domain.MerchantStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -27,7 +27,7 @@ import rw.itunda.core.repository.MerchantBillingSubscriptionRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -40,17 +40,17 @@ import java.util.Optional
  */
 class MerchantBillingServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
-    Given("a merchant with an active billing plan and a customer with a wallet") {
+    Given("a merchant with an active billing plan and a customer with a account") {
         val merchantBillingPlanRepository = mockk<MerchantBillingPlanRepository>()
         val merchantBillingSubscriptionRepository = mockk<MerchantBillingSubscriptionRepository>(relaxed = true)
         every { merchantBillingSubscriptionRepository.save(any()) } answers { firstArg() }
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -66,19 +66,19 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
+            accountRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
         )
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val plan = MerchantBillingPlan(id = "plan_1", merchantId = "merchant_1", name = "Monthly coffee box", amount = BigDecimal("5000"), intervalDays = 30)
-        val customerWallet = wallet("wallet_customer", "customer_1")
-        val merchantWallet = wallet("wallet_merchant", "owner_1")
+        val customerAccount = account("account_customer", "customer_1")
+        val merchantAccount = account("account_merchant", "owner_1")
 
         When("a customer subscribes and their first charge succeeds") {
             every { merchantBillingPlanRepository.findById("plan_1") } returns Optional.of(plan)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("txn_1", emptyList())
 
             val subscription = service.subscribe("customer_1", "plan_1")
@@ -113,8 +113,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
         When("a customer's first charge fails for insufficient funds") {
             every { merchantBillingPlanRepository.findById("plan_1") } returns Optional.of(plan)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { ledgerService.postLedgerTransaction(any(), any()) } throws InsufficientFundsException("Insufficient balance")
 
             Then("subscribe itself fails honestly instead of silently creating a subscription with a hidden failed charge") {
@@ -167,7 +167,7 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val merchantBillingSubscriptionRepository = mockk<MerchantBillingSubscriptionRepository>(relaxed = true)
         every { merchantBillingSubscriptionRepository.save(any()) } answers { firstArg() }
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -183,13 +183,13 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
+            accountRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
         )
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val plan = MerchantBillingPlan(id = "plan_1", merchantId = "merchant_1", name = "Monthly coffee box", amount = BigDecimal("5000"), intervalDays = 30)
-        val customerWallet = wallet("wallet_customer", "customer_1")
-        val merchantWallet = wallet("wallet_merchant", "owner_1")
+        val customerAccount = account("account_customer", "customer_1")
+        val merchantAccount = account("account_merchant", "owner_1")
         val subscription = MerchantBillingSubscription(
             id = "billing_sub_1", planId = "plan_1", merchantId = "merchant_1", customerId = "customer_1",
             nextChargeAt = Instant.now(), chargeCount = 3, lastChargedAt = Instant.now().minusSeconds(30 * 24 * 3600),
@@ -197,8 +197,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
 
         When("the recurring charge succeeds") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("txn_2", emptyList())
 
             val succeeded = service.chargeOne(subscription, plan)
@@ -211,8 +211,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
 
         When("a recurring charge is recorded inside an uncommitted transaction") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("txn_after_commit", emptyList())
 
             TransactionSynchronizationManager.initSynchronization()
@@ -243,8 +243,8 @@ class MerchantBillingServiceTest : BehaviorSpec({
 
         When("the recurring charge fails for insufficient funds") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
             every { ledgerService.postLedgerTransaction(any(), any()) } throws InsufficientFundsException("Insufficient balance")
             val staleChargeCount = subscription.chargeCount
 
@@ -266,15 +266,15 @@ class MerchantBillingServiceTest : BehaviorSpec({
             }
         }
 
-        When("the recurring charge fails because the merchant's wallet is no longer available") {
+        When("the recurring charge fails because the merchant's account is no longer available") {
             every { merchantRepository.findById("merchant_1") } returns Optional.empty()
-            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+            every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
 
             val succeeded = service.chargeOne(subscription, plan)
 
             Then("it is skipped honestly and the customer is still notified") {
                 succeeded shouldBe false
-                subscription.lastFailureReason shouldBe "Merchant or wallet no longer available"
+                subscription.lastFailureReason shouldBe "Merchant or account no longer available"
                 verify(exactly = 1) {
                     notificationRepository.save(match { it.userId == "customer_1" && it.type == "MERCHANT_BILLING_FAILED" })
                 }

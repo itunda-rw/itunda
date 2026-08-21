@@ -35,8 +35,8 @@ class ParkingSpot(
     @Column(name = "owner_user_id", nullable = false, length = 64)
     val ownerUserId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, length = 500)
     val address: String,
@@ -66,5 +66,5 @@ class ParkingSpot(
     @Column(nullable = false)
     var version: Long = 0,
 ) {
-    protected constructor() : this(id = "", ownerUserId = "", walletId = "", address = "", latitude = 0.0, longitude = 0.0, hourlyRate = BigDecimal.ZERO)
+    protected constructor() : this(id = "", ownerUserId = "", accountId = "", address = "", latitude = 0.0, longitude = 0.0, hourlyRate = BigDecimal.ZERO)
 }

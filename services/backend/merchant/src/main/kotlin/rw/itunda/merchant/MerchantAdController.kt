@@ -77,8 +77,8 @@ class MerchantAdController(
     fun handleInvalidCoordinate(ex: InvalidCoordinateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATE", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleNoWallet(ex: MerchantNoWalletException) =
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleNoAccount(ex: MerchantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)

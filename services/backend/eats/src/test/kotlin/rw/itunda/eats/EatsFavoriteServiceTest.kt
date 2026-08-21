@@ -28,7 +28,7 @@ class EatsFavoriteServiceTest : BehaviorSpec({
         val service = EatsFavoriteService(eatsFavoriteRepository, merchantRepository, messagingService)
 
         val restaurant = Merchant(
-            id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_1",
+            id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_1",
             businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE, category = "Cafe",
         )
 

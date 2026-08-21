@@ -13,7 +13,7 @@ import java.time.Instant
  * online-payment docs describe a real "sid" recurring-billing key; tosspayments.com's own
  * blog walks through "구독 결제 서비스 간단히 구현하기... 빌링키 발급하기"). A merchant
  * defines a real recurring charge (e.g. a subscription box) once; a customer authorizes it
- * once (`MerchantBillingSubscription`), and itunda charges their wallet automatically every
+ * once (`MerchantBillingSubscription`), and itunda charges their account automatically every
  * `intervalDays` from then on -- the real "no re-approval each cycle" mechanic that
  * distinguishes a subscription from a one-off QR/card payment.
  *

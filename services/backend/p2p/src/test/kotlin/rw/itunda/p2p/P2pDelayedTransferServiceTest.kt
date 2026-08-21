@@ -14,8 +14,8 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.P2pDelayedTransfer
 import rw.itunda.core.domain.P2pDelayedTransferStatus
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -25,7 +25,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.P2pDelayedTransferRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -33,14 +33,14 @@ import java.util.Optional
 
 class P2pDelayedTransferServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, balance: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
+    fun account(id: String, userId: String, balance: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
     )
 
     fun buildService(
         p2pDelayedTransferRepository: P2pDelayedTransferRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         userRepository: UserRepository = mockk(),
         transactionRepository: TransactionRepository = mockk(relaxed = true),
         ledgerService: LedgerService = mockk(),
@@ -49,25 +49,25 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         p2pTransferLimitService: P2pTransferLimitService = mockk(relaxed = true),
     ) = P2pDelayedTransferService(
-        p2pDelayedTransferRepository, walletRepository, userRepository, transactionRepository,
+        p2pDelayedTransferRepository, accountRepository, userRepository, transactionRepository,
         ledgerService, rateLimiter, notificationRepository, pushNotificationService, p2pTransferLimitService,
     )
 
     Given("a real sender holding a delayed transfer to a real recipient by phone number") {
         val p2pDelayedTransferRepository = mockk<P2pDelayedTransferRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val service = buildService(
-            p2pDelayedTransferRepository = p2pDelayedTransferRepository, walletRepository = walletRepository,
+            p2pDelayedTransferRepository = p2pDelayedTransferRepository, accountRepository = accountRepository,
             userRepository = userRepository, ledgerService = ledgerService, transactionRepository = transactionRepository,
         )
 
         val recipientUser = User(id = "recipient_1", phoneNumber = "+250788000099", firstName = "R", lastName = "T", passwordHash = "x")
-        every { walletRepository.findByUserIdAndType("sender_1", WalletType.MAIN) } returns wallet("wallet_sender", "sender_1", "10000")
+        every { accountRepository.findByUserIdAndType("sender_1", AccountType.MAIN) } returns account("account_sender", "sender_1", "10000")
         every { userRepository.findByPhoneNumber("+250788000099") } returns recipientUser
-        every { walletRepository.findByUserIdAndType("recipient_1", WalletType.MAIN) } returns wallet("wallet_recipient", "recipient_1", "0")
+        every { accountRepository.findByUserIdAndType("recipient_1", AccountType.MAIN) } returns account("account_recipient", "recipient_1", "0")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_hold_1", emptyList())
         val savedSlot = slot<P2pDelayedTransfer>()
@@ -84,7 +84,7 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
             Then("real money is held in p2p_delay_holding, not credited to the recipient yet") {
                 legsSlot.captured.size shouldBe 2
                 val debitLeg = legsSlot.captured.first { it.direction == LedgerDirection.DEBIT }
-                debitLeg.accountId shouldBe "wallet_sender"
+                debitLeg.accountId shouldBe "account_sender"
                 debitLeg.accountType shouldBe LedgerAccountType.WALLET
                 debitLeg.amount shouldBe BigDecimal("2000")
                 val creditLeg = legsSlot.captured.first { it.direction == LedgerDirection.CREDIT }
@@ -110,20 +110,20 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
     // P2pTransferLimitService (not mocked), so this exercises the actual real
     // integration, not just that sendDelayed calls some mock.
     Given("a real sender whose real transfer amount exceeds the real per-transfer cap, choosing the delayed path") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>()
         every { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(eq("sender_lim"), any(), any(), any()) } returns emptyList()
         val service = buildService(
-            walletRepository = walletRepository, userRepository = userRepository, ledgerService = ledgerService,
-            transactionRepository = transactionRepository, p2pTransferLimitService = P2pTransferLimitService(transactionRepository, walletRepository),
+            accountRepository = accountRepository, userRepository = userRepository, ledgerService = ledgerService,
+            transactionRepository = transactionRepository, p2pTransferLimitService = P2pTransferLimitService(transactionRepository, accountRepository),
         )
 
         val recipientUser = User(id = "recipient_lim", phoneNumber = "+250788000199", firstName = "R", lastName = "T", passwordHash = "x")
-        every { walletRepository.findByUserIdAndType("sender_lim", WalletType.MAIN) } returns wallet("wallet_lim", "sender_lim", "10000000")
+        every { accountRepository.findByUserIdAndType("sender_lim", AccountType.MAIN) } returns account("account_lim", "sender_lim", "10000000")
         every { userRepository.findByPhoneNumber("+250788000199") } returns recipientUser
-        every { walletRepository.findByUserIdAndType("recipient_lim", WalletType.MAIN) } returns wallet("wallet_recipient_lim", "recipient_lim", "0")
+        every { accountRepository.findByUserIdAndType("recipient_lim", AccountType.MAIN) } returns account("account_recipient_lim", "recipient_lim", "0")
 
         When("they try to hold 600,000 RWF, over the real 500,000 per-transfer cap") {
             Then("it real-blocks with P2pTransferLimitExceededException before any real money is held") {
@@ -138,13 +138,13 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
     }
 
     Given("a real sender trying to send a delayed transfer to their own account") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = buildService(walletRepository = walletRepository, userRepository = userRepository, ledgerService = ledgerService)
+        val service = buildService(accountRepository = accountRepository, userRepository = userRepository, ledgerService = ledgerService)
 
         val selfUser = User(id = "user_self", phoneNumber = "+250788000077", firstName = "S", lastName = "T", passwordHash = "x")
-        every { walletRepository.findByUserIdAndType("user_self", WalletType.MAIN) } returns wallet("wallet_self", "user_self", "10000")
+        every { accountRepository.findByUserIdAndType("user_self", AccountType.MAIN) } returns account("account_self", "user_self", "10000")
         every { userRepository.findByPhoneNumber("+250788000077") } returns selfUser
 
         When("they try") {
@@ -160,14 +160,14 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
     }
 
     Given("a real sender whose identifier matches no real itunda account") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = buildService(walletRepository = walletRepository, userRepository = userRepository, ledgerService = ledgerService)
+        val service = buildService(accountRepository = accountRepository, userRepository = userRepository, ledgerService = ledgerService)
 
-        every { walletRepository.findByUserIdAndType("sender_3", WalletType.MAIN) } returns wallet("wallet_sender3", "sender_3", "10000")
+        every { accountRepository.findByUserIdAndType("sender_3", AccountType.MAIN) } returns account("account_sender3", "sender_3", "10000")
         every { userRepository.findByPhoneNumber("+250700000000") } returns null
-        every { walletRepository.findByAccountNumber("+250700000000") } returns null
+        every { accountRepository.findByAccountNumber("+250700000000") } returns null
 
         When("they try to send") {
             Then("it throws P2pRecipientNotFoundException -- a real, honest 404") {
@@ -182,15 +182,15 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
     }
 
     Given("a real sender with insufficient balance") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = buildService(walletRepository = walletRepository, userRepository = userRepository, ledgerService = ledgerService)
+        val service = buildService(accountRepository = accountRepository, userRepository = userRepository, ledgerService = ledgerService)
 
         val recipientUser = User(id = "recipient_9", phoneNumber = "+250788000088", firstName = "R", lastName = "T", passwordHash = "x")
-        every { walletRepository.findByUserIdAndType("sender_9", WalletType.MAIN) } returns wallet("wallet_poor", "sender_9", "500")
+        every { accountRepository.findByUserIdAndType("sender_9", AccountType.MAIN) } returns account("account_poor", "sender_9", "500")
         every { userRepository.findByPhoneNumber("+250788000088") } returns recipientUser
-        every { walletRepository.findByUserIdAndType("recipient_9", WalletType.MAIN) } returns wallet("wallet_recip9", "recipient_9", "0")
+        every { accountRepository.findByUserIdAndType("recipient_9", AccountType.MAIN) } returns account("account_recip9", "recipient_9", "0")
 
         When("they try to hold more than they have") {
             Then("it throws InsufficientFundsException before touching the ledger") {
@@ -211,7 +211,7 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         every { rateLimiter.checkLimit("p2p:send-delayed:sender_20", limit = 30, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to hold yet another delayed transfer") {
-            Then("it real-propagates RateLimitExceededException before ever touching a real wallet") {
+            Then("it real-propagates RateLimitExceededException before ever touching a real account") {
                 try {
                     service.sendDelayed("sender_20", "+250788000199", BigDecimal("1000"), "")
                     error("expected RateLimitExceededException")
@@ -224,17 +224,17 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
 
     Given("a real sender cancelling their own real still-PENDING delayed transfer") {
         val p2pDelayedTransferRepository = mockk<P2pDelayedTransferRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = buildService(p2pDelayedTransferRepository = p2pDelayedTransferRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = buildService(p2pDelayedTransferRepository = p2pDelayedTransferRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val transfer = P2pDelayedTransfer(
-            id = "p2p_delayed_1", senderUserId = "sender_1", senderWalletId = "wallet_sender",
-            recipientUserId = "recipient_1", recipientWalletId = "wallet_recipient", amount = BigDecimal("2000"),
+            id = "p2p_delayed_1", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
             description = "Rent", holdTransactionId = "ledgertxn_hold_1", releaseAt = Instant.now().plusSeconds(3600),
         )
         every { p2pDelayedTransferRepository.findByIdAndSenderUserId("p2p_delayed_1", "sender_1") } returns transfer
-        every { walletRepository.findByUserIdAndType("sender_1", WalletType.MAIN) } returns wallet("wallet_sender", "sender_1", "8000")
+        every { accountRepository.findByUserIdAndType("sender_1", AccountType.MAIN) } returns account("account_sender", "sender_1", "8000")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_cancel_1", emptyList())
         every { p2pDelayedTransferRepository.save(any()) } answers { firstArg() }
@@ -242,12 +242,12 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         When("they cancel it") {
             val cancelled = service.cancel("sender_1", "p2p_delayed_1")
 
-            Then("the real held amount is refunded straight back to the sender's own wallet") {
+            Then("the real held amount is refunded straight back to the sender's own account") {
                 legsSlot.captured.size shouldBe 2
                 val debitLeg = legsSlot.captured.first { it.direction == LedgerDirection.DEBIT }
                 debitLeg.accountId shouldBe "p2p_delay_holding"
                 val creditLeg = legsSlot.captured.first { it.direction == LedgerDirection.CREDIT }
-                creditLeg.accountId shouldBe "wallet_sender"
+                creditLeg.accountId shouldBe "account_sender"
                 creditLeg.amount shouldBe BigDecimal("2000")
             }
 
@@ -286,8 +286,8 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         val service = buildService(p2pDelayedTransferRepository = p2pDelayedTransferRepository, ledgerService = ledgerService)
 
         val transfer = P2pDelayedTransfer(
-            id = "p2p_delayed_3", senderUserId = "sender_1", senderWalletId = "wallet_sender",
-            recipientUserId = "recipient_1", recipientWalletId = "wallet_recipient", amount = BigDecimal("2000"),
+            id = "p2p_delayed_3", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
             description = "Rent", status = P2pDelayedTransferStatus.COMPLETED, holdTransactionId = "ledgertxn_hold_3",
             releaseAt = Instant.now().minusSeconds(60),
         )
@@ -307,24 +307,24 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
 
     Given("a real delayed transfer whose window has elapsed") {
         val p2pDelayedTransferRepository = mockk<P2pDelayedTransferRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = buildService(
-            p2pDelayedTransferRepository = p2pDelayedTransferRepository, walletRepository = walletRepository,
+            p2pDelayedTransferRepository = p2pDelayedTransferRepository, accountRepository = accountRepository,
             userRepository = userRepository, ledgerService = ledgerService,
             notificationRepository = notificationRepository, pushNotificationService = pushNotificationService,
         )
 
         val transfer = P2pDelayedTransfer(
-            id = "p2p_delayed_4", senderUserId = "sender_1", senderWalletId = "wallet_sender",
-            recipientUserId = "recipient_1", recipientWalletId = "wallet_recipient", amount = BigDecimal("2000"),
+            id = "p2p_delayed_4", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
             description = "Rent", holdTransactionId = "ledgertxn_hold_4", releaseAt = Instant.now().minusSeconds(1),
         )
         every { p2pDelayedTransferRepository.findById("p2p_delayed_4") } returns Optional.of(transfer)
-        every { walletRepository.findById("wallet_recipient") } returns Optional.of(wallet("wallet_recipient", "recipient_1", "0"))
+        every { accountRepository.findById("account_recipient") } returns Optional.of(account("account_recipient", "recipient_1", "0"))
         every { userRepository.findById("sender_1") } returns Optional.of(
             User(id = "sender_1", phoneNumber = "+250788000001", firstName = "Eric", lastName = "Uwase", passwordHash = "x"),
         )
@@ -338,12 +338,12 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         When("the scheduler releases it") {
             service.release("p2p_delayed_4")
 
-            Then("the real held amount is credited to the real recipient's own wallet") {
+            Then("the real held amount is credited to the real recipient's own account") {
                 legsSlot.captured.size shouldBe 2
                 val debitLeg = legsSlot.captured.first { it.direction == LedgerDirection.DEBIT }
                 debitLeg.accountId shouldBe "p2p_delay_holding"
                 val creditLeg = legsSlot.captured.first { it.direction == LedgerDirection.CREDIT }
-                creditLeg.accountId shouldBe "wallet_recipient"
+                creditLeg.accountId shouldBe "account_recipient"
                 creditLeg.amount shouldBe BigDecimal("2000")
             }
 
@@ -364,8 +364,8 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         val service = buildService(p2pDelayedTransferRepository = p2pDelayedTransferRepository, ledgerService = ledgerService)
 
         val transfer = P2pDelayedTransfer(
-            id = "p2p_delayed_5", senderUserId = "sender_1", senderWalletId = "wallet_sender",
-            recipientUserId = "recipient_1", recipientWalletId = "wallet_recipient", amount = BigDecimal("2000"),
+            id = "p2p_delayed_5", senderUserId = "sender_1", senderAccountId = "account_sender",
+            recipientUserId = "recipient_1", recipientAccountId = "account_recipient", amount = BigDecimal("2000"),
             description = "Rent", status = P2pDelayedTransferStatus.CANCELLED, holdTransactionId = "ledgertxn_hold_5",
             releaseAt = Instant.now().minusSeconds(1),
         )

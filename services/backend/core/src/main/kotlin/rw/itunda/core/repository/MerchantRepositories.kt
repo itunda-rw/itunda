@@ -87,7 +87,7 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     // time. There was no way to search for a PRODUCT across every seller at once, the
     // single most basic real feature every one of those apps has. No JPA relationship
     // exists between MerchantProduct and Merchant (both just carry a raw id string,
-    // same convention as GroupAccount.walletId/GroupAccountMember.groupAccountId), so
+    // same convention as GroupAccount.accountId/GroupAccountMember.groupAccountId), so
     // this is the same theta-style `JOIN ... ON` GroupMessagingRepositories already
     // established for exactly that situation, not a broken relationship mapping.
     @Query(

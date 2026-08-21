@@ -10,7 +10,7 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.UserEmoticonPack
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -19,7 +19,7 @@ import rw.itunda.core.repository.EmoticonRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserEmoticonPackRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -28,7 +28,7 @@ class EmoticonPackNotFoundException(message: String) : RuntimeException(message)
 class EmoticonNotFoundException(message: String) : RuntimeException(message)
 class EmoticonPackAlreadyOwnedException(message: String) : RuntimeException(message)
 class EmoticonPackNotOwnedException(message: String) : RuntimeException(message)
-class EmoticonNoWalletException(message: String) : RuntimeException(message)
+class EmoticonNoAccountException(message: String) : RuntimeException(message)
 class EmoticonGiftRecipientNotFoundException(message: String) : RuntimeException(message)
 class EmoticonGiftToSelfException(message: String) : RuntimeException(message)
 
@@ -36,7 +36,7 @@ class EmoticonGiftToSelfException(message: String) : RuntimeException(message)
  * Real KakaoTalk Emoticon Store -- see EmoticonPack's own doc comment for the full
  * sourcing and honest scoping (no Emoticon Plus subscription tier, still a real,
  * separate, not-attempted-here follow-up). A user buys a pack once through the real
- * wallet-to-wallet-style ledger movement every other purchase in this backend already
+ * account-to-account-style ledger movement every other purchase in this backend already
  * uses (debit the buyer's WALLET, credit the new `EMOTICON_REVENUE` clearing account --
  * itunda's own product, a direct sale, not an escrow hold the way Gift/Marketplace/
  * Booking/Ride money-in-flight is), then can send any emoticon from an owned pack as
@@ -60,7 +60,7 @@ class EmoticonService(
     private val emoticonPackRepository: EmoticonPackRepository,
     private val emoticonRepository: EmoticonRepository,
     private val userEmoticonPackRepository: UserEmoticonPackRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
     private val ledgerService: LedgerService,
@@ -93,13 +93,13 @@ class EmoticonService(
         if (userEmoticonPackRepository.findByUserIdAndPackId(userId, packId) != null) {
             throw EmoticonPackAlreadyOwnedException("You already own this emoticon pack")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw EmoticonNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw EmoticonNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack purchase - ${pack.title}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack purchase - ${pack.title}"),
                 LedgerLeg("emoticon_revenue", LedgerAccountType.EMOTICON_REVENUE, LedgerDirection.CREDIT, pack.price, "Emoticon pack sale - ${pack.title}"),
             ),
         )
@@ -122,13 +122,13 @@ class EmoticonService(
         if (userEmoticonPackRepository.findByUserIdAndPackId(recipient.id, packId) != null) {
             throw EmoticonPackAlreadyOwnedException("This recipient already owns this emoticon pack")
         }
-        val giverWallet = walletRepository.findByUserIdAndType(giverUserId, WalletType.MAIN)
-            ?: throw EmoticonNoWalletException("No wallet found for this account")
+        val giverAccount = accountRepository.findByUserIdAndType(giverUserId, AccountType.MAIN)
+            ?: throw EmoticonNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            giverWallet.currency,
+            giverAccount.currency,
             listOf(
-                LedgerLeg(giverWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack gift - ${pack.title}"),
+                LedgerLeg(giverAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack gift - ${pack.title}"),
                 LedgerLeg("emoticon_revenue", LedgerAccountType.EMOTICON_REVENUE, LedgerDirection.CREDIT, pack.price, "Emoticon pack gift sale - ${pack.title}"),
             ),
         )

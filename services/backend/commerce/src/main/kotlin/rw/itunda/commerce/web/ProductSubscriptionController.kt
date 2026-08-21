@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
-import rw.itunda.commerce.BuyerNoWalletException
+import rw.itunda.commerce.BuyerNoAccountException
 import rw.itunda.commerce.EmptyOrderException
 import rw.itunda.commerce.InvalidDeliveryAddressException
 import rw.itunda.commerce.InvalidProductSubscriptionException
 import rw.itunda.commerce.InvalidQuantityException
-import rw.itunda.commerce.MerchantNoWalletException
+import rw.itunda.commerce.MerchantNoAccountException
 import rw.itunda.commerce.MerchantNotFoundException
 import rw.itunda.commerce.MinOrderAmountNotMetException
 import rw.itunda.commerce.ProductSubscriptionNotFoundException
@@ -129,8 +129,8 @@ class ProductSubscriptionController(
     fun handleMinOrderAmountNotMet(ex: MinOrderAmountNotMetException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MIN_ORDER_AMOUNT_NOT_MET", ex.message ?: "Unprocessable"))
 
-    @ExceptionHandler(BuyerNoWalletException::class, MerchantNoWalletException::class)
-    fun handleNoWallet(ex: RuntimeException) =
+    @ExceptionHandler(BuyerNoAccountException::class, MerchantNoAccountException::class)
+    fun handleNoAccount(ex: RuntimeException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)

@@ -19,15 +19,15 @@ enum class GiftVoucherStatus { ACTIVE, REDEEMED, EXPIRED }
  * 2026-07-20): a gift voucher is redeemable at ONE specific real itunda [Merchant],
  * either for a specific [MerchantProduct] (the exact product snapshot the purchaser
  * picked, e.g. "스타벅스 아메리카노") or a flat cash-equivalent amount, not money that
- * lands in the recipient's own wallet. Sourced from real gifticon mechanics
+ * lands in the recipient's own account. Sourced from real gifticon mechanics
  * (huffingtonpost.kr/imaeil.com coverage of Kakao's own 2016 policy change,
  * cs.gifticon.com's own FAQ): a real validity window, a one-time real extension near
  * expiry, and a real partial cash refund (not the full amount) if it goes unredeemed.
  *
  * Money moves the same real escrow-then-settle way [Gift]'s own doc comment
- * establishes: the purchaser's wallet is debited immediately into a shared
+ * establishes: the purchaser's account is debited immediately into a shared
  * `gift_voucher_holding` clearing account, and only actually reaches the merchant's
- * wallet when the merchant themselves redeems it (mirrors `MerchantService.collect()`'s
+ * account when the merchant themselves redeems it (mirrors `MerchantService.collect()`'s
  * own real "merchant collects" pattern -- a customer presenting a voucher in person for
  * the merchant to validate, never a self-serve redeem the recipient could fake).
  *

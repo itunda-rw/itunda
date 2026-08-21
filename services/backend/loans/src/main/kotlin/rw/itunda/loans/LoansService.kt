@@ -10,13 +10,13 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -27,7 +27,7 @@ class LoanNotOwnedException(message: String) : RuntimeException(message)
 class LoanAlreadyPaidException(message: String) : RuntimeException(message)
 class LoanAmountInvalidException(message: String) : RuntimeException(message)
 class LoanApplicationDeclinedException(message: String) : RuntimeException(message)
-class NoWalletException(message: String) : RuntimeException(message)
+class NoAccountException(message: String) : RuntimeException(message)
 class NoBetterRateAvailableException(message: String) : RuntimeException(message)
 class BusinessAccountRequiredException(message: String) : RuntimeException(message)
 
@@ -47,11 +47,11 @@ private const val MAX_CONCURRENT_ACTIVE_LOANS = 2
  * Port of backend/src/controllers/loan.controller.ts. repayLoan carries the same
  * ownership check just added to the Express backend (SECURITY.md): without it, any
  * authenticated user could pay down — or fully clear — someone else's loan using that
- * loan's own wallet as the debit source.
+ * loan's own account as the debit source.
  */
 @Service
 class LoansService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val loanAccountRepository: LoanAccountRepository,
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
@@ -99,28 +99,28 @@ class LoansService(
         }
 
         // Real business-account gating (2026-08-11) -- see LoanOffer.requiresBusinessAccount's
-        // own doc comment. A business-scoped offer disburses into the real BUSINESS wallet,
+        // own doc comment. A business-scoped offer disburses into the real BUSINESS account,
         // not MAIN, matching Toss Bank's own real 전문직사업자대출/사장님신용대출 pattern of
         // business-account-scoped lending rather than a relabeled personal loan.
-        val walletType = if (offer.requiresBusinessAccount) WalletType.BUSINESS else WalletType.MAIN
-        val wallet = walletRepository.findByUserIdAndType(userId, walletType)
+        val accountType = if (offer.requiresBusinessAccount) AccountType.BUSINESS else AccountType.MAIN
+        val account = accountRepository.findByUserIdAndType(userId, accountType)
             ?: if (offer.requiresBusinessAccount) {
                 throw BusinessAccountRequiredException("Open an itunda Business account before applying for ${offer.name}")
             } else {
-                throw NoWalletException("No wallet found for this account")
+                throw NoAccountException("No account found for this account")
             }
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "${offer.name} disbursement"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "${offer.name} disbursement"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, amount, "${offer.name} principal owed"),
             ),
         )
 
         val loan = loanAccountRepository.save(
             LoanAccount(
-                id = "loan_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, offerId = loanId,
+                id = "loan_${UUID.randomUUID()}", userId = userId, accountId = account.id, offerId = loanId,
                 principal = amount, outstanding = amount, interestRate = offer.interestRate, status = LoanStatus.ACTIVE,
                 disbursedAt = Instant.now(),
             ),
@@ -138,7 +138,7 @@ class LoansService(
         // account taking out a real loan needs the real owner to know the instant it
         // happens, not whenever they next open the app.
         val title = "New loan opened in your name"
-        val body = "${offer.name} for ${amount} was just disbursed to your wallet. If this wasn't you, secure your account immediately."
+        val body = "${offer.name} for ${amount} was just disbursed to your account. If this wasn't you, secure your account immediately."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "NEW_LOAN_DISBURSED",
@@ -176,14 +176,14 @@ class LoansService(
         val result = ledgerService.postLedgerTransaction(
             "RWF",
             listOf(
-                LedgerLeg(loan.walletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, repayAmount, "Loan repayment ${loan.id}"),
+                LedgerLeg(loan.accountId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, repayAmount, "Loan repayment ${loan.id}"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, repayAmount, "Loan repayment ${loan.id}"),
             ),
         )
 
         loan.outstanding = loan.outstanding.subtract(repayAmount)
         if (loan.outstanding <= BigDecimal.ZERO) loan.status = LoanStatus.PAID
-        val wallet = walletRepository.findById(loan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val account = accountRepository.findById(loan.accountId).orElseThrow { NoAccountException("Account not found") }
 
         return mapOf(
             "transaction" to mapOf(
@@ -191,7 +191,7 @@ class LoansService(
                 "status" to "COMPLETED", "description" to "Loan repayment - $loanId", "completedAt" to Instant.now().toString(),
             ),
             "remaining" to loan.outstanding,
-            "newBalance" to wallet.balance,
+            "newBalance" to account.balance,
         )
     }
 
@@ -217,9 +217,9 @@ class LoansService(
      * cap can cover the real remaining balance.
      *
      * Posts two real, separate ledger transactions (new-loan disbursement, then old-loan
-     * payoff) rather than one that nets to a zero wallet delta -- the real audit trail
+     * payoff) rather than one that nets to a zero account delta -- the real audit trail
      * should show both events actually happened, not be silently collapsed into a field
-     * mutation just because the user's own wallet balance doesn't move.
+     * mutation just because the user's own account balance doesn't move.
      */
     @Transactional
     fun refinanceLoan(userId: String, loanId: String): Map<String, Any?> {
@@ -240,29 +240,29 @@ class LoansService(
             .minByOrNull { it.interestRate }
             ?: throw NoBetterRateAvailableException("No itunda offer currently beats this loan's ${loan.interestRate}% rate for your credit profile")
 
-        val wallet = walletRepository.findById(loan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val account = accountRepository.findById(loan.accountId).orElseThrow { NoAccountException("Account not found") }
         val refinanceAmount = loan.outstanding
         val oldInterestRate = loan.interestRate
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refinanceAmount, "${eligibleOffer.name} refinance disbursement"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refinanceAmount, "${eligibleOffer.name} refinance disbursement"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, refinanceAmount, "${eligibleOffer.name} refinance principal owed"),
             ),
         )
         val newLoan = loanAccountRepository.save(
             LoanAccount(
-                id = "loan_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, offerId = eligibleOffer.id,
+                id = "loan_${UUID.randomUUID()}", userId = userId, accountId = account.id, offerId = eligibleOffer.id,
                 principal = refinanceAmount, outstanding = refinanceAmount, interestRate = eligibleOffer.interestRate,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             ),
         )
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, refinanceAmount, "Refinance payoff of loan ${loan.id}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, refinanceAmount, "Refinance payoff of loan ${loan.id}"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, refinanceAmount, "Refinance payoff of loan ${loan.id}"),
             ),
         )

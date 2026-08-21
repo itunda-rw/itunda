@@ -13,7 +13,7 @@ import java.time.Instant
  * Real Toss Place-style 자동 적립 (automatic point accrual) -- one balance per real
  * (merchant, customer) pair, closing a genuine gap researched live (2026-08-18):
  * itunda already had [ShoppingCashbackService] (real cashback into a customer's own
- * itunda wallet, itunda-funded via `rewards_expense`, platform-wide) and
+ * itunda account, itunda-funded via `rewards_expense`, platform-wide) and
  * [MerchantCouponService] (real merchant-issued one-time discount codes) -- but Toss
  * Place's own real, documented 사장님 (merchant) console feature is neither of those:
  * a real ongoing points BALANCE, earned automatically on every real purchase AT one
@@ -24,9 +24,9 @@ import java.time.Instant
  * collection as a real, separate feature).
  *
  * Deliberately data-only, not a real ledger-backed liability account: unlike
- * [ShoppingCashbackService] (real itunda money credited into a real wallet the instant
+ * [ShoppingCashbackService] (real itunda money credited into a real account the instant
  * it's earned) or [rw.itunda.p2p.P2pDelayedTransferService] (real money held in a real
- * clearing account), a loyalty point here never becomes real, spendable itunda-wallet
+ * clearing account), a loyalty point here never becomes real, spendable itunda-account
  * money on its own -- it only ever reduces a FUTURE real payment's own `chargeAmount`
  * at that same merchant, the exact moment real money moves, the same way
  * [MerchantCoupon]'s own discount already works. This is the honest, minimal v1: no

@@ -5,11 +5,11 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.DepositProtectionFund
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DepositProtectionFundRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -18,9 +18,9 @@ import java.time.temporal.ChronoUnit
 // Real Deposit Protection Fund covering itunda Bank's own real deposit-taking products
 // -- see DepositProtectionFund.kt's own doc comment for the full honesty framing (real
 // mechanics, itunda's own internal scheme, not a claimed BNR filing). Same three
-// WalletTypes as InterestJar's real accrual base: SAVINGS/WEEKLY_SAVINGS/UPFRONT_DEPOSIT
-// -- MAIN is itunda's separate wallet/Pay product, not itunda Bank.
-private val COVERED_WALLET_TYPES = listOf(WalletType.SAVINGS, WalletType.WEEKLY_SAVINGS, WalletType.UPFRONT_DEPOSIT)
+// AccountTypes as InterestJar's real accrual base: SAVINGS/WEEKLY_SAVINGS/UPFRONT_DEPOSIT
+// -- MAIN is itunda's separate account/Pay product, not itunda Bank.
+private val COVERED_WALLET_TYPES = listOf(AccountType.SAVINGS, AccountType.WEEKLY_SAVINGS, AccountType.UPFRONT_DEPOSIT)
 private const val CONTRIBUTION_INTERVAL_DAYS = 1L
 
 data class DepositProtectionStatus(
@@ -35,7 +35,7 @@ data class DepositProtectionStatus(
 @Service
 class DepositProtectionService(
     private val fundRepository: DepositProtectionFundRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
 ) {
     // Real singleton get-or-create (2026-08-11) -- mirrors SavingsService's own
@@ -50,7 +50,7 @@ class DepositProtectionService(
 
     fun getStatus(userId: String): DepositProtectionStatus {
         val fund = getOrCreateFund()
-        val yourDeposits = walletRepository.sumBalanceByUserIdAndTypeIn(userId, COVERED_WALLET_TYPES)
+        val yourDeposits = accountRepository.sumBalanceByUserIdAndTypeIn(userId, COVERED_WALLET_TYPES)
         return DepositProtectionStatus(
             fundReserveBalance = fund.reserveBalance,
             coverageCapPerUser = fund.coverageCapPerUser,
@@ -74,7 +74,7 @@ class DepositProtectionService(
     // double-entry ledger transaction, not just a number bumped in place.
     @Transactional
     fun accrueContribution(fund: DepositProtectionFund) {
-        val totalCoveredDeposits = walletRepository.sumBalanceByTypeIn(COVERED_WALLET_TYPES)
+        val totalCoveredDeposits = accountRepository.sumBalanceByTypeIn(COVERED_WALLET_TYPES)
         val dailyRate = BigDecimal(fund.contributionRateBps).divide(BigDecimal(10000), 10, RoundingMode.HALF_UP)
             .divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
         val contribution = totalCoveredDeposits.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)

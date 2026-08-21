@@ -3,15 +3,15 @@ package rw.itunda.rideshare
 import org.springframework.stereotype.Service
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideDriver
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.RideDriverRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class RideDriverNoWalletException(message: String) : RuntimeException(message)
+class RideDriverNoAccountException(message: String) : RuntimeException(message)
 class RideDriverAlreadyRegisteredException(message: String) : RuntimeException(message)
 class RideDriverNotRegisteredException(message: String) : RuntimeException(message)
 class InvalidRideDriverLocationException(message: String) : RuntimeException(message)
@@ -21,22 +21,22 @@ class DestinationFilterLimitExceededException(message: String) : RuntimeExceptio
  * Real driver registration for Kakao T-style ride-hailing -- any itunda user can opt in,
  * same light self-service registration this codebase's other role opt-ins already use
  * (`RiderService.register`, marketplace listing creation). Reuses the driver's own
- * existing MAIN wallet as their payout destination, no new wallet type or external
+ * existing MAIN account as their payout destination, no new account type or external
  * payout rail needed.
  */
 @Service
 class RideDriverService(
     private val rideDriverRepository: RideDriverRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val rateLimiter: RateLimiter,
 ) {
     fun register(userId: String): RideDriver {
         if (rideDriverRepository.findByUserId(userId) != null) {
             throw RideDriverAlreadyRegisteredException("This account is already registered as a driver")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw RideDriverNoWalletException("No wallet found for this account")
-        return rideDriverRepository.save(RideDriver(id = "ride_driver_${UUID.randomUUID()}", userId = userId, walletId = wallet.id))
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
+        return rideDriverRepository.save(RideDriver(id = "ride_driver_${UUID.randomUUID()}", userId = userId, accountId = account.id))
     }
 
     fun getMyDriverProfile(userId: String): RideDriver =

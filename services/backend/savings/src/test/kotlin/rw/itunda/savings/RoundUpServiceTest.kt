@@ -63,7 +63,7 @@ class RoundUpServiceTest : BehaviorSpec({
 
         When("enabling with a real savings goal target") {
             val goal = SavingsGoal(
-                id = "goal_1", userId = "user_1", walletId = "wallet_savings", name = "Trip",
+                id = "goal_1", userId = "user_1", accountId = "account_savings", name = "Trip",
                 targetAmount = BigDecimal("100000"), currentAmount = BigDecimal.ZERO,
                 monthlyContribution = BigDecimal.ZERO, interestRate = 0.0,
             )
@@ -121,7 +121,7 @@ class RoundUpServiceTest : BehaviorSpec({
 
             Then("it deposits exactly the real 800 change into the goal, never touching stocks") {
                 verify(exactly = 1) { savingsService.depositToGoal("user_1", "goal_1", BigDecimal("800"), null) }
-                verify(exactly = 0) { stocksService.fundInvestmentWallet(any(), any()) }
+                verify(exactly = 0) { stocksService.fundInvestmentAccount(any(), any()) }
             }
         }
 
@@ -145,14 +145,14 @@ class RoundUpServiceTest : BehaviorSpec({
         every { roundUpSettingsRepository.findByUserId("user_2") } returns settings
 
         When("a real transfer leaves real change under the increment") {
-            every { stocksService.fundInvestmentWallet("user_2", BigDecimal("800")) } returns mapOf("id" to "ledgertxn_1")
+            every { stocksService.fundInvestmentAccount("user_2", BigDecimal("800")) } returns mapOf("id" to "ledgertxn_1")
             val sharesSlot = mutableListOf<BigDecimal>()
             every { stocksService.buyStock("user_2", "s1", capture(sharesSlot)) } returns mapOf("id" to "trade_1")
 
             service.processRoundUp("user_2", BigDecimal("12200"))
 
-            Then("it funds the investment wallet with exactly the real change, then buys a real fractional share at that stock's live price") {
-                verify(exactly = 1) { stocksService.fundInvestmentWallet("user_2", BigDecimal("800")) }
+            Then("it funds the investment account with exactly the real change, then buys a real fractional share at that stock's live price") {
+                verify(exactly = 1) { stocksService.fundInvestmentAccount("user_2", BigDecimal("800")) }
                 val bokPrice = StockCatalog.find("s1")!!.price
                 sharesSlot.first() shouldBe BigDecimal("800").divide(bokPrice, 6, java.math.RoundingMode.DOWN)
             }
@@ -169,8 +169,8 @@ class RoundUpServiceTest : BehaviorSpec({
         val settings = RoundUpSettings(id = "ru_3", userId = "user_3", enabled = true, roundToNearest = BigDecimal("1000"), targetStockId = "s1")
         every { roundUpSettingsRepository.findByUserId("user_3") } returns settings
 
-        When("funding the investment wallet real-fails") {
-            every { stocksService.fundInvestmentWallet("user_3", any()) } throws rw.itunda.core.ledger.InsufficientFundsException("Insufficient funds")
+        When("funding the investment account real-fails") {
+            every { stocksService.fundInvestmentAccount("user_3", any()) } throws rw.itunda.core.ledger.InsufficientFundsException("Insufficient funds")
 
             Then("processRoundUp swallows it rather than breaking the triggering transfer") {
                 service.processRoundUp("user_3", BigDecimal("12200"))

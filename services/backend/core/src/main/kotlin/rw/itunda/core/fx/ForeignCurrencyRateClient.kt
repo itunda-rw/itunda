@@ -11,8 +11,8 @@ import java.time.Instant
 /**
  * Real, free, no-API-key live exchange rates (ECB-sourced, published by
  * exchangerate-api.com's free tier via open.er-api.com, updated ~daily) -- backs
- * `ForeignCurrencyWalletService`'s real conversion between a user's own RWF and
- * foreign-currency wallets. RWF isn't a reference currency for keyless ECB-only
+ * `ForeignCurrencyAccountService`'s real conversion between a user's own RWF and
+ * foreign-currency accounts. RWF isn't a reference currency for keyless ECB-only
  * providers (Frankfurter's own `/currencies` list confirmed RWF absent, checked before
  * picking this client) -- open.er-api.com's free tier does carry RWF, confirmed live.
  *

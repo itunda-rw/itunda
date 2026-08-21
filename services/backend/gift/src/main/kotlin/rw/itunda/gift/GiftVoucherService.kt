@@ -11,7 +11,7 @@ import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -21,7 +21,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -33,7 +33,7 @@ class GiftVoucherNotFoundException(message: String) : RuntimeException(message)
 class GiftVoucherNotActiveException(message: String) : RuntimeException(message)
 class GiftVoucherExpiredException(message: String) : RuntimeException(message)
 class GiftVoucherSelfException(message: String) : RuntimeException(message)
-class GiftVoucherNoWalletException(message: String) : RuntimeException(message)
+class GiftVoucherNoAccountException(message: String) : RuntimeException(message)
 class GiftVoucherRecipientNotFoundException(message: String) : RuntimeException(message)
 class GiftVoucherInvalidAmountException(message: String) : RuntimeException(message)
 class GiftVoucherMerchantNotFoundException(message: String) : RuntimeException(message)
@@ -56,7 +56,7 @@ class GiftVoucherService(
     private val giftVoucherRepository: GiftVoucherRepository,
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
@@ -102,9 +102,9 @@ class GiftVoucherService(
             trimmedAmount to null
         }
 
-        val purchaserWallet = walletRepository.findByUserIdAndType(purchaserUserId, WalletType.MAIN)
-            ?: throw GiftVoucherNoWalletException("No wallet found for this account")
-        if (purchaserWallet.availableBalance < amount) {
+        val purchaserAccount = accountRepository.findByUserIdAndType(purchaserUserId, AccountType.MAIN)
+            ?: throw GiftVoucherNoAccountException("No account found for this account")
+        if (purchaserAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this gift voucher")
         }
 
@@ -112,9 +112,9 @@ class GiftVoucherService(
         // happens" shape GiftService's own money-gift escrow uses. Here the real event
         // is the MERCHANT redeeming the voucher, not the recipient claiming it.
         val holdResult = ledgerService.postLedgerTransaction(
-            purchaserWallet.currency,
+            purchaserAccount.currency,
             listOf(
-                LedgerLeg(purchaserWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift voucher purchased -- ${merchant.businessName}"),
+                LedgerLeg(purchaserAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift voucher purchased -- ${merchant.businessName}"),
                 LedgerLeg(GIFT_VOUCHER_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_VOUCHER_HOLDING, LedgerDirection.CREDIT, amount, "Gift voucher held in escrow"),
             ),
         )
@@ -123,11 +123,11 @@ class GiftVoucherService(
             referenceNumber = "GIFTVOUCHER${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = purchaserUserId,
             recipientId = recipientUser.id,
-            fromWalletId = purchaserWallet.id,
-            toWalletId = null,
+            fromAccountId = purchaserAccount.id,
+            toAccountId = null,
             amount = amount,
             fee = BigDecimal.ZERO,
-            currency = purchaserWallet.currency,
+            currency = purchaserAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Gift voucher purchased -- ${merchant.businessName}",
@@ -216,16 +216,16 @@ class GiftVoucherService(
         if (voucher.status != GiftVoucherStatus.ACTIVE) throw GiftVoucherNotActiveException("This voucher is already ${voucher.status}")
         if (voucher.expiresAt.isBefore(Instant.now())) throw GiftVoucherExpiredException("This voucher has expired")
 
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { GiftVoucherNoWalletException("Merchant settlement wallet not found") }
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { GiftVoucherNoAccountException("Merchant settlement account not found") }
         val fee = voucher.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = voucher.amount.subtract(fee)
 
         val redeemResult = ledgerService.postLedgerTransaction(
-            merchantWallet.currency,
+            merchantAccount.currency,
             listOf(
                 LedgerLeg(GIFT_VOUCHER_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_VOUCHER_HOLDING, LedgerDirection.DEBIT, voucher.amount, "Gift voucher redeemed"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Gift voucher redemption -- ${merchant.businessName}"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Gift voucher redemption -- ${merchant.businessName}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Gift voucher redemption fee -- ${merchant.businessName}"),
             ),
         )
@@ -235,11 +235,11 @@ class GiftVoucherService(
                 referenceNumber = "GIFTVOUCHERREDEEM${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = voucher.recipientId,
                 recipientId = merchant.ownerUserId,
-                fromWalletId = null,
-                toWalletId = merchantWallet.id,
+                fromAccountId = null,
+                toAccountId = merchantAccount.id,
                 amount = voucher.amount,
                 fee = fee,
-                currency = merchantWallet.currency,
+                currency = merchantAccount.currency,
                 type = TransactionType.PAYMENT,
                 status = TransactionStatus.COMPLETED,
                 description = "Gift voucher redemption -- ${merchant.businessName}",
@@ -273,16 +273,16 @@ class GiftVoucherService(
     @Transactional
     fun expireVoucher(voucher: GiftVoucher) {
         if (voucher.status != GiftVoucherStatus.ACTIVE) return
-        val purchaserWallet = walletRepository.findByUserIdAndType(voucher.purchaserId, WalletType.MAIN) ?: return
+        val purchaserAccount = accountRepository.findByUserIdAndType(voucher.purchaserId, AccountType.MAIN) ?: return
 
         val refundAmount = voucher.amount.multiply(GiftVoucher.EXPIRY_REFUND_RATE).setScale(2, RoundingMode.HALF_UP)
         val forfeitedAmount = voucher.amount.subtract(refundAmount)
 
         val refundResult = ledgerService.postLedgerTransaction(
-            purchaserWallet.currency,
+            purchaserAccount.currency,
             listOf(
                 LedgerLeg(GIFT_VOUCHER_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_VOUCHER_HOLDING, LedgerDirection.DEBIT, voucher.amount, "Unredeemed gift voucher expired"),
-                LedgerLeg(purchaserWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Unredeemed gift voucher partial refund"),
+                LedgerLeg(purchaserAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Unredeemed gift voucher partial refund"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, forfeitedAmount, "Unredeemed gift voucher forfeited amount"),
             ),
         )
@@ -292,11 +292,11 @@ class GiftVoucherService(
                 referenceNumber = "GIFTVOUCHEREXP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = voucher.recipientId,
                 recipientId = voucher.purchaserId,
-                fromWalletId = null,
-                toWalletId = purchaserWallet.id,
+                fromAccountId = null,
+                toAccountId = purchaserAccount.id,
                 amount = refundAmount,
                 fee = BigDecimal.ZERO,
-                currency = purchaserWallet.currency,
+                currency = purchaserAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Unredeemed gift voucher partial refund",

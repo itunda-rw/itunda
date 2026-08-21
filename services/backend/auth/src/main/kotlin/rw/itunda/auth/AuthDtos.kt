@@ -88,7 +88,7 @@ data class ConfirmPhoneVerificationRequest(val code: String)
 // reverse-geocodes it through itunda's own self-hosted Nominatim.
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
 
-// Real age-eligibility gate for the Mini wallet (2026-07-28) -- see User.birthDate's own
+// Real age-eligibility gate for the Mini account (2026-07-28) -- see User.birthDate's own
 // doc comment. Set once; AuthService validates it's a real, plausible past date.
 data class SetBirthDateRequest(val birthDate: LocalDate)
 

@@ -10,12 +10,12 @@ import rw.itunda.core.domain.BusBookingStatus
 import rw.itunda.core.domain.BusTrip
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BusBookingRepository
 import rw.itunda.core.repository.BusTripRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -24,7 +24,7 @@ import java.util.UUID
 
 class BusTripNotFoundException(message: String) : RuntimeException(message)
 class InvalidBusTripException(message: String) : RuntimeException(message)
-class BusNoWalletException(message: String) : RuntimeException(message)
+class BusNoAccountException(message: String) : RuntimeException(message)
 class InsufficientSeatsException(message: String) : RuntimeException(message)
 class BusBookingNotFoundException(message: String) : RuntimeException(message)
 class BusBookingAlreadyCancelledException(message: String) : RuntimeException(message)
@@ -39,7 +39,7 @@ class BusTripAlreadyDepartedException(message: String) : RuntimeException(messag
  * Unlike `ParkingService`/`BikeRentalService` (fare unknown until checkout, settled at
  * session end), a real bus ticket's fare IS known at booking time (seatCount *
  * farePerSeat) -- this bills the full fare immediately at booking, the same direct
- * wallet-to-wallet-at-purchase shape `MerchantService.collect` already establishes for
+ * account-to-account-at-purchase shape `MerchantService.collect` already establishes for
  * a real point-of-sale payment, not the settle-at-end escrow-free pattern its two
  * sibling services use.
  */
@@ -47,7 +47,7 @@ class BusTripAlreadyDepartedException(message: String) : RuntimeException(messag
 class BusService(
     private val busTripRepository: BusTripRepository,
     private val busBookingRepository: BusBookingRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -85,11 +85,11 @@ class BusService(
         if (farePerSeat < minFarePerSeat || farePerSeat > maxFarePerSeat) {
             throw InvalidBusTripException("Fare per seat must be between $minFarePerSeat and $maxFarePerSeat")
         }
-        val wallet = walletRepository.findByUserIdAndType(operatorUserId, WalletType.MAIN)
-            ?: throw BusNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(operatorUserId, AccountType.MAIN)
+            ?: throw BusNoAccountException("No account found for this account")
         return busTripRepository.save(
             BusTrip(
-                id = "bus_trip_${UUID.randomUUID()}", operatorUserId = operatorUserId, walletId = wallet.id,
+                id = "bus_trip_${UUID.randomUUID()}", operatorUserId = operatorUserId, accountId = account.id,
                 origin = trimmedOrigin, destination = trimmedDestination, departureTime = departureTime,
                 totalSeats = totalSeats, availableSeats = totalSeats, farePerSeat = farePerSeat,
             ),
@@ -137,20 +137,20 @@ class BusService(
             throw InsufficientSeatsException("Only ${trip.availableSeats} seat(s) remaining on this trip")
         }
 
-        val riderWallet = walletRepository.findByUserIdAndType(riderUserId, WalletType.MAIN)
-            ?: throw BusNoWalletException("No wallet found for this account")
-        val operatorWallet = walletRepository.findById(trip.walletId)
-            .orElseThrow { BusNoWalletException("Operator settlement wallet not found") }
+        val riderAccount = accountRepository.findByUserIdAndType(riderUserId, AccountType.MAIN)
+            ?: throw BusNoAccountException("No account found for this account")
+        val operatorAccount = accountRepository.findById(trip.accountId)
+            .orElseThrow { BusNoAccountException("Operator settlement account not found") }
 
         val totalFare = trip.farePerSeat.multiply(BigDecimal(seatCount)).setScale(2, RoundingMode.HALF_UP)
         val platformFee = totalFare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
         val netToOperator = totalFare.subtract(platformFee)
 
         val result = ledgerService.postLedgerTransaction(
-            riderWallet.currency,
+            riderAccount.currency,
             listOf(
-                LedgerLeg(riderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalFare, "Bus ticket (${trip.origin} -> ${trip.destination})"),
-                LedgerLeg(operatorWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToOperator, "Bus ticket sale"),
+                LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalFare, "Bus ticket (${trip.origin} -> ${trip.destination})"),
+                LedgerLeg(operatorAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToOperator, "Bus ticket sale"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Bus ticket platform fee"),
             ),
         )
@@ -188,17 +188,17 @@ class BusService(
             throw BusTripAlreadyDepartedException("Cannot cancel a booking after the trip has departed")
         }
 
-        val riderWallet = walletRepository.findByUserIdAndType(riderUserId, WalletType.MAIN)
-            ?: throw BusNoWalletException("No wallet found for this account")
-        val operatorWallet = walletRepository.findById(trip.walletId)
-            .orElseThrow { BusNoWalletException("Operator settlement wallet not found") }
+        val riderAccount = accountRepository.findByUserIdAndType(riderUserId, AccountType.MAIN)
+            ?: throw BusNoAccountException("No account found for this account")
+        val operatorAccount = accountRepository.findById(trip.accountId)
+            .orElseThrow { BusNoAccountException("Operator settlement account not found") }
 
         val result = ledgerService.postLedgerTransaction(
-            riderWallet.currency,
+            riderAccount.currency,
             listOf(
-                LedgerLeg(operatorWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, booking.totalFare.subtract(booking.platformFee), "Bus booking cancelled -- refund"),
+                LedgerLeg(operatorAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, booking.totalFare.subtract(booking.platformFee), "Bus booking cancelled -- refund"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.DEBIT, booking.platformFee, "Bus ticket platform fee reversed"),
-                LedgerLeg(riderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, booking.totalFare, "Bus booking cancelled -- refund"),
+                LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, booking.totalFare, "Bus booking cancelled -- refund"),
             ),
         )
 

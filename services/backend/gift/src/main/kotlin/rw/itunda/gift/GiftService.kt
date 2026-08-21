@@ -11,7 +11,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -19,7 +19,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.GiftRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.time.Duration
@@ -31,7 +31,7 @@ class GiftAlreadyResolvedException(message: String) : RuntimeException(message)
 class GiftExpiredException(message: String) : RuntimeException(message)
 class GiftNotRecipientException(message: String) : RuntimeException(message)
 class GiftSelfException(message: String) : RuntimeException(message)
-class GiftNoWalletException(message: String) : RuntimeException(message)
+class GiftNoAccountException(message: String) : RuntimeException(message)
 class GiftRecipientNotFoundException(message: String) : RuntimeException(message)
 class GiftInvalidAmountException(message: String) : RuntimeException(message)
 
@@ -46,7 +46,7 @@ private const val GIFT_HOLDING_ACCOUNT_ID = "gift_holding"
 @Service
 class GiftService(
     private val giftRepository: GiftRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
@@ -91,21 +91,21 @@ class GiftService(
         // creation endpoint in this codebase (P2P send/request, chargeCard, etc).
         rateLimiter.checkLimit("gift:send:$senderUserId", limit = 20, window = Duration.ofHours(1))
 
-        val senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
-            ?: throw GiftNoWalletException("No wallet found for this account")
-        val recipientWallet = walletRepository.findByUserIdAndType(recipientUserId, WalletType.MAIN)
-            ?: throw GiftNoWalletException("Recipient has no wallet to receive this gift")
-        if (senderWallet.availableBalance < amount) {
+        val senderAccount = accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
+            ?: throw GiftNoAccountException("No account found for this account")
+        val recipientAccount = accountRepository.findByUserIdAndType(recipientUserId, AccountType.MAIN)
+            ?: throw GiftNoAccountException("Recipient has no account to receive this gift")
+        if (senderAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this gift")
         }
 
-        // Real escrow hold -- the sender's money leaves their wallet right now, the
+        // Real escrow hold -- the sender's money leaves their account right now, the
         // recipient doesn't receive it until they explicitly claim it below. Same
         // "hold, don't move directly" shape EatsOrder's own delivery-fee escrow uses.
         val holdResult = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift sent"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift sent"),
                 LedgerLeg(GIFT_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_HOLDING, LedgerDirection.CREDIT, amount, "Gift held in escrow"),
             ),
         )
@@ -114,11 +114,11 @@ class GiftService(
             referenceNumber = "GIFT${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = senderUserId,
             recipientId = recipientUserId,
-            fromWalletId = senderWallet.id,
-            toWalletId = recipientWallet.id,
+            fromAccountId = senderAccount.id,
+            toAccountId = recipientAccount.id,
             amount = amount,
             fee = BigDecimal.ZERO,
-            currency = senderWallet.currency,
+            currency = senderAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Gift sent",
@@ -191,14 +191,14 @@ class GiftService(
 
         rateLimiter.checkLimit("gift:claim:$recipientUserId", limit = 30, window = Duration.ofHours(1))
 
-        val recipientWallet = walletRepository.findByUserIdAndType(gift.recipientId, WalletType.MAIN)
-            ?: throw GiftNoWalletException("No wallet found for this account")
+        val recipientAccount = accountRepository.findByUserIdAndType(gift.recipientId, AccountType.MAIN)
+            ?: throw GiftNoAccountException("No account found for this account")
 
         val claimResult = ledgerService.postLedgerTransaction(
-            recipientWallet.currency,
+            recipientAccount.currency,
             listOf(
                 LedgerLeg(GIFT_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_HOLDING, LedgerDirection.DEBIT, gift.amount, "Gift claimed"),
-                LedgerLeg(recipientWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Gift received"),
+                LedgerLeg(recipientAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Gift received"),
             ),
         )
         transactionRepository.save(
@@ -207,11 +207,11 @@ class GiftService(
                 referenceNumber = "GIFTCLAIM${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = gift.senderId,
                 recipientId = gift.recipientId,
-                fromWalletId = null,
-                toWalletId = recipientWallet.id,
+                fromAccountId = null,
+                toAccountId = recipientAccount.id,
                 amount = gift.amount,
                 fee = BigDecimal.ZERO,
-                currency = recipientWallet.currency,
+                currency = recipientAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Gift received",
@@ -222,23 +222,23 @@ class GiftService(
         gift.status = GiftStatus.CLAIMED
         gift.claimTransactionId = claimResult.transactionId
         gift.claimedAt = Instant.now()
-        messagingService.sendMessage(recipientUserId, gift.conversationId, "🎁 Gift opened — ${formatAmount(gift.amount)} RWF added to your wallet")
+        messagingService.sendMessage(recipientUserId, gift.conversationId, "🎁 Gift opened — ${formatAmount(gift.amount)} RWF added to your account")
         return giftRepository.save(gift)
     }
 
     /** Real auto-refund for an unclaimed gift, driven by [GiftExpiryScheduler]. Reverses
-     * the exact hold leg pair back to the sender's own wallet -- same reversing-ledger-
+     * the exact hold leg pair back to the sender's own account -- same reversing-ledger-
      * entry technique `SupportService.reverseTransaction`/order cancellation already use. */
     @Transactional
     fun expireGift(gift: Gift) {
         if (gift.status != GiftStatus.PENDING) return
-        val senderWallet = walletRepository.findByUserIdAndType(gift.senderId, WalletType.MAIN) ?: return
+        val senderAccount = accountRepository.findByUserIdAndType(gift.senderId, AccountType.MAIN) ?: return
 
         val refundResult = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
                 LedgerLeg(GIFT_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_HOLDING, LedgerDirection.DEBIT, gift.amount, "Unclaimed gift refunded"),
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Unclaimed gift refunded"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, gift.amount, "Unclaimed gift refunded"),
             ),
         )
         transactionRepository.save(
@@ -247,11 +247,11 @@ class GiftService(
                 referenceNumber = "GIFTEXP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = gift.recipientId,
                 recipientId = gift.senderId,
-                fromWalletId = null,
-                toWalletId = senderWallet.id,
+                fromAccountId = null,
+                toAccountId = senderAccount.id,
                 amount = gift.amount,
                 fee = BigDecimal.ZERO,
-                currency = senderWallet.currency,
+                currency = senderAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Unclaimed gift refunded",

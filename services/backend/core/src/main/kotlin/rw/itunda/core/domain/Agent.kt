@@ -60,8 +60,8 @@ class AgentCashIn(
     @Column(name = "agent_id", nullable = false, length = 64)
     val agentId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "receipt_number", nullable = false, unique = true, length = 80)
     val receiptNumber: String,
@@ -92,8 +92,8 @@ class AgentCashOut(
     @Column(name = "agent_id", nullable = false, length = 64)
     val agentId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "receipt_number", nullable = false, unique = true, length = 80)
     val receiptNumber: String,
@@ -113,7 +113,7 @@ class AgentCashOut(
     protected constructor() : this("", "", "", "", "", BigDecimal.ZERO, "")
 }
 
-/** A staff assignment, deliberately separate from a customer wallet or merchant role. */
+/** A staff assignment, deliberately separate from a customer account or merchant role. */
 @Entity
 @Table(name = "agent_operators")
 class AgentOperator(

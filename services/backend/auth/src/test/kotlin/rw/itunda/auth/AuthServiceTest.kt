@@ -18,8 +18,8 @@ import rw.itunda.core.domain.PhoneVerificationToken
 import rw.itunda.core.domain.TermsAcceptance
 import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.RealtimeMessagePublisher
@@ -29,8 +29,8 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PhoneVerificationTokenRepository
 import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -45,10 +45,10 @@ import java.util.Optional
  * not just generic coverage.
  *
  * JwtService is used for real (it's a small, pure, self-contained class -- no external
- * dependencies), same reasoning as WalletServiceTest's real QuoteStore: real signed/
+ * dependencies), same reasoning as AccountServiceTest's real QuoteStore: real signed/
  * verified tokens are more meaningful coverage than a mocked stand-in. Same for
  * BCryptPasswordEncoder, which AuthService instantiates internally and can't be mocked
- * anyway. UserRepository/WalletRepository (real DB) and TokenBlocklistService/RateLimiter
+ * anyway. UserRepository/AccountRepository (real DB) and TokenBlocklistService/RateLimiter
  * (real Redis) are mocked.
  */
 class AuthServiceTest : BehaviorSpec({
@@ -58,7 +58,7 @@ class AuthServiceTest : BehaviorSpec({
 
     Given("a fresh AuthService") {
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val jwtService = JwtService(testSecret)
         val tokenBlocklistService = mockk<TokenBlocklistService>()
@@ -91,7 +91,7 @@ class AuthServiceTest : BehaviorSpec({
         val termsAcceptanceRepository = mockk<TermsAcceptanceRepository>(relaxed = true)
         every { termsAcceptanceRepository.save(any()) } answers { firstArg() }
         val service = AuthService(
-            userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
+            userRepository, accountRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             emailVerificationTokenRepository, phoneVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
             pushNotificationService, realtimeMessagePublisher, accountNumberGenerator, termsAcceptanceRepository,
         )
@@ -101,7 +101,7 @@ class AuthServiceTest : BehaviorSpec({
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000001") } returns false
             every { userRepository.save(any()) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             val jarSlot = mutableListOf<InterestJar>()
             every { interestJarRepository.save(capture(jarSlot)) } answers { firstArg() }
             val phoneTokenSlot = mutableListOf<PhoneVerificationToken>()
@@ -113,24 +113,26 @@ class AuthServiceTest : BehaviorSpec({
 
             val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
 
-            Then("it rate-limits, creates a user, provisions real zero-balance MAIN, SAVINGS, and INVESTMENT wallets, and issues real tokens") {
+            Then("it rate-limits, creates a user, provisions real zero-balance MAIN, PAY, SAVINGS, and INVESTMENT accounts, and issues real tokens") {
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:register:+250788000001", 3, any()) }
-                val walletSlot = mutableListOf<Wallet>()
+                val accountSlot = mutableListOf<Account>()
                 // Fixed 2026-07-13: registration used to only provision MAIN, so
                 // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user --
-                // this asserts all three wallets exist, not just that *a* wallet got saved.
+                // this asserts all real accounts exist, not just that *a* account got saved.
                 // INVESTMENT added 2026-07-27: the same real gap, one layer deeper --
-                // StocksService.buyStock required a real INVESTMENT wallet only the seeded
+                // StocksService.buyStock required a real INVESTMENT account only the seeded
                 // demo user ever had, so POST /api/v1/stocks/buy 404'd for every real user.
-                verify(exactly = 3) { walletRepository.save(capture(walletSlot)) }
-                walletSlot.map { it.type }.toSet() shouldBe setOf(WalletType.MAIN, WalletType.SAVINGS, WalletType.INVESTMENT)
-                walletSlot.all { it.balance.signum() == 0 } shouldBe true
+                // PAY added 2026-08-21: real Toss Bank/Toss Pay separation -- see
+                // AccountType.PAY's own doc comment.
+                verify(exactly = 4) { accountRepository.save(capture(accountSlot)) }
+                accountSlot.map { it.type }.toSet() shouldBe setOf(AccountType.MAIN, AccountType.PAY, AccountType.SAVINGS, AccountType.INVESTMENT)
+                accountSlot.all { it.balance.signum() == 0 } shouldBe true
                 jwtService.verify(response.accessToken) shouldNotBe null
                 jwtService.verify(response.refreshToken)!!.isRefresh shouldBe true
 
                 // Fixed 2026-07-20: SeedDataRunner was the only place an InterestJar was ever
                 // created, so GET /api/v1/savings/interest-jar 404'd for every real user.
-                jarSlot.single().walletId shouldBe walletSlot.single { it.type == WalletType.SAVINGS }.id
+                jarSlot.single().accountId shouldBe accountSlot.single { it.type == AccountType.SAVINGS }.id
                 jarSlot.single().earnedThisMonth.signum() shouldBe 0
             }
             Then("it real-sends a 6-digit phone verification code via a real in-app notification, at registration itself") {
@@ -155,7 +157,7 @@ class AuthServiceTest : BehaviorSpec({
             every { userRepository.findByReferralCode("ITDREF01") } returns referrer
             val userSlot = mutableListOf<User>()
             every { userRepository.save(capture(userSlot)) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { interestJarRepository.save(any()) } answers { firstArg() }
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
@@ -186,12 +188,12 @@ class AuthServiceTest : BehaviorSpec({
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000002") } returns true
 
-            Then("it throws PhoneAlreadyRegisteredException without touching the wallet repository") {
+            Then("it throws PhoneAlreadyRegisteredException without touching the account repository") {
                 try {
                     service.register(RegisterRequest("+250788000002", null, "Jean", "B", "password123"))
                     error("expected PhoneAlreadyRegisteredException")
                 } catch (e: PhoneAlreadyRegisteredException) {
-                    verify(exactly = 0) { walletRepository.save(any()) }
+                    verify(exactly = 0) { accountRepository.save(any()) }
                 }
             }
         }
@@ -213,7 +215,7 @@ class AuthServiceTest : BehaviorSpec({
                     error("expected RequiredTermsNotAcceptedException")
                 } catch (e: RequiredTermsNotAcceptedException) {
                     verify(exactly = 0) { userRepository.save(any()) }
-                    verify(exactly = 0) { walletRepository.save(any()) }
+                    verify(exactly = 0) { accountRepository.save(any()) }
                 }
             }
         }
@@ -222,7 +224,7 @@ class AuthServiceTest : BehaviorSpec({
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000021") } returns false
             every { userRepository.save(any()) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { interestJarRepository.save(any()) } answers { firstArg() }
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
@@ -240,7 +242,7 @@ class AuthServiceTest : BehaviorSpec({
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000022") } returns false
             every { userRepository.save(any()) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { interestJarRepository.save(any()) } answers { firstArg() }
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
@@ -258,7 +260,7 @@ class AuthServiceTest : BehaviorSpec({
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000023") } returns false
             every { userRepository.save(any()) } answers { firstArg() }
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { interestJarRepository.save(any()) } answers { firstArg() }
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }

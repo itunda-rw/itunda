@@ -16,7 +16,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -201,8 +201,8 @@ class LoansController(
     @ExceptionHandler(PostpaidCreditInvalidAmountException::class)
     fun handlePostpaidInvalidAmount(ex: PostpaidCreditInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(PostpaidCreditNoWalletException::class)
-    fun handlePostpaidNoWallet(ex: PostpaidCreditNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(PostpaidCreditNoAccountException::class)
+    fun handlePostpaidNoAccount(ex: PostpaidCreditNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(PostpaidCreditSuspendedException::class)
     fun handlePostpaidSuspended(ex: PostpaidCreditSuspendedException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("POSTPAID_CREDIT_SUSPENDED", ex.message ?: "Forbidden"))
@@ -225,8 +225,8 @@ class LoansController(
     @ExceptionHandler(OverdraftInvalidAmountException::class)
     fun handleOverdraftInvalidAmount(ex: OverdraftInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(OverdraftNoWalletException::class)
-    fun handleOverdraftNoWallet(ex: OverdraftNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(OverdraftNoAccountException::class)
+    fun handleOverdraftNoAccount(ex: OverdraftNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(NoBetterRateAvailableException::class)
     fun handleNoBetterRate(ex: NoBetterRateAvailableException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("NO_BETTER_RATE_AVAILABLE", ex.message ?: "No better rate available"))
@@ -246,8 +246,8 @@ class LoansController(
     @ExceptionHandler(LoanNotFoundException::class)
     fun handleNotFound(ex: LoanNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LOAN_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(BusinessAccountRequiredException::class)
     fun handleBusinessAccountRequired(ex: BusinessAccountRequiredException) =
@@ -268,6 +268,6 @@ class LoansController(
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 }

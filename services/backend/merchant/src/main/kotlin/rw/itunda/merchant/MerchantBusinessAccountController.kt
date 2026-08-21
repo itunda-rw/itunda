@@ -15,7 +15,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -34,13 +34,13 @@ class MerchantBusinessAccountController(
 ) {
     @PostMapping
     fun openBusinessAccount(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val wallet = merchantBusinessAccountService.openBusinessAccount(currentUser.userId)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "wallet" to wallet))
+        val account = merchantBusinessAccountService.openBusinessAccount(currentUser.userId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "account" to account))
     }
 
     @GetMapping
     fun getBusinessAccount(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "wallet" to merchantBusinessAccountService.getBusinessAccount(currentUser.userId)))
+        ResponseEntity.ok(mapOf("success" to true, "account" to merchantBusinessAccountService.getBusinessAccount(currentUser.userId)))
 
     @GetMapping("/transactions")
     fun getBusinessTransactions(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
@@ -53,7 +53,7 @@ class MerchantBusinessAccountController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/business-account/move-to-business", idempotencyKey, request) {
-            200 to mapOf("success" to true, "wallet" to merchantBusinessAccountService.moveToBusiness(currentUser.userId, request.amount))
+            200 to mapOf("success" to true, "account" to merchantBusinessAccountService.moveToBusiness(currentUser.userId, request.amount))
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -65,7 +65,7 @@ class MerchantBusinessAccountController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/business-account/move-to-personal", idempotencyKey, request) {
-            200 to mapOf("success" to true, "wallet" to merchantBusinessAccountService.moveToPersonal(currentUser.userId, request.amount))
+            200 to mapOf("success" to true, "account" to merchantBusinessAccountService.moveToPersonal(currentUser.userId, request.amount))
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -86,17 +86,17 @@ class MerchantBusinessAccountController(
     fun handleInvalidAmount(ex: InvalidMoveAmountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MOVE_AMOUNT", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleNoWallet(ex: MerchantNoWalletException) =
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleNoAccount(ex: MerchantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleIdempotencyConflict(ex: IdempotencyConflictException) =

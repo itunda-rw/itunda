@@ -22,8 +22,8 @@ class LoanAccount(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "offer_id", nullable = false, length = 40)
     val offerId: String,
@@ -45,7 +45,7 @@ class LoanAccount(
     val disbursedAt: Instant = Instant.now(),
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", offerId = "",
+        id = "", userId = "", accountId = "", offerId = "",
         principal = BigDecimal.ZERO, outstanding = BigDecimal.ZERO, interestRate = 0.0, status = LoanStatus.ACTIVE,
     )
 }

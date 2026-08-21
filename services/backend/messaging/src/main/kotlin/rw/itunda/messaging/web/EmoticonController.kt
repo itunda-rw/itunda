@@ -15,14 +15,14 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.messaging.EmoticonGiftRecipientNotFoundException
 import rw.itunda.messaging.EmoticonGiftToSelfException
-import rw.itunda.messaging.EmoticonNoWalletException
+import rw.itunda.messaging.EmoticonNoAccountException
 import rw.itunda.messaging.EmoticonNotFoundException
 import rw.itunda.messaging.EmoticonPackAlreadyOwnedException
 import rw.itunda.messaging.EmoticonPackNotFoundException
 import rw.itunda.messaging.EmoticonPackNotOwnedException
 import rw.itunda.messaging.EmoticonService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 
 data class SendEmoticonRequest(val emoticonId: String)
 data class GiftEmoticonPackRequest(val recipientPhoneNumber: String)
@@ -101,8 +101,8 @@ class EmoticonController(private val emoticonService: EmoticonService) {
     fun handleNotOwned(ex: EmoticonPackNotOwnedException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("EMOTICON_PACK_NOT_OWNED", ex.message ?: "Forbidden"))
 
-    @ExceptionHandler(EmoticonNoWalletException::class)
-    fun handleNoWallet(ex: EmoticonNoWalletException) =
+    @ExceptionHandler(EmoticonNoAccountException::class)
+    fun handleNoAccount(ex: EmoticonNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmoticonGiftRecipientNotFoundException::class)
@@ -117,9 +117,9 @@ class EmoticonController(private val emoticonService: EmoticonService) {
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

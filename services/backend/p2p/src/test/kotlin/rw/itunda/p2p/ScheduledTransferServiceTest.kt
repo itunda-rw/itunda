@@ -13,14 +13,14 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ScheduledTransferRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -35,30 +35,30 @@ import java.util.Optional
  */
 class ScheduledTransferServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
-    Given("a real user with a wallet and a real recipient") {
+    Given("a real user with a account and a real recipient") {
         val scheduledTransferRepository = mockk<ScheduledTransferRepository>(relaxed = true)
         every { scheduledTransferRepository.save(any()) } answers { firstArg() }
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val p2pService = mockk<P2pService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
+        val service = ScheduledTransferService(scheduledTransferRepository, accountRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
 
-        val senderWallet = wallet("wallet_sender", "sender_1")
-        val recipientWallet = wallet("wallet_recipient", "recipient_1")
+        val senderAccount = account("account_sender", "sender_1")
+        val recipientAccount = account("account_recipient", "recipient_1")
         val recipientUser = User(id = "recipient_1", phoneNumber = "+250788000002", firstName = "Alice", lastName = "M", passwordHash = "x")
 
         When("creating a scheduled transfer for a genuine future date") {
-            every { walletRepository.findByUserIdAndType("sender_1", WalletType.MAIN) } returns senderWallet
+            every { accountRepository.findByUserIdAndType("sender_1", AccountType.MAIN) } returns senderAccount
             every { userRepository.findByPhoneNumber("+250788000002") } returns recipientUser
-            every { walletRepository.findByUserIdAndType("recipient_1", WalletType.MAIN) } returns recipientWallet
+            every { accountRepository.findByUserIdAndType("recipient_1", AccountType.MAIN) } returns recipientAccount
             every { userRepository.findById("recipient_1") } returns Optional.of(recipientUser)
 
             val futureDate = LocalDate.now(ZoneOffset.UTC).plusDays(5)
@@ -93,9 +93,9 @@ class ScheduledTransferServiceTest : BehaviorSpec({
         }
 
         When("scheduling a transfer to yourself") {
-            every { walletRepository.findByUserIdAndType("sender_1", WalletType.MAIN) } returns senderWallet
+            every { accountRepository.findByUserIdAndType("sender_1", AccountType.MAIN) } returns senderAccount
             every { userRepository.findByPhoneNumber("+250788000001") } returns null
-            every { walletRepository.findByAccountNumber("+250788000001") } returns senderWallet
+            every { accountRepository.findByAccountNumber("+250788000001") } returns senderAccount
 
             Then("it's rejected") {
                 try {
@@ -122,7 +122,7 @@ class ScheduledTransferServiceTest : BehaviorSpec({
     Given("a real pending scheduled transfer") {
         val scheduledTransferRepository = mockk<ScheduledTransferRepository>(relaxed = true)
         every { scheduledTransferRepository.save(any()) } answers { firstArg() }
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val p2pService = mockk<P2pService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
@@ -132,7 +132,7 @@ class ScheduledTransferServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
+        val service = ScheduledTransferService(scheduledTransferRepository, accountRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
 
         val pending = ScheduledTransferFixture.pending()
 
@@ -152,7 +152,7 @@ class ScheduledTransferServiceTest : BehaviorSpec({
                 (
                     Transaction(
                         id = "ledgertxn_1", referenceNumber = "REF1", senderId = "sender_1", recipientId = "recipient_1",
-                        fromWalletId = "wallet_sender", toWalletId = "wallet_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
+                        fromAccountId = "account_sender", toAccountId = "account_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
                         currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "Transfer - Rent",
                     ) to BigDecimal("90000")
                     )
@@ -190,7 +190,7 @@ class ScheduledTransferServiceTest : BehaviorSpec({
                 (
                     Transaction(
                         id = "ledgertxn_2", referenceNumber = "REF2", senderId = "sender_1", recipientId = "recipient_1",
-                        fromWalletId = "wallet_sender", toWalletId = "wallet_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
+                        fromAccountId = "account_sender", toAccountId = "account_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
                         currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "Transfer - Rent",
                     ) to BigDecimal("90000")
                     )
@@ -216,7 +216,7 @@ class ScheduledTransferServiceTest : BehaviorSpec({
 
 private object ScheduledTransferFixture {
     fun pending() = rw.itunda.core.domain.ScheduledTransfer(
-        id = "scheduledtransfer_1", userId = "sender_1", walletId = "wallet_sender",
+        id = "scheduledtransfer_1", userId = "sender_1", accountId = "account_sender",
         recipientIdentifier = "+250788000002", recipientName = "Alice M",
         amount = BigDecimal("10000"), description = "Rent", scheduledDate = LocalDate.now(ZoneOffset.UTC).plusDays(1),
     )

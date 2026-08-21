@@ -9,14 +9,14 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DesignatedDriver
 import rw.itunda.core.domain.DesignatedDriverTrip
 import rw.itunda.core.domain.DesignatedDriverTripStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DesignatedDriverRepository
 import rw.itunda.core.repository.DesignatedDriverTripRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -31,22 +31,22 @@ class DesignatedDriverServiceTest : BehaviorSpec({
     fun newService(
         designatedDriverRepository: DesignatedDriverRepository = mockk(),
         designatedDriverTripRepository: DesignatedDriverTripRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         transactionRepository: TransactionRepository = mockk<TransactionRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = DesignatedDriverService(designatedDriverRepository, designatedDriverTripRepository, walletRepository, ledgerService, transactionRepository, rateLimiter)
+    ) = DesignatedDriverService(designatedDriverRepository, designatedDriverTripRepository, accountRepository, ledgerService, transactionRepository, rateLimiter)
 
-    Given("a fresh account with a real wallet") {
+    Given("a fresh account with a real account") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
         val service = newService(designatedDriverRepository = designatedDriverRepository)
-        val wallet = Wallet(
-            id = "wallet_1", userId = "user_1", accountNumber = "1000000001", accountName = "User",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val account = Account(
+            id = "account_1", userId = "user_1", accountNumber = "1000000001", accountName = "User",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
-        val walletRepository = mockk<WalletRepository>()
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet
-        val service2 = newService(designatedDriverRepository = designatedDriverRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account
+        val service2 = newService(designatedDriverRepository = designatedDriverRepository, accountRepository = accountRepository)
 
         When("registering as a designated driver for the first time") {
             every { designatedDriverRepository.findByUserId("user_1") } returns null
@@ -55,9 +55,9 @@ class DesignatedDriverServiceTest : BehaviorSpec({
 
             val result = service2.register("user_1", "DL-12345")
 
-            Then("a real driver row is saved with the wallet reused as payout destination") {
+            Then("a real driver row is saved with the account reused as payout destination") {
                 result.userId shouldBe "user_1"
-                result.walletId shouldBe "wallet_1"
+                result.accountId shouldBe "account_1"
                 result.licenseNumber shouldBe "DL-12345"
                 savedSlot.captured.userId shouldBe "user_1"
             }
@@ -65,7 +65,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
 
         When("registering twice for the same account") {
             every { designatedDriverRepository.findByUserId("user_1") } returns
-                DesignatedDriver(id = "designated_driver_1", userId = "user_1", walletId = "wallet_1", licenseNumber = "DL-12345")
+                DesignatedDriver(id = "designated_driver_1", userId = "user_1", accountId = "account_1", licenseNumber = "DL-12345")
 
             Then("the second registration real-409s") {
                 try {
@@ -80,15 +80,15 @@ class DesignatedDriverServiceTest : BehaviorSpec({
 
     Given("a real customer with sufficient balance requesting their own car driven home") {
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
-        val customerWallet = Wallet(
-            id = "wallet_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val customerAccount = Account(
+            id = "account_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+        every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val savedSlot = slot<DesignatedDriverTrip>()
         every { designatedDriverTripRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -113,7 +113,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
         val service = newService(designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository)
 
-        val driver = DesignatedDriver(id = "designated_driver_1", userId = "user_1", walletId = "wallet_1", licenseNumber = "DL-1", available = true)
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "user_1", accountId = "account_1", licenseNumber = "DL-1", available = true)
         val trip = DesignatedDriverTrip(
             id = "designated_trip_1", customerId = "user_1", pickupAddress = "A", pickupLatitude = -1.9, pickupLongitude = 30.0,
             dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota", vehicleModel = "RAV4",
@@ -138,17 +138,17 @@ class DesignatedDriverServiceTest : BehaviorSpec({
     Given("a real DRIVING trip a driver just completed") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", walletId = "wallet_driver", licenseNumber = "DL-1", available = true)
-        val driverWallet = Wallet(
-            id = "wallet_driver", userId = "driver_user_1", accountNumber = "1000000003", accountName = "Driver",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1", available = true)
+        val driverAccount = Account(
+            id = "account_driver", userId = "driver_user_1", accountNumber = "1000000003", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val trip = DesignatedDriverTrip(
             id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
@@ -158,7 +158,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
         )
         every { designatedDriverRepository.findByUserId("driver_user_1") } returns driver
         every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
-        every { walletRepository.findById("wallet_driver") } returns Optional.of(driverWallet)
+        every { accountRepository.findById("account_driver") } returns Optional.of(driverAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
 
@@ -180,13 +180,13 @@ class DesignatedDriverServiceTest : BehaviorSpec({
 
     Given("a real REQUESTED trip the customer wants to withdraw") {
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
-        val customerWallet = Wallet(
-            id = "wallet_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val customerAccount = Account(
+            id = "account_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
         val trip = DesignatedDriverTrip(
             id = "designated_trip_1", customerId = "customer_1", pickupAddress = "A", pickupLatitude = -1.9, pickupLongitude = 30.0,
@@ -195,7 +195,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             holdTransactionId = "ledgertxn_1",
         )
         every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
-        every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+        every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
 
@@ -218,16 +218,16 @@ class DesignatedDriverServiceTest : BehaviorSpec({
     Given("a real ACCEPTED trip within the cancellation-fee grace period") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val customerWallet = Wallet(
-            id = "wallet_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val customerAccount = Account(
+            id = "account_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
         val trip = DesignatedDriverTrip(
             id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
@@ -237,7 +237,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             driverAcceptedAt = java.time.Instant.now(),
         )
         every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
-        every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+        every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
         every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
@@ -256,21 +256,21 @@ class DesignatedDriverServiceTest : BehaviorSpec({
     Given("a real ACCEPTED trip past the cancellation-fee grace period") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
         val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val customerWallet = Wallet(
-            id = "wallet_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val customerAccount = Account(
+            id = "account_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", walletId = "wallet_driver", licenseNumber = "DL-1", available = false)
-        val driverWallet = Wallet(
-            id = "wallet_driver", userId = "driver_user_1", accountNumber = "1000000003", accountName = "Driver",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", accountId = "account_driver", licenseNumber = "DL-1", available = false)
+        val driverAccount = Account(
+            id = "account_driver", userId = "driver_user_1", accountNumber = "1000000003", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val trip = DesignatedDriverTrip(
             id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
@@ -280,9 +280,9 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             driverAcceptedAt = java.time.Instant.now().minus(java.time.Duration.ofMinutes(5)),
         )
         every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
-        every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+        every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         every { designatedDriverRepository.findById("designated_driver_1") } returns Optional.of(driver)
-        every { walletRepository.findById("wallet_driver") } returns Optional.of(driverWallet)
+        every { accountRepository.findById("account_driver") } returns Optional.of(driverAccount)
         val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
         every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
@@ -294,7 +294,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
                 result.status shouldBe DesignatedDriverTripStatus.CANCELLED
                 legsSlot.captured.size shouldBe 3
                 legsSlot.captured[1].amount.compareTo(BigDecimal("1250.00")) shouldBe 0
-                legsSlot.captured[2].accountId shouldBe "wallet_driver"
+                legsSlot.captured[2].accountId shouldBe "account_driver"
                 legsSlot.captured[2].amount.compareTo(BigDecimal("3000")) shouldBe 0
             }
         }

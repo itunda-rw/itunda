@@ -9,13 +9,13 @@ import rw.itunda.core.domain.HarvestAdvance
 import rw.itunda.core.domain.HarvestAdvanceStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.CooperativeMembershipRepository
 import rw.itunda.core.repository.CooperativeRepository
 import rw.itunda.core.repository.HarvestAdvanceRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -25,7 +25,7 @@ class CooperativeNotFoundException(message: String) : RuntimeException(message)
 class CooperativeInvalidNameException(message: String) : RuntimeException(message)
 class AlreadyMemberException(message: String) : RuntimeException(message)
 class NotMemberException(message: String) : RuntimeException(message)
-class HarvestAdvanceNoWalletException(message: String) : RuntimeException(message)
+class HarvestAdvanceNoAccountException(message: String) : RuntimeException(message)
 class HarvestAdvanceInvalidAmountException(message: String) : RuntimeException(message)
 class HarvestAdvanceNotFoundException(message: String) : RuntimeException(message)
 class HarvestAdvanceInvalidStatusException(message: String) : RuntimeException(message)
@@ -42,12 +42,12 @@ private val MAX_ADVANCE_AMOUNT = BigDecimal("500000")
  * farmer lending relationship, structurally mirroring `LoansService`'s own real
  * disbursement/repayment ledger shape (itunda's own `loan_payable`/`LOAN_PAYABLE`
  * receivable) -- deliberately NOT a cooperative-pool redistribution like `Ikimina`,
- * and NOT funded from any shared/pooled wallet other members have a claim on, learning
+ * and NOT funded from any shared/pooled account other members have a claim on, learning
  * directly from a real solvency bug this session caught in `SaccoService` before it
  * shipped.
  *
  * Honest v1 scope: itunda is the sole real lender here (reusing the same real
- * underwriting-free wallet-to-wallet pattern `LoansService.applyForLoan` already
+ * underwriting-free account-to-account pattern `LoansService.applyForLoan` already
  * establishes for its own `lender_itunda` offers), not a real integration with
  * KCB/Ecobank's own actual agriculture-finance products.
  */
@@ -56,7 +56,7 @@ class CooperativeService(
     private val cooperativeRepository: CooperativeRepository,
     private val membershipRepository: CooperativeMembershipRepository,
     private val advanceRepository: HarvestAdvanceRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -78,10 +78,10 @@ class CooperativeService(
         if (membershipRepository.findByCooperativeIdAndUserId(cooperativeId, userId) != null) {
             throw AlreadyMemberException("You are already a member of this cooperative")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw HarvestAdvanceNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw HarvestAdvanceNoAccountException("No account found for this account")
         return membershipRepository.save(
-            CooperativeMembership(id = "coopmem_${UUID.randomUUID()}", cooperativeId = cooperativeId, userId = userId, walletId = wallet.id),
+            CooperativeMembership(id = "coopmem_${UUID.randomUUID()}", cooperativeId = cooperativeId, userId = userId, accountId = account.id),
         )
     }
 
@@ -110,7 +110,7 @@ class CooperativeService(
 
         return advanceRepository.save(
             HarvestAdvance(
-                id = "harvestadv_${UUID.randomUUID()}", membershipId = membership.id, walletId = membership.walletId,
+                id = "harvestadv_${UUID.randomUUID()}", membershipId = membership.id, accountId = membership.accountId,
                 principalAmount = principalAmount, purpose = purpose.trim().ifEmpty { "INPUT_FINANCING" }.take(30),
                 expectedHarvestDate = expectedHarvestDate, repaymentDueDate = expectedHarvestDate,
             ),
@@ -127,12 +127,12 @@ class CooperativeService(
         if (advance.status != HarvestAdvanceStatus.REQUESTED) {
             throw HarvestAdvanceInvalidStatusException("Only a REQUESTED advance can be disbursed -- this one is already ${advance.status}")
         }
-        val wallet = walletRepository.findById(advance.walletId).orElseThrow { HarvestAdvanceNoWalletException("Wallet not found") }
+        val account = accountRepository.findById(advance.accountId).orElseThrow { HarvestAdvanceNoAccountException("Account not found") }
 
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, advance.principalAmount, "Harvest advance disbursement"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, advance.principalAmount, "Harvest advance disbursement"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, advance.principalAmount, "Harvest advance principal owed"),
             ),
         )
@@ -168,12 +168,12 @@ class CooperativeService(
         if (amount.compareTo(advance.principalAmount) != 0) {
             throw HarvestAdvanceInvalidAmountException("Repayment must be the full outstanding principal (${advance.principalAmount}) -- partial repayment is not yet supported")
         }
-        val wallet = walletRepository.findById(advance.walletId).orElseThrow { HarvestAdvanceNoWalletException("Wallet not found") }
+        val account = accountRepository.findById(advance.accountId).orElseThrow { HarvestAdvanceNoAccountException("Account not found") }
 
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Harvest advance repayment"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Harvest advance repayment"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, amount, "Harvest advance repayment"),
             ),
         )

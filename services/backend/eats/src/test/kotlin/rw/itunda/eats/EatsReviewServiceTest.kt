@@ -205,7 +205,7 @@ class EatsReviewServiceTest : BehaviorSpec({
         val eatsReviewReportRepository = mockk<EatsReviewReportRepository>(relaxed = true)
         val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
 
-        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
         val review = EatsReview(
             id = "eats_review_1", orderId = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1",
             riderId = "rider_1", restaurantRating = 5, restaurantComment = "Great!", riderRating = 5, riderComment = null,
@@ -243,7 +243,7 @@ class EatsReviewServiceTest : BehaviorSpec({
         }
 
         When("a different restaurant's owner tries to reply to this review") {
-            val otherRestaurant = Merchant(id = "restaurant_2", ownerUserId = "owner_2", walletId = "wallet_2", businessName = "Other Place", status = MerchantStatus.ACTIVE)
+            val otherRestaurant = Merchant(id = "restaurant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Other Place", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("owner_2") } returns otherRestaurant
             every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
 

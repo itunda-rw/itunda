@@ -9,13 +9,13 @@ import io.mockk.verify
 import rw.itunda.core.domain.DailyStepReward
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DailyStepRewardRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -23,14 +23,14 @@ import java.time.LocalDate
  * own doc comment for the full sourced account. */
 class StepRewardServiceTest : BehaviorSpec({
 
-    fun wallet(userId: String) = Wallet(
-        id = "wallet_$userId", userId = userId, accountNumber = "ACC-$userId", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+    fun account(userId: String) = Account(
+        id = "account_$userId", userId = userId, accountNumber = "ACC-$userId", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
     )
 
     Given("a real user with no real step report yet today") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         // Real flaky test found live (2026-08-10) -- this Given block previously left
         // `random` at its default SecureRandom(), so "verify(exactly = 3)" below would
@@ -39,11 +39,11 @@ class StepRewardServiceTest : BehaviorSpec({
         // dedicated loss-path Given block below already established.
         val random = mockk<java.util.Random>()
         every { random.nextDouble() } returns 0.99
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_1", "2026-07-27") } returns null
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val savedSlot = mutableListOf<DailyStepReward>()
         every { dailyStepRewardRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -61,7 +61,7 @@ class StepRewardServiceTest : BehaviorSpec({
                         "RWF",
                         listOf(
                             LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, StepRewardTier.TIER_1000.rewardAmount, "Walking reward - 1000 steps"),
-                            LedgerLeg("wallet_user_1", LedgerAccountType.WALLET, LedgerDirection.CREDIT, StepRewardTier.TIER_1000.rewardAmount, "Walking reward - 1000 steps"),
+                            LedgerLeg("account_user_1", LedgerAccountType.WALLET, LedgerDirection.CREDIT, StepRewardTier.TIER_1000.rewardAmount, "Walking reward - 1000 steps"),
                         ),
                     )
                 }
@@ -103,19 +103,19 @@ class StepRewardServiceTest : BehaviorSpec({
 
     Given("a real user who already crossed the 1,000-step tier earlier today") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         // Same real flaky-test fix as the first Given block above -- the third When
         // below crosses TIER_5000 and asserts an exact call count, which the real
         // unseeded SecureRandom default could spuriously break on a lottery win.
         val random = mockk<java.util.Random>()
         every { random.nextDouble() } returns 0.99
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_1", userId = "user_1", rewardDate = "2026-07-27", steps = 1200, claimedTier1000 = true)
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_1", "2026-07-27") } returns existing
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
 
@@ -160,14 +160,14 @@ class StepRewardServiceTest : BehaviorSpec({
     // check-then-act race).
     Given("a real user's existing today row, about to newly cross a tier") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService)
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_9", userId = "user_9", rewardDate = "2026-07-27", steps = 500)
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_9", "2026-07-27") } returns existing
-        every { walletRepository.findByUserIdAndType("user_9", WalletType.MAIN) } returns wallet("user_9")
+        every { accountRepository.findByUserIdAndType("user_9", AccountType.MAIN) } returns account("user_9")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_9", emptyList())
         val savedSlot = mutableListOf<DailyStepReward>()
         every { dailyStepRewardRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -189,14 +189,14 @@ class StepRewardServiceTest : BehaviorSpec({
     // real SecureRandom output.
     Given("a real user newly crossing a tier, and the real lottery draw wins") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val random = mockk<java.util.Random>()
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_3", "2026-07-27") } returns null
-        every { walletRepository.findByUserIdAndType("user_3", WalletType.MAIN) } returns wallet("user_3")
+        every { accountRepository.findByUserIdAndType("user_3", AccountType.MAIN) } returns account("user_3")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
         every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
         // Below TIER_1000's real 5% odds -- a real win.
@@ -215,7 +215,7 @@ class StepRewardServiceTest : BehaviorSpec({
                         "RWF",
                         listOf(
                             LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, StepRewardTier.TIER_1000.lotteryBonusAmount, "Step lottery bonus - 1000 steps"),
-                            LedgerLeg("wallet_user_3", LedgerAccountType.WALLET, LedgerDirection.CREDIT, StepRewardTier.TIER_1000.lotteryBonusAmount, "Step lottery bonus - 1000 steps"),
+                            LedgerLeg("account_user_3", LedgerAccountType.WALLET, LedgerDirection.CREDIT, StepRewardTier.TIER_1000.lotteryBonusAmount, "Step lottery bonus - 1000 steps"),
                         ),
                     )
                 }
@@ -227,14 +227,14 @@ class StepRewardServiceTest : BehaviorSpec({
 
     Given("a real user newly crossing a tier, and the real lottery draw doesn't win") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val random = mockk<java.util.Random>()
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_4", "2026-07-27") } returns null
-        every { walletRepository.findByUserIdAndType("user_4", WalletType.MAIN) } returns wallet("user_4")
+        every { accountRepository.findByUserIdAndType("user_4", AccountType.MAIN) } returns account("user_4")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
         every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
         // Above TIER_1000's real 5% odds -- a real loss.
@@ -255,22 +255,22 @@ class StepRewardServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real user with no real MAIN wallet, somehow crossing a tier") {
+    Given("a real user with no real MAIN account, somehow crossing a tier") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService)
+        val service = StepRewardService(dailyStepRewardRepository, accountRepository, ledgerService)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_2", "2026-07-27") } returns null
-        every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns null
+        every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns null
 
         When("reporting 1000 steps") {
-            Then("it throws RewardsNoWalletException rather than silently marking the tier claimed unpaid") {
+            Then("it throws RewardsNoAccountException rather than silently marking the tier claimed unpaid") {
                 try {
                     service.reportSteps("user_2", 1000, today)
-                    error("expected RewardsNoWalletException")
-                } catch (e: RewardsNoWalletException) {
+                    error("expected RewardsNoAccountException")
+                } catch (e: RewardsNoAccountException) {
                     verify(exactly = 0) { dailyStepRewardRepository.save(any()) }
                 }
             }

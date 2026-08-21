@@ -24,7 +24,7 @@ import rw.itunda.gift.GiftVoucherExpiredException
 import rw.itunda.gift.GiftVoucherExpiryReminderScheduler
 import rw.itunda.gift.GiftVoucherInvalidAmountException
 import rw.itunda.gift.GiftVoucherMerchantNotFoundException
-import rw.itunda.gift.GiftVoucherNoWalletException
+import rw.itunda.gift.GiftVoucherNoAccountException
 import rw.itunda.gift.GiftVoucherNotActiveException
 import rw.itunda.gift.GiftVoucherNotExtendableException
 import rw.itunda.gift.GiftVoucherNotFoundException
@@ -127,8 +127,8 @@ class GiftVoucherController(
     fun handleSelf(ex: GiftVoucherSelfException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_GIFT_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(GiftVoucherNoWalletException::class)
-    fun handleNoWallet(ex: GiftVoucherNoWalletException) =
+    @ExceptionHandler(GiftVoucherNoAccountException::class)
+    fun handleNoAccount(ex: GiftVoucherNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(GiftVoucherRecipientNotFoundException::class)

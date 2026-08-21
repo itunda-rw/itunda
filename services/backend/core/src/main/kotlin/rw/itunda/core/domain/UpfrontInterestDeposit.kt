@@ -41,8 +41,8 @@ class UpfrontInterestDeposit(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, precision = 18, scale = 2)
     val principal: BigDecimal,
@@ -75,7 +75,7 @@ class UpfrontInterestDeposit(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", principal = BigDecimal.ZERO,
+        id = "", userId = "", accountId = "", principal = BigDecimal.ZERO,
         interestRate = 0.0, interestPaid = BigDecimal.ZERO, maturesAt = Instant.now(),
     )
 }

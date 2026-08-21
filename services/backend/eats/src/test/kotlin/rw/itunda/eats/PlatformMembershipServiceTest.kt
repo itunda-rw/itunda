@@ -8,14 +8,14 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.PlatformMembership
-import rw.itunda.core.domain.WalletType
-import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PlatformMembershipRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -30,18 +30,18 @@ class PlatformMembershipServiceTest : BehaviorSpec({
 
     Given("a real user with an already-active platform membership") {
         val platformMembershipRepository = mockk<PlatformMembershipRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = PlatformMembershipService(platformMembershipRepository, walletRepository, ledgerService, notificationRepository, pushNotificationService)
+        val service = PlatformMembershipService(platformMembershipRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
 
-        val wallet = Wallet(
-            id = "wallet_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test wallet",
-            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        val account = Account(
+            id = "account_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test account",
+            type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
         )
         val existing = PlatformMembership(id = "platform_membership_1", userId = "user_1", activeUntil = Instant.parse("2026-08-10T00:00:00Z"))
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { platformMembershipRepository.findByUserId("user_1") } returns existing
         val savedSlot = mutableListOf<PlatformMembership>()
@@ -61,11 +61,11 @@ class PlatformMembershipServiceTest : BehaviorSpec({
     // expiry-reminder test already established.
     Given("real platform memberships at various points in their real expiry-reminder window") {
         val platformMembershipRepository = mockk<PlatformMembershipRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = PlatformMembershipService(platformMembershipRepository, walletRepository, ledgerService, notificationRepository, pushNotificationService)
+        val service = PlatformMembershipService(platformMembershipRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService)
 
         fun membershipWith(id: String, activeUntil: Instant, reminderSentAt: Instant? = null) =
             PlatformMembership(id = id, userId = "user_1", activeUntil = activeUntil, reminderSentAt = reminderSentAt)

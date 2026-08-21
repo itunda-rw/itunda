@@ -7,13 +7,13 @@ import rw.itunda.core.domain.AutoTransfer
 import rw.itunda.core.domain.AutoTransferFrequency
 import rw.itunda.core.domain.AutoTransferStatus
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AutoTransferRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -33,7 +33,7 @@ class AutoTransferInvalidScheduleException(message: String) : RuntimeException(m
 @Service
 class AutoTransferService(
     private val autoTransferRepository: AutoTransferRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val p2pService: P2pService,
     private val rateLimiter: RateLimiter,
@@ -59,21 +59,21 @@ class AutoTransferService(
         // established for a real recurring-money-movement-creating endpoint.
         rateLimiter.checkLimit("autotransfer:create:$userId", limit = 20, window = Duration.ofHours(1))
 
-        val senderWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("No wallet found for this account")
+        val senderAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("No account found for this account")
 
         // Same real phone-number-then-account-number resolution as P2pService.sendDirect
         // -- only used here to validate the recipient exists and to cache a real display
-        // name, never to cache a walletId (see AutoTransfer's own doc comment on why).
+        // name, never to cache a accountId (see AutoTransfer's own doc comment on why).
         val recipientUser = userRepository.findByPhoneNumber(trimmedIdentifier)
-        val recipientWallet = (
-            if (recipientUser != null) walletRepository.findByUserIdAndType(recipientUser.id, WalletType.MAIN) else null
-            ) ?: walletRepository.findByAccountNumber(trimmedIdentifier)
+        val recipientAccount = (
+            if (recipientUser != null) accountRepository.findByUserIdAndType(recipientUser.id, AccountType.MAIN) else null
+            ) ?: accountRepository.findByAccountNumber(trimmedIdentifier)
             ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
-        if (recipientWallet.userId == userId) {
+        if (recipientAccount.userId == userId) {
             throw P2pSelfPaymentException("Auto-transfers need a different recipient -- you can't send to yourself")
         }
-        val recipientDisplayName = userRepository.findById(recipientWallet.userId).map { "${it.firstName} ${it.lastName}" }.orElse(trimmedIdentifier)
+        val recipientDisplayName = userRepository.findById(recipientAccount.userId).map { "${it.firstName} ${it.lastName}" }.orElse(trimmedIdentifier)
 
         val nextExecutionAt = when (frequency) {
             AutoTransferFrequency.WEEKLY -> {
@@ -89,7 +89,7 @@ class AutoTransferService(
         val autoTransfer = AutoTransfer(
             id = "autotransfer_${UUID.randomUUID()}",
             userId = userId,
-            walletId = senderWallet.id,
+            accountId = senderAccount.id,
             recipientIdentifier = trimmedIdentifier,
             recipientName = recipientDisplayName,
             amount = amount,

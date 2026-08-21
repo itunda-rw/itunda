@@ -40,7 +40,7 @@ data class RespondToBookingRequest(val confirm: Boolean)
 // money-moving," which stopped being true the moment `MerchantProductService
 // .requiresPrepay` (Kakao Hair Shop-style prepay-to-book) shipped -- `book()` now
 // conditionally calls `holdDeposit()`, a real ledger post debiting the customer's
-// wallet, for any service the merchant marked `requiresPrepay`. Every other endpoint
+// account, for any service the merchant marked `requiresPrepay`. Every other endpoint
 // here stays genuinely non-money-moving (respond/complete/cancel only ever resolve an
 // already-held deposit exactly once, guarded by BookingDeposit's own status check plus
 // its real @Version), so only booking creation needed this fix.
@@ -198,8 +198,8 @@ class MerchantBookingController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleNoWallet(ex: MerchantNoWalletException) =
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleNoAccount(ex: MerchantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(IdempotencyConflictException::class)

@@ -14,7 +14,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.SupportTicketRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.Instant
 import java.util.UUID
 
@@ -34,13 +34,13 @@ class SupportTicketAlreadyResolvedException(message: String) : RuntimeException(
 class SupportService(
     private val supportTicketRepository: SupportTicketRepository,
     private val transactionRepository: TransactionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val ledgerService: LedgerService,
 ) {
     companion object {
         // Real itunda-defined SLA (not a sourced Toss number -- see SupportTicket's own
-        // doc comment). ACCOUNT_TAKEOVER is tightest given a wallet is frozen and the
+        // doc comment). ACCOUNT_TAKEOVER is tightest given a account is frozen and the
         // user is locked out of moving money on it until reviewed.
         val SLA_HOURS = mapOf(
             SupportTicketCategory.ACCOUNT_TAKEOVER to 4L,
@@ -57,30 +57,30 @@ class SupportService(
         // Real IDOR fix (2026-08-02): a transactionId the caller isn't a party to used
         // to throw SupportTransactionNotOwnedException (403), confirming to anyone who
         // guesses or enumerates a transactionId that it's real -- the same
-        // real-existence-confirming probe WalletService.getWalletById's own doc
-        // comment already documents fixing for wallet lookups. Now the same
+        // real-existence-confirming probe AccountService.getAccountById's own doc
+        // comment already documents fixing for account lookups. Now the same
         // SupportTransactionNotFoundException (404) as a genuinely bogus id, never
         // revealing that a transaction the caller wasn't part of actually exists.
         if (transaction.senderId != userId && transaction.recipientId != userId) {
             throw SupportTransactionNotFoundException("Transaction not found")
         }
 
-        var frozeWalletId: String? = null
+        var frozeAccountId: String? = null
         if (category == SupportTicketCategory.ACCOUNT_TAKEOVER) {
             // Real account-takeover-specific flow: freeze whichever side of this
-            // transaction's real wallets belongs to the reporting user, so a
+            // transaction's real accounts belongs to the reporting user, so a
             // suspected-compromised account can't move any more money out while
             // under review. Enforced for real in LedgerService.postLedgerTransaction,
             // not just a cosmetic flag -- see that class's own comment.
-            val candidateWalletId = when (userId) {
-                transaction.senderId -> transaction.fromWalletId
-                else -> transaction.toWalletId
+            val candidateAccountId = when (userId) {
+                transaction.senderId -> transaction.fromAccountId
+                else -> transaction.toAccountId
             }
-            val wallet = candidateWalletId?.let { walletRepository.findById(it).orElse(null) }
-            if (wallet != null && wallet.userId == userId && wallet.isActive) {
-                wallet.isActive = false
-                walletRepository.save(wallet)
-                frozeWalletId = wallet.id
+            val account = candidateAccountId?.let { accountRepository.findById(it).orElse(null) }
+            if (account != null && account.userId == userId && account.isActive) {
+                account.isActive = false
+                accountRepository.save(account)
+                frozeAccountId = account.id
             }
         }
 
@@ -90,7 +90,7 @@ class SupportService(
             transactionId = transactionId,
             category = category,
             description = description,
-            frozeWalletId = frozeWalletId,
+            frozeAccountId = frozeAccountId,
             dueBy = Instant.now().plusSeconds(SLA_HOURS.getValue(category) * 3600),
         )
         return supportTicketRepository.save(ticket)
@@ -124,10 +124,10 @@ class SupportService(
         // end of the review, whether it confirmed the takeover (REFUNDED) or found the
         // activity legitimate (REJECTED); either way the account shouldn't stay frozen
         // once a human has looked at it.
-        ticket.frozeWalletId?.let { walletId ->
-            walletRepository.findById(walletId).orElse(null)?.let { wallet ->
-                wallet.isActive = true
-                walletRepository.save(wallet)
+        ticket.frozeAccountId?.let { accountId ->
+            accountRepository.findById(accountId).orElse(null)?.let { account ->
+                account.isActive = true
+                accountRepository.save(account)
             }
         }
 

@@ -7,13 +7,13 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ScheduledTransfer
 import rw.itunda.core.domain.ScheduledTransferStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ScheduledTransferRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -34,7 +34,7 @@ class ScheduledTransferNotPendingException(message: String) : RuntimeException(m
 @Service
 class ScheduledTransferService(
     private val scheduledTransferRepository: ScheduledTransferRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val p2pService: P2pService,
     private val rateLimiter: RateLimiter,
@@ -57,26 +57,26 @@ class ScheduledTransferService(
 
         rateLimiter.checkLimit("scheduledtransfer:create:$userId", limit = 20, window = Duration.ofHours(1))
 
-        val senderWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("No wallet found for this account")
+        val senderAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("No account found for this account")
 
         // Same real phone-number-then-account-number resolution as P2pService.sendDirect
         // -- only used here to validate the recipient exists and cache a real display
-        // name, never a walletId, same reasoning AutoTransfer.kt's own doc comment gives.
+        // name, never a accountId, same reasoning AutoTransfer.kt's own doc comment gives.
         val recipientUser = userRepository.findByPhoneNumber(trimmedIdentifier)
-        val recipientWallet = (
-            if (recipientUser != null) walletRepository.findByUserIdAndType(recipientUser.id, WalletType.MAIN) else null
-            ) ?: walletRepository.findByAccountNumber(trimmedIdentifier)
+        val recipientAccount = (
+            if (recipientUser != null) accountRepository.findByUserIdAndType(recipientUser.id, AccountType.MAIN) else null
+            ) ?: accountRepository.findByAccountNumber(trimmedIdentifier)
             ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
-        if (recipientWallet.userId == userId) {
+        if (recipientAccount.userId == userId) {
             throw P2pSelfPaymentException("Scheduled transfers need a different recipient -- you can't send to yourself")
         }
-        val recipientDisplayName = userRepository.findById(recipientWallet.userId).map { "${it.firstName} ${it.lastName}" }.orElse(trimmedIdentifier)
+        val recipientDisplayName = userRepository.findById(recipientAccount.userId).map { "${it.firstName} ${it.lastName}" }.orElse(trimmedIdentifier)
 
         val scheduledTransfer = ScheduledTransfer(
             id = "scheduledtransfer_${UUID.randomUUID()}",
             userId = userId,
-            walletId = senderWallet.id,
+            accountId = senderAccount.id,
             recipientIdentifier = trimmedIdentifier,
             recipientName = recipientDisplayName,
             amount = amount,

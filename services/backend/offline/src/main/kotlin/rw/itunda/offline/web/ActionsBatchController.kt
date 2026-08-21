@@ -36,7 +36,7 @@ data class BatchRequest(val actions: List<BatchActionRequest>)
  * One action failing doesn't fail the batch -- each result carries its own status, mirroring
  * exactly the status code its own single-action REST endpoint would have returned.
  *
- * Deliberately excludes wallet transfer: WalletService's quote/confirm split has a real
+ * Deliberately excludes account transfer: AccountService's quote/confirm split has a real
  * 60-second quote expiry, so a transfer confirm queued offline would be confirming a stale
  * or nonexistent quote by the time it replays -- that's real conflict handling this endpoint
  * doesn't attempt to solve, not an oversight.

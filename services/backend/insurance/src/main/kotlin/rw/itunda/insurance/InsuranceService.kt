@@ -14,7 +14,7 @@ import rw.itunda.core.domain.InsurancePremiumFundStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -22,7 +22,7 @@ import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.InsurancePremiumFundRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -33,7 +33,7 @@ import java.util.UUID
 private const val PREMIUM_FUND_AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 
 class PlanNotFoundException(message: String) : RuntimeException(message)
-class NoWalletException(message: String) : RuntimeException(message)
+class NoAccountException(message: String) : RuntimeException(message)
 class PolicyNotFoundException(message: String) : RuntimeException(message)
 class PolicyNotActiveException(message: String) : RuntimeException(message)
 class ClaimNotFoundException(message: String) : RuntimeException(message)
@@ -47,7 +47,7 @@ class InvalidPremiumFundAmountException(message: String) : RuntimeException(mess
 @Service
 class InsuranceService(
     private val insurancePolicyRepository: InsurancePolicyRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val insuranceClaimRepository: InsuranceClaimRepository,
     private val rateLimiter: RateLimiter,
@@ -72,15 +72,15 @@ class InsuranceService(
     @Transactional
     fun enrollInPlan(userId: String, planId: String): InsurancePolicy {
         val plan = insurancePlans.find { it["id"] == planId } ?: throw PlanNotFoundException("Plan not found")
-        val premiumWallet = walletRepository.findByUserId(userId).find { it.type == WalletType.MAIN } ?: throw NoWalletException("No wallet found for this account")
+        val premiumAccount = accountRepository.findByUserId(userId).find { it.type == AccountType.MAIN } ?: throw NoAccountException("No account found for this account")
 
         val monthlyPremium = BigDecimal(plan["monthlyPremium"].toString())
         val planName = plan["name"] as String
 
         ledgerService.postLedgerTransaction(
-            premiumWallet.currency,
+            premiumAccount.currency,
             listOf(
-                LedgerLeg(premiumWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, monthlyPremium, "First premium - $planName"),
+                LedgerLeg(premiumAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, monthlyPremium, "First premium - $planName"),
                 LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, monthlyPremium, "First premium - $planName"),
             ),
         )
@@ -116,9 +116,9 @@ class InsuranceService(
         }
     }
 
-    // Tries the user's MAIN wallet first, exactly the same DEBIT wallet / CREDIT
+    // Tries the user's MAIN account first, exactly the same DEBIT account / CREDIT
     // insurance_premium_revenue leg shape enrollInPlan already uses for the first premium.
-    // If the wallet alone is short, falls back to draining an active InsurancePremiumFund
+    // If the account alone is short, falls back to draining an active InsurancePremiumFund
     // linked to this policy (see InsurancePremiumFund.kt) before giving up. Returns false
     // (not an exception) when NEITHER source can cover it -- this runs from a background
     // scheduler, same "skip this cycle, don't fail loudly" convention as
@@ -126,12 +126,12 @@ class InsuranceService(
     // contribution, an unpaid premium has a real consequence: the policy lapses.
     @Transactional
     fun collectPremium(policy: InsurancePolicy): Boolean {
-        val wallet = walletRepository.findByUserIdAndType(policy.userId, WalletType.MAIN)
-        if (wallet != null && wallet.availableBalance >= policy.monthlyPremium) {
+        val account = accountRepository.findByUserIdAndType(policy.userId, AccountType.MAIN)
+        if (account != null && account.availableBalance >= policy.monthlyPremium) {
             ledgerService.postLedgerTransaction(
-                wallet.currency,
+                account.currency,
                 listOf(
-                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
+                    LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
                     LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
                 ),
             )
@@ -195,13 +195,13 @@ class InsuranceService(
         }
 
         if (approve) {
-            val wallet = walletRepository.findByUserIdAndType(claim.userId, WalletType.MAIN)
-                ?: throw NoWalletException("No wallet found for this account")
+            val account = accountRepository.findByUserIdAndType(claim.userId, AccountType.MAIN)
+                ?: throw NoAccountException("No account found for this account")
             ledgerService.postLedgerTransaction(
-                wallet.currency,
+                account.currency,
                 listOf(
                     LedgerLeg("insurance_claims_expense", LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerDirection.DEBIT, claim.amount, "Claim payout - ${claim.description}"),
-                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, claim.amount, "Claim payout - ${claim.description}"),
+                    LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, claim.amount, "Claim payout - ${claim.description}"),
                 ),
             )
         }
@@ -221,7 +221,7 @@ class InsuranceService(
         // establishes for a structurally identical approve/reject decision.
         val decidedTitle = if (approve) "Claim approved" else "Claim rejected"
         val decidedBody = if (approve) {
-            "Your claim for \"${claim.description}\" was approved. ${claim.amount.toPlainString()} RWF has been credited to your wallet."
+            "Your claim for \"${claim.description}\" was approved. ${claim.amount.toPlainString()} RWF has been credited to your account."
         } else {
             "Your claim for \"${claim.description}\" was rejected.${reason?.let { " Reason: $it" } ?: ""}"
         }
@@ -265,7 +265,7 @@ class InsuranceService(
     // that used to pool this cost were dissolved. Generic and policy-linked (not
     // moto-only) so any user can save toward a specific policy's premium ahead of time,
     // letting collectPremium above draw on it instead of lapsing the policy when the
-    // wallet alone is short.
+    // account alone is short.
     @Transactional
     fun createPremiumFund(userId: String, policyId: String, dailyContribution: BigDecimal): InsurancePremiumFund {
         val policy = insurancePolicyRepository.findById(policyId)
@@ -297,21 +297,21 @@ class InsuranceService(
         if (amount <= BigDecimal.ZERO) {
             throw InvalidPremiumFundAmountException("Contribution amount must be greater than zero")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
         // Real bug caught in this feature's own build-time review: SavingsGoal's
         // depositToGoal/autoContribute post the FULL requested amount to the ledger and
         // only cap the *field* at targetAmount afterwards -- so an overshooting
-        // contribution moves real money into the wallet/liability legs that the capped
+        // contribution moves real money into the account/liability legs that the capped
         // field then never accounts for, and cancelFund only ever refunds
         // fund.currentAmount, permanently stranding the excess in the shared
         // insurance_premium_fund_payable clearing account with no path back to the user.
         // Clamping the amount actually moved to the real remaining gap BEFORE touching
-        // the ledger keeps every RWF that leaves the wallet accounted for and refundable.
+        // the ledger keeps every RWF that leaves the account accounted for and refundable.
         val actualAmount = amount.min(fund.targetAmount.subtract(fund.currentAmount))
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Premium fund contribution"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Premium fund contribution"),
                 LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Premium fund contribution"),
             ),
         )
@@ -328,12 +328,12 @@ class InsuranceService(
             throw PremiumFundNotActiveException("Cannot cancel a ${fund.status} premium fund")
         }
         if (fund.currentAmount > BigDecimal.ZERO) {
-            val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+            val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
             ledgerService.postLedgerTransaction(
-                wallet.currency,
+                account.currency,
                 listOf(
                     LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.DEBIT, fund.currentAmount, "Premium fund refund"),
-                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, fund.currentAmount, "Premium fund refund"),
+                    LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, fund.currentAmount, "Premium fund refund"),
                 ),
             )
         }
@@ -360,22 +360,22 @@ class InsuranceService(
         }
     }
 
-    // Returns false (not an exception) on insufficient MAIN wallet balance -- same "skip
+    // Returns false (not an exception) on insufficient MAIN account balance -- same "skip
     // this cycle" convention as SavingsService.autoContribute; a real recurring
     // contribution just retries next cycle rather than failing loudly mid-batch.
     @Transactional
     fun autoContributeToFund(fund: InsurancePremiumFund): Boolean {
-        val wallet = walletRepository.findByUserIdAndType(fund.userId, WalletType.MAIN)
+        val account = accountRepository.findByUserIdAndType(fund.userId, AccountType.MAIN)
         // Same overshoot clamp as contributeToFund above -- never move more than the
         // real remaining gap, so the ledger and fund.currentAmount always agree.
         val actualAmount = fund.dailyContribution.min(fund.targetAmount.subtract(fund.currentAmount))
-        if (wallet == null || wallet.availableBalance < actualAmount) {
+        if (account == null || account.availableBalance < actualAmount) {
             return false
         }
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Premium fund auto-contribution"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Premium fund auto-contribution"),
                 LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Premium fund auto-contribution"),
             ),
         )

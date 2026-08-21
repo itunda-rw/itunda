@@ -280,7 +280,7 @@ class IdentityServiceTest : BehaviorSpec({
         val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val submission = KycSubmission(id = "kyc_5", userId = "owner_2", documentType = "BUSINESS_TIN", documentNumber = "123456789", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_2", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_2", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
         every { kycSubmissionRepository.findById("kyc_5") } returns Optional.of(submission)
         every { kycSubmissionRepository.save(any()) } answers { firstArg() }

@@ -36,7 +36,7 @@ class SupportController(private val supportService: SupportService, private val 
     // WeeklySavingsService, ...) already gates on rateLimiter.checkLimit. Without one
     // here, an authenticated caller could spam-create tickets against their own real
     // transaction ids without limit, each one a real row a real support reviewer has
-    // to triage (and, for ACCOUNT_TAKEOVER, each one real-freezing a wallet). :support
+    // to triage (and, for ACCOUNT_TAKEOVER, each one real-freezing a account). :support
     // didn't depend on :auth before this fix (SupportService itself lives in :core,
     // which :auth depends ON -- the limiter can't live there without a circular
     // dependency), so the check is applied here in the controller instead, the same

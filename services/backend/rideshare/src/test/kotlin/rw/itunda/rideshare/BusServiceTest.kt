@@ -11,13 +11,13 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.BusBooking
 import rw.itunda.core.domain.BusBookingStatus
 import rw.itunda.core.domain.BusTrip
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BusBookingRepository
 import rw.itunda.core.repository.BusTripRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -34,22 +34,22 @@ class BusServiceTest : BehaviorSpec({
     fun newService(
         busTripRepository: BusTripRepository = mockk(),
         busBookingRepository: BusBookingRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = BusService(busTripRepository, busBookingRepository, walletRepository, ledgerService, rateLimiter)
+    ) = BusService(busTripRepository, busBookingRepository, accountRepository, ledgerService, rateLimiter)
 
-    Given("a real operator with a wallet posting a real future trip") {
+    Given("a real operator with a account posting a real future trip") {
         val busTripRepository = mockk<BusTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val wallet = Wallet(
-            id = "wallet_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val accountRepository = mockk<AccountRepository>()
+        val account = Account(
+            id = "account_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
-        every { walletRepository.findByUserIdAndType("operator_1", WalletType.MAIN) } returns wallet
+        every { accountRepository.findByUserIdAndType("operator_1", AccountType.MAIN) } returns account
         val savedSlot = slot<BusTrip>()
         every { busTripRepository.save(capture(savedSlot)) } answers { firstArg() }
-        val service = newService(busTripRepository = busTripRepository, walletRepository = walletRepository)
+        val service = newService(busTripRepository = busTripRepository, accountRepository = accountRepository)
 
         When("posting a real trip") {
             val result = service.postTrip(
@@ -58,7 +58,7 @@ class BusServiceTest : BehaviorSpec({
 
             Then("a real trip row is saved with availableSeats seeded from totalSeats") {
                 result.operatorUserId shouldBe "operator_1"
-                result.walletId shouldBe "wallet_operator"
+                result.accountId shouldBe "account_operator"
                 result.totalSeats shouldBe 30
                 result.availableSeats shouldBe 30
                 savedSlot.captured.origin shouldBe "Kigali"
@@ -70,23 +70,23 @@ class BusServiceTest : BehaviorSpec({
     // unlike every other real "post a listing" creation method in this codebase.
     Given("an operator who has already posted too many real trips this hour") {
         val busTripRepository = mockk<BusTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        every { walletRepository.findByUserIdAndType("operator_1", WalletType.MAIN) } returns Wallet(
-            id = "wallet_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        every { accountRepository.findByUserIdAndType("operator_1", AccountType.MAIN) } returns Account(
+            id = "account_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         every { rateLimiter.checkLimit("bus:post-trip:operator_1", limit = 10, window = Duration.ofHours(1)) } throws
             RateLimitExceededException("Too many requests")
-        val service = newService(busTripRepository = busTripRepository, walletRepository = walletRepository, rateLimiter = rateLimiter)
+        val service = newService(busTripRepository = busTripRepository, accountRepository = accountRepository, rateLimiter = rateLimiter)
 
         When("posting yet another real trip") {
-            Then("it real-propagates RateLimitExceededException before ever touching the wallet") {
+            Then("it real-propagates RateLimitExceededException before ever touching the account") {
                 try {
                     service.postTrip("operator_1", "Kigali", "Musanze", Instant.now().plusSeconds(86400), 30, BigDecimal("3000"))
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
-                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                    verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
                 }
             }
         }
@@ -95,7 +95,7 @@ class BusServiceTest : BehaviorSpec({
     Given("a real trip with only 2 seats left") {
         val busTripRepository = mockk<BusTripRepository>()
         val trip = BusTrip(
-            id = "bus_trip_1", operatorUserId = "operator_1", walletId = "wallet_operator", origin = "Kigali",
+            id = "bus_trip_1", operatorUserId = "operator_1", accountId = "account_operator", origin = "Kigali",
             destination = "Musanze", departureTime = Instant.now().plusSeconds(86400), totalSeats = 30,
             availableSeats = 2, farePerSeat = BigDecimal("3000"),
         )
@@ -114,32 +114,32 @@ class BusServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real trip with sufficient seats and a rider with a real wallet") {
+    Given("a real trip with sufficient seats and a rider with a real account") {
         val busTripRepository = mockk<BusTripRepository>()
         val busBookingRepository = mockk<BusBookingRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             busTripRepository = busTripRepository, busBookingRepository = busBookingRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         val trip = BusTrip(
-            id = "bus_trip_1", operatorUserId = "operator_1", walletId = "wallet_operator", origin = "Kigali",
+            id = "bus_trip_1", operatorUserId = "operator_1", accountId = "account_operator", origin = "Kigali",
             destination = "Musanze", departureTime = Instant.now().plusSeconds(86400), totalSeats = 30,
             availableSeats = 10, farePerSeat = BigDecimal("3000"),
         )
-        val riderWallet = Wallet(
-            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val riderAccount = Account(
+            id = "account_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        val operatorWallet = Wallet(
-            id = "wallet_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val operatorAccount = Account(
+            id = "account_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         every { busTripRepository.findById("bus_trip_1") } returns Optional.of(trip)
-        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
-        every { walletRepository.findById("wallet_operator") } returns Optional.of(operatorWallet)
+        every { accountRepository.findByUserIdAndType("rider_1", AccountType.MAIN) } returns riderAccount
+        every { accountRepository.findById("account_operator") } returns Optional.of(operatorAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { busTripRepository.save(any()) } answers { firstArg() }
         val savedSlot = slot<BusBooking>()
@@ -162,15 +162,15 @@ class BusServiceTest : BehaviorSpec({
     Given("a real BOOKED booking on a trip that hasn't departed yet") {
         val busTripRepository = mockk<BusTripRepository>()
         val busBookingRepository = mockk<BusBookingRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             busTripRepository = busTripRepository, busBookingRepository = busBookingRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         val trip = BusTrip(
-            id = "bus_trip_1", operatorUserId = "operator_1", walletId = "wallet_operator", origin = "Kigali",
+            id = "bus_trip_1", operatorUserId = "operator_1", accountId = "account_operator", origin = "Kigali",
             destination = "Musanze", departureTime = Instant.now().plusSeconds(86400), totalSeats = 30,
             availableSeats = 8, farePerSeat = BigDecimal("3000"),
         )
@@ -178,18 +178,18 @@ class BusServiceTest : BehaviorSpec({
             id = "bus_booking_1", tripId = "bus_trip_1", riderUserId = "rider_1", seatCount = 2,
             totalFare = BigDecimal("6000.00"), platformFee = BigDecimal("300.00"), paymentTransactionId = "ledgertxn_1",
         )
-        val riderWallet = Wallet(
-            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
-            type = WalletType.MAIN, balance = BigDecimal("14000"), availableBalance = BigDecimal("14000"),
+        val riderAccount = Account(
+            id = "account_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = AccountType.MAIN, balance = BigDecimal("14000"), availableBalance = BigDecimal("14000"),
         )
-        val operatorWallet = Wallet(
-            id = "wallet_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
-            type = WalletType.MAIN, balance = BigDecimal("5700"), availableBalance = BigDecimal("5700"),
+        val operatorAccount = Account(
+            id = "account_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
+            type = AccountType.MAIN, balance = BigDecimal("5700"), availableBalance = BigDecimal("5700"),
         )
         every { busBookingRepository.findById("bus_booking_1") } returns Optional.of(booking)
         every { busTripRepository.findById("bus_trip_1") } returns Optional.of(trip)
-        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
-        every { walletRepository.findById("wallet_operator") } returns Optional.of(operatorWallet)
+        every { accountRepository.findByUserIdAndType("rider_1", AccountType.MAIN) } returns riderAccount
+        every { accountRepository.findById("account_operator") } returns Optional.of(operatorAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { busTripRepository.save(any()) } answers { firstArg() }
         every { busBookingRepository.save(any()) } answers { firstArg() }

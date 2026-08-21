@@ -32,7 +32,7 @@ import rw.itunda.rideshare.InvalidRideTripStatusTransitionException
 import rw.itunda.rideshare.InvalidScheduledRideTimeException
 import rw.itunda.rideshare.RideDriverAlreadyOnTripException
 import rw.itunda.rideshare.RideDriverAlreadyRegisteredException
-import rw.itunda.rideshare.RideDriverNoWalletException
+import rw.itunda.rideshare.RideDriverNoAccountException
 import rw.itunda.rideshare.RideDriverNotAvailableException
 import rw.itunda.rideshare.RideDriverNotRegisteredException
 import rw.itunda.rideshare.RideDriverService
@@ -272,7 +272,7 @@ class RideController(
     // Real Uber post-trip tipping -- see RideTripService.tipDriver's own doc comment.
     // Real Idempotency-Key required, same convention every other real money-moving
     // endpoint in this codebase (requestTrip above, purchaseVoucher, placeOrder, ...)
-    // already establishes -- a tip is a real wallet-to-wallet transfer, never safe to
+    // already establishes -- a tip is a real account-to-account transfer, never safe to
     // silently retry.
     @PostMapping("/trips/{tripId}/tip")
     fun tipDriver(
@@ -333,8 +333,8 @@ class RideController(
     fun handleAlreadyRegistered(ex: RideDriverAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_DRIVER_ALREADY_REGISTERED", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(RideDriverNoWalletException::class)
-    fun handleNoWallet(ex: RideDriverNoWalletException) =
+    @ExceptionHandler(RideDriverNoAccountException::class)
+    fun handleNoAccount(ex: RideDriverNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RideDriverNotRegisteredException::class)

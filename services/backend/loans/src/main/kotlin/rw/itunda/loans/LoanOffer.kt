@@ -39,13 +39,13 @@ data class LoanOffer(
     // real 전문직사업자대출/사장님신용대출 (launched 2026-02/03, tossbank.com/articles/
     // soho-loan-transfer) are genuinely business-account-scoped products, not a
     // relabeled personal loan. Until this field existed, "Business Loan" (loan_3
-    // below) was disbursed to the borrower's MAIN wallet exactly like every other
+    // below) was disbursed to the borrower's MAIN account exactly like every other
     // offer -- no real business-account requirement, no real business-scoped
-    // disbursement, despite `WalletType.BUSINESS`/`MerchantBusinessAccountService`
+    // disbursement, despite `AccountType.BUSINESS`/`MerchantBusinessAccountService`
     // (2026-07-25) already existing. When true, `LoansService.applyForLoan` requires
-    // and disburses to the caller's real BUSINESS wallet instead of MAIN;
+    // and disburses to the caller's real BUSINESS account instead of MAIN;
     // `repayLoan` needs no matching change since it already repays from
-    // `LoanAccount.walletId`, the wallet actually disbursed to.
+    // `LoanAccount.accountId`, the account actually disbursed to.
     val requiresBusinessAccount: Boolean = false,
 )
 

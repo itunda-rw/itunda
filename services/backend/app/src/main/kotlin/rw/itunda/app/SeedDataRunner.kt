@@ -18,8 +18,8 @@ import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.repository.ContactRepository
 import rw.itunda.core.repository.EmoticonPackRepository
 import rw.itunda.core.repository.EmoticonRepository
@@ -32,7 +32,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import java.math.BigDecimal
@@ -41,7 +41,7 @@ import java.time.LocalDate
 
 /**
  * Seeds the same demo user as backend/src/services/database.ts (same phone number,
- * same "password123" login, same three wallet balances, same active loan and contacts)
+ * same "password123" login, same three account balances, same active loan and contacts)
  * so the two backends can be compared side by side during migration rather than
  * diverging on fixture data.
  *
@@ -54,7 +54,7 @@ import java.time.LocalDate
 @Component
 class SeedDataRunner(
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val loanAccountRepository: LoanAccountRepository,
     private val contactRepository: ContactRepository,
@@ -112,12 +112,12 @@ class SeedDataRunner(
             )
         }
 
-        if (walletRepository.findByUserId(user.id).isEmpty()) {
-            walletRepository.saveAll(
+        if (accountRepository.findByUserId(user.id).isEmpty()) {
+            accountRepository.saveAll(
                 listOf(
-                    Wallet(id = "wallet_1", userId = user.id, accountNumber = "2024100001", accountName = "Jean's Main Account", type = WalletType.MAIN, balance = BigDecimal("2450000"), availableBalance = BigDecimal("2450000")),
-                    Wallet(id = "wallet_2", userId = user.id, accountNumber = "2024100002", accountName = "Jean's Savings", type = WalletType.SAVINGS, balance = BigDecimal("850000"), availableBalance = BigDecimal("850000")),
-                    Wallet(id = "wallet_3", userId = user.id, accountNumber = "2024100003", accountName = "Jean's Investment", type = WalletType.INVESTMENT, balance = BigDecimal("1500000"), availableBalance = BigDecimal("1500000")),
+                    Account(id = "account_1", userId = user.id, accountNumber = "2024100001", accountName = "Jean's Main Account", type = AccountType.MAIN, balance = BigDecimal("2450000"), availableBalance = BigDecimal("2450000")),
+                    Account(id = "account_2", userId = user.id, accountNumber = "2024100002", accountName = "Jean's Savings", type = AccountType.SAVINGS, balance = BigDecimal("850000"), availableBalance = BigDecimal("850000")),
+                    Account(id = "account_3", userId = user.id, accountNumber = "2024100003", accountName = "Jean's Investment", type = AccountType.INVESTMENT, balance = BigDecimal("1500000"), availableBalance = BigDecimal("1500000")),
                 ),
             )
         }
@@ -125,7 +125,7 @@ class SeedDataRunner(
         if (!loanAccountRepository.existsById("loan_active_1")) {
             loanAccountRepository.save(
                 LoanAccount(
-                    id = "loan_active_1", userId = user.id, walletId = "wallet_1", offerId = "loan_1",
+                    id = "loan_active_1", userId = user.id, accountId = "account_1", offerId = "loan_1",
                     principal = BigDecimal("100000"), outstanding = BigDecimal("65000"), interestRate = 5.0,
                     status = LoanStatus.ACTIVE, disbursedAt = Instant.now().minusSeconds(1_209_600),
                 ),
@@ -147,9 +147,9 @@ class SeedDataRunner(
         if (holdingRepository.findByUserId(user.id).isEmpty()) {
             holdingRepository.saveAll(
                 listOf(
-                    Holding(id = "hold_1", userId = user.id, walletId = "wallet_3", stockId = "s1", shares = BigDecimal("1000"), avgPrice = BigDecimal("580")),
-                    Holding(id = "hold_2", userId = user.id, walletId = "wallet_3", stockId = "s2", shares = BigDecimal("500"), avgPrice = BigDecimal("490")),
-                    Holding(id = "hold_3", userId = user.id, walletId = "wallet_3", stockId = "s3", shares = BigDecimal("200"), avgPrice = BigDecimal("130")),
+                    Holding(id = "hold_1", userId = user.id, accountId = "account_3", stockId = "s1", shares = BigDecimal("1000"), avgPrice = BigDecimal("580")),
+                    Holding(id = "hold_2", userId = user.id, accountId = "account_3", stockId = "s2", shares = BigDecimal("500"), avgPrice = BigDecimal("490")),
+                    Holding(id = "hold_3", userId = user.id, accountId = "account_3", stockId = "s3", shares = BigDecimal("200"), avgPrice = BigDecimal("130")),
                 ),
             )
         }
@@ -157,8 +157,8 @@ class SeedDataRunner(
         if (savingsGoalRepository.findByUserId(user.id).isEmpty()) {
             savingsGoalRepository.saveAll(
                 listOf(
-                    SavingsGoal(id = "sg_1", userId = user.id, walletId = "wallet_2", name = "Emergency Fund", targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("320000"), monthlyContribution = BigDecimal("50000"), interestRate = 7.5, targetDate = "2025-06-01", category = "emergency", color = "#0066FF"),
-                    SavingsGoal(id = "sg_2", userId = user.id, walletId = "wallet_2", name = "New Laptop", targetAmount = BigDecimal("250000"), currentAmount = BigDecimal("80000"), monthlyContribution = BigDecimal("30000"), interestRate = 7.5, targetDate = "2025-09-01", category = "tech", color = "#9C27B0"),
+                    SavingsGoal(id = "sg_1", userId = user.id, accountId = "account_2", name = "Emergency Fund", targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("320000"), monthlyContribution = BigDecimal("50000"), interestRate = 7.5, targetDate = "2025-06-01", category = "emergency", color = "#0066FF"),
+                    SavingsGoal(id = "sg_2", userId = user.id, accountId = "account_2", name = "New Laptop", targetAmount = BigDecimal("250000"), currentAmount = BigDecimal("80000"), monthlyContribution = BigDecimal("30000"), interestRate = 7.5, targetDate = "2025-09-01", category = "tech", color = "#9C27B0"),
                 ),
             )
         }
@@ -166,7 +166,7 @@ class SeedDataRunner(
         if (!interestJarRepository.existsById(user.id)) {
             interestJarRepository.save(
                 InterestJar(
-                    userId = user.id, walletId = "wallet_2", balance = BigDecimal("45200"), rate = 7.5,
+                    userId = user.id, accountId = "account_2", balance = BigDecimal("45200"), rate = 7.5,
                     earnedThisMonth = BigDecimal("2840"), earnedTotal = BigDecimal("45200"),
                     lastPaidAt = Instant.now(), nextPayoutAt = Instant.now().plusSeconds(86400),
                 ),
@@ -307,7 +307,7 @@ class SeedDataRunner(
         // Shop", etc, all category=NULL, no photo) plus two real-named but otherwise
         // empty entries -- the same "empty product, can't judge the redesign" gap
         // Marketplace had before its own seed above. Each restaurant is a real owner
-        // User + Wallet + Merchant, matching the real onboarding shape (no shortcut
+        // User + Account + Merchant, matching the real onboarding shape (no shortcut
         // schema), with a real category and real Wikimedia food photos -- same "real
         // external URL, no upload pipeline" honesty as Merchant.photoUrl's own doc
         // comment.
@@ -334,17 +334,17 @@ class SeedDataRunner(
         )
 
         listOf(
-            restaurantOwner1.id to Wallet(id = "wallet_restaurant_1", userId = restaurantOwner1.id, accountNumber = "2024200001", accountName = "Aline's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
-            restaurantOwner2.id to Wallet(id = "wallet_restaurant_2", userId = restaurantOwner2.id, accountNumber = "2024200002", accountName = "Eric's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
-            restaurantOwner3.id to Wallet(id = "wallet_restaurant_3", userId = restaurantOwner3.id, accountNumber = "2024200003", accountName = "Grace's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
-        ).forEach { (ownerId, wallet) ->
-            if (walletRepository.findByUserId(ownerId).isEmpty()) walletRepository.save(wallet)
+            restaurantOwner1.id to Account(id = "account_restaurant_1", userId = restaurantOwner1.id, accountNumber = "2024200001", accountName = "Aline's Business Account", type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+            restaurantOwner2.id to Account(id = "account_restaurant_2", userId = restaurantOwner2.id, accountNumber = "2024200002", accountName = "Eric's Business Account", type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+            restaurantOwner3.id to Account(id = "account_restaurant_3", userId = restaurantOwner3.id, accountNumber = "2024200003", accountName = "Grace's Business Account", type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+        ).forEach { (ownerId, account) ->
+            if (accountRepository.findByUserId(ownerId).isEmpty()) accountRepository.save(account)
         }
 
         if (merchantRepository.findByOwnerUserId(restaurantOwner1.id) == null) {
             merchantRepository.save(
                 Merchant(
-                    id = "merchant_seed_1", ownerUserId = restaurantOwner1.id, walletId = "wallet_restaurant_1",
+                    id = "merchant_seed_1", ownerUserId = restaurantOwner1.id, accountId = "account_restaurant_1",
                     businessName = "Heaven Kigali", category = "Rwandan", businessType = MerchantBusinessType.RESTAURANT, kybVerified = true,
                     latitude = -1.9441, longitude = 30.1136,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Brochettes.jpg",
@@ -355,7 +355,7 @@ class SeedDataRunner(
         if (merchantRepository.findByOwnerUserId(restaurantOwner2.id) == null) {
             merchantRepository.save(
                 Merchant(
-                    id = "merchant_seed_2", ownerUserId = restaurantOwner2.id, walletId = "wallet_restaurant_2",
+                    id = "merchant_seed_2", ownerUserId = restaurantOwner2.id, accountId = "account_restaurant_2",
                     businessName = "Kigali Grill House", category = "Fast Food", businessType = MerchantBusinessType.RESTAURANT, kybVerified = true,
                     latitude = -1.9578, longitude = 30.1127,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Hamburger.jpg",
@@ -366,7 +366,7 @@ class SeedDataRunner(
         if (merchantRepository.findByOwnerUserId(restaurantOwner3.id) == null) {
             merchantRepository.save(
                 Merchant(
-                    id = "merchant_seed_3", ownerUserId = restaurantOwner3.id, walletId = "wallet_restaurant_3",
+                    id = "merchant_seed_3", ownerUserId = restaurantOwner3.id, accountId = "account_restaurant_3",
                     businessName = "Inzozi Coffee & Bakery", category = "Coffee & Bakery", businessType = MerchantBusinessType.RESTAURANT, kybVerified = true,
                     latitude = -1.9346, longitude = 30.0906,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Cappuccino.jpg",
@@ -425,16 +425,16 @@ class SeedDataRunner(
         )
 
         listOf(
-            retailOwner1.id to Wallet(id = "wallet_retail_1", userId = retailOwner1.id, accountNumber = "2024200004", accountName = "Jean Claude's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
-            retailOwner2.id to Wallet(id = "wallet_retail_2", userId = retailOwner2.id, accountNumber = "2024200005", accountName = "Diane's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
-        ).forEach { (ownerId, wallet) ->
-            if (walletRepository.findByUserId(ownerId).isEmpty()) walletRepository.save(wallet)
+            retailOwner1.id to Account(id = "account_retail_1", userId = retailOwner1.id, accountNumber = "2024200004", accountName = "Jean Claude's Business Account", type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+            retailOwner2.id to Account(id = "account_retail_2", userId = retailOwner2.id, accountNumber = "2024200005", accountName = "Diane's Business Account", type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+        ).forEach { (ownerId, account) ->
+            if (accountRepository.findByUserId(ownerId).isEmpty()) accountRepository.save(account)
         }
 
         if (merchantRepository.findByOwnerUserId(retailOwner1.id) == null) {
             merchantRepository.save(
                 Merchant(
-                    id = "merchant_seed_4", ownerUserId = retailOwner1.id, walletId = "wallet_retail_1",
+                    id = "merchant_seed_4", ownerUserId = retailOwner1.id, accountId = "account_retail_1",
                     businessName = "Kigali Electronics Hub", category = "Electronics", businessType = MerchantBusinessType.SHOP, kybVerified = true,
                     latitude = -1.9723, longitude = 30.0428,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Smartphone.jpg",
@@ -444,7 +444,7 @@ class SeedDataRunner(
         if (merchantRepository.findByOwnerUserId(retailOwner2.id) == null) {
             merchantRepository.save(
                 Merchant(
-                    id = "merchant_seed_5", ownerUserId = retailOwner2.id, walletId = "wallet_retail_2",
+                    id = "merchant_seed_5", ownerUserId = retailOwner2.id, accountId = "account_retail_2",
                     businessName = "Umutima Fashion", category = "Fashion", businessType = MerchantBusinessType.SHOP, kybVerified = true,
                     latitude = -1.9878, longitude = 30.1094,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/T-shirt.jpg",

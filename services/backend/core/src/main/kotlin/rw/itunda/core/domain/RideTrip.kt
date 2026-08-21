@@ -34,9 +34,9 @@ enum class RideTripStatus { REQUESTED, DRIVER_ASSIGNED, IN_PROGRESS, COMPLETED, 
  * snapshot-at-request-time discipline `EatsOrder.deliveryFee`/`itemsSubtotal` already
  * establish, so a later rate change never retroactively alters an already-requested
  * trip. Held in a real `ride_holding` escrow clearing account from request time (the
- * passenger's money leaves their wallet immediately, matching `EatsOrder`'s own
+ * passenger's money leaves their account immediately, matching `EatsOrder`'s own
  * delivery-fee-holding pattern) until the trip reaches `COMPLETED`, at which point it's
- * paid straight into the driver's own wallet net of `platformFee` -- or refunded in
+ * paid straight into the driver's own account net of `platformFee` -- or refunded in
  * full if the trip is `CANCELLED` while still `REQUESTED`.
  */
 @Entity

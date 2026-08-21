@@ -12,12 +12,12 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MotoOwnershipPlan
 import rw.itunda.core.domain.MotoOwnershipPlanStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MotoOwnershipPlanRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -25,12 +25,12 @@ import java.util.Optional
  * First test coverage for the real Rwanda moto-taxi ownership savings-to-loan plan --
  * see MotoOwnershipService's own doc comment for the full sourced account. The
  * double-create-race test mirrors VupLoanServiceTest's/StudentLoanServiceTest's own
- * such test, asserting the caller's wallet lock happened before the active-plan
+ * such test, asserting the caller's account lock happened before the active-plan
  * check. The contribute/repay-clamp tests guard against the same overshoot-clamp
  * regression class found in InsuranceService.contributeToFund/VupLoanService.repay:
  * they assert the actual ledger leg amount, not just the resulting field. The
  * convertToLoan test is this feature's own trickiest ledger logic -- it verifies the
- * single, atomically-balanced transaction (wallet CREDIT for the full bikePrice,
+ * single, atomically-balanced transaction (account CREDIT for the full bikePrice,
  * savings_goal_payable DEBIT releasing the down payment, loan_payable DEBIT for only
  * the genuinely new remaining principal) that replaced an earlier, real accounting
  * bug found in this feature's own build-time review: a two-transaction version that
@@ -44,28 +44,28 @@ import java.util.Optional
  */
 class MotoOwnershipServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, availableBalance: BigDecimal = BigDecimal("1000000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = availableBalance, availableBalance = availableBalance,
+    fun account(id: String, userId: String, availableBalance: BigDecimal = BigDecimal("1000000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = availableBalance, availableBalance = availableBalance,
     )
 
     fun newService(
         motoOwnershipPlanRepository: MotoOwnershipPlanRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = MotoOwnershipService(motoOwnershipPlanRepository, walletRepository, ledgerService, rateLimiter)
+    ) = MotoOwnershipService(motoOwnershipPlanRepository, accountRepository, ledgerService, rateLimiter)
 
     Given("a user creating a moto-taxi ownership plan") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository)
         val savedSlot = slot<MotoOwnershipPlan>()
         every { motoOwnershipPlanRepository.save(capture(savedSlot)) } answers { firstArg() }
         every { motoOwnershipPlanRepository.findByUserIdAndStatusIn("user_1", any()) } returns emptyList()
-        val applicantWallet = wallet("wallet_1", "user_1")
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns applicantWallet
-        every { walletRepository.findByIdForUpdate("wallet_1") } returns Optional.of(applicantWallet)
+        val applicantAccount = account("account_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns applicantAccount
+        every { accountRepository.findByIdForUpdate("account_1") } returns Optional.of(applicantAccount)
 
         When("creating a plan for a real 600,000 RWF entry-level bike") {
             val result = service.createPlan("user_1", BigDecimal("600000"), BigDecimal("5000"))
@@ -106,8 +106,8 @@ class MotoOwnershipServiceTest : BehaviorSpec({
 
     Given("a user who already has an active moto-taxi ownership plan") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository)
         val existing = MotoOwnershipPlan(
             id = "motoown_existing", userId = "user_1", bikePrice = BigDecimal("600000"),
             downPaymentTarget = BigDecimal("180000"), savedAmount = BigDecimal("50000"),
@@ -115,25 +115,25 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             status = MotoOwnershipPlanStatus.SAVING,
         )
         every { motoOwnershipPlanRepository.findByUserIdAndStatusIn("user_1", any()) } returns listOf(existing)
-        val applicantWallet = wallet("wallet_1", "user_1")
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns applicantWallet
-        every { walletRepository.findByIdForUpdate("wallet_1") } returns Optional.of(applicantWallet)
+        val applicantAccount = account("account_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns applicantAccount
+        every { accountRepository.findByIdForUpdate("account_1") } returns Optional.of(applicantAccount)
 
         When("creating a second plan") {
-            Then("the one-active-plan guard fires, after locking the caller's own wallet row first (closing the double-create race)") {
+            Then("the one-active-plan guard fires, after locking the caller's own account row first (closing the double-create race)") {
                 shouldThrow<MotoOwnershipPlanAlreadyActiveException> {
                     service.createPlan("user_1", BigDecimal("700000"), BigDecimal("5000"))
                 }
-                verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_1") }
+                verify(exactly = 1) { accountRepository.findByIdForUpdate("account_1") }
             }
         }
     }
 
     Given("a real SAVING plan being contributed to") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_1", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -141,7 +141,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             dailyContribution = BigDecimal("5000"), loanOutstanding = BigDecimal.ZERO,
         )
         every { motoOwnershipPlanRepository.findById("motoown_1") } returns Optional.of(plan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { motoOwnershipPlanRepository.save(any()) } answers { firstArg() }
 
@@ -153,7 +153,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.all { it.amount == BigDecimal("10000") } &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.DEBIT } &&
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.DEBIT } &&
                             legs.any { it.accountId == "savings_goal_payable" && it.accountType == LedgerAccountType.SAVINGS_GOAL_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
@@ -169,9 +169,9 @@ class MotoOwnershipServiceTest : BehaviorSpec({
 
     Given("a real SAVING plan being cancelled") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_2", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -179,7 +179,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             dailyContribution = BigDecimal("5000"), loanOutstanding = BigDecimal.ZERO,
         )
         every { motoOwnershipPlanRepository.findById("motoown_2") } returns Optional.of(plan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_cancel", emptyList())
         every { motoOwnershipPlanRepository.save(any()) } answers { firstArg() }
 
@@ -193,7 +193,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.all { it.amount == BigDecimal("70000") } &&
                             legs.any { it.accountId == "savings_goal_payable" && it.accountType == LedgerAccountType.SAVINGS_GOAL_PAYABLE && it.direction == LedgerDirection.DEBIT } &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.CREDIT }
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.CREDIT }
                     })
                 }
             }
@@ -208,8 +208,8 @@ class MotoOwnershipServiceTest : BehaviorSpec({
 
     Given("a real SAVING plan that has not yet met its down payment target") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_3", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -229,9 +229,9 @@ class MotoOwnershipServiceTest : BehaviorSpec({
 
     Given("a real SAVING plan that has met its down payment target, being converted to a loan") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_4", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -239,7 +239,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             dailyContribution = BigDecimal("5000"), loanOutstanding = BigDecimal.ZERO,
         )
         every { motoOwnershipPlanRepository.findById("motoown_4") } returns Optional.of(plan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_convert", emptyList())
         every { motoOwnershipPlanRepository.save(any()) } answers { firstArg() }
 
@@ -256,17 +256,17 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             // which credited loan_payable a second time for the down payment already
             // saved -- silently leaving loan_payable's real net position at
             // 420,000-180,000=240,000 against a claimed loanOutstanding of 420,000.
-            // The fix posts ONE atomically-balanced transaction: the wallet receives
+            // The fix posts ONE atomically-balanced transaction: the account receives
             // the FULL bikePrice (the down payment is released to spendable cash
             // alongside the new loan, not silently absorbed), savings_goal_payable is
             // debited for exactly the released down payment, and loan_payable is
             // debited for ONLY the genuinely new remaining principal -- so
             // loan_payable's real balance always exactly matches loanOutstanding.
-            Then("a single balanced transaction CREDITs the wallet for the full 600,000 bike price, DEBITs savings_goal_payable for the released 180,000 down payment, and DEBITs loan_payable for only the real new 420,000 principal") {
+            Then("a single balanced transaction CREDITs the account for the full 600,000 bike price, DEBITs savings_goal_payable for the released 180,000 down payment, and DEBITs loan_payable for only the real new 420,000 principal") {
                 verify(exactly = 1) {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.size == 3 &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("600000") } &&
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("600000") } &&
                             legs.any { it.accountId == "savings_goal_payable" && it.accountType == LedgerAccountType.SAVINGS_GOAL_PAYABLE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("180000") } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("420000") }
                     })
@@ -292,9 +292,9 @@ class MotoOwnershipServiceTest : BehaviorSpec({
 
     Given("a real LOAN_ACTIVE plan being overpaid") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_5", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -303,7 +303,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             status = MotoOwnershipPlanStatus.LOAN_ACTIVE,
         )
         every { motoOwnershipPlanRepository.findById("motoown_5") } returns Optional.of(plan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay", emptyList())
         every { motoOwnershipPlanRepository.save(any()) } answers { firstArg() }
 
@@ -316,7 +316,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.all { it.amount == BigDecimal("30000") } &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.DEBIT } &&
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.DEBIT } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
@@ -332,9 +332,9 @@ class MotoOwnershipServiceTest : BehaviorSpec({
 
     Given("a real LOAN_ACTIVE plan being partially repaid") {
         val motoOwnershipPlanRepository = mockk<MotoOwnershipPlanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(motoOwnershipPlanRepository = motoOwnershipPlanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val plan = MotoOwnershipPlan(
             id = "motoown_6", userId = "user_1", bikePrice = BigDecimal("600000"),
@@ -343,7 +343,7 @@ class MotoOwnershipServiceTest : BehaviorSpec({
             status = MotoOwnershipPlanStatus.LOAN_ACTIVE,
         )
         every { motoOwnershipPlanRepository.findById("motoown_6") } returns Optional.of(plan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay2", emptyList())
         every { motoOwnershipPlanRepository.save(any()) } answers { firstArg() }
 

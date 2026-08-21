@@ -19,7 +19,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -31,7 +31,7 @@ import rw.itunda.core.repository.AgentOperatorRepository
 import rw.itunda.core.repository.AgentTillReconciliationRepository
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.geo.GeoUtils
@@ -91,7 +91,7 @@ class AgentService(
     private val tillReconciliationRepository: AgentTillReconciliationRepository,
     private val agentCashInRepository: AgentCashInRepository,
     private val agentCashOutRepository: AgentCashOutRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
@@ -314,30 +314,30 @@ class AgentService(
             throw AgentDailyLimitExceededException("This cash-in exceeds the agent's daily limit")
         }
 
-        val wallet = walletRepository.findByAccountNumber(accountNumber.trim())
+        val account = accountRepository.findByAccountNumber(accountNumber.trim())
             ?: throw IllegalArgumentException("Itunda account not found")
-        require(wallet.type == WalletType.MAIN) { "Cash-in is only available for a main account" }
-        require(wallet.isActive) { "This account is frozen pending review" }
+        require(account.type == AccountType.MAIN) { "Cash-in is only available for a main account" }
+        require(account.isActive) { "This account is frozen pending review" }
 
         // Real MTN MoMo-style agent commission -- see AgentCommissionSchedule's own doc
         // comment. Folded into this SAME ledger transaction (one atomic settlement,
         // matching how a real fee-inclusive transfer already posts more than 2 legs in
         // this codebase) rather than a second call -- honestly skipped, never blocking
-        // the real customer cash-in, if the operator who accepted it has no real wallet
+        // the real customer cash-in, if the operator who accepted it has no real account
         // of their own to receive it (shouldn't happen for a real registered operator,
         // but this is customer money moving, not something to risk on that assumption).
         val commission = AgentCommissionSchedule.computeCommission(amount)
-        val operatorWallet = walletRepository.findByUserIdAndType(acceptedByUserId, WalletType.MAIN)
+        val operatorAccount = accountRepository.findByUserIdAndType(acceptedByUserId, AccountType.MAIN)
         val legs = mutableListOf(
             LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, amount, "Cash accepted at ${agent.displayName} receipt $receipt"),
-            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Cash-in at ${agent.displayName} receipt $receipt"),
+            LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Cash-in at ${agent.displayName} receipt $receipt"),
         )
-        if (operatorWallet != null) {
+        if (operatorAccount != null) {
             legs.add(LedgerLeg("agent_commission_expense", LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerDirection.DEBIT, commission, "Agent commission - cash-in receipt $receipt"))
-            legs.add(LedgerLeg(operatorWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Agent commission - cash-in receipt $receipt"))
+            legs.add(LedgerLeg(operatorAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Agent commission - cash-in receipt $receipt"))
         }
 
-        val ledger = ledgerService.postLedgerTransaction(wallet.currency, legs)
+        val ledger = ledgerService.postLedgerTransaction(account.currency, legs)
         // Real gap found 2026-08-08 (East African mobile-money research pass, checking
         // this module against real M-Pesa/MTN MoMo agent-network fraud patterns):
         // agent cash-in/cash-out had zero FraudRuleEngine coverage -- the exact same
@@ -347,30 +347,30 @@ class AgentService(
         // HIGH_VALUE/VELOCITY apply -- still real signal for the two most-cited agent-
         // channel risks: deposit structuring (repeated/large cash-ins) and a
         // compromised-account being rapidly drained via agent counters.
-        fraudRuleEngine.evaluate(wallet.userId, null, amount, ledger.transactionId)
+        fraudRuleEngine.evaluate(account.userId, null, amount, ledger.transactionId)
         val cashIn = agentCashInRepository.save(AgentCashIn(
-            id = "cashin_${UUID.randomUUID()}", agentId = agent.id, walletId = wallet.id, receiptNumber = receipt,
+            id = "cashin_${UUID.randomUUID()}", agentId = agent.id, accountId = account.id, receiptNumber = receipt,
             ledgerTransactionId = ledger.transactionId, amount = amount, acceptedByUserId = acceptedByUserId,
         ))
         val transaction = transactionRepository.save(Transaction(
             id = ledger.transactionId, referenceNumber = "CASH${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
-            senderId = agent.id, recipientId = wallet.userId, toWalletId = wallet.id, amount = amount, fee = BigDecimal.ZERO,
-            currency = wallet.currency, type = TransactionType.DEPOSIT, status = TransactionStatus.COMPLETED,
+            senderId = agent.id, recipientId = account.userId, toAccountId = account.id, amount = amount, fee = BigDecimal.ZERO,
+            currency = account.currency, type = TransactionType.DEPOSIT, status = TransactionStatus.COMPLETED,
             description = "Cash-in at ${agent.displayName}", channel = "ITUNDA_AGENT", providerReference = receipt,
             completedAt = cashIn.createdAt,
         ))
         val cashInTitle = "Cash added"
-        val cashInBody = "${amount.toPlainString()} ${wallet.currency} was added at ${agent.displayName}"
+        val cashInBody = "${amount.toPlainString()} ${account.currency} was added at ${agent.displayName}"
         notificationRepository.save(Notification(
-            id = "notification_${UUID.randomUUID()}", userId = wallet.userId, type = "cash_in",
+            id = "notification_${UUID.randomUUID()}", userId = account.userId, type = "cash_in",
             title = cashInTitle, body = cashInBody,
             isRead = false, createdAt = cashIn.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
-        sendPushAfterCommit(wallet.userId, cashInTitle, cashInBody, ledger.transactionId)
+        sendPushAfterCommit(account.userId, cashInTitle, cashInBody, ledger.transactionId)
         return mapOf(
-            "cashIn" to cashIn, "transaction" to transaction, "newBalance" to wallet.balance,
-            "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
+            "cashIn" to cashIn, "transaction" to transaction, "newBalance" to account.balance,
+            "operatorCommission" to (if (operatorAccount != null) commission else BigDecimal.ZERO),
         )
     }
 
@@ -397,12 +397,12 @@ class AgentService(
         if (totalToday.add(amount) > agent.dailyCashOutLimit) {
             throw AgentDailyLimitExceededException("This cash-out exceeds the agent's daily limit")
         }
-        val wallet = walletRepository.findByAccountNumber(accountNumber.trim())
+        val account = accountRepository.findByAccountNumber(accountNumber.trim())
             ?: throw IllegalArgumentException("Itunda account not found")
-        require(wallet.type == WalletType.MAIN) { "Cash-out is only available from a main account" }
+        require(account.type == AccountType.MAIN) { "Cash-out is only available from a main account" }
         // This is deliberately before cash leaves the till. consume() joins this outer
         // transaction, so a ledger failure rolls its consumed marker back too.
-        withdrawalAuthorizationService.consume(authorizationCode, wallet.id, amount)
+        withdrawalAuthorizationService.consume(authorizationCode, account.id, amount)
 
         // LedgerService records an asset debit as a negative signed balance. For an
         // agent's cash-on-hand asset, negate it back to the amount physically expected
@@ -420,45 +420,45 @@ class AgentService(
         // Paid out of itunda's own real commission expense, never out of the real
         // customer's own cash-out amount above.
         val commission = AgentCommissionSchedule.computeCommission(amount)
-        val operatorWallet = walletRepository.findByUserIdAndType(paidByUserId, WalletType.MAIN)
+        val operatorAccount = accountRepository.findByUserIdAndType(paidByUserId, AccountType.MAIN)
         val legs = mutableListOf(
-            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Cash-out at ${agent.displayName} receipt $receipt"),
+            LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Cash-out at ${agent.displayName} receipt $receipt"),
             LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.CREDIT, amount, "Cash paid at ${agent.displayName} receipt $receipt"),
         )
-        if (operatorWallet != null) {
+        if (operatorAccount != null) {
             legs.add(LedgerLeg("agent_commission_expense", LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerDirection.DEBIT, commission, "Agent commission - cash-out receipt $receipt"))
-            legs.add(LedgerLeg(operatorWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Agent commission - cash-out receipt $receipt"))
+            legs.add(LedgerLeg(operatorAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Agent commission - cash-out receipt $receipt"))
         }
 
-        val ledger = ledgerService.postLedgerTransaction(wallet.currency, legs)
+        val ledger = ledgerService.postLedgerTransaction(account.currency, legs)
         // Same gap, same fix as cashIn above -- see its own comment for the full
-        // account. Cash-out is the closer analogue to P2P/Gift's own "wallet owner
+        // account. Cash-out is the closer analogue to P2P/Gift's own "account owner
         // moving money away" shape (a compromised account rapidly drained via an
         // agent counter is the single most classic real fraud pattern here).
-        fraudRuleEngine.evaluate(wallet.userId, null, amount, ledger.transactionId)
+        fraudRuleEngine.evaluate(account.userId, null, amount, ledger.transactionId)
         val cashOut = agentCashOutRepository.save(AgentCashOut(
-            id = "cashout_${UUID.randomUUID()}", agentId = agent.id, walletId = wallet.id, receiptNumber = receipt,
+            id = "cashout_${UUID.randomUUID()}", agentId = agent.id, accountId = account.id, receiptNumber = receipt,
             ledgerTransactionId = ledger.transactionId, amount = amount, paidByUserId = paidByUserId,
         ))
         val transaction = transactionRepository.save(Transaction(
             id = ledger.transactionId, referenceNumber = "CASH${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
-            senderId = wallet.userId, recipientId = agent.id, fromWalletId = wallet.id, amount = amount, fee = BigDecimal.ZERO,
-            currency = wallet.currency, type = TransactionType.WITHDRAWAL, status = TransactionStatus.COMPLETED,
+            senderId = account.userId, recipientId = agent.id, fromAccountId = account.id, amount = amount, fee = BigDecimal.ZERO,
+            currency = account.currency, type = TransactionType.WITHDRAWAL, status = TransactionStatus.COMPLETED,
             description = "Cash-out at ${agent.displayName}", channel = "ITUNDA_AGENT", providerReference = receipt,
             completedAt = cashOut.createdAt,
         ))
         val cashOutTitle = "Cash withdrawn"
-        val cashOutBody = "${amount.toPlainString()} ${wallet.currency} was withdrawn at ${agent.displayName}"
+        val cashOutBody = "${amount.toPlainString()} ${account.currency} was withdrawn at ${agent.displayName}"
         notificationRepository.save(Notification(
-            id = "notification_${UUID.randomUUID()}", userId = wallet.userId, type = "cash_out",
+            id = "notification_${UUID.randomUUID()}", userId = account.userId, type = "cash_out",
             title = cashOutTitle, body = cashOutBody,
             isRead = false, createdAt = cashOut.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
-        sendPushAfterCommit(wallet.userId, cashOutTitle, cashOutBody, ledger.transactionId)
+        sendPushAfterCommit(account.userId, cashOutTitle, cashOutBody, ledger.transactionId)
         return mapOf(
-            "cashOut" to cashOut, "transaction" to transaction, "newBalance" to wallet.balance,
-            "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
+            "cashOut" to cashOut, "transaction" to transaction, "newBalance" to account.balance,
+            "operatorCommission" to (if (operatorAccount != null) commission else BigDecimal.ZERO),
         )
     }
 

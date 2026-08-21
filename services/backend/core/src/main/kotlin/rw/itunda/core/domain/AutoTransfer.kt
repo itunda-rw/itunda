@@ -20,8 +20,8 @@ enum class AutoTransferStatus { ACTIVE, PAUSED, CANCELLED }
  * advanced forward by the scheduler, never recomputed from "today"), not a from-scratch
  * scheduling convention. `recipientIdentifier` is resolved fresh against
  * `P2pService.sendDirect`'s exact real phone-number-then-account-number lookup on every
- * execution (not cached as a walletId) so a recipient who closes and reopens an account
- * with a new wallet, or changes their phone number, is still resolved correctly --
+ * execution (not cached as a accountId) so a recipient who closes and reopens an account
+ * with a new account, or changes their phone number, is still resolved correctly --
  * `recipientName` is a cached display label only, never re-derived money-movement
  * identity.
  */
@@ -35,8 +35,8 @@ class AutoTransfer(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "recipient_identifier", nullable = false, length = 64)
     var recipientIdentifier: String,
@@ -95,7 +95,7 @@ class AutoTransfer(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", recipientIdentifier = "", recipientName = "",
+        id = "", userId = "", accountId = "", recipientIdentifier = "", recipientName = "",
         amount = BigDecimal.ZERO, frequency = AutoTransferFrequency.MONTHLY,
     )
 }

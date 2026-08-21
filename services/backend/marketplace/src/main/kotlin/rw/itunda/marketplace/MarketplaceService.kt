@@ -20,7 +20,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
@@ -37,7 +37,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.search.FullTextSearchUtil
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
@@ -56,8 +56,8 @@ class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class NeighborhoodNotSetException(message: String) : RuntimeException(message)
 class BuyerNotFoundException(message: String) : RuntimeException(message)
 class InvalidBoostDurationException(message: String) : RuntimeException(message)
-class SellerNoWalletException(message: String) : RuntimeException(message)
-class BuyerNoWalletException(message: String) : RuntimeException(message)
+class SellerNoAccountException(message: String) : RuntimeException(message)
+class BuyerNoAccountException(message: String) : RuntimeException(message)
 class MarketplaceEscrowNotFoundException(message: String) : RuntimeException(message)
 class InvalidEscrowStatusException(message: String) : RuntimeException(message)
 class InvalidDisputeReasonException(message: String) : RuntimeException(message)
@@ -91,7 +91,7 @@ class MarketplaceService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
     private val trustScoreService: TrustScoreService,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val marketplaceEscrowRepository: MarketplaceEscrowRepository,
@@ -381,7 +381,7 @@ class MarketplaceService(
     /**
      * Real seller-paid sponsored placement -- see `Listing.boostedUntil`'s own doc
      * comment for the two real, sourced models this chose between. A flat, real payment
-     * (seller wallet debited, 100% to `fee_revenue` -- this is a direct service
+     * (seller account debited, 100% to `fee_revenue` -- this is a direct service
      * purchase from itunda, not a marketplace transaction between two parties, so there
      * is no counterparty leg) extends `boostedUntil` by the purchased tier's real
      * duration -- stacking (buying more boost time on an already-boosted listing pushes
@@ -397,13 +397,13 @@ class MarketplaceService(
         val price = BOOST_TIERS[days]
             ?: throw InvalidBoostDurationException("Choose a real boost duration -- ${BOOST_TIERS.keys.sorted().joinToString()} days")
 
-        val sellerWallet = walletRepository.findByUserIdAndType(sellerId, WalletType.MAIN)
-            ?: throw SellerNoWalletException("No wallet found for this account")
+        val sellerAccount = accountRepository.findByUserIdAndType(sellerId, AccountType.MAIN)
+            ?: throw SellerNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            sellerWallet.currency,
+            sellerAccount.currency,
             listOf(
-                LedgerLeg(sellerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Boost listing \"${listing.title}\" for $days days"),
+                LedgerLeg(sellerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Boost listing \"${listing.title}\" for $days days"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, price, "Listing boost -- ${listing.title}"),
             ),
         )
@@ -527,17 +527,17 @@ class MarketplaceService(
         if (listing.sellerId == buyerId) {
             throw OwnListingException("Cannot buy your own listing")
         }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw BuyerNoAccountException("No account found for this account")
         val seller = userRepository.findById(listing.sellerId).orElseThrow { ListingNotFoundException("Listing not found") }
-        val sellerWallet = walletRepository.findByUserIdAndType(seller.id, WalletType.MAIN)
-            ?: throw SellerNoWalletException("Seller has no wallet to receive this payment")
+        val sellerAccount = accountRepository.findByUserIdAndType(seller.id, AccountType.MAIN)
+            ?: throw SellerNoAccountException("Seller has no account to receive this payment")
 
         val fee = listing.price.multiply(ESCROW_FEE_RATE).setScale(2, RoundingMode.HALF_UP)
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, listing.price, "Escrow payment - ${listing.title}"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, listing.price, "Escrow payment - ${listing.title}"),
                 LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.CREDIT, listing.price, "Escrow held - ${listing.title}"),
             ),
         )
@@ -552,11 +552,11 @@ class MarketplaceService(
                 referenceNumber = "ESCROW${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = buyerId,
                 recipientId = seller.id,
-                fromWalletId = buyerWallet.id,
-                toWalletId = sellerWallet.id,
+                fromAccountId = buyerAccount.id,
+                toAccountId = sellerAccount.id,
                 amount = listing.price,
                 fee = fee,
-                currency = buyerWallet.currency,
+                currency = buyerAccount.currency,
                 type = TransactionType.PAYMENT,
                 status = TransactionStatus.COMPLETED,
                 description = "Escrow payment - ${listing.title}",
@@ -684,14 +684,14 @@ class MarketplaceService(
     }
 
     private fun releaseEscrowToSeller(escrow: MarketplaceEscrow): MarketplaceEscrow {
-        val sellerWallet = walletRepository.findByUserIdAndType(escrow.sellerId, WalletType.MAIN)
-            ?: throw SellerNoWalletException("Seller has no wallet to receive this payment")
+        val sellerAccount = accountRepository.findByUserIdAndType(escrow.sellerId, AccountType.MAIN)
+            ?: throw SellerNoAccountException("Seller has no account to receive this payment")
         val netToSeller = escrow.amount.subtract(escrow.fee)
         val result = ledgerService.postLedgerTransaction(
-            sellerWallet.currency,
+            sellerAccount.currency,
             listOf(
                 LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.DEBIT, escrow.amount, "Escrow released"),
-                LedgerLeg(sellerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToSeller, "Escrow release"),
+                LedgerLeg(sellerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToSeller, "Escrow release"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, escrow.fee, "Marketplace escrow fee"),
             ),
         )
@@ -703,7 +703,7 @@ class MarketplaceService(
         notifyDisputeResolved(
             escrow,
             winnerId = escrow.sellerId,
-            winnerBody = "The dispute for \"$title\" was resolved in your favor. ${netToSeller.toPlainString()} RWF has been credited to your wallet.",
+            winnerBody = "The dispute for \"$title\" was resolved in your favor. ${netToSeller.toPlainString()} RWF has been credited to your account.",
             loserId = escrow.buyerId,
             loserBody = "The dispute for \"$title\" was resolved in the seller's favor. The payment has been released to them.",
         )
@@ -711,13 +711,13 @@ class MarketplaceService(
     }
 
     private fun refundEscrowToBuyer(escrow: MarketplaceEscrow): MarketplaceEscrow {
-        val buyerWallet = walletRepository.findByUserIdAndType(escrow.buyerId, WalletType.MAIN)
-            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val buyerAccount = accountRepository.findByUserIdAndType(escrow.buyerId, AccountType.MAIN)
+            ?: throw BuyerNoAccountException("No account found for this account")
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
                 LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.DEBIT, escrow.amount, "Escrow refunded"),
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, escrow.amount, "Escrow refund"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, escrow.amount, "Escrow refund"),
             ),
         )
         escrow.status = MarketplaceEscrowStatus.REFUNDED
@@ -736,7 +736,7 @@ class MarketplaceService(
         notifyDisputeResolved(
             escrow,
             winnerId = escrow.buyerId,
-            winnerBody = "The dispute for \"$title\" was resolved in your favor. ${escrow.amount.toPlainString()} RWF has been refunded to your wallet.",
+            winnerBody = "The dispute for \"$title\" was resolved in your favor. ${escrow.amount.toPlainString()} RWF has been refunded to your account.",
             loserId = escrow.sellerId,
             loserBody = "The dispute for \"$title\" was resolved in the buyer's favor. The payment has been refunded to them.",
         )

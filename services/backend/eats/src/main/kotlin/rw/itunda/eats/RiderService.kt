@@ -3,15 +3,15 @@ package rw.itunda.eats
 import org.springframework.stereotype.Service
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Rider
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.RiderRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class RiderNoWalletException(message: String) : RuntimeException(message)
+class RiderNoAccountException(message: String) : RuntimeException(message)
 class RiderAlreadyRegisteredException(message: String) : RuntimeException(message)
 class RiderNotRegisteredException(message: String) : RuntimeException(message)
 class InvalidRiderLocationException(message: String) : RuntimeException(message)
@@ -20,23 +20,23 @@ class InvalidRiderLocationException(message: String) : RuntimeException(message)
  * Real rider registration for Coupang Eats-style delivery -- any itunda user can opt in,
  * no separate onboarding/KYC gate beyond the account they already have (matching how
  * light this session's other self-service registrations are, e.g. marketplace listing
- * creation). Reuses the rider's own existing MAIN wallet as their payout destination --
+ * creation). Reuses the rider's own existing MAIN account as their payout destination --
  * the same real WALLET-to-WALLET disbursement precedent `PayrollService` already
- * established, no new wallet type or external payout rail needed.
+ * established, no new account type or external payout rail needed.
  */
 @Service
 class RiderService(
     private val riderRepository: RiderRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val rateLimiter: RateLimiter,
 ) {
     fun register(userId: String): Rider {
         if (riderRepository.findByUserId(userId) != null) {
             throw RiderAlreadyRegisteredException("This account is already registered as a rider")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw RiderNoWalletException("No wallet found for this account")
-        return riderRepository.save(Rider(id = "rider_${UUID.randomUUID()}", userId = userId, walletId = wallet.id))
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw RiderNoAccountException("No account found for this account")
+        return riderRepository.save(Rider(id = "rider_${UUID.randomUUID()}", userId = userId, accountId = account.id))
     }
 
     fun getMyRiderProfile(userId: String): Rider =

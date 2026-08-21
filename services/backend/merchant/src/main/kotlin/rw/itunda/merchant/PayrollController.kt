@@ -17,7 +17,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -84,8 +84,8 @@ class PayrollController(
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleMerchantNoWallet(ex: MerchantNoWalletException) =
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleMerchantNoAccount(ex: MerchantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmployeeNotFoundException::class)
@@ -100,8 +100,8 @@ class PayrollController(
     fun handleEmployeeIsOwner(ex: EmployeeIsOwnerException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPLOYEE_IS_OWNER", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(EmployeeNoWalletException::class)
-    fun handleEmployeeNoWallet(ex: EmployeeNoWalletException) =
+    @ExceptionHandler(EmployeeNoAccountException::class)
+    fun handleEmployeeNoAccount(ex: EmployeeNoAccountException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("EMPLOYEE_NO_WALLET", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(InvalidSalaryAmountException::class)
@@ -136,7 +136,7 @@ class PayrollController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 }

@@ -18,7 +18,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -45,7 +45,7 @@ data class CollectPaymentRequest(val couponId: String? = null, val pointsToRedee
 // Real customer-presented payment code (2026-08-11) -- see
 // MerchantService.chargeByCustomerCode's own doc comment.
 data class ChargeByCustomerCodeRequest(val code: String, val amount: BigDecimal)
-data class GenerateCustomerPaymentCodeRequest(val walletId: String? = null)
+data class GenerateCustomerPaymentCodeRequest(val accountId: String? = null)
 // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see MerchantStaticQrService's own
 // doc comment.
 data class StaticQrPayRequest(val amount: BigDecimal, val description: String? = null)
@@ -341,11 +341,11 @@ class MerchantController(
         @RequestBody(required = false) request: GenerateCustomerPaymentCodeRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val paymentCode = merchantService.generateCustomerPaymentCode(currentUser.userId, request?.walletId)
+        val paymentCode = merchantService.generateCustomerPaymentCode(currentUser.userId, request?.accountId)
         return ResponseEntity.ok(
             mapOf(
                 "success" to true, "code" to paymentCode.code, "expiresAt" to paymentCode.expiresAt.toString(),
-                "walletId" to paymentCode.walletId,
+                "accountId" to paymentCode.accountId,
             ),
         )
     }
@@ -439,8 +439,8 @@ class MerchantController(
     fun handleNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(MerchantNoWalletException::class)
-    fun handleNoWallet(ex: MerchantNoWalletException) =
+    @ExceptionHandler(MerchantNoAccountException::class)
+    fun handleNoAccount(ex: MerchantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(PaymentIntentNotFoundException::class)
@@ -459,8 +459,8 @@ class MerchantController(
     fun handleCustomerCodeNotPayable(ex: CustomerPaymentCodeNotPayableException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CUSTOMER_PAYMENT_CODE_NOT_PAYABLE", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(PaymentCodeWalletNotOwnedException::class)
-    fun handlePaymentCodeWalletNotOwned(ex: PaymentCodeWalletNotOwnedException) =
+    @ExceptionHandler(PaymentCodeAccountNotOwnedException::class)
+    fun handlePaymentCodeAccountNotOwned(ex: PaymentCodeAccountNotOwnedException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_OWNED", ex.message ?: "Not found"))
 
     @ExceptionHandler(SelfPaymentException::class)
@@ -491,9 +491,9 @@ class MerchantController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

@@ -7,9 +7,9 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -17,15 +17,15 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
     fun authorization(
         id: String,
         code: String,
-        walletId: String = "wallet_1",
+        accountId: String = "account_1",
         amount: String = "5000",
         expiresAt: Instant = Instant.now().plusSeconds(600),
-    ) = AgentWithdrawalAuthorization(id, "user_1", walletId, code, BigDecimal(amount), expiresAt)
+    ) = AgentWithdrawalAuthorization(id, "user_1", accountId, code, BigDecimal(amount), expiresAt)
 
     Given("a customer who already has three active cash-out codes") {
         val repository = mockk<AgentWithdrawalAuthorizationRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = AgentWithdrawalAuthorizationService(repository, walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = AgentWithdrawalAuthorizationService(repository, accountRepository)
         every { repository.findByUserIdOrderByCreatedAtDesc("user_1") } returns listOf(
             authorization("a1", "CODE00000001"), authorization("a2", "CODE00000002"), authorization("a3", "CODE00000003"),
         )
@@ -34,26 +34,26 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
             shouldThrow<TooManyWithdrawalAuthorizationsException> {
                 service.create("user_1", BigDecimal("5000"))
             }
-            verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+            verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
             verify(exactly = 0) { repository.save(any()) }
         }
     }
 
-    Given("a main wallet and no active codes") {
+    Given("a main account and no active codes") {
         val repository = mockk<AgentWithdrawalAuthorizationRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = AgentWithdrawalAuthorizationService(repository, walletRepository)
-        val wallet = Wallet("wallet_1", "user_1", "2024100001", "Main", WalletType.MAIN, BigDecimal("10000"), BigDecimal("10000"))
+        val accountRepository = mockk<AccountRepository>()
+        val service = AgentWithdrawalAuthorizationService(repository, accountRepository)
+        val account = Account("account_1", "user_1", "2024100001", "Main", AccountType.MAIN, BigDecimal("10000"), BigDecimal("10000"))
         every { repository.findByUserIdOrderByCreatedAtDesc("user_1") } returns emptyList()
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account
         every { repository.existsByCode(any()) } returns false
         every { repository.save(any()) } answers { firstArg() }
 
         When("the customer creates a cash-out code") {
             val created = service.create("user_1", BigDecimal("2500"))
 
-            Then("it is bound to their main wallet with an opaque 12-character code") {
-                created.walletId shouldBe "wallet_1"
+            Then("it is bound to their main account with an opaque 12-character code") {
+                created.accountId shouldBe "account_1"
                 created.amount shouldBeEqualIgnoringScale BigDecimal("2500")
                 created.code.length shouldBe 12
                 created.code shouldBe created.code.uppercase()
@@ -67,26 +67,26 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
         val authorization = authorization("a1", "A1B2C3D4E5F6")
         every { repository.findByCode("A1B2C3D4E5F6") } returns authorization
 
-        When("an agent attempts a payout for a different amount or wallet") {
+        When("an agent attempts a payout for a different amount or account") {
             Then("the code remains unconsumed") {
                 shouldThrow<WithdrawalAuthorizationInvalidException> {
-                    service.consume("a1b2c3d4e5f6", "wallet_1", BigDecimal("2500"))
+                    service.consume("a1b2c3d4e5f6", "account_1", BigDecimal("2500"))
                 }
                 shouldThrow<WithdrawalAuthorizationInvalidException> {
-                    service.consume("A1B2C3D4E5F6", "wallet_other", BigDecimal("5000"))
+                    service.consume("A1B2C3D4E5F6", "account_other", BigDecimal("5000"))
                 }
                 authorization.consumedAt shouldBe null
             }
         }
 
-        When("the exact wallet and amount are supplied") {
+        When("the exact account and amount are supplied") {
             every { repository.save(any()) } answers { firstArg() }
-            val consumed = service.consume("a1b2c3d4e5f6", "wallet_1", BigDecimal("5000"))
+            val consumed = service.consume("a1b2c3d4e5f6", "account_1", BigDecimal("5000"))
 
             Then("it becomes single-use") {
                 (consumed.consumedAt == null) shouldBe false
                 shouldThrow<WithdrawalAuthorizationInvalidException> {
-                    service.consume("A1B2C3D4E5F6", "wallet_1", BigDecimal("5000"))
+                    service.consume("A1B2C3D4E5F6", "account_1", BigDecimal("5000"))
                 }
             }
         }
@@ -102,9 +102,9 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
         )
         every { repository.findByCode("EXPIRE000001") } returns expired
 
-        Then("it cannot debit the customer wallet after its ten-minute window") {
+        Then("it cannot debit the customer account after its ten-minute window") {
             shouldThrow<WithdrawalAuthorizationInvalidException> {
-                service.consume("expire000001", "wallet_1", BigDecimal("5000"))
+                service.consume("expire000001", "account_1", BigDecimal("5000"))
             }
             expired.consumedAt shouldBe null
             verify(exactly = 0) { repository.save(any()) }

@@ -9,16 +9,16 @@ import rw.itunda.core.domain.IkiminaMember
 import rw.itunda.core.domain.IkiminaStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.IkiminaContributionRepository
 import rw.itunda.core.repository.IkiminaMemberRepository
 import rw.itunda.core.repository.IkiminaRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.util.UUID
@@ -29,7 +29,7 @@ class IkiminaNotMemberException(message: String) : RuntimeException(message)
 class IkiminaMemberNotFoundException(message: String) : RuntimeException(message)
 class IkiminaAlreadyMemberException(message: String) : RuntimeException(message)
 class IkiminaFullException(message: String) : RuntimeException(message)
-class IkiminaNoWalletException(message: String) : RuntimeException(message)
+class IkiminaNoAccountException(message: String) : RuntimeException(message)
 class IkiminaNotFormingException(message: String) : RuntimeException(message)
 class IkiminaNotActiveException(message: String) : RuntimeException(message)
 class IkiminaTooFewMembersException(message: String) : RuntimeException(message)
@@ -55,7 +55,7 @@ private const val MAX_MEMBERS = 15
  * mechanic). Distinct from GroupAccountService (Kakao Bank 모임통장): that feature has
  * one permanent owner and no rotation; this one has a rotating payout recipient and no
  * permanent single beneficiary. Reuses the exact real ledger-movement shape every
- * other money-moving feature in this backend already uses -- a real Wallet(type=GROUP)
+ * other money-moving feature in this backend already uses -- a real Account(type=GROUP)
  * per ikimina, contributions/payouts are real WALLET-to-WALLET ledger transactions.
  */
 @Service
@@ -63,7 +63,7 @@ class IkiminaService(
     private val ikiminaRepository: IkiminaRepository,
     private val ikiminaMemberRepository: IkiminaMemberRepository,
     private val ikiminaContributionRepository: IkiminaContributionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
@@ -78,20 +78,20 @@ class IkiminaService(
         require(memberCap in MIN_MEMBERS_TO_START..MAX_MEMBERS) { "Member cap must be between $MIN_MEMBERS_TO_START and $MAX_MEMBERS" }
         userRepository.findById(organizerId).orElseThrow { IkiminaNotFoundException("Account not found") }
 
-        val wallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        val account = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = organizerId,
                 accountNumber = accountNumberGenerator.generate(2024200000L),
                 accountName = "$name (Ikimina)",
-                type = WalletType.GROUP,
+                type = AccountType.GROUP,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
         )
         val ikimina = ikiminaRepository.save(
             Ikimina(
-                id = "ikimina_${UUID.randomUUID()}", name = name.trim(), organizerId = organizerId, walletId = wallet.id,
+                id = "ikimina_${UUID.randomUUID()}", name = name.trim(), organizerId = organizerId, accountId = account.id,
                 contributionAmount = contributionAmount, cycleFrequencyDays = cycleFrequencyDays, memberCap = memberCap,
             ),
         )
@@ -110,7 +110,7 @@ class IkiminaService(
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
         ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
             ?: throw IkiminaNotMemberException("You are not a member of this ikimina")
-        val wallet = walletRepository.findById(ikimina.walletId).orElseThrow { IkiminaNoWalletException("Wallet not found") }
+        val account = accountRepository.findById(ikimina.accountId).orElseThrow { IkiminaNoAccountException("Account not found") }
 
         val members = ikiminaMemberRepository.findByIkiminaId(ikiminaId).sortedBy { it.payoutOrder }
         val users = userRepository.findAllById(members.map { it.userId }).associateBy { it.id }
@@ -124,7 +124,7 @@ class IkiminaService(
         val contributedThisRound = ikiminaContributionRepository.findByIkiminaIdAndRound(ikiminaId, ikimina.currentRound)
             .map { it.memberId }.toSet()
         val contributionStatus = members.map { m -> IkiminaContributionStatusView(userId = m.userId, contributed = m.id in contributedThisRound) }
-        return IkiminaView(ikimina = ikimina, balance = wallet.balance, members = memberViews, currentRoundContributions = contributionStatus)
+        return IkiminaView(ikimina = ikimina, balance = account.balance, members = memberViews, currentRoundContributions = contributionStatus)
     }
 
     @Transactional
@@ -193,15 +193,15 @@ class IkiminaService(
             throw IkiminaAlreadyContributedException("You have already contributed for round ${ikimina.currentRound}")
         }
 
-        val sourceWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw IkiminaNoWalletException("No wallet found for this account")
-        val groupWallet = walletRepository.findById(ikimina.walletId).orElseThrow { IkiminaNoWalletException("Wallet not found") }
+        val sourceAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw IkiminaNoAccountException("No account found for this account")
+        val groupAccount = accountRepository.findById(ikimina.accountId).orElseThrow { IkiminaNoAccountException("Account not found") }
 
         ledgerService.postLedgerTransaction(
-            sourceWallet.currency,
+            sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, ikimina.contributionAmount, "Ikimina contribution (\"${ikimina.name}\", round ${ikimina.currentRound})"),
-                LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, ikimina.contributionAmount, "Ikimina contribution (\"${ikimina.name}\", round ${ikimina.currentRound})"),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, ikimina.contributionAmount, "Ikimina contribution (\"${ikimina.name}\", round ${ikimina.currentRound})"),
+                LedgerLeg(groupAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, ikimina.contributionAmount, "Ikimina contribution (\"${ikimina.name}\", round ${ikimina.currentRound})"),
             ),
         )
         // Real DB unique constraint on (ikimina_id, member_id, round) backs this --
@@ -236,16 +236,16 @@ class IkiminaService(
         val recipient = ikiminaMemberRepository.findByIkiminaIdAndPayoutOrder(ikimina.id, recipientPayoutOrder)
             ?: throw IkiminaMemberNotFoundException("No member found for this round's payout order")
 
-        val groupWallet = walletRepository.findById(ikimina.walletId).orElseThrow { IkiminaNoWalletException("Wallet not found") }
-        val recipientWallet = walletRepository.findByUserIdAndType(recipient.userId, WalletType.MAIN)
-            ?: throw IkiminaNoWalletException("Recipient has no wallet to receive the payout")
+        val groupAccount = accountRepository.findById(ikimina.accountId).orElseThrow { IkiminaNoAccountException("Account not found") }
+        val recipientAccount = accountRepository.findByUserIdAndType(recipient.userId, AccountType.MAIN)
+            ?: throw IkiminaNoAccountException("Recipient has no account to receive the payout")
         val potAmount = ikimina.contributionAmount.multiply(BigDecimal(members.size))
 
         ledgerService.postLedgerTransaction(
-            groupWallet.currency,
+            groupAccount.currency,
             listOf(
-                LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, potAmount, "Ikimina payout (\"${ikimina.name}\", round ${ikimina.currentRound})"),
-                LedgerLeg(recipientWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, potAmount, "Ikimina payout (\"${ikimina.name}\", round ${ikimina.currentRound})"),
+                LedgerLeg(groupAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, potAmount, "Ikimina payout (\"${ikimina.name}\", round ${ikimina.currentRound})"),
+                LedgerLeg(recipientAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, potAmount, "Ikimina payout (\"${ikimina.name}\", round ${ikimina.currentRound})"),
             ),
         )
         recipient.hasReceivedPayout = true

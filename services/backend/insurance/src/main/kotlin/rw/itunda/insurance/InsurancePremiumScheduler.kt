@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
  * it does not mean premiums are collected or funds are contributed to every 30 seconds.
  *
  * Two jobs, one scheduler: collect due premiums first (draining a linked
- * InsurancePremiumFund when the wallet alone is short), then auto-contribute to funds
+ * InsurancePremiumFund when the account alone is short), then auto-contribute to funds
  * that are due for their own recurring top-up -- mirroring how AutoSaveScheduler and
  * InterestAccrualScheduler each own one real recurring job for their module.
  */

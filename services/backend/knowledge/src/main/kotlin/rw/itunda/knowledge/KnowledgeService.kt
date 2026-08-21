@@ -25,7 +25,7 @@ data class KnowledgeCategory(val id: String, val label: String)
  * Real Naver 지식iN (Knowledge iN)-style open-topic community Q&A -- see
  * `KnowledgeQuestion`/`KnowledgeAnswer`'s own doc comments for the full sourced
  * account. Genuinely distinct in shape from this session's trip/rental/booking
- * features (Rideshare/Bike/Parking/Bus): no wallet movement, no location, no asset --
+ * features (Rideshare/Bike/Parking/Bus): no account movement, no location, no asset --
  * a real content + social-reputation mechanic instead.
  *
  * v1, honestly scoped: real question/answer posting and browsing, real one-time
@@ -34,8 +34,8 @@ data class KnowledgeCategory(val id: String, val label: String)
  * counter" discipline `TrustScoreService` already establishes for a derived score --
  * an answer's adoption status can only ever move from false to true, never reverse, so
  * this stays cheap without needing a cached counter's staleness risk). No point-to-
- * wallet conversion this pass (a real, named, deliberately deferred follow-up --
- * `RewardsController`'s existing mission-points-to-wallet conversion is the real
+ * account conversion this pass (a real, named, deliberately deferred follow-up --
+ * `RewardsController`'s existing mission-points-to-account conversion is the real
  * precedent to reuse if this is ever built).
  */
 @Service

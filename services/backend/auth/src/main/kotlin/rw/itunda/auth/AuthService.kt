@@ -13,8 +13,8 @@ import rw.itunda.core.domain.PhoneVerificationToken
 import rw.itunda.core.domain.TermsAcceptance
 import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.push.PushNotificationService
@@ -25,8 +25,8 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PhoneVerificationTokenRepository
 import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -38,14 +38,14 @@ import java.security.SecureRandom
 /**
  * Port of backend/src/controllers/auth.controller.ts's login/register, with one fix
  * applied from day one instead of ported as a known gap: registration provisions a real
- * MAIN wallet (zero balance) for the new user. The Express backend's SECURITY.md lists
- * "new accounts have no wallet of their own" as its #1 open remediation item — since this
+ * MAIN account (zero balance) for the new user. The Express backend's SECURITY.md lists
+ * "new accounts have no account of their own" as its #1 open remediation item — since this
  * is a fresh implementation, there's no reason to carry that gap forward.
  */
 @Service
 class AuthService(
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val interestJarRepository: InterestJarRepository,
     private val jwtService: JwtService,
     private val tokenBlocklistService: TokenBlocklistService,
@@ -77,7 +77,7 @@ class AuthService(
         // TermsCatalog's own doc comment for the full sourced account. Checked before
         // any real write below (fail fast, same discipline the phone-uniqueness check
         // right above already follows) -- a client that skips a required checkbox
-        // never gets a real account or a real wallet provisioned for it.
+        // never gets a real account or a real account provisioned for it.
         val acceptedTermsIds = request.acceptedTermsIds.toSet()
         val missingRequiredTermsIds = TermsCatalog.requiredIds() - acceptedTermsIds
         if (missingRequiredTermsIds.isNotEmpty()) {
@@ -125,27 +125,43 @@ class AuthService(
         // requestPhoneVerification's own doc comment for the full delivery story.
         sendPhoneVerificationCode(user.id)
 
-        walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = user.id,
                 accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Main Account",
-                type = WalletType.MAIN,
+                type = AccountType.MAIN,
+                balance = BigDecimal.ZERO,
+                availableBalance = BigDecimal.ZERO,
+            ),
+        )
+        // Real Toss Bank/Toss Pay separation -- see AccountType.PAY's own doc comment.
+        // Provisioned unconditionally at registration, same as MAIN/SAVINGS below --
+        // every real user has an itunda Pay money balance from day one, starting at
+        // zero and auto-funded from MAIN (or an external linked account) the first
+        // time it's actually needed (MerchantService.collect).
+        accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
+                userId = user.id,
+                accountNumber = accountNumberGenerator.generate(2024100000L),
+                accountName = "${user.firstName}'s itunda Pay Money",
+                type = AccountType.PAY,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
         )
         // Fixed 2026-07-13, found live: SavingsService.createGoal requires a real
-        // WalletType.SAVINGS wallet and only MAIN was ever provisioned here, so
+        // AccountType.SAVINGS account and only MAIN was ever provisioned here, so
         // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user.
-        val savingsWallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        val savingsAccount = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = user.id,
                 accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Savings Account",
-                type = WalletType.SAVINGS,
+                type = AccountType.SAVINGS,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
@@ -161,7 +177,7 @@ class AuthService(
         interestJarRepository.save(
             InterestJar(
                 userId = user.id,
-                walletId = savingsWallet.id,
+                accountId = savingsAccount.id,
                 balance = BigDecimal.ZERO,
                 rate = 7.5,
                 earnedThisMonth = BigDecimal.ZERO,
@@ -173,18 +189,18 @@ class AuthService(
 
         // Real bug found and fixed 2026-07-27, same "only ever seeded, never
         // provisioned" gap as SAVINGS/InterestJar above, one more layer over:
-        // StocksService.buyStock requires a real WalletType.INVESTMENT wallet and only
+        // StocksService.buyStock requires a real AccountType.INVESTMENT account and only
         // the seeded demo user (SeedDataRunner) ever got one -- POST /api/v1/stocks/buy
-        // 404'd (WALLET_NOT_FOUND, via NoWalletException) for every real registered
+        // 404'd (WALLET_NOT_FOUND, via NoAccountException) for every real registered
         // user, meaning the entire real Toss Securities/Kakao Pay Securities-style
         // stock-buying feature was silently unusable outside the demo account.
-        walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = user.id,
                 accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Investment Account",
-                type = WalletType.INVESTMENT,
+                type = AccountType.INVESTMENT,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
@@ -353,8 +369,8 @@ class AuthService(
         return user.toPublic()
     }
 
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
-    // MiniWalletService's own doc comment for the sourced 만 7세~18세 real eligibility
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
+    // MiniAccountService's own doc comment for the sourced 만 7세~18세 real eligibility
     // window this backs. Set once; a real, plausible past date only -- neither a future
     // date (obviously wrong input) nor implausibly far in the past (a fat-fingered year).
     @Transactional

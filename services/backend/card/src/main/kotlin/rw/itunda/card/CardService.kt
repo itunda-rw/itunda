@@ -12,14 +12,14 @@ import rw.itunda.core.domain.DebitCardTransaction
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.security.SecureRandom
 import java.time.Duration
@@ -31,7 +31,7 @@ import java.util.UUID
 
 class CardAlreadyIssuedException(message: String) : RuntimeException(message)
 class CardNotFoundException(message: String) : RuntimeException(message)
-class CardNoWalletException(message: String) : RuntimeException(message)
+class CardNoAccountException(message: String) : RuntimeException(message)
 class CardFrozenException(message: String) : RuntimeException(message)
 class CardInvalidLimitException(message: String) : RuntimeException(message)
 class CardInvalidAmountException(message: String) : RuntimeException(message)
@@ -65,7 +65,7 @@ data class CardChargeResult(
 class CardService(
     private val debitCardRepository: DebitCardRepository,
     private val debitCardTransactionRepository: DebitCardTransactionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
@@ -74,7 +74,7 @@ class CardService(
     companion object {
         // itunda has no real production timezone service; Rwanda is a single-timezone
         // country (no DST), so a fixed zone is the correct real choice, same reasoning
-        // MiniWalletService's own age-eligibility fix just established.
+        // MiniAccountService's own age-eligibility fix just established.
         private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
     }
 
@@ -146,9 +146,9 @@ class CardService(
     /**
      * Real, ledger-backed "pay with your itunda card" -- the honest simulation of a
      * card-present purchase this entity's own doc comment describes. Debits the
-     * caller's real MAIN wallet the same way every other product in this codebase
+     * caller's real MAIN account the same way every other product in this codebase
      * moves money (LedgerService.postLedgerTransaction), so LedgerService's own
-     * frozen-wallet/insufficient-funds checks apply here too, on top of this card's
+     * frozen-account/insufficient-funds checks apply here too, on top of this card's
      * own frozen/limit checks.
      */
     @Transactional
@@ -186,12 +186,12 @@ class CardService(
             throw CardMonthlyLimitExceededException("This purchase would exceed your monthly card limit. $remaining RWF remaining this month.")
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw CardNoWalletException("No main wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw CardNoAccountException("No main account found for this account")
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Card purchase - $trimmedMerchant"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Card purchase - $trimmedMerchant"),
                 LedgerLeg("card_spend_expense", LedgerAccountType.CARD_SPEND_EXPENSE, LedgerDirection.CREDIT, amount, "Card purchase - $trimmedMerchant"),
             ),
         )

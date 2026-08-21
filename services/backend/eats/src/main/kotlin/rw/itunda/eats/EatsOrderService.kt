@@ -21,7 +21,7 @@ import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.EatsPromotionCalculator
 import rw.itunda.core.geo.GeoUtils
@@ -42,7 +42,7 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -50,8 +50,8 @@ import java.time.Instant
 import java.util.UUID
 
 class RestaurantNotFoundException(message: String) : RuntimeException(message)
-class RestaurantNoWalletException(message: String) : RuntimeException(message)
-class EatsBuyerNoWalletException(message: String) : RuntimeException(message)
+class RestaurantNoAccountException(message: String) : RuntimeException(message)
+class EatsBuyerNoAccountException(message: String) : RuntimeException(message)
 class EmptyEatsOrderException(message: String) : RuntimeException(message)
 class InvalidEatsDeliveryAddressException(message: String) : RuntimeException(message)
 class InvalidEatsQuantityException(message: String) : RuntimeException(message)
@@ -98,10 +98,10 @@ data class RiderLocationView(val latitude: Double, val longitude: Double, val up
  * Real Coupang Eats-style food ordering + delivery, the direct sibling of
  * `rw.itunda.commerce.OrderService` -- reuses the exact same real `Merchant`/
  * `MerchantProduct` catalog as restaurants/menu items (no second catalog system
- * invented) and the exact same real wallet-to-wallet ledger movement pattern
+ * invented) and the exact same real account-to-account ledger movement pattern
  * `MerchantService.collect()` established, just with a real delivery fee on top that's
  * held in `eats_delivery_holding` until a real rider completes the delivery, then paid
- * straight into that rider's own itunda wallet -- real money to a real person, the
+ * straight into that rider's own itunda account -- real money to a real person, the
  * same disbursement shape `PayrollService` already proved out, not a simulation.
  *
  * `deliveryFee` is real distance-based (2026-07-18, see `computeDeliveryFee`) via
@@ -118,7 +118,7 @@ class EatsOrderService(
     private val eatsOrderItemRepository: EatsOrderItemRepository,
     private val menuOptionGroupRepository: MenuOptionGroupRepository,
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
@@ -191,7 +191,7 @@ class EatsOrderService(
 
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
     // MerchantService.feeRate already give -- reused rather than inventing a third number
-    // for what is, underneath, the same kind of wallet-to-wallet merchant collection.
+    // for what is, underneath, the same kind of account-to-account merchant collection.
     private val platformFeeRate = BigDecimal("0.015")
 
     // Real distance-based delivery fee (2026-07-18), computed from GeoUtils.haversineKm
@@ -362,10 +362,10 @@ class EatsOrderService(
             }
         }
 
-        val restaurantWallet = walletRepository.findById(restaurant.walletId)
-            .orElseThrow { RestaurantNoWalletException("Restaurant settlement wallet not found") }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw EatsBuyerNoWalletException("No wallet found for this account")
+        val restaurantAccount = accountRepository.findById(restaurant.accountId)
+            .orElseThrow { RestaurantNoAccountException("Restaurant settlement account not found") }
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw EatsBuyerNoAccountException("No account found for this account")
 
         // Real menu-options resolution (2026-07-21) -- batched up front for every
         // distinct menu item in this order, not one pair of queries per line item (same
@@ -556,11 +556,11 @@ class EatsOrderService(
         val buyerCharge = totalAmount.subtract(promotionDiscount).subtract(pickupDiscount)
 
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, buyerCharge, "Eats order - ${restaurant.businessName}"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, buyerCharge, "Eats order - ${restaurant.businessName}"),
                 LedgerLeg("promotion_expense", LedgerAccountType.PROMOTION_EXPENSE, LedgerDirection.DEBIT, promotionDiscount, "Eats order promotion - ${restaurant.businessName}"),
-                LedgerLeg(restaurantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToRestaurant, "Eats order collection - ${restaurant.businessName}"),
+                LedgerLeg(restaurantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToRestaurant, "Eats order collection - ${restaurant.businessName}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Eats platform fee - ${restaurant.businessName}"),
                 LedgerLeg("eats_delivery_holding", LedgerAccountType.EATS_DELIVERY_HOLDING, LedgerDirection.CREDIT, deliveryFee, "Eats delivery fee held - ${restaurant.businessName}"),
             ),
@@ -571,11 +571,11 @@ class EatsOrderService(
             referenceNumber = "EATS${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = buyerId,
             recipientId = restaurant.ownerUserId,
-            fromWalletId = buyerWallet.id,
-            toWalletId = restaurantWallet.id,
+            fromAccountId = buyerAccount.id,
+            toAccountId = restaurantAccount.id,
             amount = buyerCharge,
             fee = platformFee.add(deliveryFee),
-            currency = buyerWallet.currency,
+            currency = buyerAccount.currency,
             type = TransactionType.PAYMENT,
             status = TransactionStatus.COMPLETED,
             description = "Eats order - ${restaurant.businessName}",
@@ -659,7 +659,7 @@ class EatsOrderService(
      * Real Uber Eats post-delivery tip (2026-08-17,
      * help.uber.com/en/ubereats/restaurants/article/add-or-change-tip-amount-for-a-past-order)
      * -- "You're free to add a tip... for up to 40 days after your order is delivered."
-     * A direct real buyer-wallet-to-rider-wallet transfer, never routed through
+     * A direct real buyer-account-to-rider-account transfer, never routed through
      * `eats_delivery_holding` (unlike the delivery fee itself) since a tip isn't
      * itunda's revenue to hold or take a cut of -- same real mechanism
      * [rw.itunda.rideshare.RideTripService.tipDriver] already establishes for ride
@@ -704,18 +704,18 @@ class EatsOrderService(
         }
         val riderId = order.riderId ?: throw EatsOrderNoRiderException("This order has no assigned rider to tip")
         val rider = riderRepository.findById(riderId).orElseThrow { EatsOrderNoRiderException("This order has no assigned rider to tip") }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw EatsBuyerNoWalletException("No wallet found for this account")
-        val riderWallet = walletRepository.findById(rider.walletId)
-            .orElseThrow { EatsOrderNoRiderException("Rider settlement wallet not found") }
-        if (buyerWallet.availableBalance < amount) {
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw EatsBuyerNoAccountException("No account found for this account")
+        val riderAccount = accountRepository.findById(rider.accountId)
+            .orElseThrow { EatsOrderNoRiderException("Rider settlement account not found") }
+        if (buyerAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this tip")
         }
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for order at ${order.restaurantId}"),
-                LedgerLeg(riderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for order at ${order.restaurantId}"),
+                LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
             ),
         )
         order.tipAmount = amount
@@ -1289,17 +1289,17 @@ class EatsOrderService(
             throw EatsOrderAllItemsUnavailableException("Cannot mark the last remaining item unavailable -- cancel the whole order instead")
         }
 
-        val restaurantWallet = walletRepository.findById(restaurant.walletId)
-            .orElseThrow { RestaurantNoWalletException("Restaurant settlement wallet not found") }
-        val buyerWallet = walletRepository.findByUserIdAndType(order.buyerId, WalletType.MAIN)
-            ?: throw EatsBuyerNoWalletException("No wallet found for this account")
+        val restaurantAccount = accountRepository.findById(restaurant.accountId)
+            .orElseThrow { RestaurantNoAccountException("Restaurant settlement account not found") }
+        val buyerAccount = accountRepository.findByUserIdAndType(order.buyerId, AccountType.MAIN)
+            ?: throw EatsBuyerNoAccountException("No account found for this account")
 
         val itemAmount = item.unitPrice.multiply(BigDecimal(item.quantity))
         val refund = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, itemAmount, "Item unavailable refund - ${item.productName}"),
-                LedgerLeg(restaurantWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, itemAmount, "Item unavailable clawback - ${item.productName}"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, itemAmount, "Item unavailable refund - ${item.productName}"),
+                LedgerLeg(restaurantAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, itemAmount, "Item unavailable clawback - ${item.productName}"),
             ),
         )
 
@@ -1408,12 +1408,12 @@ class EatsOrderService(
 
         val abandonedRiderId = order.riderId
         if (order.deliveryFee > BigDecimal.ZERO) {
-            val buyerWallet = walletRepository.findByUserIdAndType(order.buyerId, WalletType.MAIN)
-            if (buyerWallet != null) {
+            val buyerAccount = accountRepository.findByUserIdAndType(order.buyerId, AccountType.MAIN)
+            if (buyerAccount != null) {
                 val refund = ledgerService.postLedgerTransaction(
-                    buyerWallet.currency,
+                    buyerAccount.currency,
                     listOf(
-                        LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, order.deliveryFee, "Abandoned delivery -- fee refunded"),
+                        LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, order.deliveryFee, "Abandoned delivery -- fee refunded"),
                         LedgerLeg("eats_delivery_holding", LedgerAccountType.EATS_DELIVERY_HOLDING, LedgerDirection.DEBIT, order.deliveryFee, "Abandoned delivery -- fee refunded"),
                     ),
                 )
@@ -1499,7 +1499,7 @@ class EatsOrderService(
 
     /** The assigned rider only, forward-only through RIDER_ASSIGNED -> PICKED_UP ->
      * DELIVERED. Reaching DELIVERED triggers the real delivery-fee payout, straight out
-     * of `eats_delivery_holding` and into the rider's own wallet -- real money, paid the
+     * of `eats_delivery_holding` and into the rider's own account -- real money, paid the
      * moment the real work (the delivery) is actually done.
      *
      * `deliveryPhotoUrl` is the real Baemin/Coupang Eats/Uber Eats-style 안심배달
@@ -1530,13 +1530,13 @@ class EatsOrderService(
             if (deliveryPhotoUrl != null) {
                 order.deliveryProofPhotoUrl = deliveryPhotoUrl
             }
-            val riderWallet = walletRepository.findById(rider.walletId)
-                .orElseThrow { RiderNoWalletException("Rider wallet not found") }
+            val riderAccount = accountRepository.findById(rider.accountId)
+                .orElseThrow { RiderNoAccountException("Rider account not found") }
             val payout = ledgerService.postLedgerTransaction(
-                riderWallet.currency,
+                riderAccount.currency,
                 listOf(
                     LedgerLeg("eats_delivery_holding", LedgerAccountType.EATS_DELIVERY_HOLDING, LedgerDirection.DEBIT, order.deliveryFee, "Delivery fee payout - order ${order.id}"),
-                    LedgerLeg(riderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, order.deliveryFee, "Delivery fee payout - order ${order.id}"),
+                    LedgerLeg(riderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, order.deliveryFee, "Delivery fee payout - order ${order.id}"),
                 ),
             )
             order.deliveryPayoutTransactionId = payout.transactionId

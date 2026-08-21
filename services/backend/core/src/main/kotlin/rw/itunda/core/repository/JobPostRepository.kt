@@ -57,7 +57,7 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
     // (job_post_id, applicant_id, status) either, so two concurrent apply() calls by the
     // same applicant to the same job post could both pass that check before either
     // committed and both create a real duplicate PENDING application. Fixed the same way
-    // WalletRepository.findByIdForUpdate's own precedent works: lock the job post row
+    // AccountRepository.findByIdForUpdate's own precedent works: lock the job post row
     // itself to serialize concurrent applies against it, then re-check under that lock.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from JobPost p where p.id = :id")

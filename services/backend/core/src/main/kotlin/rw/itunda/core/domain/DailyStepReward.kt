@@ -18,7 +18,7 @@ import java.time.Instant
  * features (the client's own device sensor reports location; this backend never invents
  * it), the mobile client reports its own device pedometer's real cumulative daily step
  * count via `POST /api/v1/rewards/steps`, and this backend is the real source of truth
- * for the REWARD side of that (validating the report, crediting the real wallet,
+ * for the REWARD side of that (validating the report, crediting the real account,
  * preventing a double-claim) -- not a real anti-spoofing measure against a malicious
  * client, which would need a real OS-level attestation integration (Google Play
  * Integrity / Apple DeviceCheck) this session scopes out as a genuinely separate,
@@ -91,7 +91,7 @@ class DailyStepReward(
     // RewardClaim's own unique constraint does -- two concurrent step reports that
     // both cross the same tier threshold in the same request window (e.g. a client
     // retry) would otherwise both see `claimedTierN == false`, both credit the real
-    // wallet, and only then race to save the same row, silently double-paying a
+    // account, and only then race to save the same row, silently double-paying a
     // single tier crossing. This makes the second save fail with a real optimistic
     // lock conflict instead, rolling back its own ledger credit with it (same
     // transaction).

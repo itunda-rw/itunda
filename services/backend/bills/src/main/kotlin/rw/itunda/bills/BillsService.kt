@@ -22,13 +22,13 @@ import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.provider.RailProfile
 import rw.itunda.core.repository.BillAutoPaySettingRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.domain.AccountType
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
-class NoWalletException(message: String) : RuntimeException(message)
+class NoAccountException(message: String) : RuntimeException(message)
 class BillProviderNotFoundException(message: String) : RuntimeException(message)
 
 /**
@@ -46,16 +46,16 @@ class BillProviderNotFoundException(message: String) : RuntimeException(message)
  * Fixed (2026-07-16): the omission this file's doc comment used to name here ("these
  * don't create a persisted Transaction row, only ledger legs") is closed -- both flows
  * now save a real `Transaction` row, same shape/convention as
- * `WalletService.confirmTransfer`. Found while wiring rewards-task verification
+ * `AccountService.confirmTransfer`. Found while wiring rewards-task verification
  * (RewardsService's `task_first_bill`): without a real Transaction row there was
  * nothing for a "has this user ever paid a bill" query to check, and bill/airtime
- * payments were invisible to `GET /wallet/transactions` the same way merchant
+ * payments were invisible to `GET /account/transactions` the same way merchant
  * collections were before that gap was closed (see the Merchant row in
  * docs/TOSS_PARITY_MATRIX.md) -- the identical class of bug, same fix.
  */
 @Service
 class BillsService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val providerConnector: ProviderConnector,
     private val eventPublisher: EventPublisher,
@@ -122,15 +122,15 @@ class BillsService(
 
     @Transactional
     fun payBill(userId: String, billId: String, amount: BigDecimal, accountNumber: String?, provider: String? = null): Map<String, Any?> {
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
 
         val rail = RailCatalog.resolve(provider)
-        attemptOrPublishFailure(rail, "Bill payment $billId", amount, wallet.currency)
+        attemptOrPublishFailure(rail, "Bill payment $billId", amount, account.currency)
 
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Bill payment $billId"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Bill payment $billId"),
                 LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, amount, "Biller settlement $billId"),
             ),
         )
@@ -149,10 +149,10 @@ class BillsService(
                 referenceNumber = referenceNumber,
                 senderId = userId,
                 recipientId = "external",
-                fromWalletId = wallet.id,
+                fromAccountId = account.id,
                 amount = amount,
                 fee = BigDecimal.ZERO,
-                currency = wallet.currency,
+                currency = account.currency,
                 type = TransactionType.BILL,
                 status = TransactionStatus.COMPLETED,
                 description = description,
@@ -168,7 +168,7 @@ class BillsService(
                 railDisplayName = rail.displayName,
                 description = "Bill payment $billId",
                 amount = amount,
-                currency = wallet.currency,
+                currency = account.currency,
                 succeededAt = Instant.now(),
             ),
         )
@@ -186,15 +186,15 @@ class BillsService(
 
     @Transactional
     fun buyAirtime(userId: String, phoneNumber: String, amount: BigDecimal, provider: String?): Map<String, Any?> {
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
 
         val rail = RailCatalog.resolve(provider)
-        attemptOrPublishFailure(rail, "Airtime $phoneNumber", amount, wallet.currency)
+        attemptOrPublishFailure(rail, "Airtime $phoneNumber", amount, account.currency)
 
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Airtime $phoneNumber"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Airtime $phoneNumber"),
                 LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, amount, "Airtime settlement $phoneNumber"),
             ),
         )
@@ -210,10 +210,10 @@ class BillsService(
                 referenceNumber = referenceNumber,
                 senderId = userId,
                 recipientId = "external",
-                fromWalletId = wallet.id,
+                fromAccountId = account.id,
                 amount = amount,
                 fee = BigDecimal.ZERO,
-                currency = wallet.currency,
+                currency = account.currency,
                 type = TransactionType.AIRTIME,
                 status = TransactionStatus.COMPLETED,
                 description = description,
@@ -229,7 +229,7 @@ class BillsService(
                 railDisplayName = rail.displayName,
                 description = "Airtime $phoneNumber",
                 amount = amount,
-                currency = wallet.currency,
+                currency = account.currency,
                 succeededAt = Instant.now(),
             ),
         )

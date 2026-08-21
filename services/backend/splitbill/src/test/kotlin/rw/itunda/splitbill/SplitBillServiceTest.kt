@@ -13,8 +13,8 @@ import rw.itunda.core.domain.SplitBill
 import rw.itunda.core.domain.SplitBillParticipant
 import rw.itunda.core.domain.SplitBillParticipantStatus
 import rw.itunda.core.domain.SplitBillStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
@@ -22,7 +22,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.SplitBillParticipantRepository
 import rw.itunda.core.repository.SplitBillRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.GroupMemberInfo
 import rw.itunda.messaging.GroupMessagingService
 import rw.itunda.messaging.GroupNotFoundException
@@ -31,9 +31,9 @@ import java.util.Optional
 
 class SplitBillServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, balance: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
+    fun account(id: String, userId: String, balance: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal(balance), availableBalance = BigDecimal(balance),
     )
 
     Given("evenSplitWithRoundingAbsorption in isolation") {
@@ -58,14 +58,14 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real organizer, a real group of 3 (organizer + 2 others), and a real total bill") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
-            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            splitBillRepository, splitBillParticipantRepository, accountRepository,
             transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
@@ -153,14 +153,14 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real open split bill with two real pending participant shares") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
-            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            splitBillRepository, splitBillParticipantRepository, accountRepository,
             transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
@@ -174,8 +174,8 @@ class SplitBillServiceTest : BehaviorSpec({
         every { splitBillRepository.findById("splitbill_1") } returns Optional.of(splitBill)
         every { splitBillParticipantRepository.findBySplitBillIdAndUserId("splitbill_1", "user_a") } returns participantA
         every { splitBillParticipantRepository.findBySplitBillIdAndUserId("splitbill_1", "user_stranger") } returns null
-        every { walletRepository.findByUserIdAndType("user_a", WalletType.MAIN) } returns wallet("wallet_a", "user_a", "10000")
-        every { walletRepository.findByUserIdAndType("user_organizer", WalletType.MAIN) } returns wallet("wallet_organizer", "user_organizer", "0")
+        every { accountRepository.findByUserIdAndType("user_a", AccountType.MAIN) } returns account("account_a", "user_a", "10000")
+        every { accountRepository.findByUserIdAndType("user_organizer", AccountType.MAIN) } returns account("account_organizer", "user_organizer", "0")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { transactionRepository.save(any()) } answers { firstArg() }
         every { splitBillParticipantRepository.save(any()) } answers { firstArg() }
@@ -189,7 +189,7 @@ class SplitBillServiceTest : BehaviorSpec({
 
             val paid = service.payShare("user_a", "splitbill_1")
 
-            Then("it moves the real share directly into the organizer's wallet and marks it PAID, but the bill stays OPEN since Bob hasn't paid yet") {
+            Then("it moves the real share directly into the organizer's account and marks it PAID, but the bill stays OPEN since Bob hasn't paid yet") {
                 paid.status shouldBe SplitBillParticipantStatus.PAID
                 splitBill.status shouldBe SplitBillStatus.OPEN
             }
@@ -235,7 +235,7 @@ class SplitBillServiceTest : BehaviorSpec({
         }
 
         When("the payer doesn't have enough balance for their own share") {
-            every { walletRepository.findByUserIdAndType("user_a", WalletType.MAIN) } returns wallet("wallet_a", "user_a", "10")
+            every { accountRepository.findByUserIdAndType("user_a", AccountType.MAIN) } returns account("account_a", "user_a", "10")
 
             Then("it throws InsufficientFundsException before ever moving real money") {
                 try {
@@ -254,14 +254,14 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real split bill and its real organizer") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
-            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            splitBillRepository, splitBillParticipantRepository, accountRepository,
             transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
@@ -321,14 +321,14 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real OPEN split bill with one real PENDING participant and its real organizer") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
-            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            splitBillRepository, splitBillParticipantRepository, accountRepository,
             transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
@@ -424,13 +424,13 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real OPEN split bill with a real never-yet-reminded PENDING participant") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, accountRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
 
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val participant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"))
@@ -453,13 +453,13 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real OPEN split bill whose PENDING participant was already real-reminded recently") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, accountRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
 
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val participant = SplitBillParticipant(
@@ -482,13 +482,13 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("a real OPEN split bill whose participant already PAID their share") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, accountRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
 
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val paidParticipant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"), status = SplitBillParticipantStatus.PAID)
@@ -510,14 +510,14 @@ class SplitBillServiceTest : BehaviorSpec({
     Given("two real people splitting a bill 1:1, with no existing group between them") {
         val splitBillRepository = mockk<SplitBillRepository>()
         val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
-            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            splitBillRepository, splitBillParticipantRepository, accountRepository,
             transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 

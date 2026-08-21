@@ -81,10 +81,10 @@ class CreditScoreServiceTest : BehaviorSpec({
         every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_2", "user_2") } returns
             (1..80).map { transaction(TransactionStatus.COMPLETED) }
         every { loanAccountRepository.findByUserId("user_2") } returns listOf(
-            LoanAccount(id = "loan_1", userId = "user_2", walletId = "w1", offerId = "offer_1", principal = BigDecimal("100000"), outstanding = BigDecimal.ZERO, interestRate = 0.1, status = LoanStatus.PAID),
+            LoanAccount(id = "loan_1", userId = "user_2", accountId = "w1", offerId = "offer_1", principal = BigDecimal("100000"), outstanding = BigDecimal.ZERO, interestRate = 0.1, status = LoanStatus.PAID),
         )
         every { savingsGoalRepository.findByUserId("user_2") } returns listOf(
-            SavingsGoal(id = "goal_1", userId = "user_2", walletId = "w1", name = "Rainy day", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
+            SavingsGoal(id = "goal_1", userId = "user_2", accountId = "w1", name = "Rainy day", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
         )
         every { debitCardRepository.findByUserId("user_2") } returns null
         every { userRepository.save(any()) } answers { firstArg() }
@@ -115,7 +115,7 @@ class CreditScoreServiceTest : BehaviorSpec({
         every { userRepository.findById("user_3") } returns Optional.of(user)
         every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_3", "user_3") } returns emptyList()
         every { loanAccountRepository.findByUserId("user_3") } returns listOf(
-            LoanAccount(id = "loan_2", userId = "user_3", walletId = "w1", offerId = "offer_1", principal = BigDecimal("50000"), outstanding = BigDecimal("30000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
+            LoanAccount(id = "loan_2", userId = "user_3", accountId = "w1", offerId = "offer_1", principal = BigDecimal("50000"), outstanding = BigDecimal("30000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
         )
         every { savingsGoalRepository.findByUserId("user_3") } returns emptyList()
         every { debitCardRepository.findByUserId("user_3") } returns null
@@ -178,10 +178,10 @@ class CreditScoreServiceTest : BehaviorSpec({
         every { userRepository.findById("user_5") } returns Optional.of(user)
         every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_5", "user_5") } returns (1..50).map { transaction(TransactionStatus.COMPLETED) }
         every { loanAccountRepository.findByUserId("user_5") } returns listOf(
-            LoanAccount(id = "loan_3", userId = "user_5", walletId = "w1", offerId = "offer_1", principal = BigDecimal("50000"), outstanding = BigDecimal("30000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
+            LoanAccount(id = "loan_3", userId = "user_5", accountId = "w1", offerId = "offer_1", principal = BigDecimal("50000"), outstanding = BigDecimal("30000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
         )
         every { savingsGoalRepository.findByUserId("user_5") } returns listOf(
-            SavingsGoal(id = "goal_2", userId = "user_5", walletId = "w1", name = "Fund", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
+            SavingsGoal(id = "goal_2", userId = "user_5", accountId = "w1", name = "Fund", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
         )
         every { debitCardRepository.findByUserId("user_5") } returns null
 

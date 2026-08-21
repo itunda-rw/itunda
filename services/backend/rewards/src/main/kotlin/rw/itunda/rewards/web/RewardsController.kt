@@ -19,7 +19,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.rewards.RewardTaskAlreadyClaimedException
 import rw.itunda.rewards.RewardTaskNotEligibleException
 import rw.itunda.rewards.RewardTaskNotFoundException
-import rw.itunda.rewards.RewardsNoWalletException
+import rw.itunda.rewards.RewardsNoAccountException
 import rw.itunda.rewards.RewardsService
 import rw.itunda.rewards.RewardsUserNotFoundException
 import rw.itunda.rewards.InvalidStepCountException
@@ -167,8 +167,8 @@ class RewardsController(
     fun handleNotEligible(ex: RewardTaskNotEligibleException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REWARD_TASK_NOT_ELIGIBLE", ex.message ?: "Forbidden"))
 
-    @ExceptionHandler(RewardsNoWalletException::class)
-    fun handleNoWallet(ex: RewardsNoWalletException) =
+    @ExceptionHandler(RewardsNoAccountException::class)
+    fun handleNoAccount(ex: RewardsNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RewardsUserNotFoundException::class)

@@ -14,14 +14,14 @@ import rw.itunda.core.domain.HarvestAdvance
 import rw.itunda.core.domain.HarvestAdvanceStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.CooperativeMembershipRepository
 import rw.itunda.core.repository.CooperativeRepository
 import rw.itunda.core.repository.HarvestAdvanceRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -31,25 +31,25 @@ import java.util.Optional
  * financing -- see CooperativeService's own doc comment for the full sourced account.
  * The ledger-account-correctness test specifically guards against the same real
  * solvency-bug class this session caught and fixed in SaccoService.declareDividend
- * (a payout accidentally funded from a shared/pooled wallet instead of itunda's own
+ * (a payout accidentally funded from a shared/pooled account instead of itunda's own
  * capital) -- this feature was built to never have that bug in the first place, and
  * this test proves it stays that way.
  */
 class CooperativeServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
     fun newService(
         cooperativeRepository: CooperativeRepository = mockk(),
         membershipRepository: CooperativeMembershipRepository = mockk(),
         advanceRepository: HarvestAdvanceRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = CooperativeService(cooperativeRepository, membershipRepository, advanceRepository, walletRepository, ledgerService, rateLimiter)
+    ) = CooperativeService(cooperativeRepository, membershipRepository, advanceRepository, accountRepository, ledgerService, rateLimiter)
 
     Given("a cooperative registration") {
         val cooperativeRepository = mockk<CooperativeRepository>()
@@ -77,11 +77,11 @@ class CooperativeServiceTest : BehaviorSpec({
     Given("a user joining a cooperative") {
         val cooperativeRepository = mockk<CooperativeRepository>()
         val membershipRepository = mockk<CooperativeMembershipRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(cooperativeRepository = cooperativeRepository, membershipRepository = membershipRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(cooperativeRepository = cooperativeRepository, membershipRepository = membershipRepository, accountRepository = accountRepository)
 
         every { cooperativeRepository.findById("coop_1") } returns Optional.of(Cooperative(id = "coop_1", name = "Coop", cropType = "COFFEE", registrationNumber = null))
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { membershipRepository.save(any()) } answers { firstArg() }
 
         When("joining for the first time") {
@@ -90,13 +90,13 @@ class CooperativeServiceTest : BehaviorSpec({
 
             Then("a real membership is saved") {
                 result.userId shouldBe "user_1"
-                result.walletId shouldBe "wallet_1"
+                result.accountId shouldBe "account_1"
             }
         }
 
         When("joining a second time") {
             every { membershipRepository.findByCooperativeIdAndUserId("coop_1", "user_1") } returns
-                CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", walletId = "wallet_1")
+                CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
 
             Then("the duplicate-membership guard fires") {
                 shouldThrow<AlreadyMemberException> { service.joinCooperative("user_1", "coop_1") }
@@ -109,7 +109,7 @@ class CooperativeServiceTest : BehaviorSpec({
         val advanceRepository = mockk<HarvestAdvanceRepository>()
         val service = newService(membershipRepository = membershipRepository, advanceRepository = advanceRepository)
 
-        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", walletId = "wallet_1")
+        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
         val savedSlot = slot<HarvestAdvance>()
         every { advanceRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -135,21 +135,21 @@ class CooperativeServiceTest : BehaviorSpec({
     Given("a real REQUESTED harvest advance being disbursed") {
         val membershipRepository = mockk<CooperativeMembershipRepository>()
         val advanceRepository = mockk<HarvestAdvanceRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             membershipRepository = membershipRepository, advanceRepository = advanceRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", walletId = "wallet_1")
+        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
         val advance = HarvestAdvance(
-            id = "harvestadv_1", membershipId = "coopmem_1", walletId = "wallet_1", principalAmount = BigDecimal("50000"),
+            id = "harvestadv_1", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
             purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
         )
         every { advanceRepository.findById("harvestadv_1") } returns Optional.of(advance)
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
-        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+        every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { advanceRepository.save(any()) } answers { firstArg() }
 
@@ -161,7 +161,7 @@ class CooperativeServiceTest : BehaviorSpec({
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.size == 2 &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.CREDIT } &&
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.CREDIT } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.DEBIT }
                     })
                 }
@@ -170,7 +170,7 @@ class CooperativeServiceTest : BehaviorSpec({
 
         When("attempting to disburse it a second time") {
             val alreadyDisbursed = HarvestAdvance(
-                id = "harvestadv_2", membershipId = "coopmem_1", walletId = "wallet_1", principalAmount = BigDecimal("50000"),
+                id = "harvestadv_2", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
                 purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
                 status = HarvestAdvanceStatus.DISBURSED,
             )
@@ -185,22 +185,22 @@ class CooperativeServiceTest : BehaviorSpec({
     Given("a real DISBURSED harvest advance being repaid") {
         val membershipRepository = mockk<CooperativeMembershipRepository>()
         val advanceRepository = mockk<HarvestAdvanceRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             membershipRepository = membershipRepository, advanceRepository = advanceRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", walletId = "wallet_1")
+        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
         val advance = HarvestAdvance(
-            id = "harvestadv_1", membershipId = "coopmem_1", walletId = "wallet_1", principalAmount = BigDecimal("50000"),
+            id = "harvestadv_1", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
             purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
             status = HarvestAdvanceStatus.DISBURSED,
         )
         every { advanceRepository.findById("harvestadv_1") } returns Optional.of(advance)
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
-        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+        every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay", emptyList())
         every { advanceRepository.save(any()) } answers { firstArg() }
 
@@ -211,7 +211,7 @@ class CooperativeServiceTest : BehaviorSpec({
                 result.status shouldBe HarvestAdvanceStatus.REPAID
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
-                        legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.DEBIT } &&
+                        legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.DEBIT } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
@@ -230,16 +230,16 @@ class CooperativeServiceTest : BehaviorSpec({
     Given("a second real DISBURSED harvest advance, and a farmer trying to repay only part of it") {
         val membershipRepository = mockk<CooperativeMembershipRepository>()
         val advanceRepository = mockk<HarvestAdvanceRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             membershipRepository = membershipRepository, advanceRepository = advanceRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", walletId = "wallet_1")
+        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", accountId = "account_1")
         val advance = HarvestAdvance(
-            id = "harvestadv_2", membershipId = "coopmem_1", walletId = "wallet_1", principalAmount = BigDecimal("50000"),
+            id = "harvestadv_2", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
             purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
             status = HarvestAdvanceStatus.DISBURSED,
         )

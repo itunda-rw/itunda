@@ -17,7 +17,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -106,8 +106,8 @@ class MotoOwnershipController(
     @ExceptionHandler(MotoOwnershipPlanNotFoundException::class)
     fun handleNotFound(ex: MotoOwnershipPlanNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MOTO_OWNERSHIP_PLAN_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(MotoOwnershipNoWalletException::class)
-    fun handleNoWallet(ex: MotoOwnershipNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(MotoOwnershipNoAccountException::class)
+    fun handleNoAccount(ex: MotoOwnershipNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidMotoOwnershipBikePriceException::class)
     fun handleInvalidBikePrice(ex: InvalidMotoOwnershipBikePriceException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BIKE_PRICE", ex.message ?: "Bad request"))
@@ -145,8 +145,8 @@ class MotoOwnershipController(
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))

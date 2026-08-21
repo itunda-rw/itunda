@@ -8,13 +8,13 @@ import io.mockk.mockk
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantAd
 import rw.itunda.core.domain.MerchantStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MerchantAdRepository
 import rw.itunda.core.repository.MerchantRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -30,24 +30,24 @@ class MerchantAdServiceTest : BehaviorSpec({
     Given("a merchant with an already-active local ad") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantAdRepository = mockk<MerchantAdRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = MerchantAdService(merchantRepository, merchantAdRepository, walletRepository, ledgerService)
+        val service = MerchantAdService(merchantRepository, merchantAdRepository, accountRepository, ledgerService)
 
         val merchant = Merchant(
-            id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Test Store",
+            id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Test Store",
             status = MerchantStatus.ACTIVE, latitude = -1.9, longitude = 30.0,
         )
-        val wallet = Wallet(
-            id = "wallet_1", userId = "owner_1", accountNumber = "ACC-1", accountName = "Test wallet",
-            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        val account = Account(
+            id = "account_1", userId = "owner_1", accountNumber = "ACC-1", accountName = "Test account",
+            type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
         )
         val existing = MerchantAd(
             id = "merchant_ad_1", merchantId = "merchant_1", title = "Old title", radiusMeters = 300,
             activeUntil = Instant.parse("2026-08-10T00:00:00Z"),
         )
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet
+        every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { merchantAdRepository.findByMerchantId("merchant_1") } returns existing
         val savedSlot = mutableListOf<MerchantAd>()

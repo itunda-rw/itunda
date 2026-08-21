@@ -23,7 +23,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.rideshare.DesignatedDriverAlreadyRegisteredException
-import rw.itunda.rideshare.DesignatedDriverNoWalletException
+import rw.itunda.rideshare.DesignatedDriverNoAccountException
 import rw.itunda.rideshare.DesignatedDriverNotRegisteredException
 import rw.itunda.rideshare.DesignatedDriverSelfTripException
 import rw.itunda.rideshare.DesignatedDriverService
@@ -150,8 +150,8 @@ class DesignatedDriverController(
     fun handleAlreadyRegistered(ex: DesignatedDriverAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("DESIGNATED_DRIVER_ALREADY_REGISTERED", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(DesignatedDriverNoWalletException::class)
-    fun handleNoWallet(ex: DesignatedDriverNoWalletException) =
+    @ExceptionHandler(DesignatedDriverNoAccountException::class)
+    fun handleNoAccount(ex: DesignatedDriverNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(DesignatedDriverNotRegisteredException::class)

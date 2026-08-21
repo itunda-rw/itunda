@@ -11,7 +11,7 @@ package rw.itunda.core.domain
  * 2026-09-11 penalty increase (up to 10% of annual revenue for serious violations)
  * raises the real stakes of getting this right. itunda had ZERO terms-consent step
  * anywhere before this -- `AuthService.register` created a real account and a real
- * wallet with no record the user agreed to anything.
+ * account with no record the user agreed to anything.
  *
  * `required = true` items MUST be present in `RegisterRequest.acceptedTermsIds` or
  * registration real-400s -- see `AuthService.register`'s own validation. `required =

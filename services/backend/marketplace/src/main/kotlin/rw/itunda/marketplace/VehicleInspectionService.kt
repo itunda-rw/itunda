@@ -11,14 +11,14 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.VehicleInspectionBooking
 import rw.itunda.core.domain.VehicleInspectionMechanic
 import rw.itunda.core.domain.VehicleInspectionStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.VehicleInspectionBookingRepository
 import rw.itunda.core.repository.VehicleInspectionMechanicRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -27,7 +27,7 @@ import java.util.UUID
 
 class MechanicAlreadyRegisteredException(message: String) : RuntimeException(message)
 class MechanicNotRegisteredException(message: String) : RuntimeException(message)
-class MechanicNoWalletException(message: String) : RuntimeException(message)
+class MechanicNoAccountException(message: String) : RuntimeException(message)
 class InvalidInspectionFeeException(message: String) : RuntimeException(message)
 class InspectionBookingNotFoundException(message: String) : RuntimeException(message)
 class InvalidInspectionStatusTransitionException(message: String) : RuntimeException(message)
@@ -43,7 +43,7 @@ class VehicleInspectionService(
     private val vehicleInspectionMechanicRepository: VehicleInspectionMechanicRepository,
     private val vehicleInspectionBookingRepository: VehicleInspectionBookingRepository,
     private val listingRepository: ListingRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
@@ -63,10 +63,10 @@ class VehicleInspectionService(
             throw MechanicAlreadyRegisteredException("This account is already registered as a mechanic")
         }
         val trimmedName = businessName.trim().ifEmpty { throw InvalidInspectionFeeException("Business name is required") }.take(200)
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw MechanicNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw MechanicNoAccountException("No account found for this account")
         return vehicleInspectionMechanicRepository.save(
-            VehicleInspectionMechanic(id = "mechanic_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, businessName = trimmedName),
+            VehicleInspectionMechanic(id = "mechanic_${UUID.randomUUID()}", userId = userId, accountId = account.id, businessName = trimmedName),
         )
     }
 
@@ -82,7 +82,7 @@ class VehicleInspectionService(
         return vehicleInspectionMechanicRepository.save(mechanic)
     }
 
-    /** Real 100%-prepay-to-book -- the buyer's real inspection fee leaves their wallet
+    /** Real 100%-prepay-to-book -- the buyer's real inspection fee leaves their account
      * right now, held until the mechanic actually delivers the inspection.
      *
      * Real bug found live (2026-08-02): unlike every other real "request a paid
@@ -104,14 +104,14 @@ class VehicleInspectionService(
         if (mechanic.userId == buyerId) {
             throw SelfInspectionException("Cannot book an inspection with yourself")
         }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw BuyerNoAccountException("No account found for this account")
 
         val platformFee = fee.multiply(PLATFORM_FEE_RATE).setScale(2, RoundingMode.HALF_UP)
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fee, "Inspection fee - ${listing.title}"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fee, "Inspection fee - ${listing.title}"),
                 LedgerLeg("vehicle_inspection_holding", LedgerAccountType.VEHICLE_INSPECTION_HOLDING, LedgerDirection.CREDIT, fee, "Inspection fee held - ${listing.title}"),
             ),
         )
@@ -121,11 +121,11 @@ class VehicleInspectionService(
                 referenceNumber = "INSPECT${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = buyerId,
                 recipientId = mechanic.userId,
-                fromWalletId = buyerWallet.id,
-                toWalletId = mechanic.walletId,
+                fromAccountId = buyerAccount.id,
+                toAccountId = mechanic.accountId,
                 amount = fee,
                 fee = platformFee,
-                currency = buyerWallet.currency,
+                currency = buyerAccount.currency,
                 type = TransactionType.PAYMENT,
                 status = TransactionStatus.COMPLETED,
                 description = "Inspection fee - ${listing.title}",
@@ -181,14 +181,14 @@ class VehicleInspectionService(
             throw InvalidInspectionStatusTransitionException("Only an ACCEPTED booking can be completed")
         }
         val mechanic = vehicleInspectionMechanicRepository.findById(booking.mechanicId).orElseThrow { MechanicNotRegisteredException("Mechanic not found") }
-        val mechanicWallet = walletRepository.findById(mechanic.walletId).orElseThrow { MechanicNoWalletException("Mechanic wallet not found") }
+        val mechanicAccount = accountRepository.findById(mechanic.accountId).orElseThrow { MechanicNoAccountException("Mechanic account not found") }
         val netToMechanic = booking.fee.subtract(booking.platformFee)
 
         val result = ledgerService.postLedgerTransaction(
-            mechanicWallet.currency,
+            mechanicAccount.currency,
             listOf(
                 LedgerLeg("vehicle_inspection_holding", LedgerAccountType.VEHICLE_INSPECTION_HOLDING, LedgerDirection.DEBIT, booking.fee, "Inspection fee released"),
-                LedgerLeg(mechanicWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMechanic, "Inspection fee payout"),
+                LedgerLeg(mechanicAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMechanic, "Inspection fee payout"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, booking.platformFee, "Inspection platform fee"),
             ),
         )
@@ -211,14 +211,14 @@ class VehicleInspectionService(
         if (booking.status != VehicleInspectionStatus.REQUESTED && booking.status != VehicleInspectionStatus.ACCEPTED) {
             throw InvalidInspectionStatusTransitionException("Only a REQUESTED or ACCEPTED booking can be cancelled -- this one is already ${booking.status}")
         }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw BuyerNoAccountException("No account found for this account")
 
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
                 LedgerLeg("vehicle_inspection_holding", LedgerAccountType.VEHICLE_INSPECTION_HOLDING, LedgerDirection.DEBIT, booking.fee, "Inspection fee refunded"),
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, booking.fee, "Inspection cancelled - refund"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, booking.fee, "Inspection cancelled - refund"),
             ),
         )
 
@@ -257,14 +257,14 @@ class VehicleInspectionService(
             return null
         }
         val mechanic = vehicleInspectionMechanicRepository.findById(booking.mechanicId).orElse(null) ?: return null
-        val mechanicWallet = walletRepository.findById(mechanic.walletId).orElse(null) ?: return null
+        val mechanicAccount = accountRepository.findById(mechanic.accountId).orElse(null) ?: return null
         val netToMechanic = booking.fee.subtract(booking.platformFee)
 
         val result = ledgerService.postLedgerTransaction(
-            mechanicWallet.currency,
+            mechanicAccount.currency,
             listOf(
                 LedgerLeg("vehicle_inspection_holding", LedgerAccountType.VEHICLE_INSPECTION_HOLDING, LedgerDirection.DEBIT, booking.fee, "Inspection fee forfeited - no-show"),
-                LedgerLeg(mechanicWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMechanic, "Inspection no-show payout"),
+                LedgerLeg(mechanicAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMechanic, "Inspection no-show payout"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, booking.platformFee, "Inspection platform fee"),
             ),
         )

@@ -26,7 +26,7 @@ interface DebitCardRepository : JpaRepository<DebitCard, String> {
     // pre-charge sum before either commits, both pass the limit check, and both post
     // real money -- together exceeding the card's own documented daily/monthly limit.
     // Locking the card row for the duration of the check-then-insert (same
-    // findByIdForUpdate convention WalletRepository/FraudFlagRepository/
+    // findByIdForUpdate convention AccountRepository/FraudFlagRepository/
     // FloatMarketplaceRepositories already use) serializes concurrent charges on one
     // card so the aggregate-sum check is actually atomic.
     @Lock(LockModeType.PESSIMISTIC_WRITE)

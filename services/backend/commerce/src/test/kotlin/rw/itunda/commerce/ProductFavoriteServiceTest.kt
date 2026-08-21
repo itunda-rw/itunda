@@ -29,7 +29,7 @@ class ProductFavoriteServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductFavoriteService(productFavoriteRepository, merchantProductRepository, merchantRepository, pushNotificationService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Widget", price = BigDecimal("4000"))
 
         When("favoriting it for the real first time") {

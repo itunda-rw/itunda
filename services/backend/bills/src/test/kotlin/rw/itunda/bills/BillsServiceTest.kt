@@ -9,8 +9,8 @@ import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.domain.BillAutoPaySetting
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
@@ -22,7 +22,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BillAutoPaySettingRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 
 /**
@@ -34,22 +34,22 @@ import java.math.BigDecimal
  */
 class BillsServiceTest : BehaviorSpec({
 
-    fun wallet() = Wallet(
-        id = "wallet_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+    fun account() = Account(
+        id = "account_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
     )
 
-    Given("a user with a wallet") {
-        val walletRepository = mockk<WalletRepository>()
+    Given("a user with a account") {
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val providerConnector = mockk<ProviderConnector>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>()
         val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
+        val service = BillsService(accountRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
 
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account()
         // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
         // returns a raw Object, ClassCastException-ing at the call site -- same fix as
         // RewardsServiceTest's rewardClaimRepository.save stub.
@@ -105,14 +105,14 @@ class BillsServiceTest : BehaviorSpec({
             }
         }
 
-        When("no wallet exists for the user") {
-            every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns null
+        When("no account exists for the user") {
+            every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns null
 
-            Then("it throws NoWalletException before ever calling the provider") {
+            Then("it throws NoAccountException before ever calling the provider") {
                 try {
                     service.payBill("user_2", "bill_1", BigDecimal("1000"), null, "REG")
-                    error("expected NoWalletException")
-                } catch (e: NoWalletException) {
+                    error("expected NoAccountException")
+                } catch (e: NoAccountException) {
                     verify(exactly = 0) { providerConnector.attempt(any(), any()) }
                 }
             }
@@ -120,7 +120,7 @@ class BillsServiceTest : BehaviorSpec({
     }
 
     Given("a user with an active auto-pay setting for REG - Electricity (bill_1, 35000)") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val providerConnector = mockk<ProviderConnector>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
@@ -129,10 +129,10 @@ class BillsServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
-        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService, walletRepository)
+        val service = BillsService(accountRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
+        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService, accountRepository)
 
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account()
         every { transactionRepository.save(any()) } answers { firstArg() }
         every { providerConnector.attempt(any(), any()) } returns Unit
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -187,14 +187,14 @@ class BillsServiceTest : BehaviorSpec({
 
         // Real Section 178 low-balance-warning coverage -- ports Kakao Bank's real
         // "카드 청구금액 알림" (see BillAutoPayProcessor's own doc comment for the sourcing):
-        // a due, uncapped bill whose amount exceeds the real current wallet balance must
+        // a due, uncapped bill whose amount exceeds the real current account balance must
         // never reach the ledger, and must get a distinct, one-time proactive warning.
-        When("the wallet balance is below the due bill amount") {
-            val lowBalanceWallet = Wallet(
-                id = "wallet_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test wallet",
-                type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        When("the account balance is below the due bill amount") {
+            val lowBalanceAccount = Account(
+                id = "account_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test account",
+                type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
             )
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns lowBalanceWallet
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns lowBalanceAccount
             every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("50000")))
 
             val results = processor.process()
@@ -214,11 +214,11 @@ class BillsServiceTest : BehaviorSpec({
         }
 
         When("the same bill was already warned about in a prior poll") {
-            val lowBalanceWallet = Wallet(
-                id = "wallet_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test wallet",
-                type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+            val lowBalanceAccount = Account(
+                id = "account_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test account",
+                type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
             )
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns lowBalanceWallet
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns lowBalanceAccount
             every {
                 billAutoPaySettingRepository.findByActiveTrue()
             } returns listOf(setting(BigDecimal("50000"), lastLowBalanceWarnedBillId = "bill_1"))
@@ -257,11 +257,11 @@ class BillsServiceTest : BehaviorSpec({
         }
 
         When("one of two active settings fails against the ledger") {
-            val wallet2 = Wallet(
-                id = "wallet_2", userId = "user_2", accountNumber = "ACC-2", accountName = "Test wallet 2",
-                type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+            val account2 = Account(
+                id = "account_2", userId = "user_2", accountNumber = "ACC-2", accountName = "Test account 2",
+                type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
             )
-            every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns wallet2
+            every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns account2
 
             val failingSetting = setting(BigDecimal("50000"))
             val succeedingSetting = BillAutoPaySetting(

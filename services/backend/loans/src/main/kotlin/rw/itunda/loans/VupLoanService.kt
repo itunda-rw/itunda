@@ -9,13 +9,13 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.VupLoan
 import rw.itunda.core.domain.VupLoanPurpose
 import rw.itunda.core.domain.VupLoanStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.VupLoanRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -28,7 +28,7 @@ class VupLoanAlreadyActiveException(message: String) : RuntimeException(message)
 class VupLoanNotFoundException(message: String) : RuntimeException(message)
 class VupLoanNotRequestedException(message: String) : RuntimeException(message)
 class VupLoanNotRepayableException(message: String) : RuntimeException(message)
-class VupLoanNoWalletException(message: String) : RuntimeException(message)
+class VupLoanNoAccountException(message: String) : RuntimeException(message)
 class VupLoanInvalidRepayAmountException(message: String) : RuntimeException(message)
 
 // itunda's own honest ceiling on a single VUP loan: 500,000 RWF, 5x the real sourced
@@ -48,7 +48,7 @@ private val ACTIVE_STATUSES = listOf(VupLoanStatus.REQUESTED, VupLoanStatus.DISB
  * see `VupLoan.kt`'s own doc comment for the full sourced account and the correction
  * made from this feature's own earlier research proposal (disbursement/repayment
  * mirror `LoansService.applyForLoan`/`repayLoan`'s exact `loan_payable` ledger shape,
- * never `SaccoService`'s pooled wallet).
+ * never `SaccoService`'s pooled account).
  *
  * Genuinely distinct from every other lending feature in this codebase: the first
  * MEANS-TESTED product, gated on a self-declared Ubudehe category rather than credit
@@ -58,7 +58,7 @@ private val ACTIVE_STATUSES = listOf(VupLoanStatus.REQUESTED, VupLoanStatus.DISB
 @Service
 class VupLoanService(
     private val vupLoanRepository: VupLoanRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
@@ -70,7 +70,7 @@ class VupLoanService(
     // first request's insert commits). Two concurrent applyForLoan calls for the same
     // user with no existing loan yet could both read zero active loans and both create
     // one, each independently disbursable -- silently doubling a user's real
-    // borrowing limit. Locking the caller's own MAIN wallet row first (same
+    // borrowing limit. Locking the caller's own MAIN account row first (same
     // findByIdForUpdate convention FloatMarketplaceService/LedgerAccountRepository
     // already use to close an identical class of race) serializes concurrent
     // applications for the same user without needing a new lock table.
@@ -85,9 +85,9 @@ class VupLoanService(
             throw InvalidVupLoanAmountException("Amount must be between 1 and $MAX_VUP_LOAN_AMOUNT RWF")
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw VupLoanNoWalletException("No wallet found for this account")
-        walletRepository.findByIdForUpdate(wallet.id)
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw VupLoanNoAccountException("No account found for this account")
+        accountRepository.findByIdForUpdate(account.id)
 
         val activeLoans = vupLoanRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES)
         if (activeLoans.isNotEmpty()) {
@@ -111,13 +111,13 @@ class VupLoanService(
         if (loan.userId != userId) throw VupLoanNotFoundException("VUP loan not found")
         if (loan.status != VupLoanStatus.REQUESTED) throw VupLoanNotRequestedException("Only a REQUESTED loan can be disbursed")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw VupLoanNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw VupLoanNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, loan.principalAmount, "VUP Financial Services loan disbursement"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, loan.principalAmount, "VUP Financial Services loan disbursement"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, loan.principalAmount, "VUP Financial Services principal owed"),
             ),
         )
@@ -140,8 +140,8 @@ class VupLoanService(
         }
         if (amount <= BigDecimal.ZERO) throw VupLoanInvalidRepayAmountException("Repayment amount must be positive")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw VupLoanNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw VupLoanNoAccountException("No account found for this account")
 
         // Clamp BEFORE ever touching the ledger -- the exact overshoot-clamp lesson
         // this session just learned fixing InsuranceService.contributeToFund. Never
@@ -149,9 +149,9 @@ class VupLoanService(
         val actualAmount = amount.min(loan.outstandingPrincipal)
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "VUP Financial Services loan repayment"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "VUP Financial Services loan repayment"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, actualAmount, "VUP Financial Services loan repayment"),
             ),
         )

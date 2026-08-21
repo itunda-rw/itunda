@@ -98,7 +98,7 @@ class CertificateService(
         // simultaneously ACTIVE certificates -- breaking the "one valid certificate per
         // identity" invariant `verify()`/`getStatus()` and every downstream caller
         // depend on. Fixed the same way this codebase's own "reject if already exists"
-        // race precedent works (WalletRepository/UserRepository.findByIdForUpdate): lock
+        // race precedent works (AccountRepository/UserRepository.findByIdForUpdate): lock
         // the caller's own real User row to serialize concurrent issue() calls, then
         // re-check the ACTIVE certificate under that lock -- the second caller's re-read
         // now real-sees the first caller's already-committed revoke/create and correctly

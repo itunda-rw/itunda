@@ -14,8 +14,8 @@ import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PayrollEmployee
 import rw.itunda.core.domain.PayrollRun
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -26,15 +26,15 @@ import rw.itunda.core.repository.PayrollRunRepository
 import rw.itunda.core.repository.PayslipRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
 class PayrollServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("500000"), availableBalance = BigDecimal("500000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("500000"), availableBalance = BigDecimal("500000"),
     )
 
     fun user(id: String, phone: String, first: String, last: String) = User(
@@ -42,7 +42,7 @@ class PayrollServiceTest : BehaviorSpec({
     )
 
     val merchant = Merchant(
-        id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant",
+        id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant",
         businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE,
     )
 
@@ -52,31 +52,31 @@ class PayrollServiceTest : BehaviorSpec({
         payrollRunRepository: PayrollRunRepository = mockk(),
         payslipRepository: PayslipRepository = mockk(relaxed = true),
         userRepository: UserRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         transactionRepository: TransactionRepository = mockk(relaxed = true),
         fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
     ) = PayrollService(
         merchantRepository, payrollEmployeeRepository, payrollRunRepository, payslipRepository,
-        userRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+        userRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
     )
 
     Given("a registered merchant adding an employee to the payroll roster") {
         val merchantRepository = mockk<MerchantRepository>()
         val payrollEmployeeRepository = mockk<PayrollEmployeeRepository>()
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         every { payrollEmployeeRepository.save(any()) } answers { firstArg() }
         val service = buildService(
             merchantRepository = merchantRepository, payrollEmployeeRepository = payrollEmployeeRepository,
-            userRepository = userRepository, walletRepository = walletRepository,
+            userRepository = userRepository, accountRepository = accountRepository,
         )
 
-        When("the phone number resolves to a real, distinct itunda user with a wallet") {
+        When("the phone number resolves to a real, distinct itunda user with a account") {
             every { userRepository.findByPhoneNumber("+250788111222") } returns user("emp_1", "+250788111222", "Alice", "U")
             every { payrollEmployeeRepository.findByMerchantIdAndEmployeeUserId("merchant_1", "emp_1") } returns null
-            every { walletRepository.findByUserIdAndType("emp_1", WalletType.MAIN) } returns wallet("wallet_emp_1", "emp_1")
+            every { accountRepository.findByUserIdAndType("emp_1", AccountType.MAIN) } returns account("account_emp_1", "emp_1")
 
             val result = service.addEmployee("owner_1", "+250788111222", BigDecimal("150000"))
 
@@ -116,7 +116,7 @@ class PayrollServiceTest : BehaviorSpec({
 
         When("the person is already on the roster") {
             every { userRepository.findByPhoneNumber("+250788111222") } returns user("emp_1", "+250788111222", "Alice", "U")
-            every { walletRepository.findByUserIdAndType("emp_1", WalletType.MAIN) } returns wallet("wallet_emp_1", "emp_1")
+            every { accountRepository.findByUserIdAndType("emp_1", AccountType.MAIN) } returns account("account_emp_1", "emp_1")
             every { payrollEmployeeRepository.findByMerchantIdAndEmployeeUserId("merchant_1", "emp_1") } returns
                 PayrollEmployee(id = "payroll_emp_1", merchantId = "merchant_1", employeeUserId = "emp_1", employeeName = "Alice U", salaryAmount = BigDecimal("100000"))
 
@@ -134,7 +134,7 @@ class PayrollServiceTest : BehaviorSpec({
             every { userRepository.findByPhoneNumber("+250788111222") } returns user("emp_1", "+250788111222", "Alice", "U")
             val inactive = PayrollEmployee(id = "payroll_emp_1", merchantId = "merchant_1", employeeUserId = "emp_1", employeeName = "Alice U", salaryAmount = BigDecimal("100000"), active = false)
             every { payrollEmployeeRepository.findByMerchantIdAndEmployeeUserId("merchant_1", "emp_1") } returns inactive
-            every { walletRepository.findByUserIdAndType("emp_1", WalletType.MAIN) } returns wallet("wallet_emp_1", "emp_1")
+            every { accountRepository.findByUserIdAndType("emp_1", AccountType.MAIN) } returns account("account_emp_1", "emp_1")
 
             val result = service.addEmployee("owner_1", "+250788111222", BigDecimal("175000"))
 
@@ -163,15 +163,15 @@ class PayrollServiceTest : BehaviorSpec({
         val payrollEmployeeRepository = mockk<PayrollEmployeeRepository>()
         val payrollRunRepository = mockk<PayrollRunRepository>()
         val payslipRepository = mockk<PayslipRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-        val merchantWallet = wallet("wallet_merchant", "owner_1")
-        every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+        val merchantAccount = account("account_merchant", "owner_1")
+        every { accountRepository.findById("account_merchant") } returns Optional.of(merchantAccount)
 
         val emp1 = PayrollEmployee(id = "payroll_emp_1", merchantId = "merchant_1", employeeUserId = "emp_1", employeeName = "Alice U", salaryAmount = BigDecimal("150000"))
         val emp2 = PayrollEmployee(id = "payroll_emp_2", merchantId = "merchant_1", employeeUserId = "emp_2", employeeName = "Bob T", salaryAmount = BigDecimal("120000"))
@@ -179,13 +179,13 @@ class PayrollServiceTest : BehaviorSpec({
         // Batch-fetched in one call (findByUserIdInAndType), not one findByUserIdAndType
         // call per roster row -- see PayrollService.runPayroll's own comment on the N+1
         // this replaced.
-        every { walletRepository.findByUserIdInAndType(listOf("emp_1", "emp_2"), WalletType.MAIN) } returns
-            listOf(wallet("wallet_emp_1", "emp_1"), wallet("wallet_emp_2", "emp_2"))
+        every { accountRepository.findByUserIdInAndType(listOf("emp_1", "emp_2"), AccountType.MAIN) } returns
+            listOf(account("account_emp_1", "emp_1"), account("account_emp_2", "emp_2"))
 
         val service = buildService(
             merchantRepository = merchantRepository, payrollEmployeeRepository = payrollEmployeeRepository,
             payrollRunRepository = payrollRunRepository, payslipRepository = payslipRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
             transactionRepository = transactionRepository, fraudRuleEngine = fraudRuleEngine,
         )
 
@@ -201,11 +201,11 @@ class PayrollServiceTest : BehaviorSpec({
                 val legs = legsSlot.captured
                 legs.size shouldBe 3
                 val debitLeg = legs.first { it.direction == LedgerDirection.DEBIT }
-                debitLeg.accountId shouldBe "wallet_merchant"
+                debitLeg.accountId shouldBe "account_merchant"
                 debitLeg.accountType shouldBe LedgerAccountType.WALLET
                 debitLeg.amount shouldBe BigDecimal("270000")
                 val creditLegs = legs.filter { it.direction == LedgerDirection.CREDIT }
-                creditLegs.map { it.accountId }.toSet() shouldBe setOf("wallet_emp_1", "wallet_emp_2")
+                creditLegs.map { it.accountId }.toSet() shouldBe setOf("account_emp_1", "account_emp_2")
                 creditLegs.sumOf { it.amount } shouldBe BigDecimal("270000")
             }
 
@@ -223,15 +223,15 @@ class PayrollServiceTest : BehaviorSpec({
             }
         }
 
-        When("an employee on the roster has no wallet") {
-            every { walletRepository.findByUserIdInAndType(listOf("emp_1", "emp_2"), WalletType.MAIN) } returns
-                listOf(wallet("wallet_emp_1", "emp_1"))
+        When("an employee on the roster has no account") {
+            every { accountRepository.findByUserIdInAndType(listOf("emp_1", "emp_2"), AccountType.MAIN) } returns
+                listOf(account("account_emp_1", "emp_1"))
 
             Then("the whole run fails before any ledger posting -- nobody gets partially paid") {
                 try {
                     service.runPayroll("owner_1")
-                    error("expected EmployeeNoWalletException")
-                } catch (e: EmployeeNoWalletException) {
+                    error("expected EmployeeNoAccountException")
+                } catch (e: EmployeeNoAccountException) {
                     // expected
                 }
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
@@ -242,14 +242,14 @@ class PayrollServiceTest : BehaviorSpec({
     Given("a merchant with an empty payroll roster") {
         val merchantRepository = mockk<MerchantRepository>()
         val payrollEmployeeRepository = mockk<PayrollEmployeeRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-        every { walletRepository.findById("wallet_merchant") } returns Optional.of(wallet("wallet_merchant", "owner_1"))
+        every { accountRepository.findById("account_merchant") } returns Optional.of(account("account_merchant", "owner_1"))
         every { payrollEmployeeRepository.findByMerchantIdAndActiveTrue("merchant_1") } returns emptyList()
         val service = buildService(
             merchantRepository = merchantRepository, payrollEmployeeRepository = payrollEmployeeRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         When("payroll is run") {

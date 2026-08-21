@@ -8,13 +8,13 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PostpaidCreditLine
 import rw.itunda.core.domain.PostpaidCreditLineStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PostpaidCreditLineRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -25,7 +25,7 @@ class PostpaidCreditAlreadyOpenException(message: String) : RuntimeException(mes
 class PostpaidCreditNotActiveException(message: String) : RuntimeException(message)
 class PostpaidCreditLimitExceededException(message: String) : RuntimeException(message)
 class PostpaidCreditInvalidAmountException(message: String) : RuntimeException(message)
-class PostpaidCreditNoWalletException(message: String) : RuntimeException(message)
+class PostpaidCreditNoAccountException(message: String) : RuntimeException(message)
 class PostpaidCreditSuspendedException(message: String) : RuntimeException(message)
 
 /**
@@ -36,7 +36,7 @@ class PostpaidCreditSuspendedException(message: String) : RuntimeException(messa
 @Service
 class PostpaidCreditService(
     private val postpaidCreditLineRepository: PostpaidCreditLineRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
@@ -93,11 +93,11 @@ class PostpaidCreditService(
         }
         val score = creditScoreService.computeScore(userId).score
         val limit = tierLimit(score)
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw PostpaidCreditNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw PostpaidCreditNoAccountException("No account found for this account")
 
         return postpaidCreditLineRepository.save(
-            PostpaidCreditLine(id = "postpaid_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, creditLimit = limit),
+            PostpaidCreditLine(id = "postpaid_${UUID.randomUUID()}", userId = userId, accountId = account.id, creditLimit = limit),
         )
     }
 
@@ -105,9 +105,9 @@ class PostpaidCreditService(
 
     /**
      * Draws against the real available limit and credits it straight to the caller's
-     * own MAIN wallet balance -- usable exactly like any other real money for Pay-by-
+     * own MAIN account balance -- usable exactly like any other real money for Pay-by-
      * code/transfers/etc., the same "top up spendable balance" v1 scope
-     * MiniWalletService.deposit's own reverse direction already establishes, rather than
+     * MiniAccountService.deposit's own reverse direction already establishes, rather than
      * rewiring every existing payment path to conditionally draw from this line.
      */
     @Transactional
@@ -123,11 +123,11 @@ class PostpaidCreditService(
             throw PostpaidCreditLimitExceededException("Requested amount exceeds your real available credit of $availableCredit RWF")
         }
 
-        val wallet = walletRepository.findById(line.walletId).orElseThrow { PostpaidCreditNoWalletException("Wallet not found") }
+        val account = accountRepository.findById(line.accountId).orElseThrow { PostpaidCreditNoAccountException("Account not found") }
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Postpaid credit spend ${line.id}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Postpaid credit spend ${line.id}"),
                 LedgerLeg("postpaid_credit_payable", LedgerAccountType.POSTPAID_CREDIT_PAYABLE, LedgerDirection.DEBIT, amount, "Postpaid credit spend ${line.id}"),
             ),
         )
@@ -155,11 +155,11 @@ class PostpaidCreditService(
             ?: throw PostpaidCreditNotActiveException("No postpaid credit line found")
 
         val repayAmount = amount.min(line.currentBalance)
-        val wallet = walletRepository.findById(line.walletId).orElseThrow { PostpaidCreditNoWalletException("Wallet not found") }
+        val account = accountRepository.findById(line.accountId).orElseThrow { PostpaidCreditNoAccountException("Account not found") }
         val result = ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, repayAmount, "Postpaid credit repayment ${line.id}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, repayAmount, "Postpaid credit repayment ${line.id}"),
                 LedgerLeg("postpaid_credit_payable", LedgerAccountType.POSTPAID_CREDIT_PAYABLE, LedgerDirection.CREDIT, repayAmount, "Postpaid credit repayment ${line.id}"),
             ),
         )
@@ -176,12 +176,12 @@ class PostpaidCreditService(
         }
         line.updatedAt = Instant.now()
         postpaidCreditLineRepository.save(line)
-        val updatedWallet = walletRepository.findById(line.walletId).orElseThrow { PostpaidCreditNoWalletException("Wallet not found") }
+        val updatedAccount = accountRepository.findById(line.accountId).orElseThrow { PostpaidCreditNoAccountException("Account not found") }
 
         return mapOf(
             "transactionId" to result.transactionId, "amount" to repayAmount,
             "currentBalance" to line.currentBalance, "availableCredit" to line.creditLimit.subtract(line.currentBalance),
-            "newBalance" to updatedWallet.balance,
+            "newBalance" to updatedAccount.balance,
         )
     }
 

@@ -13,8 +13,8 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -29,7 +29,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -40,9 +40,9 @@ import java.util.Optional
  */
 class DineInOrderServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
     Given("a real restaurant with a real dine-in menu") {
@@ -58,7 +58,7 @@ class DineInOrderServiceTest : BehaviorSpec({
         every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
         every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -69,27 +69,27 @@ class DineInOrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
-            menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService,
+            menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
             transactionRepository, fraudRuleEngine, ledgerEntryRepository, notificationRepository,
             pushNotificationService,
         )
 
-        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
-        val restaurantWallet = wallet("wallet_restaurant", "owner_1")
-        val buyerWallet = wallet("wallet_buyer", "buyer_1")
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
+        val restaurantAccount = account("account_restaurant", "owner_1")
+        val buyerAccount = account("account_buyer", "buyer_1")
         val menuItem = MerchantProduct(id = "item_1", merchantId = "restaurant_1", name = "Grilled chicken", price = BigDecimal("3000"))
 
         When("a real buyer places a real table order for 2 units") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
-            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
 
             val detail = service.placeOrder("buyer_1", "restaurant_1", "  Table 12  ", listOf(DineInOrderItemRequest("item_1", 2)))
 
-            Then("it prices from the live menu (3000 x 2 = 6000), splits a 1.5% platform fee, and settles straight to the restaurant wallet with no delivery leg at all") {
+            Then("it prices from the live menu (3000 x 2 = 6000), splits a 1.5% platform fee, and settles straight to the restaurant account with no delivery leg at all") {
                 detail.order.itemsSubtotal shouldBe BigDecimal("6000")
                 detail.order.platformFee shouldBe BigDecimal("90.00")
                 detail.order.totalAmount shouldBe BigDecimal("6000")
@@ -98,8 +98,8 @@ class DineInOrderServiceTest : BehaviorSpec({
 
                 val legs = legsSlot.captured
                 legs.size shouldBe 3
-                legs.first { it.accountId == "wallet_buyer" }.amount shouldBe BigDecimal("6000")
-                legs.first { it.accountId == "wallet_restaurant" }.amount shouldBe BigDecimal("5910.00")
+                legs.first { it.accountId == "account_buyer" }.amount shouldBe BigDecimal("6000")
+                legs.first { it.accountId == "account_restaurant" }.amount shouldBe BigDecimal("5910.00")
                 legs.first { it.accountType == LedgerAccountType.FEE_REVENUE }.amount shouldBe BigDecimal("90.00")
             }
 
@@ -121,17 +121,17 @@ class DineInOrderServiceTest : BehaviorSpec({
             // checkout -- this proves the dine-in (in-store table/QR) checkout, which
             // shares the same Merchant catalog, now enforces it too.
             val pausedRestaurant = Merchant(
-                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill",
                 status = MerchantStatus.ACTIVE, isAcceptingOrders = false,
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(pausedRestaurant)
 
-            Then("it throws DineInRestaurantNotAcceptingOrdersException before ever resolving the restaurant's wallet") {
+            Then("it throws DineInRestaurantNotAcceptingOrdersException before ever resolving the restaurant's account") {
                 try {
                     service.placeOrder("buyer_1", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_1", 1)))
                     error("expected DineInRestaurantNotAcceptingOrdersException")
                 } catch (e: DineInRestaurantNotAcceptingOrdersException) {
-                    verify(exactly = 0) { walletRepository.findById("wallet_restaurant") }
+                    verify(exactly = 0) { accountRepository.findById("account_restaurant") }
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -145,17 +145,17 @@ class DineInOrderServiceTest : BehaviorSpec({
             // fabricated fake date.
             val todayWeekday = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali")).dayOfWeek.value
             val closedTodayRestaurant = Merchant(
-                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill",
                 status = MerchantStatus.ACTIVE, closedWeekdays = "$todayWeekday",
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(closedTodayRestaurant)
 
-            Then("it throws DineInRestaurantNotAcceptingOrdersException before ever resolving the restaurant's wallet") {
+            Then("it throws DineInRestaurantNotAcceptingOrdersException before ever resolving the restaurant's account") {
                 try {
                     service.placeOrder("buyer_1", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_1", 1)))
                     error("expected DineInRestaurantNotAcceptingOrdersException")
                 } catch (e: DineInRestaurantNotAcceptingOrdersException) {
-                    verify(exactly = 0) { walletRepository.findById("wallet_restaurant") }
+                    verify(exactly = 0) { accountRepository.findById("account_restaurant") }
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -172,11 +172,11 @@ class DineInOrderServiceTest : BehaviorSpec({
                 surplusExpiresAt = java.time.Instant.now().minusSeconds(3600),
             )
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
-            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("item_expired_surplus") } returns Optional.of(expiredDealItem)
 
-            Then("it throws DineInMenuItemSurplusDealExpiredException before debiting a wallet") {
+            Then("it throws DineInMenuItemSurplusDealExpiredException before debiting a account") {
                 try {
                     service.placeOrder("buyer_1", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_expired_surplus", 1)))
                     error("expected DineInMenuItemSurplusDealExpiredException")
@@ -188,8 +188,8 @@ class DineInOrderServiceTest : BehaviorSpec({
 
         When("a table order is still inside its payment transaction") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
-            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
-            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.MAIN) } returns buyerAccount
             every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
 
@@ -245,7 +245,7 @@ class DineInOrderServiceTest : BehaviorSpec({
         val dineInOrderItemRepository = mockk<DineInOrderItemRepository>(relaxed = true)
         val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
         val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
@@ -255,12 +255,12 @@ class DineInOrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = DineInOrderService(
             merchantRepository, merchantProductRepository, dineInOrderRepository, dineInOrderItemRepository,
-            menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService,
+            menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService,
             transactionRepository, fraudRuleEngine, ledgerEntryRepository, notificationRepository,
             pushNotificationService,
         )
 
-        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         // Fresh instance per When block -- DineInOrder.status is a mutable var, and
         // updateStatus/cancelOrder mutate it in place, so a single shared instance
         // would leak PLACED -> ACCEPTED state from one test into the next.
@@ -299,7 +299,7 @@ class DineInOrderServiceTest : BehaviorSpec({
             every { dineInOrderRepository.save(any()) } answers { firstArg() }
             every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns listOf(
                 rw.itunda.core.domain.LedgerEntry(
-                    id = "entry_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer",
+                    id = "entry_1", transactionId = "ledgertxn_1", accountId = "account_buyer",
                     accountType = LedgerAccountType.WALLET, direction = rw.itunda.core.domain.LedgerDirection.DEBIT,
                     amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Dine-in order",
                 ),

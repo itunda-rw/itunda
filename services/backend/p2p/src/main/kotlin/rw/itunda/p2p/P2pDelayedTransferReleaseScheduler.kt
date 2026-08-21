@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component
  * carries no `@Transactional` of its own -- [P2pDelayedTransferService.getDueForRelease]
  * is a plain read, and each row's own real state change happens inside
  * [P2pDelayedTransferService.release]'s own per-item `@Transactional` boundary, with a
- * try/catch per row right here so one bad row (e.g. a since-deleted recipient wallet)
+ * try/catch per row right here so one bad row (e.g. a since-deleted recipient account)
  * can never poison every other real due transfer in the same poll -- the exact
  * previously-recurring "scheduler transaction-poisoning" bug class this codebase's own
  * Sections 115-181 already found and fixed nine times.

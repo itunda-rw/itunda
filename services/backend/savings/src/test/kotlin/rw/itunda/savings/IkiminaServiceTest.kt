@@ -10,16 +10,16 @@ import rw.itunda.core.domain.Ikimina
 import rw.itunda.core.domain.IkiminaMember
 import rw.itunda.core.domain.IkiminaStatus
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.IkiminaContributionRepository
 import rw.itunda.core.repository.IkiminaMemberRepository
 import rw.itunda.core.repository.IkiminaRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -31,8 +31,8 @@ import java.util.Optional
  */
 class IkiminaServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
         type = type, balance = balance, availableBalance = balance,
     )
 
@@ -45,22 +45,22 @@ class IkiminaServiceTest : BehaviorSpec({
         ikiminaRepository: IkiminaRepository = mockk(),
         ikiminaMemberRepository: IkiminaMemberRepository = mockk(),
         ikiminaContributionRepository: IkiminaContributionRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         userRepository: UserRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         accountNumberGenerator: AccountNumberGenerator = mockk(relaxed = true),
-    ) = IkiminaService(ikiminaRepository, ikiminaMemberRepository, ikiminaContributionRepository, walletRepository, userRepository, ledgerService, rateLimiter, accountNumberGenerator)
+    ) = IkiminaService(ikiminaRepository, ikiminaMemberRepository, ikiminaContributionRepository, accountRepository, userRepository, ledgerService, rateLimiter, accountNumberGenerator)
 
-    Given("an organizer with a real wallet creating a new ikimina") {
+    Given("an organizer with a real account creating a new ikimina") {
         val ikiminaRepository = mockk<IkiminaRepository>()
         val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
-        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, walletRepository = walletRepository, userRepository = userRepository)
+        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, accountRepository = accountRepository, userRepository = userRepository)
 
         every { userRepository.findById("org_1") } returns Optional.of(user("org_1"))
-        every { walletRepository.save(any()) } answers { firstArg() }
+        every { accountRepository.save(any()) } answers { firstArg() }
         every { ikiminaRepository.save(any()) } answers { firstArg() }
         every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
 
@@ -81,7 +81,7 @@ class IkiminaServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, userRepository = userRepository)
 
-        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10)
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10)
         every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
         every { userRepository.findByPhoneNumber("+250788111111") } returns user("mem_1")
         every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "mem_1") } returns null
@@ -102,7 +102,7 @@ class IkiminaServiceTest : BehaviorSpec({
         val ikiminaRepository = mockk<IkiminaRepository>()
         val service = newService(ikiminaRepository = ikiminaRepository)
 
-        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, status = IkiminaStatus.ACTIVE)
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, status = IkiminaStatus.ACTIVE)
         every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
 
         When("the organizer tries to invite after the cycle has already started") {
@@ -123,7 +123,7 @@ class IkiminaServiceTest : BehaviorSpec({
         val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
         val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, ikiminaContributionRepository = ikiminaContributionRepository)
 
-        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, status = IkiminaStatus.ACTIVE)
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, status = IkiminaStatus.ACTIVE)
         val member = IkiminaMember(id = "ikiminamem_1", ikiminaId = "ikimina_1", userId = "org_1", payoutOrder = 1)
         every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
         every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "org_1") } returns member
@@ -145,14 +145,14 @@ class IkiminaServiceTest : BehaviorSpec({
         val ikiminaRepository = mockk<IkiminaRepository>()
         val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
         val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository,
-            ikiminaContributionRepository = ikiminaContributionRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+            ikiminaContributionRepository = ikiminaContributionRepository, accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
         val members = listOf(
             IkiminaMember(id = "mem_1", ikiminaId = "ikimina_1", userId = "u1", payoutOrder = 1),
             IkiminaMember(id = "mem_2", ikiminaId = "ikimina_1", userId = "u2", payoutOrder = 2),
@@ -163,8 +163,8 @@ class IkiminaServiceTest : BehaviorSpec({
         every { ikiminaMemberRepository.findByIkiminaId("ikimina_1") } returns members
         every { ikiminaContributionRepository.findByIkiminaIdAndRound("ikimina_1", 1) } returns members.map { mockk { every { memberId } returns it.id } }
         every { ikiminaMemberRepository.findByIkiminaIdAndPayoutOrder("ikimina_1", 1) } returns members[0]
-        every { walletRepository.findById("wallet_grp") } returns Optional.of(wallet("wallet_grp", "org_1", WalletType.GROUP))
-        every { walletRepository.findByUserIdAndType("u1", WalletType.MAIN) } returns wallet("wallet_u1", "u1")
+        every { accountRepository.findById("account_grp") } returns Optional.of(account("account_grp", "org_1", AccountType.GROUP))
+        every { accountRepository.findByUserIdAndType("u1", AccountType.MAIN) } returns account("account_u1", "u1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
         every { ikiminaRepository.save(any()) } answers { firstArg() }
@@ -192,14 +192,14 @@ class IkiminaServiceTest : BehaviorSpec({
         val ikiminaRepository = mockk<IkiminaRepository>()
         val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
         val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository,
-            ikiminaContributionRepository = ikiminaContributionRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+            ikiminaContributionRepository = ikiminaContributionRepository, accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "u1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "u1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
         val members = listOf(
             IkiminaMember(id = "mem_1", ikiminaId = "ikimina_1", userId = "u1", payoutOrder = 1),
             IkiminaMember(id = "mem_2", ikiminaId = "ikimina_1", userId = "u2", payoutOrder = 2),
@@ -213,9 +213,9 @@ class IkiminaServiceTest : BehaviorSpec({
         every { ikiminaContributionRepository.findByIkiminaIdAndMemberIdAndRound("ikimina_1", "mem_2", 1) } returns null
         every { ikiminaContributionRepository.findByIkiminaIdAndRound("ikimina_1", 1) } returns
             listOf(mockk { every { memberId } returns "mem_1" }, mockk { every { memberId } returns "mem_2" })
-        every { walletRepository.findByUserIdAndType("u2", WalletType.MAIN) } returns wallet("wallet_u2", "u2")
-        every { walletRepository.findByUserIdAndType("u1", WalletType.MAIN) } returns wallet("wallet_u1", "u1")
-        every { walletRepository.findById("wallet_grp") } returns Optional.of(wallet("wallet_grp", "u1", WalletType.GROUP))
+        every { accountRepository.findByUserIdAndType("u2", AccountType.MAIN) } returns account("account_u2", "u2")
+        every { accountRepository.findByUserIdAndType("u1", AccountType.MAIN) } returns account("account_u1", "u1")
+        every { accountRepository.findById("account_grp") } returns Optional.of(account("account_grp", "u1", AccountType.GROUP))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { ikiminaContributionRepository.save(any()) } answers { firstArg() }
         every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
@@ -239,7 +239,7 @@ class IkiminaServiceTest : BehaviorSpec({
         val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
         val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, ikiminaContributionRepository = ikiminaContributionRepository)
 
-        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", accountId = "account_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
         val members = listOf(
             IkiminaMember(id = "mem_1", ikiminaId = "ikimina_1", userId = "u1", payoutOrder = 1),
             IkiminaMember(id = "mem_2", ikiminaId = "ikimina_1", userId = "u2", payoutOrder = 2),

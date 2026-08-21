@@ -118,8 +118,8 @@ class User(
     @Column(name = "trust_score", nullable = false)
     var trustScore: Int = 30,
 
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
-    // rw.itunda.wallet.MiniWalletService's own doc comment for the sourced KakaoBank
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
+    // rw.itunda.account.MiniAccountService's own doc comment for the sourced KakaoBank
     // 만 7세~18세 real eligibility window this backs. Nullable and opt-in, same shape
     // as neighborhood/profilePhotoUrl above -- an existing account has none until it
     // sets one via AuthService.setBirthDate.

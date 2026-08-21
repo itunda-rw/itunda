@@ -11,13 +11,13 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.ParkingSession
 import rw.itunda.core.domain.ParkingSessionStatus
 import rw.itunda.core.domain.ParkingSpot
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ParkingSessionRepository
 import rw.itunda.core.repository.ParkingSpotRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -33,29 +33,29 @@ class ParkingServiceTest : BehaviorSpec({
     fun newService(
         parkingSpotRepository: ParkingSpotRepository = mockk(),
         parkingSessionRepository: ParkingSessionRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = ParkingService(parkingSpotRepository, parkingSessionRepository, walletRepository, ledgerService, rateLimiter)
+    ) = ParkingService(parkingSpotRepository, parkingSessionRepository, accountRepository, ledgerService, rateLimiter)
 
-    Given("a fresh owner account with a real wallet") {
+    Given("a fresh owner account with a real account") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val wallet = Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val accountRepository = mockk<AccountRepository>()
+        val account = Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
-        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet
+        every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account
         val savedSlot = slot<ParkingSpot>()
         every { parkingSpotRepository.save(capture(savedSlot)) } answers { firstArg() }
-        val service = newService(parkingSpotRepository = parkingSpotRepository, walletRepository = walletRepository)
+        val service = newService(parkingSpotRepository = parkingSpotRepository, accountRepository = accountRepository)
 
         When("registering a real parking spot") {
             val result = service.registerSpot("owner_1", "Kigali Heights driveway", -1.9536, 30.0605, BigDecimal("500"))
 
-            Then("a real spot row is saved with the wallet reused as payout destination") {
+            Then("a real spot row is saved with the account reused as payout destination") {
                 result.ownerUserId shouldBe "owner_1"
-                result.walletId shouldBe "wallet_owner"
+                result.accountId shouldBe "account_owner"
                 result.hourlyRate shouldBe BigDecimal("500")
                 savedSlot.captured.ownerUserId shouldBe "owner_1"
             }
@@ -66,23 +66,23 @@ class ParkingServiceTest : BehaviorSpec({
     // all, unlike every other real "post a listing" creation method in this codebase.
     Given("an owner who has already registered too many real parking spots this hour") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         every { rateLimiter.checkLimit("parking:register:owner_1", limit = 10, window = Duration.ofHours(1)) } throws
             RateLimitExceededException("Too many requests")
-        val service = newService(parkingSpotRepository = parkingSpotRepository, walletRepository = walletRepository, rateLimiter = rateLimiter)
+        val service = newService(parkingSpotRepository = parkingSpotRepository, accountRepository = accountRepository, rateLimiter = rateLimiter)
 
         When("registering yet another real parking spot") {
-            Then("it real-propagates RateLimitExceededException before ever touching the wallet") {
+            Then("it real-propagates RateLimitExceededException before ever touching the account") {
                 try {
                     service.registerSpot("owner_1", "Kigali Heights driveway", -1.9536, 30.0605, BigDecimal("500"))
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
-                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                    verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
                 }
             }
         }
@@ -91,7 +91,7 @@ class ParkingServiceTest : BehaviorSpec({
     Given("a real renter trying to rent their own parking spot") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val spot = ParkingSpot(
-            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "A",
+            id = "parking_spot_1", ownerUserId = "owner_1", accountId = "account_owner", address = "A",
             latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"),
         )
         every { parkingSpotRepository.findById("parking_spot_1") } returns Optional.of(spot)
@@ -113,7 +113,7 @@ class ParkingServiceTest : BehaviorSpec({
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
         val spot = ParkingSpot(
-            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "A",
+            id = "parking_spot_1", ownerUserId = "owner_1", accountId = "account_owner", address = "A",
             latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"), available = true,
         )
         val activeSession = ParkingSession(id = "parking_session_existing", spotId = "parking_spot_1", renterUserId = "other_renter")
@@ -140,23 +140,23 @@ class ParkingServiceTest : BehaviorSpec({
     Given("a real available parking spot with no active session") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val spot = ParkingSpot(
-            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "A",
+            id = "parking_spot_1", ownerUserId = "owner_1", accountId = "account_owner", address = "A",
             latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"), available = true,
         )
-        val renterWallet = Wallet(
-            id = "wallet_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val renterAccount = Account(
+            id = "account_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
         every { parkingSpotRepository.findById("parking_spot_1") } returns Optional.of(spot)
         every { parkingSessionRepository.findBySpotIdAndStatus("parking_spot_1", ParkingSessionStatus.ACTIVE) } returns null
-        every { walletRepository.findByUserIdAndType("renter_1", WalletType.MAIN) } returns renterWallet
+        every { accountRepository.findByUserIdAndType("renter_1", AccountType.MAIN) } returns renterAccount
         val spotSavedSlot = slot<ParkingSpot>()
         every { parkingSpotRepository.save(capture(spotSavedSlot)) } answers { firstArg() }
         every { parkingSessionRepository.save(any()) } answers { firstArg() }
         val service = newService(
-            parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository, walletRepository = walletRepository,
+            parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository, accountRepository = accountRepository,
         )
 
         When("a renter starts a real session") {
@@ -171,24 +171,24 @@ class ParkingServiceTest : BehaviorSpec({
     Given("a real ACTIVE session the renter ends after 90 minutes") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         val spot = ParkingSpot(
-            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "A",
+            id = "parking_spot_1", ownerUserId = "owner_1", accountId = "account_owner", address = "A",
             latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"),
         )
-        val renterWallet = Wallet(
-            id = "wallet_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val renterAccount = Account(
+            id = "account_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        val ownerWallet = Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val ownerAccount = Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val session = ParkingSession(
             id = "parking_session_1", spotId = "parking_spot_1", renterUserId = "renter_1",
@@ -196,8 +196,8 @@ class ParkingServiceTest : BehaviorSpec({
         )
         every { parkingSessionRepository.findById("parking_session_1") } returns Optional.of(session)
         every { parkingSpotRepository.findById("parking_spot_1") } returns Optional.of(spot)
-        every { walletRepository.findByUserIdAndType("renter_1", WalletType.MAIN) } returns renterWallet
-        every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
+        every { accountRepository.findByUserIdAndType("renter_1", AccountType.MAIN) } returns renterAccount
+        every { accountRepository.findById("account_owner") } returns Optional.of(ownerAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { parkingSessionRepository.save(any()) } answers { firstArg() }
         val spotSavedSlot = slot<ParkingSpot>()
@@ -228,11 +228,11 @@ class ParkingServiceTest : BehaviorSpec({
     Given("a real ACTIVE session only 2 hours old, well within the max session window") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
         val session = ParkingSession(
             id = "parking_session_recent", spotId = "parking_spot_1", renterUserId = "renter_1",
@@ -243,7 +243,7 @@ class ParkingServiceTest : BehaviorSpec({
         When("the scheduler's force-end is (incorrectly) invoked on it anyway") {
             val result = service.forceEndAbandonedSession("parking_session_recent")
 
-            Then("it is a real no-op -- still ACTIVE, no ledger transaction posted, no spot/wallet ever looked up") {
+            Then("it is a real no-op -- still ACTIVE, no ledger transaction posted, no spot/account ever looked up") {
                 result?.status shouldBe ParkingSessionStatus.ACTIVE
                 verify(exactly = 0) { parkingSpotRepository.findById(any()) }
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
@@ -258,24 +258,24 @@ class ParkingServiceTest : BehaviorSpec({
     Given("a real ACTIVE session abandoned 25 hours ago, past the max session window") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         val spot = ParkingSpot(
-            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "Kigali Heights driveway",
+            id = "parking_spot_1", ownerUserId = "owner_1", accountId = "account_owner", address = "Kigali Heights driveway",
             latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"),
         )
-        val renterWallet = Wallet(
-            id = "wallet_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
-            type = WalletType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+        val renterAccount = Account(
+            id = "account_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
+            type = AccountType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
         )
-        val ownerWallet = Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val ownerAccount = Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val session = ParkingSession(
             id = "parking_session_abandoned", spotId = "parking_spot_1", renterUserId = "renter_1",
@@ -283,8 +283,8 @@ class ParkingServiceTest : BehaviorSpec({
         )
         every { parkingSessionRepository.findById("parking_session_abandoned") } returns Optional.of(session)
         every { parkingSpotRepository.findById("parking_spot_1") } returns Optional.of(spot)
-        every { walletRepository.findByUserIdAndType("renter_1", WalletType.MAIN) } returns renterWallet
-        every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
+        every { accountRepository.findByUserIdAndType("renter_1", AccountType.MAIN) } returns renterAccount
+        every { accountRepository.findById("account_owner") } returns Optional.of(ownerAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_forceend", emptyList())
         every { parkingSessionRepository.save(any()) } answers { firstArg() }
         val spotSavedSlot = slot<ParkingSpot>()

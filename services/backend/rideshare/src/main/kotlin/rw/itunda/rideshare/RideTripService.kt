@@ -19,7 +19,7 @@ import rw.itunda.core.domain.RideTripStop
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.OsrmRoutingClient
@@ -33,7 +33,7 @@ import rw.itunda.core.repository.RideDriverRepository
 import rw.itunda.core.repository.RideTripRepository
 import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -128,7 +128,7 @@ class RideTripService(
     private val rideDriverRepository: RideDriverRepository,
     private val rideTripRepository: RideTripRepository,
     private val rideTripStopRepository: RideTripStopRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
@@ -246,8 +246,8 @@ class RideTripService(
         // endpoint in this codebase uses.
         rateLimiter.checkLimit("rideshare:request:$passengerId", limit = 20, window = Duration.ofHours(1))
 
-        val passengerWallet = walletRepository.findByUserIdAndType(passengerId, WalletType.MAIN)
-            ?: throw RideDriverNoWalletException("No wallet found for this account")
+        val passengerAccount = accountRepository.findByUserIdAndType(passengerId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
 
         // Real multi-stop distance -- pickup -> stop 1 -> ... -> dropoff. Prefers one
         // real OSRM routeThrough call across the whole itinerary (real road distance,
@@ -263,17 +263,17 @@ class RideTripService(
         val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
         val platformFee = fare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
 
-        if (passengerWallet.availableBalance < fare) {
+        if (passengerAccount.availableBalance < fare) {
             throw InsufficientFundsException("Insufficient available balance for this trip")
         }
 
-        // Real escrow hold -- the passenger's fare leaves their wallet right now, held
+        // Real escrow hold -- the passenger's fare leaves their account right now, held
         // until the trip completes. Same "hold, don't move directly" shape
         // EatsOrder's own delivery-fee escrow already establishes.
         val holdResult = ledgerService.postLedgerTransaction(
-            passengerWallet.currency,
+            passengerAccount.currency,
             listOf(
-                LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fare, "Ride requested"),
+                LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fare, "Ride requested"),
                 LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.CREDIT, fare, "Ride fare held in escrow"),
             ),
         )
@@ -282,10 +282,10 @@ class RideTripService(
             referenceNumber = "RIDE${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = passengerId,
             recipientId = passengerId,
-            fromWalletId = passengerWallet.id,
+            fromAccountId = passengerAccount.id,
             amount = fare,
             fee = platformFee,
-            currency = passengerWallet.currency,
+            currency = passengerAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Ride requested",
@@ -591,14 +591,14 @@ class RideTripService(
         if (trip.status != RideTripStatus.IN_PROGRESS) {
             throw InvalidRideTripStatusTransitionException("Only an IN_PROGRESS trip can be completed")
         }
-        val driverWallet = walletRepository.findById(driver.walletId)
-            .orElseThrow { RideDriverNoWalletException("Driver settlement wallet not found") }
+        val driverAccount = accountRepository.findById(driver.accountId)
+            .orElseThrow { RideDriverNoAccountException("Driver settlement account not found") }
         val netToDriver = trip.fare.subtract(trip.platformFee)
         val result = ledgerService.postLedgerTransaction(
-            driverWallet.currency,
+            driverAccount.currency,
             listOf(
                 LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.DEBIT, trip.fare, "Ride fare released"),
-                LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToDriver, "Ride fare payout"),
+                LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToDriver, "Ride fare payout"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, trip.platformFee, "Ride platform fee"),
             ),
         )
@@ -625,7 +625,7 @@ class RideTripService(
     /**
      * Real Uber post-trip tipping (2026-08-16, uber.com/us/en/ride/how-it-works/tips) --
      * "Tips go directly to drivers; Uber doesn't charge service fees on tips." A direct
-     * real passenger-wallet-to-driver-wallet transfer, never routed through
+     * real passenger-account-to-driver-account transfer, never routed through
      * `ride_holding` (unlike the fare itself) since a tip isn't itunda's revenue to hold
      * or take a cut of. Real once-only ([RideTripAlreadyTippedException]) and real
      * 30-day-window ([RideTripTipWindowExpiredException]) enforcement, matching Uber's
@@ -654,18 +654,18 @@ class RideTripService(
         }
         val driverId = trip.driverId ?: throw RideDriverNotRegisteredException("Driver not found")
         val driver = rideDriverRepository.findById(driverId).orElseThrow { RideDriverNotRegisteredException("Driver not found") }
-        val passengerWallet = walletRepository.findByUserIdAndType(passengerUserId, WalletType.MAIN)
-            ?: throw RideDriverNoWalletException("No wallet found for this account")
-        val driverWallet = walletRepository.findById(driver.walletId)
-            .orElseThrow { RideDriverNoWalletException("Driver settlement wallet not found") }
-        if (passengerWallet.availableBalance < amount) {
+        val passengerAccount = accountRepository.findByUserIdAndType(passengerUserId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
+        val driverAccount = accountRepository.findById(driver.accountId)
+            .orElseThrow { RideDriverNoAccountException("Driver settlement account not found") }
+        if (passengerAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this tip")
         }
         val result = ledgerService.postLedgerTransaction(
-            passengerWallet.currency,
+            passengerAccount.currency,
             listOf(
-                LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for ride to ${trip.dropoffAddress}"),
-                LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
+                LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for ride to ${trip.dropoffAddress}"),
+                LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
             ),
         )
         trip.tipAmount = amount
@@ -690,7 +690,7 @@ class RideTripService(
     // within CANCELLATION_FEE_GRACE_PERIOD of driverAssignedAt also refunds in full,
     // matching Uber's own real "2+ minutes after requesting" threshold; past that
     // window, CANCELLATION_FEE is carved out of the refund and paid straight to the
-    // driver's settlement wallet -- Uber's own stated rationale ("pay drivers for the
+    // driver's settlement account -- Uber's own stated rationale ("pay drivers for the
     // time and effort they spend getting to your location"), not a punitive platform
     // fee, so platformFee itself is never charged on a cancellation either way.
     @Transactional
@@ -702,8 +702,8 @@ class RideTripService(
         if (trip.status != RideTripStatus.REQUESTED && trip.status != RideTripStatus.DRIVER_ASSIGNED) {
             throw InvalidRideTripStatusTransitionException("Only a REQUESTED or DRIVER_ASSIGNED trip can be cancelled -- this one is already ${trip.status}")
         }
-        val passengerWallet = walletRepository.findByUserIdAndType(passengerId, WalletType.MAIN)
-            ?: throw RideDriverNoWalletException("No wallet found for this account")
+        val passengerAccount = accountRepository.findByUserIdAndType(passengerId, AccountType.MAIN)
+            ?: throw RideDriverNoAccountException("No account found for this account")
 
         val assignedAt = trip.driverAssignedAt
         val withinGracePeriod = assignedAt == null || !Instant.now().isAfter(assignedAt.plus(CANCELLATION_FEE_GRACE_PERIOD))
@@ -715,32 +715,32 @@ class RideTripService(
         val refundAmount = trip.fare.subtract(cancellationFee)
 
         val driver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null) }
-        val driverWallet = if (cancellationFee > BigDecimal.ZERO) {
-            driver?.let { walletRepository.findById(it.walletId).orElse(null) }
+        val driverAccount = if (cancellationFee > BigDecimal.ZERO) {
+            driver?.let { accountRepository.findById(it.accountId).orElse(null) }
         } else {
             null
         }
 
         val legs = mutableListOf(
             LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.DEBIT, trip.fare, "Ride fare refunded"),
-            LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Ride cancelled -- refund"),
+            LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Ride cancelled -- refund"),
         )
-        if (cancellationFee > BigDecimal.ZERO && driverWallet != null) {
-            legs.add(LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Cancellation fee"))
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null) {
+            legs.add(LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Cancellation fee"))
         } else if (cancellationFee > BigDecimal.ZERO) {
-            // Driver's own settlement wallet is somehow gone -- never strand escrow money
+            // Driver's own settlement account is somehow gone -- never strand escrow money
             // mid-refund; fall back to refunding the passenger in full rather than
             // leaving the fee portion unaccounted for.
-            legs[1] = LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Ride cancelled -- refund")
+            legs[1] = LedgerLeg(passengerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Ride cancelled -- refund")
         }
-        val result = ledgerService.postLedgerTransaction(passengerWallet.currency, legs)
+        val result = ledgerService.postLedgerTransaction(passengerAccount.currency, legs)
 
         trip.status = RideTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
         val saved = rideTripRepository.save(trip)
 
-        if (cancellationFee > BigDecimal.ZERO && driverWallet != null && driver != null) {
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null && driver != null) {
             val title = "Rider cancelled -- you were paid a cancellation fee"
             val body = "The rider cancelled after you were already on the way. You received a ${cancellationFee} RWF cancellation fee."
             notificationRepository.save(

@@ -7,14 +7,14 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ProductSubscription
 import rw.itunda.core.domain.ProductSubscriptionStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductSubscriptionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.merchant.ShoppingCashbackService
 import java.time.Duration
 import java.time.Instant
@@ -38,7 +38,7 @@ class ProductSubscriptionService(
     private val productSubscriptionRepository: ProductSubscriptionRepository,
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val orderService: OrderService,
     private val shoppingCashbackService: ShoppingCashbackService,
     private val rateLimiter: RateLimiter,
@@ -71,11 +71,11 @@ class ProductSubscriptionService(
 
         val orderDetail = orderService.placeOrder(customerId, merchantId, listOf(OrderItemRequest(productId, quantity)), deliveryAddress)
 
-        val buyerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
+        val buyerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
         val merchant = merchantRepository.findById(merchantId).orElse(null)
-        if (buyerWallet != null && merchant != null) {
+        if (buyerAccount != null && merchant != null) {
             try {
-                shoppingCashbackService.awardCashback(buyerWallet, orderDetail.order.totalAmount, merchant.businessName, SUBSCRIPTION_DISCOUNT_RATE)
+                shoppingCashbackService.awardCashback(buyerAccount, orderDetail.order.totalAmount, merchant.businessName, SUBSCRIPTION_DISCOUNT_RATE)
             } catch (e: Exception) {
                 // Non-critical -- the real order already completed successfully; a
                 // failed discount rebate must never undo a real delivery that was
@@ -193,11 +193,11 @@ class ProductSubscriptionService(
             val orderDetail = orderService.placeOrder(
                 subscription.customerId, subscription.merchantId, listOf(OrderItemRequest(subscription.productId, subscription.quantity)), subscription.deliveryAddress,
             )
-            val buyerWallet = walletRepository.findByUserIdAndType(subscription.customerId, WalletType.MAIN)
+            val buyerAccount = accountRepository.findByUserIdAndType(subscription.customerId, AccountType.MAIN)
             val merchant = merchantRepository.findById(subscription.merchantId).orElse(null)
-            if (buyerWallet != null && merchant != null) {
+            if (buyerAccount != null && merchant != null) {
                 try {
-                    shoppingCashbackService.awardCashback(buyerWallet, orderDetail.order.totalAmount, merchant.businessName, SUBSCRIPTION_DISCOUNT_RATE)
+                    shoppingCashbackService.awardCashback(buyerAccount, orderDetail.order.totalAmount, merchant.businessName, SUBSCRIPTION_DISCOUNT_RATE)
                 } catch (e: Exception) {
                     log.error("Subscription discount rebate failed for subscription {}", subscription.id, e)
                 }

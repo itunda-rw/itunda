@@ -29,7 +29,7 @@ dependencies {
     // For AutoTopUpService -- real Naver Pay Money "결제 시 부족분 자동 충전" (shortfall
     // auto-charge at payment time), 2026-07-27, see AutoTopUpService.topUpShortfall's
     // own doc comment. :wallet only depends on :core, so this is not circular.
-    implementation(project(":wallet"))
+    implementation(project(":account"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

@@ -12,8 +12,8 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.SeasonRainfallIndex
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.WeatherIndexCropType
 import rw.itunda.core.domain.WeatherIndexPolicy
 import rw.itunda.core.domain.WeatherIndexPolicyStatus
@@ -21,7 +21,7 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.SeasonRainfallIndexRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.WeatherIndexPolicyRepository
 import java.math.BigDecimal
 import java.util.Optional
@@ -39,9 +39,9 @@ import java.util.Optional
  */
 class WeatherIndexInsuranceServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, balance: BigDecimal = BigDecimal("1000000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = balance, availableBalance = balance,
+    fun account(id: String, userId: String, balance: BigDecimal = BigDecimal("1000000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = balance, availableBalance = balance,
     )
 
     fun policy(
@@ -61,27 +61,27 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     // SAME mocked repositories/ledgerService passed in -- see this session's own
     // build-time bug fix in WeatherIndexInsuranceService.publishSeasonIndex's doc comment
     // for why the per-policy payout logic now lives in a genuinely separate bean. Every
-    // existing every{} stub against weatherIndexPolicyRepository/walletRepository/
+    // existing every{} stub against weatherIndexPolicyRepository/accountRepository/
     // ledgerService below still applies transparently, since the executor calls those
     // exact same mock instances.
     fun newService(
         weatherIndexPolicyRepository: WeatherIndexPolicyRepository = mockk(),
         seasonRainfallIndexRepository: SeasonRainfallIndexRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-        payoutExecutor: WeatherIndexPayoutExecutor = WeatherIndexPayoutExecutor(weatherIndexPolicyRepository, walletRepository, ledgerService),
-    ) = WeatherIndexInsuranceService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService, rateLimiter, payoutExecutor)
+        payoutExecutor: WeatherIndexPayoutExecutor = WeatherIndexPayoutExecutor(weatherIndexPolicyRepository, accountRepository, ledgerService),
+    ) = WeatherIndexInsuranceService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService, rateLimiter, payoutExecutor)
 
-    Given("a farmer with a MAIN wallet enrolling in Maize cover (6% flat rate)") {
+    Given("a farmer with a MAIN account enrolling in Maize cover (6% flat rate)") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService, rateLimiter)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService, rateLimiter)
 
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { weatherIndexPolicyRepository.save(any()) } answers { firstArg() }
@@ -94,11 +94,11 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
                 enrolled.insuredAmount shouldBe BigDecimal("100000")
                 enrolled.status shouldBe WeatherIndexPolicyStatus.ENROLLED
             }
-            Then("it debits the MAIN wallet and credits insurance_premium_revenue for exactly the premium") {
-                val walletLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
-                walletLeg.accountId shouldBe "wallet_main"
-                walletLeg.direction shouldBe LedgerDirection.DEBIT
-                walletLeg.amount shouldBe BigDecimal("6000.00")
+            Then("it debits the MAIN account and credits insurance_premium_revenue for exactly the premium") {
+                val accountLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
+                accountLeg.accountId shouldBe "account_main"
+                accountLeg.direction shouldBe LedgerDirection.DEBIT
+                accountLeg.amount shouldBe BigDecimal("6000.00")
                 val revenueLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.INSURANCE_PREMIUM_REVENUE }
                 revenueLeg.accountId shouldBe "insurance_premium_revenue"
                 revenueLeg.direction shouldBe LedgerDirection.CREDIT
@@ -111,13 +111,13 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("a farmer cancelling their own ENROLLED policy") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         val enrolledPolicy = policy("wip_1", "user_1", premiumAmount = BigDecimal("6000"))
         every { weatherIndexPolicyRepository.findById("wip_1") } returns Optional.of(enrolledPolicy)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_main", "user_1")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_cancel", emptyList())
         every { weatherIndexPolicyRepository.save(any()) } answers { firstArg() }
@@ -125,14 +125,14 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         When("cancelling it") {
             val cancelled = service.cancel("user_1", "wip_1")
 
-            Then("it fully refunds the premium: DEBIT insurance_premium_revenue / CREDIT wallet") {
+            Then("it fully refunds the premium: DEBIT insurance_premium_revenue / CREDIT account") {
                 val revenueLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.INSURANCE_PREMIUM_REVENUE }
                 revenueLeg.direction shouldBe LedgerDirection.DEBIT
                 revenueLeg.amount shouldBe BigDecimal("6000")
-                val walletLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
-                walletLeg.accountId shouldBe "wallet_main"
-                walletLeg.direction shouldBe LedgerDirection.CREDIT
-                walletLeg.amount shouldBe BigDecimal("6000")
+                val accountLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
+                accountLeg.accountId shouldBe "account_main"
+                accountLeg.direction shouldBe LedgerDirection.CREDIT
+                accountLeg.amount shouldBe BigDecimal("6000")
             }
             Then("it marks the policy CANCELLED") {
                 cancelled.status shouldBe WeatherIndexPolicyStatus.CANCELLED
@@ -143,9 +143,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("a farmer trying to cancel a policy that already resolved (PAYOUT_TRIGGERED)") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         every { weatherIndexPolicyRepository.findById("wip_2") } returns Optional.of(policy("wip_2", "user_1", status = WeatherIndexPolicyStatus.PAYOUT_TRIGGERED))
 
@@ -164,9 +164,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("an attacker trying to view or cancel someone else's policy") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         every { weatherIndexPolicyRepository.findById("wip_owned") } returns Optional.of(policy("wip_owned", "owner_1"))
 
@@ -196,9 +196,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("an ADMIN trying to double-publish the same district+season") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         every { seasonRainfallIndexRepository.findByDistrictAndSeason("Nyagatare", "2026B") } returns
             SeasonRainfallIndex(id = "sri_1", district = "Nyagatare", season = "2026B", rainfallIndexPercent = 40.0, droughtThresholdPercent = 60.0, publishedByAdminId = "admin_1")
@@ -218,9 +218,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("Nyagatare 2026B has 2 ENROLLED policies and the published rainfall index is below the drought threshold") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         val policyA = policy("wip_a", "farmer_a", insuredAmount = BigDecimal("100000"))
         val policyB = policy("wip_b", "farmer_b", insuredAmount = BigDecimal("200000"))
@@ -228,8 +228,8 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         every { seasonRainfallIndexRepository.findByDistrictAndSeason("Nyagatare", "2026B") } returns null
         every { seasonRainfallIndexRepository.save(any()) } answers { firstArg() }
         every { weatherIndexPolicyRepository.findByDistrictAndSeasonAndStatus("Nyagatare", "2026B", WeatherIndexPolicyStatus.ENROLLED) } returns listOf(policyA, policyB)
-        every { walletRepository.findByUserIdAndType("farmer_a", WalletType.MAIN) } returns wallet("wallet_a", "farmer_a")
-        every { walletRepository.findByUserIdAndType("farmer_b", WalletType.MAIN) } returns wallet("wallet_b", "farmer_b")
+        every { accountRepository.findByUserIdAndType("farmer_a", AccountType.MAIN) } returns account("account_a", "farmer_a")
+        every { accountRepository.findByUserIdAndType("farmer_b", AccountType.MAIN) } returns account("account_b", "farmer_b")
         val allLegs = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(allLegs)) } returns LedgerPostResult("ledgertxn_payout", emptyList())
         every { weatherIndexPolicyRepository.save(any()) } answers { firstArg() }
@@ -248,21 +248,21 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
                 (policyA.payoutAt != null) shouldBe true
                 (policyB.payoutAt != null) shouldBe true
             }
-            Then("each policy's payout posts the correct DEBIT insurance_claims_expense / CREDIT wallet legs") {
+            Then("each policy's payout posts the correct DEBIT insurance_claims_expense / CREDIT account legs") {
                 allLegs.size shouldBe 2
-                val legsForA = allLegs.first { legs -> legs.any { it.accountId == "wallet_a" } }
+                val legsForA = allLegs.first { legs -> legs.any { it.accountId == "account_a" } }
                 val expenseLegA = legsForA.first { it.accountType == LedgerAccountType.INSURANCE_CLAIMS_EXPENSE }
                 expenseLegA.direction shouldBe LedgerDirection.DEBIT
                 expenseLegA.amount shouldBe BigDecimal("100000")
-                val walletLegA = legsForA.first { it.accountType == LedgerAccountType.WALLET }
-                walletLegA.direction shouldBe LedgerDirection.CREDIT
-                walletLegA.amount shouldBe BigDecimal("100000")
+                val accountLegA = legsForA.first { it.accountType == LedgerAccountType.WALLET }
+                accountLegA.direction shouldBe LedgerDirection.CREDIT
+                accountLegA.amount shouldBe BigDecimal("100000")
 
-                val legsForB = allLegs.first { legs -> legs.any { it.accountId == "wallet_b" } }
+                val legsForB = allLegs.first { legs -> legs.any { it.accountId == "account_b" } }
                 val expenseLegB = legsForB.first { it.accountType == LedgerAccountType.INSURANCE_CLAIMS_EXPENSE }
                 expenseLegB.amount shouldBe BigDecimal("200000")
-                val walletLegB = legsForB.first { it.accountType == LedgerAccountType.WALLET }
-                walletLegB.amount shouldBe BigDecimal("200000")
+                val accountLegB = legsForB.first { it.accountType == LedgerAccountType.WALLET }
+                accountLegB.amount shouldBe BigDecimal("200000")
             }
         }
     }
@@ -270,9 +270,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("Nyagatare 2026B has 1 ENROLLED policy and the published rainfall index is ABOVE the drought threshold") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         val policyC = policy("wip_c", "farmer_c", insuredAmount = BigDecimal("100000"))
         every { seasonRainfallIndexRepository.findByDistrictAndSeason("Nyagatare", "2026B") } returns null
@@ -287,7 +287,7 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
                 policyC.status shouldBe WeatherIndexPolicyStatus.SEASON_ENDED_NO_PAYOUT
                 policyC.payoutAt shouldBe null
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
-                verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
             }
         }
     }
@@ -295,9 +295,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("a policy in a DIFFERENT district is untouched by an unrelated publish") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         // Bugumbura policy is simply never returned by the district+season-scoped query --
         // the real isolation guarantee is that publishSeasonIndex only ever asks the
@@ -318,28 +318,28 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a policy whose farmer has no MAIN wallet during a drought-triggered publish") {
+    Given("a policy whose farmer has no MAIN account during a drought-triggered publish") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
-        val walletlessPolicy = policy("wip_walletless", "farmer_no_wallet", insuredAmount = BigDecimal("50000"))
+        val accountlessPolicy = policy("wip_accountless", "farmer_no_account", insuredAmount = BigDecimal("50000"))
         val fundedPolicy = policy("wip_funded", "farmer_funded", insuredAmount = BigDecimal("50000"))
         every { seasonRainfallIndexRepository.findByDistrictAndSeason("Nyagatare", "2026B") } returns null
         every { seasonRainfallIndexRepository.save(any()) } answers { firstArg() }
-        every { weatherIndexPolicyRepository.findByDistrictAndSeasonAndStatus("Nyagatare", "2026B", WeatherIndexPolicyStatus.ENROLLED) } returns listOf(walletlessPolicy, fundedPolicy)
-        every { walletRepository.findByUserIdAndType("farmer_no_wallet", WalletType.MAIN) } returns null
-        every { walletRepository.findByUserIdAndType("farmer_funded", WalletType.MAIN) } returns wallet("wallet_funded", "farmer_funded")
+        every { weatherIndexPolicyRepository.findByDistrictAndSeasonAndStatus("Nyagatare", "2026B", WeatherIndexPolicyStatus.ENROLLED) } returns listOf(accountlessPolicy, fundedPolicy)
+        every { accountRepository.findByUserIdAndType("farmer_no_account", AccountType.MAIN) } returns null
+        every { accountRepository.findByUserIdAndType("farmer_funded", AccountType.MAIN) } returns account("account_funded", "farmer_funded")
         every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_partial", emptyList())
         every { weatherIndexPolicyRepository.save(any()) } answers { firstArg() }
 
         When("publishing a drought-triggered index") {
             service.publishSeasonIndex("admin_1", "Nyagatare", "2026B", 20.0, 60.0)
 
-            Then("the walletless farmer's policy is skipped (still ENROLLED) but the batch doesn't fail") {
-                walletlessPolicy.status shouldBe WeatherIndexPolicyStatus.ENROLLED
+            Then("the accountless farmer's policy is skipped (still ENROLLED) but the batch doesn't fail") {
+                accountlessPolicy.status shouldBe WeatherIndexPolicyStatus.ENROLLED
             }
             Then("the funded farmer's policy is still paid out correctly") {
                 fundedPolicy.status shouldBe WeatherIndexPolicyStatus.PAYOUT_TRIGGERED
@@ -394,9 +394,9 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("a farmer trying to enroll with an insured amount above itunda's honest ceiling") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService)
 
         When("enrolling with 600,000 RWF (above the 500,000 ceiling)") {
             Then("it throws InvalidWeatherIndexEnrollmentException before touching the ledger") {
@@ -413,10 +413,10 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
     Given("a real user exceeds the real weather-index enrollment rate limit") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
         val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>()
-        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService, rateLimiter)
+        val service = newService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, accountRepository, ledgerService, rateLimiter)
 
         every { rateLimiter.checkLimit("weather-index:enroll:user_9", limit = 10, window = any()) } throws RateLimitExceededException("Too many requests")
 

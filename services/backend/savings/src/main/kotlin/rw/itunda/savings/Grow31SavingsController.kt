@@ -18,7 +18,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -87,7 +87,7 @@ class Grow31SavingsController(
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/grow31-savings/plans/$id/withdraw", idempotencyKey, id) {
             val view = grow31SavingsService.withdraw(currentUser.userId, id)
-            200 to (mapOf("success" to true, "message" to "Matured plan withdrawn to your main wallet") + view.toMap())
+            200 to (mapOf("success" to true, "message" to "Matured plan withdrawn to your main account") + view.toMap())
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -102,7 +102,7 @@ class Grow31SavingsController(
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
     }
 
-    private fun Grow31SavingsPlanView.toMap() = mapOf("plan" to plan, "walletBalance" to walletBalance, "deposits" to deposits)
+    private fun Grow31SavingsPlanView.toMap() = mapOf("plan" to plan, "accountBalance" to accountBalance, "deposits" to deposits)
 
     @ExceptionHandler(Grow31PlanNotFoundException::class)
     fun handleNotFound(ex: Grow31PlanNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROW31_PLAN_NOT_FOUND", ex.message ?: "Not found"))
@@ -122,14 +122,14 @@ class Grow31SavingsController(
     @ExceptionHandler(Grow31AlreadyDepositedTodayException::class)
     fun handleAlreadyDepositedToday(ex: Grow31AlreadyDepositedTodayException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ALREADY_DEPOSITED_TODAY", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))

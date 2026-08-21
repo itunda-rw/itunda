@@ -25,7 +25,7 @@ import rw.itunda.p2p.AutoTransferInvalidScheduleException
 import rw.itunda.p2p.AutoTransferNotFoundException
 import rw.itunda.p2p.AutoTransferService
 import rw.itunda.p2p.P2pInvalidAmountException
-import rw.itunda.p2p.P2pNoWalletException
+import rw.itunda.p2p.P2pNoAccountException
 import rw.itunda.p2p.P2pRecipientNotFoundException
 import rw.itunda.p2p.P2pSelfPaymentException
 import java.math.BigDecimal
@@ -106,8 +106,8 @@ class AutoTransferController(
     fun handleSelfPayment(ex: P2pSelfPaymentException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_PAYMENT_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(P2pNoWalletException::class)
-    fun handleNoWallet(ex: P2pNoWalletException) =
+    @ExceptionHandler(P2pNoAccountException::class)
+    fun handleNoAccount(ex: P2pNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(P2pInvalidAmountException::class)

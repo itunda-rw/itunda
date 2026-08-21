@@ -9,8 +9,8 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DebitCard
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -18,7 +18,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -27,9 +27,9 @@ import java.util.Optional
  * DebitCard.kt's own doc comment for the full sourced account. */
 class CardServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
     )
 
     fun freshCard(userId: String) = DebitCard(
@@ -50,12 +50,12 @@ class CardServiceTest : BehaviorSpec({
     fun newService(
         debitCardRepository: DebitCardRepository = mockk(),
         debitCardTransactionRepository: DebitCardTransactionRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         notificationRepository: NotificationRepository = notificationRepositoryMock(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = CardService(debitCardRepository, debitCardTransactionRepository, walletRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter)
+    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter)
 
     Given("a real user issuing their first itunda debit card") {
         val debitCardRepository = mockk<DebitCardRepository>()
@@ -116,19 +116,19 @@ class CardServiceTest : BehaviorSpec({
     Given("a real active card with room under both limits") {
         val debitCardRepository = mockk<DebitCardRepository>()
         val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val card = freshCard("user_1")
         every { debitCardRepository.findByUserId("user_1") } returns card
         every { debitCardRepository.findByIdForUpdate("card_1") } returns Optional.of(card)
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
         every { debitCardTransactionRepository.save(any()) } answers { firstArg() }
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         val legsSlot = mutableListOf<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val service = newService(
             debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         When("charging a real purchase") {

@@ -7,7 +7,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.RewardClaim
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DailyStepRewardRepository
@@ -17,7 +17,7 @@ import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -25,7 +25,7 @@ import java.util.UUID
 class RewardTaskNotFoundException(message: String) : RuntimeException(message)
 class RewardTaskAlreadyClaimedException(message: String) : RuntimeException(message)
 class RewardTaskNotEligibleException(message: String) : RuntimeException(message)
-class RewardsNoWalletException(message: String) : RuntimeException(message)
+class RewardsNoAccountException(message: String) : RuntimeException(message)
 class RewardsUserNotFoundException(message: String) : RuntimeException(message)
 
 data class RewardTaskDef(val id: String, val title: String, val subtitle: String, val rewardAmount: BigDecimal)
@@ -48,7 +48,7 @@ data class PetView(val level: Int, val stageName: String, val emoji: String, val
 @Service
 class RewardsService(
     private val rewardClaimRepository: RewardClaimRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
@@ -166,14 +166,14 @@ class RewardsService(
         if (!isEligible(userId, taskId)) {
             throw RewardTaskNotEligibleException("This task hasn't been completed yet")
         }
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw RewardsNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw RewardsNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
                 LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, task.rewardAmount, "Reward claimed - ${task.title}"),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, task.rewardAmount, "Reward claimed - ${task.title}"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, task.rewardAmount, "Reward claimed - ${task.title}"),
             ),
         )
 

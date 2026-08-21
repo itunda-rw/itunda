@@ -4,7 +4,7 @@ import org.springframework.stereotype.Component
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -27,9 +27,9 @@ import java.time.ZoneOffset
  * itunda already enforces this exact real shape in two other places -- confirmed by
  * reading them directly before building a third, inconsistent copy:
  * [rw.itunda.card.CardService.spend] (`DebitCard.dailyLimit`/`monthlyLimit`, real
- * default 500,000 RWF) and [rw.itunda.wallet.MiniWalletService] (`DAILY_DEPOSIT_LIMIT`,
+ * default 500,000 RWF) and [rw.itunda.account.MiniAccountService] (`DAILY_DEPOSIT_LIMIT`,
  * real 300,000 RWF). `P2pService.sendDirect` and `P2pDelayedTransferService
- * .sendDelayed` -- itunda's real wallet-to-wallet "bank transfer" rail, its highest-
+ * .sendDelayed` -- itunda's real account-to-account "bank transfer" rail, its highest-
  * value real money-movement path -- had neither: only a 30/hour *count* rate limit
  * (anti-spam, not an amount cap), confirmed by reading both directly. A sender with a
  * compromised session, or simply making a real mistake, could move an unbounded amount
@@ -47,7 +47,7 @@ import java.time.ZoneOffset
  * delayed path would be a trivial way around the cap). One shared component, injected
  * into both, is the only way to guarantee that -- matching the same "one real
  * resolution path, not two independently-maintained copies" discipline
- * `P2pService.resolveRecipientWallet`'s own doc comment already establishes for a
+ * `P2pService.resolveRecipientAccount`'s own doc comment already establishes for a
  * different pair of callers.
  *
  * Deliberately flat, not tiered by verification level like the real TossBank/KakaoBank
@@ -69,14 +69,14 @@ import java.time.ZoneOffset
 @Component
 class P2pTransferLimitService(
     private val transactionRepository: TransactionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
 ) {
 
     /**
      * Real per-transfer and real daily-cumulative caps. Coarse repo filter (this
      * sender's own real completed TRANSFER-type sends since a real UTC day boundary),
      * exact cap comparison here -- same "coarse repo filter, exact logic in the
-     * service" discipline `FamilyLinkService.enforceSpendLimit`/`MiniWalletService`'s
+     * service" discipline `FamilyLinkService.enforceSpendLimit`/`MiniAccountService`'s
      * own deposit-cap enforcement already establish, deliberately reusing the exact
      * same `TransactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual`
      * query `FamilyLinkService.enforceSpendLimit` already uses rather than adding a
@@ -90,8 +90,8 @@ class P2pTransferLimitService(
      * memory before writing this fix). Without it, two real concurrent transfers by the
      * same sender could both read the same pre-transfer daily sum and both pass,
      * together exceeding [DAILY_TRANSFER_LIMIT] -- the exact safety cap this class
-     * exists to enforce. `walletRepository.findByIdForUpdate(senderWalletId)` locks the
-     * sender's own wallet row for the rest of this ambient transaction (the same row
+     * exists to enforce. `accountRepository.findByIdForUpdate(senderAccountId)` locks the
+     * sender's own account row for the rest of this ambient transaction (the same row
      * `LedgerService.postLedgerTransaction` locks moments later when it actually posts
      * this transfer's ledger legs -- re-acquiring an already-held row lock in the same
      * transaction is a no-op, not a second lock or a deadlock risk), serializing any
@@ -104,13 +104,13 @@ class P2pTransferLimitService(
      * `sendDelayed`, so this lock doesn't retroactively cover it) -- named as a real,
      * separate follow-up rather than silently left unmentioned.
      */
-    fun enforce(senderUserId: String, senderWalletId: String, amount: BigDecimal) {
+    fun enforce(senderUserId: String, senderAccountId: String, amount: BigDecimal) {
         if (amount > PER_TRANSFER_LIMIT) {
             throw P2pTransferLimitExceededException(
                 "This transfer exceeds itunda's real $PER_TRANSFER_LIMIT RWF per-transfer limit",
             )
         }
-        walletRepository.findByIdForUpdate(senderWalletId)
+        accountRepository.findByIdForUpdate(senderAccountId)
         val startOfDayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant()
         val sentToday = transactionRepository
             .findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(senderUserId, TransactionType.TRANSFER, TransactionStatus.COMPLETED, startOfDayUtc)
@@ -125,7 +125,7 @@ class P2pTransferLimitService(
 
     companion object {
         // Real values proportioned to itunda's own already-established real limits
-        // (DebitCard.DEFAULT_DAILY_LIMIT = 500,000 RWF, MiniWalletService
+        // (DebitCard.DEFAULT_DAILY_LIMIT = 500,000 RWF, MiniAccountService
         // .DAILY_DEPOSIT_LIMIT = 300,000 RWF) rather than a literal KRW->RWF currency
         // conversion of the sourced TossBank figures above -- itunda's own real
         // account balances and transaction sizes are proportioned to those two

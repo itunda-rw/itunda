@@ -15,8 +15,8 @@ class InterestJar(
     @Column(name = "user_id", length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, precision = 18, scale = 2)
     var balance: BigDecimal,
@@ -43,5 +43,5 @@ class InterestJar(
     @Column(name = "last_nudged_at")
     var lastNudgedAt: Instant? = null,
 ) {
-    protected constructor() : this(userId = "", walletId = "", balance = BigDecimal.ZERO, rate = 0.0, earnedThisMonth = BigDecimal.ZERO, earnedTotal = BigDecimal.ZERO)
+    protected constructor() : this(userId = "", accountId = "", balance = BigDecimal.ZERO, rate = 0.0, earnedThisMonth = BigDecimal.ZERO, earnedTotal = BigDecimal.ZERO)
 }

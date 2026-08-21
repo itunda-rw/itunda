@@ -45,7 +45,7 @@ class OrderReturnServiceTest : BehaviorSpec({
         status = OrderStatus.DELIVERED, updatedAt = deliveredAt,
     )
 
-    val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+    val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
 
     Given("a buyer requesting a return on a real, recently-delivered order") {
         val orderRepository = mockk<OrderRepository>()
@@ -175,8 +175,8 @@ class OrderReturnServiceTest : BehaviorSpec({
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { orderRepository.findById("order_1") } returns Optional.of(deliveredOrder())
             val originalEntries = listOf(
-                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
-                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910"), currency = "RWF", balanceAfter = BigDecimal("5910"), memo = "Order collection - Kigali Store"),
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "account_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "account_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910"), currency = "RWF", balanceAfter = BigDecimal("5910"), memo = "Order collection - Kigali Store"),
                 LedgerEntry(id = "le_3", transactionId = "ledgertxn_1", accountId = "fee_revenue", accountType = LedgerAccountType.FEE_REVENUE, direction = LedgerDirection.CREDIT, amount = BigDecimal("90"), currency = "RWF", balanceAfter = BigDecimal("90"), memo = "Order fee - Kigali Store"),
             )
             every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
@@ -188,8 +188,8 @@ class OrderReturnServiceTest : BehaviorSpec({
 
             Then("it real-flips every original leg's direction, same reversing-ledger-entry technique cancelOrder already established") {
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_buyer" }.direction shouldBe LedgerDirection.CREDIT
-                legs.first { it.accountId == "wallet_merchant" }.direction shouldBe LedgerDirection.DEBIT
+                legs.first { it.accountId == "account_buyer" }.direction shouldBe LedgerDirection.CREDIT
+                legs.first { it.accountId == "account_merchant" }.direction shouldBe LedgerDirection.DEBIT
                 legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
             }
             Then("it marks the request APPROVED with a real refund transaction id") {
@@ -210,7 +210,7 @@ class OrderReturnServiceTest : BehaviorSpec({
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { orderRepository.findById("order_1") } returns Optional.of(deliveredOrder())
             every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns listOf(
-                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order"),
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "account_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order"),
             )
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("refund_after_commit", emptyList())
             every { orderReturnRequestRepository.save(any()) } answers { firstArg() }
@@ -274,7 +274,7 @@ class OrderReturnServiceTest : BehaviorSpec({
 
         When("someone who isn't the real seller for this order tries to decide it") {
             every { orderReturnRequestRepository.findById("return_1") } returns Optional.of(pendingReturn)
-            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "other_seller", walletId = "wallet_other", businessName = "Other Store", status = MerchantStatus.ACTIVE)
+            val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "other_seller", accountId = "account_other", businessName = "Other Store", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("other_seller") } returns otherMerchant
 
             // Real 404 (not 403) -- found live in a 2026-08-02 audit pass: a non-owning

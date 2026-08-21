@@ -25,7 +25,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.rideshare.BusBookingAlreadyCancelledException
 import rw.itunda.rideshare.BusBookingNotFoundException
-import rw.itunda.rideshare.BusNoWalletException
+import rw.itunda.rideshare.BusNoAccountException
 import rw.itunda.rideshare.BusService
 import rw.itunda.rideshare.BusTripAlreadyDepartedException
 import rw.itunda.rideshare.BusTripNotFoundException
@@ -114,8 +114,8 @@ class BusController(
     @ExceptionHandler(InvalidBusTripException::class)
     fun handleInvalidTrip(ex: InvalidBusTripException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BUS_TRIP", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(BusNoWalletException::class)
-    fun handleNoWallet(ex: BusNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(BusNoAccountException::class)
+    fun handleNoAccount(ex: BusNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientSeatsException::class)
     fun handleInsufficientSeats(ex: InsufficientSeatsException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INSUFFICIENT_SEATS", ex.message ?: "Conflict"))

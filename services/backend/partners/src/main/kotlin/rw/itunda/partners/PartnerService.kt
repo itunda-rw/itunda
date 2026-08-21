@@ -34,7 +34,7 @@ class InvalidMiniAppSubmissionException(message: String) : RuntimeException(mess
  * honest scope boundary.
  */
 object PartnerMiniAppPermissions {
-    val ALLOWED = setOf("wallet:read", "transactions:read", "profile:read")
+    val ALLOWED = setOf("account:read", "transactions:read", "profile:read")
 }
 
 /**

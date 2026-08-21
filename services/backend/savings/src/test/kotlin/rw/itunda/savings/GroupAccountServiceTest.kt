@@ -11,8 +11,8 @@ import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountContribution
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -23,8 +23,8 @@ import rw.itunda.core.repository.GroupAccountMemberRepository
 import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -32,8 +32,8 @@ import java.util.Optional
 /** First test coverage for the real Kakao Bank 모임통장 (group account) equivalent. */
 class GroupAccountServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+    fun account(id: String, userId: String, type: AccountType = AccountType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
         type = type, balance = balance, availableBalance = balance,
     )
 
@@ -47,7 +47,7 @@ class GroupAccountServiceTest : BehaviorSpec({
         val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
         val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
         val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -56,25 +56,25 @@ class GroupAccountServiceTest : BehaviorSpec({
         val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
         val service = GroupAccountService(
             groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
-            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
+            accountRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
         )
 
         When("an owner creates a new group account") {
             every { userRepository.findById("owner_1") } returns Optional.of(user("owner_1"))
-            every { walletRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
             every { groupAccountRepository.save(any()) } answers { firstArg() }
             val memberSlot = mutableListOf<GroupAccountMember>()
             every { groupAccountMemberRepository.save(capture(memberSlot)) } answers { firstArg() }
 
             val account = service.createGroupAccount("owner_1", "Roommates")
 
-            Then("it provisions a real zero-balance GROUP wallet and adds the owner as a real member") {
+            Then("it provisions a real zero-balance GROUP account and adds the owner as a real member") {
                 account.ownerId shouldBe "owner_1"
                 account.name shouldBe "Roommates"
-                val walletSlot = mutableListOf<Wallet>()
-                verify(exactly = 1) { walletRepository.save(capture(walletSlot)) }
-                walletSlot.single().type shouldBe WalletType.GROUP
-                walletSlot.single().balance shouldBe BigDecimal.ZERO
+                val accountSlot = mutableListOf<Account>()
+                verify(exactly = 1) { accountRepository.save(capture(accountSlot)) }
+                accountSlot.single().type shouldBe AccountType.GROUP
+                accountSlot.single().balance shouldBe BigDecimal.ZERO
                 memberSlot.single().userId shouldBe "owner_1"
                 verify(exactly = 1) { rateLimiter.checkLimit("group-account:create:owner_1", limit = 10, window = any()) }
             }
@@ -86,7 +86,7 @@ class GroupAccountServiceTest : BehaviorSpec({
         val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
         val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
         val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
@@ -95,10 +95,10 @@ class GroupAccountServiceTest : BehaviorSpec({
         val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
         val service = GroupAccountService(
             groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
-            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
+            accountRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
         )
 
-        val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1")
+        val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1")
 
         When("the owner invites a real itunda user by phone number") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
@@ -184,8 +184,8 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "member_2") } returns
                 GroupAccountMember(id = "grpmem_x", groupAccountId = "grp_1", userId = "member_2")
-            every { walletRepository.findByUserIdAndType("member_2", WalletType.MAIN) } returns wallet("wallet_member_2", "member_2")
-            every { walletRepository.findById("wallet_grp_1") } returns Optional.of(wallet("wallet_grp_1", "owner_1", WalletType.GROUP, BigDecimal("5000")))
+            every { accountRepository.findByUserIdAndType("member_2", AccountType.MAIN) } returns account("account_member_2", "member_2")
+            every { accountRepository.findById("account_grp_1") } returns Optional.of(account("account_grp_1", "owner_1", AccountType.GROUP, BigDecimal("5000")))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
                 GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
@@ -197,7 +197,7 @@ class GroupAccountServiceTest : BehaviorSpec({
 
             val result = service.deposit("member_2", "grp_1", BigDecimal("3000"))
 
-            Then("it posts a real ledger transfer from the member's own MAIN wallet and notifies the other real members, not the depositor") {
+            Then("it posts a real ledger transfer from the member's own MAIN account and notifies the other real members, not the depositor") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
                 verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
@@ -224,8 +224,8 @@ class GroupAccountServiceTest : BehaviorSpec({
 
         When("the owner withdraws from the group account") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
-            every { walletRepository.findById("wallet_grp_1") } returns Optional.of(wallet("wallet_grp_1", "owner_1", WalletType.GROUP, BigDecimal("5000")))
-            every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet("wallet_owner_1", "owner_1")
+            every { accountRepository.findById("account_grp_1") } returns Optional.of(account("account_grp_1", "owner_1", AccountType.GROUP, BigDecimal("5000")))
+            every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account("account_owner_1", "owner_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
                 GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
@@ -238,7 +238,7 @@ class GroupAccountServiceTest : BehaviorSpec({
 
             service.withdraw("owner_1", "grp_1", BigDecimal("2000"))
 
-            Then("it posts a real ledger transfer to the owner's own MAIN wallet and notifies other members transparently") {
+            Then("it posts a real ledger transfer to the owner's own MAIN account and notifies other members transparently") {
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
             }
@@ -259,8 +259,8 @@ class GroupAccountServiceTest : BehaviorSpec({
 
         When("the owner tries to withdraw more than the real group balance") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
-            every { walletRepository.findById("wallet_grp_1") } returns Optional.of(wallet("wallet_grp_1", "owner_1", WalletType.GROUP, BigDecimal("1000")))
-            every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet("wallet_owner_1", "owner_1")
+            every { accountRepository.findById("account_grp_1") } returns Optional.of(account("account_grp_1", "owner_1", AccountType.GROUP, BigDecimal("1000")))
+            every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account("account_owner_1", "owner_1")
 
             Then("it throws InsufficientFundsException without touching the ledger") {
                 try {
@@ -297,7 +297,7 @@ class GroupAccountServiceTest : BehaviorSpec({
         }
 
         When("checking real dues status for the current cycle, with one member paid and one unpaid") {
-            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
             val cycleMonth = java.time.YearMonth.now().toString()
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "owner_1") } returns
@@ -324,7 +324,7 @@ class GroupAccountServiceTest : BehaviorSpec({
         }
 
         When("the owner requests reminders for real unpaid members") {
-            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
             val cycleMonth = java.time.YearMonth.now().toString()
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
             every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
@@ -358,7 +358,7 @@ class GroupAccountServiceTest : BehaviorSpec({
         }
 
         When("a member who isn't the owner tries to request unpaid-dues reminders") {
-            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
 
             Then("it throws GroupAccountNotOwnerException before touching notifications") {

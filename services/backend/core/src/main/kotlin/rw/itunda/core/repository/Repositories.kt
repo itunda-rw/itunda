@@ -40,9 +40,9 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UserEmoticonPack
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletAutoTopUpSetting
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountAutoTopUpSetting
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.Grow31SavingsDeposit
 import rw.itunda.core.domain.Grow31SavingsPlan
 import rw.itunda.core.domain.WeeklySavingsInstallment
@@ -167,7 +167,7 @@ interface UserRepository : JpaRepository<User, String> {
     // KycSubmission row -- two concurrent submit() calls from the same user could both
     // pass that check before either committed and both create a real duplicate PENDING
     // KYC submission. Fixed the same way this codebase's own "reject if already exists"
-    // race precedent works (e.g. WalletRepository.findByIdForUpdate): lock a DIFFERENT
+    // race precedent works (e.g. AccountRepository.findByIdForUpdate): lock a DIFFERENT
     // already-existing row -- the caller's own real User row -- to serialize concurrent
     // submissions, then re-check under that lock.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -221,45 +221,45 @@ interface CustomerPaymentCodeRepository : JpaRepository<CustomerPaymentCode, Str
     fun invalidateUnusedByUserId(@Param("userId") userId: String): Int
 }
 
-interface WalletRepository : JpaRepository<Wallet, String> {
-    fun findByUserId(userId: String): List<Wallet>
-    fun findByUserIdAndType(userId: String, type: WalletType): Wallet?
+interface AccountRepository : JpaRepository<Account, String> {
+    fun findByUserId(userId: String): List<Account>
+    fun findByUserIdAndType(userId: String, type: AccountType): Account?
 
     // Real foreign-currency accounts (2026-07-25) -- a user can hold several
-    // FOREIGN_CURRENCY wallets at once (one per currency), unlike MAIN/SAVINGS'
+    // FOREIGN_CURRENCY accounts at once (one per currency), unlike MAIN/SAVINGS'
     // single-row-per-type assumption findByUserIdAndType relies on, same reasoning
-    // GROUP/WEEKLY_SAVINGS already established. See ForeignCurrencyWalletService's own
+    // GROUP/WEEKLY_SAVINGS already established. See ForeignCurrencyAccountService's own
     // doc comment.
-    fun findByUserIdAndTypeOrderByCreatedAtDesc(userId: String, type: WalletType): List<Wallet>
-    fun findByUserIdAndTypeAndCurrency(userId: String, type: WalletType, currency: String): Wallet?
+    fun findByUserIdAndTypeOrderByCreatedAtDesc(userId: String, type: AccountType): List<Account>
+    fun findByUserIdAndTypeAndCurrency(userId: String, type: AccountType, currency: String): Account?
 
     // Batch form of findByUserIdAndType -- PayrollService.runPayroll uses this to fetch
-    // every employee's wallet in one round trip instead of one findByUserIdAndType call
+    // every employee's account in one round trip instead of one findByUserIdAndType call
     // per roster row (a real N+1 a large payroll roster would otherwise pay for on every
     // run).
-    fun findByUserIdInAndType(userIds: List<String>, type: WalletType): List<Wallet>
+    fun findByUserIdInAndType(userIds: List<String>, type: AccountType): List<Account>
 
     // Real direct P2P push-transfer recipient resolution (2026-07-20) -- see
     // P2pService.sendDirect's own doc comment. accountNumber is globally unique (see
-    // AuthService.generateAccountNumber), not scoped per wallet type.
-    fun findByAccountNumber(accountNumber: String): Wallet?
+    // AuthService.generateAccountNumber), not scoped per account type.
+    fun findByAccountNumber(accountNumber: String): Account?
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select w from Wallet w where w.id = :id")
-    fun findByIdForUpdate(@Param("id") id: String): Optional<Wallet>
+    @Query("select w from Account w where w.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<Account>
 
     // Real Deposit Protection Fund coverage math (2026-08-11) -- see
     // DepositProtectionFund.kt's own doc comment. Scoped to the three real
-    // Wallet-backed products itunda Bank's own "Save & grow" hub actually shows
-    // (SAVINGS/WEEKLY_SAVINGS/UPFRONT_DEPOSIT), not every WalletType -- MAIN is
-    // itunda's separate wallet/Pay product (see AccountSwitcherSheet's own naming
+    // Account-backed products itunda Bank's own "Save & grow" hub actually shows
+    // (SAVINGS/WEEKLY_SAVINGS/UPFRONT_DEPOSIT), not every AccountType -- MAIN is
+    // itunda's separate account/Pay product (see AccountSwitcherSheet's own naming
     // research), and INVESTMENT/GROUP/BUSINESS/MINI/FOREIGN_CURRENCY are each their
     // own distinct product with different real risk, not itunda Bank deposits.
-    @Query("select coalesce(sum(w.balance), 0) from Wallet w where w.userId = :userId and w.type in :types")
-    fun sumBalanceByUserIdAndTypeIn(@Param("userId") userId: String, @Param("types") types: List<WalletType>): BigDecimal
+    @Query("select coalesce(sum(w.balance), 0) from Account w where w.userId = :userId and w.type in :types")
+    fun sumBalanceByUserIdAndTypeIn(@Param("userId") userId: String, @Param("types") types: List<AccountType>): BigDecimal
 
-    @Query("select coalesce(sum(w.balance), 0) from Wallet w where w.type in :types")
-    fun sumBalanceByTypeIn(@Param("types") types: List<WalletType>): BigDecimal
+    @Query("select coalesce(sum(w.balance), 0) from Account w where w.type in :types")
+    fun sumBalanceByTypeIn(@Param("types") types: List<AccountType>): BigDecimal
 }
 
 interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
@@ -269,13 +269,13 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
     // Real Isoko Vendor Cash Advance underwriting/collection window (2026-08-02) --
     // see VendorCashAdvanceService's own doc comment. Both getOffer's trailing-30-day
     // inflow scan and runDailyCollection's since-lastCollectionAt scan need every
-    // ledger entry posted to a given wallet account after a cutoff instant; direction
+    // ledger entry posted to a given account account after a cutoff instant; direction
     // (CREDIT) and the "collection -" narration-text filter are applied in-memory by
     // the caller, the same honest "no structured settlement-category field exists yet"
     // shortcut VendorCashAdvanceService names explicitly.
     fun findByAccountIdAndCreatedAtAfter(accountId: String, createdAt: Instant): List<LedgerEntry>
 
-    // Batch form of findByTransactionId -- WalletService.getSpendingInsight uses this to
+    // Batch form of findByTransactionId -- AccountService.getSpendingInsight uses this to
     // fetch every debit's sibling legs in one round trip instead of one findByTransactionId
     // call per debit (a real N+1 found in a 2026-07-19 performance sweep, same shape as
     // PayrollService.runPayroll's/GroupMessagingService's own already-fixed N+1s).
@@ -343,7 +343,7 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
 
     // Merchant reports (2026-07-16): a merchant collection's Transaction row has
     // recipientId = the merchant owner's userId (see MerchantService.collect), so this
-    // is the real join key -- not a merchant id or wallet id.
+    // is the real join key -- not a merchant id or account id.
     fun findByRecipientIdAndTypeAndCreatedAtBetween(
         recipientId: String,
         type: TransactionType,
@@ -363,13 +363,13 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         from: Instant,
     ): List<Transaction>
 
-    // Real MiniWalletService daily/monthly deposit-cap enforcement (2026-07-28) -- see
-    // that class's own doc comment. Coarse repo filter (this wallet's own real deposits
+    // Real MiniAccountService daily/monthly deposit-cap enforcement (2026-07-28) -- see
+    // that class's own doc comment. Coarse repo filter (this account's own real deposits
     // since a real window start), exact cap comparison in the service, same discipline
     // the recurring-payment-detection/FamilyLink spend-limit queries above establish.
-    @Query("select coalesce(sum(t.amount), 0) from Transaction t where t.toWalletId = :walletId and t.type = :type and t.status = :status and t.createdAt >= :from")
-    fun sumAmountByToWalletIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
-        @Param("walletId") walletId: String,
+    @Query("select coalesce(sum(t.amount), 0) from Transaction t where t.toAccountId = :accountId and t.type = :type and t.status = :status and t.createdAt >= :from")
+    fun sumAmountByToAccountIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
+        @Param("accountId") accountId: String,
         @Param("type") type: TransactionType,
         @Param("status") status: TransactionStatus,
         @Param("from") from: Instant,
@@ -412,9 +412,9 @@ interface UserEmoticonPackRepository : JpaRepository<UserEmoticonPack, String> {
     fun findByUserIdAndPackId(userId: String, packId: String): UserEmoticonPack?
 }
 
-interface WalletAutoTopUpSettingRepository : JpaRepository<WalletAutoTopUpSetting, String> {
-    fun findByWalletId(walletId: String): WalletAutoTopUpSetting?
-    fun findByEnabledTrue(): List<WalletAutoTopUpSetting>
+interface AccountAutoTopUpSettingRepository : JpaRepository<AccountAutoTopUpSetting, String> {
+    fun findByAccountId(accountId: String): AccountAutoTopUpSetting?
+    fun findByEnabledTrue(): List<AccountAutoTopUpSetting>
 }
 
 interface KeywordAlertRepository : JpaRepository<KeywordAlert, String> {

@@ -33,7 +33,7 @@ enum class DesignatedDriverTripStatus { REQUESTED, ACCEPTED, DRIVING, COMPLETED,
  *
  * Fare escrow/payout/refund mirrors `RideTrip`'s own fare-holding pattern exactly (a
  * real, already-proven shape, not reinvented): the customer's real fare leaves their
- * wallet at request time, held in `designated_driver_holding` until the trip
+ * account at request time, held in `designated_driver_holding` until the trip
  * completes, paid to the driver net of the platform fee, refunded in full if
  * cancelled while still `REQUESTED`.
  */

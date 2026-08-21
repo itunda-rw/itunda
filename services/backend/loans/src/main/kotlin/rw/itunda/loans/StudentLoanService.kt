@@ -9,13 +9,13 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StudentLoan
 import rw.itunda.core.domain.StudentLoanLevel
 import rw.itunda.core.domain.StudentLoanStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StudentLoanRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -29,7 +29,7 @@ class StudentLoanNotFoundException(message: String) : RuntimeException(message)
 class StudentLoanNotRequestedException(message: String) : RuntimeException(message)
 class StudentLoanNotDisbursedException(message: String) : RuntimeException(message)
 class StudentLoanNotRepayableException(message: String) : RuntimeException(message)
-class StudentLoanNoWalletException(message: String) : RuntimeException(message)
+class StudentLoanNoAccountException(message: String) : RuntimeException(message)
 
 // itunda's own honest ceiling on a single BRD student loan: 2,000,000 RWF -- a
 // reasonable itunda-chosen bound, not a claimed reproduction of any real published
@@ -68,7 +68,7 @@ private val ACTIVE_STATUSES = listOf(
 @Service
 class StudentLoanService(
     private val studentLoanRepository: StudentLoanRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
@@ -76,8 +76,8 @@ class StudentLoanService(
 ) {
     // Real bug class this session has hit repeatedly: the "reject if already active"
     // check-then-CREATE race -- @Version can't protect a row that doesn't exist yet.
-    // Locking the caller's own MAIN wallet row first (same fix VupLoanService.applyForLoan
-    // and MiniWalletService.openMiniWallet already needed for this exact shape)
+    // Locking the caller's own MAIN account row first (same fix VupLoanService.applyForLoan
+    // and MiniAccountService.openMiniAccount already needed for this exact shape)
     // serializes concurrent applications for the same user without needing a new lock
     // table.
     @Transactional
@@ -95,9 +95,9 @@ class StudentLoanService(
             throw InvalidStudentLoanAmountException("Amount must be between 1 and $MAX_STUDENT_LOAN_AMOUNT RWF")
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw StudentLoanNoWalletException("No wallet found for this account")
-        walletRepository.findByIdForUpdate(wallet.id)
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw StudentLoanNoAccountException("No account found for this account")
+        accountRepository.findByIdForUpdate(account.id)
 
         val activeLoans = studentLoanRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES)
         if (activeLoans.isNotEmpty()) {
@@ -124,13 +124,13 @@ class StudentLoanService(
         if (loan.userId != userId) throw StudentLoanNotFoundException("Student loan not found")
         if (loan.status != StudentLoanStatus.REQUESTED) throw StudentLoanNotRequestedException("Only a REQUESTED loan can be disbursed")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw StudentLoanNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw StudentLoanNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, loan.principalAmount, "BRD student loan disbursement"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, loan.principalAmount, "BRD student loan disbursement"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, loan.principalAmount, "BRD student loan principal owed"),
             ),
         )
@@ -166,8 +166,8 @@ class StudentLoanService(
         }
         if (amount <= BigDecimal.ZERO) throw InvalidStudentLoanAmountException("Repayment amount must be positive")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw StudentLoanNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw StudentLoanNoAccountException("No account found for this account")
 
         // Clamp BEFORE ever touching the ledger -- the exact overshoot-clamp lesson
         // this session learned fixing InsuranceService.contributeToFund/VupLoanService.repay.
@@ -175,9 +175,9 @@ class StudentLoanService(
         val actualAmount = amount.min(loan.outstandingBalance)
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "BRD student loan repayment"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "BRD student loan repayment"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, actualAmount, "BRD student loan repayment"),
             ),
         )
@@ -209,7 +209,7 @@ class StudentLoanService(
             "loanId" to loan.id,
             "outstandingBalance" to loan.outstandingBalance,
             "suggestedMonthlyPayment" to suggestedMonthlyPayment,
-            "note" to "This is a suggested amount based on your declared income -- itunda does not automatically deduct from your paycheck or wallet.",
+            "note" to "This is a suggested amount based on your declared income -- itunda does not automatically deduct from your paycheck or account.",
         )
     }
 

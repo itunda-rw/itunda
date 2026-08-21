@@ -8,7 +8,7 @@ import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.LinkedAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 
 data class AccountSummary(val id: String, val type: String, val name: String, val balance: BigDecimal, val currency: String)
@@ -36,9 +36,9 @@ data class OverviewResult(
 
 /**
  * Real "money state first" aggregation across every real itunda product — previously only
- * wallets showed on Home (see docs/TOSS_PARITY_MATRIX.md's Account aggregation row). External
+ * accounts showed on Home (see docs/TOSS_PARITY_MATRIX.md's Account aggregation row). External
  * bank/MoMo account linking remains target/blocked (no real consent registry, no provider
- * access) — this closes the *internal* aggregation gap only: itunda's own wallets, savings
+ * access) — this closes the *internal* aggregation gap only: itunda's own accounts, savings
  * goals, loans, stock holdings, and insurance policies, which were already each real and
  * ledger-backed individually but never summarized in one place.
  *
@@ -47,17 +47,17 @@ data class OverviewResult(
  * depends on another feature module, only `:core` (checked before writing this). Cost basis
  * is still a real number computed from real stored data, just not mark-to-market.
  *
- * netWorth = wallet balances + savings + investment cost basis - loan outstanding. Verified
+ * netWorth = account balances + savings + investment cost basis - loan outstanding. Verified
  * these don't double-count: depositing to savings, buying stock, and disbursing/repaying a
- * loan all move real money between a wallet and a dedicated ledger clearing account (checked
- * SavingsService/StocksService/LoansService directly) — never both counted as wallet balance
+ * loan all move real money between a account and a dedicated ledger clearing account (checked
+ * SavingsService/StocksService/LoansService directly) — never both counted as account balance
  * and product balance at once. Insurance is excluded from netWorth entirely (paid premiums
  * are a sunk expense, not an asset, same as real personal-finance accounting) and reported as
  * a coverage summary instead.
  */
 @Service
 class OverviewService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
     private val loanAccountRepository: LoanAccountRepository,
     private val holdingRepository: HoldingRepository,
@@ -66,9 +66,9 @@ class OverviewService(
 ) {
 
     fun getOverview(userId: String): OverviewResult {
-        val wallets = walletRepository.findByUserId(userId)
-        val accounts = wallets.map { AccountSummary(it.id, it.type.name, it.accountName, it.balance, it.currency) }
-        val walletTotal = wallets.fold(BigDecimal.ZERO) { acc, w -> acc + w.balance }
+        val userAccounts = accountRepository.findByUserId(userId)
+        val accounts = userAccounts.map { AccountSummary(it.id, it.type.name, it.accountName, it.balance, it.currency) }
+        val accountTotal = accounts.fold(BigDecimal.ZERO) { acc, w -> acc + w.balance }
 
         val goals = savingsGoalRepository.findByUserId(userId)
         val savingsTotal = goals.fold(BigDecimal.ZERO) { acc, g -> acc + g.currentAmount }
@@ -100,7 +100,7 @@ class OverviewService(
                 )
             }
 
-        val netWorth = walletTotal + savingsTotal + costBasisTotal - outstandingTotal
+        val netWorth = accountTotal + savingsTotal + costBasisTotal - outstandingTotal
 
         return OverviewResult(netWorth, accounts, savings, loans, investments, insurance, linkedAccounts)
     }

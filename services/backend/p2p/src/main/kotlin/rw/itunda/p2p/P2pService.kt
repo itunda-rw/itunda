@@ -12,7 +12,7 @@ import rw.itunda.core.domain.P2pPaymentRequestStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -22,10 +22,10 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.family.FamilyLinkService
 import rw.itunda.savings.RoundUpService
-import rw.itunda.wallet.AutoTopUpService
+import rw.itunda.account.AutoTopUpService
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
@@ -36,7 +36,7 @@ import java.util.UUID
 class P2pRequestNotFoundException(message: String) : RuntimeException(message)
 class P2pRequestNotPayableException(message: String) : RuntimeException(message)
 class P2pSelfPaymentException(message: String) : RuntimeException(message)
-class P2pNoWalletException(message: String) : RuntimeException(message)
+class P2pNoAccountException(message: String) : RuntimeException(message)
 class P2pRecipientNotFoundException(message: String) : RuntimeException(message)
 class P2pInvalidAmountException(message: String) : RuntimeException(message)
 class P2pTransferLimitExceededException(message: String) : RuntimeException(message)
@@ -52,19 +52,19 @@ data class P2pRecipientPreview(val recipientUserId: String, val displayName: Str
 
 /**
  * Real person-to-person QR -- see docs/TOSS_PARITY_MATRIX.md's QR Pay row. Deliberately
- * distinct from WalletService.confirmTransfer: that flow always routes through the simulated
+ * distinct from AccountService.confirmTransfer: that flow always routes through the simulated
  * external rail (recipientId hardcoded "external", CREDIT posts to rail_suspense) regardless
- * of whether the recipient happens to be an itunda user too -- there is no wallet-to-wallet
+ * of whether the recipient happens to be an itunda user too -- there is no account-to-account
  * concept in it at all (confirmed by reading it directly). This is the first real
- * wallet-to-wallet money movement in the backend where both sides are known itunda accounts:
+ * account-to-account money movement in the backend where both sides are known itunda accounts:
  * a direct WALLET-to-WALLET ledger pair, no rail hop, no fee (nothing external to settle).
  * Also the first real Transaction row where recipientId is an actual user id, not "external" --
- * WalletService.getTransactionHistory will show this to both the payer and the requester.
+ * AccountService.getTransactionHistory will show this to both the payer and the requester.
  */
 @Service
 class P2pService(
     private val p2pPaymentRequestRepository: P2pPaymentRequestRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
@@ -125,19 +125,19 @@ class P2pService(
         // same day-one-rate-limiting discipline as everything else in this codebase.
         rateLimiter.checkLimit("p2p:pay:$payerUserId", limit = 30, window = Duration.ofHours(1))
 
-        val payerWallet = walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("No wallet found for this account")
-        val requesterWallet = walletRepository.findByUserIdAndType(request.requesterUserId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("Requester has no wallet to receive this payment")
-        if (payerWallet.availableBalance < request.amount) {
+        val payerAccount = accountRepository.findByUserIdAndType(payerUserId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("No account found for this account")
+        val requesterAccount = accountRepository.findByUserIdAndType(request.requesterUserId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("Requester has no account to receive this payment")
+        if (payerAccount.availableBalance < request.amount) {
             throw InsufficientFundsException("Insufficient available balance for this payment")
         }
 
         val result = ledgerService.postLedgerTransaction(
-            payerWallet.currency,
+            payerAccount.currency,
             listOf(
-                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, request.amount, "QR payment - ${request.description}"),
-                LedgerLeg(requesterWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, request.amount, "QR payment received - ${request.description}"),
+                LedgerLeg(payerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, request.amount, "QR payment - ${request.description}"),
+                LedgerLeg(requesterAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, request.amount, "QR payment received - ${request.description}"),
             ),
         )
 
@@ -146,11 +146,11 @@ class P2pService(
             referenceNumber = "P2PQR${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = payerUserId,
             recipientId = request.requesterUserId,
-            fromWalletId = payerWallet.id,
-            toWalletId = requesterWallet.id,
+            fromAccountId = payerAccount.id,
+            toAccountId = requesterAccount.id,
             amount = request.amount,
             fee = BigDecimal.ZERO,
-            currency = payerWallet.currency,
+            currency = payerAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "QR payment - ${request.description}",
@@ -169,10 +169,10 @@ class P2pService(
         p2pPaymentRequestRepository.save(request)
         notifyMoneyReceived(request.requesterUserId, payerUserId, request.amount)
 
-        // Re-fetch, same as WalletService.confirmTransfer -- postLedgerTransaction doesn't
-        // mutate the Wallet instance already held in memory, only the underlying row.
-        val updatedPayerWallet = walletRepository.findById(payerWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
-        return transaction to updatedPayerWallet.balance
+        // Re-fetch, same as AccountService.confirmTransfer -- postLedgerTransaction doesn't
+        // mutate the Account instance already held in memory, only the underlying row.
+        val updatedPayerAccount = accountRepository.findById(payerAccount.id).orElseThrow { P2pNoAccountException("No account found for this account") }
+        return transaction to updatedPayerAccount.balance
     }
 
     /**
@@ -201,13 +201,13 @@ class P2pService(
      *
      * This is a read-only preview a client calls right after the recipient identifier
      * is entered, before rendering the final "Send X RWF to [name]?" confirmation --
-     * reuses [resolveRecipientWallet], the exact same resolution [sendDirect] itself
+     * reuses [resolveRecipientAccount], the exact same resolution [sendDirect] itself
      * uses, so what's previewed here is guaranteed to be who actually receives the
      * money if the sender goes on to confirm. Deliberately does NOT create any
-     * durable/expiring quote object the way [rw.itunda.wallet.WalletService
+     * durable/expiring quote object the way [rw.itunda.account.AccountService
      * .quoteTransfer] does for the external-rail flow: unlike that flow (where the fee
      * and rail routing genuinely need to be locked in between quote and confirm),
-     * nothing about a wallet-to-wallet resolution can drift between this call and
+     * nothing about a account-to-account resolution can drift between this call and
      * [sendDirect] -- a phone number isn't reassigned to a different real account
      * mid-session, so re-resolving at send time is exactly as safe and avoids a whole
      * extra class of stale/hijacked-quote bugs for zero real benefit.
@@ -224,46 +224,46 @@ class P2pService(
         // a few candidate contacts before picking the right one shouldn't get blocked.
         rateLimiter.checkLimit("p2p:resolve:$callerUserId", limit = 40, window = Duration.ofHours(1))
 
-        val recipientWallet = resolveRecipientWallet(trimmedIdentifier)
+        val recipientAccount = resolveRecipientAccount(trimmedIdentifier)
         // Same real self-payment guard sendDirect enforces -- previewing "send to
         // yourself" would be a confusing, pointless result to show, not an honest one.
-        if (recipientWallet.userId == callerUserId) {
+        if (recipientAccount.userId == callerUserId) {
             throw P2pSelfPaymentException("You can't send money to yourself -- check the recipient and try again")
         }
-        val recipientUser = userRepository.findById(recipientWallet.userId).orElse(null)
+        val recipientUser = userRepository.findById(recipientAccount.userId).orElse(null)
         val displayName = recipientUser?.let { "${it.firstName} ${it.lastName}" } ?: "itunda user"
-        return P2pRecipientPreview(recipientUserId = recipientWallet.userId, displayName = displayName)
+        return P2pRecipientPreview(recipientUserId = recipientAccount.userId, displayName = displayName)
     }
 
     /**
      * Real recipient resolution shared by [resolveRecipient] and [sendDirect] -- a
      * phone number (`UserRepository.findByPhoneNumber`, matching how a user actually
-     * thinks of a contact) or, if that misses, an account number (`WalletRepository.
+     * thinks of a contact) or, if that misses, an account number (`AccountRepository.
      * findByAccountNumber`, globally unique). Extracted so the preview a sender sees
      * and the recipient money actually moves to can never diverge -- one real
      * resolution path, not two independently-maintained copies of the same lookup.
      */
-    private fun resolveRecipientWallet(trimmedIdentifier: String) =
+    private fun resolveRecipientAccount(trimmedIdentifier: String) =
         (
-            userRepository.findByPhoneNumber(trimmedIdentifier)?.let { walletRepository.findByUserIdAndType(it.id, WalletType.MAIN) }
-                ?: walletRepository.findByAccountNumber(trimmedIdentifier)
+            userRepository.findByPhoneNumber(trimmedIdentifier)?.let { accountRepository.findByUserIdAndType(it.id, AccountType.MAIN) }
+                ?: accountRepository.findByAccountNumber(trimmedIdentifier)
             ) ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
 
     /**
      * Real direct itunda-to-itunda push-transfer (2026-07-20) -- a genuine gap surfaced
      * while wiring bank-mfe's own home-screen "Transfer" button: that button, matching
-     * Android/iOS's own `sendTransfer`, calls `WalletService.confirmTransfer`, which by
+     * Android/iOS's own `sendTransfer`, calls `AccountService.confirmTransfer`, which by
      * pre-existing design (see this class's own doc comment above) always routes through
      * the simulated external rail and never actually credits another itunda user's
-     * wallet, even when the typed-in recipient is a real itunda account. Until now the
-     * only real internal wallet-to-wallet movement was `payRequest` above, which requires
+     * account, even when the typed-in recipient is a real itunda account. Until now the
+     * only real internal account-to-account movement was `payRequest` above, which requires
      * the *recipient* to first generate a request -- there was no way to just type in
      * someone's phone number or account number and send them money immediately, the
      * single most basic real Toss "Transfer" action. This closes that gap by reusing
      * `payRequest`'s exact real ledger-movement shape (direct WALLET-to-WALLET pair, no
      * fee -- nothing external to settle) with a real recipient resolved by phone number
      * (`UserRepository.findByPhoneNumber`, matching how a user actually thinks of a
-     * contact) or, if that misses, by account number (`WalletRepository.
+     * contact) or, if that misses, by account number (`AccountRepository.
      * findByAccountNumber`, globally unique) -- never a fabricated match; an identifier
      * that resolves to neither is a real, honest 404, not a silent no-op.
      */
@@ -277,52 +277,52 @@ class P2pService(
         // for a real mutating money-movement endpoint.
         rateLimiter.checkLimit("p2p:send:$senderUserId", limit = 30, window = Duration.ofHours(1))
 
-        var senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("No wallet found for this account")
+        var senderAccount = accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("No account found for this account")
 
-        val recipientWallet = resolveRecipientWallet(trimmedIdentifier)
+        val recipientAccount = resolveRecipientAccount(trimmedIdentifier)
 
-        if (recipientWallet.userId == senderUserId) {
+        if (recipientAccount.userId == senderUserId) {
             throw P2pSelfPaymentException("You can't send money to yourself -- check the recipient and try again")
         }
-        if (senderWallet.availableBalance < amount) {
+        if (senderAccount.availableBalance < amount) {
             // Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at
             // payment time) -- see AutoTopUpService.topUpShortfall's own doc comment for
             // the full sourced account and why this is safe to call synchronously here
             // (before this transfer's own ledger legs are posted, so before any row lock
-            // on the sender's wallet is taken -- not the post-commit-hook pattern
+            // on the sender's account is taken -- not the post-commit-hook pattern
             // RoundUpService needed for its own, structurally different, AFTER-the-fact
             // auxiliary action). A no-op (falls through to the same real
             // InsufficientFundsException) for the overwhelming common case of a sender
             // with no auto top-up configured or enabled.
-            val shortfall = amount.subtract(senderWallet.availableBalance)
-            val topUpResult = autoTopUpService.topUpShortfall(senderUserId, senderWallet.id, shortfall)
+            val shortfall = amount.subtract(senderAccount.availableBalance)
+            val topUpResult = autoTopUpService.topUpShortfall(senderUserId, senderAccount.id, shortfall)
             if (topUpResult.triggered) {
-                senderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
+                senderAccount = accountRepository.findById(senderAccount.id).orElseThrow { P2pNoAccountException("No account found for this account") }
             }
-            if (senderWallet.availableBalance < amount) {
+            if (senderAccount.availableBalance < amount) {
                 throw InsufficientFundsException("Insufficient available balance for this transfer")
             }
         }
         // Real FamilyLink daily spend-limit enforcement (2026-07-27) -- see
         // FamilyLinkService.enforceSpendLimit's own doc comment. A real gate before
-        // money moves, same discipline WalletFrozenException/minOrderAmount already
+        // money moves, same discipline AccountFrozenException/minOrderAmount already
         // established; a no-op for the overwhelming common case of a sender who isn't a
         // linked child with a real limit set.
-        familyLinkService.enforceSpendLimit(senderUserId, senderWallet.id, amount)
+        familyLinkService.enforceSpendLimit(senderUserId, senderAccount.id, amount)
         // Real Korean "이체한도" (transfer limit) enforcement (Section 186) -- see
         // P2pTransferLimitService's own doc comment for the full sourced account. A
         // real, flat per-transfer and daily-cumulative cap on itunda's real
-        // wallet-to-wallet transfer rail, independent of (and stacked on top of) any
+        // account-to-account transfer rail, independent of (and stacked on top of) any
         // account-specific FamilyLink limit above.
-        p2pTransferLimitService.enforce(senderUserId, senderWallet.id, amount)
+        p2pTransferLimitService.enforce(senderUserId, senderAccount.id, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer - $trimmedDescription"),
-                LedgerLeg(recipientWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer received - $trimmedDescription"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer - $trimmedDescription"),
+                LedgerLeg(recipientAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer received - $trimmedDescription"),
             ),
         )
 
@@ -330,12 +330,12 @@ class P2pService(
             id = result.transactionId,
             referenceNumber = "P2PTXN${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = senderUserId,
-            recipientId = recipientWallet.userId,
-            fromWalletId = senderWallet.id,
-            toWalletId = recipientWallet.id,
+            recipientId = recipientAccount.userId,
+            fromAccountId = senderAccount.id,
+            toAccountId = recipientAccount.id,
             amount = amount,
             fee = BigDecimal.ZERO,
-            currency = senderWallet.currency,
+            currency = senderAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Transfer - $trimmedDescription",
@@ -344,9 +344,9 @@ class P2pService(
         // Evaluated before save, same ordering reasoning as payRequest's own inline
         // comment: evaluating after would let this transaction match itself as prior
         // history and permanently mask NEW_RECIPIENT.
-        fraudRuleEngine.evaluate(senderUserId, recipientWallet.userId, amount, transaction.id)
+        fraudRuleEngine.evaluate(senderUserId, recipientAccount.userId, amount, transaction.id)
         transactionRepository.save(transaction)
-        notifyMoneyReceived(recipientWallet.userId, senderUserId, amount)
+        notifyMoneyReceived(recipientAccount.userId, senderUserId, amount)
         // Real round-up auto-saving (2026-07-25) -- see RoundUpService's own doc
         // comment for the full account, including why P2P transfer specifically is
         // this feature's honest v1 scope.
@@ -363,8 +363,8 @@ class P2pService(
         //     poisons the transaction if it escaped a DIFFERENT proxied method first).
         // (2) Switching processRoundUp to REQUIRES_NEW (still called synchronously,
         //     right here) fixed (1) but created a real self-deadlock: its nested
-        //     `SELECT wallet FOR UPDATE` (inside fundInvestmentWallet/depositToGoal)
-        //     blocks on the exact same sender wallet row THIS transaction already locked
+        //     `SELECT account FOR UPDATE` (inside fundInvestmentAccount/depositToGoal)
+        //     blocks on the exact same sender account row THIS transaction already locked
         //     and hasn't released yet (row locks live until commit, and REQUIRES_NEW
         //     runs on a second, separate connection) -- real 30s "Lock wait timeout
         //     exceeded", again swallowed but silently skipping every real round-up.
@@ -403,8 +403,8 @@ class P2pService(
             }
         }
 
-        val updatedSenderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
-        return transaction to updatedSenderWallet.balance
+        val updatedSenderAccount = accountRepository.findById(senderAccount.id).orElseThrow { P2pNoAccountException("No account found for this account") }
+        return transaction to updatedSenderAccount.balance
     }
 
     /**
@@ -423,9 +423,9 @@ class P2pService(
         if (!familyLinkService.isActiveGuardianOf(guardianUserId, childUserId)) {
             throw P2pRecipientNotFoundException("No active family link with this account")
         }
-        val childWallet = walletRepository.findByUserIdAndType(childUserId, WalletType.MAIN)
+        val childAccount = accountRepository.findByUserIdAndType(childUserId, AccountType.MAIN)
             ?: throw P2pRecipientNotFoundException("No itunda account found for this family member")
-        return sendDirect(guardianUserId, childWallet.accountNumber, amount, description)
+        return sendDirect(guardianUserId, childAccount.accountNumber, amount, description)
     }
 
     // Real-time "money received" notification (2026-07-22) -- modeled on one of Toss
@@ -436,7 +436,7 @@ class P2pService(
     // significant gap by auditing this file directly: zero `Notification` references
     // existed anywhere in it despite both real money-movement paths (payRequest,
     // sendDirect) completing successfully -- confirmed by grep across every module that
-    // already does write real notifications (auth, savings, wallet budget alerts,
+    // already does write real notifications (auth, savings, account budget alerts,
     // messaging, commerce, community, agents), `p2p` and `merchant` were the two
     // conspicuously absent ones for money actually arriving in someone's account.
     // Deliberately recipient-only, not sender-side too: the sender already gets an

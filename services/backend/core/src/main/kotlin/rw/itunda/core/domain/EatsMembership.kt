@@ -67,7 +67,7 @@ class EatsMembership(
     // current `activeUntil`, extend it, save) -- the unique constraint on `userId`
     // only protects the very first subscribe's INSERT race, not two concurrent
     // EXTENSIONS of an already-existing membership, which would both debit the
-    // wallet for a real charge but only actually extend `activeUntil` once (both
+    // account for a real charge but only actually extend `activeUntil` once (both
     // reads see the same starting point). This makes the loser's save fail with a
     // real optimistic lock conflict, rolling back its own duplicate charge with it
     // (same transaction).

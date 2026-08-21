@@ -8,11 +8,11 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MotoOwnershipPlan
 import rw.itunda.core.domain.MotoOwnershipPlanStatus
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MotoOwnershipPlanRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -28,7 +28,7 @@ class MotoOwnershipPlanNotCancellableException(message: String) : RuntimeExcepti
 class MotoOwnershipPlanNotRepayableException(message: String) : RuntimeException(message)
 class MotoOwnershipDownPaymentNotMetException(message: String) : RuntimeException(message)
 class InvalidMotoOwnershipAmountException(message: String) : RuntimeException(message)
-class MotoOwnershipNoWalletException(message: String) : RuntimeException(message)
+class MotoOwnershipNoAccountException(message: String) : RuntimeException(message)
 
 // itunda's own honest realistic range for a moto-taxi bike, grounded in the sourced
 // ~600,000 RWF entry-level figure (Anadolu Agency) but not a claimed reproduction of
@@ -65,7 +65,7 @@ private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 @Service
 class MotoOwnershipService(
     private val motoOwnershipPlanRepository: MotoOwnershipPlanRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -73,9 +73,9 @@ class MotoOwnershipService(
 
     // Real bug class this session has hit repeatedly -- the "reject if already
     // active" check-then-CREATE race: @Version can't protect a row that doesn't exist
-    // yet. Locking the caller's own MAIN wallet row first (same fix
+    // yet. Locking the caller's own MAIN account row first (same fix
     // VupLoanService.applyForLoan/StudentLoanService.applyForLoan/
-    // MiniWalletService.openMiniWallet already needed for this exact shape)
+    // MiniAccountService.openMiniAccount already needed for this exact shape)
     // serializes concurrent plan creations for the same user without needing a new
     // lock table.
     @Transactional
@@ -90,9 +90,9 @@ class MotoOwnershipService(
             )
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw MotoOwnershipNoWalletException("No wallet found for this account")
-        walletRepository.findByIdForUpdate(wallet.id)
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw MotoOwnershipNoAccountException("No account found for this account")
+        accountRepository.findByIdForUpdate(account.id)
 
         val activePlans = motoOwnershipPlanRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES)
         if (activePlans.isNotEmpty()) {
@@ -122,8 +122,8 @@ class MotoOwnershipService(
         if (plan.status != MotoOwnershipPlanStatus.SAVING) throw MotoOwnershipPlanNotSavingException("Only a SAVING plan can receive contributions")
         if (amount <= BigDecimal.ZERO) throw InvalidMotoOwnershipAmountException("Contribution amount must be positive")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw MotoOwnershipNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw MotoOwnershipNoAccountException("No account found for this account")
 
         // Clamp BEFORE ever touching the ledger -- the exact overshoot-clamp lesson
         // this session learned fixing InsuranceService.contributeToFund/
@@ -133,9 +133,9 @@ class MotoOwnershipService(
         if (actualAmount <= BigDecimal.ZERO) throw InvalidMotoOwnershipAmountException("The down payment target has already been met")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Moto-taxi ownership plan contribution"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Moto-taxi ownership plan contribution"),
                 LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Moto-taxi ownership plan contribution"),
             ),
         )
@@ -149,15 +149,15 @@ class MotoOwnershipService(
         val plan = getOwnedPlan(userId, planId)
         if (plan.status != MotoOwnershipPlanStatus.SAVING) throw MotoOwnershipPlanNotCancellableException("Only a SAVING plan can be cancelled")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw MotoOwnershipNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw MotoOwnershipNoAccountException("No account found for this account")
 
         if (plan.savedAmount > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                wallet.currency,
+                account.currency,
                 listOf(
                     LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, plan.savedAmount, "Moto-taxi ownership plan cancelled -- refund"),
-                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.savedAmount, "Moto-taxi ownership plan cancelled -- refund"),
+                    LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.savedAmount, "Moto-taxi ownership plan cancelled -- refund"),
                 ),
             )
         }
@@ -169,7 +169,7 @@ class MotoOwnershipService(
 
     // Real accounting bug found live in this feature's own build-time review
     // (2026-08-02): the original version of this method posted the disbursement as
-    // TWO separate transactions -- a CREDIT wallet/DEBIT loan_payable leg for only
+    // TWO separate transactions -- a CREDIT account/DEBIT loan_payable leg for only
     // `remainingBalance`, plus a second transaction crediting `savedAmount` BACK to
     // loan_payable, reasoning that the first leg had "under-recognized" the full
     // bikePrice. That reasoning was wrong: the first leg already DEBITs loan_payable
@@ -186,17 +186,17 @@ class MotoOwnershipService(
     //
     // Corrected design: the whole point of converting is that the user goes and
     // actually buys the bike, so they need the FULL purchase price in spendable
-    // wallet cash, not just the loan portion -- the down payment they already saved
+    // account cash, not just the loan portion -- the down payment they already saved
     // (locked in savings_goal_payable, previously only reachable via `cancel`'s
-    // refund) gets RELEASED into their wallet alongside the newly-disbursed loan
+    // refund) gets RELEASED into their account alongside the newly-disbursed loan
     // principal, in ONE real, atomically-balanced ledger transaction:
-    //   - wallet: CREDIT bikePrice (the full purchase amount, now spendable)
+    //   - account: CREDIT bikePrice (the full purchase amount, now spendable)
     //   - savings_goal_payable: DEBIT savedAmount (release the locked-down-payment
     //     liability -- itunda no longer owes it back as a future refund, because it's
     //     just been delivered to the user as real cash instead)
     //   - loan_payable: DEBIT remainingBalance (the genuinely NEW principal borrowed)
     // Debits (savedAmount + remainingBalance = bikePrice) always exactly equal the
-    // wallet credit (bikePrice), for any savedAmount/bikePrice combination -- no
+    // account credit (bikePrice), for any savedAmount/bikePrice combination -- no
     // revenue account or second transaction needed, and loan_payable ends up carrying
     // exactly `loanOutstanding`, nothing more.
     @Transactional
@@ -207,21 +207,21 @@ class MotoOwnershipService(
             throw MotoOwnershipDownPaymentNotMetException("The down payment target (${plan.downPaymentTarget}) has not been met yet")
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw MotoOwnershipNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw MotoOwnershipNoAccountException("No account found for this account")
 
         val remainingBalance = plan.bikePrice.subtract(plan.savedAmount)
 
         val legs = mutableListOf(
-            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.bikePrice, "Moto-taxi ownership purchase -- loan disbursement + released down payment"),
+            LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.bikePrice, "Moto-taxi ownership purchase -- loan disbursement + released down payment"),
         )
         if (plan.savedAmount > BigDecimal.ZERO) {
-            legs.add(LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, plan.savedAmount, "Moto-taxi ownership down payment released to wallet"))
+            legs.add(LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, plan.savedAmount, "Moto-taxi ownership down payment released to account"))
         }
         if (remainingBalance > BigDecimal.ZERO) {
             legs.add(LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, remainingBalance, "Moto-taxi ownership loan principal owed"))
         }
-        ledgerService.postLedgerTransaction(wallet.currency, legs)
+        ledgerService.postLedgerTransaction(account.currency, legs)
 
         plan.loanOutstanding = remainingBalance
         plan.status = MotoOwnershipPlanStatus.LOAN_ACTIVE
@@ -234,17 +234,17 @@ class MotoOwnershipService(
         if (plan.status != MotoOwnershipPlanStatus.LOAN_ACTIVE) throw MotoOwnershipPlanNotRepayableException("Only a LOAN_ACTIVE plan can be repaid")
         if (amount <= BigDecimal.ZERO) throw InvalidMotoOwnershipAmountException("Repayment amount must be positive")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw MotoOwnershipNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw MotoOwnershipNoAccountException("No account found for this account")
 
         // Clamp BEFORE ever touching the ledger -- same overshoot-clamp discipline as
         // `contribute` above.
         val actualAmount = amount.min(plan.loanOutstanding)
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Moto-taxi ownership loan repayment"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Moto-taxi ownership loan repayment"),
                 LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Moto-taxi ownership loan repayment"),
             ),
         )
@@ -275,9 +275,9 @@ class MotoOwnershipService(
     // behavior SavingsService.autoContribute already establishes.
     @Transactional
     fun autoContribute(plan: MotoOwnershipPlan): Boolean {
-        val wallet = walletRepository.findByUserIdAndType(plan.userId, WalletType.MAIN)
-        if (wallet == null || wallet.availableBalance < plan.dailyContribution) {
-            log.info("Skipping auto-contribution for moto-taxi ownership plan {} -- insufficient funds or no MAIN wallet", plan.id)
+        val account = accountRepository.findByUserIdAndType(plan.userId, AccountType.MAIN)
+        if (account == null || account.availableBalance < plan.dailyContribution) {
+            log.info("Skipping auto-contribution for moto-taxi ownership plan {} -- insufficient funds or no MAIN account", plan.id)
             return false
         }
 
@@ -286,9 +286,9 @@ class MotoOwnershipService(
         if (actualAmount <= BigDecimal.ZERO) return false
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Moto-taxi ownership plan auto-contribution"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Moto-taxi ownership plan auto-contribution"),
                 LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Moto-taxi ownership plan auto-contribution"),
             ),
         )

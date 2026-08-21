@@ -11,7 +11,7 @@ import java.time.Instant
  * A real B2B payroll roster row -- one employee an itunda merchant has agreed to pay a
  * fixed recurring salary. Closes the "B2B payroll remains not built" gap named in
  * Merchant.kt's own doc comment: unlike card processing/NIDA/PSP integrations, payroll
- * needs no external credentials at all -- disbursing to an employee's own itunda wallet
+ * needs no external credentials at all -- disbursing to an employee's own itunda account
  * is the same real WALLET-to-WALLET ledger movement P2pService.payRequest already does,
  * just to many recipients per run instead of one. See rw.itunda.merchant.PayrollService.
  */

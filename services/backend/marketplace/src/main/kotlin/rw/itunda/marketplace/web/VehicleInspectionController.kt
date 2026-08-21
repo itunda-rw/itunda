@@ -17,16 +17,16 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
-import rw.itunda.marketplace.BuyerNoWalletException
+import rw.itunda.marketplace.BuyerNoAccountException
 import rw.itunda.marketplace.InspectionBookingNotFoundException
 import rw.itunda.marketplace.InvalidInspectionFeeException
 import rw.itunda.marketplace.InvalidInspectionStatusTransitionException
 import rw.itunda.marketplace.ListingNotFoundException
 import rw.itunda.marketplace.MechanicAlreadyRegisteredException
-import rw.itunda.marketplace.MechanicNoWalletException
+import rw.itunda.marketplace.MechanicNoAccountException
 import rw.itunda.marketplace.MechanicNotRegisteredException
 import rw.itunda.marketplace.SelfInspectionException
 import rw.itunda.marketplace.VehicleInspectionService
@@ -117,12 +117,12 @@ class VehicleInspectionController(
     fun handleMechanicNotRegistered(ex: MechanicNotRegisteredException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MECHANIC_NOT_REGISTERED", ex.message ?: "Not found"))
 
-    @ExceptionHandler(MechanicNoWalletException::class)
-    fun handleMechanicNoWallet(ex: MechanicNoWalletException) =
+    @ExceptionHandler(MechanicNoAccountException::class)
+    fun handleMechanicNoAccount(ex: MechanicNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(BuyerNoWalletException::class)
-    fun handleBuyerNoWallet(ex: BuyerNoWalletException) =
+    @ExceptionHandler(BuyerNoAccountException::class)
+    fun handleBuyerNoAccount(ex: BuyerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidInspectionFeeException::class)
@@ -149,9 +149,9 @@ class VehicleInspectionController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

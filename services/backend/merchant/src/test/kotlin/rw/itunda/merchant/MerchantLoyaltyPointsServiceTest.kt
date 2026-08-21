@@ -15,7 +15,7 @@ import java.time.Instant
 
 class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
-    val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+    val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
     Given("a customer with no prior real points at a merchant") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()

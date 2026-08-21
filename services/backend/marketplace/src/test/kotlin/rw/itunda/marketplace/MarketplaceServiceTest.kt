@@ -17,7 +17,7 @@ import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.MarketplaceEscrow
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.Account
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerService
@@ -29,7 +29,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
@@ -47,7 +47,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -58,7 +58,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -118,7 +118,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -129,7 +129,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
         // getListing (called directly below, and internally by contactSeller) now also
@@ -252,10 +252,10 @@ class MarketplaceServiceTest : BehaviorSpec({
             )
             every { listingRepository.findById("listing_6") } returns Optional.of(freshListing)
             every { rateLimiter.checkLimit("marketplace:pay-escrow:buyer_2", limit = 20, window = Duration.ofHours(1)) } returns Unit
-            val buyerWallet = Wallet(id = "wallet_buyer", userId = "buyer_2", accountNumber = "1", accountName = "Buyer", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
-            val sellerWallet = Wallet(id = "wallet_seller", userId = "seller_1", accountNumber = "2", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"))
-            every { walletRepository.findByUserIdAndType("buyer_2", rw.itunda.core.domain.WalletType.MAIN) } returns buyerWallet
-            every { walletRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+            val buyerAccount = Account(id = "account_buyer", userId = "buyer_2", accountNumber = "1", accountName = "Buyer", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+            val sellerAccount = Account(id = "account_seller", userId = "seller_1", accountNumber = "2", accountName = "Seller", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"))
+            every { accountRepository.findByUserIdAndType("buyer_2", rw.itunda.core.domain.AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.AccountType.MAIN) } returns sellerAccount
             val seller = User(id = "seller_1", phoneNumber = "0788000001", firstName = "Seller", lastName = "One", passwordHash = "x")
             every { userRepository.findById("seller_1") } returns Optional.of(seller)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("txn_1", emptyList())
@@ -288,10 +288,10 @@ class MarketplaceServiceTest : BehaviorSpec({
             )
             every { listingRepository.findById("listing_7") } returns Optional.of(freshListing)
             every { rateLimiter.checkLimit("marketplace:pay-escrow:buyer_3", limit = 20, window = Duration.ofHours(1)) } returns Unit
-            val buyerWallet = Wallet(id = "wallet_buyer_3", userId = "buyer_3", accountNumber = "3", accountName = "Buyer", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
-            val sellerWallet = Wallet(id = "wallet_seller_2", userId = "seller_1", accountNumber = "4", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"))
-            every { walletRepository.findByUserIdAndType("buyer_3", rw.itunda.core.domain.WalletType.MAIN) } returns buyerWallet
-            every { walletRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+            val buyerAccount = Account(id = "account_buyer_3", userId = "buyer_3", accountNumber = "3", accountName = "Buyer", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+            val sellerAccount = Account(id = "account_seller_2", userId = "seller_1", accountNumber = "4", accountName = "Seller", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"))
+            every { accountRepository.findByUserIdAndType("buyer_3", rw.itunda.core.domain.AccountType.MAIN) } returns buyerAccount
+            every { accountRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.AccountType.MAIN) } returns sellerAccount
             val seller = User(id = "seller_1", phoneNumber = "0788000001", firstName = "Seller", lastName = "One", passwordHash = "x")
             every { userRepository.findById("seller_1") } returns Optional.of(seller)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("txn_2", emptyList())
@@ -466,7 +466,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -477,7 +477,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -501,7 +501,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -512,7 +512,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -559,7 +559,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -570,7 +570,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -636,7 +636,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -647,7 +647,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -726,7 +726,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -737,7 +737,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -774,7 +774,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
@@ -785,7 +785,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -843,7 +843,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>(relaxed = true)
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
@@ -854,7 +854,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -887,7 +887,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>(relaxed = true)
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
@@ -898,7 +898,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -907,9 +907,9 @@ class MarketplaceServiceTest : BehaviorSpec({
             amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_c",
             createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(8)),
         )
-        val sellerWallet = Wallet(id = "wallet_seller", userId = "seller_c", accountNumber = "ACC-S", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        val sellerAccount = Account(id = "account_seller", userId = "seller_c", accountNumber = "ACC-S", accountName = "Seller", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
         every { marketplaceEscrowRepository.findById("escrow_c") } returns java.util.Optional.of(escrow)
-        every { walletRepository.findByUserIdAndType("seller_c", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+        every { accountRepository.findByUserIdAndType("seller_c", rw.itunda.core.domain.AccountType.MAIN) } returns sellerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_release_1", emptyList())
         every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
         every { listingRepository.findById("listing_c") } returns java.util.Optional.empty()
@@ -936,7 +936,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>(relaxed = true)
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
@@ -947,7 +947,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -975,7 +975,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>(relaxed = true)
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
@@ -986,7 +986,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -996,9 +996,9 @@ class MarketplaceServiceTest : BehaviorSpec({
             status = rw.itunda.core.domain.MarketplaceEscrowStatus.DISPUTED,
         )
         val listing = Listing(id = "listing_e", sellerId = "seller_e", title = "Sofa", description = "desc", price = BigDecimal("10000"), category = "furniture")
-        val sellerWallet = Wallet(id = "wallet_seller_e", userId = "seller_e", accountNumber = "ACC-SE", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        val sellerAccount = Account(id = "account_seller_e", userId = "seller_e", accountNumber = "ACC-SE", accountName = "Seller", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
         every { marketplaceEscrowRepository.findById("escrow_e") } returns java.util.Optional.of(escrow)
-        every { walletRepository.findByUserIdAndType("seller_e", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+        every { accountRepository.findByUserIdAndType("seller_e", rw.itunda.core.domain.AccountType.MAIN) } returns sellerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_release_e", emptyList())
         every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
         every { listingRepository.findById("listing_e") } returns java.util.Optional.of(listing)
@@ -1015,7 +1015,7 @@ class MarketplaceServiceTest : BehaviorSpec({
                 verify(exactly = 2) { notificationRepository.save(capture(notifSlots)) }
                 val sellerNotif = notifSlots.single { it.userId == "seller_e" }
                 sellerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
-                sellerNotif.body shouldBe "The dispute for \"Sofa\" was resolved in your favor. 9850 RWF has been credited to your wallet."
+                sellerNotif.body shouldBe "The dispute for \"Sofa\" was resolved in your favor. 9850 RWF has been credited to your account."
                 val buyerNotif = notifSlots.single { it.userId == "buyer_e" }
                 buyerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
                 buyerNotif.body shouldBe "The dispute for \"Sofa\" was resolved in the seller's favor. The payment has been released to them."
@@ -1034,7 +1034,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>(relaxed = true)
         val trustScoreService = mockk<TrustScoreService>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
@@ -1045,7 +1045,7 @@ class MarketplaceServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
         )
 
@@ -1058,9 +1058,9 @@ class MarketplaceServiceTest : BehaviorSpec({
             id = "listing_f", sellerId = "seller_f", title = "Lamp", description = "desc", price = BigDecimal("10000"), category = "home",
             status = ListingStatus.SOLD, buyerId = "buyer_f",
         )
-        val buyerWallet = Wallet(id = "wallet_buyer_f", userId = "buyer_f", accountNumber = "ACC-BF", accountName = "Buyer", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        val buyerAccount = Account(id = "account_buyer_f", userId = "buyer_f", accountNumber = "ACC-BF", accountName = "Buyer", type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
         every { marketplaceEscrowRepository.findById("escrow_f") } returns java.util.Optional.of(escrow)
-        every { walletRepository.findByUserIdAndType("buyer_f", rw.itunda.core.domain.WalletType.MAIN) } returns buyerWallet
+        every { accountRepository.findByUserIdAndType("buyer_f", rw.itunda.core.domain.AccountType.MAIN) } returns buyerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_refund_f", emptyList())
         every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
         every { listingRepository.findById("listing_f") } returns java.util.Optional.of(listing)
@@ -1080,7 +1080,7 @@ class MarketplaceServiceTest : BehaviorSpec({
                 verify(exactly = 2) { notificationRepository.save(capture(notifSlots)) }
                 val buyerNotif = notifSlots.single { it.userId == "buyer_f" }
                 buyerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
-                buyerNotif.body shouldBe "The dispute for \"Lamp\" was resolved in your favor. 10000 RWF has been refunded to your wallet."
+                buyerNotif.body shouldBe "The dispute for \"Lamp\" was resolved in your favor. 10000 RWF has been refunded to your account."
                 val sellerNotif = notifSlots.single { it.userId == "seller_f" }
                 sellerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
                 sellerNotif.body shouldBe "The dispute for \"Lamp\" was resolved in the buyer's favor. The payment has been refunded to them."

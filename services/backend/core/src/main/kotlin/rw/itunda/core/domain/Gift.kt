@@ -26,9 +26,9 @@ enum class GiftTheme { CONGRATULATIONS, HEARTFELT, GOOD_LUCK, SETTLE_UP }
 /**
  * A real KakaoTalk-style "선물하기" (gift) money gift sent within an existing 1:1 chat
  * conversation -- distinct from `P2pService.sendDirect`'s instant push-transfer: a
- * gift's money leaves the sender's wallet immediately into a real GIFT_HOLDING escrow
+ * gift's money leaves the sender's account immediately into a real GIFT_HOLDING escrow
  * account (same "hold, don't move directly" pattern `EatsOrder`'s own delivery-fee
- * escrow already established), and only actually reaches the recipient's wallet when
+ * escrow already established), and only actually reaches the recipient's account when
  * they explicitly "open"/claim it -- the same real two-step UX every KakaoPay/Toss
  * gift-money product uses, not a cosmetic delay. An unclaimed gift auto-refunds to the
  * sender after [EXPIRY] via [rw.itunda.gift.GiftExpiryScheduler], mirroring

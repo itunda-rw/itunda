@@ -20,8 +20,8 @@ import rw.itunda.core.domain.PaymentIntentStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -33,7 +33,7 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -55,21 +55,21 @@ class MerchantServiceTest : BehaviorSpec({
     }
 
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
-    Given("a registered merchant with a settlement wallet") {
+    Given("a registered merchant with a settlement account") {
         val merchantRepository = mockk<MerchantRepository>()
         val paymentIntentRepository = mockk<PaymentIntentRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
         // Not relaxed for save() specifically: mockk's relaxed default can't correctly
         // infer JpaRepository's generic `<S extends T> S save(S)` signature, returning a
         // raw mock Object that then fails a real ClassCastException back in the caller
-        // (confirmed live) -- same reason WalletServiceTest explicitly stubs this too.
+        // (confirmed live) -- same reason AccountServiceTest explicitly stubs this too.
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
@@ -84,24 +84,25 @@ class MerchantServiceTest : BehaviorSpec({
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
         val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService)
+        val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, accountRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService, autoTopUpService)
 
-        val ownerWallet = wallet("wallet_merchant", "owner_1")
+        val ownerAccount = account("account_merchant", "owner_1")
         val merchant = Merchant(
-            id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant",
+            id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant",
             businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE,
         )
 
         When("registering a new merchant") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns null
-            every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns ownerWallet
+            every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns ownerAccount
             every { merchantRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.register("owner_1", "Kigali Coffee")
 
-            Then("it reuses the owner's existing wallet as the settlement wallet") {
-                result.walletId shouldBe "wallet_merchant"
+            Then("it reuses the owner's existing account as the settlement account") {
+                result.accountId shouldBe "account_merchant"
                 result.ownerUserId shouldBe "owner_1"
                 result.status shouldBe MerchantStatus.ACTIVE
             }
@@ -126,15 +127,15 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
-        When("registering an account with no wallet") {
+        When("registering an account with no account") {
             every { merchantRepository.findByOwnerUserId("owner_2") } returns null
-            every { walletRepository.findByUserIdAndType("owner_2", WalletType.MAIN) } returns null
+            every { accountRepository.findByUserIdAndType("owner_2", AccountType.MAIN) } returns null
 
-            Then("it throws MerchantNoWalletException") {
+            Then("it throws MerchantNoAccountException") {
                 try {
-                    service.register("owner_2", "No Wallet Shop")
-                    error("expected MerchantNoWalletException")
-                } catch (e: MerchantNoWalletException) {
+                    service.register("owner_2", "No Account Shop")
+                    error("expected MerchantNoAccountException")
+                } catch (e: MerchantNoAccountException) {
                     // expected
                 }
             }
@@ -274,7 +275,7 @@ class MerchantServiceTest : BehaviorSpec({
         }
 
         When("collecting a valid, pending payment intent") {
-            val payerWallet = wallet("wallet_payer", "payer_1")
+            val payerAccount = account("account_payer", "payer_1")
             val intent = PaymentIntent(
                 id = "pi_1", merchantId = "merchant_1", amount = BigDecimal("5000"),
                 description = "2 espresso", expiresAt = Instant.now().plusSeconds(600),
@@ -283,8 +284,8 @@ class MerchantServiceTest : BehaviorSpec({
 
             every { paymentIntentRepository.findById("pi_1") } returns Optional.of(intent)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("payer_1", WalletType.MAIN) } returns payerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { accountRepository.findByUserIdAndType("payer_1", AccountType.PAY) } returns payerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
             every { notificationRepository.save(any()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
                 LedgerPostResult("ledgertxn_test", emptyList())
@@ -295,8 +296,8 @@ class MerchantServiceTest : BehaviorSpec({
             Then("it splits a 1.5% fee to fee_revenue and the rest to the merchant") {
                 val legs = legsSlot.captured
                 legs.size shouldBe 3
-                val payerLeg = legs.first { it.accountId == "wallet_payer" }
-                val merchantLeg = legs.first { it.accountId == "wallet_merchant" }
+                val payerLeg = legs.first { it.accountId == "account_payer" }
+                val merchantLeg = legs.first { it.accountId == "account_merchant" }
                 val feeLeg = legs.first { it.accountId == "fee_revenue" }
 
                 payerLeg.direction shouldBe LedgerDirection.DEBIT
@@ -316,8 +317,8 @@ class MerchantServiceTest : BehaviorSpec({
                 intent.paidByUserId shouldBe "payer_1"
                 intent.completedTransactionId shouldBe "ledgertxn_test"
             }
-            Then("real Toss Shopping cashback is awarded for the real payer wallet and purchase amount") {
-                verify(exactly = 1) { shoppingCashbackService.awardCashback(payerWallet, BigDecimal("5000"), "Kigali Coffee", any()) }
+            Then("real Toss Shopping cashback is awarded for the real payer account and purchase amount") {
+                verify(exactly = 1) { shoppingCashbackService.awardCashback(payerAccount, BigDecimal("5000"), "Kigali Coffee", any()) }
                 result.containsKey("cashbackEarned") shouldBe true
             }
             // Real-time "money received" notification for the merchant owner (2026-07-22)
@@ -340,8 +341,67 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        // Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at
+        // payment time) wired into merchant payment collection -- same real mechanic
+        // P2pService.sendDirect already uses for P2P transfers, previously missing from
+        // this app's actual highest-traffic real money-moving path.
+        When("collecting a payment where the payer's balance is short, but auto top-up covers it") {
+            val shortAccount = account("account_short", "payer_short").also { it.availableBalance = BigDecimal("2000") }
+            val toppedUpAccount = account("account_short", "payer_short").also { it.availableBalance = BigDecimal("10000") }
+            val intent = PaymentIntent(
+                id = "pi_short", merchantId = "merchant_1", amount = BigDecimal("5000"),
+                description = "2 espresso", expiresAt = Instant.now().plusSeconds(600),
+            )
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { paymentIntentRepository.findById("pi_short") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { accountRepository.findByUserIdAndType("payer_short", AccountType.PAY) } returns shortAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
+            every { accountRepository.findById("account_short") } returns Optional.of(toppedUpAccount)
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
+                LedgerPostResult("ledgertxn_short", emptyList())
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+            every { autoTopUpService.topUpShortfall("payer_short", "account_short", BigDecimal("3000")) } returns
+                rw.itunda.account.AutoTopUpTriggerResult(true, "Topped up 3000 RWF to cover the real shortfall")
+
+            val result = service.collect("payer_short", "pi_short")
+
+            Then("it calls topUpShortfall for exactly the real gap, re-reads the account, and completes the payment") {
+                verify(exactly = 1) { autoTopUpService.topUpShortfall("payer_short", "account_short", BigDecimal("3000")) }
+                result["status"] shouldBe "COMPLETED"
+                val payerLeg = legsSlot.captured.first { it.accountId == "account_short" }
+                payerLeg.amount shouldBe BigDecimal("5000")
+            }
+        }
+
+        When("collecting a payment where the payer's balance is short and auto top-up isn't configured") {
+            val shortAccount = account("account_short2", "payer_short2").also { it.availableBalance = BigDecimal("2000") }
+            val intent = PaymentIntent(
+                id = "pi_short2", merchantId = "merchant_1", amount = BigDecimal("5000"),
+                description = "2 espresso", expiresAt = Instant.now().plusSeconds(600),
+            )
+            every { paymentIntentRepository.findById("pi_short2") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { accountRepository.findByUserIdAndType("payer_short2", AccountType.PAY) } returns shortAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
+            every { autoTopUpService.topUpShortfall("payer_short2", "account_short2", BigDecimal("3000")) } returns
+                rw.itunda.account.AutoTopUpTriggerResult(false, "No auto top-up setting configured for this account")
+            every { ledgerService.postLedgerTransaction(any(), any()) } throws
+                rw.itunda.core.ledger.InsufficientFundsException("Insufficient available balance for this transfer")
+
+            Then("it real-propagates the same InsufficientFundsException a normal shortfall would, not a dead end") {
+                try {
+                    service.collect("payer_short2", "pi_short2")
+                    error("expected InsufficientFundsException")
+                } catch (e: rw.itunda.core.ledger.InsufficientFundsException) {
+                    // expected
+                }
+            }
+        }
+
         When("collecting a payment while redeeming real existing loyalty points") {
-            val payerWallet = wallet("wallet_payer_points", "payer_points")
+            val payerAccount = account("account_payer_points", "payer_points")
             val intent = PaymentIntent(
                 id = "pi_points", merchantId = "merchant_1", amount = BigDecimal("5000"),
                 description = "2 espresso", expiresAt = Instant.now().plusSeconds(600),
@@ -349,8 +409,8 @@ class MerchantServiceTest : BehaviorSpec({
             val legsSlot = slot<List<LedgerLeg>>()
             every { paymentIntentRepository.findById("pi_points") } returns Optional.of(intent)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("payer_points", WalletType.MAIN) } returns payerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { accountRepository.findByUserIdAndType("payer_points", AccountType.PAY) } returns payerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
             every { notificationRepository.save(any()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
                 LedgerPostResult("ledgertxn_points", emptyList())
@@ -361,7 +421,7 @@ class MerchantServiceTest : BehaviorSpec({
 
             Then("the real charge amount is reduced by the real redeemed points before any ledger leg is posted") {
                 val legs = legsSlot.captured
-                val payerLeg = legs.first { it.accountId == "wallet_payer_points" }
+                val payerLeg = legs.first { it.accountId == "account_payer_points" }
                 payerLeg.amount shouldBe BigDecimal("4000")
                 result["pointsRedeemed"] shouldBe BigDecimal("1000")
             }
@@ -417,7 +477,7 @@ class MerchantServiceTest : BehaviorSpec({
             every { paymentIntentRepository.findById("pi_4") } returns Optional.of(selfIntent)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
-            Then("it throws SelfPaymentException before touching any wallet") {
+            Then("it throws SelfPaymentException before touching any account") {
                 try {
                     service.collect("owner_1", "pi_4")
                     error("expected SelfPaymentException")
@@ -497,18 +557,18 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("the merchant has a real webhook URL registered and a payment is collected") {
             val hookedMerchant = Merchant(
-                id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_merchant2",
+                id = "merchant_2", ownerUserId = "owner_2", accountId = "account_merchant2",
                 businessName = "Hooked Cafe", status = MerchantStatus.ACTIVE, webhookUrl = "https://merchant.example/hooks",
             )
-            val payerWallet = wallet("wallet_payer2", "payer_2")
+            val payerAccount = account("account_payer2", "payer_2")
             val intent = PaymentIntent(
                 id = "pi_hook", merchantId = "merchant_2", amount = BigDecimal("1000"),
                 description = "coffee", expiresAt = Instant.now().plusSeconds(600),
             )
             every { paymentIntentRepository.findById("pi_hook") } returns Optional.of(intent)
             every { merchantRepository.findById("merchant_2") } returns Optional.of(hookedMerchant)
-            every { walletRepository.findByUserIdAndType("payer_2", WalletType.MAIN) } returns payerWallet
-            every { walletRepository.findById("wallet_merchant2") } returns Optional.of(wallet("wallet_merchant2", "owner_2"))
+            every { accountRepository.findByUserIdAndType("payer_2", AccountType.PAY) } returns payerAccount
+            every { accountRepository.findById("account_merchant2") } returns Optional.of(account("account_merchant2", "owner_2"))
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_hook", emptyList())
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
 
@@ -520,15 +580,15 @@ class MerchantServiceTest : BehaviorSpec({
         }
 
         When("the real cashback service itself fails during a collection") {
-            val payerWallet = wallet("wallet_payer3", "payer_3")
+            val payerAccount = account("account_payer3", "payer_3")
             val intent = PaymentIntent(
                 id = "pi_cashback_fail", merchantId = "merchant_1", amount = BigDecimal("2000"),
                 description = "tea", expiresAt = Instant.now().plusSeconds(600),
             )
             every { paymentIntentRepository.findById("pi_cashback_fail") } returns Optional.of(intent)
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
-            every { walletRepository.findByUserIdAndType("payer_3", WalletType.MAIN) } returns payerWallet
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { accountRepository.findByUserIdAndType("payer_3", AccountType.PAY) } returns payerAccount
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_cb_fail", emptyList())
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
             every { shoppingCashbackService.awardCashback(any(), any(), any(), any()) } throws RuntimeException("simulated cashback outage")
@@ -544,7 +604,7 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("charging a real Luhn-valid demo test card that authorizes") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_card_1", emptyList())
 
@@ -553,14 +613,14 @@ class MerchantServiceTest : BehaviorSpec({
                 DemoCardAuthorizationService.TEST_CARD_APPROVE, 12, 2030, "123",
             )
 
-            Then("it posts real ledger legs from a real clearing account, not a fake payer wallet") {
+            Then("it posts real ledger legs from a real clearing account, not a fake payer account") {
                 val clearingLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.RAIL_SUSPENSE }
                 clearingLeg.accountId shouldBe "card_network_clearing"
                 clearingLeg.direction shouldBe LedgerDirection.DEBIT
                 clearingLeg.amount shouldBe BigDecimal("8000")
 
                 val merchantLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
-                merchantLeg.accountId shouldBe "wallet_merchant"
+                merchantLeg.accountId shouldBe "account_merchant"
                 merchantLeg.direction shouldBe LedgerDirection.CREDIT
                 merchantLeg.amount shouldBe BigDecimal("7880.00")
             }
@@ -573,7 +633,7 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("charging a demo test card that declines") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
 
             Then("it throws CardDeclinedException before ever touching the ledger -- a real decline must not move money") {
                 try {
@@ -591,7 +651,7 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("charging a card number that fails the real Luhn checksum") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
-            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { accountRepository.findById("account_merchant") } returns Optional.of(ownerAccount)
 
             Then("it throws CardDeclinedException as an invalid card, never touching the ledger") {
                 try {
@@ -630,7 +690,7 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("resolving a merchant by a real, valid API key") {
             val keyedMerchant = Merchant(
-                id = "merchant_5", ownerUserId = "owner_5", walletId = "wallet_5",
+                id = "merchant_5", ownerUserId = "owner_5", accountId = "account_5",
                 businessName = "External Shop", status = MerchantStatus.ACTIVE,
                 apiKeyHash = "d1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
             )
@@ -660,7 +720,7 @@ class MerchantServiceTest : BehaviorSpec({
         When("resolving by a real PREVIOUS key still inside its real 7-day grace period") {
             every { merchantRepository.findByApiKeyHash(any()) } returns null
             val graceMerchant = Merchant(
-                id = "merchant_7", ownerUserId = "owner_7", walletId = "wallet_7",
+                id = "merchant_7", ownerUserId = "owner_7", accountId = "account_7",
                 businessName = "Rotated Key Shop", status = MerchantStatus.ACTIVE,
                 apiKeyHash = "current_hash_7", previousApiKeyHash = "previous_hash_7",
                 previousApiKeyExpiresAt = Instant.now().plusSeconds(3600),
@@ -675,7 +735,7 @@ class MerchantServiceTest : BehaviorSpec({
         When("resolving by a real PREVIOUS key whose real grace period has already elapsed") {
             every { merchantRepository.findByApiKeyHash(any()) } returns null
             val expiredMerchant = Merchant(
-                id = "merchant_8", ownerUserId = "owner_8", walletId = "wallet_8",
+                id = "merchant_8", ownerUserId = "owner_8", accountId = "account_8",
                 businessName = "Expired Key Shop", status = MerchantStatus.ACTIVE,
                 apiKeyHash = "current_hash_8", previousApiKeyHash = "previous_hash_8",
                 previousApiKeyExpiresAt = Instant.now().minusSeconds(3600),
@@ -694,7 +754,7 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("resolving by a real key belonging to a suspended merchant") {
             val suspendedMerchant = Merchant(
-                id = "merchant_6", ownerUserId = "owner_6", walletId = "wallet_6",
+                id = "merchant_6", ownerUserId = "owner_6", accountId = "account_6",
                 businessName = "Suspended Shop", status = MerchantStatus.SUSPENDED,
                 apiKeyHash = "hash6",
             )
@@ -820,8 +880,8 @@ class MerchantServiceTest : BehaviorSpec({
         )
 
         fun originalLegs(txnId: String) = listOf(
-            LedgerEntry(id = "le_1", transactionId = txnId, accountId = "payer_wallet", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("10000"), currency = "RWF", balanceAfter = BigDecimal("90000"), memo = "QR payment"),
-            LedgerEntry(id = "le_2", transactionId = txnId, accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("9850"), currency = "RWF", balanceAfter = BigDecimal("9850"), memo = "QR collection"),
+            LedgerEntry(id = "le_1", transactionId = txnId, accountId = "payer_account", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("10000"), currency = "RWF", balanceAfter = BigDecimal("90000"), memo = "QR payment"),
+            LedgerEntry(id = "le_2", transactionId = txnId, accountId = "account_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("9850"), currency = "RWF", balanceAfter = BigDecimal("9850"), memo = "QR collection"),
             LedgerEntry(id = "le_3", transactionId = txnId, accountId = "fee_revenue", accountType = LedgerAccountType.FEE_REVENUE, direction = LedgerDirection.CREDIT, amount = BigDecimal("150"), currency = "RWF", balanceAfter = BigDecimal("150"), memo = "QR fee"),
         )
 
@@ -837,9 +897,9 @@ class MerchantServiceTest : BehaviorSpec({
 
             Then("it reverses every original leg's direction at full amount, matching rw.itunda.commerce.OrderService.cancelOrder's exact real reversal pattern") {
                 legsSlot.captured.size shouldBe 3
-                legsSlot.captured.find { it.accountId == "payer_wallet" }!!.direction shouldBe LedgerDirection.CREDIT
-                legsSlot.captured.find { it.accountId == "payer_wallet" }!!.amount shouldBe BigDecimal("10000.00")
-                legsSlot.captured.find { it.accountId == "wallet_merchant" }!!.direction shouldBe LedgerDirection.DEBIT
+                legsSlot.captured.find { it.accountId == "payer_account" }!!.direction shouldBe LedgerDirection.CREDIT
+                legsSlot.captured.find { it.accountId == "payer_account" }!!.amount shouldBe BigDecimal("10000.00")
+                legsSlot.captured.find { it.accountId == "account_merchant" }!!.direction shouldBe LedgerDirection.DEBIT
                 legsSlot.captured.find { it.accountId == "fee_revenue" }!!.direction shouldBe LedgerDirection.DEBIT
             }
 
@@ -862,7 +922,7 @@ class MerchantServiceTest : BehaviorSpec({
             val result = service.cancelPayment(merchant, "pi_c2", "Partial return", BigDecimal("2000"))
 
             Then("only 20% of each original leg is reversed -- an itunda-specific proportional choice, not a fabricated claim about Toss's own internal partial-cancel math") {
-                legsSlot.captured.find { it.accountId == "payer_wallet" }!!.amount shouldBe BigDecimal("2000.00")
+                legsSlot.captured.find { it.accountId == "payer_account" }!!.amount shouldBe BigDecimal("2000.00")
                 legsSlot.captured.find { it.accountId == "fee_revenue" }!!.amount shouldBe BigDecimal("30.00")
             }
 
@@ -940,13 +1000,13 @@ class MerchantServiceTest : BehaviorSpec({
     Given("a registered merchant with no webhook configured yet") {
         val merchantRepository = mockk<MerchantRepository>()
         val paymentIntentRepository = mockk<PaymentIntentRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
         // Not relaxed for save() specifically: mockk's relaxed default can't correctly
         // infer JpaRepository's generic `<S extends T> S save(S)` signature, returning a
         // raw mock Object that then fails a real ClassCastException back in the caller
-        // (confirmed live) -- same reason WalletServiceTest explicitly stubs this too.
+        // (confirmed live) -- same reason AccountServiceTest explicitly stubs this too.
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
@@ -961,9 +1021,9 @@ class MerchantServiceTest : BehaviorSpec({
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
         val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, accountRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService, mockk(relaxed = true))
 
-        val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
+        val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", accountId = "account_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
         every { merchantRepository.save(any()) } answers { firstArg() }
 
@@ -991,7 +1051,7 @@ class MerchantServiceTest : BehaviorSpec({
     Given("a merchant with real collections spread across two days and two channels") {
         val merchantRepository = mockk<MerchantRepository>()
         val paymentIntentRepository = mockk<PaymentIntentRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>()
@@ -1007,9 +1067,9 @@ class MerchantServiceTest : BehaviorSpec({
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>()
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>()
         val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, accountRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService, mockk(relaxed = true))
 
-        val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
+        val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", accountId = "account_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant
 
         fun txn(id: String, day: LocalDate, amount: String, fee: String, channel: String) = Transaction(

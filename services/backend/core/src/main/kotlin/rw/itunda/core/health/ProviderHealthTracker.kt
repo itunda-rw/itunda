@@ -52,7 +52,7 @@ private class RailCounters(@Volatile var displayName: String) {
  * that's expected, not a bug).
  *
  * In-memory (ConcurrentHashMap), same reasoning as IncidentDetector's
- * rolling failure tracking and WalletService.QuoteStore: ephemeral
+ * rolling failure tracking and AccountService.QuoteStore: ephemeral
  * operational state, not something that needs to survive a restart.
  */
 @Service

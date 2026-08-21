@@ -9,7 +9,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 
 @Component
 class SavingsDepositBatchActionHandler(
@@ -21,9 +21,9 @@ class SavingsDepositBatchActionHandler(
     override fun handle(userId: String, idempotencyKey: String, body: Map<String, Any?>): Pair<Int, Map<String, Any?>> = try {
         val goalId = body.requiredString("goalId")
         val amount = body.requiredBigDecimal("amount")
-        val fromWalletId = body.optionalString("fromWalletId")
+        val fromAccountId = body.optionalString("fromAccountId")
         idempotencyService.replayOrExecute("POST /api/v1/savings/deposit", idempotencyKey, body) {
-            val goal = savingsService.depositToGoal(userId, goalId, amount, fromWalletId)
+            val goal = savingsService.depositToGoal(userId, goalId, amount, fromAccountId)
             200 to mapOf("success" to true, "message" to "Deposited $amount RWF to \"${goal.name}\"", "goal" to goal)
         }
     } catch (e: Exception) {
@@ -31,13 +31,13 @@ class SavingsDepositBatchActionHandler(
             is IdempotencyConflictException -> 409 to mapOf("success" to false, "error" to mapOf("code" to "IDEMPOTENCY_KEY_CONFLICT", "message" to e.message))
             is IdempotencyInProgressException -> 409 to mapOf("success" to false, "error" to mapOf("code" to "IDEMPOTENT_REQUEST_PROCESSING", "message" to e.message))
             is GoalNotFoundException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "GOAL_NOT_FOUND", "message" to e.message))
-            is NoWalletException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_FOUND", "message" to e.message))
+            is NoAccountException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_FOUND", "message" to e.message))
             // Real fix (IDOR audit pass 2), matching SavingsController's own identical
-            // handler fix: a real 404, not 403, so a stranger's real walletId doesn't
+            // handler fix: a real 404, not 403, so a stranger's real accountId doesn't
             // confirm its existence via the status code alone.
-            is WalletNotOwnedException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_OWNED", "message" to e.message))
+            is AccountNotOwnedException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_OWNED", "message" to e.message))
             is InsufficientFundsException -> 422 to mapOf("success" to false, "error" to mapOf("code" to "INSUFFICIENT_FUNDS", "message" to e.message))
-            is WalletFrozenException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_FROZEN", "message" to e.message))
+            is AccountFrozenException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_FROZEN", "message" to e.message))
             is IllegalArgumentException -> 400 to mapOf("success" to false, "error" to mapOf("code" to "INVALID_ACTION_BODY", "message" to e.message))
             else -> throw e
         }

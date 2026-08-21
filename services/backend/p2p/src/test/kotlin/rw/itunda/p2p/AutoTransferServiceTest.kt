@@ -15,7 +15,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AutoTransferRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -33,7 +33,7 @@ import java.time.Instant
 class AutoTransferServiceTest : BehaviorSpec({
 
     fun autoTransfer(status: rw.itunda.core.domain.AutoTransferStatus = rw.itunda.core.domain.AutoTransferStatus.ACTIVE) = AutoTransfer(
-        id = "autotransfer_1", userId = "user_1", walletId = "wallet_1",
+        id = "autotransfer_1", userId = "user_1", accountId = "account_1",
         recipientIdentifier = "+250788000000", recipientName = "Recipient",
         amount = BigDecimal("5000"), frequency = AutoTransferFrequency.WEEKLY, dayOfWeek = 1,
         status = status, nextExecutionAt = Instant.parse("2026-08-17T00:00:00Z"),
@@ -41,13 +41,13 @@ class AutoTransferServiceTest : BehaviorSpec({
 
     Given("a due weekly auto-transfer whose recipient has insufficient funds available from the sender") {
         val autoTransferRepository = mockk<AutoTransferRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val userRepository = mockk<UserRepository>()
         val p2pService = mockk<P2pService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = AutoTransferService(autoTransferRepository, walletRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
+        val service = AutoTransferService(autoTransferRepository, accountRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
 
         every { autoTransferRepository.save(any()) } answers { firstArg() }
         // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and

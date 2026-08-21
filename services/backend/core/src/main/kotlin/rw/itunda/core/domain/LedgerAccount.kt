@@ -7,9 +7,9 @@ import jakarta.persistence.Table
 import java.math.BigDecimal
 
 /**
- * Non-wallet ledger clearing accounts (fee income, money in flight to external rails/
+ * Non-account ledger clearing accounts (fee income, money in flight to external rails/
  * custody/lending) — mirrors the `ledgerAccounts` map in backend/src/services/ledger.ts.
- * Kept separate from `wallets` so they never show up as a customer-facing balance.
+ * Kept separate from `accounts` so they never show up as a customer-facing balance.
  */
 @Entity
 @Table(name = "ledger_accounts")
@@ -48,7 +48,7 @@ class LedgerAccount(
             // order is placed until it's real-paid out to whichever rider completes the
             // delivery (rw.itunda.eats.EatsOrderService, 2026-07-18) -- a real, standard
             // escrow-style clearing account (the buyer's money already left their
-            // wallet, it just hasn't reached its final recipient yet), not a fake holding
+            // account, it just hasn't reached its final recipient yet), not a fake holding
             // pattern invented for this feature.
             "eats_delivery_holding" to "Eats Delivery Fee Holding",
             // Holds a real KakaoTalk-style gift's money from the moment it's sent until
@@ -58,7 +58,7 @@ class LedgerAccount(
             "gift_holding" to "Gift Holding",
             "cash_vault" to "Itunda Cash Vault",
             // Real foreign-currency conversion clearing, one per real supported
-            // currency (2026-07-25) -- see ForeignCurrencyWalletService's own doc
+            // currency (2026-07-25) -- see ForeignCurrencyAccountService's own doc
             // comment for why each conversion is two separate single-currency ledger
             // transactions rather than one cross-currency one, and why these are
             // per-currency accounts rather than one shared "fx_clearing" bucket.

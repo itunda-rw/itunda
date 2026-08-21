@@ -14,7 +14,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.Account
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -52,7 +52,7 @@ class MerchantBillingChargeExecutor(
 
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of the published range, the same
-    // real wallet-to-wallet collection underneath, just recurring.
+    // real account-to-account collection underneath, just recurring.
     private val feeRate = BigDecimal("0.015")
 
     /**
@@ -63,14 +63,14 @@ class MerchantBillingChargeExecutor(
      * try/catch for the scheduler's resilient per-cycle behavior.
      */
     @Transactional
-    fun execute(subscription: MerchantBillingSubscription, plan: MerchantBillingPlan, merchant: Merchant, customerWallet: Wallet, merchantWallet: Wallet) {
+    fun execute(subscription: MerchantBillingSubscription, plan: MerchantBillingPlan, merchant: Merchant, customerAccount: Account, merchantAccount: Account) {
         val fee = plan.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = plan.amount.subtract(fee)
         val result = ledgerService.postLedgerTransaction(
-            customerWallet.currency,
+            customerAccount.currency,
             listOf(
-                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.amount, "Subscription charge - ${plan.name}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Subscription collection - ${plan.name}"),
+                LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.amount, "Subscription charge - ${plan.name}"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Subscription collection - ${plan.name}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Subscription fee - ${plan.name}"),
             ),
         )
@@ -79,8 +79,8 @@ class MerchantBillingChargeExecutor(
                 id = result.transactionId,
                 referenceNumber = "BILLING${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = subscription.customerId, recipientId = merchant.ownerUserId,
-                fromWalletId = customerWallet.id, toWalletId = merchantWallet.id,
-                amount = plan.amount, fee = fee, currency = customerWallet.currency,
+                fromAccountId = customerAccount.id, toAccountId = merchantAccount.id,
+                amount = plan.amount, fee = fee, currency = customerAccount.currency,
                 type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
                 description = "Subscription charge - ${plan.name}", channel = "MERCHANT_BILLING",
                 completedAt = Instant.now(),

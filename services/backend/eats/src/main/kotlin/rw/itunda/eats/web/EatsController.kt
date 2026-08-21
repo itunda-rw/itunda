@@ -24,19 +24,19 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.eats.DeliveryAlreadyClaimedException
 import rw.itunda.eats.RiderAlreadyOnDeliveryException
-import rw.itunda.eats.EatsBuyerNoWalletException
+import rw.itunda.eats.EatsBuyerNoAccountException
 import rw.itunda.eats.EatsFavoriteService
-import rw.itunda.eats.EatsMembershipNoWalletException
+import rw.itunda.eats.EatsMembershipNoAccountException
 import rw.itunda.eats.EatsMembershipService
 import rw.itunda.eats.InvalidMembershipDurationException
 import rw.itunda.eats.InvalidPlatformMembershipDurationException
-import rw.itunda.eats.PlatformMembershipNoWalletException
+import rw.itunda.eats.PlatformMembershipNoAccountException
 import rw.itunda.eats.PlatformMembershipService
 import rw.itunda.eats.RestaurantNotAcceptingOrdersException
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
@@ -73,10 +73,10 @@ import rw.itunda.eats.MenuItemSurplusDealExpiredException
 import rw.itunda.eats.MissingRequiredMenuOptionException
 import rw.itunda.eats.NoActiveOfferException
 import rw.itunda.eats.NotAssignedRiderException
-import rw.itunda.eats.RestaurantNoWalletException
+import rw.itunda.eats.RestaurantNoAccountException
 import rw.itunda.eats.RestaurantNotFoundException
 import rw.itunda.eats.RiderAlreadyRegisteredException
-import rw.itunda.eats.RiderNoWalletException
+import rw.itunda.eats.RiderNoAccountException
 import rw.itunda.eats.RiderNotAvailableException
 import rw.itunda.eats.RiderNotRegisteredException
 import rw.itunda.eats.RiderService
@@ -671,24 +671,24 @@ class EatsController(
     fun handleRestaurantNotFound(ex: RestaurantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(RestaurantNoWalletException::class)
-    fun handleRestaurantNoWallet(ex: RestaurantNoWalletException) =
+    @ExceptionHandler(RestaurantNoAccountException::class)
+    fun handleRestaurantNoAccount(ex: RestaurantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(EatsBuyerNoWalletException::class)
-    fun handleBuyerNoWallet(ex: EatsBuyerNoWalletException) =
+    @ExceptionHandler(EatsBuyerNoAccountException::class)
+    fun handleBuyerNoAccount(ex: EatsBuyerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(EatsMembershipNoWalletException::class)
-    fun handleMembershipNoWallet(ex: EatsMembershipNoWalletException) =
+    @ExceptionHandler(EatsMembershipNoAccountException::class)
+    fun handleMembershipNoAccount(ex: EatsMembershipNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidMembershipDurationException::class)
     fun handleInvalidMembershipDuration(ex: InvalidMembershipDurationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MEMBERSHIP_DURATION", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(PlatformMembershipNoWalletException::class)
-    fun handlePlatformMembershipNoWallet(ex: PlatformMembershipNoWalletException) =
+    @ExceptionHandler(PlatformMembershipNoAccountException::class)
+    fun handlePlatformMembershipNoAccount(ex: PlatformMembershipNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidPlatformMembershipDurationException::class)
@@ -835,8 +835,8 @@ class EatsController(
     fun handleRiderNotRegistered(ex: RiderNotRegisteredException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDER_NOT_REGISTERED", ex.message ?: "Not found"))
 
-    @ExceptionHandler(RiderNoWalletException::class)
-    fun handleRiderNoWallet(ex: RiderNoWalletException) =
+    @ExceptionHandler(RiderNoAccountException::class)
+    fun handleRiderNoAccount(ex: RiderNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDER_WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidRiderLocationException::class)
@@ -879,9 +879,9 @@ class EatsController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

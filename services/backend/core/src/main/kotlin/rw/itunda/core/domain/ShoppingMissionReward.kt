@@ -17,14 +17,14 @@ import java.time.Instant
  * backend independently verified a scroll gesture, the same relationship
  * `DailyStepReward.steps` already has with the client's own device pedometer.
  *
- * Every mission here pays out real RWF credited straight to the user's real wallet via
+ * Every mission here pays out real RWF credited straight to the user's real account via
  * `LedgerService` (see `ShoppingMissionService`), the same real-money-not-fake-points
  * architecture `StepRewardService` already established -- itunda has never built a
  * separate internal points currency, and this doesn't start one.
  *
  * `@Version` for the same real reason `DailyStepReward.version` exists: two concurrent
  * claims of the same mission in the same request window must not both see the flag
- * still `false` and both credit the wallet.
+ * still `false` and both credit the account.
  */
 @Entity
 @Table(name = "shopping_mission_rewards")

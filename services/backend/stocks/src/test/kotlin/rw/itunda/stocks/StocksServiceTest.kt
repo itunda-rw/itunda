@@ -10,36 +10,36 @@ import io.mockk.verify
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 
 /** First test coverage for stocks -- specifically the weighted-average-cost math on
  * buy (a real, easy-to-get-wrong calculation) and that sell can't oversell a position. */
 class StocksServiceTest : BehaviorSpec({
 
-    fun investmentWallet() = Wallet(
-        id = "wallet_inv", userId = "user_1", accountNumber = "ACC-INV", accountName = "Investment",
-        type = WalletType.INVESTMENT, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+    fun investmentAccount() = Account(
+        id = "account_inv", userId = "user_1", accountNumber = "ACC-INV", accountName = "Investment",
+        type = AccountType.INVESTMENT, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
     )
 
-    Given("a user with an investment wallet") {
-        val walletRepository = mockk<WalletRepository>()
+    Given("a user with an investment account") {
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.INVESTMENT) } returns investmentWallet()
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.INVESTMENT) } returns investmentAccount()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         // Explicit stub even though stockTradeRepository is relaxed -- mockk's relaxed
         // default can't correctly infer JpaRepository's generic `<S extends T> S save(S)`
@@ -70,7 +70,7 @@ class StocksServiceTest : BehaviorSpec({
             // 10 shares @ 500 already held; buying 10 more at the stock's real live
             // price is a real weighted-average recompute, not just the latest price.
             val bokPrice = StockCatalog.find("s1")!!.price
-            val existing = Holding(id = "hold_1", userId = "user_1", walletId = "wallet_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
+            val existing = Holding(id = "hold_1", userId = "user_1", accountId = "account_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
             every { holdingRepository.findByUserIdAndStockId("user_1", "s1") } returns existing
             every { holdingRepository.save(any()) } answers { firstArg() }
 
@@ -117,7 +117,7 @@ class StocksServiceTest : BehaviorSpec({
         }
 
         When("selling shares within the held position") {
-            val holding = Holding(id = "hold_2", userId = "user_1", walletId = "wallet_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
+            val holding = Holding(id = "hold_2", userId = "user_1", accountId = "account_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
             every { holdingRepository.findByUserIdAndStockId("user_1", "s1") } returns holding
             every { holdingRepository.save(any()) } answers { firstArg() }
 
@@ -129,7 +129,7 @@ class StocksServiceTest : BehaviorSpec({
         }
 
         When("selling more shares than are held") {
-            val holding = Holding(id = "hold_3", userId = "user_1", walletId = "wallet_inv", stockId = "s1", shares = BigDecimal("5"), avgPrice = BigDecimal("500"))
+            val holding = Holding(id = "hold_3", userId = "user_1", accountId = "account_inv", stockId = "s1", shares = BigDecimal("5"), avgPrice = BigDecimal("500"))
             every { holdingRepository.findByUserIdAndStockId("user_1", "s1") } returns holding
 
             Then("it throws NotEnoughSharesException rather than allowing a negative position") {
@@ -157,14 +157,14 @@ class StocksServiceTest : BehaviorSpec({
     }
 
     Given("a real user managing their real stock watchlist") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>()
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("watching a real stock for the first time") {
             every { stockWatchlistRepository.findByUserIdAndStockId("user_1", "s1") } returns null
@@ -226,14 +226,14 @@ class StocksServiceTest : BehaviorSpec({
     }
 
     Given("a real caller requesting a real stock's price history") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("requesting a real 30-day window") {
             val history = service.getPriceHistory("s1", 30)
@@ -278,14 +278,14 @@ class StocksServiceTest : BehaviorSpec({
     }
 
     Given("a real user with a real trade history, checking their portfolio's real value chart") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>()
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("a single real buy happened 3 real days ago") {
             val buy = StockTrade(
@@ -353,39 +353,39 @@ class StocksServiceTest : BehaviorSpec({
         }
     }
 
-    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentWallet's own doc
-    // comment: without this, a real INVESTMENT wallet existed but nothing could ever
+    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentAccount's own doc
+    // comment: without this, a real INVESTMENT account existed but nothing could ever
     // move money into it, so buyStock would still 422 (InsufficientFundsException)
     // for every real first purchase.
-    Given("a real user with both a real MAIN and a real INVESTMENT wallet") {
-        val walletRepository = mockk<WalletRepository>()
+    Given("a real user with both a real MAIN and a real INVESTMENT account") {
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
-        val mainWallet = Wallet(
-            id = "wallet_main", userId = "user_1", accountNumber = "ACC-MAIN", accountName = "Main",
-            type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+        val mainAccount = Account(
+            id = "account_main", userId = "user_1", accountNumber = "ACC-MAIN", accountName = "Main",
+            type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
         )
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns mainWallet
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.INVESTMENT) } returns investmentWallet()
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns mainAccount
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.INVESTMENT) } returns investmentAccount()
 
-        When("funding the investment wallet with a real positive amount") {
+        When("funding the investment account with a real positive amount") {
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_fund_1", emptyList())
 
-            val result = service.fundInvestmentWallet("user_1", BigDecimal("10000"))
+            val result = service.fundInvestmentAccount("user_1", BigDecimal("10000"))
 
             Then("it posts a real balanced MAIN-debit/INVESTMENT-credit ledger transaction") {
                 verify(exactly = 1) {
                     ledgerService.postLedgerTransaction(
-                        mainWallet.currency,
+                        mainAccount.currency,
                         listOf(
-                            rw.itunda.core.ledger.LedgerLeg(mainWallet.id, rw.itunda.core.domain.LedgerAccountType.WALLET, rw.itunda.core.domain.LedgerDirection.DEBIT, BigDecimal("10000"), "Transfer to investment account"),
-                            rw.itunda.core.ledger.LedgerLeg("wallet_inv", rw.itunda.core.domain.LedgerAccountType.WALLET, rw.itunda.core.domain.LedgerDirection.CREDIT, BigDecimal("10000"), "Transfer to investment account"),
+                            rw.itunda.core.ledger.LedgerLeg(mainAccount.id, rw.itunda.core.domain.LedgerAccountType.WALLET, rw.itunda.core.domain.LedgerDirection.DEBIT, BigDecimal("10000"), "Transfer to investment account"),
+                            rw.itunda.core.ledger.LedgerLeg("account_inv", rw.itunda.core.domain.LedgerAccountType.WALLET, rw.itunda.core.domain.LedgerDirection.CREDIT, BigDecimal("10000"), "Transfer to investment account"),
                         ),
                     )
                 }
@@ -396,7 +396,7 @@ class StocksServiceTest : BehaviorSpec({
         When("funding with a zero amount") {
             Then("it throws InvalidFundingAmountException before touching the ledger") {
                 try {
-                    service.fundInvestmentWallet("user_1", BigDecimal.ZERO)
+                    service.fundInvestmentAccount("user_1", BigDecimal.ZERO)
                     error("expected InvalidFundingAmountException")
                 } catch (e: InvalidFundingAmountException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
@@ -407,7 +407,7 @@ class StocksServiceTest : BehaviorSpec({
         When("funding with a negative amount") {
             Then("it throws InvalidFundingAmountException before touching the ledger") {
                 try {
-                    service.fundInvestmentWallet("user_1", BigDecimal("-500"))
+                    service.fundInvestmentAccount("user_1", BigDecimal("-500"))
                     error("expected InvalidFundingAmountException")
                 } catch (e: InvalidFundingAmountException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
@@ -416,29 +416,29 @@ class StocksServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real user missing a real INVESTMENT wallet, trying to fund it anyway") {
-        val walletRepository = mockk<WalletRepository>()
+    Given("a real user missing a real INVESTMENT account, trying to fund it anyway") {
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
-        val mainWallet = Wallet(
-            id = "wallet_main", userId = "user_2", accountNumber = "ACC-MAIN2", accountName = "Main",
-            type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+        val mainAccount = Account(
+            id = "account_main", userId = "user_2", accountNumber = "ACC-MAIN2", accountName = "Main",
+            type = AccountType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
         )
-        every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns mainWallet
-        every { walletRepository.findByUserIdAndType("user_2", WalletType.INVESTMENT) } returns null
+        every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns mainAccount
+        every { accountRepository.findByUserIdAndType("user_2", AccountType.INVESTMENT) } returns null
 
         When("funding is attempted") {
-            Then("it throws NoWalletException rather than a null-pointer") {
+            Then("it throws NoAccountException rather than a null-pointer") {
                 try {
-                    service.fundInvestmentWallet("user_2", BigDecimal("1000"))
-                    error("expected NoWalletException")
-                } catch (e: NoWalletException) {
+                    service.fundInvestmentAccount("user_2", BigDecimal("1000"))
+                    error("expected NoAccountException")
+                } catch (e: NoAccountException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -446,14 +446,14 @@ class StocksServiceTest : BehaviorSpec({
     }
 
     Given("a user setting a real Toss Securities-style target price alert") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>()
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
         every { stockWatchlistRepository.save(any()) } answers { firstArg() }
 
         When("no watchlist row exists yet for that stock") {
@@ -505,14 +505,14 @@ class StocksServiceTest : BehaviorSpec({
     }
 
     Given("a client reading back the current real price alert state for a stock") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>()
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("an active alert exists") {
             val existing = StockWatchlist(
@@ -539,14 +539,14 @@ class StocksServiceTest : BehaviorSpec({
     }
 
     Given("real due-price-alert detection and one-shot triggering") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>()
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        val service = StocksService(accountRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
         every { stockWatchlistRepository.save(any()) } answers { firstArg() }
         // Explicit stub even though notificationRepository is relaxed -- mockk's relaxed
         // default can't correctly infer JpaRepository's generic `<S extends T> S save(S)`

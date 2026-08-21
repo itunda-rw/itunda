@@ -10,13 +10,13 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.ParkingSession
 import rw.itunda.core.domain.ParkingSessionStatus
 import rw.itunda.core.domain.ParkingSpot
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ParkingSessionRepository
 import rw.itunda.core.repository.ParkingSpotRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -26,7 +26,7 @@ import java.util.UUID
 class ParkingSpotNotFoundException(message: String) : RuntimeException(message)
 class ParkingSpotNotAvailableException(message: String) : RuntimeException(message)
 class ParkingSelfRentalException(message: String) : RuntimeException(message)
-class ParkingNoWalletException(message: String) : RuntimeException(message)
+class ParkingNoAccountException(message: String) : RuntimeException(message)
 class InvalidParkingLocationException(message: String) : RuntimeException(message)
 class ParkingSessionNotFoundException(message: String) : RuntimeException(message)
 class ParkingSessionAlreadyEndedException(message: String) : RuntimeException(message)
@@ -46,7 +46,7 @@ class ParkingSessionAlreadyEndedException(message: String) : RuntimeException(me
 class ParkingService(
     private val parkingSpotRepository: ParkingSpotRepository,
     private val parkingSessionRepository: ParkingSessionRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -77,11 +77,11 @@ class ParkingService(
         if (hourlyRate < minHourlyRate || hourlyRate > maxHourlyRate) {
             throw InvalidParkingLocationException("Hourly rate must be between $minHourlyRate and $maxHourlyRate")
         }
-        val wallet = walletRepository.findByUserIdAndType(ownerUserId, WalletType.MAIN)
-            ?: throw ParkingNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(ownerUserId, AccountType.MAIN)
+            ?: throw ParkingNoAccountException("No account found for this account")
         return parkingSpotRepository.save(
             ParkingSpot(
-                id = "parking_spot_${UUID.randomUUID()}", ownerUserId = ownerUserId, walletId = wallet.id,
+                id = "parking_spot_${UUID.randomUUID()}", ownerUserId = ownerUserId, accountId = account.id,
                 address = trimmedAddress, latitude = latitude, longitude = longitude, hourlyRate = hourlyRate,
             ),
         )
@@ -131,12 +131,12 @@ class ParkingService(
         if (parkingSessionRepository.findBySpotIdAndStatus(spotId, ParkingSessionStatus.ACTIVE) != null) {
             throw ParkingSpotNotAvailableException("This parking spot is already occupied")
         }
-        // A real renter needs a wallet to be billed at checkout -- checked up front so
+        // A real renter needs a account to be billed at checkout -- checked up front so
         // a renter without one never gets to "check in" to a spot they can't pay for,
         // same defensive-but-real reasoning every other opt-in feature in this backend
         // already gives for this exact check.
-        walletRepository.findByUserIdAndType(renterUserId, WalletType.MAIN)
-            ?: throw ParkingNoWalletException("No wallet found for this account")
+        accountRepository.findByUserIdAndType(renterUserId, AccountType.MAIN)
+            ?: throw ParkingNoAccountException("No account found for this account")
 
         spot.available = false
         parkingSpotRepository.save(spot)
@@ -154,7 +154,7 @@ class ParkingService(
 
     /** Real settlement -- the only point this feature ever touches the ledger, since
      * the fare genuinely isn't known until the renter checks out. One real
-     * transaction: renter wallet DEBIT the full fare, owner wallet CREDIT net of
+     * transaction: renter account DEBIT the full fare, owner account CREDIT net of
      * itunda's real platform fee, `fee_revenue` CREDIT the fee -- the same real
      * 3-leg settlement shape `BikeRentalService.endRental` already establishes. */
     @Transactional
@@ -187,7 +187,7 @@ class ParkingService(
      * right before acting, same one-shot re-check discipline
      * `BikeRentalService.forceEndAbandonedRental` already establishes -- a renter who
      * taps "end session" a moment before the scheduler runs can never be double-charged,
-     * and a still-genuinely-due row missing its spot/wallet is skipped rather than
+     * and a still-genuinely-due row missing its spot/account is skipped rather than
      * thrown, so one bad row never corrupts a real, valid settlement.
      */
     @Transactional
@@ -206,10 +206,10 @@ class ParkingService(
     // different billing outcomes for the same kind of session -- same shape
     // `BikeRentalService.settleRental` already establishes.
     private fun settleSession(session: ParkingSession, spot: ParkingSpot): ParkingSession {
-        val renterWallet = walletRepository.findByUserIdAndType(session.renterUserId, WalletType.MAIN)
-            ?: throw ParkingNoWalletException("No wallet found for this account")
-        val ownerWallet = walletRepository.findById(spot.walletId)
-            .orElseThrow { ParkingNoWalletException("Parking spot owner's settlement wallet not found") }
+        val renterAccount = accountRepository.findByUserIdAndType(session.renterUserId, AccountType.MAIN)
+            ?: throw ParkingNoAccountException("No account found for this account")
+        val ownerAccount = accountRepository.findById(spot.accountId)
+            .orElseThrow { ParkingNoAccountException("Parking spot owner's settlement account not found") }
 
         val endedAt = Instant.now()
         val elapsedSeconds = Duration.between(session.startedAt, endedAt).seconds.coerceAtLeast(0)
@@ -225,10 +225,10 @@ class ParkingService(
         val netToOwner = totalFare.subtract(platformFee)
 
         val result = ledgerService.postLedgerTransaction(
-            renterWallet.currency,
+            renterAccount.currency,
             listOf(
-                LedgerLeg(renterWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalFare, "Parking (${spot.address})"),
-                LedgerLeg(ownerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToOwner, "Parking spot payout"),
+                LedgerLeg(renterAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalFare, "Parking (${spot.address})"),
+                LedgerLeg(ownerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToOwner, "Parking spot payout"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Parking platform fee"),
             ),
         )

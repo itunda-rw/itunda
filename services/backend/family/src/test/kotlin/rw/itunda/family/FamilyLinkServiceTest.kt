@@ -12,14 +12,14 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.FamilyLinkRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -35,13 +35,13 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val familyLinkRepository = mockk<FamilyLinkRepository>(relaxed = true)
         every { familyLinkRepository.save(any()) } answers { firstArg() }
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val guardian = user("guardian_1", "+250788000001", "Jean", "Baptiste")
         val child = user("child_1", "+250788000002", "Alice", "M")
@@ -110,13 +110,13 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val familyLinkRepository = mockk<FamilyLinkRepository>(relaxed = true)
         every { familyLinkRepository.save(any()) } answers { firstArg() }
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val pending = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1")
 
@@ -188,20 +188,20 @@ class FamilyLinkServiceTest : BehaviorSpec({
     Given("a real active family link") {
         val familyLinkRepository = mockk<FamilyLinkRepository>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         When("the guardian views the child's real overview") {
             every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("guardian_1", "child_1", FamilyLinkStatus.ACTIVE) } returns
                 FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE)
             every { userRepository.findById("child_1") } returns Optional.of(user("child_1", "+250788000002", "Alice", "M"))
-            every { walletRepository.findByUserIdAndType("child_1", WalletType.MAIN) } returns
-                Wallet(id = "wallet_child", userId = "child_1", accountNumber = "ACC1", accountName = "Alice's wallet", type = WalletType.MAIN, balance = BigDecimal("15000"), availableBalance = BigDecimal("15000"))
+            every { accountRepository.findByUserIdAndType("child_1", AccountType.MAIN) } returns
+                Account(id = "account_child", userId = "child_1", accountNumber = "ACC1", accountName = "Alice's account", type = AccountType.MAIN, balance = BigDecimal("15000"), availableBalance = BigDecimal("15000"))
             every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("child_1", "child_1") } returns listOf(
                 Transaction(
                     id = "txn_1", referenceNumber = "REF1", senderId = "child_1", recipientId = "merchant_1", amount = BigDecimal("2000"),
@@ -211,8 +211,8 @@ class FamilyLinkServiceTest : BehaviorSpec({
 
             val overview = service.getChildOverview("guardian_1", "child_1")
 
-            Then("it returns the real wallet balance and real transaction history") {
-                overview.walletBalance shouldBe BigDecimal("15000")
+            Then("it returns the real account balance and real transaction history") {
+                overview.accountBalance shouldBe BigDecimal("15000")
                 overview.recentTransactions.size shouldBe 1
                 overview.childName shouldBe "Alice M"
             }
@@ -288,16 +288,16 @@ class FamilyLinkServiceTest : BehaviorSpec({
     Given("a real child linked with a real active daily spend limit") {
         val familyLinkRepository = mockk<FamilyLinkRepository>()
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val link = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE, dailySpendLimit = BigDecimal("5000"))
         every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("child_1", FamilyLinkStatus.ACTIVE) } returns link
-        every { walletRepository.findByIdForUpdate("wallet_child_1") } returns java.util.Optional.empty()
+        every { accountRepository.findByIdForUpdate("account_child_1") } returns java.util.Optional.empty()
 
         When("a real transfer would stay within the real limit") {
             every {
@@ -307,16 +307,16 @@ class FamilyLinkServiceTest : BehaviorSpec({
             )
 
             Then("it real-allows the transfer, no exception") {
-                service.enforceSpendLimit("child_1", "wallet_child_1", BigDecimal("3000"))
+                service.enforceSpendLimit("child_1", "account_child_1", BigDecimal("3000"))
             }
 
             // Real fix (concurrency audit, 2026-08-21): the daily-cumulative SUM() check
-            // must lock the child's own wallet row first, same shape
+            // must lock the child's own account row first, same shape
             // P2pTransferLimitService.enforce already established -- proves the fix
             // actually happens, not just that the pre-existing limit logic still works.
-            Then("it real-locks the child's own wallet row before the sum-check, same discipline P2pTransferLimitService.enforce already establishes") {
-                service.enforceSpendLimit("child_1", "wallet_child_1", BigDecimal("3000"))
-                io.mockk.verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_child_1") }
+            Then("it real-locks the child's own account row before the sum-check, same discipline P2pTransferLimitService.enforce already establishes") {
+                service.enforceSpendLimit("child_1", "account_child_1", BigDecimal("3000"))
+                io.mockk.verify(exactly = 1) { accountRepository.findByIdForUpdate("account_child_1") }
             }
         }
 
@@ -329,7 +329,7 @@ class FamilyLinkServiceTest : BehaviorSpec({
 
             Then("it real-blocks the transfer") {
                 try {
-                    service.enforceSpendLimit("child_1", "wallet_child_1", BigDecimal("1500"))
+                    service.enforceSpendLimit("child_1", "account_child_1", BigDecimal("1500"))
                     throw AssertionError("expected FamilySpendLimitExceededException")
                 } catch (e: FamilySpendLimitExceededException) {
                     // expected
@@ -341,20 +341,20 @@ class FamilyLinkServiceTest : BehaviorSpec({
     Given("a real user who is not a linked child with any real spend limit") {
         val familyLinkRepository = mockk<FamilyLinkRepository>()
         val userRepository = mockk<UserRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, accountRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("user_5", FamilyLinkStatus.ACTIVE) } returns null
 
         When("enforceSpendLimit is called for a transfer of any real amount") {
-            Then("it's a real no-op, never touching the transaction repository or locking any wallet -- this must stay cheap for every real P2P send") {
-                service.enforceSpendLimit("user_5", "wallet_user_5", BigDecimal("999999"))
+            Then("it's a real no-op, never touching the transaction repository or locking any account -- this must stay cheap for every real P2P send") {
+                service.enforceSpendLimit("user_5", "account_user_5", BigDecimal("999999"))
                 io.mockk.verify(exactly = 0) { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(any(), any(), any(), any()) }
-                io.mockk.verify(exactly = 0) { walletRepository.findByIdForUpdate(any()) }
+                io.mockk.verify(exactly = 0) { accountRepository.findByIdForUpdate(any()) }
             }
         }
     }

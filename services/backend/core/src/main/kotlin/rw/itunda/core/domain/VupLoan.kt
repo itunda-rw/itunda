@@ -35,13 +35,13 @@ enum class VupLoanStatus { REQUESTED, DISBURSED, REPAID, OVERDUE }
  * shares/dividends, never loans).
  *
  * Corrected from an earlier draft of this feature's own research proposal: this is
- * NOT disbursed from `SaccoService.getOrCreatePoolWallet()` -- that pool holds other
+ * NOT disbursed from `SaccoService.getOrCreatePoolAccount()` -- that pool holds other
  * SACCO members' own real pooled contributions, and paying a third-party borrower out
  * of it would repeat the exact solvency bug this session already found and fixed in
- * `SaccoService.declareDividend` (paying out from a shared wallet other users have a
+ * `SaccoService.declareDividend` (paying out from a shared account other users have a
  * real claim on, instead of a dedicated itunda-owned ledger account). Instead this
  * mirrors `LoansService.applyForLoan`/`repayLoan`'s own already-correct, already-
- * established convention exactly: disbursement CREDITs the borrower's wallet and
+ * established convention exactly: disbursement CREDITs the borrower's account and
  * DEBITs itunda's own `loan_payable` liability account (`LedgerAccountType.LOAN_PAYABLE`),
  * the same account `CooperativeService`'s harvest advances already use -- no new
  * ledger account needed.

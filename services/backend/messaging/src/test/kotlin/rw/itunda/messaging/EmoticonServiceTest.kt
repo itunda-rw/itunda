@@ -15,8 +15,8 @@ import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UserEmoticonPack
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -26,16 +26,16 @@ import rw.itunda.core.repository.EmoticonRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserEmoticonPackRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
 /** First test coverage for the real KakaoTalk Emoticon Store equivalent. */
 class EmoticonServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
     val pack = EmoticonPack(id = "pack_1", title = "Sunny Days", artistName = "itunda Art", thumbnailUrl = "/uploads/thumb.png", price = BigDecimal("500"))
@@ -44,7 +44,7 @@ class EmoticonServiceTest : BehaviorSpec({
         val emoticonPackRepository = mockk<EmoticonPackRepository>()
         val emoticonRepository = mockk<EmoticonRepository>()
         val userEmoticonPackRepository = mockk<UserEmoticonPackRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val groupMessagingService = mockk<GroupMessagingService>()
@@ -53,7 +53,7 @@ class EmoticonServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = EmoticonService(
-            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
+            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, accountRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
             pushNotificationService,
         )
@@ -61,16 +61,16 @@ class EmoticonServiceTest : BehaviorSpec({
         When("purchasing a pack they don't already own") {
             every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
             every { userEmoticonPackRepository.findByUserIdAndPackId("user_1", "pack_1") } returns null
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { userEmoticonPackRepository.save(any()) } answers { firstArg() }
 
             val result = service.purchasePack("user_1", "pack_1")
 
-            Then("it real-debits the buyer's wallet and credits emoticon_revenue for the pack's exact price") {
+            Then("it real-debits the buyer's account and credits emoticon_revenue for the pack's exact price") {
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_1" }.amount shouldBe BigDecimal("500")
+                legs.first { it.accountId == "account_1" }.amount shouldBe BigDecimal("500")
                 legs.first { it.accountId == "emoticon_revenue" }.amount shouldBe BigDecimal("500")
             }
             Then("it real-records ownership as PURCHASED") {
@@ -111,16 +111,16 @@ class EmoticonServiceTest : BehaviorSpec({
             }
         }
 
-        When("purchasing with no real wallet") {
+        When("purchasing with no real account") {
             every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
             every { userEmoticonPackRepository.findByUserIdAndPackId("user_2", "pack_1") } returns null
-            every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns null
+            every { accountRepository.findByUserIdAndType("user_2", AccountType.MAIN) } returns null
 
-            Then("it throws EmoticonNoWalletException before touching the ledger") {
+            Then("it throws EmoticonNoAccountException before touching the ledger") {
                 try {
                     service.purchasePack("user_2", "pack_1")
-                    error("expected EmoticonNoWalletException")
-                } catch (e: EmoticonNoWalletException) {
+                    error("expected EmoticonNoAccountException")
+                } catch (e: EmoticonNoAccountException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -131,7 +131,7 @@ class EmoticonServiceTest : BehaviorSpec({
         val emoticonPackRepository = mockk<EmoticonPackRepository>()
         val emoticonRepository = mockk<EmoticonRepository>()
         val userEmoticonPackRepository = mockk<UserEmoticonPackRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val groupMessagingService = mockk<GroupMessagingService>()
@@ -140,7 +140,7 @@ class EmoticonServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = EmoticonService(
-            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
+            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, accountRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
             pushNotificationService,
         )
@@ -151,7 +151,7 @@ class EmoticonServiceTest : BehaviorSpec({
             every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
             every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
             every { userEmoticonPackRepository.findByUserIdAndPackId("user_recipient", "pack_1") } returns null
-            every { walletRepository.findByUserIdAndType("user_giver", WalletType.MAIN) } returns wallet("wallet_giver", "user_giver")
+            every { accountRepository.findByUserIdAndType("user_giver", AccountType.MAIN) } returns account("account_giver", "user_giver")
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { userEmoticonPackRepository.save(any()) } answers { firstArg() }
@@ -159,9 +159,9 @@ class EmoticonServiceTest : BehaviorSpec({
 
             val result = service.giftPack("user_giver", "+250788000002", "pack_1")
 
-            Then("it real-debits the GIVER's wallet and credits emoticon_revenue for the pack's exact price") {
+            Then("it real-debits the GIVER's account and credits emoticon_revenue for the pack's exact price") {
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_giver" }.amount shouldBe BigDecimal("500")
+                legs.first { it.accountId == "account_giver" }.amount shouldBe BigDecimal("500")
                 legs.first { it.accountId == "emoticon_revenue" }.amount shouldBe BigDecimal("500")
             }
             Then("ownership real-lands on the RECIPIENT, not the giver, recorded as GIFTED") {
@@ -228,7 +228,7 @@ class EmoticonServiceTest : BehaviorSpec({
         val emoticonPackRepository = mockk<EmoticonPackRepository>()
         val emoticonRepository = mockk<EmoticonRepository>()
         val userEmoticonPackRepository = mockk<UserEmoticonPackRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val groupMessagingService = mockk<GroupMessagingService>()
@@ -237,7 +237,7 @@ class EmoticonServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = EmoticonService(
-            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
+            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, accountRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
             pushNotificationService,
         )

@@ -12,13 +12,13 @@ import rw.itunda.core.domain.Bike
 import rw.itunda.core.domain.BikeRentalSession
 import rw.itunda.core.domain.BikeRentalStatus
 import rw.itunda.core.domain.BikeType
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.BikeRentalSessionRepository
 import rw.itunda.core.repository.BikeRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -34,29 +34,29 @@ class BikeRentalServiceTest : BehaviorSpec({
     fun newService(
         bikeRepository: BikeRepository = mockk(),
         bikeRentalSessionRepository: BikeRentalSessionRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = BikeRentalService(bikeRepository, bikeRentalSessionRepository, walletRepository, ledgerService, rateLimiter)
+    ) = BikeRentalService(bikeRepository, bikeRentalSessionRepository, accountRepository, ledgerService, rateLimiter)
 
-    Given("a fresh owner account with a real wallet") {
+    Given("a fresh owner account with a real account") {
         val bikeRepository = mockk<BikeRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val wallet = Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val accountRepository = mockk<AccountRepository>()
+        val account = Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
-        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns wallet
+        every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns account
         val savedSlot = slot<Bike>()
         every { bikeRepository.save(capture(savedSlot)) } answers { firstArg() }
-        val service = newService(bikeRepository = bikeRepository, walletRepository = walletRepository)
+        val service = newService(bikeRepository = bikeRepository, accountRepository = accountRepository)
 
         When("registering a real bike") {
             val result = service.registerBike("owner_1", BikeType.ELECTRIC, -1.9536, 30.0605)
 
-            Then("a real bike row is saved with the wallet reused as payout destination") {
+            Then("a real bike row is saved with the account reused as payout destination") {
                 result.ownerUserId shouldBe "owner_1"
-                result.walletId shouldBe "wallet_owner"
+                result.accountId shouldBe "account_owner"
                 result.type shouldBe BikeType.ELECTRIC
                 savedSlot.captured.ownerUserId shouldBe "owner_1"
             }
@@ -67,23 +67,23 @@ class BikeRentalServiceTest : BehaviorSpec({
     // all, unlike every other real "post a listing" creation method in this codebase.
     Given("an owner who has already registered too many real bikes this hour") {
         val bikeRepository = mockk<BikeRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        every { accountRepository.findByUserIdAndType("owner_1", AccountType.MAIN) } returns Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         every { rateLimiter.checkLimit("bike:register:owner_1", limit = 10, window = Duration.ofHours(1)) } throws
             RateLimitExceededException("Too many requests")
-        val service = newService(bikeRepository = bikeRepository, walletRepository = walletRepository, rateLimiter = rateLimiter)
+        val service = newService(bikeRepository = bikeRepository, accountRepository = accountRepository, rateLimiter = rateLimiter)
 
         When("registering yet another real bike") {
-            Then("it real-propagates RateLimitExceededException before ever touching the wallet") {
+            Then("it real-propagates RateLimitExceededException before ever touching the account") {
                 try {
                     service.registerBike("owner_1", BikeType.ELECTRIC, -1.9536, 30.0605)
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
-                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                    verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
                 }
             }
         }
@@ -113,7 +113,7 @@ class BikeRentalServiceTest : BehaviorSpec({
 
     Given("a real rider trying to rent their own bike") {
         val bikeRepository = mockk<BikeRepository>()
-        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0)
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0)
         every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
         val service = newService(bikeRepository = bikeRepository)
 
@@ -132,7 +132,7 @@ class BikeRentalServiceTest : BehaviorSpec({
     Given("a bike that is already actively rented") {
         val bikeRepository = mockk<BikeRepository>()
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
-        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0, available = true)
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0, available = true)
         val activeSession = BikeRentalSession(id = "bike_rental_existing", bikeId = "bike_1", riderUserId = "other_rider", startLatitude = -1.9, startLongitude = 30.0)
         every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
         every { bikeRentalSessionRepository.findByBikeIdAndStatus("bike_1", BikeRentalStatus.ACTIVE) } returns activeSession
@@ -161,20 +161,20 @@ class BikeRentalServiceTest : BehaviorSpec({
     Given("a real available bike with no active session") {
         val bikeRepository = mockk<BikeRepository>()
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0, available = true)
-        val riderWallet = Wallet(
-            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val accountRepository = mockk<AccountRepository>()
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0, available = true)
+        val riderAccount = Account(
+            id = "account_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
         every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
         every { bikeRentalSessionRepository.findByBikeIdAndStatus("bike_1", BikeRentalStatus.ACTIVE) } returns null
-        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
+        every { accountRepository.findByUserIdAndType("rider_1", AccountType.MAIN) } returns riderAccount
         val bikeSavedSlot = slot<Bike>()
         every { bikeRepository.save(capture(bikeSavedSlot)) } answers { firstArg() }
         every { bikeRentalSessionRepository.save(any()) } answers { firstArg() }
         val service = newService(
-            bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository, walletRepository = walletRepository,
+            bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository, accountRepository = accountRepository,
         )
 
         When("a rider starts a real rental") {
@@ -189,21 +189,21 @@ class BikeRentalServiceTest : BehaviorSpec({
     Given("a real ACTIVE rental the rider ends after 5 minutes") {
         val bikeRepository = mockk<BikeRepository>()
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0)
-        val riderWallet = Wallet(
-            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0)
+        val riderAccount = Account(
+            id = "account_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        val ownerWallet = Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val ownerAccount = Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val session = BikeRentalSession(
             id = "bike_rental_1", bikeId = "bike_1", riderUserId = "rider_1",
@@ -211,8 +211,8 @@ class BikeRentalServiceTest : BehaviorSpec({
         )
         every { bikeRentalSessionRepository.findById("bike_rental_1") } returns Optional.of(session)
         every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
-        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
-        every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
+        every { accountRepository.findByUserIdAndType("rider_1", AccountType.MAIN) } returns riderAccount
+        every { accountRepository.findById("account_owner") } returns Optional.of(ownerAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val bikeSavedSlot = slot<Bike>()
         every { bikeRentalSessionRepository.save(any()) } answers { firstArg() }
@@ -243,11 +243,11 @@ class BikeRentalServiceTest : BehaviorSpec({
     Given("a real ACTIVE rental only 2 hours old, well within the max rental window") {
         val bikeRepository = mockk<BikeRepository>()
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
         val session = BikeRentalSession(
             id = "bike_rental_recent", bikeId = "bike_1", riderUserId = "rider_1",
@@ -258,7 +258,7 @@ class BikeRentalServiceTest : BehaviorSpec({
         When("the scheduler's force-end is (incorrectly) invoked on it anyway") {
             val result = service.forceEndAbandonedRental("bike_rental_recent")
 
-            Then("it is a real no-op -- still ACTIVE, no ledger transaction posted, no bike/wallet ever looked up") {
+            Then("it is a real no-op -- still ACTIVE, no ledger transaction posted, no bike/account ever looked up") {
                 result?.status shouldBe BikeRentalStatus.ACTIVE
                 verify(exactly = 0) { bikeRepository.findById(any()) }
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
@@ -274,21 +274,21 @@ class BikeRentalServiceTest : BehaviorSpec({
     Given("a real ACTIVE rental abandoned 25 hours ago, past the max rental window") {
         val bikeRepository = mockk<BikeRepository>()
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.ELECTRIC, currentLatitude = -1.90, currentLongitude = 30.00)
-        val riderWallet = Wallet(
-            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
-            type = WalletType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", accountId = "account_owner", type = BikeType.ELECTRIC, currentLatitude = -1.90, currentLongitude = 30.00)
+        val riderAccount = Account(
+            id = "account_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = AccountType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
         )
-        val ownerWallet = Wallet(
-            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val ownerAccount = Account(
+            id = "account_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val session = BikeRentalSession(
             id = "bike_rental_abandoned", bikeId = "bike_1", riderUserId = "rider_1",
@@ -296,8 +296,8 @@ class BikeRentalServiceTest : BehaviorSpec({
         )
         every { bikeRentalSessionRepository.findById("bike_rental_abandoned") } returns Optional.of(session)
         every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
-        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
-        every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
+        every { accountRepository.findByUserIdAndType("rider_1", AccountType.MAIN) } returns riderAccount
+        every { accountRepository.findById("account_owner") } returns Optional.of(ownerAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_forceend", emptyList())
         val bikeSavedSlot = slot<Bike>()
         every { bikeRentalSessionRepository.save(any()) } answers { firstArg() }

@@ -4,11 +4,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import rw.itunda.core.domain.BillAutoPaySetting
 import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BillAutoPaySettingRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -46,7 +46,7 @@ import java.util.UUID
  * biz.heraldcorp.com/article/3086484 covering the launch). `checkLowBalance` below is
  * itunda's honest port of that same real idea onto its own already-real auto-pay:
  * whenever a real due, uncapped bill is found for an active setting, the real current
- * wallet balance is checked *before* `billsService.payBill` is ever called -- if it's
+ * account balance is checked *before* `billsService.payBill` is ever called -- if it's
  * already known to be insufficient, the doomed attempt is skipped entirely (no point
  * hitting the ledger just to generate the exact same "failed" outcome
  * [notifyAutoPayFailed] already covers) and a distinct proactive warning is sent
@@ -55,7 +55,7 @@ import java.util.UUID
  * 60-second poll would re-send the identical push for as long as the real balance
  * stayed insufficient). The existing reactive [notifyAutoPayFailed] path is
  * deliberately left untouched as the real backstop for the cases this proactive check
- * can't cover (no wallet at all, or a balance that changes for an unrelated reason in
+ * can't cover (no account at all, or a balance that changes for an unrelated reason in
  * the narrow window between this check and the real ledger attempt).
  */
 @Component
@@ -64,7 +64,7 @@ class BillAutoPayProcessor(
     private val billsService: BillsService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
 ) {
     private val log = LoggerFactory.getLogger(BillAutoPayProcessor::class.java)
 
@@ -94,19 +94,19 @@ class BillAutoPayProcessor(
     }
 
     // Returns true when the real attempt below should be skipped this poll because the
-    // real current wallet balance is already known to be insufficient -- see this
+    // real current account balance is already known to be insufficient -- see this
     // class's own doc comment for the sourced Kakao Bank feature this ports. A missing
-    // wallet is deliberately NOT treated as a low-balance case here -- that's a
+    // account is deliberately NOT treated as a low-balance case here -- that's a
     // different, rarer real failure mode already fully covered by the existing
-    // NoWalletException -> notifyAutoPayFailed path below.
+    // NoAccountException -> notifyAutoPayFailed path below.
     private fun checkLowBalance(setting: BillAutoPaySetting, pendingBill: PendingBill, providerName: String): Boolean {
-        val wallet = walletRepository.findByUserIdAndType(setting.userId, WalletType.MAIN) ?: return false
-        if (wallet.availableBalance >= BigDecimal(pendingBill.amount)) return false
+        val account = accountRepository.findByUserIdAndType(setting.userId, AccountType.MAIN) ?: return false
+        if (account.availableBalance >= BigDecimal(pendingBill.amount)) return false
         if (setting.lastLowBalanceWarnedBillId == pendingBill.id) return true
 
         setting.lastLowBalanceWarnedBillId = pendingBill.id
         billAutoPaySettingRepository.save(setting)
-        notifyLowBalance(setting.userId, providerName, BigDecimal(pendingBill.amount), wallet.availableBalance)
+        notifyLowBalance(setting.userId, providerName, BigDecimal(pendingBill.amount), account.availableBalance)
         return true
     }
 
@@ -116,7 +116,7 @@ class BillAutoPayProcessor(
     private fun notifyLowBalance(userId: String, providerName: String, billAmount: BigDecimal, availableBalance: BigDecimal) {
         try {
             val title = "Low balance for upcoming auto-pay"
-            val body = "Your $providerName bill (${billAmount.toPlainString()} RWF) is due soon but your wallet only has " +
+            val body = "Your $providerName bill (${billAmount.toPlainString()} RWF) is due soon but your account only has " +
                 "${availableBalance.toPlainString()} RWF. Top up before we try to auto-pay to avoid a failed payment."
             notificationRepository.save(
                 Notification(

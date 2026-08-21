@@ -5,12 +5,12 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.WeatherIndexPolicy
 import rw.itunda.core.domain.WeatherIndexPolicyStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.repository.WeatherIndexPolicyRepository
 import java.time.Instant
 
@@ -41,7 +41,7 @@ import java.time.Instant
 @Service
 class WeatherIndexPayoutExecutor(
     private val weatherIndexPolicyRepository: WeatherIndexPolicyRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
 ) {
     private val log = LoggerFactory.getLogger(WeatherIndexPayoutExecutor::class.java)
@@ -59,18 +59,18 @@ class WeatherIndexPayoutExecutor(
             return false
         }
 
-        val wallet = walletRepository.findByUserIdAndType(policy.userId, WalletType.MAIN)
-        if (wallet == null) {
-            log.warn("Skipping weather-index payout for policy {}: user {} has no MAIN wallet", policy.id, policy.userId)
+        val account = accountRepository.findByUserIdAndType(policy.userId, AccountType.MAIN)
+        if (account == null) {
+            log.warn("Skipping weather-index payout for policy {}: user {} has no MAIN account", policy.id, policy.userId)
             return false
         }
 
         val memo = "Crop weather-index payout - ${policy.cropType}, ${policy.district} ${policy.season}"
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
                 LedgerLeg("insurance_claims_expense", LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerDirection.DEBIT, policy.insuredAmount, memo),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, policy.insuredAmount, memo),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, policy.insuredAmount, memo),
             ),
         )
         policy.status = WeatherIndexPolicyStatus.PAYOUT_TRIGGERED

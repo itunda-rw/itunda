@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.rewards.MissionAlreadyCompletedException
-import rw.itunda.rewards.RewardsNoWalletException
+import rw.itunda.rewards.RewardsNoAccountException
 import rw.itunda.rewards.ShoppingMissionService
 import rw.itunda.rewards.ShoppingMissionType
 
@@ -63,7 +63,7 @@ class ShoppingMissionController(private val missionService: ShoppingMissionServi
                 "success" to true,
                 "type" to result.type.name,
                 "amountEarned" to result.amountEarned,
-                "newWalletBalance" to result.newWalletBalance,
+                "newAccountBalance" to result.newAccountBalance,
             ),
         )
     }
@@ -72,7 +72,7 @@ class ShoppingMissionController(private val missionService: ShoppingMissionServi
     fun handleAlreadyCompleted(ex: MissionAlreadyCompletedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MISSION_ALREADY_COMPLETED", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(RewardsNoWalletException::class)
-    fun handleNoWallet(ex: RewardsNoWalletException) =
+    @ExceptionHandler(RewardsNoAccountException::class)
+    fun handleNoAccount(ex: RewardsNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 }

@@ -37,7 +37,7 @@ interface RideTripRepository : JpaRepository<RideTrip, String> {
 
     // Real lost-update fix (concurrency sweep, §236): see RideTripService.tipDriver's
     // own doc comment. Same findByIdForUpdate convention EatsOrderRepository's
-    // identical fix (and WalletRepository/FraudFlagRepository/DebitCardRepository)
+    // identical fix (and AccountRepository/FraudFlagRepository/DebitCardRepository)
     // already establish for a check-then-act-then-write row.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from RideTrip t where t.id = :id")

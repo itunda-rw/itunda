@@ -64,8 +64,8 @@ class CooperativeMembership(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "member_since", nullable = false)
     val memberSince: Instant = Instant.now(),
@@ -73,7 +73,7 @@ class CooperativeMembership(
     @Column(nullable = false)
     var active: Boolean = true,
 ) {
-    protected constructor() : this(id = "", cooperativeId = "", userId = "", walletId = "")
+    protected constructor() : this(id = "", cooperativeId = "", userId = "", accountId = "")
 }
 
 enum class HarvestAdvanceStatus { REQUESTED, DISBURSED, REPAID, OVERDUE }
@@ -82,7 +82,7 @@ enum class HarvestAdvanceStatus { REQUESTED, DISBURSED, REPAID, OVERDUE }
  * A real itunda-to-farmer harvest advance -- a direct lending relationship (itunda
  * lends, the farmer repays), NOT a cooperative-pool redistribution like `Ikimina` --
  * structurally mirrors `LoanAccount`'s own real disbursement/repayment ledger shape
- * (itunda's own `loan_payable`/`LOAN_PAYABLE` receivable, not a shared/pooled wallet
+ * (itunda's own `loan_payable`/`LOAN_PAYABLE` receivable, not a shared/pooled account
  * other members have a claim on). This distinction was applied deliberately from this
  * feature's first draft, learning directly from a real solvency bug this session
  * caught and fixed in `SaccoService.declareDividend` (which had briefly, incorrectly,
@@ -103,8 +103,8 @@ class HarvestAdvance(
     @Column(name = "membership_id", nullable = false, length = 64)
     val membershipId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "principal_amount", nullable = false, precision = 18, scale = 2)
     val principalAmount: BigDecimal,
@@ -142,7 +142,7 @@ class HarvestAdvance(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", membershipId = "", walletId = "", principalAmount = BigDecimal.ZERO, purpose = "",
+        id = "", membershipId = "", accountId = "", principalAmount = BigDecimal.ZERO, purpose = "",
         expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
     )
 }

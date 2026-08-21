@@ -94,7 +94,7 @@ class DiscoverService(
         // names is actually true for this user, ranked by how much it's worth
         // interrupting Home for (identity/compliance highest, cross-sell into an
         // untried real product next, "hasn't set up interest jar" is the outcome
-        // WalletHeroCard's own +interest header already promotes -- lowest of the
+        // AccountHeroCard's own +interest header already promotes -- lowest of the
         // three since it costs the least to leave undiscovered).
         val personalized = buildList {
             if (user != null && !user.kycVerified) {

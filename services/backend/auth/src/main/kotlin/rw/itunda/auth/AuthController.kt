@@ -139,7 +139,7 @@ class AuthController(private val authService: AuthService, private val deviceSer
     fun clearSecondNeighborhood(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "user" to authService.clearSecondNeighborhood(currentUser.userId)))
 
-    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment.
     @PostMapping("/profile/birth-date")
     fun setBirthDate(

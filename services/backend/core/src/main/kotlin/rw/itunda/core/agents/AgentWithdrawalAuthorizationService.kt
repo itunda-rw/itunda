@@ -6,8 +6,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import rw.itunda.core.domain.WalletType
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.domain.AccountType
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -29,7 +29,7 @@ data class WithdrawalAuthorizationView(
 class AgentWithdrawalAuthorization(
     @Id @Column(length = 64) val id: String,
     @Column(name = "user_id", nullable = false, length = 64) val userId: String,
-    @Column(name = "wallet_id", nullable = false, length = 64) val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64) val accountId: String,
     @Column(nullable = false, unique = true, length = 12) val code: String,
     @Column(nullable = false, precision = 18, scale = 2) val amount: BigDecimal,
     @Column(name = "expires_at", nullable = false) val expiresAt: Instant,
@@ -47,7 +47,7 @@ interface AgentWithdrawalAuthorizationRepository : org.springframework.data.jpa.
 @Service
 class AgentWithdrawalAuthorizationService(
     private val repository: AgentWithdrawalAuthorizationRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
 ) {
     fun list(userId: String): List<WithdrawalAuthorizationView> = repository.findByUserIdOrderByCreatedAtDesc(userId).map { authorization ->
         val status = when {
@@ -66,19 +66,19 @@ class AgentWithdrawalAuthorizationService(
             it.consumedAt == null && it.cancelledAt == null && it.expiresAt.isAfter(Instant.now())
         }
         if (active >= 3) throw TooManyWithdrawalAuthorizationsException("Cancel or use an existing withdrawal authorization first")
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw IllegalArgumentException("Main wallet not found")
-        require(wallet.isActive) { "Wallet is frozen pending review" }
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw IllegalArgumentException("Main account not found")
+        require(account.isActive) { "Account is frozen pending review" }
         var code: String
         do { code = UUID.randomUUID().toString().replace("-", "").take(12).uppercase() } while (repository.existsByCode(code))
-        return repository.save(AgentWithdrawalAuthorization("withdrawal_auth_${UUID.randomUUID()}", userId, wallet.id, code, amount, Instant.now().plusSeconds(600)))
+        return repository.save(AgentWithdrawalAuthorization("withdrawal_auth_${UUID.randomUUID()}", userId, account.id, code, amount, Instant.now().plusSeconds(600)))
     }
 
     @Transactional
-    fun consume(code: String, walletId: String, amount: BigDecimal): AgentWithdrawalAuthorization {
+    fun consume(code: String, accountId: String, amount: BigDecimal): AgentWithdrawalAuthorization {
         val authorization = repository.findByCode(code.trim().uppercase())
             ?: throw WithdrawalAuthorizationInvalidException("Withdrawal authorization is invalid")
-        if (authorization.consumedAt != null || authorization.cancelledAt != null || authorization.expiresAt.isBefore(Instant.now()) || authorization.walletId != walletId || authorization.amount.compareTo(amount) != 0) {
+        if (authorization.consumedAt != null || authorization.cancelledAt != null || authorization.expiresAt.isBefore(Instant.now()) || authorization.accountId != accountId || authorization.amount.compareTo(amount) != 0) {
             throw WithdrawalAuthorizationInvalidException("Withdrawal authorization is invalid or expired")
         }
         authorization.consumedAt = Instant.now()

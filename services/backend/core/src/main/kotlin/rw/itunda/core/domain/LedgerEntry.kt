@@ -18,7 +18,7 @@ enum class LedgerAccountType {
     AGENT_CASH,
     CASH_VAULT,
     // Real foreign-currency conversion clearing (2026-07-25) -- see
-    // ForeignCurrencyWalletService's own doc comment for why a conversion is two
+    // ForeignCurrencyAccountService's own doc comment for why a conversion is two
     // separate, each-individually-balanced single-currency ledger transactions rather
     // than one cross-currency one (postLedgerTransaction enforces raw debits==credits
     // per call, with no per-currency dimension). itunda's own real counterparty position
@@ -32,18 +32,18 @@ enum class LedgerAccountType {
     // Marketplace has always settled buyer/seller in person, off-platform, with zero
     // protection against a no-show or a not-as-described item. Same real
     // escrow-clearing-account shape EATS_DELIVERY_HOLDING/GIFT_HOLDING already
-    // establish -- the buyer's money already left their wallet, it just hasn't reached
+    // establish -- the buyer's money already left their account, it just hasn't reached
     // its final recipient yet. See MarketplaceEscrow.kt's own doc comment.
     MARKETPLACE_ESCROW_HOLDING,
     // Real Kakao Hair Shop-style 100%-prepay-to-book holding (2026-07-25) -- see
     // BookingDeposit.kt's own doc comment. Same escrow-clearing-account shape
     // MARKETPLACE_ESCROW_HOLDING already establishes: a customer's real money already
-    // left their wallet at booking time, it just hasn't reached the merchant (or been
+    // left their account at booking time, it just hasn't reached the merchant (or been
     // refunded/forfeited) yet.
     BOOKING_DEPOSIT_HOLDING,
     // Real Kakao T-style ride-hailing fare holding (2026-07-26) -- see RideTrip.kt's own
     // doc comment. Same real escrow-clearing-account shape EATS_DELIVERY_HOLDING already
-    // establishes: the passenger's real fare leaves their wallet at request time, held
+    // establishes: the passenger's real fare leaves their account at request time, held
     // until the trip completes (or refunded if cancelled before a driver is assigned).
     RIDE_HOLDING,
     // Real KakaoTalk Emoticon Store revenue (2026-07-26) -- see EmoticonService's own
@@ -56,7 +56,7 @@ enum class LedgerAccountType {
     // Real KakaoTalk 선물하기 기프티콘 (mobile gift voucher) holding (2026-07-26) -- see
     // GiftVoucher.kt's own doc comment. Same real escrow-clearing-account shape
     // GIFT_HOLDING already establishes for money gifts: the purchaser's real money
-    // already left their wallet, it just hasn't reached the merchant (redemption) or
+    // already left their account, it just hasn't reached the merchant (redemption) or
     // been refunded (expiry) yet.
     GIFT_VOUCHER_HOLDING,
     // Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) interest
@@ -88,13 +88,13 @@ enum class LedgerAccountType {
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment,
     // 2026-07-31) -- see VehicleInspectionBooking.kt's own doc comment. Same real
     // escrow-clearing-account shape MARKETPLACE_ESCROW_HOLDING/BOOKING_DEPOSIT_HOLDING
-    // already establish: a buyer's real inspection fee already left their wallet, it
+    // already establish: a buyer's real inspection fee already left their account, it
     // just hasn't reached the mechanic (or been refunded) yet.
     VEHICLE_INSPECTION_HOLDING,
     // Real Kakao T 대리운전 (designated driver) fare holding -- see
     // DesignatedDriverTrip.kt's own doc comment. Same real escrow-clearing-account shape
     // RIDE_HOLDING already establishes for ride-hailing fares: the customer's real fare
-    // already left their wallet at request time, held until the trip completes (or
+    // already left their account at request time, held until the trip completes (or
     // refunded if cancelled before a driver is assigned) -- its own dedicated account
     // so designated-driver volume can be reconciled independently of ride-hailing
     // volume, matching how every distinct trip/booking product in this ledger already
@@ -126,7 +126,7 @@ enum class LedgerAccountType {
     // Real Korean 지연이체서비스 (Delayed Transfer Service, 2026-08-18) -- see
     // P2pDelayedTransfer.kt's own doc comment. Same real escrow-clearing-account shape
     // MARKETPLACE_ESCROW_HOLDING/BOOKING_DEPOSIT_HOLDING already establish: the
-    // sender's real money already left their wallet the moment they chose "Send
+    // sender's real money already left their account the moment they chose "Send
     // safely," it just hasn't reached the recipient yet -- held here until the real
     // delay window elapses (or the sender cancels within it).
     P2P_DELAY_HOLDING,

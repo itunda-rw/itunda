@@ -138,7 +138,7 @@ class RideTrustedContactServiceTest : BehaviorSpec({
             distanceKm = BigDecimal("3.5"), fare = BigDecimal("1875"), platformFee = BigDecimal("28.13"), transactionId = "txn_1",
             status = RideTripStatus.DRIVER_ASSIGNED,
         )
-        val driver = RideDriver(id = "driver_1", userId = "driver_user_1", walletId = "wallet_driver_1", currentLatitude = -1.955, currentLongitude = 30.07)
+        val driver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_driver_1", currentLatitude = -1.955, currentLongitude = 30.07)
         val contacts = listOf(
             RideTrustedContact(id = "rtc_1", userId = "user_1", contactUserId = "friend_1", contactName = "Alice"),
             RideTrustedContact(id = "rtc_2", userId = "user_1", contactUserId = "friend_2", contactName = "Bob"),

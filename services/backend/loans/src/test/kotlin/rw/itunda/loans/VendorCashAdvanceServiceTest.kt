@@ -14,15 +14,15 @@ import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.VendorCashAdvance
 import rw.itunda.core.domain.VendorCashAdvanceStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.VendorCashAdvanceRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -31,7 +31,7 @@ import java.util.Optional
  * First test coverage for the real Isoko Vendor Cash Advance -- see
  * VendorCashAdvanceService's own doc comment for the full sourced account. The
  * double-create-race test mirrors VupLoanServiceTest's/MotoOwnershipServiceTest's own
- * such test, asserting the caller's wallet lock happened before the active-advance
+ * such test, asserting the caller's account lock happened before the active-advance
  * check. The repayEarly-clamp test guards against the same overshoot-clamp regression
  * class found in InsuranceService.contributeToFund/VupLoanService.repay/
  * MotoOwnershipService.repay: it asserts the actual ledger leg amount, not just the
@@ -47,13 +47,13 @@ import java.util.Optional
  */
 class VendorCashAdvanceServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, availableBalance: BigDecimal = BigDecimal("1000000")) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = availableBalance, availableBalance = availableBalance,
+    fun account(id: String, userId: String, availableBalance: BigDecimal = BigDecimal("1000000")) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = availableBalance, availableBalance = availableBalance,
     )
 
-    fun merchant(id: String, ownerUserId: String, walletId: String) = Merchant(
-        id = id, ownerUserId = ownerUserId, walletId = walletId, businessName = "Test Vendor Stall",
+    fun merchant(id: String, ownerUserId: String, accountId: String) = Merchant(
+        id = id, ownerUserId = ownerUserId, accountId = accountId, businessName = "Test Vendor Stall",
     )
 
     fun settlementEntry(accountId: String, amount: BigDecimal, createdAt: Instant, memo: String = "QR collection - Vegetables") = LedgerEntry(
@@ -65,23 +65,23 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     fun newService(
         vendorCashAdvanceRepository: VendorCashAdvanceRepository = mockk(),
         merchantRepository: MerchantRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         ledgerEntryRepository: LedgerEntryRepository = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = VendorCashAdvanceService(vendorCashAdvanceRepository, merchantRepository, walletRepository, ledgerService, ledgerEntryRepository, rateLimiter)
+    ) = VendorCashAdvanceService(vendorCashAdvanceRepository, merchantRepository, accountRepository, ledgerService, ledgerEntryRepository, rateLimiter)
 
     Given("a merchant with fewer than 14 real trading days of settlement history") {
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
-        val service = newService(merchantRepository = merchantRepository, walletRepository = walletRepository, ledgerEntryRepository = ledgerEntryRepository)
+        val service = newService(merchantRepository = merchantRepository, accountRepository = accountRepository, ledgerEntryRepository = ledgerEntryRepository)
 
-        val m = merchant("merchant_1", "user_1", "wallet_1")
+        val m = merchant("merchant_1", "user_1", "account_1")
         every { merchantRepository.findById("merchant_1") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
-        val entries = (1..5).map { settlementEntry("wallet_1", BigDecimal("3000"), Instant.now().minus(java.time.Duration.ofDays(it.toLong()))) }
-        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_1", any()) } returns entries
+        every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
+        val entries = (1..5).map { settlementEntry("account_1", BigDecimal("3000"), Instant.now().minus(java.time.Duration.ofDays(it.toLong()))) }
+        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_1", any()) } returns entries
 
         When("requesting an offer") {
             val offer = service.getOffer("user_1", "merchant_1")
@@ -95,18 +95,18 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
 
     Given("a merchant with exactly 20 real distinct trading days of clean 3,000 RWF/day settlement history") {
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
-        val service = newService(merchantRepository = merchantRepository, walletRepository = walletRepository, ledgerEntryRepository = ledgerEntryRepository)
+        val service = newService(merchantRepository = merchantRepository, accountRepository = accountRepository, ledgerEntryRepository = ledgerEntryRepository)
 
-        val m = merchant("merchant_2", "user_1", "wallet_2")
+        val m = merchant("merchant_2", "user_1", "account_2")
         every { merchantRepository.findById("merchant_2") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_2") } returns Optional.of(wallet("wallet_2", "user_1"))
+        every { accountRepository.findById("account_2") } returns Optional.of(account("account_2", "user_1"))
         // 20 distinct calendar days, one real 3,000 RWF settlement credit each -- total
         // inflow 60,000 over the trailing 30 days => averageDailySettlement = 2,000.00
         // exactly, a clean fixture to hand-verify the offer math against.
-        val entries = (1..20).map { settlementEntry("wallet_2", BigDecimal("3000"), Instant.now().minus(java.time.Duration.ofDays(it.toLong()))) }
-        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_2", any()) } returns entries
+        val entries = (1..20).map { settlementEntry("account_2", BigDecimal("3000"), Instant.now().minus(java.time.Duration.ofDays(it.toLong()))) }
+        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_2", any()) } returns entries
 
         When("requesting an offer") {
             val offer = service.getOffer("user_1", "merchant_2")
@@ -131,7 +131,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val service = newService(merchantRepository = merchantRepository)
 
-        val m = merchant("merchant_3", "owner_1", "wallet_3")
+        val m = merchant("merchant_3", "owner_1", "account_3")
         every { merchantRepository.findById("merchant_3") } returns Optional.of(m)
 
         When("the attacker requests an offer for a merchant they don't own") {
@@ -144,14 +144,14 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     Given("a merchant who already has an active vendor cash advance") {
         val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository, accountRepository = accountRepository)
 
-        val m = merchant("merchant_3", "user_1", "wallet_3")
+        val m = merchant("merchant_3", "user_1", "account_3")
         every { merchantRepository.findById("merchant_3") } returns Optional.of(m)
-        val w = wallet("wallet_3", "user_1")
-        every { walletRepository.findById("wallet_3") } returns Optional.of(w)
-        every { walletRepository.findByIdForUpdate("wallet_3") } returns Optional.of(w)
+        val w = account("account_3", "user_1")
+        every { accountRepository.findById("account_3") } returns Optional.of(w)
+        every { accountRepository.findByIdForUpdate("account_3") } returns Optional.of(w)
         val existing = VendorCashAdvance(
             id = "vendoradv_existing", merchantId = "merchant_3", principalAmount = BigDecimal("100000"),
             feeAmount = BigDecimal("8000"), totalOwed = BigDecimal("108000"), remainingOwed = BigDecimal("108000"),
@@ -160,11 +160,11 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         every { vendorCashAdvanceRepository.findByMerchantIdAndStatusIn("merchant_3", any()) } returns listOf(existing)
 
         When("applying for a second advance") {
-            Then("the one-active-advance guard fires, after locking the merchant's own wallet row first (closing the double-create race)") {
+            Then("the one-active-advance guard fires, after locking the merchant's own account row first (closing the double-create race)") {
                 shouldThrow<VendorCashAdvanceAlreadyActiveException> {
                     service.applyForAdvance("user_1", "merchant_3")
                 }
-                verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_3") }
+                verify(exactly = 1) { accountRepository.findByIdForUpdate("account_3") }
             }
         }
 
@@ -178,14 +178,14 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     Given("a real REQUESTED vendor cash advance being disbursed") {
         val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val m = merchant("merchant_4", "user_1", "wallet_4")
+        val m = merchant("merchant_4", "user_1", "account_4")
         val advance = VendorCashAdvance(
             id = "vendoradv_1", merchantId = "merchant_4", principalAmount = BigDecimal("180000"),
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("194400"),
@@ -193,7 +193,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         )
         every { vendorCashAdvanceRepository.findById("vendoradv_1") } returns Optional.of(advance)
         every { merchantRepository.findById("merchant_4") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_4") } returns Optional.of(wallet("wallet_4", "user_1"))
+        every { accountRepository.findById("account_4") } returns Optional.of(account("account_4", "user_1"))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_disburse", emptyList())
         every { vendorCashAdvanceRepository.save(any()) } answers { firstArg() }
 
@@ -205,12 +205,12 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
                 (result.disbursedAt != null) shouldBe true
             }
 
-            Then("a single balanced 4-leg transaction CREDITs the wallet for principal only, DEBITs loan_payable for principal AND fee separately, and CREDITs fee_revenue for the fee -- net loan_payable position equals totalOwed exactly") {
+            Then("a single balanced 4-leg transaction CREDITs the account for principal only, DEBITs loan_payable for principal AND fee separately, and CREDITs fee_revenue for the fee -- net loan_payable position equals totalOwed exactly") {
                 val legsSlot = slot<List<LedgerLeg>>()
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) }
                 val legs = legsSlot.captured
                 legs.size shouldBe 4
-                legs.any { it.accountId == "wallet_4" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("180000") } shouldBe true
+                legs.any { it.accountId == "account_4" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("180000") } shouldBe true
                 legs.count { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.DEBIT } shouldBe 2
                 legs.any { it.accountId == "loan_payable" && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("180000") } shouldBe true
                 legs.any { it.accountId == "loan_payable" && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("14400") } shouldBe true
@@ -237,14 +237,14 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     Given("a real DISBURSED vendor cash advance being repaid early with an overshooting amount") {
         val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val m = merchant("merchant_5", "user_1", "wallet_5")
+        val m = merchant("merchant_5", "user_1", "account_5")
         val advance = VendorCashAdvance(
             id = "vendoradv_2", merchantId = "merchant_5", principalAmount = BigDecimal("180000"),
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("30000"),
@@ -252,7 +252,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         )
         every { vendorCashAdvanceRepository.findById("vendoradv_2") } returns Optional.of(advance)
         every { merchantRepository.findById("merchant_5") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_5") } returns Optional.of(wallet("wallet_5", "user_1"))
+        every { accountRepository.findById("account_5") } returns Optional.of(account("account_5", "user_1"))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay", emptyList())
         every { vendorCashAdvanceRepository.save(any()) } answers { firstArg() }
 
@@ -265,7 +265,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.all { it.amount == BigDecimal("30000") } &&
-                            legs.any { it.accountId == "wallet_5" && it.direction == LedgerDirection.DEBIT } &&
+                            legs.any { it.accountId == "account_5" && it.direction == LedgerDirection.DEBIT } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
@@ -282,34 +282,34 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     Given("a real DISBURSED advance whose daily collection is capped by the collection rate x real inflow (the smallest of the three caps)") {
         val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = newService(
             vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, ledgerEntryRepository = ledgerEntryRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, ledgerEntryRepository = ledgerEntryRepository,
         )
 
-        val m = merchant("merchant_6", "user_1", "wallet_6")
-        val w = wallet("wallet_6", "user_1", availableBalance = BigDecimal("500000"))
+        val m = merchant("merchant_6", "user_1", "account_6")
+        val w = account("account_6", "user_1", availableBalance = BigDecimal("500000"))
         val advance = VendorCashAdvance(
             id = "vendoradv_3", merchantId = "merchant_6", principalAmount = BigDecimal("180000"),
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("100000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
         every { merchantRepository.findById("merchant_6") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_6") } returns Optional.of(w)
+        every { accountRepository.findById("account_6") } returns Optional.of(w)
         // Real inflow of 10,000 since last collection -- 15% of that is 1,500, far below
-        // both remainingOwed (100,000) and walletBalance (500,000).
-        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_6", any()) } returns
-            listOf(settlementEntry("wallet_6", BigDecimal("10000"), Instant.now()))
+        // both remainingOwed (100,000) and accountBalance (500,000).
+        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_6", any()) } returns
+            listOf(settlementEntry("account_6", BigDecimal("10000"), Instant.now()))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_collect1", emptyList())
         every { vendorCashAdvanceRepository.save(any()) } answers { firstArg() }
 
         When("running the daily collection") {
             val collected = service.runDailyCollection(advance)
 
-            Then("only the real rate-share of inflow (1,500) is collected, not the full remainingOwed or walletBalance") {
+            Then("only the real rate-share of inflow (1,500) is collected, not the full remainingOwed or accountBalance") {
                 collected shouldBe true
                 advance.remainingOwed shouldBe BigDecimal("98500.00")
                 verify {
@@ -322,27 +322,27 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     Given("a real DISBURSED advance whose daily collection is capped by remainingOwed (real inflow would otherwise overpay it)") {
         val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = newService(
             vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, ledgerEntryRepository = ledgerEntryRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, ledgerEntryRepository = ledgerEntryRepository,
         )
 
-        val m = merchant("merchant_7", "user_1", "wallet_7")
-        val w = wallet("wallet_7", "user_1", availableBalance = BigDecimal("500000"))
+        val m = merchant("merchant_7", "user_1", "account_7")
+        val w = account("account_7", "user_1", availableBalance = BigDecimal("500000"))
         val advance = VendorCashAdvance(
             id = "vendoradv_4", merchantId = "merchant_7", principalAmount = BigDecimal("180000"),
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("50000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
         every { merchantRepository.findById("merchant_7") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_7") } returns Optional.of(w)
+        every { accountRepository.findById("account_7") } returns Optional.of(w)
         // Real inflow of 1,000,000 -- 15% of that is 150,000, which would overpay the
         // real 50,000 remainingOwed if not capped.
-        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_7", any()) } returns
-            listOf(settlementEntry("wallet_7", BigDecimal("1000000"), Instant.now()))
+        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_7", any()) } returns
+            listOf(settlementEntry("account_7", BigDecimal("1000000"), Instant.now()))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_collect2", emptyList())
         every { vendorCashAdvanceRepository.save(any()) } answers { firstArg() }
 
@@ -361,37 +361,37 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real DISBURSED advance whose daily collection is capped by the merchant's own current wallet balance") {
+    Given("a real DISBURSED advance whose daily collection is capped by the merchant's own current account balance") {
         val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = newService(
             vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, ledgerEntryRepository = ledgerEntryRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, ledgerEntryRepository = ledgerEntryRepository,
         )
 
-        val m = merchant("merchant_8", "user_1", "wallet_8")
-        // A briefly thin wallet -- e.g. the merchant already moved most of it out --
+        val m = merchant("merchant_8", "user_1", "account_8")
+        // A briefly thin account -- e.g. the merchant already moved most of it out --
         // far below what the rate-share of inflow or remainingOwed alone would allow.
-        val w = wallet("wallet_8", "user_1", availableBalance = BigDecimal("2000"))
+        val w = account("account_8", "user_1", availableBalance = BigDecimal("2000"))
         val advance = VendorCashAdvance(
             id = "vendoradv_5", merchantId = "merchant_8", principalAmount = BigDecimal("180000"),
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("100000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
         every { merchantRepository.findById("merchant_8") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_8") } returns Optional.of(w)
-        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_8", any()) } returns
-            listOf(settlementEntry("wallet_8", BigDecimal("1000000"), Instant.now()))
+        every { accountRepository.findById("account_8") } returns Optional.of(w)
+        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_8", any()) } returns
+            listOf(settlementEntry("account_8", BigDecimal("1000000"), Instant.now()))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_collect3", emptyList())
         every { vendorCashAdvanceRepository.save(any()) } answers { firstArg() }
 
         When("running the daily collection") {
             val collected = service.runDailyCollection(advance)
 
-            Then("collection never pushes the wallet negative -- it's capped at exactly the real current wallet balance (2,000)") {
+            Then("collection never pushes the account negative -- it's capped at exactly the real current account balance (2,000)") {
                 collected shouldBe true
                 advance.remainingOwed shouldBe BigDecimal("98000")
                 verify {
@@ -403,20 +403,20 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
 
     Given("a real DISBURSED advance with zero real itunda-collected settlement inflow since the last collection") {
         val merchantRepository = mockk<MerchantRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
-        val service = newService(merchantRepository = merchantRepository, walletRepository = walletRepository, ledgerEntryRepository = ledgerEntryRepository)
+        val service = newService(merchantRepository = merchantRepository, accountRepository = accountRepository, ledgerEntryRepository = ledgerEntryRepository)
 
-        val m = merchant("merchant_9", "user_1", "wallet_9")
-        val w = wallet("wallet_9", "user_1")
+        val m = merchant("merchant_9", "user_1", "account_9")
+        val w = account("account_9", "user_1")
         val advance = VendorCashAdvance(
             id = "vendoradv_6", merchantId = "merchant_9", principalAmount = BigDecimal("180000"),
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("100000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
         every { merchantRepository.findById("merchant_9") } returns Optional.of(m)
-        every { walletRepository.findById("wallet_9") } returns Optional.of(w)
-        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_9", any()) } returns emptyList()
+        every { accountRepository.findById("account_9") } returns Optional.of(w)
+        every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_9", any()) } returns emptyList()
 
         When("running the daily collection") {
             val collected = service.runDailyCollection(advance)

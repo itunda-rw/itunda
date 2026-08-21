@@ -10,14 +10,14 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AffiliateCommission
 import rw.itunda.core.domain.AffiliateLink
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AffiliateCommissionRepository
 import rw.itunda.core.repository.AffiliateLinkRepository
 import rw.itunda.core.repository.MerchantProductRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 
 /**
@@ -31,10 +31,10 @@ class AffiliateServiceTest : BehaviorSpec({
         affiliateLinkRepository: AffiliateLinkRepository = mockk(),
         affiliateCommissionRepository: AffiliateCommissionRepository = mockk(),
         merchantProductRepository: MerchantProductRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = AffiliateService(affiliateLinkRepository, affiliateCommissionRepository, merchantProductRepository, walletRepository, ledgerService, rateLimiter)
+    ) = AffiliateService(affiliateLinkRepository, affiliateCommissionRepository, merchantProductRepository, accountRepository, ledgerService, rateLimiter)
 
     Given("a real product a user wants to promote") {
         val affiliateLinkRepository = mockk<AffiliateLinkRepository>()
@@ -78,20 +78,20 @@ class AffiliateServiceTest : BehaviorSpec({
     Given("a real order placed through someone else's affiliate link") {
         val affiliateLinkRepository = mockk<AffiliateLinkRepository>()
         val affiliateCommissionRepository = mockk<AffiliateCommissionRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             affiliateLinkRepository = affiliateLinkRepository, affiliateCommissionRepository = affiliateCommissionRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         val link = AffiliateLink(id = "affiliate_link_1", userId = "referrer_1", productId = "product_1", code = "AFABC123")
-        val referrerWallet = Wallet(
-            id = "wallet_referrer", userId = "referrer_1", accountNumber = "1000000009", accountName = "Referrer",
-            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        val referrerAccount = Account(
+            id = "account_referrer", userId = "referrer_1", accountNumber = "1000000009", accountName = "Referrer",
+            type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         every { affiliateLinkRepository.findByCode("AFABC123") } returns link
-        every { walletRepository.findByUserIdAndType("referrer_1", WalletType.MAIN) } returns referrerWallet
+        every { accountRepository.findByUserIdAndType("referrer_1", AccountType.MAIN) } returns referrerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_commission", emptyList())
         val savedSlot = slot<AffiliateCommission>()
         every { affiliateCommissionRepository.save(capture(savedSlot)) } answers { firstArg() }

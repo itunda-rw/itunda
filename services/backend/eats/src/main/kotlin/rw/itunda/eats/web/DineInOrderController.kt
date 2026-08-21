@@ -19,18 +19,18 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
-import rw.itunda.eats.DineInBuyerNoWalletException
+import rw.itunda.eats.DineInBuyerNoAccountException
 import rw.itunda.eats.DineInMenuItemNotFoundException
 import rw.itunda.eats.DineInMenuItemSoldOutException
 import rw.itunda.eats.DineInMenuItemSurplusDealExpiredException
 import rw.itunda.eats.DineInOrderItemRequest
 import rw.itunda.eats.DineInOrderNotFoundException
 import rw.itunda.eats.DineInOrderService
-import rw.itunda.eats.DineInRestaurantNoWalletException
+import rw.itunda.eats.DineInRestaurantNoAccountException
 import rw.itunda.eats.DineInRestaurantNotAcceptingOrdersException
 import rw.itunda.eats.DineInRestaurantNotFoundException
 import rw.itunda.eats.EmptyDineInOrderException
@@ -125,12 +125,12 @@ class DineInOrderController(
     fun handleRestaurantNotFound(ex: DineInRestaurantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(DineInRestaurantNoWalletException::class)
-    fun handleRestaurantNoWallet(ex: DineInRestaurantNoWalletException) =
+    @ExceptionHandler(DineInRestaurantNoAccountException::class)
+    fun handleRestaurantNoAccount(ex: DineInRestaurantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(DineInBuyerNoWalletException::class)
-    fun handleBuyerNoWallet(ex: DineInBuyerNoWalletException) =
+    @ExceptionHandler(DineInBuyerNoAccountException::class)
+    fun handleBuyerNoAccount(ex: DineInBuyerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmptyDineInOrderException::class)
@@ -197,7 +197,7 @@ class DineInOrderController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 }

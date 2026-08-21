@@ -26,7 +26,7 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
         When("following a merchant for the first time") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
@@ -75,7 +75,7 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
         When("they have 5 real followers") {
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
@@ -108,7 +108,7 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val followers = listOf(
             MerchantFollow(id = "f1", userId = "follower_1", merchantId = "merchant_1"),
             MerchantFollow(id = "f2", userId = "follower_2", merchantId = "merchant_1"),

@@ -30,7 +30,7 @@ enum class WeeklySavingsPlanStatus { ACTIVE, MATURED, CANCELLED }
  * [bonusRate] is only ever paid on top of [baseRate] if [streakBroken] stays false
  * through a real, full unbroken run to maturity -- a single missed installment (an
  * insufficient-funds skip) sets it permanently, the real "don't break the streak"
- * gamification mechanic. Backed by a real dedicated `Wallet` (WalletType.WEEKLY_SAVINGS)
+ * gamification mechanic. Backed by a real dedicated `Account` (AccountType.WEEKLY_SAVINGS)
  * per plan, same "no new balance concept" discipline `GroupAccount` already
  * established -- deposits/interest/withdrawals are the same real ledger-backed
  * WALLET-to-WALLET or clearing-account movement every other money-moving feature here
@@ -46,8 +46,8 @@ class WeeklySavingsPlan(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false, length = 255)
     var name: String,
@@ -118,7 +118,7 @@ class WeeklySavingsPlan(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", name = "", baseWeeklyAmount = BigDecimal.ZERO,
+        id = "", userId = "", accountId = "", name = "", baseWeeklyAmount = BigDecimal.ZERO,
         escalationRate = BigDecimal.ZERO, openingWeekday = 1, baseRate = 0.0, bonusRate = 0.0,
     )
 }

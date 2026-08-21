@@ -10,7 +10,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.repository.AffiliateCommissionRepository
 import rw.itunda.core.repository.AffiliateLinkRepository
 import rw.itunda.core.repository.MerchantProductRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import java.math.BigDecimal
@@ -36,7 +36,7 @@ class AffiliateService(
     private val affiliateLinkRepository: AffiliateLinkRepository,
     private val affiliateCommissionRepository: AffiliateCommissionRepository,
     private val merchantProductRepository: MerchantProductRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -97,14 +97,14 @@ class AffiliateService(
         if (referralCode.isNullOrBlank()) return
         val link = affiliateLinkRepository.findByCode(referralCode) ?: return
         if (link.userId == buyerId) return
-        val referrerWallet = walletRepository.findByUserIdAndType(link.userId, rw.itunda.core.domain.WalletType.MAIN) ?: return
+        val referrerAccount = accountRepository.findByUserIdAndType(link.userId, rw.itunda.core.domain.AccountType.MAIN) ?: return
         val commission = orderTotal.multiply(COMMISSION_RATE).setScale(2, RoundingMode.HALF_UP)
         if (commission <= BigDecimal.ZERO) return
         val result = ledgerService.postLedgerTransaction(
-            referrerWallet.currency,
+            referrerAccount.currency,
             listOf(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.DEBIT, commission, "Affiliate commission payout"),
-                LedgerLeg(referrerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Affiliate commission"),
+                LedgerLeg(referrerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Affiliate commission"),
             ),
         )
         affiliateCommissionRepository.save(

@@ -23,7 +23,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.review.HoodReviewAlreadySubmittedException
 import rw.itunda.core.review.HoodReviewNoCounterpartyException
@@ -36,7 +36,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
-import rw.itunda.marketplace.BuyerNoWalletException
+import rw.itunda.marketplace.BuyerNoAccountException
 import rw.itunda.marketplace.BuyerNotFoundException
 import rw.itunda.marketplace.FavoriteListingNotFoundException
 import rw.itunda.marketplace.InvalidBoostDurationException
@@ -60,7 +60,7 @@ import rw.itunda.marketplace.OwnListingException
 import rw.itunda.marketplace.OwnOfferException
 import rw.itunda.marketplace.PriceOfferNotFoundException
 import rw.itunda.marketplace.PriceOfferService
-import rw.itunda.marketplace.SellerNoWalletException
+import rw.itunda.marketplace.SellerNoAccountException
 import java.math.BigDecimal
 
 data class CreateListingRequest(
@@ -520,12 +520,12 @@ class MarketplaceController(
     fun handleInvalidBoostDuration(ex: InvalidBoostDurationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BOOST_DURATION", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(SellerNoWalletException::class)
-    fun handleSellerNoWallet(ex: SellerNoWalletException) =
+    @ExceptionHandler(SellerNoAccountException::class)
+    fun handleSellerNoAccount(ex: SellerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(BuyerNoWalletException::class)
-    fun handleBuyerNoWallet(ex: BuyerNoWalletException) =
+    @ExceptionHandler(BuyerNoAccountException::class)
+    fun handleBuyerNoAccount(ex: BuyerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(MarketplaceEscrowNotFoundException::class)
@@ -544,9 +544,9 @@ class MarketplaceController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleIdempotencyConflict(ex: IdempotencyConflictException) =

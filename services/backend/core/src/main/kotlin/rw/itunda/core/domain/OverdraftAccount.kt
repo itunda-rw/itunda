@@ -52,8 +52,8 @@ class OverdraftAccount(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "credit_limit", nullable = false, precision = 18, scale = 2)
     val creditLimit: BigDecimal,
@@ -77,5 +77,5 @@ class OverdraftAccount(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "", creditLimit = BigDecimal.ZERO, interestRate = 0.0)
+    protected constructor() : this(id = "", userId = "", accountId = "", creditLimit = BigDecimal.ZERO, interestRate = 0.0)
 }

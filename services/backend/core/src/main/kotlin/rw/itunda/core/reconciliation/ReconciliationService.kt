@@ -40,7 +40,7 @@ data class TwoSidedRailReconciliation(
  *
  * REQUIRES_NEW on logAttempt for the same reason IncidentDetector.recordFailure needs it: this
  * is called from inside @Transactional caller methods (BillsService.payBill/buyAirtime,
- * WalletService.confirmTransfer) that roll back on a provider decline, and a decline is exactly
+ * AccountService.confirmTransfer) that roll back on a provider decline, and a decline is exactly
  * the event this log most needs to durably capture -- it must not roll back with the caller.
  */
 @Service

@@ -23,7 +23,7 @@ import java.time.Instant
  * declaring a duplicate enum. [proposedByUserId] is the inquirer for the original offer
  * and the lister for a counter-offer; a counter is a brand-new row, not an edit, so the
  * full negotiation history survives. Honestly scoped exactly like `PriceOffer`:
- * accepting only marks the negotiation agreed in the conversation -- no wallet money
+ * accepting only marks the negotiation agreed in the conversation -- no account money
  * moves, no listing status changes automatically. A lister who wants to close the
  * listing still uses the existing real `PropertyListingService.markTaken`, unmodified.
  */

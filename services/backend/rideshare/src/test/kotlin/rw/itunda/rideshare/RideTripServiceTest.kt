@@ -15,8 +15,8 @@ import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.RideTrip
 import rw.itunda.core.domain.RideTripStatus
 import rw.itunda.core.domain.RideTripStop
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
 import rw.itunda.core.geo.TravelMode
@@ -29,7 +29,7 @@ import rw.itunda.core.repository.RideDriverRepository
 import rw.itunda.core.repository.RideTripRepository
 import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
@@ -47,7 +47,7 @@ class RideTripServiceTest : BehaviorSpec({
         rideDriverRepository: RideDriverRepository = mockk(),
         rideTripRepository: RideTripRepository = mockk(),
         rideTripStopRepository: RideTripStopRepository = mockk(relaxed = true),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         // Real, explicit stub, not relaxed=true's default -- same known "relaxed mockk
         // can't correctly infer JpaRepository's generic save() signature" gotcha
@@ -64,7 +64,7 @@ class RideTripServiceTest : BehaviorSpec({
         // real haversine fallback unchanged unless a test explicitly stubs a real route.
         osrmRoutingClient: OsrmRoutingClient = mockk<OsrmRoutingClient>().also { every { it.routeThrough(any(), any()) } returns null },
     ) = RideTripService(
-        rideDriverRepository, rideTripRepository, rideTripStopRepository, walletRepository, ledgerService,
+        rideDriverRepository, rideTripRepository, rideTripStopRepository, accountRepository, ledgerService,
         transactionRepository, notificationRepository, rateLimiter, pushNotificationService, messagingService, fraudRuleEngine,
         osrmRoutingClient,
     )
@@ -72,7 +72,7 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real passenger with sufficient balance and one real nearby driver") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
@@ -80,17 +80,17 @@ class RideTripServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<rw.itunda.core.fraud.FraudRuleEngine>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService, fraudRuleEngine = fraudRuleEngine,
         )
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val passengerAccount = Account(
+            id = "account_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        val nearbyDriver = RideDriver(id = "driver_1", userId = "driver_user_1", walletId = "wallet_driver", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val nearbyDriver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_driver", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
 
-        every { walletRepository.findByUserIdAndType("passenger_1", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_1", AccountType.MAIN) } returns passengerAccount
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nearbyDriver)
         every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -155,19 +155,19 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real passenger requesting a trip while itunda's self-hosted OSRM instance is reachable") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, osrmRoutingClient = osrmRoutingClient,
+            accountRepository = accountRepository, ledgerService = ledgerService, osrmRoutingClient = osrmRoutingClient,
         )
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val passengerAccount = Account(
+            id = "account_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        every { walletRepository.findByUserIdAndType("passenger_1", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_1", AccountType.MAIN) } returns passengerAccount
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns emptyList()
         every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_osrm_1", emptyList())
@@ -195,31 +195,31 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real driver with an active Uber-style Destination Filter") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val passengerAccount = Account(
+            id = "account_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
         // Real destination far east of the driver's current position -- a dropoff also
         // east of the driver moves them genuinely closer; a dropoff west moves them
         // genuinely further, same real haversine-distance-reduction check
         // RideTripService.rankNearbyDrivers's own doc comment describes.
         val filteredDriver = RideDriver(
-            id = "driver_filtered", userId = "driver_user_filtered", walletId = "wallet_driver_filtered",
+            id = "driver_filtered", userId = "driver_user_filtered", accountId = "account_driver_filtered",
             available = true, currentLatitude = -1.9536, currentLongitude = 30.0605,
             destinationLatitude = -1.9300, destinationLongitude = 30.1300,
         )
 
-        every { walletRepository.findByUserIdAndType("passenger_1", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_1", AccountType.MAIN) } returns passengerAccount
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(filteredDriver)
         every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -257,14 +257,14 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real passenger with insufficient balance") {
         val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
         val rideTripRepository = mockk<RideTripRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository, accountRepository = accountRepository)
 
-        val poorWallet = Wallet(
-            id = "wallet_poor", userId = "passenger_2", accountNumber = "1000000002", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("100"), availableBalance = BigDecimal("100"),
+        val poorAccount = Account(
+            id = "account_poor", userId = "passenger_2", accountNumber = "1000000002", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("100"), availableBalance = BigDecimal("100"),
         )
-        every { walletRepository.findByUserIdAndType("passenger_2", WalletType.MAIN) } returns poorWallet
+        every { accountRepository.findByUserIdAndType("passenger_2", AccountType.MAIN) } returns poorAccount
 
         When("they request a real trip") {
             Then("it throws InsufficientFundsException before any ledger post") {
@@ -282,18 +282,18 @@ class RideTripServiceTest : BehaviorSpec({
         val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
         val rideTripRepository = mockk<RideTripRepository>()
         val rideTripStopRepository = mockk<RideTripStopRepository>(relaxed = true)
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            rideTripStopRepository = rideTripStopRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+            rideTripStopRepository = rideTripStopRepository, accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_6", userId = "passenger_6", accountNumber = "1000000006", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val passengerAccount = Account(
+            id = "account_passenger_6", userId = "passenger_6", accountNumber = "1000000006", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        every { walletRepository.findByUserIdAndType("passenger_6", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_6", AccountType.MAIN) } returns passengerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_multistop", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
 
@@ -340,7 +340,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripStopRepository = mockk<RideTripStopRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository, rideTripStopRepository = rideTripStopRepository)
 
-        val driver = RideDriver(id = "driver_6", userId = "driver_user_6", walletId = "wallet_driver_6", available = true)
+        val driver = RideDriver(id = "driver_6", userId = "driver_user_6", accountId = "account_driver_6", available = true)
         val trip = RideTrip(
             id = "ride_trip_multistop_1", passengerId = "passenger_7", driverId = "driver_6", pickupAddress = "A",
             pickupLatitude = -1.95, pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
@@ -386,18 +386,18 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real passenger requesting a real Kakao T-style scheduled ride") {
         val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService,
+            accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_4", userId = "passenger_4", accountNumber = "1000000004", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val passengerAccount = Account(
+            id = "account_passenger_4", userId = "passenger_4", accountNumber = "1000000004", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        every { walletRepository.findByUserIdAndType("passenger_4", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_4", AccountType.MAIN) } returns passengerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_scheduled", emptyList())
         val savedSlot = slot<RideTrip>()
         every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -451,7 +451,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val nearbyDriver = RideDriver(id = "driver_5", userId = "driver_user_5", walletId = "wallet_driver_5", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val nearbyDriver = RideDriver(id = "driver_5", userId = "driver_user_5", accountId = "account_driver_5", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
         val dueTrip = RideTrip(
             id = "ride_trip_due", passengerId = "passenger_5", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
             dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
@@ -487,7 +487,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val nearbyDriver = RideDriver(id = "driver_6", userId = "driver_user_6", walletId = "wallet_driver_6", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val nearbyDriver = RideDriver(id = "driver_6", userId = "driver_user_6", accountId = "account_driver_6", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
         val expiredTrip = RideTrip(
             id = "ride_trip_expired", passengerId = "passenger_6", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
             dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
@@ -549,7 +549,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val driver = RideDriver(id = "driver_2", userId = "driver_user_2", walletId = "wallet_driver_2", available = true)
+        val driver = RideDriver(id = "driver_2", userId = "driver_user_2", accountId = "account_driver_2", available = true)
         val trip = RideTrip(
             id = "ride_trip_1", passengerId = "passenger_3", pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
             dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("3.5"),
@@ -574,21 +574,21 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real IN_PROGRESS trip a driver is completing") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_3", userId = "driver_user_3", walletId = "wallet_driver_3", available = true)
-        val driverWallet = Wallet(
-            id = "wallet_driver_3", userId = "driver_user_3", accountNumber = "1000000003", accountName = "Driver",
-            type = WalletType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
+        val driver = RideDriver(id = "driver_3", userId = "driver_user_3", accountId = "account_driver_3", available = true)
+        val driverAccount = Account(
+            id = "account_driver_3", userId = "driver_user_3", accountNumber = "1000000003", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
         )
         val trip = RideTrip(
             id = "ride_trip_2", passengerId = "passenger_4", driverId = "driver_3", pickupAddress = "A", pickupLatitude = -1.95,
@@ -598,7 +598,7 @@ class RideTripServiceTest : BehaviorSpec({
         )
         every { rideDriverRepository.findByUserId("driver_user_3") } returns driver
         every { rideTripRepository.findById("ride_trip_2") } returns Optional.of(trip)
-        every { walletRepository.findById("wallet_driver_3") } returns Optional.of(driverWallet)
+        every { accountRepository.findById("account_driver_3") } returns Optional.of(driverAccount)
         val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
         every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_payout", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
@@ -609,7 +609,7 @@ class RideTripServiceTest : BehaviorSpec({
             Then("it real-releases the fare from escrow, net of the platform fee, to the driver") {
                 result.status shouldBe RideTripStatus.COMPLETED
                 result.payoutTransactionId shouldBe "ledgertxn_payout"
-                val netLeg = legsSlot.captured.find { it.accountId == "wallet_driver_3" }
+                val netLeg = legsSlot.captured.find { it.accountId == "account_driver_3" }
                 netLeg?.amount shouldBe BigDecimal("1970")
             }
         }
@@ -620,7 +620,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val driver = RideDriver(id = "driver_4", userId = "driver_user_4", walletId = "wallet_driver_4", available = true)
+        val driver = RideDriver(id = "driver_4", userId = "driver_user_4", accountId = "account_driver_4", available = true)
         fun freshTrip() = RideTrip(
             id = "ride_trip_3", passengerId = "passenger_5", driverId = "driver_4", pickupAddress = "A", pickupLatitude = -1.95,
             pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
@@ -666,13 +666,13 @@ class RideTripServiceTest : BehaviorSpec({
 
     Given("a real REQUESTED trip (no driver assigned yet) the passenger wants to cancel") {
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(rideTripRepository = rideTripRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(rideTripRepository = rideTripRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_5", userId = "passenger_5", accountNumber = "1000000005", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        val passengerAccount = Account(
+            id = "account_passenger_5", userId = "passenger_5", accountNumber = "1000000005", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
         )
         val trip = RideTrip(
             id = "ride_trip_3", passengerId = "passenger_5", pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
@@ -680,7 +680,7 @@ class RideTripServiceTest : BehaviorSpec({
             fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_z", status = RideTripStatus.REQUESTED,
         )
         every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(trip)
-        every { walletRepository.findByUserIdAndType("passenger_5", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_5", AccountType.MAIN) } returns passengerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
 
@@ -697,25 +697,25 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real DRIVER_ASSIGNED trip cancelled within the real Uber 2-minute grace period") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_cancel_1", userId = "driver_user_cancel_1", walletId = "wallet_driver_cancel_1")
-        val driverWallet = Wallet(
-            id = "wallet_driver_cancel_1", userId = "driver_user_cancel_1", accountNumber = "1000000010", accountName = "Driver",
-            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        val driver = RideDriver(id = "driver_cancel_1", userId = "driver_user_cancel_1", accountId = "account_driver_cancel_1")
+        val driverAccount = Account(
+            id = "account_driver_cancel_1", userId = "driver_user_cancel_1", accountNumber = "1000000010", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
         )
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_cancel_1", userId = "passenger_cancel_1", accountNumber = "1000000011", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        val passengerAccount = Account(
+            id = "account_passenger_cancel_1", userId = "passenger_cancel_1", accountNumber = "1000000011", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
         )
         val trip = RideTrip(
             id = "ride_trip_cancel_1", passengerId = "passenger_cancel_1", driverId = "driver_cancel_1",
@@ -726,8 +726,8 @@ class RideTripServiceTest : BehaviorSpec({
         )
         every { rideTripRepository.findById("ride_trip_cancel_1") } returns Optional.of(trip)
         every { rideDriverRepository.findById("driver_cancel_1") } returns Optional.of(driver)
-        every { walletRepository.findByUserIdAndType("passenger_cancel_1", WalletType.MAIN) } returns passengerWallet
-        every { walletRepository.findById("wallet_driver_cancel_1") } returns Optional.of(driverWallet)
+        every { accountRepository.findByUserIdAndType("passenger_cancel_1", AccountType.MAIN) } returns passengerAccount
+        every { accountRepository.findById("account_driver_cancel_1") } returns Optional.of(driverAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund_grace", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
 
@@ -753,25 +753,25 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real DRIVER_ASSIGNED trip cancelled after the real Uber 2-minute grace period") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", walletId = "wallet_driver_cancel_2")
-        val driverWallet = Wallet(
-            id = "wallet_driver_cancel_2", userId = "driver_user_cancel_2", accountNumber = "1000000012", accountName = "Driver",
-            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", accountId = "account_driver_cancel_2")
+        val driverAccount = Account(
+            id = "account_driver_cancel_2", userId = "driver_user_cancel_2", accountNumber = "1000000012", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
         )
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_cancel_2", userId = "passenger_cancel_2", accountNumber = "1000000013", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        val passengerAccount = Account(
+            id = "account_passenger_cancel_2", userId = "passenger_cancel_2", accountNumber = "1000000013", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
         )
         val trip = RideTrip(
             id = "ride_trip_cancel_2", passengerId = "passenger_cancel_2", driverId = "driver_cancel_2",
@@ -782,8 +782,8 @@ class RideTripServiceTest : BehaviorSpec({
         )
         every { rideTripRepository.findById("ride_trip_cancel_2") } returns Optional.of(trip)
         every { rideDriverRepository.findById("driver_cancel_2") } returns Optional.of(driver)
-        every { walletRepository.findByUserIdAndType("passenger_cancel_2", WalletType.MAIN) } returns passengerWallet
-        every { walletRepository.findById("wallet_driver_cancel_2") } returns Optional.of(driverWallet)
+        every { accountRepository.findByUserIdAndType("passenger_cancel_2", AccountType.MAIN) } returns passengerAccount
+        every { accountRepository.findById("account_driver_cancel_2") } returns Optional.of(driverAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund_fee", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
 
@@ -797,7 +797,7 @@ class RideTripServiceTest : BehaviorSpec({
                 legs.captured.size shouldBe 3
                 legs.captured[1].amount shouldBe BigDecimal("500")
                 legs.captured[2].amount shouldBe BigDecimal("1000")
-                legs.captured[2].accountId shouldBe "wallet_driver_cancel_2"
+                legs.captured[2].accountId shouldBe "account_driver_cancel_2"
             }
 
             Then("it notifies the driver of the real cancellation-fee payout") {
@@ -811,27 +811,27 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a driver with a real, statistically meaningful low acceptance rate") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
 
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_6", userId = "passenger_6", accountNumber = "1000000006", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        val passengerAccount = Account(
+            id = "account_passenger_6", userId = "passenger_6", accountNumber = "1000000006", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
         // Real acceptance rate 1/10 = 10%, well under the real 30% floor, with a real
         // statistically meaningful sample (10 >= MIN_OFFERS_FOR_ACCEPTANCE_FILTER).
-        val flakyCloseDriver = RideDriver(id = "driver_flaky", userId = "driver_user_flaky", walletId = "wallet_flaky", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, totalOffers = 10, totalAccepted = 1)
-        val reliableFarDriver = RideDriver(id = "driver_reliable", userId = "driver_user_reliable", walletId = "wallet_reliable", available = true, currentLatitude = -1.9600, currentLongitude = 30.0900, totalOffers = 10, totalAccepted = 9)
+        val flakyCloseDriver = RideDriver(id = "driver_flaky", userId = "driver_user_flaky", accountId = "account_flaky", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, totalOffers = 10, totalAccepted = 1)
+        val reliableFarDriver = RideDriver(id = "driver_reliable", userId = "driver_user_reliable", accountId = "account_reliable", available = true, currentLatitude = -1.9600, currentLongitude = 30.0900, totalOffers = 10, totalAccepted = 9)
 
-        every { walletRepository.findByUserIdAndType("passenger_6", WalletType.MAIN) } returns passengerWallet
+        every { accountRepository.findByUserIdAndType("passenger_6", AccountType.MAIN) } returns passengerAccount
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(flakyCloseDriver, reliableFarDriver)
         every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
@@ -853,7 +853,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val driver = RideDriver(id = "driver_earnings", userId = "driver_user_earnings", walletId = "wallet_earnings")
+        val driver = RideDriver(id = "driver_earnings", userId = "driver_user_earnings", accountId = "account_earnings")
         every { rideDriverRepository.findByUserId("driver_user_earnings") } returns driver
 
         fun trip(id: String, day: java.time.LocalDate, fare: String, fee: String) = RideTrip(
@@ -949,7 +949,7 @@ class RideTripServiceTest : BehaviorSpec({
             status = RideTripStatus.IN_PROGRESS,
         )
         val driver = RideDriver(
-            id = "driver_share", userId = "driver_user_share", walletId = "wallet_share",
+            id = "driver_share", userId = "driver_user_share", accountId = "account_share",
             currentLatitude = -1.9600, currentLongitude = 30.0500,
         )
         every { rideTripRepository.findById("ride_trip_share_1") } returns Optional.of(trip)
@@ -1000,25 +1000,25 @@ class RideTripServiceTest : BehaviorSpec({
     Given("a real completed trip, eligible to be tipped") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
-            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            accountRepository = accountRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_tip", userId = "driver_user_tip", walletId = "wallet_driver_tip")
-        val driverWallet = Wallet(
-            id = "wallet_driver_tip", userId = "driver_user_tip", accountNumber = "1000000002", accountName = "Driver",
-            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        val driver = RideDriver(id = "driver_tip", userId = "driver_user_tip", accountId = "account_driver_tip")
+        val driverAccount = Account(
+            id = "account_driver_tip", userId = "driver_user_tip", accountNumber = "1000000002", accountName = "Driver",
+            type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
         )
-        val passengerWallet = Wallet(
-            id = "wallet_passenger_tip", userId = "passenger_tip", accountNumber = "1000000003", accountName = "Passenger",
-            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        val passengerAccount = Account(
+            id = "account_passenger_tip", userId = "passenger_tip", accountNumber = "1000000003", accountName = "Passenger",
+            type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
         )
         val trip = RideTrip(
             id = "ride_trip_tip_1", passengerId = "passenger_tip", driverId = "driver_tip",
@@ -1031,8 +1031,8 @@ class RideTripServiceTest : BehaviorSpec({
 
         every { rideTripRepository.findByIdForUpdate("ride_trip_tip_1") } returns java.util.Optional.of(trip)
         every { rideDriverRepository.findById("driver_tip") } returns java.util.Optional.of(driver)
-        every { walletRepository.findByUserIdAndType("passenger_tip", WalletType.MAIN) } returns passengerWallet
-        every { walletRepository.findById("wallet_driver_tip") } returns java.util.Optional.of(driverWallet)
+        every { accountRepository.findByUserIdAndType("passenger_tip", AccountType.MAIN) } returns passengerAccount
+        every { accountRepository.findById("account_driver_tip") } returns java.util.Optional.of(driverAccount)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_tip_result", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
 

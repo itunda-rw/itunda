@@ -5,13 +5,13 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MerchantAd
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MerchantAdRepository
 import rw.itunda.core.repository.MerchantRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -34,7 +34,7 @@ data class NearbyAd(val ad: MerchantAd, val businessName: String, val distanceKm
 class MerchantAdService(
     private val merchantRepository: MerchantRepository,
     private val merchantAdRepository: MerchantAdRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
 ) {
     companion object {
@@ -80,13 +80,13 @@ class MerchantAdService(
         val price = LOCAL_AD_TIERS[days]
             ?: throw InvalidAdDurationException("Choose a real ad duration -- ${LOCAL_AD_TIERS.keys.sorted().joinToString()} days")
 
-        val merchantWallet = walletRepository.findByUserIdAndType(ownerUserId, WalletType.MAIN)
-            ?: throw MerchantNoWalletException("No wallet found for this account")
+        val merchantAccount = accountRepository.findByUserIdAndType(ownerUserId, AccountType.MAIN)
+            ?: throw MerchantNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            merchantWallet.currency,
+            merchantAccount.currency,
             listOf(
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Local ad \"$trimmedTitle\" for $days days"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Local ad \"$trimmedTitle\" for $days days"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, price, "Local ad placement -- ${merchant.businessName}"),
             ),
         )

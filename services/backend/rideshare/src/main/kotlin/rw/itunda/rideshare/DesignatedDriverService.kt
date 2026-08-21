@@ -13,7 +13,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -21,14 +21,14 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DesignatedDriverRepository
 import rw.itunda.core.repository.DesignatedDriverTripRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class DesignatedDriverNoWalletException(message: String) : RuntimeException(message)
+class DesignatedDriverNoAccountException(message: String) : RuntimeException(message)
 class DesignatedDriverAlreadyRegisteredException(message: String) : RuntimeException(message)
 class DesignatedDriverNotRegisteredException(message: String) : RuntimeException(message)
 class InvalidDesignatedDriverLocationException(message: String) : RuntimeException(message)
@@ -54,7 +54,7 @@ class InvalidDesignatedDriverTripStatusTransitionException(message: String) : Ru
 class DesignatedDriverService(
     private val designatedDriverRepository: DesignatedDriverRepository,
     private val designatedDriverTripRepository: DesignatedDriverTripRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val rateLimiter: RateLimiter,
@@ -78,7 +78,7 @@ class DesignatedDriverService(
         // committed yet) always refunds in full, unchanged. An ACCEPTED trip cancelled
         // within this grace period of driverAcceptedAt also refunds in full; past it,
         // CANCELLATION_FEE is carved out of the refund and paid straight to the
-        // driver's settlement wallet to compensate them for committing to the job.
+        // driver's settlement account to compensate them for committing to the job.
         val CANCELLATION_FEE_GRACE_PERIOD: Duration = Duration.ofMinutes(2)
         val CANCELLATION_FEE = baseFare
     }
@@ -93,10 +93,10 @@ class DesignatedDriverService(
             throw DesignatedDriverAlreadyRegisteredException("This account is already registered as a designated driver")
         }
         val trimmedLicense = licenseNumber.trim().ifEmpty { throw InvalidDesignatedDriverLocationException("License number is required") }.take(100)
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw DesignatedDriverNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw DesignatedDriverNoAccountException("No account found for this account")
         return designatedDriverRepository.save(
-            DesignatedDriver(id = "designated_driver_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, licenseNumber = trimmedLicense),
+            DesignatedDriver(id = "designated_driver_${UUID.randomUUID()}", userId = userId, accountId = account.id, licenseNumber = trimmedLicense),
         )
     }
 
@@ -127,7 +127,7 @@ class DesignatedDriverService(
         return designatedDriverRepository.save(driver)
     }
 
-    /** Real escrow hold -- the customer's real fare leaves their wallet right now,
+    /** Real escrow hold -- the customer's real fare leaves their account right now,
      * held until the trip completes, same "hold, don't move directly" shape
      * `RideTripService.requestTrip` already establishes. */
     @Transactional
@@ -154,21 +154,21 @@ class DesignatedDriverService(
 
         rateLimiter.checkLimit("designated-driver:request:$customerId", limit = 20, window = Duration.ofHours(1))
 
-        val customerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
-            ?: throw DesignatedDriverNoWalletException("No wallet found for this account")
+        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
+            ?: throw DesignatedDriverNoAccountException("No account found for this account")
 
         val distanceKm = BigDecimal(GeoUtils.haversineKm(pickupLatitude, pickupLongitude, dropoffLatitude, dropoffLongitude)).setScale(3, RoundingMode.HALF_UP)
         val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
         val platformFee = fare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
 
-        if (customerWallet.availableBalance < fare) {
+        if (customerAccount.availableBalance < fare) {
             throw InsufficientFundsException("Insufficient available balance for this trip")
         }
 
         val holdResult = ledgerService.postLedgerTransaction(
-            customerWallet.currency,
+            customerAccount.currency,
             listOf(
-                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fare, "Designated driver requested"),
+                LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fare, "Designated driver requested"),
                 LedgerLeg("designated_driver_holding", LedgerAccountType.DESIGNATED_DRIVER_HOLDING, LedgerDirection.CREDIT, fare, "Designated driver fare held in escrow"),
             ),
         )
@@ -177,10 +177,10 @@ class DesignatedDriverService(
             referenceNumber = "DDRIVE${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = customerId,
             recipientId = customerId,
-            fromWalletId = customerWallet.id,
+            fromAccountId = customerAccount.id,
             amount = fare,
             fee = platformFee,
-            currency = customerWallet.currency,
+            currency = customerAccount.currency,
             type = TransactionType.TRANSFER,
             status = TransactionStatus.COMPLETED,
             description = "Designated driver requested",
@@ -264,14 +264,14 @@ class DesignatedDriverService(
         if (trip.status != DesignatedDriverTripStatus.DRIVING) {
             throw InvalidDesignatedDriverTripStatusTransitionException("Only a DRIVING trip can be completed")
         }
-        val driverWallet = walletRepository.findById(driver.walletId).orElseThrow { DesignatedDriverNoWalletException("Driver settlement wallet not found") }
+        val driverAccount = accountRepository.findById(driver.accountId).orElseThrow { DesignatedDriverNoAccountException("Driver settlement account not found") }
         val netToDriver = trip.fare.subtract(trip.platformFee)
 
         val result = ledgerService.postLedgerTransaction(
-            driverWallet.currency,
+            driverAccount.currency,
             listOf(
                 LedgerLeg("designated_driver_holding", LedgerAccountType.DESIGNATED_DRIVER_HOLDING, LedgerDirection.DEBIT, trip.fare, "Designated driver fare released"),
-                LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToDriver, "Designated driver fare payout"),
+                LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToDriver, "Designated driver fare payout"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, trip.platformFee, "Designated driver platform fee"),
             ),
         )
@@ -303,8 +303,8 @@ class DesignatedDriverService(
         if (trip.status != DesignatedDriverTripStatus.REQUESTED && trip.status != DesignatedDriverTripStatus.ACCEPTED) {
             throw InvalidDesignatedDriverTripStatusTransitionException("Only a REQUESTED or ACCEPTED trip can be cancelled -- this one is already ${trip.status}")
         }
-        val customerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
-            ?: throw DesignatedDriverNoWalletException("No wallet found for this account")
+        val customerAccount = accountRepository.findByUserIdAndType(customerId, AccountType.MAIN)
+            ?: throw DesignatedDriverNoAccountException("No account found for this account")
 
         val acceptedAt = trip.driverAcceptedAt
         val withinGracePeriod = acceptedAt == null || !Instant.now().isAfter(acceptedAt.plus(CANCELLATION_FEE_GRACE_PERIOD))
@@ -315,27 +315,27 @@ class DesignatedDriverService(
         }
         val refundAmount = trip.fare.subtract(cancellationFee)
 
-        val driverWallet = if (cancellationFee > BigDecimal.ZERO) {
+        val driverAccount = if (cancellationFee > BigDecimal.ZERO) {
             trip.driverId?.let { designatedDriverRepository.findById(it).orElse(null) }
-                ?.let { walletRepository.findById(it.walletId).orElse(null) }
+                ?.let { accountRepository.findById(it.accountId).orElse(null) }
         } else {
             null
         }
 
         val legs = mutableListOf(
             LedgerLeg("designated_driver_holding", LedgerAccountType.DESIGNATED_DRIVER_HOLDING, LedgerDirection.DEBIT, trip.fare, "Designated driver fare refunded"),
-            LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Designated driver cancelled -- refund"),
+            LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Designated driver cancelled -- refund"),
         )
-        if (cancellationFee > BigDecimal.ZERO && driverWallet != null) {
-            legs.add(LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Designated driver cancellation fee"))
+        if (cancellationFee > BigDecimal.ZERO && driverAccount != null) {
+            legs.add(LedgerLeg(driverAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Designated driver cancellation fee"))
         } else if (cancellationFee > BigDecimal.ZERO) {
-            // Driver's own settlement wallet is somehow gone -- never strand escrow
+            // Driver's own settlement account is somehow gone -- never strand escrow
             // money mid-refund; fall back to refunding the customer in full rather
             // than leaving the fee portion unaccounted for, same fallback
             // RideTripService.cancelTrip already establishes.
-            legs[1] = LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Designated driver cancelled -- refund")
+            legs[1] = LedgerLeg(customerAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Designated driver cancelled -- refund")
         }
-        val result = ledgerService.postLedgerTransaction(customerWallet.currency, legs)
+        val result = ledgerService.postLedgerTransaction(customerAccount.currency, legs)
 
         trip.status = DesignatedDriverTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId

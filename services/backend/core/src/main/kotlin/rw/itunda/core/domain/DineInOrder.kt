@@ -22,7 +22,7 @@ enum class DineInOrderStatus { PLACED, ACCEPTED, PREPARING, SERVED, CANCELLED }
  * already uses (a restaurant IS a `Merchant`, a menu item IS a `MerchantProduct`), but kept as
  * its own entity rather than extending `EatsOrder` -- the two have genuinely different
  * lifecycles (no delivery address, no rider, no delivery fee/holding leg at all -- payment
- * settles straight into the restaurant's own wallet at placement, minus the same platform
+ * settles straight into the restaurant's own account at placement, minus the same platform
  * fee rate `EatsOrderService`/`OrderService`/`MerchantService` already use) and this
  * codebase's own established discipline is to favor purely additive new entities over
  * modifying already-tested money-movement code (see `EatsOrder.kt`'s own doc comment).

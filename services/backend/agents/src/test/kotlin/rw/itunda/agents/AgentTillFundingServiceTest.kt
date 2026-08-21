@@ -27,7 +27,7 @@ class AgentTillFundingServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val service = AgentService(
             agents, mockk<AgentOperatorRepository>(), mockk<AgentTillReconciliationRepository>(),
-            mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<WalletRepository>(),
+            mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<AccountRepository>(),
             mockk<LedgerAccountRepository>(), ledgerService, mockk<TransactionRepository>(), mockk<UserRepository>(),
             mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true),
         )

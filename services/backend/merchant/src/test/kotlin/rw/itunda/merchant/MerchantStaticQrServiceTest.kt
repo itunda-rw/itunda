@@ -27,7 +27,7 @@ class MerchantStaticQrServiceTest : BehaviorSpec({
         val merchantService = mockk<MerchantService>()
         val service = MerchantStaticQrService(merchantRepository, merchantService)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
         When("a real customer scans it and pays their own real chosen amount") {
@@ -74,7 +74,7 @@ class MerchantStaticQrServiceTest : BehaviorSpec({
         val merchantService = mockk<MerchantService>()
         val service = MerchantStaticQrService(merchantRepository, merchantService)
 
-        val merchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_2", businessName = "Suspended Shop", status = MerchantStatus.SUSPENDED)
+        val merchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Suspended Shop", status = MerchantStatus.SUSPENDED)
         every { merchantRepository.findById("merchant_2") } returns Optional.of(merchant)
 
         When("a real customer tries to pay via its real static QR anyway") {

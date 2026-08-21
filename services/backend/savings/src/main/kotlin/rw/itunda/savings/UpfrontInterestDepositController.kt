@@ -18,7 +18,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -42,7 +42,7 @@ class UpfrontInterestDepositController(
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/upfront-deposits", idempotencyKey, request) {
             val deposit = upfrontInterestDepositService.open(currentUser.userId, request.principal)
-            201 to mapOf("success" to true, "deposit" to deposit, "message" to "Interest paid to your main wallet now -- principal locked for 12 months")
+            201 to mapOf("success" to true, "deposit" to deposit, "message" to "Interest paid to your main account now -- principal locked for 12 months")
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -59,7 +59,7 @@ class UpfrontInterestDepositController(
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/upfront-deposits/$id/withdraw", idempotencyKey, id) {
             val deposit = upfrontInterestDepositService.withdraw(currentUser.userId, id)
-            200 to mapOf("success" to true, "deposit" to deposit, "message" to "Principal withdrawn to your main wallet")
+            200 to mapOf("success" to true, "deposit" to deposit, "message" to "Principal withdrawn to your main account")
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -86,14 +86,14 @@ class UpfrontInterestDepositController(
     @ExceptionHandler(UpfrontDepositAlreadyWithdrawnException::class)
     fun handleAlreadyWithdrawn(ex: UpfrontDepositAlreadyWithdrawnException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("UPFRONT_DEPOSIT_ALREADY_WITHDRAWN", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(NoWalletException::class)
-    fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+    @ExceptionHandler(NoAccountException::class)
+    fun handleNoAccount(ex: NoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))

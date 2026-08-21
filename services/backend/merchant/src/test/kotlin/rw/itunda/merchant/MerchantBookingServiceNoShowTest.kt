@@ -24,7 +24,7 @@ import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
@@ -54,14 +54,14 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
         availabilityWindowRepository: MerchantAvailabilityWindowRepository = mockk(),
         merchantBookingRepository: MerchantBookingRepository = mockk(),
         notificationRepository: NotificationRepository = mockk<NotificationRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         transactionRepository: TransactionRepository = mockk(relaxed = true),
         bookingDepositRepository: BookingDepositRepository = mockk(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
     ) = MerchantBookingService(
         merchantRepository, merchantProductRepository, availabilityWindowRepository, merchantBookingRepository,
-        notificationRepository, walletRepository, ledgerService, transactionRepository, bookingDepositRepository,
+        notificationRepository, accountRepository, ledgerService, transactionRepository, bookingDepositRepository,
         pushNotificationService,
     )
 
@@ -69,16 +69,16 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
         val merchantBookingRepository = mockk<MerchantBookingRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val bookingDepositRepository = mockk<BookingDepositRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val service = newService(
             merchantRepository = merchantRepository, merchantBookingRepository = merchantBookingRepository,
-            bookingDepositRepository = bookingDepositRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+            bookingDepositRepository = bookingDepositRepository, accountRepository = accountRepository, ledgerService = ledgerService,
         )
 
         val pastDate = LocalDate.now().minusDays(1)
         val overdue = booking("booking_overdue", MerchantBookingStatus.CONFIRMED, pastDate, LocalTime.of(10, 0))
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Salon")
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_merchant", businessName = "Salon")
         val deposit = BookingDeposit(
             id = "deposit_1", bookingId = "booking_overdue", merchantId = "merchant_1", customerId = "customer_1",
             amount = BigDecimal("5000"), fee = BigDecimal("75"), holdTransactionId = "ledgertxn_hold_1",
@@ -89,10 +89,10 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
         every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
         every { bookingDepositRepository.findByBookingIdForUpdate("booking_overdue") } returns deposit
         every { bookingDepositRepository.save(any()) } answers { firstArg() }
-        every { walletRepository.findById("wallet_merchant") } returns Optional.of(
-            rw.itunda.core.domain.Wallet(
-                id = "wallet_merchant", userId = "owner_1", accountNumber = "ACC-1", accountName = "Merchant wallet",
-                type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
+        every { accountRepository.findById("account_merchant") } returns Optional.of(
+            rw.itunda.core.domain.Account(
+                id = "account_merchant", userId = "owner_1", accountNumber = "ACC-1", accountName = "Merchant account",
+                type = rw.itunda.core.domain.AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
             ),
         )
         val legsSlot = slot<List<LedgerLeg>>()
@@ -105,7 +105,7 @@ class MerchantBookingServiceNoShowTest : BehaviorSpec({
                 resolved shouldBe overdue
                 overdue.status shouldBe MerchantBookingStatus.NO_SHOW
                 deposit.status shouldBe BookingDepositStatus.FORFEITED
-                val creditLeg = legsSlot.captured.first { it.direction == LedgerDirection.CREDIT && it.accountId == "wallet_merchant" }
+                val creditLeg = legsSlot.captured.first { it.direction == LedgerDirection.CREDIT && it.accountId == "account_merchant" }
                 creditLeg.amount shouldBe BigDecimal("4925")
             }
         }

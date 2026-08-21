@@ -22,14 +22,14 @@ import rw.itunda.card.CardFrozenException
 import rw.itunda.card.CardInvalidAmountException
 import rw.itunda.card.CardInvalidLimitException
 import rw.itunda.card.CardMonthlyLimitExceededException
-import rw.itunda.card.CardNoWalletException
+import rw.itunda.card.CardNoAccountException
 import rw.itunda.card.CardNotFoundException
 import rw.itunda.card.CardService
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -94,8 +94,8 @@ class CardController(
     @ExceptionHandler(CardNotFoundException::class)
     fun handleNotFound(ex: CardNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CARD_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(CardNoWalletException::class)
-    fun handleNoWallet(ex: CardNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CARD_NO_WALLET", ex.message ?: "Not found"))
+    @ExceptionHandler(CardNoAccountException::class)
+    fun handleNoAccount(ex: CardNoAccountException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CARD_NO_WALLET", ex.message ?: "Not found"))
 
     @ExceptionHandler(CardFrozenException::class)
     fun handleFrozen(ex: CardFrozenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_FROZEN", ex.message ?: "Conflict"))
@@ -112,8 +112,8 @@ class CardController(
     @ExceptionHandler(CardMonthlyLimitExceededException::class)
     fun handleMonthlyLimit(ex: CardMonthlyLimitExceededException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_MONTHLY_LIMIT_EXCEEDED", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("WALLET_FROZEN", ex.message ?: "Conflict"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("WALLET_FROZEN", ex.message ?: "Conflict"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Conflict"))

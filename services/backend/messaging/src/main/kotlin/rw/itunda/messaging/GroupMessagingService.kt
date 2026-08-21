@@ -119,7 +119,7 @@ class GroupMessagingService(
         rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
         // Real N+1 fix (2026-07-19 sweep): one batch findAllById instead of one
         // findById call per invited member, same convention as
-        // WalletRepository.findByUserIdInAndType/UserRepository.findAllByPhoneNumberIn.
+        // AccountRepository.findByUserIdInAndType/UserRepository.findAllByPhoneNumberIn.
         val foundIds = userRepository.findAllById(distinctOtherMembers).map { it.id }.toSet()
         if (foundIds.size != distinctOtherMembers.size) {
             throw GroupMemberNotFoundException("No itunda account found for one of the invited members")
@@ -196,7 +196,7 @@ class GroupMessagingService(
      * Deliberately does NOT port Kakao's own real "Open Profile" pseudonymous-identity
      * layer (up to 3 per user, participate under a name distinct from your real
      * KakaoTalk identity) -- itunda's entire identity model is KYC-verified real names
-     * tied to a real wallet, unlike Kakao's separate pseudonymous layer; porting that
+     * tied to a real account, unlike Kakao's separate pseudonymous layer; porting that
      * honestly needs an explicit scoping decision about whether pseudonymous
      * participation belongs in a real-money app at all, not something to build
      * silently as a side effect of this feature. Every open-group member here is a

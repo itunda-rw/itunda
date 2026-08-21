@@ -21,7 +21,7 @@ import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -30,7 +30,7 @@ class AgentOperatorAccessTest : BehaviorSpec({
     val operators = mockk<AgentOperatorRepository>()
     val service = AgentService(
         agents, operators, mockk<AgentTillReconciliationRepository>(), mockk<AgentCashInRepository>(),
-        mockk<AgentCashOutRepository>(), mockk<WalletRepository>(), mockk<LedgerAccountRepository>(),
+        mockk<AgentCashOutRepository>(), mockk<AccountRepository>(), mockk<LedgerAccountRepository>(),
         mockk<LedgerService>(), mockk<TransactionRepository>(), mockk<UserRepository>(),
         mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true),
     )

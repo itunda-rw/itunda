@@ -5,21 +5,21 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.UssdPin
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.UssdPinRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.merchant.MerchantNoWalletException
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.merchant.MerchantNoAccountException
 import rw.itunda.merchant.MerchantNotFoundException
 import rw.itunda.merchant.MerchantService
 import rw.itunda.merchant.PaymentIntentNotFoundException
 import rw.itunda.merchant.PaymentIntentNotPayableException
 import rw.itunda.merchant.SelfPaymentException
 import rw.itunda.p2p.P2pInvalidAmountException
-import rw.itunda.p2p.P2pNoWalletException
+import rw.itunda.p2p.P2pNoAccountException
 import rw.itunda.p2p.P2pRecipientNotFoundException
 import rw.itunda.p2p.P2pSelfPaymentException
 import rw.itunda.p2p.P2pService
@@ -36,7 +36,7 @@ class UssdInvalidPinException(message: String) : RuntimeException(message)
  * Real USSD basic-banking access (item 231) -- see `UssdPin.kt`'s own doc comment for
  * the full sourced account. Reuses `P2pService.sendDirect` directly for real send-money
  * rather than reimplementing money movement -- the same real, already-proven
- * wallet-to-wallet transfer logic every other client uses, just from a different real
+ * account-to-account transfer logic every other client uses, just from a different real
  * entry point.
  *
  * Real, standard East African USSD gateway contract (Africa's Talking-style, the real
@@ -61,7 +61,7 @@ class UssdInvalidPinException(message: String) : RuntimeException(message)
 class UssdService(
     private val ussdPinRepository: UssdPinRepository,
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val p2pService: P2pService,
     private val rateLimiter: RateLimiter,
@@ -149,7 +149,7 @@ class UssdService(
                     ?: return "END Payment code not found."
                 try {
                     val result = merchantService.collect(userId, intent.id, channel = "USSD")
-                    val newBalance = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)?.balance
+                    val newBalance = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)?.balance
                     "END Paid ${formatAmount(result["amount"] as BigDecimal)} RWF to ${result["merchantName"]}." +
                         (newBalance?.let { " New balance: ${formatAmount(it)} RWF." } ?: "")
                 } catch (e: PaymentIntentNotFoundException) {
@@ -160,7 +160,7 @@ class UssdService(
                     "END Merchant not found."
                 } catch (e: SelfPaymentException) {
                     "END ${e.message}"
-                } catch (e: MerchantNoWalletException) {
+                } catch (e: MerchantNoAccountException) {
                     "END ${e.message}"
                 } catch (e: InsufficientFundsException) {
                     "END Insufficient balance for this payment."
@@ -173,9 +173,9 @@ class UssdService(
         if (parts.size == 1) return "CON Enter your PIN"
         val pin = parts[1]
         verifyPin(userId, pin)
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: return "END No wallet found for this account."
-        return "END Your balance is ${formatAmount(wallet.balance)} RWF."
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: return "END No account found for this account."
+        return "END Your balance is ${formatAmount(account.balance)} RWF."
     }
 
     private fun handleSendMoney(userId: String, parts: List<String>): String {
@@ -196,7 +196,7 @@ class UssdService(
                     "END No itunda account found for $recipient."
                 } catch (e: P2pSelfPaymentException) {
                     "END You cannot send money to your own account."
-                } catch (e: P2pNoWalletException) {
+                } catch (e: P2pNoAccountException) {
                     "END ${e.message}"
                 } catch (e: P2pInvalidAmountException) {
                     "END ${e.message}"

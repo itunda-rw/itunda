@@ -53,8 +53,8 @@ object RailCatalog {
     }
 
     /**
-     * Real per-rail routing for P2P wallet transfers (2026-07-13) -- closes the gap
-     * docs/TOSS_PARITY_MATRIX.md's Transfer row named: WalletService.confirmTransfer
+     * Real per-rail routing for P2P account transfers (2026-07-13) -- closes the gap
+     * docs/TOSS_PARITY_MATRIX.md's Transfer row named: AccountService.confirmTransfer
      * called [resolve] against `quote.recipient`, a phone number, not a provider name,
      * so it always fell through to [generic] regardless of which real rail the
      * recipient's number actually belongs to. A phone number's own prefix is a real,
@@ -84,7 +84,7 @@ object RailCatalog {
 interface ProviderConnector {
     /** Simulates a network call to an external rail. Throws [ProviderDeclinedException]
      * on failure; callers must call this *before* posting to the ledger, so a decline
-     * never touches a wallet balance. */
+     * never touches a account balance. */
     fun attempt(rail: RailProfile, description: String)
 }
 

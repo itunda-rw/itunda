@@ -38,9 +38,9 @@ data class FraudPolicySnapshot(
  * Lives in :core (same convention as LedgerService, rw.itunda.core.ledger) rather than a
  * single feature module, since it needs to evaluate transactions originating from more than
  * one money-moving flow -- correction: an earlier version of this comment named merchant
- * collection and wallet transfer as "not yet wired"; both (plus Commerce/Eats/Dine-in
+ * collection and account transfer as "not yet wired"; both (plus Commerce/Eats/Dine-in
  * checkout and Payroll) were wired the same session, this comment just never got updated.
- * Real current callers: P2pService (send + payment requests), WalletService (currency
+ * Real current callers: P2pService (send + payment requests), AccountService (currency
  * conversion), OrderService/EatsOrderService/DineInOrderService (checkout),
  * MerchantService (in-person collection), PayrollService (salary disbursement),
  * GiftService (money gift), GiftVoucherService (merchant-redeemable gift voucher),

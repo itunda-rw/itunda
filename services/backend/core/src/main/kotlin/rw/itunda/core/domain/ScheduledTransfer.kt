@@ -41,8 +41,8 @@ class ScheduledTransfer(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "recipient_identifier", nullable = false, length = 64)
     val recipientIdentifier: String,
@@ -83,7 +83,7 @@ class ScheduledTransfer(
     var version: Long = 0,
 ) {
     protected constructor() : this(
-        id = "", userId = "", walletId = "", recipientIdentifier = "", recipientName = "",
+        id = "", userId = "", accountId = "", recipientIdentifier = "", recipientName = "",
         amount = BigDecimal.ZERO, scheduledDate = LocalDate.now(),
     )
 }

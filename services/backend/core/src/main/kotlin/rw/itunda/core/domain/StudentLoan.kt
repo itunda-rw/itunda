@@ -36,7 +36,7 @@ enum class StudentLoanStatus { REQUESTED, DISBURSED, IN_GRACE_PERIOD, REPAYING, 
  * fundamentally an employer-payroll/RRA-integration mechanic that itunda has no path
  * to -- the same external-access category as the NIDA/PSP/carrier gaps named
  * elsewhere in this codebase. V1's `StudentLoanService.repay` is user-initiated,
- * itunda-wallet-sourced repayment; the 8%-of-declared-income figure is surfaced only
+ * itunda-account-sourced repayment; the 8%-of-declared-income figure is surfaced only
  * as a *suggested* amount (`StudentLoanService.getSuggestedMonthlyPayment`), never
  * automatically enforced or deducted.
  */

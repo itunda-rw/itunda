@@ -30,7 +30,7 @@ import java.time.Instant
  * withdrawal preserves principal -- dividend GAINS are distributed separately via
  * `SaccoDividendDistribution`, not baked into a fluctuating share price.
  *
- * Backed by a real `Wallet` (WalletType.GROUP, the same real type `GroupAccount`/
+ * Backed by a real `Account` (AccountType.GROUP, the same real type `GroupAccount`/
  * `Ikimina` already establish for a shared pool) -- every buy/redeem/dividend payout
  * is the same real ledger-backed WALLET-to-WALLET movement every other money-moving
  * feature in this backend already uses.
@@ -50,8 +50,8 @@ class SaccoShareholding(
     @Column(name = "user_id", nullable = false, unique = true, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(name = "shares_held", nullable = false, precision = 18, scale = 2)
     var sharesHeld: BigDecimal = BigDecimal.ZERO,
@@ -66,7 +66,7 @@ class SaccoShareholding(
     @Column(nullable = false)
     var version: Long = 0,
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "")
+    protected constructor() : this(id = "", userId = "", accountId = "")
 }
 
 /**

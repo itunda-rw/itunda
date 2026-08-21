@@ -15,14 +15,14 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StudentLoan
 import rw.itunda.core.domain.StudentLoanLevel
 import rw.itunda.core.domain.StudentLoanStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StudentLoanRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -32,7 +32,7 @@ import java.util.Optional
  * First test coverage for the real Rwanda BRD (Development Bank of Rwanda)
  * higher-education student loan -- see StudentLoanService's own doc comment for the
  * full sourced account. The double-apply-race test mirrors VupLoanServiceTest's own
- * such test, asserting the caller's wallet lock happened before the active-loan check.
+ * such test, asserting the caller's account lock happened before the active-loan check.
  * The repay-clamp test guards against the same overshoot-clamp regression class found
  * in InsuranceService.contributeToFund/VupLoanService.repay: it asserts the actual
  * ledger leg amount, not just the resulting field. The grace-period-blocks-repay test
@@ -46,32 +46,32 @@ import java.util.Optional
  */
 class StudentLoanServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
     )
 
     fun newService(
         studentLoanRepository: StudentLoanRepository = mockk(),
-        walletRepository: WalletRepository = mockk(),
+        accountRepository: AccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         notificationRepository: NotificationRepository = mockk(relaxed = true),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
-    ) = StudentLoanService(studentLoanRepository, walletRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
+    ) = StudentLoanService(studentLoanRepository, accountRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
     val futureGraduation = LocalDate.now().plusYears(1)
 
     Given("a user applying for a student loan") {
         val studentLoanRepository = mockk<StudentLoanRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(studentLoanRepository = studentLoanRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository)
         val savedSlot = slot<StudentLoan>()
         every { studentLoanRepository.save(capture(savedSlot)) } answers { firstArg() }
         every { studentLoanRepository.findByUserIdAndStatusIn("user_1", any()) } returns emptyList()
-        val applicantWallet = wallet("wallet_1", "user_1")
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns applicantWallet
-        every { walletRepository.findByIdForUpdate("wallet_1") } returns Optional.of(applicantWallet)
+        val applicantAccount = account("account_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns applicantAccount
+        every { accountRepository.findByIdForUpdate("account_1") } returns Optional.of(applicantAccount)
 
         When("applying as UNDERGRADUATE") {
             val result = service.applyForLoan("user_1", StudentLoanLevel.UNDERGRADUATE, BigDecimal("1500000"), BigDecimal("500000"), futureGraduation)
@@ -111,8 +111,8 @@ class StudentLoanServiceTest : BehaviorSpec({
 
     Given("a user who already has an active student loan") {
         val studentLoanRepository = mockk<StudentLoanRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(studentLoanRepository = studentLoanRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository)
         val existing = StudentLoan(
             id = "studentloan_existing", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
             declaredAnnualHouseholdIncome = BigDecimal("1500000"), principalAmount = BigDecimal("500000"),
@@ -120,25 +120,25 @@ class StudentLoanServiceTest : BehaviorSpec({
             expectedGraduationDate = futureGraduation,
         )
         every { studentLoanRepository.findByUserIdAndStatusIn("user_1", any()) } returns listOf(existing)
-        val applicantWallet = wallet("wallet_1", "user_1")
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns applicantWallet
-        every { walletRepository.findByIdForUpdate("wallet_1") } returns Optional.of(applicantWallet)
+        val applicantAccount = account("account_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns applicantAccount
+        every { accountRepository.findByIdForUpdate("account_1") } returns Optional.of(applicantAccount)
 
         When("applying for a second loan") {
-            Then("the one-active-loan guard fires, after locking the caller's own wallet row first (closing the double-apply race)") {
+            Then("the one-active-loan guard fires, after locking the caller's own account row first (closing the double-apply race)") {
                 shouldThrow<StudentLoanAlreadyActiveException> {
                     service.applyForLoan("user_1", StudentLoanLevel.UNDERGRADUATE, BigDecimal("1500000"), BigDecimal("100000"), futureGraduation)
                 }
-                verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_1") }
+                verify(exactly = 1) { accountRepository.findByIdForUpdate("account_1") }
             }
         }
     }
 
     Given("a real REQUESTED student loan being disbursed") {
         val studentLoanRepository = mockk<StudentLoanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(studentLoanRepository = studentLoanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val loan = StudentLoan(
             id = "studentloan_1", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
@@ -146,20 +146,20 @@ class StudentLoanServiceTest : BehaviorSpec({
             outstandingBalance = BigDecimal("500000"), interestRate = 0.11, expectedGraduationDate = futureGraduation,
         )
         every { studentLoanRepository.findById("studentloan_1") } returns Optional.of(loan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { studentLoanRepository.save(any()) } answers { firstArg() }
 
         When("itunda disburses it") {
             val result = service.disburse("user_1", "studentloan_1")
 
-            Then("disbursement CREDITs the wallet and DEBITs loan_payable -- mirroring OverdraftService's exact ledger shape") {
+            Then("disbursement CREDITs the account and DEBITs loan_payable -- mirroring OverdraftService's exact ledger shape") {
                 result.status shouldBe StudentLoanStatus.DISBURSED
                 (result.disbursedAt != null) shouldBe true
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.size == 2 &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("500000") } &&
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("500000") } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("500000") }
                     })
                 }
@@ -203,8 +203,8 @@ class StudentLoanServiceTest : BehaviorSpec({
 
     Given("a real loan still IN_GRACE_PERIOD") {
         val studentLoanRepository = mockk<StudentLoanRepository>()
-        val walletRepository = mockk<WalletRepository>()
-        val service = newService(studentLoanRepository = studentLoanRepository, walletRepository = walletRepository)
+        val accountRepository = mockk<AccountRepository>()
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository)
         val loan = StudentLoan(
             id = "studentloan_3", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
             declaredAnnualHouseholdIncome = BigDecimal("1500000"), principalAmount = BigDecimal("500000"),
@@ -224,9 +224,9 @@ class StudentLoanServiceTest : BehaviorSpec({
 
     Given("a real REPAYING student loan being overpaid") {
         val studentLoanRepository = mockk<StudentLoanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(studentLoanRepository = studentLoanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val loan = StudentLoan(
             id = "studentloan_4", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
@@ -235,7 +235,7 @@ class StudentLoanServiceTest : BehaviorSpec({
             expectedGraduationDate = futureGraduation,
         )
         every { studentLoanRepository.findById("studentloan_4") } returns Optional.of(loan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay", emptyList())
         every { studentLoanRepository.save(any()) } answers { firstArg() }
 
@@ -248,7 +248,7 @@ class StudentLoanServiceTest : BehaviorSpec({
                 verify {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
                         legs.all { it.amount == BigDecimal("30000") } &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.DEBIT } &&
+                            legs.any { it.accountId == "account_1" && it.direction == LedgerDirection.DEBIT } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT }
                     })
                 }
@@ -258,9 +258,9 @@ class StudentLoanServiceTest : BehaviorSpec({
 
     Given("a real REPAYING student loan being partially repaid") {
         val studentLoanRepository = mockk<StudentLoanRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = newService(studentLoanRepository = studentLoanRepository, walletRepository = walletRepository, ledgerService = ledgerService)
+        val service = newService(studentLoanRepository = studentLoanRepository, accountRepository = accountRepository, ledgerService = ledgerService)
 
         val loan = StudentLoan(
             id = "studentloan_5", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
@@ -269,7 +269,7 @@ class StudentLoanServiceTest : BehaviorSpec({
             expectedGraduationDate = futureGraduation,
         )
         every { studentLoanRepository.findById("studentloan_5") } returns Optional.of(loan)
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay", emptyList())
         every { studentLoanRepository.save(any()) } answers { firstArg() }
 

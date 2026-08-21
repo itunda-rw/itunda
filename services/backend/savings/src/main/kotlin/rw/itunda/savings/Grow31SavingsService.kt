@@ -9,14 +9,14 @@ import rw.itunda.core.domain.Grow31SavingsPlan
 import rw.itunda.core.domain.Grow31SavingsPlanStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.Grow31SavingsDepositRepository
 import rw.itunda.core.repository.Grow31SavingsPlanRepository
-import rw.itunda.core.repository.WalletRepository
-import rw.itunda.core.wallet.AccountNumberGenerator
+import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -35,20 +35,20 @@ class Grow31PlanNotMaturedException(message: String) : RuntimeException(message)
 class Grow31PlanAlreadyWithdrawnException(message: String) : RuntimeException(message)
 class Grow31AlreadyDepositedTodayException(message: String) : RuntimeException(message)
 
-data class Grow31SavingsPlanView(val plan: Grow31SavingsPlan, val walletBalance: BigDecimal, val deposits: List<Grow31SavingsDeposit>)
+data class Grow31SavingsPlanView(val plan: Grow31SavingsPlan, val accountBalance: BigDecimal, val deposits: List<Grow31SavingsDeposit>)
 
 /**
  * Real Toss Bank 키워봐요 31일적금 (Grow-it 31-day savings) equivalent -- see
  * `Grow31SavingsPlan`'s own doc comment for the full sourced mechanics and what's
  * deliberately NOT reproduced (the cosmetic character-growth minigame). Mirrors
  * `WeeklySavingsService`'s own established conventions: rate-limited creation, a
- * dedicated per-plan `Wallet`, a scheduler-polls-a-due-list shape for maturity. The
+ * dedicated per-plan `Account`, a scheduler-polls-a-due-list shape for maturity. The
  * real structural difference: deposits here are an explicit daily USER action
  * ([depositToday]), not a scheduler-driven auto-debit -- the streak IS the product.
  */
 @Service
 class Grow31SavingsService(
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val planRepository: Grow31SavingsPlanRepository,
     private val depositRepository: Grow31SavingsDepositRepository,
     private val ledgerService: LedgerService,
@@ -80,20 +80,20 @@ class Grow31SavingsService(
         if (dailyAmount <= BigDecimal.ZERO) throw Grow31PlanInvalidAmountException("Daily amount must be greater than zero")
 
         val now = Instant.now()
-        val wallet = walletRepository.save(
-            Wallet(
-                id = "wallet_${UUID.randomUUID()}",
+        val account = accountRepository.save(
+            Account(
+                id = "account_${UUID.randomUUID()}",
                 userId = userId,
                 accountNumber = accountNumberGenerator.generate(2025300000L),
                 accountName = "$name (31-Day Savings)",
-                type = WalletType.GROW31_SAVINGS,
+                type = AccountType.GROW31_SAVINGS,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
             ),
         )
         val plan = planRepository.save(
             Grow31SavingsPlan(
-                id = "g31_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, name = name,
+                id = "g31_${UUID.randomUUID()}", userId = userId, accountId = account.id, name = name,
                 dailyAmount = dailyAmount, startDate = LocalDate.now(), baseRate = BASE_RATE, createdAt = now,
             ),
         )
@@ -108,9 +108,9 @@ class Grow31SavingsService(
 
     fun getPlan(userId: String, planId: String): Grow31SavingsPlanView {
         val plan = findOwned(userId, planId)
-        val wallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val account = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
         val deposits = depositRepository.findByPlanIdOrderByDayNumberAsc(planId)
-        return Grow31SavingsPlanView(plan, wallet.balance, deposits)
+        return Grow31SavingsPlanView(plan, account.balance, deposits)
     }
 
     /**
@@ -131,15 +131,15 @@ class Grow31SavingsService(
             throw Grow31AlreadyDepositedTodayException("You've already saved today -- come back tomorrow")
         }
 
-        val sourceWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw NoWalletException("No wallet found for this account")
-        val planWallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val sourceAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw NoAccountException("No account found for this account")
+        val planAccount = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
 
         ledgerService.postLedgerTransaction(
-            sourceWallet.currency,
+            sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.dailyAmount, "31-day savings: ${plan.name}"),
-                LedgerLeg(planWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.dailyAmount, "31-day savings: ${plan.name}"),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.dailyAmount, "31-day savings: ${plan.name}"),
+                LedgerLeg(planAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.dailyAmount, "31-day savings: ${plan.name}"),
             ),
         )
 
@@ -183,7 +183,7 @@ class Grow31SavingsService(
      * simpler than WeeklySavingsService's own per-installment remaining-term accrual
      * (itunda's own honest choice: the sourced product names a flat tiered APR, not a
      * per-installment accrual schedule). Interest is credited straight into the plan's
-     * own wallet, matching the real distinction between "the term ended" and "the
+     * own account, matching the real distinction between "the term ended" and "the
      * customer took the money" -- a separate withdraw() call moves it to MAIN. */
     @Transactional
     fun maturePlan(plan: Grow31SavingsPlan) {
@@ -198,7 +198,7 @@ class Grow31SavingsService(
                 "RWF",
                 listOf(
                     LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, interest, "31-day savings maturity interest: ${plan.name}"),
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "31-day savings maturity interest: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "31-day savings maturity interest: ${plan.name}"),
                 ),
             )
         }
@@ -223,26 +223,26 @@ class Grow31SavingsService(
         val daysHeld = ChronoUnit.DAYS.between(plan.createdAt, now).coerceAtLeast(0)
         val interest = plan.totalSaved.multiply(annualRate).multiply(BigDecimal(daysHeld))
             .divide(BigDecimal(365), 10, RoundingMode.HALF_UP).setScale(2, RoundingMode.HALF_UP)
-        val planWallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val planAccount = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
 
         if (interest > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
                 "RWF",
                 listOf(
                     LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, interest, "31-day savings early-withdrawal interest: ${plan.name}"),
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "31-day savings early-withdrawal interest: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.CREDIT, interest, "31-day savings early-withdrawal interest: ${plan.name}"),
                 ),
             )
         }
 
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val payout = planWallet.balance.add(interest)
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val payout = planAccount.balance.add(interest)
         if (payout > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                planWallet.currency,
+                planAccount.currency,
                 listOf(
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Early withdrawal: ${plan.name}"),
-                    LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Early withdrawal: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Early withdrawal: ${plan.name}"),
+                    LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Early withdrawal: ${plan.name}"),
                 ),
             )
         }
@@ -256,8 +256,8 @@ class Grow31SavingsService(
         return getPlan(userId, planId)
     }
 
-    /** Moves a matured plan's full wallet balance (principal + already-credited
-     * interest) to the user's MAIN wallet -- separate from maturePlan() on purpose,
+    /** Moves a matured plan's full account balance (principal + already-credited
+     * interest) to the user's MAIN account -- separate from maturePlan() on purpose,
      * same real "maturity is a system event, withdrawal is an explicit user action"
      * distinction WeeklySavingsService.withdraw already establishes. */
     @Transactional
@@ -266,15 +266,15 @@ class Grow31SavingsService(
         if (plan.status != Grow31SavingsPlanStatus.MATURED) throw Grow31PlanNotMaturedException("This plan has not matured yet")
         if (plan.withdrawnAt != null) throw Grow31PlanAlreadyWithdrawnException("This plan has already been withdrawn")
 
-        val planWallet = walletRepository.findById(plan.walletId).orElseThrow { NoWalletException("Wallet not found") }
-        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
-        val payout = planWallet.balance
+        val planAccount = accountRepository.findById(plan.accountId).orElseThrow { NoAccountException("Account not found") }
+        val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        val payout = planAccount.balance
         if (payout > BigDecimal.ZERO) {
             ledgerService.postLedgerTransaction(
-                planWallet.currency,
+                planAccount.currency,
                 listOf(
-                    LedgerLeg(plan.walletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Matured 31-day savings withdrawal: ${plan.name}"),
-                    LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Matured 31-day savings withdrawal: ${plan.name}"),
+                    LedgerLeg(plan.accountId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payout, "Matured 31-day savings withdrawal: ${plan.name}"),
+                    LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payout, "Matured 31-day savings withdrawal: ${plan.name}"),
                 ),
             )
         }

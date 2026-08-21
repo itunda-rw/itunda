@@ -20,7 +20,7 @@ enum class PartnerStatus { ACTIVE, SUSPENDED }
  * review, and ship inside Toss once approved -- this is the same real shape, applied to
  * itunda's own real Saronite mini-app host (see docs/ARCHITECTURE.md's mini-app host
  * row) for the first time to a genuinely external party rather than itunda's own
- * first-party mini-apps (bills, wallet, rewards, insurance).
+ * first-party mini-apps (bills, account, rewards, insurance).
  *
  * apiKeyHash stores only a SHA-256 hash, never the raw key -- the same real convention
  * Stripe/GitHub personal-access-token issuance uses: the raw key is shown exactly once,

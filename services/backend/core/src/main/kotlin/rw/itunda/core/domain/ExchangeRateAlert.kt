@@ -8,7 +8,7 @@ import java.time.Instant
 
 /**
  * A real Toss 외환 환율 알림 (exchange rate alert) (2026-08-17) -- set a target rate on
- * a real currency pair (RWF vs. one of `ForeignCurrencyWalletService.SUPPORTED_CURRENCIES`)
+ * a real currency pair (RWF vs. one of `ForeignCurrencyAccountService.SUPPORTED_CURRENCIES`)
  * and get notified once `ForeignCurrencyRateClient`'s real live mid-market rate
  * (open.er-api.com, ECB-sourced) crosses it. Same real "ABOVE"/"BELOW" one-shot alert
  * shape `StockWatchlist.targetPrice`'s own doc comment already establishes for Toss
@@ -19,7 +19,7 @@ import java.time.Instant
  * alert" concept in the real product the way there is for stocks, so no separate
  * watchlist-membership row is needed. Real DB-unique `(user_id, from_currency,
  * to_currency)` backs the same "one active alert per pair, setting again replaces it"
- * application-level check `ForeignCurrencyWalletService.setRateAlert` makes.
+ * application-level check `ForeignCurrencyAccountService.setRateAlert` makes.
  */
 @Entity
 @Table(name = "exchange_rate_alerts")

@@ -17,10 +17,10 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.WalletFrozenException
+import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
-import rw.itunda.eats.EatsBuyerNoWalletException
+import rw.itunda.eats.EatsBuyerNoAccountException
 import rw.itunda.eats.EmptyEatsOrderException
 import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.GroupEatsOrderEmptyException
@@ -36,7 +36,7 @@ import rw.itunda.eats.MenuItemNotFoundException
 import rw.itunda.eats.MinOrderAmountNotMetException
 import rw.itunda.eats.MissingRequiredMenuOptionException
 import rw.itunda.eats.InvalidMenuOptionSelectionException
-import rw.itunda.eats.RestaurantNoWalletException
+import rw.itunda.eats.RestaurantNoAccountException
 import rw.itunda.eats.RestaurantNotFoundException
 import rw.itunda.eats.SelfEatsOrderException
 
@@ -169,12 +169,12 @@ class GroupEatsOrderController(
     fun handleRestaurantNotFound(ex: RestaurantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(RestaurantNoWalletException::class)
-    fun handleRestaurantNoWallet(ex: RestaurantNoWalletException) =
+    @ExceptionHandler(RestaurantNoAccountException::class)
+    fun handleRestaurantNoAccount(ex: RestaurantNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RESTAURANT_WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(EatsBuyerNoWalletException::class)
-    fun handleBuyerNoWallet(ex: EatsBuyerNoWalletException) =
+    @ExceptionHandler(EatsBuyerNoAccountException::class)
+    fun handleBuyerNoAccount(ex: EatsBuyerNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidEatsDeliveryAddressException::class)
@@ -220,9 +220,9 @@ class GroupEatsOrderController(
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 
-    @ExceptionHandler(WalletFrozenException::class)
-    fun handleWalletFrozen(ex: WalletFrozenException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+    @ExceptionHandler(AccountFrozenException::class)
+    fun handleAccountFrozen(ex: AccountFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Account is frozen"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

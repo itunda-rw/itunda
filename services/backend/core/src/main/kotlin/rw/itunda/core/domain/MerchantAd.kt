@@ -73,7 +73,7 @@ class MerchantAd(
     // MerchantAdService.createOrExtendAd reads the current `activeUntil` and
     // extends it, and the unique constraint on `merchantId` only protects the very
     // first ad's INSERT, not two concurrent EXTENSIONS of an already-existing ad,
-    // which would both debit the merchant's wallet for a real charge but only
+    // which would both debit the merchant's account for a real charge but only
     // actually extend `activeUntil` once.
     @Version
     var version: Long = 0,

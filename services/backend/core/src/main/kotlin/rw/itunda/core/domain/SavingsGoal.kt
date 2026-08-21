@@ -23,8 +23,8 @@ class SavingsGoal(
     @Column(name = "user_id", nullable = false, length = 64)
     val userId: String,
 
-    @Column(name = "wallet_id", nullable = false, length = 64)
-    val walletId: String,
+    @Column(name = "account_id", nullable = false, length = 64)
+    val accountId: String,
 
     @Column(nullable = false)
     var name: String,
@@ -75,5 +75,5 @@ class SavingsGoal(
     @Column(nullable = false)
     var version: Long = 0,
 ) {
-    protected constructor() : this(id = "", userId = "", walletId = "", name = "", targetAmount = BigDecimal.ZERO, currentAmount = BigDecimal.ZERO, monthlyContribution = BigDecimal.ZERO, interestRate = 0.0)
+    protected constructor() : this(id = "", userId = "", accountId = "", name = "", targetAmount = BigDecimal.ZERO, currentAmount = BigDecimal.ZERO, monthlyContribution = BigDecimal.ZERO, interestRate = 0.0)
 }

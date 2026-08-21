@@ -38,7 +38,7 @@ class TimeDealServiceTest : BehaviorSpec({
         val timeDealRepository = mockk<TimeDealRepository>()
         val service = newService(merchantRepository, merchantProductRepository, timeDealRepository)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Coffee beans", price = BigDecimal("2000"))
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
@@ -76,7 +76,7 @@ class TimeDealServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val service = newService(merchantRepository = merchantRepository, merchantProductRepository = merchantProductRepository)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val othersProduct = MerchantProduct(id = "product_2", merchantId = "merchant_2", name = "Someone else's product", price = BigDecimal("5000"))
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         every { merchantProductRepository.findById("product_2") } returns Optional.of(othersProduct)
@@ -105,7 +105,7 @@ class TimeDealServiceTest : BehaviorSpec({
         )
         every { timeDealRepository.findActiveDeals(any(), any()) } returns PageImpl(listOf(deal))
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Coffee beans", price = BigDecimal("2000"))
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
         every { merchantRepository.findAllById(listOf("merchant_1")) } returns listOf(merchant)
 
@@ -125,7 +125,7 @@ class TimeDealServiceTest : BehaviorSpec({
         val timeDealRepository = mockk<TimeDealRepository>()
         val service = newService(merchantRepository = merchantRepository, timeDealRepository = timeDealRepository)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val deal = TimeDeal(
             id = "time_deal_1", merchantId = "merchant_1", productId = "product_1", dealPrice = BigDecimal("1500"),
             originalPrice = BigDecimal("2000"), totalQuantity = 10, remainingQuantity = 4,

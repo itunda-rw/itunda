@@ -33,7 +33,7 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val service = MerchantFeeWaiverService(merchantRepository, merchantService, transactionRepository)
 
-        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
         every { merchantService.getMyMerchant("owner_1") } returns merchant
         every { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween("owner_1", TransactionType.PAYMENT, any(), any()) } returns
             listOf(transaction(BigDecimal("50000")), transaction(BigDecimal("30000")))
@@ -55,7 +55,7 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val service = MerchantFeeWaiverService(merchantRepository, merchantService, transactionRepository)
 
-        val merchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_2", businessName = "Big Shop", status = MerchantStatus.ACTIVE)
+        val merchant = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Big Shop", status = MerchantStatus.ACTIVE)
         every { merchantService.getMyMerchant("owner_2") } returns merchant
         every { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween("owner_2", TransactionType.PAYMENT, any(), any()) } returns
             listOf(transaction(BigDecimal("500000")))
@@ -79,7 +79,7 @@ class MerchantFeeWaiverServiceTest : BehaviorSpec({
         val service = MerchantFeeWaiverService(merchantRepository, merchantService, transactionRepository)
 
         val merchant = Merchant(
-            id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Waived Shop",
+            id = "merchant_3", ownerUserId = "owner_3", accountId = "account_3", businessName = "Waived Shop",
             status = MerchantStatus.ACTIVE, feeRateOverride = BigDecimal.ZERO,
         )
         every { merchantService.getMyMerchant("owner_3") } returns merchant

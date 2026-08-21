@@ -23,7 +23,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.gift.GiftAlreadyResolvedException
 import rw.itunda.gift.GiftExpiredException
 import rw.itunda.gift.GiftInvalidAmountException
-import rw.itunda.gift.GiftNoWalletException
+import rw.itunda.gift.GiftNoAccountException
 import rw.itunda.gift.GiftNotFoundException
 import rw.itunda.gift.GiftNotRecipientException
 import rw.itunda.gift.GiftRecipientNotFoundException
@@ -113,8 +113,8 @@ class GiftController(private val giftService: GiftService, private val idempoten
     fun handleSelf(ex: GiftSelfException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_GIFT_NOT_ALLOWED", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(GiftNoWalletException::class)
-    fun handleNoWallet(ex: GiftNoWalletException) =
+    @ExceptionHandler(GiftNoAccountException::class)
+    fun handleNoAccount(ex: GiftNoAccountException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(GiftRecipientNotFoundException::class)

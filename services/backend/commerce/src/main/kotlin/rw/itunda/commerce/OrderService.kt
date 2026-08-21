@@ -18,7 +18,7 @@ import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
@@ -35,15 +35,15 @@ import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TimeDealRepository
 import rw.itunda.core.repository.TransactionRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
 
 class MerchantNotFoundException(message: String) : RuntimeException(message)
-class MerchantNoWalletException(message: String) : RuntimeException(message)
-class BuyerNoWalletException(message: String) : RuntimeException(message)
+class MerchantNoAccountException(message: String) : RuntimeException(message)
+class BuyerNoAccountException(message: String) : RuntimeException(message)
 class EmptyOrderException(message: String) : RuntimeException(message)
 class InvalidDeliveryAddressException(message: String) : RuntimeException(message)
 class InvalidQuantityException(message: String) : RuntimeException(message)
@@ -71,7 +71,7 @@ data class OrderRiderLocationView(val latitude: Double, val longitude: Double, v
  * largest and most operationally complex (real multi-item carts, real delivery status)
  * of the three, and reuses two things the other two phases (or earlier sessions) already
  * proved out: the real `Merchant`/`MerchantProduct` catalog (Toss Place) as the seller
- * side, and the exact same real wallet-to-wallet ledger movement `MerchantService
+ * side, and the exact same real account-to-account ledger movement `MerchantService
  * .collect()` already established for QR payments -- this is not a new payment
  * mechanism, just a multi-line-item version of the same real money movement.
  *
@@ -95,7 +95,7 @@ class OrderService(
     private val merchantProductRepository: MerchantProductRepository,
     private val orderRepository: OrderRepository,
     private val orderItemRepository: OrderItemRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
@@ -112,7 +112,7 @@ class OrderService(
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
     // reused rather than inventing a second number for what is, underneath, the same
-    // kind of wallet-to-wallet merchant collection.
+    // kind of account-to-account merchant collection.
     private val feeRate = BigDecimal("0.015")
 
     private val statusOrder = listOf(OrderStatus.PLACED, OrderStatus.PACKED, OrderStatus.SHIPPED, OrderStatus.DELIVERED)
@@ -160,10 +160,10 @@ class OrderService(
             throw MerchantNotAcceptingOrdersException("This store is closed today")
         }
 
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
-        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
-            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
+        val buyerAccount = accountRepository.findByUserIdAndType(buyerId, AccountType.MAIN)
+            ?: throw BuyerNoAccountException("No account found for this account")
 
         // Real prices read from the live catalog row -- never trusted from the client
         // (see this class's own doc comment on why) -- and snapshotted onto each
@@ -275,10 +275,10 @@ class OrderService(
         val netToMerchant = totalAmount.subtract(fee)
 
         val result = ledgerService.postLedgerTransaction(
-            buyerWallet.currency,
+            buyerAccount.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Order - ${merchant.businessName}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Order collection - ${merchant.businessName}"),
+                LedgerLeg(buyerAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Order - ${merchant.businessName}"),
+                LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Order collection - ${merchant.businessName}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Order fee - ${merchant.businessName}"),
             ),
         )
@@ -288,11 +288,11 @@ class OrderService(
             referenceNumber = "ORDER${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
             senderId = buyerId,
             recipientId = merchant.ownerUserId,
-            fromWalletId = buyerWallet.id,
-            toWalletId = merchantWallet.id,
+            fromAccountId = buyerAccount.id,
+            toAccountId = merchantAccount.id,
             amount = totalAmount,
             fee = fee,
-            currency = buyerWallet.currency,
+            currency = buyerAccount.currency,
             type = TransactionType.PAYMENT,
             status = TransactionStatus.COMPLETED,
             description = "Order - ${merchant.businessName}",

@@ -5,11 +5,11 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.DailyStepReward
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DailyStepRewardRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.security.SecureRandom
 import java.time.Instant
@@ -69,7 +69,7 @@ data class StepReportResult(
 @Service
 class StepRewardService(
     private val dailyStepRewardRepository: DailyStepRewardRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     // Real randomness in production (SecureRandom, the default) -- injectable so a test
     // can substitute a deterministic java.util.Random and assert both the win and the
@@ -160,13 +160,13 @@ class StepRewardService(
     }
 
     private fun creditTierReward(userId: String, tier: StepRewardTier) {
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw RewardsNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw RewardsNoAccountException("No account found for this account")
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
                 LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, tier.rewardAmount, "Walking reward - ${tier.stepsRequired} steps"),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, tier.rewardAmount, "Walking reward - ${tier.stepsRequired} steps"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, tier.rewardAmount, "Walking reward - ${tier.stepsRequired} steps"),
             ),
         )
     }
@@ -175,13 +175,13 @@ class StepRewardService(
     // transaction from the guaranteed reward above, so it's distinguishable in a real
     // transaction history rather than silently folded into the same line item.
     private fun creditLotteryBonus(userId: String, tier: StepRewardTier) {
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw RewardsNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw RewardsNoAccountException("No account found for this account")
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
                 LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, tier.lotteryBonusAmount, "Step lottery bonus - ${tier.stepsRequired} steps"),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, tier.lotteryBonusAmount, "Step lottery bonus - ${tier.stepsRequired} steps"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, tier.lotteryBonusAmount, "Step lottery bonus - ${tier.stepsRequired} steps"),
             ),
         )
     }

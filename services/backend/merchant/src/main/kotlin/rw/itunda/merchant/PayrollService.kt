@@ -10,7 +10,7 @@ import rw.itunda.core.domain.Payslip
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -20,7 +20,7 @@ import rw.itunda.core.repository.PayrollRunRepository
 import rw.itunda.core.repository.PayslipRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -28,7 +28,7 @@ import java.util.UUID
 class EmployeeNotFoundException(message: String) : RuntimeException(message)
 class EmployeeAlreadyOnRosterException(message: String) : RuntimeException(message)
 class EmployeeIsOwnerException(message: String) : RuntimeException(message)
-class EmployeeNoWalletException(message: String) : RuntimeException(message)
+class EmployeeNoAccountException(message: String) : RuntimeException(message)
 class InvalidSalaryAmountException(message: String) : RuntimeException(message)
 class EmptyPayrollRosterException(message: String) : RuntimeException(message)
 class PayrollRosterEntryNotFoundException(message: String) : RuntimeException(message)
@@ -38,16 +38,16 @@ class PayrollRunNotFoundException(message: String) : RuntimeException(message)
  * Real B2B payroll -- closes the gap Merchant.kt's own doc comment named ("B2B payroll
  * genuinely needs real PSP-level infrastructure this repo has no path to certify").
  * That's true for card networks and NIDA, which need an external vendor relationship
- * this repo can't obtain -- but payroll disbursed to an employee's own itunda wallet is
+ * this repo can't obtain -- but payroll disbursed to an employee's own itunda account is
  * a real WALLET-to-WALLET ledger movement between two known itunda accounts, exactly
  * what P2pService.payRequest already proved out (its own doc comment: "the first real
- * wallet-to-wallet money movement in the backend where both sides are known itunda
+ * account-to-account money movement in the backend where both sides are known itunda
  * accounts"). No external credentials, no demo simulation needed -- this is real money
  * movement, not a demo, unlike the card/NIDA/reconciliation/external-balance gaps this
  * pass closed with a simulated outcome.
  *
  * One payroll run posts a single, atomic multi-leg ledger transaction (one merchant-
- * wallet DEBIT for the roster total, one employee-wallet CREDIT per active employee) --
+ * account DEBIT for the roster total, one employee-account CREDIT per active employee) --
  * LedgerService.postLedgerTransaction already supports an arbitrary leg count and locks
  * every account touched in a stable sorted order, so this needed zero ledger-layer
  * changes. All-or-nothing by construction: if the merchant's balance can't cover the
@@ -61,7 +61,7 @@ class PayrollService(
     private val payrollRunRepository: PayrollRunRepository,
     private val payslipRepository: PayslipRepository,
     private val userRepository: UserRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
@@ -81,11 +81,11 @@ class PayrollService(
         if (employeeUser.id == merchant.ownerUserId) {
             throw EmployeeIsOwnerException("Cannot add the business owner as a payroll employee")
         }
-        // Every registered itunda user gets a MAIN wallet at signup (AuthService.register),
+        // Every registered itunda user gets a MAIN account at signup (AuthService.register),
         // so this is a defensive check, not an expected path -- same reasoning P2pService's
-        // own P2pNoWalletException comment gives for the identical check on its side.
-        walletRepository.findByUserIdAndType(employeeUser.id, WalletType.MAIN)
-            ?: throw EmployeeNoWalletException("This account has no wallet to receive payroll")
+        // own P2pNoAccountException comment gives for the identical check on its side.
+        accountRepository.findByUserIdAndType(employeeUser.id, AccountType.MAIN)
+            ?: throw EmployeeNoAccountException("This account has no account to receive payroll")
 
         // A prior removeEmployee() call leaves an inactive row here rather than deleting it
         // (see removeEmployee's own comment on why), and the DB's unique (merchant_id,
@@ -133,8 +133,8 @@ class PayrollService(
     @Transactional
     fun runPayroll(ownerUserId: String): Map<String, Any?> {
         val merchant = getMyMerchant(ownerUserId)
-        val merchantWallet = walletRepository.findById(merchant.walletId)
-            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        val merchantAccount = accountRepository.findById(merchant.accountId)
+            .orElseThrow { MerchantNoAccountException("Merchant settlement account not found") }
         val roster = payrollEmployeeRepository.findByMerchantIdAndActiveTrue(merchant.id)
         if (roster.isEmpty()) {
             throw EmptyPayrollRosterException("No active employees on the payroll roster")
@@ -142,28 +142,28 @@ class PayrollService(
 
         // Batch-fetched in one query rather than one findByUserIdAndType call per roster
         // row -- a real N+1 fixed live during this pass's own performance review (a
-        // payroll run for a large roster was issuing N wallet lookups instead of 1).
-        val walletsByUserId = walletRepository.findByUserIdInAndType(
-            roster.map { it.employeeUserId }, WalletType.MAIN,
+        // payroll run for a large roster was issuing N account lookups instead of 1).
+        val accountsByUserId = accountRepository.findByUserIdInAndType(
+            roster.map { it.employeeUserId }, AccountType.MAIN,
         ).associateBy { it.userId }
-        val employeeWallets = roster.associateWith { employee ->
-            walletsByUserId[employee.employeeUserId]
-                ?: throw EmployeeNoWalletException("${employee.employeeName} has no wallet to receive payroll")
+        val employeeAccounts = roster.associateWith { employee ->
+            accountsByUserId[employee.employeeUserId]
+                ?: throw EmployeeNoAccountException("${employee.employeeName} has no account to receive payroll")
         }
         val totalAmount = roster.fold(BigDecimal.ZERO) { acc, employee -> acc + employee.salaryAmount }
 
         val legs = mutableListOf(
-            LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Payroll run - ${merchant.businessName}"),
+            LedgerLeg(merchantAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Payroll run - ${merchant.businessName}"),
         )
         roster.forEach { employee ->
             legs.add(
                 LedgerLeg(
-                    employeeWallets.getValue(employee).id, LedgerAccountType.WALLET, LedgerDirection.CREDIT,
+                    employeeAccounts.getValue(employee).id, LedgerAccountType.WALLET, LedgerDirection.CREDIT,
                     employee.salaryAmount, "Salary payment - ${merchant.businessName}",
                 ),
             )
         }
-        val result = ledgerService.postLedgerTransaction(merchantWallet.currency, legs)
+        val result = ledgerService.postLedgerTransaction(merchantAccount.currency, legs)
 
         val run = payrollRunRepository.save(
             PayrollRun(
@@ -183,17 +183,17 @@ class PayrollService(
         // each employee, same ordering P2pService.payRequest and MerchantService.collect
         // already established (evaluating after save lets a transaction match itself).
         val payslips = roster.map { employee ->
-            val wallet = employeeWallets.getValue(employee)
+            val account = employeeAccounts.getValue(employee)
             val transaction = Transaction(
                 id = "payrolltxn_${UUID.randomUUID()}",
                 referenceNumber = "PAYROLL${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = merchant.ownerUserId,
                 recipientId = employee.employeeUserId,
-                fromWalletId = merchantWallet.id,
-                toWalletId = wallet.id,
+                fromAccountId = merchantAccount.id,
+                toAccountId = account.id,
                 amount = employee.salaryAmount,
                 fee = BigDecimal.ZERO,
-                currency = merchantWallet.currency,
+                currency = merchantAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Salary payment - ${merchant.businessName}",

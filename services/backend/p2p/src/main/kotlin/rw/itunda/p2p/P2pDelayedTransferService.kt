@@ -12,7 +12,7 @@ import rw.itunda.core.domain.P2pDelayedTransferStatus
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -21,7 +21,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.P2pDelayedTransferRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -61,7 +61,7 @@ class P2pDelayedTransferNotCancellableException(message: String) : RuntimeExcept
 @Service
 class P2pDelayedTransferService(
     private val p2pDelayedTransferRepository: P2pDelayedTransferRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
@@ -75,7 +75,7 @@ class P2pDelayedTransferService(
     /**
      * Real "Send safely" -- the explicit, opt-in delayed alternative to
      * [P2pService.sendDirect]. Resolves the recipient the exact same way
-     * [P2pService.resolveRecipientWallet] does (a phone number, falling back to an
+     * [P2pService.resolveRecipientAccount] does (a phone number, falling back to an
      * account number), but instead of crediting them immediately, the sender's real
      * money is held in `p2p_delay_holding` until [P2pDelayedTransferReleaseScheduler]
      * releases it after [P2pDelayedTransfer.DELAY_WINDOW], or the sender cancels first.
@@ -90,18 +90,18 @@ class P2pDelayedTransferService(
         // established for a real mutating money-movement endpoint.
         rateLimiter.checkLimit("p2p:send-delayed:$senderUserId", limit = 30, window = Duration.ofHours(1))
 
-        val senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("No wallet found for this account")
+        val senderAccount = accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("No account found for this account")
 
-        val recipientWallet = (
-            userRepository.findByPhoneNumber(trimmedIdentifier)?.let { walletRepository.findByUserIdAndType(it.id, WalletType.MAIN) }
-                ?: walletRepository.findByAccountNumber(trimmedIdentifier)
+        val recipientAccount = (
+            userRepository.findByPhoneNumber(trimmedIdentifier)?.let { accountRepository.findByUserIdAndType(it.id, AccountType.MAIN) }
+                ?: accountRepository.findByAccountNumber(trimmedIdentifier)
             ) ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
 
-        if (recipientWallet.userId == senderUserId) {
+        if (recipientAccount.userId == senderUserId) {
             throw P2pSelfPaymentException("You can't send money to yourself -- check the recipient and try again")
         }
-        if (senderWallet.availableBalance < amount) {
+        if (senderAccount.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this transfer")
         }
         // Real Korean "이체한도" (transfer limit) enforcement (Section 186) -- see
@@ -109,13 +109,13 @@ class P2pDelayedTransferService(
         // real daily total sendDirect enforces -- this delayed path removes real money
         // from the sender's control immediately too, so it must count against the
         // identical real number.
-        p2pTransferLimitService.enforce(senderUserId, senderWallet.id, amount)
+        p2pTransferLimitService.enforce(senderUserId, senderAccount.id, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Delayed transfer - $trimmedDescription"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Delayed transfer - $trimmedDescription"),
                 LedgerLeg("p2p_delay_holding", LedgerAccountType.P2P_DELAY_HOLDING, LedgerDirection.CREDIT, amount, "Delayed transfer held - $trimmedDescription"),
             ),
         )
@@ -125,12 +125,12 @@ class P2pDelayedTransferService(
                 id = result.transactionId,
                 referenceNumber = "P2PDLY${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
                 senderId = senderUserId,
-                recipientId = recipientWallet.userId,
-                fromWalletId = senderWallet.id,
-                toWalletId = recipientWallet.id,
+                recipientId = recipientAccount.userId,
+                fromAccountId = senderAccount.id,
+                toAccountId = recipientAccount.id,
                 amount = amount,
                 fee = BigDecimal.ZERO,
-                currency = senderWallet.currency,
+                currency = senderAccount.currency,
                 type = TransactionType.TRANSFER,
                 status = TransactionStatus.COMPLETED,
                 description = "Delayed transfer - $trimmedDescription",
@@ -142,16 +142,16 @@ class P2pDelayedTransferService(
             P2pDelayedTransfer(
                 id = "p2p_delayed_${UUID.randomUUID()}",
                 senderUserId = senderUserId,
-                senderWalletId = senderWallet.id,
-                recipientUserId = recipientWallet.userId,
-                recipientWalletId = recipientWallet.id,
+                senderAccountId = senderAccount.id,
+                recipientUserId = recipientAccount.userId,
+                recipientAccountId = recipientAccount.id,
                 amount = amount,
                 description = trimmedDescription,
                 holdTransactionId = result.transactionId,
                 releaseAt = Instant.now().plus(P2pDelayedTransfer.DELAY_WINDOW),
             ),
         )
-        log.info("Delayed transfer {} held {} RWF from {} to {}, releasing at {}", transfer.id, amount, senderUserId, recipientWallet.userId, transfer.releaseAt)
+        log.info("Delayed transfer {} held {} RWF from {} to {}, releasing at {}", transfer.id, amount, senderUserId, recipientAccount.userId, transfer.releaseAt)
         return transfer
     }
 
@@ -160,7 +160,7 @@ class P2pDelayedTransferService(
 
     /**
      * Real sender-initiated cancel -- refunds the real held amount back to the sender's
-     * own wallet. IDOR-safe: [P2pDelayedTransferRepository.findByIdAndSenderUserId]
+     * own account. IDOR-safe: [P2pDelayedTransferRepository.findByIdAndSenderUserId]
      * compares the resource's real owning field against the caller, never just
      * existence, same discipline this codebase's own IDOR-audit precedent establishes.
      */
@@ -171,14 +171,14 @@ class P2pDelayedTransferService(
         if (transfer.status != P2pDelayedTransferStatus.PENDING) {
             throw P2pDelayedTransferNotCancellableException("This transfer has already been ${transfer.status.name.lowercase()} -- it can no longer be cancelled")
         }
-        val senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
-            ?: throw P2pNoWalletException("No wallet found for this account")
+        val senderAccount = accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
+            ?: throw P2pNoAccountException("No account found for this account")
 
         val result = ledgerService.postLedgerTransaction(
-            senderWallet.currency,
+            senderAccount.currency,
             listOf(
                 LedgerLeg("p2p_delay_holding", LedgerAccountType.P2P_DELAY_HOLDING, LedgerDirection.DEBIT, transfer.amount, "Delayed transfer cancelled"),
-                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, transfer.amount, "Delayed transfer refund"),
+                LedgerLeg(senderAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, transfer.amount, "Delayed transfer refund"),
             ),
         )
         transfer.status = P2pDelayedTransferStatus.CANCELLED
@@ -209,13 +209,13 @@ class P2pDelayedTransferService(
     fun release(transferId: String) {
         val transfer = p2pDelayedTransferRepository.findById(transferId).orElse(null) ?: return
         if (transfer.status != P2pDelayedTransferStatus.PENDING) return
-        val recipientWallet = walletRepository.findById(transfer.recipientWalletId).orElse(null) ?: return
+        val recipientAccount = accountRepository.findById(transfer.recipientAccountId).orElse(null) ?: return
 
         val result = ledgerService.postLedgerTransaction(
-            recipientWallet.currency,
+            recipientAccount.currency,
             listOf(
                 LedgerLeg("p2p_delay_holding", LedgerAccountType.P2P_DELAY_HOLDING, LedgerDirection.DEBIT, transfer.amount, "Delayed transfer released"),
-                LedgerLeg(recipientWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, transfer.amount, "Delayed transfer received"),
+                LedgerLeg(recipientAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, transfer.amount, "Delayed transfer received"),
             ),
         )
         transfer.status = P2pDelayedTransferStatus.COMPLETED

@@ -6,19 +6,19 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PlatformMembership
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PlatformMembershipRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class PlatformMembershipNoWalletException(message: String) : RuntimeException(message)
+class PlatformMembershipNoAccountException(message: String) : RuntimeException(message)
 class InvalidPlatformMembershipDurationException(message: String) : RuntimeException(message)
 
 /**
@@ -29,7 +29,7 @@ class InvalidPlatformMembershipDurationException(message: String) : RuntimeExcep
 @Service
 class PlatformMembershipService(
     private val platformMembershipRepository: PlatformMembershipRepository,
-    private val walletRepository: WalletRepository,
+    private val accountRepository: AccountRepository,
     private val ledgerService: LedgerService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
@@ -52,13 +52,13 @@ class PlatformMembershipService(
         val price = MEMBERSHIP_TIERS[days]
             ?: throw InvalidPlatformMembershipDurationException("Choose a real membership duration -- ${MEMBERSHIP_TIERS.keys.sorted().joinToString()} days")
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
-            ?: throw PlatformMembershipNoWalletException("No wallet found for this account")
+        val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
+            ?: throw PlatformMembershipNoAccountException("No account found for this account")
 
         ledgerService.postLedgerTransaction(
-            wallet.currency,
+            account.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Platform membership for $days days"),
+                LedgerLeg(account.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Platform membership for $days days"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, price, "Platform membership fee"),
             ),
         )

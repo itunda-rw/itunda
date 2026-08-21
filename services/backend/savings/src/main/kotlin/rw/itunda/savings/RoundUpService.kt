@@ -103,7 +103,7 @@ class RoundUpService(
                 savingsService.depositToGoal(userId, goalId, roundUpAmount, null)
             } else if (stockId != null) {
                 val stock = StockCatalog.find(stockId) ?: return
-                stocksService.fundInvestmentWallet(userId, roundUpAmount)
+                stocksService.fundInvestmentAccount(userId, roundUpAmount)
                 val shares = roundUpAmount.divide(stock.price, 6, RoundingMode.DOWN)
                 if (shares.compareTo(BigDecimal.ZERO) > 0) {
                     stocksService.buyStock(userId, stockId, shares)

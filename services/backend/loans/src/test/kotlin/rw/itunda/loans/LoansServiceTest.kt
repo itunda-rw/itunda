@@ -10,14 +10,14 @@ import rw.itunda.core.creditscore.CreditScoreResult
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -27,29 +27,29 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * First test coverage for loans. repayLoan's ownership check is documented in
  * LoansService.kt's own header as mirroring a real SECURITY.md fix in the Express
  * backend (without it, any authenticated user could pay down someone else's loan using
- * that loan's own wallet) -- the ownership test here exists to guard that specifically,
+ * that loan's own account) -- the ownership test here exists to guard that specifically,
  * same spirit as AuthServiceTest guarding the login vulnerability.
  */
 class LoansServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String) = Wallet(
-        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    fun account(id: String, userId: String) = Account(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
     )
 
     Given("a user applying for and repaying a loan") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         When("applying for a high amount (80% of the offer's max) with a real qualifying score") {
             every { loanAccountRepository.findByUserId("user_1") } returns emptyList()
             every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { loanAccountRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
@@ -127,7 +127,7 @@ class LoansServiceTest : BehaviorSpec({
         When("that same mid-score applicant requests a small amount instead") {
             every { loanAccountRepository.findByUserId("user_mid2") } returns emptyList()
             every { creditScoreService.computeScore("user_mid2") } returns CreditScoreResult(450, emptyList(), Instant.now())
-            every { walletRepository.findByUserIdAndType("user_mid2", WalletType.MAIN) } returns wallet("wallet_mid2", "user_mid2")
+            every { accountRepository.findByUserIdAndType("user_mid2", AccountType.MAIN) } returns account("account_mid2", "user_mid2")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_mid", emptyList())
             every { loanAccountRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
@@ -140,7 +140,7 @@ class LoansServiceTest : BehaviorSpec({
 
         When("an applicant already has 2 concurrent active loans") {
             val existingActive = (1..2).map {
-                LoanAccount(id = "loan_existing_$it", userId = "user_maxed", walletId = "w1", offerId = "loan_1", principal = BigDecimal("10000"), outstanding = BigDecimal("5000"), interestRate = 5.0, status = LoanStatus.ACTIVE)
+                LoanAccount(id = "loan_existing_$it", userId = "user_maxed", accountId = "w1", offerId = "loan_1", principal = BigDecimal("10000"), outstanding = BigDecimal("5000"), interestRate = 5.0, status = LoanStatus.ACTIVE)
             }
             every { loanAccountRepository.findByUserId("user_maxed") } returns existingActive
 
@@ -157,13 +157,13 @@ class LoansServiceTest : BehaviorSpec({
 
         When("repaying part of an owned, active loan") {
             val loan = LoanAccount(
-                id = "loan_x", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_x", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("100000"), outstanding = BigDecimal("60000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
             every { loanAccountRepository.findById("loan_x") } returns Optional.of(loan)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
-            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
 
             val result = service.repayLoan("user_1", "loan_x", BigDecimal("20000"))
 
@@ -176,13 +176,13 @@ class LoansServiceTest : BehaviorSpec({
 
         When("repaying the exact outstanding balance") {
             val loan = LoanAccount(
-                id = "loan_y", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_y", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("100000"), outstanding = BigDecimal("15000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
             every { loanAccountRepository.findById("loan_y") } returns Optional.of(loan)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
-            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
 
             service.repayLoan("user_1", "loan_y", BigDecimal("15000"))
 
@@ -193,13 +193,13 @@ class LoansServiceTest : BehaviorSpec({
 
         When("overpaying a loan") {
             val loan = LoanAccount(
-                id = "loan_z", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_z", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("100000"), outstanding = BigDecimal("5000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
             every { loanAccountRepository.findById("loan_z") } returns Optional.of(loan)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
-            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
 
             val result = service.repayLoan("user_1", "loan_z", BigDecimal("50000"))
 
@@ -211,7 +211,7 @@ class LoansServiceTest : BehaviorSpec({
 
         When("a different user tries to repay someone else's loan") {
             val loan = LoanAccount(
-                id = "loan_w", userId = "owner_1", walletId = "wallet_owner", offerId = "loan_1",
+                id = "loan_w", userId = "owner_1", accountId = "account_owner", offerId = "loan_1",
                 principal = BigDecimal("100000"), outstanding = BigDecimal("50000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
@@ -229,7 +229,7 @@ class LoansServiceTest : BehaviorSpec({
 
         When("repaying an already-fully-paid loan") {
             val loan = LoanAccount(
-                id = "loan_v", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_v", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("100000"), outstanding = BigDecimal.ZERO, interestRate = 5.0,
                 status = LoanStatus.PAID, disbursedAt = Instant.now(),
             )
@@ -250,13 +250,13 @@ class LoansServiceTest : BehaviorSpec({
             // high-amount gate doesn't even engage -- a real qualifying score of 700
             // clears the base minimum either way.
             val loan = LoanAccount(
-                id = "loan_refi_1", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_refi_1", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
             every { loanAccountRepository.findById("loan_refi_1") } returns Optional.of(loan)
             every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
-            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refi", emptyList())
             val newLoanSlot = mutableListOf<LoanAccount>()
             every { loanAccountRepository.save(capture(newLoanSlot)) } answers { firstArg() }
@@ -282,7 +282,7 @@ class LoansServiceTest : BehaviorSpec({
         When("refinancing when no itunda offer beats the real current rate") {
             // Already at loan_3's real 2.8% -- the best rate in the whole real itunda catalog.
             val loan = LoanAccount(
-                id = "loan_refi_2", userId = "user_1", walletId = "wallet_1", offerId = "loan_3",
+                id = "loan_refi_2", userId = "user_1", accountId = "account_1", offerId = "loan_3",
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 2.8,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
@@ -301,7 +301,7 @@ class LoansServiceTest : BehaviorSpec({
 
         When("refinancing with a real score too low to qualify for anything") {
             val loan = LoanAccount(
-                id = "loan_refi_3", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_refi_3", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
@@ -323,7 +323,7 @@ class LoansServiceTest : BehaviorSpec({
             // outstanding balance above both means no itunda offer can even cover the
             // payoff, regardless of score.
             val loan = LoanAccount(
-                id = "loan_refi_4", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_refi_4", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("6000000"), outstanding = BigDecimal("5500000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
@@ -342,7 +342,7 @@ class LoansServiceTest : BehaviorSpec({
 
         When("a different user tries to refinance someone else's loan") {
             val loan = LoanAccount(
-                id = "loan_refi_5", userId = "owner_1", walletId = "wallet_owner", offerId = "loan_1",
+                id = "loan_refi_5", userId = "owner_1", accountId = "account_owner", offerId = "loan_1",
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
@@ -360,7 +360,7 @@ class LoansServiceTest : BehaviorSpec({
 
         When("trying to refinance an already-paid loan") {
             val loan = LoanAccount(
-                id = "loan_refi_6", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                id = "loan_refi_6", userId = "user_1", accountId = "account_1", offerId = "loan_1",
                 principal = BigDecimal("400000"), outstanding = BigDecimal.ZERO, interestRate = 5.0,
                 status = LoanStatus.PAID, disbursedAt = Instant.now(),
             )
@@ -378,13 +378,13 @@ class LoansServiceTest : BehaviorSpec({
     }
 
     Given("the multi-lender marketplace") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         When("listing all offers with no lender filter") {
             val offers = service.getOffers()
@@ -415,16 +415,16 @@ class LoansServiceTest : BehaviorSpec({
     }
 
     Given("a loan disbursement inside a transaction") {
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
         every { loanAccountRepository.findByUserId("user_after_commit") } returns emptyList()
         every { creditScoreService.computeScore("user_after_commit") } returns CreditScoreResult(700, emptyList(), Instant.now())
-        every { walletRepository.findByUserIdAndType("user_after_commit", WalletType.MAIN) } returns wallet("wallet_after_commit", "user_after_commit")
+        every { accountRepository.findByUserIdAndType("user_after_commit", AccountType.MAIN) } returns account("account_after_commit", "user_after_commit")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
         every { loanAccountRepository.save(any()) } answers { firstArg() }
         every { notificationRepository.save(any()) } answers { firstArg() }

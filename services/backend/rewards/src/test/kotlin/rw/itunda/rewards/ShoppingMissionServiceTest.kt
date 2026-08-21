@@ -11,14 +11,14 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.ShoppingMissionReward
 import rw.itunda.core.domain.ShoppingWelcomeBonusClaim
-import rw.itunda.core.domain.Wallet
-import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ShoppingMissionRewardRepository
 import rw.itunda.core.repository.ShoppingWelcomeBonusClaimRepository
-import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -26,21 +26,21 @@ import java.time.LocalDate
  * -- see ShoppingMissionService's own doc comment for the full sourced account. */
 class ShoppingMissionServiceTest : BehaviorSpec({
 
-    fun wallet(userId: String) = Wallet(
-        id = "wallet_$userId", userId = userId, accountNumber = "ACC-$userId", accountName = "Test wallet",
-        type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+    fun account(userId: String) = Account(
+        id = "account_$userId", userId = userId, accountNumber = "ACC-$userId", accountName = "Test account",
+        type = AccountType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
     )
 
     Given("a real user with no mission row yet today") {
         val missionRepository = mockk<ShoppingMissionRewardRepository>()
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, walletRepository, ledgerService)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
         val today = LocalDate.of(2026, 8, 12)
 
         every { missionRepository.findByUserIdAndMissionDate("user_1", "2026-08-12") } returns null
-        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("user_1")
+        every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val savedSlot = mutableListOf<ShoppingMissionReward>()
         every { missionRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -56,7 +56,7 @@ class ShoppingMissionServiceTest : BehaviorSpec({
                         "RWF",
                         listOf(
                             LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, ShoppingMissionType.CHECK_IN.rewardAmount, "Shopping mission - CHECK_IN"),
-                            LedgerLeg("wallet_user_1", LedgerAccountType.WALLET, LedgerDirection.CREDIT, ShoppingMissionType.CHECK_IN.rewardAmount, "Shopping mission - CHECK_IN"),
+                            LedgerLeg("account_user_1", LedgerAccountType.WALLET, LedgerDirection.CREDIT, ShoppingMissionType.CHECK_IN.rewardAmount, "Shopping mission - CHECK_IN"),
                         ),
                     )
                 }
@@ -67,9 +67,9 @@ class ShoppingMissionServiceTest : BehaviorSpec({
     Given("a real user who already checked in today") {
         val missionRepository = mockk<ShoppingMissionRewardRepository>()
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, walletRepository, ledgerService)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
         val today = LocalDate.of(2026, 8, 12)
 
         val existing = ShoppingMissionReward(id = "shopmission_1", userId = "user_1", missionDate = "2026-08-12", checkedIn = true)
@@ -87,7 +87,7 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         }
 
         When("completing the real Scroll mission the same day (a different, still-open mission)") {
-            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("user_1")
+            every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { missionRepository.save(any()) } answers { firstArg() }
             val result = service.completeDailyMission("user_1", ShoppingMissionType.SCROLL, today)
@@ -102,14 +102,14 @@ class ShoppingMissionServiceTest : BehaviorSpec({
     Given("a real user drawing the Spin mission, real weighted-random payout") {
         val missionRepository = mockk<ShoppingMissionRewardRepository>()
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val random = mockk<java.util.Random>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, walletRepository, ledgerService, random)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService, random)
         val today = LocalDate.of(2026, 8, 12)
 
         every { missionRepository.findByUserIdAndMissionDate("user_5", "2026-08-12") } returns null
-        every { walletRepository.findByUserIdAndType("user_5", WalletType.MAIN) } returns wallet("user_5")
+        every { accountRepository.findByUserIdAndType("user_5", AccountType.MAIN) } returns account("user_5")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_5", emptyList())
         every { missionRepository.save(any()) } answers { firstArg() }
 
@@ -139,12 +139,12 @@ class ShoppingMissionServiceTest : BehaviorSpec({
     Given("a real user claiming the one-time welcome bonus") {
         val missionRepository = mockk<ShoppingMissionRewardRepository>()
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, walletRepository, ledgerService)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
 
         every { welcomeBonusRepository.existsById("user_6") } returns false
-        every { walletRepository.findByUserIdAndType("user_6", WalletType.MAIN) } returns wallet("user_6")
+        every { accountRepository.findByUserIdAndType("user_6", AccountType.MAIN) } returns account("user_6")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_6", emptyList())
         val savedSlot = mutableListOf<ShoppingWelcomeBonusClaim>()
         every { welcomeBonusRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -162,9 +162,9 @@ class ShoppingMissionServiceTest : BehaviorSpec({
     Given("a real user who already claimed the welcome bonus") {
         val missionRepository = mockk<ShoppingMissionRewardRepository>()
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, walletRepository, ledgerService)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
 
         every { welcomeBonusRepository.existsById("user_7") } returns true
 
@@ -180,23 +180,23 @@ class ShoppingMissionServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real user with no real MAIN wallet, somehow completing a mission") {
+    Given("a real user with no real MAIN account, somehow completing a mission") {
         val missionRepository = mockk<ShoppingMissionRewardRepository>()
         val welcomeBonusRepository = mockk<ShoppingWelcomeBonusClaimRepository>()
-        val walletRepository = mockk<WalletRepository>()
+        val accountRepository = mockk<AccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, walletRepository, ledgerService)
+        val service = ShoppingMissionService(missionRepository, welcomeBonusRepository, accountRepository, ledgerService)
         val today = LocalDate.of(2026, 8, 12)
 
         every { missionRepository.findByUserIdAndMissionDate("user_8", "2026-08-12") } returns null
-        every { walletRepository.findByUserIdAndType("user_8", WalletType.MAIN) } returns null
+        every { accountRepository.findByUserIdAndType("user_8", AccountType.MAIN) } returns null
 
         When("completing Check-in") {
-            Then("it throws RewardsNoWalletException rather than silently marking the mission claimed unpaid") {
+            Then("it throws RewardsNoAccountException rather than silently marking the mission claimed unpaid") {
                 try {
                     service.completeDailyMission("user_8", ShoppingMissionType.CHECK_IN, today)
-                    error("expected RewardsNoWalletException")
-                } catch (e: RewardsNoWalletException) {
+                    error("expected RewardsNoAccountException")
+                } catch (e: RewardsNoAccountException) {
                     verify(exactly = 0) { missionRepository.save(any()) }
                 }
             }
