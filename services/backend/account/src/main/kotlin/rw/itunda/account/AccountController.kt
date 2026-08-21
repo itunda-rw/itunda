@@ -34,6 +34,7 @@ data class CancelAgentWithdrawalAuthorizationRequest(val code: String)
 @RequestMapping("/api/v1/account")
 class AccountController(
     private val accountService: AccountService,
+    private val spendingInsightService: SpendingInsightService,
     private val idempotencyService: IdempotencyService,
     private val agentWithdrawalAuthorizationService: AgentWithdrawalAuthorizationService,
     private val subscriptionDetectionService: SubscriptionDetectionService,
@@ -60,19 +61,19 @@ class AccountController(
     fun getTransactionTimeline(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "timeline" to accountService.getTransactionTimeline(currentUser.userId)))
 
-    // Real spending categorization (2026-07-13) -- see AccountService.getSpendingInsight
+    // Real spending categorization (2026-07-13) -- see SpendingInsightService.getSpendingInsight
     // for why this is built over the ledger, not the transactions table.
     @GetMapping("/spending")
     fun getSpendingInsight(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
-        val result = accountService.getSpendingInsight(currentUser.userId)
+        val result = spendingInsightService.getSpendingInsight(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent))
     }
 
     // Real Kakao Pay 페이아이 소비 리포트 (AI spending report) -- see
-    // AccountService.getMonthlySpendingReport's own doc comment.
+    // SpendingInsightService.getMonthlySpendingReport's own doc comment.
     @GetMapping("/spending/monthly-report")
     fun getMonthlySpendingReport(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val report = accountService.getMonthlySpendingReport(currentUser.userId)
+        val report = spendingInsightService.getMonthlySpendingReport(currentUser.userId)
         return ResponseEntity.ok(
             mapOf(
                 "success" to true,
@@ -84,7 +85,7 @@ class AccountController(
         )
     }
 
-    // Real business expense summary (2026-08-11) -- see AccountService.getBusinessExpenseSummary's
+    // Real business expense summary (2026-08-11) -- see SpendingInsightService.getBusinessExpenseSummary's
     // own doc comment for the real Toss Bank 세금 신고용 이용내역 자동발송 (tax-filing usage
     // summary) pattern this closes the honest slice of.
     @GetMapping("/business-expense-summary")
@@ -92,7 +93,7 @@ class AccountController(
         @RequestParam(defaultValue = "3") sinceMonthsAgo: Long,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> {
-        val result = accountService.getBusinessExpenseSummary(currentUser.userId, sinceMonthsAgo)
+        val result = spendingInsightService.getBusinessExpenseSummary(currentUser.userId, sinceMonthsAgo)
         return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent, "sinceMonthsAgo" to sinceMonthsAgo))
     }
 
@@ -104,16 +105,16 @@ class AccountController(
         return ResponseEntity.ok(mapOf("success" to true, "subscriptions" to result.subscriptions, "estimatedMonthlyTotal" to result.estimatedMonthlyTotal))
     }
 
-    // Real budgeting/limits (2026-07-13) -- see AccountService.setBudget/getBudgets.
+    // Real budgeting/limits (2026-07-13) -- see SpendingInsightService.setBudget/getBudgets.
     @PostMapping("/budgets")
     fun setBudget(@RequestBody request: SetBudgetRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
-        val budget = accountService.setBudget(currentUser.userId, request.category, request.monthlyLimit)
+        val budget = spendingInsightService.setBudget(currentUser.userId, request.category, request.monthlyLimit)
         return ResponseEntity.ok(mapOf("success" to true, "budget" to budget))
     }
 
     @GetMapping("/budgets")
     fun getBudgets(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
-        ResponseEntity.ok(mapOf("success" to true, "budgets" to accountService.getBudgets(currentUser.userId)))
+        ResponseEntity.ok(mapOf("success" to true, "budgets" to spendingInsightService.getBudgets(currentUser.userId)))
 
     /** Creates a one-time, ten-minute code the customer shows only after confirming a cash-out. */
     @PostMapping("/agent-withdrawal-authorizations")
