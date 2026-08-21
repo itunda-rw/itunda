@@ -2,9 +2,8 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { useCountUp } from './hooks/useCountUp';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -274,107 +273,6 @@ const readTabFromUrl = (): Tab => {
     return 'HOME';
   }
 };
-
-function AccountBalance({ account, onTransferClick, onClaimInterest }: { account: Account | null; onTransferClick: () => void; onClaimInterest: () => void }) {
-  const { t } = useI18n();
-  // Real Toss Bank reference (user-provided, 2026-08-12): the account detail screen
-  // shows a small "Get interest" prompt (unclaimed balance + claim button) directly
-  // below the balance, above the Transfer/Top up row -- itunda already has the real
-  // data (fetchInterestJar, the same call InterestJarCard on the itunda Bank tab
-  // already makes) and a real claim destination (SavingsView's own InterestJarCard,
-  // reached via onNavigateToTab('SAVINGS')), just never surfaced here on Home. Same
-  // fix as Android's identical AccountHeroCard addition the same day. Only shown once
-  // there's a real unclaimed balance, matching this file's own "don't show an empty
-  // section" convention.
-  const [jar, setJar] = useState<InterestJar | null>(null);
-  useEffect(() => { fetchInterestJar().then(setJar).catch(() => {}); }, []);
-  // Real Toss motion pattern -- see useCountUp's own doc comment for the full sourced
-  // account. Balance changes now count up/down to their new value instead of
-  // instantly snapping, on this app's single most looked-at real number.
-  const animatedBalance = useCountUp(account?.balance ?? 0);
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="itunda-card"
-      style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <p style={{ color: 'var(--itunda-grey-700)', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: '600' }}>{account?.accountName ?? t('dashboard.mainAccount')}</p>
-        <ShieldCheck size={20} color="var(--itunda-green)" />
-      </div>
-
-      {/* Real Toss Bank reference (user-provided screenshots, 2026-08-11): the real
-          account detail screen leads with the account's own real number ("토스뱅크
-          1000-3058-1980") directly above the balance -- itunda's real, collision-
-          checked AccountNumberGenerator has produced a real accountNumber for every
-          account since it was built, but it was never actually shown anywhere except
-          when entering someone ELSE's number to send to. Same fix on Android/iOS the
-          same day. */}
-      {account?.accountNumber && (
-        <p style={{ color: 'var(--itunda-grey-500)', fontSize: 'var(--itunda-type-scale-12-size)', margin: '0 0 4px' }}>
-          itunda {account.accountNumber.match(/.{1,4}/g)?.join('-')}
-        </p>
-      )}
-
-      {/* Real TDS largeAmount step (2026-08-19) -- was a bare 36px, matching neither
-          Android's/iOS's real 34px LargeAmount token nor any other real TDS step (see
-          packages/design-tokens/tokens.css's own --itunda-type-large-amount-* doc
-          comment for the full sourced account). First real application of the new web
-          typography scale, on this app's single most looked-at number. */}
-      <h1
-        style={{
-          color: 'var(--itunda-grey-900)',
-          fontSize: 'var(--itunda-type-large-amount-size)',
-          lineHeight: 'var(--itunda-type-large-amount-line-height)',
-          fontWeight: 'var(--itunda-type-large-amount-weight)',
-          margin: '0 0 28px 0',
-          letterSpacing: '-0.5px',
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: '4px',
-        }}
-      >
-        {animatedBalance.toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-20-size)', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{account?.currency ?? 'RWF'}</span>
-      </h1>
-
-      {/* Real fix (2026-08-13, direct live-testing catch): this used to show
-          jar.balance (the whole Safe Box principal, e.g. 850,000 RWF) next to a
-          "Get interest" CTA -- reads as "850,000 RWF of interest is waiting," when
-          that number is the account's entire savings balance, not interest. The real
-          claimable amount is jar.earnedThisMonth (interest already auto-credits on
-          accrual, per InterestJarCard's own doc comment below -- "Get interest" is
-          really an acknowledgment of this month's accrual, not a hidden pot). Gate
-          condition fixed the same way: was jar.balance > 0 (shows for anyone with any
-          Safe Box balance at all, even zero new interest this month), now matches
-          InterestJarCard's own real canClaim logic. */}
-      {jar && jar.earnedThisMonth > 0 && (
-        <button
-          onClick={onClaimInterest}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'color-mix(in srgb, var(--itunda-blue) 8%, transparent)', border: 'none', borderRadius: '14px', padding: '10px 14px', marginBottom: '16px', cursor: 'pointer' }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'color-mix(in srgb, var(--itunda-blue) 15%, transparent)' }}>
-              <Zap size={16} color="var(--itunda-blue)" />
-            </span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{jar.earnedThisMonth.toLocaleString()} RWF</span>
-          </span>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-blue)' }}>Get interest</span>
-        </button>
-      )}
-
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <motion.button whileTap={{ scale: 0.96 }} className="itunda-btn itunda-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
-          <ArrowUpRight size={18} /> {t('dashboard.transfer')}
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.96 }} className="itunda-btn itunda-btn-secondary" style={{ flex: 1, gap: '8px' }} disabled title="Real mobile-money top-up needs a live MTN/Airtel/bank provider relationship this backend doesn't have yet -- see docs/TOSS_PARITY_MATRIX.md's Transfer row">
-          <Plus size={18} /> {t('dashboard.topUp')}
-        </motion.button>
-      </div>
-    </motion.div>
-  );
-}
 
 // Real direct itunda-to-itunda push-transfer (2026-07-20) -- closes a real gap found
 // live while first wiring this exact button: AccountController's quote/confirm transfer
@@ -1272,7 +1170,19 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   return (
     <div>
       <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
-      <AccountBalance account={account} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
+      {/* Real Toss Pay reference (user-provided screenshots, 2026-08-21): the real Pay
+          home screen has no headline balance card at all -- it's a nearby-merchant-
+          rewards surface leading straight into the payment-method picker (Facepay/QR
+          sheet: linked bank account or card, no separate "Pay Money" balance shown
+          anywhere). The account-hero-card this tab used to lead with (real balance,
+          "Get interest" teaser) was itunda's own invented pattern, not a real Toss Pay
+          one -- removed. MyPaymentCodeCard already carries both the real funding-
+          source picker and the real nearby-merchant-benefits row, so it's the real
+          equivalent of Toss Pay's own map+rewards home surface. The Send/Bills quick
+          actions right below already cover AccountBalance's old Transfer button (no
+          capability lost), and the real interest-claim card lives on the Bank tab's
+          own InterestJarCard, which was always the true owner of that Savings-side
+          concept -- Pay money doesn't earn interest in the real Toss model either. */}
       <MyPaymentCodeCard accounts={accounts} />
       {showTransfer && (
         <TransferFlow

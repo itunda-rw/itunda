@@ -55,17 +55,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _primaryAccount = MutableStateFlow<Account?>(null)
     val primaryAccount: StateFlow<Account?> = _primaryAccount
 
-    // Real Toss Bank/Toss Pay separation (2026-08-21) -- primaryAccount above is
-    // deliberately still the real Bank (MAIN) account: BankHubScreen/Send/Savings all
-    // correctly depend on it staying that way. PayTab needs its own real itunda Pay
-    // money balance instead -- it was wrongly reusing primaryAccount (MAIN) and
-    // showing the Bank balance under the "itunda Pay" label, the same bug found and
-    // fixed on bank-mfe's PayHub the same session. MAIN kept only as a defensive
-    // pre-backfill fallback (PayAccountBackfillRunner should mean this never actually
-    // triggers for a real user).
-    private val _payAccount = MutableStateFlow<Account?>(null)
-    val payAccount: StateFlow<Account?> = _payAccount
-
     private val _savingsGoals = MutableStateFlow<List<SavingsGoal>>(emptyList())
     val savingsGoals: StateFlow<List<SavingsGoal>> = _savingsGoals
 
@@ -152,7 +141,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val accountRes = NetworkClient.apiService.getAccounts()
                 if (accountRes.success) {
                     _primaryAccount.value = accountRes.accounts.firstOrNull { it.type == "MAIN" } ?: accountRes.accounts.firstOrNull()
-                    _payAccount.value = accountRes.accounts.firstOrNull { it.type == "PAY" } ?: _primaryAccount.value
                 }
 
                 val savingsRes = NetworkClient.apiService.getSavingsGoals()
@@ -261,20 +249,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             accountNumber = "----",
             accountName = "Offline",
             type = "MAIN",
-            balance = 0.0,
-            availableBalance = 0.0,
-            currency = "RWF",
-            isActive = false,
-        )
-        // Real Toss Bank/Toss Pay separation (2026-08-21) -- same offline placeholder
-        // shape as primaryAccount above, kept for payAccount too so PayTab shows an
-        // honest offline zero instead of stale or null data.
-        _payAccount.value = Account(
-            id = "w_offline_placeholder_pay",
-            userId = "",
-            accountNumber = "----",
-            accountName = "Offline",
-            type = "PAY",
             balance = 0.0,
             availableBalance = 0.0,
             currency = "RWF",

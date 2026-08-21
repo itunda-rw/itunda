@@ -1418,7 +1418,6 @@ fun ItundaAppScreen(
                     ItundaTab.Pay -> PayTab(
                         viewModel,
                         onSend = { transferStep = TransferStep.Recipient },
-                        onOpenTransactionHistory = { showTransactionHistory = true },
                         onCashOutAtAgent = { showAgentCash = true },
                     )
                     // Seventh and final Feature extraction (2026-07-23) -- see
@@ -3141,156 +3140,6 @@ private fun ledgerTimeOfDay(iso: String): String =
         ""
     }
 
-@Composable
-private fun AccountHeroCard(
-    balanceText: String,
-    accountNumber: String?,
-    onSend: () -> Unit,
-    onCashOutAtAgent: () -> Unit,
-    recentTransactions: List<rw.itunda.core.network.TransactionDto>,
-    currentUserId: String?,
-    onSeeAll: () -> Unit,
-    earnedThisMonth: Double,
-) {
-    IdsCard(
-        shape = RoundedCornerShape(28.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Real Toss reference (user-provided, 2026-08-03): the real Home account
-            // card header is the account name plus how much interest it's earned so
-            // far this period ("에릭 +이자 7원"), not just a plain static "Account"
-            // label -- InterestJar.earnedThisMonth was already fetched
-            // (MainViewModel.interestJar, real GET /api/v1/account/interest-jar) and
-            // already shown further down this tab's savings section, just never in
-            // this header. Only shown once it's actually > 0 -- a brand-new account
-            // with nothing earned yet keeps the plain label rather than a "+RWF 0"
-            // that reads as broken.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.home_account), fontSize = 14.sp, color = Ids.colors.textSecondary)
-                if (earnedThisMonth > 0.0) {
-                    Text(
-                        "  +RWF %,.0f".format(earnedThisMonth),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Ids.colors.success,
-                    )
-                }
-            }
-            // Real Toss Bank reference (user-provided screenshots, 2026-08-11): the
-            // real account detail screen leads with the account's own real number
-            // ("토스뱅크 1000-3058-1980") directly above the balance -- itunda's real,
-            // collision-checked AccountNumberGenerator (see its own doc comment) has
-            // produced a real accountNumber for every account since it was built, but
-            // it was never actually shown anywhere except when entering someone
-            // ELSE's number to send to. Grouped in 4-digit blocks for readability,
-            // same shape as the reference.
-            if (accountNumber != null) {
-                Text(
-                    "itunda ${accountNumber.chunked(4).joinToString("-")}",
-                    fontSize = 12.sp,
-                    color = Ids.colors.textTertiary,
-                )
-            }
-            // Real fix, 2026-08-03: was a hardcoded 34.sp literal -- IdsTypography
-            // .LargeAmount exists specifically for "the single most important number
-            // on the screen" (see its own doc comment, written for
-            // AgentHomeScreen.kt's till total) and is itself 34sp, so the visual size
-            // is unchanged; this just makes the hero account balance -- itunda's own
-            // most important number on the Home tab -- use the real token instead of
-            // a number that happens to currently match it.
-            Text(balanceText, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
-            // Real correction (2026-08-13, direct user catch: "you mixed itunda bank
-            // with home screen"): a "Get interest" pill and an "Auto Transfer" row
-            // both used to render here. A closer direct comparison against the real
-            // Toss SUPER-APP Home tab (12 images, light+dark) -- as opposed to the
-            // separate real Toss BANK account-detail screen those two rows were
-            // actually sourced from -- confirms Home's own real compact account row
-            // has neither: no unclaimed-interest CTA, no Auto Transfer entry point.
-            // Both are real Toss Bank features, correctly homed on BankHubScreen
-            // instead (Interest jar already lived there before this session; Auto
-            // Transfer is added there now, see BankHubScreen's own doc comment).
-            // Real Toss reference (user-provided, 2026-08-03): the real Home account
-            // card's own two buttons ("+ 채우기" / "↗ 보내기") both carry a leading
-            // glyph -- IdsButton's icon param is new this pass (see its own doc
-            // comment) specifically for this.
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
-                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
-            }
-            // Real fix, 2026-08-03: these two rows used to be hardcoded literal
-            // strings ("Bravo Korea parking" / "Savings deposit") baked into every
-            // account regardless of whose it was -- viewModel.transactions
-            // (GET /api/v1/account/transactions) was already fetched and already
-            // powered the real TransactionHistoryScreen reachable from "See all"
-            // below, just never shown here. Only rendered once real transactions
-            // exist, matching the Savings section's own "don't show an empty
-            // section" discipline.
-            if (recentTransactions.isNotEmpty()) {
-                Divider(color = Ids.colors.divider)
-                recentTransactions.forEach { tx ->
-                    AccountMiniRow(
-                        transaction = tx,
-                        isOutgoing = tx.senderId == currentUserId,
-                        onClick = onSeeAll,
-                    )
-                }
-            }
-            // Real fix, 2026-08-03: "See all" rendered as plain, non-clickable Text --
-            // it visually reads as a link (secondary color, medium weight, full-width)
-            // but tapping it did nothing; onOpenTransactionHistory already existed and
-            // was already wired to a sibling ShellRow in the same tab, just never to
-            // this row.
-            Text(
-                stringResource(R.string.home_see_all),
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onSeeAll),
-                color = Ids.colors.textSecondary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Composable
-private fun AccountMiniRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, onClick: () -> Unit) {
-    // Real Toss-style signed amount (2026-08-03) -- outgoing money is prefixed "-"
-    // in the normal text color, incoming is prefixed "+" and tinted with the real
-    // brand blue (corrected 2026-08-14: this used Ids.colors.success/green until a
-    // direct user screenshot of their own real Toss Bank ledger showed incoming
-    // amounts in brand blue, not green -- the original "same convention real Toss
-    // uses" claim below was never actually checked against a reference).
-    val amountText = "${if (isOutgoing) "-" else "+"}${transaction.currency} %,.0f".format(transaction.amount)
-    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Ids.colors.chip),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                if (isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = Ids.colors.textPrimary,
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(transaction.description, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
-        }
-        Text(amountText, color = amountColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-    }
-}
-
 private data class ShellRow(
     val title: String,
     val subtitle: String,
@@ -3386,7 +3235,6 @@ private enum class PayTabMode { MY_CODE, PAY_MERCHANT }
 private fun PayTab(
     viewModel: MainViewModel,
     onSend: () -> Unit,
-    onOpenTransactionHistory: () -> Unit,
     onCashOutAtAgent: () -> Unit,
 ) {
     // Real fix (2026-08-11, same session -- direct user pushback: "why is itunda pay
@@ -3399,21 +3247,6 @@ private fun PayTab(
     // static QR (a market stall), the one real case where typing a merchant ID is
     // still the honest baseline until real camera scanning exists on that side too.
     var mode by remember { mutableStateOf(PayTabMode.MY_CODE) }
-    // Real architectural move (2026-08-13, direct user directive -- see HomeTab's
-    // own doc comment at its AccountHeroCard removal site): the itunda Pay balance
-    // card (balance, Cash out/Send, recent transactions) used to render on Home,
-    // duplicating real Pay-product content onto a tab meant to be a generic access
-    // point. Pay is itunda's actual complete, self-contained account product, so
-    // this is where that card belongs now.
-    // Real Toss Bank/Toss Pay separation (2026-08-21) -- this is the real itunda Pay
-    // money balance (payAccount), NOT the Bank account (primaryAccount) -- was wrongly
-    // reusing primaryAccount, meaning Pay showed the Bank balance under its own label
-    // (same bug found+fixed on bank-mfe's PayHub the same session, see
-    // MainViewModel.payAccount's own doc comment).
-    val payAccount by viewModel.payAccount.collectAsState()
-    val payBalanceText = payAccount?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
-    val interestJar by viewModel.interestJar.collectAsState()
-    val recentTransactions by viewModel.transactions.collectAsState()
     // Real swipeable funding-source cards (2026-08-11) -- the user's own KakaoPay
     // reference screenshot's bottom card carousel. The real, buildable slice of that:
     // itunda's own real accounts (PAY + any opened foreign-currency ones,
@@ -3443,17 +3276,24 @@ private fun PayTab(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { PlainTopBar("Pay") }
+        // Real Toss Pay reference (user-provided screenshots, 2026-08-21): the real Pay
+        // home screen has no headline balance card at all -- it's a nearby-merchant-
+        // rewards surface leading straight into the payment-method picker (Facepay/QR
+        // sheet: linked bank account or card, no separate "Pay Money" balance shown
+        // anywhere). AccountHeroCard (real balance, account number, "See all"
+        // transactions) was itunda's own invented pattern, not a real Toss Pay one --
+        // removed. MyPaymentCodeCard below already carries both the real funding-
+        // source picker and its own real balance/nearby-merchant-benefits row, so it's
+        // the real equivalent of Toss Pay's own map+rewards home surface. Send/Cash
+        // out kept as a compact quick-action row (no capability lost) since Pay is
+        // still itunda's real complete send/receive product; the real interest-claim
+        // prompt and recent-transactions preview stay owned by BankHubScreen, which
+        // was always their true home per that screen's own doc comment.
         item {
-            AccountHeroCard(
-                balanceText = payBalanceText,
-                accountNumber = payAccount?.accountNumber,
-                onSend = onSend,
-                onCashOutAtAgent = onCashOutAtAgent,
-                recentTransactions = recentTransactions.take(2),
-                currentUserId = payAccount?.userId,
-                onSeeAll = onOpenTransactionHistory,
-                earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
+                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
+            }
         }
         item {
             // Real KakaoPay reference (user's own screenshot): the segmented control is
