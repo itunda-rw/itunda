@@ -42,7 +42,7 @@ class StepRewardServiceTest : BehaviorSpec({
         val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
-        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_1", "2026-07-27") } returns null
+        every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_1", "2026-07-27") } returns null
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         val savedSlot = mutableListOf<DailyStepReward>()
@@ -114,7 +114,7 @@ class StepRewardServiceTest : BehaviorSpec({
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_1", userId = "user_1", rewardDate = "2026-07-27", steps = 1200, claimedTier1000 = true)
-        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_1", "2026-07-27") } returns existing
+        every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_1", "2026-07-27") } returns existing
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("user_1")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
@@ -166,7 +166,7 @@ class StepRewardServiceTest : BehaviorSpec({
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_9", userId = "user_9", rewardDate = "2026-07-27", steps = 500)
-        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_9", "2026-07-27") } returns existing
+        every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_9", "2026-07-27") } returns existing
         every { walletRepository.findByUserIdAndType("user_9", WalletType.MAIN) } returns wallet("user_9")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_9", emptyList())
         val savedSlot = mutableListOf<DailyStepReward>()
@@ -195,7 +195,7 @@ class StepRewardServiceTest : BehaviorSpec({
         val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
-        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_3", "2026-07-27") } returns null
+        every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_3", "2026-07-27") } returns null
         every { walletRepository.findByUserIdAndType("user_3", WalletType.MAIN) } returns wallet("user_3")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
         every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
@@ -233,7 +233,7 @@ class StepRewardServiceTest : BehaviorSpec({
         val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
-        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_4", "2026-07-27") } returns null
+        every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_4", "2026-07-27") } returns null
         every { walletRepository.findByUserIdAndType("user_4", WalletType.MAIN) } returns wallet("user_4")
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
         every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
@@ -262,7 +262,7 @@ class StepRewardServiceTest : BehaviorSpec({
         val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService)
         val today = LocalDate.of(2026, 7, 27)
 
-        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_2", "2026-07-27") } returns null
+        every { dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate("user_2", "2026-07-27") } returns null
         every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns null
 
         When("reporting 1000 steps") {

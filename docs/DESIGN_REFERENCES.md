@@ -15909,3 +15909,73 @@ undertaken-with-its-own-review follow-up.
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx` +
 `services/micro-frontends/bank-mfe/src/i18n/translations.ts` +
 `scripts/file-size-baseline.json`.*
+
+## 251. Three more real instances of the check-then-post-then-write-flag concurrency bug, found on a fresh backend sweep and fixed
+
+A fresh audit fork (same technique as §248: grep every `postLedgerTransaction` call
+site, check whether the entity gating it was read locked, and check whether its
+status/flag is written AFTER the ledger post) checked ~15 sites in depth against
+[[project_itunda_concurrency_audit]]'s established pattern list. Found 3 real
+instances, all hardening fixes (each entity already has `@Version`, so no money was
+ever actually double-credited -- same distinction §248 established: `@Version` +
+same-transaction `postLedgerTransaction` propagation means a losing concurrent
+caller's whole transaction rolls back atomically on the version conflict; the value
+of fixing these is avoiding wasted ledger-posting work and a raw optimistic-lock
+exception instead of a clean domain error, not preventing a fund leak).
+
+1. **`FamilyLinkService.enforceSpendLimit`** (`services/backend/family/.../
+   FamilyLinkService.kt`) -- the exact instance [[project_itunda_concurrency_audit]]
+   already named as known-but-deferred back when `P2pTransferLimitService.enforce`
+   was fixed (Section 192): a live `SUM()` daily-cumulative check with no lock, the
+   third confirmed occurrence of this specific "coarse repo filter, live SUM(), no
+   lock" shape in this codebase (after `CardService.chargeWithCard` and
+   `P2pTransferLimitService.enforce`). Fixed identically:
+   `walletRepository.findByIdForUpdate(childWalletId)` locks the linked child's own
+   wallet row before the sum read -- the same row `P2pTransferLimitService.enforce`
+   (called moments later in `P2pService.sendDirect`) and `LedgerService.
+   postLedgerTransaction` both also lock, so re-acquiring it is a no-op, not a new
+   deadlock risk. Required changing `enforceSpendLimit`'s signature to accept the
+   wallet id (its one real call site, `P2pService.sendDirect`, already had
+   `senderWallet.id` in scope).
+2. **`StepRewardService.reportSteps`** (`services/backend/rewards/.../
+   StepRewardService.kt`) -- reads `DailyStepReward` unlocked, checks 3 tier-claimed
+   + 3 lottery-won boolean flags, calls `creditTierReward`/`creditLotteryBonus` (real
+   `postLedgerTransaction`) for each newly-crossed tier/won draw, then saves once at
+   the end. Added `DailyStepRewardRepository.findByUserIdAndRewardDateForUpdate`
+   (same shape as every other `findByIdForUpdate` in this codebase, just keyed on
+   the repository's own natural `(userId, rewardDate)` lookup instead of a bare id)
+   and switched the read.
+3. **`DesignatedDriverService.completeTrip`** (`services/backend/rideshare/.../
+   DesignatedDriverService.kt`) -- reads `DesignatedDriverTrip` unlocked via the
+   shared `getOwnedTrip` helper (also used by non-money-moving `startDriving`),
+   checks `status == DRIVING`, posts the real fare-release payout, then writes
+   `status = COMPLETED`. Added `DesignatedDriverTripRepository.findByIdForUpdate`
+   and inlined a locked ownership+status check directly in `completeTrip` rather
+   than changing `getOwnedTrip` itself -- `startDriving`'s own status transition
+   moves no money, so it doesn't need the lock, matching this codebase's own
+   established "only the money-moving transition needs the lock" precedent
+   (`MerchantBookingService.payOutDeposit` vs. its own non-money-moving siblings).
+
+**Verification**: `:core:compileKotlin`/`:family:compileKotlin`/
+`:p2p:compileKotlin`/`:rewards:compileKotlin`/`:rideshare:compileKotlin`/
+`:app:compileKotlin` all BUILD SUCCESSFUL. `:family:test` 20/20 (was 18, +2 new:
+proves the lock call happens, proves the no-op path still locks nothing), `:p2p:test`
+30/30 (2 existing mocks updated for the new `enforceSpendLimit` signature),
+`:rewards:test` 11/11 (6 existing mocks renamed to the new repository method),
+`:rideshare:test` 10/10 (was 9, +1 new: proves `completeTrip` locks the row).
+
+**Not exhaustively swept**: the fork checked ~15 of ~130 `postLedgerTransaction`
+call sites in depth; the `.sumOf`/`SUM(` cap-gating grep (the other half of this
+session's own established technique) wasn't run this pass at all. Real, named,
+still-open follow-up for a future pass, not claimed exhausted here.
+
+*Shipped: `services/backend/core/src/main/kotlin/rw/itunda/core/repository/DailyStepRewardRepository.kt` +
+`services/backend/core/src/main/kotlin/rw/itunda/core/repository/DesignatedDriverRepositories.kt` +
+`services/backend/family/src/main/kotlin/rw/itunda/family/FamilyLinkService.kt` +
+`services/backend/family/src/test/kotlin/rw/itunda/family/FamilyLinkServiceTest.kt` +
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pService.kt` +
+`services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt` +
+`services/backend/rewards/src/main/kotlin/rw/itunda/rewards/StepRewardService.kt` +
+`services/backend/rewards/src/test/kotlin/rw/itunda/rewards/StepRewardServiceTest.kt` +
+`services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/DesignatedDriverService.kt` +
+`services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/DesignatedDriverServiceTest.kt`.*

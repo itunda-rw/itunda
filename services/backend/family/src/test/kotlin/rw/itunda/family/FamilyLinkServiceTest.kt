@@ -297,6 +297,7 @@ class FamilyLinkServiceTest : BehaviorSpec({
 
         val link = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE, dailySpendLimit = BigDecimal("5000"))
         every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("child_1", FamilyLinkStatus.ACTIVE) } returns link
+        every { walletRepository.findByIdForUpdate("wallet_child_1") } returns java.util.Optional.empty()
 
         When("a real transfer would stay within the real limit") {
             every {
@@ -306,7 +307,16 @@ class FamilyLinkServiceTest : BehaviorSpec({
             )
 
             Then("it real-allows the transfer, no exception") {
-                service.enforceSpendLimit("child_1", BigDecimal("3000"))
+                service.enforceSpendLimit("child_1", "wallet_child_1", BigDecimal("3000"))
+            }
+
+            // Real fix (concurrency audit, 2026-08-21): the daily-cumulative SUM() check
+            // must lock the child's own wallet row first, same shape
+            // P2pTransferLimitService.enforce already established -- proves the fix
+            // actually happens, not just that the pre-existing limit logic still works.
+            Then("it real-locks the child's own wallet row before the sum-check, same discipline P2pTransferLimitService.enforce already establishes") {
+                service.enforceSpendLimit("child_1", "wallet_child_1", BigDecimal("3000"))
+                io.mockk.verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_child_1") }
             }
         }
 
@@ -319,7 +329,7 @@ class FamilyLinkServiceTest : BehaviorSpec({
 
             Then("it real-blocks the transfer") {
                 try {
-                    service.enforceSpendLimit("child_1", BigDecimal("1500"))
+                    service.enforceSpendLimit("child_1", "wallet_child_1", BigDecimal("1500"))
                     throw AssertionError("expected FamilySpendLimitExceededException")
                 } catch (e: FamilySpendLimitExceededException) {
                     // expected
@@ -341,9 +351,10 @@ class FamilyLinkServiceTest : BehaviorSpec({
         every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("user_5", FamilyLinkStatus.ACTIVE) } returns null
 
         When("enforceSpendLimit is called for a transfer of any real amount") {
-            Then("it's a real no-op, never touching the transaction repository") {
-                service.enforceSpendLimit("user_5", BigDecimal("999999"))
+            Then("it's a real no-op, never touching the transaction repository or locking any wallet -- this must stay cheap for every real P2P send") {
+                service.enforceSpendLimit("user_5", "wallet_user_5", BigDecimal("999999"))
                 io.mockk.verify(exactly = 0) { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(any(), any(), any(), any()) }
+                io.mockk.verify(exactly = 0) { walletRepository.findByIdForUpdate(any()) }
             }
         }
     }

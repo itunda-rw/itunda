@@ -161,9 +161,26 @@ class FamilyLinkService(
     // (WalletFrozenException, minOrderAmount, etc). A no-op (not an exception) when the
     // sender isn't a child on any ACTIVE link with a real limit set -- the overwhelming
     // common case, and this must stay cheap for every single real P2P send in the app.
-    fun enforceSpendLimit(childUserId: String, amount: BigDecimal) {
+    //
+    // Real fix (concurrency audit, 2026-08-21): the daily-cumulative check is a live
+    // `SUM()` over transaction rows, not a mutation `@Version` would catch -- the exact
+    // same SUM()-cap-no-lock bug class `CardService.chargeWithCard`/
+    // `P2pTransferLimitService.enforce` already found live and fixed by locking the row
+    // about to be mutated *before* the sum-check-then-insert (see
+    // `P2pTransferLimitService.enforce`'s own doc comment, which explicitly named this
+    // exact method as a known-but-deferred instance of the identical race). Without a
+    // lock, two real concurrent transfers by the same linked child could both read the
+    // same pre-transfer daily sum and both pass, together exceeding the guardian-set
+    // `dailySpendLimit`. `walletRepository.findByIdForUpdate(childWalletId)` locks the
+    // child's own wallet row for the rest of this ambient transaction -- the same row
+    // `P2pTransferLimitService.enforce` (called moments later in `sendDirect`) and
+    // `LedgerService.postLedgerTransaction` both also lock; re-acquiring an
+    // already-held row lock in the same transaction is a no-op, not a second lock or a
+    // deadlock risk, same reasoning those two already establish.
+    fun enforceSpendLimit(childUserId: String, childWalletId: String, amount: BigDecimal) {
         val link = familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull(childUserId, FamilyLinkStatus.ACTIVE) ?: return
         val limit = link.dailySpendLimit ?: return
+        walletRepository.findByIdForUpdate(childWalletId)
         val startOfDayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant()
         val spentToday = transactionRepository
             .findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(childUserId, TransactionType.TRANSFER, TransactionStatus.COMPLETED, startOfDayUtc)

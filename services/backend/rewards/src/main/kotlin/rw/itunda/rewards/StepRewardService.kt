@@ -90,7 +90,13 @@ class StepRewardService(
         if (steps > MAX_PLAUSIBLE_DAILY_STEPS) throw InvalidStepCountException("Step count exceeds a real plausible daily maximum")
 
         val dateKey = today.toString()
-        val existing = dailyStepRewardRepository.findByUserIdAndRewardDate(userId, dateKey)
+        // Real fix (concurrency audit, 2026-08-21): locks the row up front so two
+        // concurrent reportSteps calls for the same (user, date) -- two devices syncing
+        // the same day's steps, or a client retry -- can't both read the same
+        // pre-claim tier/lottery flags, both pass, and both credit real ledger money
+        // for the same tier/draw. Same shape GroupEatsOrderService.finalizeOrder/
+        // EatsOrderService.tipRider already fixed.
+        val existing = dailyStepRewardRepository.findByUserIdAndRewardDateForUpdate(userId, dateKey)
         val reward = existing ?: DailyStepReward(id = "stepreward_${UUID.randomUUID()}", userId = userId, rewardDate = dateKey)
 
         // Real pedometer semantics: a real device's cumulative daily count never

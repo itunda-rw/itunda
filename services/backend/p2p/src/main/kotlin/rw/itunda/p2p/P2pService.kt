@@ -309,7 +309,7 @@ class P2pService(
         // money moves, same discipline WalletFrozenException/minOrderAmount already
         // established; a no-op for the overwhelming common case of a sender who isn't a
         // linked child with a real limit set.
-        familyLinkService.enforceSpendLimit(senderUserId, amount)
+        familyLinkService.enforceSpendLimit(senderUserId, senderWallet.id, amount)
         // Real Korean "이체한도" (transfer limit) enforcement (Section 186) -- see
         // P2pTransferLimitService's own doc comment for the full sourced account. A
         // real, flat per-transfer and daily-cumulative cap on itunda's real

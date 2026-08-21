@@ -361,7 +361,7 @@ class P2pServiceTest : BehaviorSpec({
             }
 
             Then("it real-checks the real FamilyLink spend limit before the ledger moves any money") {
-                io.mockk.verify(exactly = 1) { familyLinkService.enforceSpendLimit("sender_1", BigDecimal("2000")) }
+                io.mockk.verify(exactly = 1) { familyLinkService.enforceSpendLimit("sender_1", "wallet_sender", BigDecimal("2000")) }
             }
 
             Then("it real-checks the real Section 186 transfer-limit gate before the ledger moves any money") {
@@ -502,7 +502,7 @@ class P2pServiceTest : BehaviorSpec({
         every { userRepository.findByPhoneNumber("+250788000099") } returns
             User(id = "recipient_1", phoneNumber = "+250788000099", firstName = "R", lastName = "T", passwordHash = "x")
         every { walletRepository.findByUserIdAndType("recipient_1", WalletType.MAIN) } returns wallet("wallet_recipient", "recipient_1", "0")
-        every { familyLinkService.enforceSpendLimit("child_1", BigDecimal("2000")) } throws
+        every { familyLinkService.enforceSpendLimit("child_1", "wallet_child", BigDecimal("2000")) } throws
             rw.itunda.family.FamilySpendLimitExceededException("This transfer would exceed your real daily spend limit set by your guardian")
 
         When("the child tries to send past their real limit") {

@@ -243,11 +243,24 @@ class DesignatedDriverService(
 
     /** Real release -- the driver delivered the customer home, paid out of holding
      * net of itunda's real platform fee, matching `RideTripService.completeTrip`'s
-     * own release-on-completion shape. */
+     * own release-on-completion shape.
+     *
+     * Real fix (concurrency audit, 2026-08-21): reads the trip locked (not via the
+     * shared `getOwnedTrip`, which stays a plain unlocked ownership check for
+     * non-money-moving transitions like `startDriving`) -- this method checks
+     * `status == DRIVING`, posts real ledger payout money, then writes
+     * `status = COMPLETED`, so a second concurrent completeTrip call for the same
+     * trip (a real double-tap, or a client retry) must block, re-read fresh state,
+     * and correctly no-op through the status check before ever touching the ledger
+     * again. Same shape `GroupEatsOrderService.finalizeOrder`/
+     * `EatsOrderService.tipRider` already fixed. */
     @Transactional
     fun completeTrip(driverUserId: String, tripId: String): DesignatedDriverTrip {
         val driver = getMyDriver(driverUserId)
-        val trip = getOwnedTrip(tripId, driver.id)
+        val trip = designatedDriverTripRepository.findByIdForUpdate(tripId).orElseThrow { DesignatedDriverTripNotFoundException("Trip not found") }
+        if (trip.driverId != driver.id) {
+            throw DesignatedDriverTripNotFoundException("Trip not found")
+        }
         if (trip.status != DesignatedDriverTripStatus.DRIVING) {
             throw InvalidDesignatedDriverTripStatusTransitionException("Only a DRIVING trip can be completed")
         }

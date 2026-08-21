@@ -157,7 +157,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.DRIVING,
         )
         every { designatedDriverRepository.findByUserId("driver_user_1") } returns driver
-        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
         every { walletRepository.findById("wallet_driver") } returns Optional.of(driverWallet)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
@@ -168,6 +168,12 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             Then("a real fare payout posts and the trip is marked COMPLETED") {
                 result.status shouldBe DesignatedDriverTripStatus.COMPLETED
                 result.payoutTransactionId shouldBe "ledgertxn_2"
+            }
+
+            // Real fix (concurrency audit, 2026-08-21): proves completeTrip actually
+            // locks the row rather than the shared unlocked getOwnedTrip path.
+            Then("it real-locks the trip row before releasing the fare, same discipline GroupEatsOrderService.finalizeOrder already establishes") {
+                io.mockk.verify(exactly = 1) { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") }
             }
         }
     }
