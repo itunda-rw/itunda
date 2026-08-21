@@ -205,7 +205,7 @@ private struct AccountCardCarousel: View {
                     // matching Android's identical real-card metaphor.
                     RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.35)).frame(width: 32, height: 24)
                     Spacer()
-                    Text(w.type == "MAIN" ? "itunda Pay" : "itunda Pay \(w.currency)")
+                    Text(w.type == "PAY" ? "itunda Pay" : w.type == "MAIN" ? "itunda Bank" : "itunda Pay \(w.currency)")
                         .font(.system(size: 13, weight: .bold)).foregroundColor(.white)
                     Text("\(w.currency) \(w.currency == "RWF" ? String(Int(w.availableBalance)) : String(format: "%.2f", w.availableBalance))")
                         .font(.system(size: 19, weight: .bold)).foregroundColor(.white)
@@ -255,8 +255,14 @@ struct MyPaymentCodeCard: View {
     @State private var countdownTask: Task<Void, Never>?
     @StateObject private var locationFetcher = MyPaymentCodeLocationFetcher()
 
+    // Real Toss Bank/Toss Pay separation (2026-08-21) -- this code always pays out
+    // of itunda Pay money, not Bank (MerchantService.chargeByCustomerCode's own real
+    // default, auto-topped from Bank if short), so the default funding source here
+    // must be PAY, not MAIN -- same bug found+fixed on bank-mfe's PayHub and
+    // Android's PayTab the same session. MAIN kept only as a defensive
+    // pre-backfill fallback.
     private var account: Account? {
-        accounts.first(where: { $0.id == selectedAccountId }) ?? accounts.first(where: { $0.type == "MAIN" }) ?? accounts.first
+        accounts.first(where: { $0.id == selectedAccountId }) ?? accounts.first(where: { $0.type == "PAY" }) ?? accounts.first(where: { $0.type == "MAIN" }) ?? accounts.first
     }
 
     var body: some View {
