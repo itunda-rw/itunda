@@ -16463,3 +16463,46 @@ closed everywhere.
 `android/app/src/main/java/rw/itunda/app/ui/{MainViewModel,
 ItundaAppScreen}.kt` (commit `90b1f733`),
 `ios/App/Sources/ShopPay.swift` (commit `5c7f0eea`).*
+
+## 260. Real, unrestricted funding-source account type -- found and closed, all 4 codebases
+
+While shipping §259, noticed a real, separate gap: `GET /api/v1/account`
+returns a customer's ENTIRE account list with no type filter, and
+`generateCustomerPaymentCode`'s `accountId` param accepted ANY of them
+-- meaning a SAVINGS/INVESTMENT/LOAN/GROUP account could genuinely fund
+a merchant payment if a customer swiped to it in the "My code" carousel,
+none of which are real payment products (matches real KakaoPay/Toss
+Pay's own scoped funding-source picker -- linked bank accounts/cards,
+never a savings or investment product). Confirmed via direct user
+question rather than deciding unilaterally, since this is a real
+product/security-policy call, not an unambiguous bug fix like §254-259's
+own MAIN-default work -- user confirmed: restrict to PAY/MAIN/
+FOREIGN_CURRENCY.
+
+**Backend** (commit `c645380b`): new `MerchantService
+.PAYMENT_ELIGIBLE_ACCOUNT_TYPES = {PAY, MAIN, FOREIGN_CURRENCY}`,
+enforced at `generateCustomerPaymentCode` (fails loudly to the customer
+at generation time, not silently at charge time in front of a
+merchant) and again at `chargeByCustomerCode` as defense in depth (a
+payment code is a real bearer credential, worth not trusting generation
+time alone for). New `PaymentCodeAccountNotEligibleException` -> 422
+`ACCOUNT_NOT_PAYMENT_ELIGIBLE`. 4 new tests: rejection at both
+checkpoints, acceptance of both eligible types.
+
+**Clients** (commit `b262ed07`): bank-mfe's `PayHub`/iOS's
+`MyPaymentCodeCard` both fetched the customer's full unfiltered account
+list for the carousel -- now filtered to the same 3 types. Android's
+own carousel fetch was already accidentally scoped correctly (a
+side-effect of §259's MAIN-default fix, not a deliberate decision at
+the time) -- confirmed, not re-touched. Real gap found+fixed on web
+while making this change: `lib/account.ts`'s `Account.type` union was
+still missing `'FOREIGN_CURRENCY'` entirely.
+
+All 4 codebases verified: full backend test suite green, `tsc -b` +
+`vite build` clean for bank-mfe, `xcodebuild BUILD SUCCEEDED` for
+`ItundaApp`, `:app:compileDebugKotlin BUILD SUCCESSFUL` for Android
+(unchanged this pass, already correct).
+
+*Shipped: `services/backend/merchant/**` (commit `c645380b`),
+`services/micro-frontends/bank-mfe/src/{BankDashboard.tsx,
+lib/account.ts}` + `ios/App/Sources/ShopPay.swift` (commit `b262ed07`).*
