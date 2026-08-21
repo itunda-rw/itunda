@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
-import { FacePayStatusRow, RewardsPreviewSection } from './PayHomeExtras';
+import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -100,7 +100,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchLoyaltyBalance, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, generateCustomerPaymentCode, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type CustomerPaymentCode, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchLoyaltyBalance, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchNearbyMerchants, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, generateCustomerPaymentCode, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type CustomerPaymentCode, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchant, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
 import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
@@ -1136,17 +1136,12 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
   const [facePayEnrolled, setFacePayEnrolled] = useState(false);
   const [facePayBusy, setFacePayBusy] = useState(false);
-  // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
-  // "our pay home screen should also look 100% like toss pay home screen"): the real
-  // screen's "Get more rewards" list is itunda's own already-real RewardsService task
-  // list (RewardsView, reachable from Explore -> Trust & community), never surfaced on
-  // Pay before -- shown here as a real preview (unclaimed + eligible tasks only, capped
-  // at 3) rather than fabricating Toss-specific rows itunda has no backend for ("4%
-  // back with Toss Prime", "Google gift codes"). "Your Coupons" (a cross-merchant
-  // coupon wallet) and "How to pay online" (external online-merchant integrations) are
-  // honestly scoped out -- itunda has no real backend for either (coupons only exist
-  // scoped to one merchant at a time, fetchCouponsForCustomer(merchantId)).
+  // Real Toss Pay home reference (2026-08-22) -- "Get more rewards" preview; see
+  // PayHomeExtras.tsx's own top doc comment for the full honest-scoping rationale.
   const [rewardsPreview, setRewardsPreview] = useState<RewardTasksResult | null>(null);
+  // Real "345 stores nearby" banner -- see PayHomeExtras.tsx's NearbyMerchantsBanner.
+  const [nearbyMerchants, setNearbyMerchants] = useState<NearbyMerchant[]>([]);
+  const [showNearbyMerchantsDialog, setShowNearbyMerchantsDialog] = useState(false);
   // Real "Toss Pay Money" detail/statement screen -- see PayMoneyDetail's own doc
   // comment. Holds the specific account drilled into, not just a boolean, since
   // MyPaymentCodeCard's own real funding-source picker can select MAIN too.
@@ -1179,6 +1174,18 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
     fetchFacePayStatus().then((result) => setFacePayEnrolled(result.enrolled)).catch(() => setFacePayEnrolled(false));
     fetchRewardTasks().then(setRewardsPreview).catch(() => setRewardsPreview(null));
   }, []);
+
+  // Silent when location is denied -- same pattern as fetchNearbyAds above.
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => { fetchNearbyMerchants(position.coords.latitude, position.coords.longitude).then(setNearbyMerchants).catch(() => {}); },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
+
+  const cashbackRatePercent = averageCashbackRatePercent(nearbyMerchants);
 
   const handleFacePayToggle = async () => {
     setFacePayBusy(true);
@@ -1214,18 +1221,17 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 
   return (
     <div>
-      {/* Real Toss Pay home reference (4 screenshots, 2026-08-22): a bold "Pay"
-          wordmark plus a settings icon, not the generic ProductPageHeader every
-          other tab uses -- itunda has no dedicated Pay-settings screen yet, so this
-          honestly routes to the You tab (the closest real settings destination)
-          rather than fabricating one. */}
+      {/* Bold "Pay" wordmark + settings icon (routes to You -- no dedicated
+          Pay-settings screen exists), not the generic ProductPageHeader. */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 4px 16px' }}>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>Pay</h2>
         <button onClick={() => onNavigateToTab('YOU')} aria-label="Pay settings" style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}>
           <Settings size={20} />
         </button>
       </div>
-      <FacePayStatusRow enrolled={facePayEnrolled} busy={facePayBusy} onToggle={handleFacePayToggle} />
+      <NearbyMerchantsBanner merchants={nearbyMerchants} onTap={() => setShowNearbyMerchantsDialog(true)} />
+      {showNearbyMerchantsDialog && <NearbyMerchantsDialog merchants={nearbyMerchants} onClose={() => setShowNearbyMerchantsDialog(false)} />}
+      <FacePayStatusRow enrolled={facePayEnrolled} busy={facePayBusy} cashbackRatePercent={cashbackRatePercent} onToggle={handleFacePayToggle} />
       <MyPaymentCodeCard accounts={accounts} onOpenAccountDetail={setOpenAccountDetail} />
       {showTransfer && (
         <TransferFlow
@@ -1244,6 +1250,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
         </button>
       </div>
       <QuickActions onCardsClick={onNavigateToCard} />
+      {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
       {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
       <RequestMoneyCard />
       <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
@@ -1252,12 +1259,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       <DelayedTransfersCard />
       {account && <AutoTopUpCard accountId={account.id} />}
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
-      {/* Real "FAQ / Send feedback" (2026-08-22) -- itunda has no FAQ-content system,
-          so this honestly routes to the real Support tab rather than fabricating
-          static FAQ copy. */}
-      <button onClick={() => onNavigateToTab('SUPPORT')} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '14px 4px', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-        Get help
-      </button>
+      <GetHelpLinks onOpenSupport={() => onNavigateToTab('SUPPORT')} />
     </div>
   );
 }

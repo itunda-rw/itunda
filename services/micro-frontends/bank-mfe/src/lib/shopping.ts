@@ -320,3 +320,22 @@ export interface NearbyMerchantAd {
 
 export const fetchNearbyAds = (latitude: number, longitude: number) =>
   apiFetch<{ success: boolean; ads: NearbyMerchantAd[] }>(`/api/v1/merchant/ads/nearby?latitude=${latitude}&longitude=${longitude}`).then((r) => r.ads);
+
+// Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up: "it
+// should look 100% like toss pay UI/UX features everything") -- the reference's own
+// "345 stores nearby where you can earn rewards" banner. Distinct from fetchNearbyAds
+// above -- that's paid ad placements (a subset), this is every real ACTIVE merchant
+// nearby (MerchantDiscoveryService.kt), mirrors Android's identical getNearbyMerchants
+// exactly.
+export interface NearbyMerchant {
+  id: string;
+  businessName: string;
+  category: string | null;
+  cashbackRate: number;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+}
+
+export const fetchNearbyMerchants = (latitude: number, longitude: number, radiusKm = 5) =>
+  apiFetch<{ success: boolean; merchants: NearbyMerchant[] }>(`/api/v1/merchant/nearby?latitude=${latitude}&longitude=${longitude}&radiusKm=${radiusKm}`).then((r) => r.merchants);
