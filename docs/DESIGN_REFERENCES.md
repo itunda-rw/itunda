@@ -16639,3 +16639,61 @@ further past its own already-large baseline.
 `10979a5e`, `81bee1a0`, `47870805`).*
 
 *Shipped: `services/backend/auth/**` (commit `7c7dfda7`).*
+
+## 263. Real Toss Bank account-detail screen -- built, then corrected live, all 3 platforms
+
+Continuing the same real-screenshot session as §262: 20 more real screenshots
+covering the full Toss Bank account-detail scroll (balance/interest/ledger, then
+Demand Deposits/Savings/Foreign Currency/Grow Lump Sum/Loan/Cards), the Pay home
+screen, the Facepay/QR sheet, Pay settings, and the top-up account picker, with
+the instruction "UI/UX should look 100% like in this images pixels by pixels."
+
+**A real, separate infra incident surfaced first**: the backend had gone fully
+unreachable (private-cloud VM down), and once recovered, the deployed image
+turned out to be 3 days stale -- missing this session's own earlier Wallet→
+Account column rename across 32 columns/30 tables (including `transactions`
+itself), so `GET /api/v1/account` 404'd for every user. Three new Flyway
+migrations (V289-V291, found via `information_schema.columns LIKE
+'%wallet_id%'` rather than one exhausting redeploy-and-discover cycle per
+column) plus a rebuild/redeploy fixed it. Also cleared node disk pressure
+blocking pod scheduling.
+
+**First pass, then a live correction**: per the user's own answer to "fold the
+catalog into the ledger screen vs. keep it separate," the real Toss product
+catalog was duplicated directly into the account-detail/ledger screen on all 3
+platforms. Seeing the actual rendered result, the user corrected this live:
+"those below they are not supposed to be in itunda account details screen since
+they suppose to be in itunda bank home screen like toss does." Real Toss's own
+account-detail screen doesn't carry the catalog. Reverted the duplication --
+each platform's existing "bank home" screen (Android's `BankHubScreen`,
+bank-mfe's `SavingsView`, iOS's `BankView`) already had the real catalog
+correctly and was never the problem; only the ledger screen was wrong to repeat
+it. Final shape: bank home (catalog) → tap the account balance → a separate
+ledger-only drill-in (Android's existing `AccountDetailScreen`; bank-mfe's new
+`AccountDetailScreen.tsx`, reached via the new `AccountSummaryRow`; iOS's new
+`AccountLedgerDetailView.swift`, reached by tapping `AccountSummaryCard`'s
+balance).
+
+Two more live-follow-up fixes landed on all 3 platforms in the same pass:
+Top-up/Send moved from scrolling with the ledger to a real pinned bottom bar
+("those buttons at bottom"), and every ledger row gained a real per-category
+icon (`ledgerRowIcon`, classified from the transaction's own description
+keywords first, falling back to the real backend `TransactionType` enum)
+instead of a generic up/down arrow ("icons the size"). Spring/press motion
+("that you feel when you are scrolling") turned out to already be real on
+Android -- `IdsButton`'s existing `rememberPressScale` uses genuine
+`spring()` physics, and native stretch overscroll already gives scrolling its
+bounce -- no new code needed there.
+
+Android live-verified on the physical device end to end (real data, tapped
+through, confirmed the catalog is gone from the ledger screen). bank-mfe and
+iOS verified via clean `tsc -b`/`vite build`/accessibility-lint and a full
+`xcodebuild` respectively -- neither visually confirmed in a live browser/
+simulator this pass (no Claude-in-Chrome connection available, no iOS
+simulator boot attempted).
+
+*Shipped: `services/backend/app/.../db/migration/V289-V291`, Android
+`AccountDetailScreen`, bank-mfe `AccountSummaryRow.tsx`/
+`AccountDetailScreen.tsx`, iOS `AccountLedgerDetailView.swift`/`BankView.swift`
+(commits `81cee9bf`, `e2342cfc`, `75f8fa43`, `bf405f67`, `38970d4d`,
+`eb6dc641`).*
