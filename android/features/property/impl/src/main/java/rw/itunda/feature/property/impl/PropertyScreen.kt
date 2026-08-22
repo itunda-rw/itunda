@@ -9,7 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -329,7 +329,7 @@ fun PropertyContent(
         if (view == PropertyView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
-                Text("${radius.toInt()} km", color = if (active) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).clickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
+                Text("${radius.toInt()} km", color = if (active) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).pressScaleClickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
             } }
         }
         if (view == PropertyView.BROWSE) {
@@ -341,7 +341,7 @@ fun PropertyContent(
                             modifier = Modifier
                                 .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                                 .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
-                                .clickable { listingTypeFilter = if (active) null else v }
+                                .pressScaleClickable { listingTypeFilter = if (active) null else v }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
                     }
@@ -359,7 +359,7 @@ fun PropertyContent(
                                 modifier = Modifier
                                     .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                                     .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
-                                    .clickable { propertyTypeFilter = if (active) null else t.id }
+                                    .pressScaleClickable { propertyTypeFilter = if (active) null else t.id }
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
                             ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
                         }
@@ -371,7 +371,7 @@ fun PropertyContent(
             item {
                 if (!showNewListing) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).clickable { showNewListing = true }.padding(vertical = 14.dp),
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewListing = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("+ List a property", color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
@@ -489,7 +489,7 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                     Text(
                         t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary,
                         modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { propertyType = t.id }.padding(horizontal = 12.dp, vertical = 6.dp),
+                            .pressScaleClickable { propertyType = t.id }.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }
@@ -499,7 +499,7 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                     Text(
                         label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary,
                         modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { listingType = v }.padding(horizontal = 12.dp, vertical = 6.dp),
+                            .pressScaleClickable { listingType = v }.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }
@@ -548,7 +548,7 @@ private fun PropertyWishlistView(onRemoved: () -> Unit) {
     var favorites by remember { mutableStateOf<List<FavoritePropertyListingDto>?>(null) }; var error by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
     fun load() = scope.launch { try { favorites = NetworkClient.apiService.getMyFavoritePropertyListings().favorites; error = null } catch (e: Exception) { error = "Couldn't load your saved properties. Check your connection and try again." } }
     LaunchedEffect(Unit) { load() }
-    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text("${f.listingType} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.clickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } } }
+    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text("${f.listingType} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } } }
 }
 
 @Composable
@@ -583,7 +583,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { listingType = v }
+                            .pressScaleClickable { listingType = v }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
@@ -597,7 +597,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                     Box(
                         modifier = Modifier
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
-                            .clickable { propertyType = t.id }
+                            .pressScaleClickable { propertyType = t.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
@@ -616,7 +616,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
             }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
-                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .pressScaleClickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Property area shared for nearby search" else "📍 Share property area for nearby search (optional)", fontSize = 13.sp, color = if (shareLocation) Ids.colors.brand else Ids.colors.textSecondary) }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -627,11 +627,11 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.brand)
-                        .clickable(enabled = !submitting) {
+                        .pressScaleClickable(enabled = !submitting) {
                             val priceValue = price.toDoubleOrNull()
                             if (title.isBlank() || description.isBlank() || propertyType.isBlank() || priceValue == null || priceValue <= 0) {
                                 error = "Fill in every field with a real price."
-                                return@clickable
+                                return@pressScaleClickable
                             }
                             submitting = true
                             error = null
@@ -776,7 +776,7 @@ private fun PropertyListingCard(
                             favorited = favorited,
                             size = 20.dp,
                             modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
-                                .clickable { onToggleFavorite() }.padding(end = 8.dp),
+                                .pressScaleClickable { onToggleFavorite() }.padding(end = 8.dp),
                         )
                     }
                     Text(priceLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)

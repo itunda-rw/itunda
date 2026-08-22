@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -341,7 +342,7 @@ internal fun HoodSectionScreen(
                 // icon merges into one accessible node named by the visible text, and
                 // the gap between them is now part of the same continuous tap target.
                 Row(
-                    modifier = Modifier.weight(1f).clickable { showNeighborhoodPrompt = true },
+                    modifier = Modifier.weight(1f).pressScaleClickable { showNeighborhoodPrompt = true },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
@@ -385,12 +386,12 @@ internal fun HoodSectionScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Icon(
                     Icons.Outlined.Notifications, contentDescription = "Notifications",
-                    modifier = Modifier.size(24.dp).clickable(onClick = onOpenSettings), tint = Ids.colors.textPrimary,
+                    modifier = Modifier.size(24.dp).pressScaleClickable(onClick = onOpenSettings), tint = Ids.colors.textPrimary,
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Icon(
                     Icons.Outlined.Menu, contentDescription = "Menu",
-                    modifier = Modifier.size(24.dp).clickable { showMenuSheet = true }, tint = Ids.colors.textPrimary,
+                    modifier = Modifier.size(24.dp).pressScaleClickable { showMenuSheet = true }, tint = Ids.colors.textPrimary,
                 )
             }
             when (mode) {
@@ -443,7 +444,7 @@ internal fun HoodSectionScreen(
                     .padding(20.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(Ids.colors.brand)
-                    .clickable { requestNewListingSignal++ }
+                    .pressScaleClickable { requestNewListingSignal++ }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -479,7 +480,7 @@ internal fun HoodSectionScreen(
                                 fontSize = 15.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .pressScaleClickable {
                                         requestedMarketplaceView = (requestedMarketplaceView.first + 1) to key
                                         showMenuSheet = false
                                     }
@@ -495,7 +496,7 @@ internal fun HoodSectionScreen(
                             fontSize = 15.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .pressScaleClickable {
                                     requestedCommunityView = (requestedCommunityView.first + 1) to "MINE"
                                     showMenuSheet = false
                                 }
@@ -511,7 +512,7 @@ internal fun HoodSectionScreen(
                                 fontSize = 15.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .pressScaleClickable {
                                         requestedJobsView = (requestedJobsView.first + 1) to key
                                         showMenuSheet = false
                                     }
@@ -528,7 +529,7 @@ internal fun HoodSectionScreen(
                                 fontSize = 15.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .pressScaleClickable {
                                         requestedPropertyView = (requestedPropertyView.first + 1) to key
                                         showMenuSheet = false
                                     }
@@ -543,7 +544,7 @@ internal fun HoodSectionScreen(
                         fontSize = 15.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showMenuSheet = false; onOpenSettings() }
+                            .pressScaleClickable { showMenuSheet = false; onOpenSettings() }
                             .padding(horizontal = 18.dp, vertical = 12.dp),
                     )
                 }
@@ -582,13 +583,13 @@ internal fun HoodSectionScreen(
                                     Text(
                                         if (secondNeighborhoodName != null) "Change" else "Add",
                                         color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                                        modifier = Modifier.clickable { showSecondNeighborhoodPrompt = true },
+                                        modifier = Modifier.pressScaleClickable { showSecondNeighborhoodPrompt = true },
                                     )
                                     if (secondNeighborhoodName != null) {
                                         Text(
                                             "Remove",
                                             color = Ids.colors.danger, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                                            modifier = Modifier.clickable {
+                                            modifier = Modifier.pressScaleClickable {
                                                 coroutineScope.launch {
                                                     try {
                                                         val res = NetworkClient.authApi.clearSecondNeighborhood()
