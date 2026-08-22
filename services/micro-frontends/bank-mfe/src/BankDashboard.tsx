@@ -8468,8 +8468,8 @@ function MessageReactions({
         {pickerOpen && (
           <div
             style={{
-              position: 'absolute', bottom: '28px', display: 'flex', gap: '4px', padding: '6px 8px',
-              borderRadius: '12px', backgroundColor: 'var(--itunda-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
+              position: 'absolute', bottom: '32px', display: 'flex', gap: '6px', padding: '8px 10px',
+              borderRadius: '14px', backgroundColor: 'var(--itunda-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
               left: isMine ? undefined : 0, right: isMine ? 0 : undefined,
             }}
           >
@@ -8479,7 +8479,7 @@ function MessageReactions({
                 onClick={() => { onToggle(emoji); setPickerOpen(false); }}
                 style={{ display: 'flex', padding: '2px' }}
               >
-                <ReactionGlyph emoji={emoji} size={22} />
+                <ReactionGlyph emoji={emoji} size={32} variant="3d" />
               </button>
             ))}
           </div>
