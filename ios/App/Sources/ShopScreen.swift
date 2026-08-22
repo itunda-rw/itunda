@@ -336,7 +336,7 @@ struct CommerceShopContent: View {
                     Picker("", selection: $view) {
                         Text("Merchants").tag(CommerceView.browse)
                         Text("My orders").tag(CommerceView.orders)
-                        Text("♡ Wishlist").tag(CommerceView.wishlist)
+                        Text("Wishlist").tag(CommerceView.wishlist)
                         Text("Subscriptions").tag(CommerceView.subscriptions)
                     }
                     .pickerStyle(.segmented)
@@ -451,7 +451,11 @@ struct CommerceShopContent: View {
                         // -- this closes that same gap for the same reason).
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let deals, !deals.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("🔥 Deals").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                HStack(spacing: 6) {
+                                    FlameGlyph(size: 17)
+                                    Text("Deals")
+                                }
+                                .font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 10) {
                                         ForEach(deals) { d in

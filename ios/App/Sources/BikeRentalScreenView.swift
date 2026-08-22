@@ -123,7 +123,11 @@ private struct BikeRentContent: View {
                     }
                     ForEach(nearbyBikes) { bike in
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(bike.type == "ELECTRIC" ? "⚡ Electric bike" : "🚲 Regular bike").bold().foregroundColor(IDS.Colors.textPrimary)
+                            HStack(spacing: 6) {
+                            BikeTypeGlyph(electric: bike.type == "ELECTRIC", size: 15)
+                            Text(bike.type == "ELECTRIC" ? "Electric bike" : "Regular bike")
+                        }
+                            .bold().foregroundColor(IDS.Colors.textPrimary)
                             Text(bike.type == "ELECTRIC" ? "150 RWF/minute" : "80 RWF/minute").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Button(action: { Task { await startRental(bike.id) } }) {
                                 Text(busyBikeId == bike.id ? "…" : "Unlock").bold().foregroundColor(.white)
@@ -227,8 +231,8 @@ private struct BikeMineContent: View {
                     Text("Any itunda user can list a bike or scooter into the shared rental pool.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     Picker("", selection: $bikeType) {
-                        Text("⚡ Electric").tag("ELECTRIC")
-                        Text("🚲 Regular").tag("REGULAR")
+                        Text("Electric").tag("ELECTRIC")
+                        Text("Regular").tag("REGULAR")
                     }
                     .pickerStyle(.segmented)
                     Button(action: { Task { await register() } }) {
@@ -248,7 +252,11 @@ private struct BikeMineContent: View {
                     Text("Your bikes").bold().foregroundColor(IDS.Colors.textPrimary)
                     ForEach(myBikes) { bike in
                         HStack {
-                            Text(bike.type == "ELECTRIC" ? "⚡ Electric bike" : "🚲 Regular bike").bold().foregroundColor(IDS.Colors.textPrimary)
+                            HStack(spacing: 6) {
+                            BikeTypeGlyph(electric: bike.type == "ELECTRIC", size: 15)
+                            Text(bike.type == "ELECTRIC" ? "Electric bike" : "Regular bike")
+                        }
+                            .bold().foregroundColor(IDS.Colors.textPrimary)
                             Spacer()
                             Button(action: { Task { await updateBikeLocation(bike.id) } }) {
                                 Text(updatingLocationBikeId == bike.id ? "…" : "Update location").font(.caption).bold()

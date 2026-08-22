@@ -38,7 +38,13 @@ struct CommunityPostCard: View {
             }
             Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             Text(post.body).font(.subheadline).foregroundColor(IDS.Colors.textSecondary).lineLimit(2)
-            Text("❤️ \(post.likeCount) · 💬 \(post.commentCount)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            HStack(spacing: 4) {
+                HeartFilled(size: 12)
+                Text("\(post.likeCount) ·")
+                SpeechBubbleGlyph(size: 12)
+                Text("\(post.commentCount)")
+            }
+            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             if !isMine && post.category == "question" {
                 Button("Answer this question", action: onOpen)
                     .font(.caption).bold().foregroundColor(IDS.Colors.brand)
@@ -148,7 +154,10 @@ struct CommunityPostDetailView: View {
                             Text("by \(authorName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text(post.body).font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
                             Button(action: { Task { await toggleLike() } }) {
-                                Text(likedByMe ? "❤️ \(post.likeCount)" : "🤍 \(post.likeCount)")
+                                HStack(spacing: 6) {
+                                    WishlistHeart(favorited: likedByMe, size: 14)
+                                    Text("\(post.likeCount)")
+                                }
                                     .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                     .padding(.horizontal, 16).padding(.vertical, 10)
                                     .background(IDS.Colors.chipBackground).cornerRadius(12)

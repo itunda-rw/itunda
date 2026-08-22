@@ -55,7 +55,15 @@ struct CardScreenView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("itunda card").font(.caption).foregroundColor(.white.opacity(0.85))
                                 Text("•••• •••• •••• \(card.last4)").font(.title3).bold().foregroundColor(.white)
-                                Text(card.frozen ? "🔒 Frozen" : "✓ Active").font(.caption).foregroundColor(.white.opacity(0.85))
+                                if card.frozen {
+                                    HStack(spacing: 4) {
+                                        LockGlyph(size: 11)
+                                        Text("Frozen")
+                                    }
+                                    .font(.caption).foregroundColor(.white.opacity(0.85))
+                                } else {
+                                    Text("✓ Active").font(.caption).foregroundColor(.white.opacity(0.85))
+                                }
                             }
                             .padding(20)
                             .frame(maxWidth: .infinity, alignment: .leading)

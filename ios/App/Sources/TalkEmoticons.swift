@@ -294,7 +294,7 @@ struct EmoticonStoreView: View {
                 }
                 .padding(IDS.Layout.screenHorizontal)
             }
-            .navigationTitle("🛍 Emoticon Store")
+            .navigationTitle("Emoticon Store")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Close", action: onClose)

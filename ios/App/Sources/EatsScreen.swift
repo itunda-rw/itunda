@@ -316,8 +316,7 @@ struct OrderFoodContent: View {
                                 }
                                 Spacer()
                                 Button(action: { toggleFavorite(restaurant.merchantId) }) {
-                                    Image(systemName: favoriteIds.contains(restaurant.merchantId) ? "heart.fill" : "heart")
-                                        .foregroundColor(favoriteIds.contains(restaurant.merchantId) ? .red : IDS.Colors.textSecondary)
+                                    WishlistHeart(favorited: favoriteIds.contains(restaurant.merchantId), size: 18)
                                 }
                                 .accessibilityLabel(favoriteIds.contains(restaurant.merchantId) ? "Remove from favorites" : "Add to favorites")
                                 .buttonStyle(.plain)

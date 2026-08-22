@@ -267,12 +267,20 @@ struct OpenChatCard: View {
             if mode == .closed {
                 HStack(spacing: 10) {
                     Button(action: { mode = .create }) {
-                        Text("🌐 Start an open chat").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        HStack(spacing: 6) {
+                            GlobeGlyph(size: 15)
+                            Text("Start an open chat")
+                        }
+                            .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
                             .background(Color(.tertiarySystemBackground)).cornerRadius(12)
                     }
                     Button(action: { mode = .join }) {
-                        Text("📷 Join an open chat").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        HStack(spacing: 6) {
+                            CameraGlyph(size: 15)
+                            Text("Join an open chat")
+                        }
+                            .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
                             .background(Color(.tertiarySystemBackground)).cornerRadius(12)
                     }
@@ -282,7 +290,11 @@ struct OpenChatCard: View {
                     Text("Send friends the code — they can join instantly, wherever they are")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
                     Button(action: { shareCode(created.joinCode) }) {
-                        Text("🔗 Share code").font(.subheadline).bold().foregroundColor(.white)
+                        HStack(spacing: 6) {
+                            LinkGlyph(size: 15)
+                            Text("Share code")
+                        }
+                            .font(.subheadline).bold().foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 14)
                             .background(IDS.Colors.brand).cornerRadius(14)
                     }

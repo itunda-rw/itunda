@@ -55,7 +55,10 @@ struct GroupSplitBillsView: View {
                                 }
                             }
                             HStack {
-                                Text("🎲 Ladder game (randomized split)").font(.caption)
+                                HStack(spacing: 4) {
+                                    SplitBillDice(size: 13)
+                                    Text("Ladder game (randomized split)").font(.caption)
+                                }
                                 Spacer()
                                 Text(ladderMode ? "On" : "Off").font(.caption).bold().foregroundColor(ladderMode ? IDS.Colors.brand : IDS.Colors.textSecondary)
                             }
@@ -89,17 +92,29 @@ struct GroupSplitBillsView: View {
                             let myShare = entry.participants.first { $0.userId == currentUserId }
                             let isOrganizer = entry.splitBill.organizerId == currentUserId
                             let hasPending = entry.participants.contains { $0.status == "PENDING" }
-                            let modeLabel = entry.splitBill.mode == "LADDER" ? " · 🎲 Ladder L\(entry.splitBill.ladderVarianceLevel ?? 0)" : ""
                             let roundLabel = entry.splitBill.currentRound > 1 ? " · Round \(entry.splitBill.currentRound)" : ""
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.splitBill.description).bold()
-                                Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)\(modeLabel)\(roundLabel)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                HStack(spacing: 3) {
+                                    Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)")
+                                    if entry.splitBill.mode == "LADDER" {
+                                        Text("·")
+                                        SplitBillDice(size: 10)
+                                        Text("Ladder L\(entry.splitBill.ladderVarianceLevel ?? 0)")
+                                    }
+                                    Text(roundLabel)
+                                }
+                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 ForEach(entry.participants) { p in
                                     let name = members.first(where: { $0.userId == p.userId })?.name ?? String(p.userId.prefix(8))
                                     Text("\(name): \(Int(p.shareAmount)) RWF (\(p.status))").font(.caption)
                                 }
                                 if let url = entry.splitBill.receiptImageUrl {
-                                    Text("🧾 Receipt: \(url)").font(.caption2).foregroundColor(IDS.Colors.brand).lineLimit(1)
+                                    HStack(spacing: 4) {
+                                        GiftThemeGlyph(theme: "SETTLE_UP", size: 11)
+                                        Text("Receipt: \(url)").lineLimit(1)
+                                    }
+                                    .font(.caption2).foregroundColor(IDS.Colors.brand)
                                 }
                                 if let myShare, myShare.status == "PENDING" {
                                     Button(action: { Task { await pay(entry.splitBill.id) } }) {
@@ -227,7 +242,10 @@ struct DirectSplitBillsView: View {
                             IdsTextField("What was it for?", text: $descriptionText)
                             Text("Split with \(otherUserName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             HStack {
-                                Text("🎲 Ladder game (randomized split)").font(.caption)
+                                HStack(spacing: 4) {
+                                    SplitBillDice(size: 13)
+                                    Text("Ladder game (randomized split)").font(.caption)
+                                }
                                 Spacer()
                                 Text(ladderMode ? "On" : "Off").font(.caption).bold().foregroundColor(ladderMode ? IDS.Colors.brand : IDS.Colors.textSecondary)
                             }
@@ -261,17 +279,29 @@ struct DirectSplitBillsView: View {
                             let myShare = entry.participants.first { $0.userId == currentUserId }
                             let isOrganizer = entry.splitBill.organizerId == currentUserId
                             let hasPending = entry.participants.contains { $0.status == "PENDING" }
-                            let modeLabel = entry.splitBill.mode == "LADDER" ? " · 🎲 Ladder L\(entry.splitBill.ladderVarianceLevel ?? 0)" : ""
                             let roundLabel = entry.splitBill.currentRound > 1 ? " · Round \(entry.splitBill.currentRound)" : ""
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.splitBill.description).bold()
-                                Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)\(modeLabel)\(roundLabel)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                HStack(spacing: 3) {
+                                    Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)")
+                                    if entry.splitBill.mode == "LADDER" {
+                                        Text("·")
+                                        SplitBillDice(size: 10)
+                                        Text("Ladder L\(entry.splitBill.ladderVarianceLevel ?? 0)")
+                                    }
+                                    Text(roundLabel)
+                                }
+                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 ForEach(entry.participants) { p in
                                     let name = p.userId == otherUserId ? otherUserName : "You"
                                     Text("\(name): \(Int(p.shareAmount)) RWF (\(p.status))").font(.caption)
                                 }
                                 if let url = entry.splitBill.receiptImageUrl {
-                                    Text("🧾 Receipt: \(url)").font(.caption2).foregroundColor(IDS.Colors.brand).lineLimit(1)
+                                    HStack(spacing: 4) {
+                                        GiftThemeGlyph(theme: "SETTLE_UP", size: 11)
+                                        Text("Receipt: \(url)").lineLimit(1)
+                                    }
+                                    .font(.caption2).foregroundColor(IDS.Colors.brand)
                                 }
                                 if let myShare, myShare.status == "PENDING" {
                                     Button(action: { Task { await pay(entry.splitBill.id) } }) {

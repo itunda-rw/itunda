@@ -148,7 +148,11 @@ struct GroupThreadScreen: View {
 
             if let pinnedMessage {
                 HStack(spacing: 8) {
-                    Text("📌 \(pinnedMessage.body)").font(.caption).lineLimit(1)
+                    HStack(spacing: 4) {
+                        PinGlyph(size: 12)
+                        Text(pinnedMessage.body).lineLimit(1)
+                    }
+                    .font(.caption)
                     Spacer()
                     Button("Unpin") { Task { await unpinMessage() } }
                         .font(.caption).disabled(updatingPin)

@@ -302,7 +302,7 @@ struct FavoriteRestaurantsView: View {
                         }
                         Spacer()
                         Button(action: { Task { await remove(favorite.restaurantId) } }) {
-                            Image(systemName: "heart.fill").foregroundColor(.red)
+                            HeartFilled(size: 18)
                         }.accessibilityLabel("Remove from favorites")
                         .buttonStyle(.plain)
                         .disabled(removingId == favorite.restaurantId)

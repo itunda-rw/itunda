@@ -106,8 +106,7 @@ struct ListingCard: View {
                 Spacer()
                 if !isMine {
                     Button(action: onToggleFavorite) {
-                        Image(systemName: favorited ? "heart.fill" : "heart")
-                            .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
+                        WishlistHeart(favorited: favorited, size: 18)
                     }
                     .accessibilityLabel(favorited ? "Remove from favorites" : "Add to favorites")
                     .disabled(favoriteBusy)
@@ -254,7 +253,7 @@ struct ListingCard: View {
                     // Real "pay via itunda" Marketplace escrow -- an opt-in safer
                     // alternative to the existing in-person cash handoff, never
                     // replacing it. First iOS client (2026-08-15).
-                    actionButton(paying ? "Paying…" : "🔒 Pay via itunda", filled: false) { await payViaItunda() }
+                    actionButton(paying ? "Paying…" : "Pay via itunda", filled: false, icon: paying ? nil : AnyView(LockGlyph(size: 14))) { await payViaItunda() }
                     actionButton("Report", filled: false) { showingReportOptions = true }
                 }
             }
@@ -266,10 +265,17 @@ struct ListingCard: View {
             if isMyEscrowTrade, let escrow {
                 VStack(alignment: .leading, spacing: 8) {
                     if let deliveryAddress = escrow.deliveryAddress {
-                        Text("📦 Delivery address: \(deliveryAddress)").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        HStack(spacing: 5) {
+                            PackageGlyph(size: 13)
+                            Text("Delivery address: \(deliveryAddress)")
+                        }
+                        .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
                     }
                     if escrow.status == "HELD" {
-                        Text(isEscrowBuyer ? "🔒 Payment held by itunda until you confirm receipt" : "🔒 Payment held by itunda until the buyer confirms receipt")
+                        HStack(spacing: 5) {
+                            LockGlyph(size: 12)
+                            Text(isEscrowBuyer ? "Payment held by itunda until you confirm receipt" : "Payment held by itunda until the buyer confirms receipt")
+                        }
                             .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
                         if isEscrowBuyer {
                             if showDispute {
@@ -390,9 +396,12 @@ struct ListingCard: View {
         }
     }
 
-    private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
+    private func actionButton(_ label: String, filled: Bool, icon: AnyView? = nil, action: @escaping () async -> Void) -> some View {
         Button(action: { Task { await action() } }) {
-            Text(label)
+            HStack(spacing: 6) {
+                if let icon { icon }
+                Text(label)
+            }
                 .font(.subheadline).bold()
                 .foregroundColor(filled ? .white : IDS.Colors.textPrimary)
                 .padding(.horizontal, 16).padding(.vertical, 10)

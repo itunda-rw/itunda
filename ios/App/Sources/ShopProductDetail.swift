@@ -49,8 +49,7 @@ struct ProductDetailView: View {
                         // available directly alongside add-to-cart, not buried behind
                         // a sub-menu.
                         Button(action: onToggleFavorite) {
-                            Image(systemName: favorited ? "heart.fill" : "heart")
-                                .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
+                            WishlistHeart(favorited: favorited, size: 20)
                                 .padding(8)
                         }
                         .accessibilityLabel(favorited ? "Remove from favorites" : "Add to favorites")

@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreNetwork
 import CoreIdentity
+import CoreDesignSystem
 
 /// Real device binding step-up dialog (2026-07-21 port) -- shown wherever a
 /// money-moving call real-403s with DEVICE_NOT_VERIFIED. Re-proves password
@@ -18,7 +19,7 @@ import CoreIdentity
 /// DeviceStepUpHost's own doc comment below), not just Transfer.
 private let deviceStepUpStrings: [AppLocale: [String: String]] = [
     .en: [
-        "title": "\u{1F512} Verify this device",
+        "title": "Verify this device",
         "body": "This is a new device for your account. Re-enter your password to allow it to send money, then try again.",
         "password": "Password",
         "showPassword": "Show password",
@@ -28,7 +29,7 @@ private let deviceStepUpStrings: [AppLocale: [String: String]] = [
         "verifyDevice": "Verify device",
     ],
     .rw: [
-        "title": "\u{1F512} Emeza iyi terefoni",
+        "title": "Emeza iyi terefoni",
         "body": "Iyi ni terefoni nshya kuri konti yawe. Ongera wandike ijambo ry'ibanga kugira ngo wemeze ko ishobora kohereza amafaranga, hanyuma ugerageze nanone.",
         "password": "Ijambo ry'ibanga",
         "showPassword": "Erekana ijambo ry'ibanga",
@@ -40,7 +41,7 @@ private let deviceStepUpStrings: [AppLocale: [String: String]] = [
     // Real gap found 2026-08-15: this dict had zero French entries -- same class of
     // staleness as SettingsScreen.swift's identical gap, found the same day.
     .fr: [
-        "title": "\u{1F512} Vérifiez cet appareil",
+        "title": "Vérifiez cet appareil",
         "body": "Il s'agit d'un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l'autoriser à envoyer de l'argent, puis réessayez.",
         "password": "Mot de passe",
         "showPassword": "Afficher le mot de passe",
@@ -70,7 +71,10 @@ struct DeviceStepUpView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(dsu("title"))
+            HStack(spacing: 6) {
+                LockGlyph(size: 16)
+                Text(dsu("title"))
+            }
                 .font(.system(size: 16, weight: .bold))
             Text(dsu("body"))
                 .font(.system(size: 13))

@@ -16,7 +16,10 @@ struct DeviceStepUpDialog: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\u{1F512} Verify this device")
+            HStack(spacing: 6) {
+                LockGlyph(size: 16)
+                Text("Verify this device")
+            }
                 .font(.system(size: 16, weight: .bold))
             Text("This is a new device for your account. Re-enter your password to allow it to move money, then try again.")
                 .font(.system(size: 13))

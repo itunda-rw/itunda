@@ -141,7 +141,7 @@ struct PropertyListingCard: View {
                     }
                 }
                 Spacer()
-                if !isMine { Button(action: onToggleFavorite) { Image(systemName: favorited ? "heart.fill" : "heart").foregroundColor(favorited ? .red : IDS.Colors.textSecondary) }.accessibilityLabel(favorited ? "Remove from favorites" : "Add to favorites").disabled(favoriteBusy).padding(.trailing, 6) }
+                if !isMine { Button(action: onToggleFavorite) { WishlistHeart(favorited: favorited, size: 18) }.accessibilityLabel(favorited ? "Remove from favorites" : "Add to favorites").disabled(favoriteBusy).padding(.trailing, 6) }
                 Text(priceLabel).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(listing.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)

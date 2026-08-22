@@ -54,8 +54,8 @@ struct MarketplaceContent: View {
                     Text("Neighborhood").tag(HoodView.neighborhood)
                     Text("My listings").tag(HoodView.mine)
                     Text("Purchases").tag(HoodView.purchases)
-                    Text("♡ Wishlist").tag(HoodView.wishlist)
-                    Text("🔔 Alerts").tag(HoodView.alerts)
+                    Text("Wishlist").tag(HoodView.wishlist)
+                    Text("Alerts").tag(HoodView.alerts)
                 }
                 .pickerStyle(.segmented)
 

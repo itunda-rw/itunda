@@ -108,16 +108,10 @@ private func writeStyleFile() -> URL {
     return url
 }
 
-// Real per-category glyphs for the chip row (2026-07-21) -- mirrors Android's
-// MAP_CATEGORY_ICONS / bank-mfe's CATEGORY_ICONS exactly, same client-side-only
-// convention: no icon field on the backend's category model, plain emoji, never sent
-// back to the server.
-private let mapCategoryIcons: [String: String] = [
-    "RESTAURANT": "🍽️", "CAFE": "☕", "HOSPITAL": "🏥", "PHARMACY": "💊",
-    "BANK": "🏦", "ATM": "🏧", "HOTEL": "🏨", "SUPERMARKET": "🛒",
-    "GAS_STATION": "⛽", "SCHOOL": "🏫", "ITUNDA_AGENT": "💰",
-    "MARKET": "🧺", "BUS_STOP": "🚌",
-]
+// Real per-category glyphs for the chip row (2026-07-21, raw emoji originally;
+// ported 2026-08-22 to itundaface's own hand-drawn PlaceGlyph in
+// ItundaFace/ItundaFacePlaces.swift, matching web/Android) -- no icon field on
+// the backend's category model, display-layer only, never sent back to the server.
 
 /// Real, minimal handle onto the live `MLNMapView` (2026-07-21) -- SwiftUI's
 /// `UIViewRepresentable` doesn't otherwise expose the underlying UIKit view to sibling
@@ -376,13 +370,13 @@ public struct MapScreenView: View {
                                     let active = activeCategory == category.id
                                     Button(action: { Task { await searchNearbyCategory(category.id) } }) {
                                         HStack(spacing: 4) {
-                                            Text(mapCategoryIcons[category.id] ?? "📍")
+                                            PlaceGlyph(category: category.id, size: 14)
                                             Text(active && categoryLoading ? "…" : category.label)
                                         }
                                         .font(.caption).bold()
                                         .foregroundColor(active ? .white : IdsPalette.gray700)
                                         .padding(.horizontal, 12).padding(.vertical, 8)
-                                        .background(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : IdsPalette.white)
+                                        .background(active ? Color(hex: 0x7472F4) : IdsPalette.white)
                                         .clipShape(Capsule())
                                         .shadow(color: .black.opacity(active ? 0.28 : 0.1), radius: active ? 4 : 3, y: 1)
                                     }
@@ -434,7 +428,10 @@ public struct MapScreenView: View {
                                 }
                                 .padding(.horizontal, 10).padding(.top, 8)
                                 ForEach(Array(recentSearches.enumerated()), id: \.offset) { _, place in
-                                    Text("🕐 \(place.displayName)")
+                                    HStack(spacing: 6) {
+                                        ClockGlyph(size: 12)
+                                        Text(place.displayName)
+                                    }
                                         .font(.caption)
                                         .foregroundColor(IdsPalette.gray900)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -700,7 +697,10 @@ public struct MapScreenView: View {
                                                 }
                                                 Spacer()
                                                 let folderIsPublic = folderBookmarks.first?.isPublic ?? false
-                                                Text(folderIsPublic ? "🌐 Public · Share" : "🔒 Private · Share")
+                                                HStack(spacing: 3) {
+                                                    if folderIsPublic { GlobeGlyph(size: 11) } else { LockGlyph(size: 11) }
+                                                    Text(folderIsPublic ? "Public · Share" : "Private · Share")
+                                                }
                                                     .font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
                                                     .onTapGesture {
                                                         guard sharingFolder == nil else { return }

@@ -49,7 +49,11 @@ struct OfferBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("💰 \(Int(offer.amount)) RWF").font(.subheadline).bold().foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            HStack(spacing: 5) {
+                MoneyBagGlyph(size: 16)
+                Text("\(Int(offer.amount)) RWF")
+            }
+            .font(.subheadline).bold().foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
             if canRespond && !countering {
                 HStack(spacing: 6) {
@@ -104,6 +108,14 @@ struct GiftBubble: View {
         guard let expiresAt = Self.isoFormatter.date(from: gift.expiresAt) else { return true }
         return expiresAt > Date()
     }
+    // Strips giftThemeLabels' own leading emoji (e.g. "🎉 Congratulations" ->
+    // "Congratulations ") since GiftThemeGlyph now renders that emoji as a real
+    // glyph alongside this text instead of leaving it baked into the string.
+    private var themePrefixText: String {
+        guard let theme = gift.theme, let label = giftThemeLabels[theme] else { return "" }
+        return String(label.drop(while: { !$0.isWhitespace }).dropFirst()) + " "
+    }
+
     private var statusLabel: String {
         switch gift.status {
         case "PENDING": return isMine ? "Waiting to be opened" : "Tap to open"
@@ -115,7 +127,11 @@ struct GiftBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("\(gift.theme.flatMap { giftThemeLabels[$0] } ?? "🎁") \(Int(gift.amount)) RWF").font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            HStack(spacing: 6) {
+                GiftThemeGlyph(theme: gift.theme, size: 18)
+                Text(themePrefixText + "\(Int(gift.amount)) RWF")
+            }
+            .font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             if let note = gift.note {
                 Text("\"\(note)\"").font(.caption).foregroundColor(isMine ? .white.opacity(0.9) : IDS.Colors.textSecondary)
             }
@@ -168,8 +184,11 @@ struct GiftVoucherBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("🎟️ \(voucher.productNameSnapshot ?? "\(Int(voucher.amount)) RWF voucher")")
-                .font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            HStack(spacing: 6) {
+                VoucherTicket(size: 18)
+                Text(voucher.productNameSnapshot ?? "\(Int(voucher.amount)) RWF voucher")
+            }
+            .font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
             if voucher.status == "ACTIVE" {
                 Text("Expires \(String(voucher.expiresAt.prefix(10)))")

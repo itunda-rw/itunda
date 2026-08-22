@@ -174,8 +174,7 @@ struct JobPostCard: View {
                 Spacer()
                 if !isMine {
                     Button(action: onToggleFavorite) {
-                        Image(systemName: favorited ? "heart.fill" : "heart")
-                            .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
+                        WishlistHeart(favorited: favorited, size: 18)
                     }
                     .accessibilityLabel(favorited ? "Remove from favorites" : "Add to favorites")
                     .disabled(favoriteBusy)

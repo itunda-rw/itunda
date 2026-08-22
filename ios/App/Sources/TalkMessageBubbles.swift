@@ -26,21 +26,47 @@ struct MessageReactionsRow: View {
             ForEach(reactions.filter { !$0.userIds.isEmpty }, id: \.emoji) { r in
                 let mine = currentUserId.map { r.userIds.contains($0) } ?? false
                 Button(action: { onToggle(r.emoji) }) {
-                    Text("\(r.emoji) \(r.userIds.count)")
-                        .font(.caption2)
-                        .foregroundColor(IDS.Colors.textSecondary)
-                        .padding(.horizontal, 8).padding(.vertical, 2)
-                        .background(mine ? IDS.Colors.brand.opacity(0.15) : IDS.Colors.chipBackground)
-                        .clipShape(Capsule())
+                    HStack(spacing: 3) {
+                        ReactionGlyph(emoji: r.emoji, size: 12)
+                        Text("\(r.userIds.count)")
+                    }
+                    .font(.caption2)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(mine ? IDS.Colors.brand.opacity(0.15) : IDS.Colors.chipBackground)
+                    .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
-            Menu {
-                ForEach(quickReactions, id: \.self) { emoji in
-                    Button(emoji) { onToggle(emoji) }
+            // Real custom quick-react picker (2026-08-22, replacing a native `Menu`) --
+            // matches web/Android's own itundaface picker exactly. A native SwiftUI
+            // `Menu` can only show system-rendered rows (plain text or an SF Symbol/
+            // asset-catalog image via `Label`), not an arbitrary custom-drawn View, so
+            // it couldn't render itundaface's own hand-drawn reaction glyphs -- this
+            // custom overlay (a real, deliberate UX change, not just an icon swap) is
+            // what closing that gap actually required.
+            ZStack(alignment: isMine ? .bottomTrailing : .bottomLeading) {
+                Button(action: { pickerOpen.toggle() }) {
+                    Image(systemName: "face.smiling").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
-            } label: {
-                Image(systemName: "face.smiling").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                if pickerOpen {
+                    HStack(spacing: 6) {
+                        ForEach(quickReactions, id: \.self) { emoji in
+                            Button(action: {
+                                onToggle(emoji)
+                                pickerOpen = false
+                            }) {
+                                ReactionGlyph(emoji: emoji, size: 22)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(IDS.Colors.card)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+                    .offset(y: -32)
+                }
             }
             if !isMine { Spacer() }
         }

@@ -861,8 +861,11 @@ private struct RideTripCard<Action: View>: View {
             }
             Text("→ \(trip.dropoffAddress)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             if let scheduledFor = trip.scheduledFor {
-                Text("🕒 Scheduled for \(String(scheduledFor.prefix(16)).replacingOccurrences(of: "T", with: " "))")
-                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                HStack(spacing: 3) {
+                    ClockGlyph(size: 11)
+                    Text("Scheduled for \(String(scheduledFor.prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                }
+                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
             }
             HStack {
                 Text(rideTripStatusLabel(trip)).font(.caption).bold().foregroundColor(rideTripStatusColor(trip.status))

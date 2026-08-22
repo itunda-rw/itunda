@@ -126,7 +126,11 @@ struct ChatThreadScreen: View {
 
             if let pinnedMessage {
                 HStack(spacing: 8) {
-                    Text("📌 \(pinnedMessage.body)").font(.caption).lineLimit(1)
+                    HStack(spacing: 4) {
+                        PinGlyph(size: 12)
+                        Text(pinnedMessage.body).lineLimit(1)
+                    }
+                    .font(.caption)
                     Spacer()
                     Button("Unpin") { Task { await unpinMessage() } }
                         .font(.caption).disabled(updatingPin)
@@ -209,7 +213,10 @@ struct ChatThreadScreen: View {
 
             if giftComposerOpen {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("🎁 Send a gift").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    HStack(spacing: 6) {
+                        GiftThemeGlyph(theme: giftTheme, size: 16)
+                        Text("Send a gift").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    }
                     IdsTextField("Amount (RWF)", text: $giftAmount, keyboardType: .numberPad)
                     IdsTextField("Add a note (optional)", text: $giftNote)
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -217,11 +224,15 @@ struct ChatThreadScreen: View {
                             ForEach([(nil as String?, "No theme")] + giftThemeLabels.sorted(by: { $0.key < $1.key }).map { ($0.key as String?, $0.value) }, id: \.0) { value, label in
                                 let selected = giftTheme == value
                                 Button(action: { giftTheme = value }) {
-                                    Text(label).font(.caption).bold()
-                                        .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
-                                        .padding(.horizontal, 10).padding(.vertical, 6)
-                                        .background(selected ? IDS.Colors.brand : IDS.Colors.card)
-                                        .cornerRadius(10)
+                                    HStack(spacing: 4) {
+                                        GiftThemeGlyph(theme: value, size: 14)
+                                        Text(value == nil ? label : String(label.drop(while: { !$0.isWhitespace }).dropFirst()))
+                                            .font(.caption).bold()
+                                    }
+                                    .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(selected ? IDS.Colors.brand : IDS.Colors.card)
+                                    .cornerRadius(10)
                                 }
                                 .buttonStyle(.plain)
                             }

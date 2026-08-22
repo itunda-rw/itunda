@@ -78,7 +78,11 @@ struct ProductWishlistView: View {
                             // Real Naver Shopping price-drop alert (item 227) -- see
                             // FavoriteProductDto's own doc comment.
                             if f.priceDropped {
-                                Text("🔻 Price dropped").font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                                HStack(spacing: 3) {
+                                    PriceDropGlyph(size: 11)
+                                    Text("Price dropped")
+                                }
+                                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
                             }
                         }
                         Spacer()

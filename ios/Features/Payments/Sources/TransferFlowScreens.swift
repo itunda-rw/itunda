@@ -380,8 +380,11 @@ public struct TransferAmountScreen: View {
                 .padding(.top, 8)
 
                 Toggle(isOn: $isGift) {
-                    Text("🎁 Send as a gift instead")
-                        .font(.system(size: 13, weight: .semibold))
+                    HStack(spacing: 6) {
+                        GiftThemeGlyph(theme: nil, size: 15)
+                        Text("Send as a gift instead")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
                 }
                 .padding(.top, 8)
                 if isGift {
