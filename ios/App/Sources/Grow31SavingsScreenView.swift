@@ -257,6 +257,7 @@ private struct CreateGrow31SavingsPlanView: View {
         Task {
             do {
                 _ = try await NetworkClient.shared.createGrow31SavingsPlan(name: name, dailyAmount: amount)
+                ToastCenter.shared.show("31-day plan started.")
                 onCreated()
             } catch let NetworkError.httpError(statusCode) {
                 error = Self.errorMessage(statusCode)

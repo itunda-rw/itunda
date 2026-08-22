@@ -291,6 +291,7 @@ private struct CreateWeeklySavingsPlanView: View {
         Task {
             do {
                 _ = try await NetworkClient.shared.createWeeklySavingsPlan(name: name, baseWeeklyAmount: amount, escalationRate: escalationRate)
+                ToastCenter.shared.show("26-week plan started.")
                 onCreated()
             } catch let NetworkError.httpError(statusCode) {
                 error = Self.errorMessage(statusCode)

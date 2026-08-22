@@ -121,6 +121,7 @@ struct CreateSavingsGoalScreen: View {
                     monthlyContribution: contribution,
                     targetDate: addTargetDate ? Self.dateFormatter.string(from: targetDate) : nil
                 )
+                ToastCenter.shared.show("Savings goal created.")
                 onCreated()
             } catch let NetworkError.httpError(statusCode) {
                 error = Self.errorMessage(statusCode)

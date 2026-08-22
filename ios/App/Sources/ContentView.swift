@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import CoreNetwork
+import CoreDesignSystem
 import FeatureBanking
 import FeatureMaps
 import FeaturePayments
@@ -8,9 +9,12 @@ import FeaturePayments
 // Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --
 // a fixed point size that doesn't grow or shrink with iOS's Dynamic Type
 // accessibility setting. Same bug, same fix as CoreDesignSystem's IDS.swift/
-// IdsTheme.swift (see IDS.swift's Typography struct for the full reasoning) --
-// this file doesn't import CoreDesignSystem for anything else today, so a small
-// local helper avoids adding a new cross-module dependency just for this.
+// IdsTheme.swift (see IDS.swift's Typography struct for the full reasoning). This
+// file didn't import CoreDesignSystem for anything else at the time (a real import
+// was added later, 2026-08-22, for ToastOverlay -- see the TabView's own doc
+// comment below) -- kept as its own local copy rather than switching to
+// IDS.scaledFont now that the import exists, since that's an unrelated cleanup out
+// of scope for today's change.
 // Real typeface fix (2026-08-13) -- see IDS.scaledFont's own doc comment for the full
 // sourced account; kept as its own local copy for the same reason this function
 // duplicates IDS.scaledFont's logic in the first place (see the comment above).
@@ -424,6 +428,18 @@ struct ContentView: View {
                 .tag(4)
         }
         .accentColor(.primary)
+        // Real Toast mount point (2026-08-22) -- see CoreDesignSystem's Toast.swift
+        // for the full account. Attached here, not deeper, so it's visible on the
+        // Home tab's own layer the moment a .sheet/.fullScreenCover presented from
+        // it (CreateSavingsGoalScreen, SavingsFlowContainer, TransferFlowContainer,
+        // ...) dismisses itself and calls ToastCenter.shared.show(...) right before
+        // its own onCreated/onDone callback. A SwiftUI .overlay can't render ABOVE
+        // an active .sheet/.fullScreenCover (those present in their own separate
+        // UIKit modal layer, genuinely on top of any overlay on the presenter) --
+        // that's a real SwiftUI limitation, not an oversight here; every real call
+        // site fires its toast at (or after) the moment its own cover/sheet is
+        // already dismissing, which is the actual use case this needs to cover.
+        .overlay(ToastOverlay())
         .fullScreenCover(isPresented: $showMapFromDeepLink) {
             MapScreenView(initialSearchQuery: mapSearchFromDeepLink, initialSharedFolder: mapSharedFolderFromDeepLink)
         }
