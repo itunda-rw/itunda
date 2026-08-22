@@ -250,7 +250,7 @@ internal fun OrderFoodContent(
     // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the
     // debounce mechanism here.
     LaunchedEffect(selectedCategory, searchInput, sortByFastestDelivery) {
-        delay(300)
+        delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
         loadRestaurants()
     }
 

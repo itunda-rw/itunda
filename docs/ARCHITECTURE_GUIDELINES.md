@@ -151,6 +151,56 @@ just as often as "there are really zero violations" (a real, previously-hit fail
 with dependency-cruiser's own path-vs-glob resolution, see
 [[project_itunda_multi_agent_isolation]]).
 
+## 7. A name is a promise the code must keep (Toss Frontend Fundamentals)
+
+The same real, open-sourced guide behind §1 has a dedicated real naming discipline under
+its Readability and Predictability criteria — sourced directly from
+`github.com/toss/frontend-fundamentals` (`condition-name.md`, `magic-number-readability.md`,
+`http.md`, `use-user.md`), not invented. Four real rules:
+
+- **Name complex conditions, don't leave them anonymous.** A multi-clause boolean buried
+  inside a `.filter()`/`if` forces the reader to hold every sub-condition in their head at
+  once. Extract to a named `const isSameCategory = ...` / `val isEligible = ...` /
+  `let hasEnoughBalance = ...` before combining — but only when the logic is genuinely
+  complex or reused; a one-line `arr.map(x => x * 2)` doesn't need a name for the mapping
+  function. Applies equally to itunda's own real multi-clause `enabled = !busy && ...`
+  guards on money-flow buttons (`RideScreen.kt`, `TransferFlow.kt`) — most are still short
+  enough to stay inline, but the moment one grows a third clause, name it.
+- **Name magic numbers.** Any numeric literal whose meaning isn't self-evident from
+  immediate context (a delay in ms, a retry count, a threshold) becomes a named constant —
+  `const ANIMATION_DELAY_MS = 300`, not a bare `300` passed to `delay()`. itunda already
+  does this in most money-amount/threshold contexts (`MAX_SCORE`, `SEED_IDS`); the real
+  gap is timing/retry constants scattered as bare literals across `catch`/retry blocks —
+  audit those specifically, not amounts (already well-named).
+- **A wrapper must not share a name with what it wraps if the behavior differs.**
+  Toss's own real example: a service wrapped `http` around a library also called `http`,
+  and `http.get()` silently added auth-token injection the library's own `get()` never
+  did — a name that looks identical but behaves differently is a real, sourced bug class,
+  not just a style nit. Rename to reveal what's actually different (`getWithAuth`, not
+  `get`). Check this specifically wherever itunda wraps a platform/library primitive with
+  its own logic added — `NetworkClient`'s various `*Api` properties, `IdsButton`/
+  `IdsTextField` wrapping Material3's own `Button`/`TextField`, `pressScaleClickable`
+  wrapping `Modifier.clickable` (this last one already follows the rule correctly — the
+  name itself states what's different, scale feedback, not just "Clickable" again).
+- **Unify names AND return shapes across a family of same-shaped functions.** Every
+  `useXxx` data hook in a codebase should return the same shape (always the query object,
+  never data-sometimes/query-object-other-times); every `checkIsXxxValid`-style validator
+  should return the same `{ ok, reason }` shape. The name alone should let a reader predict
+  both the CALLING convention and the RETURN shape without opening the function. Real,
+  concrete itunda analogue: every `MoneyActionResult`-returning function (`sendTransfer`,
+  `sendGift`, `depositToSavingsGoal`, …) already does this correctly (one shared sealed
+  interface — `Success`/`Queued`/`Failure`/`DeviceNotVerified` — reused verbatim rather
+  than each function inventing its own ad hoc success/error shape); use that as the
+  reference pattern when adding a new money-moving function, not a new bespoke return type.
+
+**How to apply**: when reviewing your own new code before committing, ask (1) does any
+condition here need a name, (2) does any bare number here need a name, (3) if this wraps
+something else, does its name honestly signal what's different, (4) if this is one of a
+family of similar functions, does its name AND return shape match its siblings. A rename
+that makes behavior more predictable is worth doing even mid-task, not deferred to a
+separate cleanup pass — Toss's own guide frames this as inseparable from readability, not
+optional polish.
+
 ## Standing checklist before adding new code
 
 1. Does a shared version of this already exist? → apply rule 3.
@@ -163,3 +213,5 @@ with dependency-cruiser's own path-vs-glob resolution, see
 5. Is this a new convention that should be written down here? → apply rule 5.
 6. Did I add a new boundary/rule without also adding something that enforces it? → apply
    rule 6.
+7. Does every name I just wrote truthfully predict its behavior, return shape, and how it
+   differs from anything it wraps? → apply rule 7.

@@ -240,7 +240,7 @@ fun JobsContent(
             searchResults = null
             return@LaunchedEffect
         }
-        delay(300)
+        delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
         try {
             val res = NetworkClient.apiService.searchJobPosts(searchQuery)
             if (res.success) {

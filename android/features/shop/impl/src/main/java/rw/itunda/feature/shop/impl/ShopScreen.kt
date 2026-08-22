@@ -405,7 +405,7 @@ fun CommerceShopContent(
     // Same debounced category/search filter as Eats' OrderFoodContent -- see
     // SearchAndCategoryChips's own doc comment for why this is now shared.
     LaunchedEffect(selectedCategory, searchInput) {
-        delay(300)
+        delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
         loadMerchants()
     }
     // Re-fetch once a real location fix lands, so a browse that already rendered
