@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asComposePath
@@ -57,6 +58,8 @@ sealed interface Shape2D {
         val width: Float,
         val cap: StrokeCap = StrokeCap.Butt,
         val alpha: Float = 1f,
+        val dashOn: Float = 0f,
+        val dashOff: Float = 0f,
     ) : Shape2D
     data class RotatedGroup(val degrees: Float, val pivotX: Float, val pivotY: Float, val shapes: List<Shape2D>) : Shape2D
 }
@@ -90,7 +93,15 @@ fun DrawScope.drawItundaFaceShape(shape: Shape2D) {
                 cornerRadius = CornerRadius(shape.rx, shape.rx),
             )
         is Shape2D.StrokedLine ->
-            drawLine(Color(shape.color), Offset(shape.x1, shape.y1), Offset(shape.x2, shape.y2), strokeWidth = shape.width, cap = shape.cap, alpha = shape.alpha)
+            drawLine(
+                Color(shape.color),
+                Offset(shape.x1, shape.y1),
+                Offset(shape.x2, shape.y2),
+                strokeWidth = shape.width,
+                cap = shape.cap,
+                alpha = shape.alpha,
+                pathEffect = if (shape.dashOn > 0f) PathEffect.dashPathEffect(floatArrayOf(shape.dashOn, shape.dashOff)) else null,
+            )
         is Shape2D.RotatedGroup ->
             withTransform({ rotate(shape.degrees, pivot = Offset(shape.pivotX, shape.pivotY)) }) {
                 shape.shapes.forEach { drawItundaFaceShape(it) }

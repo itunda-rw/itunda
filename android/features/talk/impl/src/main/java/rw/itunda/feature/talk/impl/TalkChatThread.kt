@@ -64,6 +64,8 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.shouldShowChatTimestamp
+import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
+import rw.itunda.core.designsystem.itundaface.VoucherTicket
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.CreateChatReportRequest
@@ -542,7 +544,10 @@ internal fun ChatThreadView(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("🎁 Send a gift", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    GiftThemeGlyph(giftTheme, size = 16.dp)
+                    Text("Send a gift", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
+                }
                 IdsTextField(
                     value = giftAmount,
                     onValueChange = { giftAmount = it },
@@ -561,16 +566,19 @@ internal fun ChatThreadView(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    val themeOptions = listOf<Pair<String?, String>>(null to "No theme") + GIFT_THEME_LABELS.entries.map { it.key to it.value }
+                    val themeOptions = listOf<Pair<String?, String>>(null to "No theme") + GIFT_THEME_LABELS.entries.map { it.key to it.value.replaceFirst(Regex("^\\S+\\s*"), "") }
                     themeOptions.forEach { (value, label) ->
                         val selected = giftTheme == value
-                        Box(
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (selected) Ids.colors.brand else Ids.colors.surface)
                                 .clickable { giftTheme = value }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                         ) {
+                            GiftThemeGlyph(value, size = 14.dp)
                             Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary)
                         }
                     }
@@ -694,8 +702,8 @@ internal fun ChatThreadView(
                 DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
                     DropdownMenuItem(text = { Text("📷 Photo") }, onClick = { attachMenuOpen = false; pickChatPhoto.launch("image/*") })
                     DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
-                    DropdownMenuItem(text = { Text("🎁 Gift") }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
-                    DropdownMenuItem(text = { Text("🎟️ Gift voucher") }, onClick = { attachMenuOpen = false; voucherComposerOpen = !voucherComposerOpen })
+                    DropdownMenuItem(text = { Text("Gift") }, leadingIcon = { GiftThemeGlyph(null, size = 18.dp) }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
+                    DropdownMenuItem(text = { Text("Gift voucher") }, leadingIcon = { VoucherTicket(size = 18.dp) }, onClick = { attachMenuOpen = false; voucherComposerOpen = !voucherComposerOpen })
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))

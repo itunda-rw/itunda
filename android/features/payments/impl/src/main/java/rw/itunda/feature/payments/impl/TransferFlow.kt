@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -433,7 +434,9 @@ fun TransferAmountScreen(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { isGift = !isGift }) {
                 androidx.compose.material3.Switch(checked = isGift, onCheckedChange = { isGift = it })
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("🎁 Send as a gift instead", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                GiftThemeGlyph(null, size = 16.dp)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Send as a gift instead", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
             }
             if (isGift) {
                 Spacer(modifier = Modifier.height(6.dp))
@@ -456,7 +459,8 @@ fun TransferAmountScreen(
                         androidx.compose.material3.FilterChip(
                             selected = giftTheme == key,
                             onClick = { giftTheme = if (giftTheme == key) null else key },
-                            label = { Text(label, fontSize = 12.sp) },
+                            label = { Text(label.replaceFirst(Regex("^\\S+\\s*"), ""), fontSize = 12.sp) },
+                            leadingIcon = { GiftThemeGlyph(key, size = 14.dp) },
                         )
                     }
                 }

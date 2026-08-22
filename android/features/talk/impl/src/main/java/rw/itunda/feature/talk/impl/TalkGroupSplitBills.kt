@@ -106,6 +106,8 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.chatMessageTime
 import rw.itunda.core.designsystem.components.shouldShowChatTimestamp
+import rw.itunda.core.designsystem.itundaface.DiceGlyph
+import rw.itunda.core.designsystem.itundaface.GiftSettleUp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddGroupMemberRequest
 import rw.itunda.core.network.MessageResponse
@@ -238,7 +240,10 @@ internal fun GroupSplitBillsView(
                             modifier = Modifier.fillMaxWidth().clickable { ladderMode = !ladderMode }.padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("🎲 Ladder game (randomized split)", fontSize = 13.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                DiceGlyph(size = 14.dp)
+                                Text("Ladder game (randomized split)", fontSize = 13.sp)
+                            }
                             Text(if (ladderMode) "On" else "Off", fontSize = 12.sp, color = if (ladderMode) Ids.colors.brand else Ids.colors.textSecondary, fontWeight = FontWeight.Bold)
                         }
                         if (ladderMode) {
@@ -304,15 +309,25 @@ internal fun GroupSplitBillsView(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
-                        val modeLabel = if (entry.splitBill.mode == "LADDER") " · 🎲 Ladder L${entry.splitBill.ladderVarianceLevel}" else ""
                         val roundLabel = if (entry.splitBill.currentRound > 1) " · Round ${entry.splitBill.currentRound}" else ""
-                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}$modeLabel$roundLabel", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                            if (entry.splitBill.mode == "LADDER") {
+                                Text(" ·", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                                DiceGlyph(size = 11.dp)
+                                Text("Ladder L${entry.splitBill.ladderVarianceLevel}", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                            }
+                            if (roundLabel.isNotEmpty()) Text(roundLabel, fontSize = 13.sp, color = Ids.colors.textSecondary)
+                        }
                         entry.participants.forEach { participant ->
                             val name = members.find { it.userId == participant.userId }?.name ?: participant.userId.take(8)
                             Text("$name: RWF ${participant.shareAmount} (${participant.status})", fontSize = 13.sp)
                         }
                         entry.splitBill.receiptImageUrl?.let { url ->
-                            Text("🧾 Receipt: $url", fontSize = 12.sp, color = Ids.colors.brand)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                GiftSettleUp(size = 12.dp)
+                                Text("Receipt: $url", fontSize = 12.sp, color = Ids.colors.brand)
+                            }
                         }
                         if (myShare != null && myShare.status == "PENDING") {
                             Spacer(modifier = Modifier.height(8.dp))

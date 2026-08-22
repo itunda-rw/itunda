@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -238,8 +239,16 @@ internal fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, 
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val prefix = gift.theme?.let { GIFT_THEME_LABELS[it] } ?: "🎁"
-            Text("$prefix %,.0f RWF".format(gift.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            val themeText = gift.theme?.let { GIFT_THEME_LABELS[it]?.replaceFirst(Regex("^\\S+\\s*"), "") }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                GiftThemeGlyph(gift.theme, size = 18.dp)
+                Text(
+                    "${themeText?.let { "$it " } ?: ""}%,.0f RWF".format(gift.amount),
+                    color = if (isMine) Color.White else Ids.colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                )
+            }
             gift.note?.let { Text("\"$it\"", color = if (isMine) Color.White.copy(alpha = 0.9f) else Ids.colors.textSecondary, fontSize = 12.sp) }
             Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else Ids.colors.textSecondary, fontSize = 12.sp)
             if (canClaim) {
