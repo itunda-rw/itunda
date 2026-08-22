@@ -55,6 +55,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.ScrollFog
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -659,7 +660,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
                     Text(p.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     Text("by $authorName", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Text(p.body, color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    ListingActionButton(if (likedByMe) "❤️ ${p.likeCount}" else "🤍 ${p.likeCount}", liking) {
+                    ListingActionButton("${p.likeCount}", liking, icon = { WishlistHeart(favorited = likedByMe, size = 14.dp) }) {
                         liking = true
                         coroutineScope.launch {
                             try {

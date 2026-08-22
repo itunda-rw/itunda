@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CardDto
 import rw.itunda.core.network.CardTransactionDto
@@ -220,7 +221,14 @@ fun CardScreen(onBack: () -> Unit) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("itunda card", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
                                     Text("•••• •••• •••• ${c.last4}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
-                                    Text(if (c.frozen) "🔒 Frozen" else "✓ Active", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                    if (c.frozen) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            LockGlyph(size = 12.dp)
+                                            Text("Frozen", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                        }
+                                    } else {
+                                        Text("✓ Active", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                    }
                                 }
                             }
                         }

@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.itundaface.GlobeGlyph
+import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.core.network.MapBookmarkDto
@@ -154,13 +156,23 @@ internal fun AroundYouSection(
                     Box(modifier = Modifier)
                 }
                 val isPublic = folderBookmarks.any { it.isPublic }
-                Text(
-                    if (sharingFolder == folderName) "…" else if (isPublic) "🌐 Public · Share" else "🔒 Private · Share",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isPublic) Ids.colors.brand else Ids.colors.textSecondary,
-                    modifier = Modifier.clickable(enabled = sharingFolder == null) { onToggleFolderShare(folderName, !isPublic) },
-                )
+                if (sharingFolder == folderName) {
+                    Text("…", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary)
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        modifier = Modifier.clickable(enabled = sharingFolder == null) { onToggleFolderShare(folderName, !isPublic) },
+                    ) {
+                        if (isPublic) GlobeGlyph(size = 11.dp) else LockGlyph(size = 11.dp)
+                        Text(
+                            if (isPublic) "Public · Share" else "Private · Share",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isPublic) Ids.colors.brand else Ids.colors.textSecondary,
+                        )
+                    }
+                }
             }
             folderBookmarks.forEach { bookmark ->
                 Row(

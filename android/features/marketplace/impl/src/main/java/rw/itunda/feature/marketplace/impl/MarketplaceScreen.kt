@@ -69,6 +69,8 @@ import retrofit2.HttpException
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.itundaface.LockGlyph
+import rw.itunda.core.designsystem.itundaface.PackageGlyph
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
@@ -1573,7 +1575,8 @@ private fun ListingDetailScreen(
                     // Real "pay via itunda" Marketplace escrow (2026-07-25) -- an
                     // opt-in safer alternative to the existing in-person cash handoff,
                     // never replacing it.
-                    ListingActionButton(if (paying) "Paying…" else "🔒 Pay via itunda", paying) {
+                    val payViaItundaIcon: (@Composable () -> Unit)? = if (paying) null else ({ LockGlyph(size = 14.dp) })
+                    ListingActionButton(if (paying) "Paying…" else "Pay via itunda", paying, icon = payViaItundaIcon) {
                         paying = true
                         error = null
                         coroutineScope.launch {
@@ -1603,14 +1606,20 @@ private fun ListingDetailScreen(
             if (isMyEscrowTrade && escrow != null) {
                 val currentEscrow = escrow!!
                 currentEscrow.deliveryAddress?.let { address ->
-                    Text("📦 Delivery address: $address", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        PackageGlyph(size = 13.dp)
+                        Text("Delivery address: $address", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
                 }
                 when (currentEscrow.status) {
                     "HELD" -> {
-                        Text(
-                            if (isEscrowBuyer) "🔒 Payment held by itunda until you confirm receipt" else "🔒 Payment held by itunda until the buyer confirms receipt",
-                            color = Ids.colors.textSecondary, fontSize = 12.sp,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            LockGlyph(size = 12.dp)
+                            Text(
+                                if (isEscrowBuyer) "Payment held by itunda until you confirm receipt" else "Payment held by itunda until the buyer confirms receipt",
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            )
+                        }
                         if (!isEscrowBuyer) {
                             // Seller can see status/address but has no real action to
                             // take here -- only the buyer can confirm receipt or

@@ -48,6 +48,7 @@ sealed interface Shape2D {
     data class FilledCircle(val cx: Float, val cy: Float, val r: Float, val color: Long) : Shape2D
     data class StrokedCircle(val cx: Float, val cy: Float, val r: Float, val color: Long, val width: Float) : Shape2D
     data class FilledEllipse(val cx: Float, val cy: Float, val rx: Float, val ry: Float, val color: Long) : Shape2D
+    data class StrokedEllipse(val cx: Float, val cy: Float, val rx: Float, val ry: Float, val color: Long, val width: Float) : Shape2D
     data class FilledRect(val x: Float, val y: Float, val w: Float, val h: Float, val rx: Float, val color: Long) : Shape2D
     data class StrokedLine(
         val x1: Float,
@@ -84,6 +85,13 @@ fun DrawScope.drawItundaFaceShape(shape: Shape2D) {
                 Color(shape.color),
                 topLeft = Offset(shape.cx - shape.rx, shape.cy - shape.ry),
                 size = Size(shape.rx * 2, shape.ry * 2),
+            )
+        is Shape2D.StrokedEllipse ->
+            drawOval(
+                Color(shape.color),
+                topLeft = Offset(shape.cx - shape.rx, shape.cy - shape.ry),
+                size = Size(shape.rx * 2, shape.ry * 2),
+                style = Stroke(width = shape.width),
             )
         is Shape2D.FilledRect ->
             drawRoundRect(

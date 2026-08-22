@@ -182,14 +182,26 @@ fun TabHeader(title: String) {
 }
 
 @Composable
-fun ListingActionButton(label: String, disabled: Boolean, filled: Boolean = false, onClick: () -> Unit) {
-    Box(
+fun ListingActionButton(
+    label: String,
+    disabled: Boolean,
+    filled: Boolean = false,
+    // Optional itundaface glyph slot (2026-08-22) -- null for every pre-existing
+    // caller (no behavior change), used by real callers whose label used to bake
+    // a raw emoji into the string itself (lock/heart CTAs).
+    icon: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(if (filled) Ids.colors.brand else Ids.colors.surfaceSoft)
             .clickable(enabled = !disabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
+        icon?.invoke()
         Text(label, color = if (filled) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }

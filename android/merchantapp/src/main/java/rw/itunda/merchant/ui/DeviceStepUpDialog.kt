@@ -7,6 +7,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.itundaface.LockGlyph
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,7 +45,15 @@ fun DeviceStepUpDialog(onVerified: () -> Unit, onCancel: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text("🔒 Verify this device") },
+        title = {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+            ) {
+                LockGlyph(size = 18.dp)
+                Text("Verify this device")
+            }
+        },
         text = {
             Column {
                 Text("This is a new device for your account. Re-enter your password to allow it to move money, then try again.")
