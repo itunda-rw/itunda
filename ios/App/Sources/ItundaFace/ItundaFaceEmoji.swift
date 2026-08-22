@@ -31,13 +31,15 @@ private let smileysKeys: [String] = ["👍", "❤️", "😂", "😮", "😢", "
 private let peopleKeys: [String] = ["👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏"]
 private let natureKeys: [String] = ["🐶", "🐱", "⭐", "🌟", "🌈", "🌸", "🐦"]
 private let foodKeys: [String] = ["🍕", "🍔", "☕", "🍰", "🍩", "🍓", "🍉", "🍎"]
+private let travelKeys: [String] = ["🚗", "✈️", "🏠", "🚀", "🚲", "🌍"]
 
-let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys
+let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys
 let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Smileys & Emotion", smileysKeys),
     ("People & Body", peopleKeys),
     ("Animals & Nature", natureKeys),
     ("Food & Drink", foodKeys),
+    ("Travel & Places", travelKeys),
 ]
 
 @ViewBuilder
@@ -81,6 +83,12 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "🍓": FoodStrawberry(size: size)
     case "🍉": FoodWatermelon(size: size)
     case "🍎": FoodApple(size: size)
+    case "🚗": TravelCar(size: size)
+    case "✈️": TravelAirplane(size: size)
+    case "🏠": TravelHouse(size: size)
+    case "🚀": TravelRocket(size: size)
+    case "🚲": TravelBike(size: size)
+    case "🌍": TravelGlobe(size: size)
     default: EmptyView()
     }
 }
