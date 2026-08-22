@@ -2,7 +2,8 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -24522,12 +24523,12 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // is the single source of truth for "everything else," used by both ExploreHub's
   // browsable groups and its search box, so a service can't be filed under one
   // category when browsed and a different one when searched.
-  const PRIMARY_TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
-    { id: 'HOME', label: 'Home', icon: HomeIcon },
-    { id: 'PAY', label: 'Pay', icon: AccountIcon },
-    { id: 'EXPLORE', label: 'Explore', icon: LayoutGrid },
-    { id: 'MESSAGES', label: 'Messages', icon: MessageCircle },
-    { id: 'YOU', label: 'You', icon: User },
+  const PRIMARY_TABS: { id: Tab; label: string; icon: typeof IconHome }[] = [
+    { id: 'HOME', label: 'Home', icon: IconHome },
+    { id: 'PAY', label: 'Pay', icon: IconPay },
+    { id: 'EXPLORE', label: 'Explore', icon: IconExplore },
+    { id: 'MESSAGES', label: 'Messages', icon: IconMessages },
+    { id: 'YOU', label: 'You', icon: IconYou },
   ];
   const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
     { title: 'Everyday', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
