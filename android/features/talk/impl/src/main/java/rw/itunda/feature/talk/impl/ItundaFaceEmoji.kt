@@ -3,11 +3,11 @@ package rw.itunda.feature.talk.impl
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,17 +37,22 @@ import rw.itunda.core.designsystem.theme.Ids
 // itunda had zero free-text emoji input on Android either before this (Talk's
 // only prior "emoji" concept was the 5 fixed QUICK_REACTIONS, same as web).
 //
-// Real ordered key list (not a Map<String, @Composable ...> -- storing
-// Composable lambdas as map values hit a real Kotlin/Compose-compiler type-
-// inference dead end in this project's toolchain, "ERROR CLASS: Unknown return
-// lambda parameter type", and no existing file in this codebase uses that
-// pattern either; a plain `when` dispatch is both the working fix and the more
-// idiomatic Compose approach). Add a category's glyphs by: (1) adding the
-// codepoint to ITUNDAFACE_EMOJI_KEYS, (2) adding a `when` branch in
-// ItundaFaceEmojiGlyph.
-val ITUNDAFACE_EMOJI_KEYS: List<String> = listOf(
-    "👍", "❤️", "😂", "😮", "😢",
-    "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎",
+// Real ordered key list per category (not a Map<String, @Composable ...> --
+// storing Composable lambdas as map values hit a real Kotlin/Compose-compiler
+// type-inference dead end in this project's toolchain, "ERROR CLASS: Unknown
+// return lambda parameter type", and no existing file in this codebase uses
+// that pattern either; a plain `when` dispatch is both the working fix and
+// the more idiomatic Compose approach). Add a category's glyphs by: (1)
+// adding a new `...Keys` list below, (2) adding it to ITUNDAFACE_EMOJI_ALL_KEYS
+// and ITUNDAFACE_EMOJI_CATEGORIES, (3) adding `when` branches in
+// ItundaFaceEmojiGlyph -- same real category-array shape as the web picker.
+private val smileysKeys = listOf("👍", "❤️", "😂", "😮", "😢", "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎")
+private val peopleKeys = listOf("👀", "✊", "👋", "✌️", "👌", "👏")
+
+val ITUNDAFACE_EMOJI_ALL_KEYS: List<String> = smileysKeys + peopleKeys
+val ITUNDAFACE_EMOJI_CATEGORIES: List<Pair<String, List<String>>> = listOf(
+    "Smileys & Emotion" to smileysKeys,
+    "People & Body" to peopleKeys,
 )
 
 @Composable
@@ -68,6 +73,12 @@ fun ItundaFaceEmojiGlyph(emoji: String, size: Dp) {
         "😭" -> SmileyLoudlyCrying(size)
         "😡" -> SmileyAngry(size)
         "😎" -> SmileyCool(size)
+        "👀" -> PeopleEyes(size)
+        "✊" -> PeopleFist(size)
+        "👋" -> PeopleWavingHand(size)
+        "✌️" -> PeopleVictoryHand(size)
+        "👌" -> PeopleOkHand(size)
+        "👏" -> PeopleClappingHands(size)
     }
 }
 
@@ -79,7 +90,7 @@ fun ItundaFaceEmojiGlyph(emoji: String, size: Dp) {
 // both simpler and safer than web's Extended_Pictographic approach, and
 // degrades identically: anything not in the registry is never matched, so it
 // flows through as plain text untouched.
-private val EMOJI_REGEX = Regex(ITUNDAFACE_EMOJI_KEYS.sortedByDescending { it.length }.joinToString("|") { Regex.escape(it) })
+private val EMOJI_REGEX = Regex(ITUNDAFACE_EMOJI_ALL_KEYS.sortedByDescending { it.length }.joinToString("|") { Regex.escape(it) })
 
 /** Renders a message body with any registered emoji swapped for itundaface's own
  * glyph inline (via Compose's real `appendInlineContent`/`Placeholder` mechanism,
@@ -127,28 +138,33 @@ fun MessageBodyWithEmoji(body: String, color: Color, fontSize: TextUnit = 14.sp,
 /** Real chat-composer emoji picker -- distinct from EmoticonPickerPanel above
  * (a KakaoTalk-style sticker/image picker, backed by real owned-pack API calls):
  * this is Unicode text emoji, picking one calls `onPick` with the real character
- * to insert into the draft, no network call involved. Single "Smileys & Emotion"
- * category today -- ready for more categories to append without restructuring,
- * same as the web picker's own category-array shape. */
+ * to insert into the draft, no network call involved. Renders each real category
+ * as its own header row (`GridItemSpan(maxLineSpan)`) inside one scrollable grid,
+ * ready for more categories to append without restructuring, same as the web
+ * picker's own category-array shape. */
 @Composable
 fun ItundaFaceEmojiPicker(onPick: (String) -> Unit) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Ids.colors.surfaceSoft)
             .padding(12.dp),
     ) {
-        Text("Smileys & Emotion", color = Ids.colors.textSecondary, fontSize = 11.sp)
-        LazyVerticalGrid(columns = GridCells.Fixed(6), modifier = Modifier.height(160.dp)) {
-            gridItems(ITUNDAFACE_EMOJI_KEYS, key = { it }) { emoji ->
-                Box(
-                    modifier = Modifier
-                        .clickable { onPick(emoji) }
-                        .padding(6.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    ItundaFaceEmojiGlyph(emoji, 28.dp)
+        LazyVerticalGrid(columns = GridCells.Fixed(6), modifier = Modifier.height(220.dp)) {
+            ITUNDAFACE_EMOJI_CATEGORIES.forEach { (name, keys) ->
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(name, color = Ids.colors.textSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp, bottom = 2.dp))
+                }
+                gridItems(keys, key = { it }) { emoji ->
+                    Box(
+                        modifier = Modifier
+                            .clickable { onPick(emoji) }
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        ItundaFaceEmojiGlyph(emoji, 28.dp)
+                    }
                 }
             }
         }
