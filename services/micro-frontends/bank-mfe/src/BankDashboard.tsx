@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
+import { ReactionGlyph } from './icons/ItundaFace';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -8451,7 +8452,7 @@ function MessageReactions({
               backgroundColor: mine ? 'var(--itunda-indigo-light)' : 'var(--itunda-white)',
             }}
           >
-            <span>{r.emoji}</span>
+            <ReactionGlyph emoji={r.emoji} size={16} />
             <span style={{ color: 'var(--itunda-grey-700)' }}>{r.userIds.length}</span>
           </button>
         );
@@ -8476,9 +8477,9 @@ function MessageReactions({
               <button
                 key={emoji}
                 onClick={() => { onToggle(emoji); setPickerOpen(false); }}
-                style={{ fontSize: 'var(--itunda-type-scale-18-size)', padding: '2px' }}
+                style={{ display: 'flex', padding: '2px' }}
               >
-                {emoji}
+                <ReactionGlyph emoji={emoji} size={22} />
               </button>
             ))}
           </div>
