@@ -31,6 +31,7 @@ import { ITUNDAFACE_PEOPLE } from './ItundaFacePeople';
 import { ITUNDAFACE_NATURE } from './ItundaFaceNature';
 import { ITUNDAFACE_FOOD } from './ItundaFaceFood';
 import { ITUNDAFACE_TRAVEL } from './ItundaFaceTravel';
+import { ITUNDAFACE_ACTIVITIES } from './ItundaFaceActivities';
 
 type GlyphFn = (props: { size?: number }) => React.ReactElement;
 
@@ -45,13 +46,14 @@ export const ITUNDAFACE_EMOJI: Record<string, GlyphFn> = {
   ...ITUNDAFACE_NATURE,
   ...ITUNDAFACE_FOOD,
   ...ITUNDAFACE_TRAVEL,
+  ...ITUNDAFACE_ACTIVITIES,
 };
 
 /** Real category grouping for the picker -- Unicode's own official emoji group
- * names (the same ones TossFace itself organizes by), not invented. Phases 1-5
+ * names (the same ones TossFace itself organizes by), not invented. Phases 1-6
  * (Smileys & Emotion, People & Body, Animals & Nature, Food & Drink, Travel &
- * Places) have real itundaface glyphs today; the array shape is deliberately
- * ready for Activities / Objects / Symbols / Flags to be appended in later
+ * Places, Activities) have real itundaface glyphs today; the array shape is
+ * deliberately ready for Objects / Symbols / Flags to be appended in later
  * sessions without restructuring the picker UI itself. */
 export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = [
   { name: 'Smileys & Emotion', emoji: ['👍', '❤️', '😂', '😮', '😢', ...Object.keys(ITUNDAFACE_SMILEYS)] },
@@ -59,6 +61,7 @@ export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = 
   { name: 'Animals & Nature', emoji: Object.keys(ITUNDAFACE_NATURE) },
   { name: 'Food & Drink', emoji: Object.keys(ITUNDAFACE_FOOD) },
   { name: 'Travel & Places', emoji: Object.keys(ITUNDAFACE_TRAVEL) },
+  { name: 'Activities', emoji: Object.keys(ITUNDAFACE_ACTIVITIES) },
 ];
 
 // Matches one emoji "unit": an Extended_Pictographic codepoint (the real Unicode
