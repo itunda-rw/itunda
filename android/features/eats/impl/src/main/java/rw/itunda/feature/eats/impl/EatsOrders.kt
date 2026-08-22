@@ -1,7 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -192,7 +192,7 @@ internal fun MyEatsOrdersView(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Ids.colors.danger)
-                                    .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                    .pressScaleClickable(enabled = cancellingId != o.id) { cancel(o.id) }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                             ) {
                                 Text(
@@ -287,7 +287,7 @@ internal fun MyDineInOrdersView() {
                                         .padding(top = 10.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Ids.colors.danger)
-                                        .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                        .pressScaleClickable(enabled = cancellingId != o.id) { cancel(o.id) }
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
                                 ) {
                                     Text(
@@ -312,7 +312,7 @@ internal fun ReorderButton(reordering: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(Ids.colors.brand)
-            .clickable(enabled = !reordering, onClick = onClick)
+            .pressScaleClickable(enabled = !reordering, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Text(

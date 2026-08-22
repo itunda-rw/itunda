@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -173,7 +173,7 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                     )
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                            .clickable { showCreate = !showCreate }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            .pressScaleClickable { showCreate = !showCreate }.padding(horizontal = 12.dp, vertical = 8.dp),
                     ) { Text(if (showCreate) "Cancel" else "+ Add", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
@@ -191,7 +191,7 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                     .background(if (busy) Ids.colors.textTertiary else Ids.colors.brand)
-                                    .clickable(enabled = !busy) { register() }.padding(vertical = 12.dp),
+                                    .pressScaleClickable(enabled = !busy) { register() }.padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "Adding…" else "Add vehicle", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                         }
@@ -223,11 +223,11 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable { editingMileage = v; editMileageText = v.mileageKm.toString() }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            .pressScaleClickable { editingMileage = v; editMileageText = v.mileageKm.toString() }.padding(horizontal = 12.dp, vertical = 8.dp),
                                     ) { Text("Update km", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = busyId != v.id) { remove(v.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            .pressScaleClickable(enabled = busyId != v.id) { remove(v.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                     ) { Text(if (busyId == v.id) "…" else "Remove", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                 }
                             }

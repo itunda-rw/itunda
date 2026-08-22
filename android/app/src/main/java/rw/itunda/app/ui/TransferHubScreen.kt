@@ -1,7 +1,7 @@
 package rw.itunda.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -125,7 +125,7 @@ fun TransferHubScreen(
                 color = Ids.colors.textSecondary,
                 fontSize = 13.sp,
                 modifier = Modifier
-                    .clickable(onClick = onOpenHistory)
+                    .pressScaleClickable(onClick = onOpenHistory)
                     .padding(vertical = 8.dp),
             )
         }
@@ -139,7 +139,7 @@ private fun TransferHubRow(icon: androidx.compose.ui.graphics.vector.ImageVector
             .fillMaxWidth()
             .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
             .background(Ids.colors.surface)
-            .clickable(onClick = onClick)
+            .pressScaleClickable(onClick = onClick)
             .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -351,7 +351,7 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                         modifier = Modifier
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { frequency = f }
+                            .pressScaleClickable { frequency = f }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
@@ -370,7 +370,7 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(999.dp))
                                 .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .clickable { dayOfWeek = d }
+                                .pressScaleClickable { dayOfWeek = d }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                         )
                     }

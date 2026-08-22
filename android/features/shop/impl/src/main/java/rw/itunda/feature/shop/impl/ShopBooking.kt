@@ -2,7 +2,7 @@ package rw.itunda.feature.shop.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -134,7 +134,7 @@ internal fun MerchantBookingFlowView(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
                         .background(if (selected) Ids.colors.brand else Ids.colors.surface)
-                        .clickable { selectedDate = date }
+                        .pressScaleClickable { selectedDate = date }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
                     Text(
@@ -165,7 +165,7 @@ internal fun MerchantBookingFlowView(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (selected) Ids.colors.brand else Ids.colors.surface)
-                                .clickable { selectedSlot = slot }
+                                .pressScaleClickable { selectedSlot = slot }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(slot.startTime.take(5), color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
@@ -186,8 +186,8 @@ internal fun MerchantBookingFlowView(
                 .padding(top = 12.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (submitting || selectedSlot == null) Ids.colors.textTertiary else Ids.colors.brand)
-                .clickable(enabled = !submitting && selectedSlot != null) {
-                    val slot = selectedSlot ?: return@clickable
+                .pressScaleClickable(enabled = !submitting && selectedSlot != null) {
+                    val slot = selectedSlot ?: return@pressScaleClickable
                     submitting = true
                     error = null
                     coroutineScope.launch {

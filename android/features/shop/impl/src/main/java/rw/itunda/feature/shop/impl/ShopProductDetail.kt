@@ -2,7 +2,7 @@ package rw.itunda.feature.shop.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -102,7 +102,7 @@ internal fun ProductDetailScreen(
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
                         .semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
-                        .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                        .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -137,7 +137,7 @@ internal fun ProductDetailScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(Ids.colors.brand)
-                    .clickable(enabled = product.stockQuantity.let { it == null || it > 0 }) {
+                    .pressScaleClickable(enabled = product.stockQuantity.let { it == null || it > 0 }) {
                         setQty(maxOf(1, qty))
                     }
                     .padding(vertical = 16.dp),
@@ -269,7 +269,7 @@ internal fun MultiCartView(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (submitting || address.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                .clickable(enabled = !submitting && address.isNotBlank()) {
+                .pressScaleClickable(enabled = !submitting && address.isNotBlank()) {
                     coroutineScope.launch { placeOrders() }
                 }
                 .padding(vertical = 16.dp),

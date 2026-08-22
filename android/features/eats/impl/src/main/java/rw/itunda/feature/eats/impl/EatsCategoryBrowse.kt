@@ -1,7 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,7 +82,7 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
     ) {
         categories.forEach { c ->
             val selected = c == selectedCategory
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp).clickable { onSelect(c) }) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp).pressScaleClickable { onSelect(c) }) {
                 Box(
                     modifier = Modifier.size(56.dp).clip(CircleShape)
                         .background(if (selected) Ids.colors.brand.copy(alpha = 0.15f) else Ids.colors.surfaceSoft),
@@ -109,7 +109,7 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {
@@ -136,7 +136,7 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                         .align(Alignment.TopEnd)
                         .padding(10.dp)
                         .size(22.dp)
-                        .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                        .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                 )
             }
             Column(modifier = Modifier.padding(14.dp)) {
@@ -194,7 +194,7 @@ internal fun EatsDishGrid(dishes: List<EatsDishDto>, onOpen: (EatsDishDto) -> Un
         userScrollEnabled = false,
     ) {
         gridItems(dishes, key = { it.id }) { dish ->
-            Column(modifier = Modifier.clickable { onOpen(dish) }) {
+            Column(modifier = Modifier.pressScaleClickable { onOpen(dish) }) {
                 Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(Ids.layout.cardCornerRadius))) {
                     if (dish.imageUrl != null) {
                         SubcomposeAsyncImage(

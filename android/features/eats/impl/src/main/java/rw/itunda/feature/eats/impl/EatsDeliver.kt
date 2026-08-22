@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -200,7 +200,7 @@ internal fun DeliverContent() {
                     modifier = Modifier
                         .clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.brand)
-                        .clickable(enabled = !registering) {
+                        .pressScaleClickable(enabled = !registering) {
                             registering = true
                             error = null
                             coroutineScope.launch {
@@ -248,7 +248,7 @@ internal fun DeliverContent() {
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
                             .background(if (currentRider.available) Ids.colors.danger else Ids.colors.brand)
-                            .clickable {
+                            .pressScaleClickable {
                                 coroutineScope.launch {
                                     try {
                                         val res = NetworkClient.apiService.setRiderAvailability(SetRiderAvailabilityRequest(!currentRider.available))
@@ -274,7 +274,7 @@ internal fun DeliverContent() {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(enabled = busyOrderId != o.id) {
+                                .pressScaleClickable(enabled = busyOrderId != o.id) {
                                     busyOrderId = o.id
                                     error = null
                                     coroutineScope.launch {
@@ -314,7 +314,7 @@ internal fun DeliverContent() {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(enabled = busyOrderId != o.id) {
+                                .pressScaleClickable(enabled = busyOrderId != o.id) {
                                     busyOrderId = o.id
                                     error = null
                                     coroutineScope.launch {

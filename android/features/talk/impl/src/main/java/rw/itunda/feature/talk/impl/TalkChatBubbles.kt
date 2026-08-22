@@ -6,7 +6,7 @@ import androidx.activity.compose.BackHandler
 import coil.compose.AsyncImage
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -219,7 +219,7 @@ internal fun OfferActionButton(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
             .background(Ids.colors.surface)
-            .clickable(onClick = onClick)
+            .pressScaleClickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
     ) {
         Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
@@ -315,7 +315,7 @@ internal fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean, onExten
                     color = if (isMine) Color.White else Ids.colors.brand,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp,
-                    modifier = Modifier.clickable(onClick = onExtend),
+                    modifier = Modifier.pressScaleClickable(onClick = onExtend),
                 )
             }
         }
@@ -441,7 +441,7 @@ internal fun MessageBubble(
                 color = Ids.colors.brand,
                 fontSize = 11.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).clickable { onOpenThread(message) },
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).pressScaleClickable { onOpenThread(message) },
                 textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
             )
         }

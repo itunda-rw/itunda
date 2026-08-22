@@ -7,7 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -584,7 +584,7 @@ internal fun ChatThreadView(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (selected) Ids.colors.brand else Ids.colors.surface)
-                                .clickable { giftTheme = value }
+                                .pressScaleClickable { giftTheme = value }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                         ) {
                             GiftThemeGlyph(value, size = 14.dp)
@@ -705,7 +705,7 @@ internal fun ChatThreadView(
                         .size(Ids.layout.minTouchTarget)
                         .clip(CircleShape)
                         .background(Ids.colors.surfaceSoft)
-                        .clickable(enabled = !uploadingPhoto) { attachMenuOpen = true },
+                        .pressScaleClickable(enabled = !uploadingPhoto) { attachMenuOpen = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(if (uploadingPhoto) "…" else "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
@@ -742,7 +742,7 @@ internal fun ChatThreadView(
                     .size(Ids.layout.minTouchTarget)
                     .clip(CircleShape)
                     .background(if (draft.isBlank() || sending) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = draft.isNotBlank() && !sending) {
+                    .pressScaleClickable(enabled = draft.isNotBlank() && !sending) {
                         val body = draft.trim()
                         sending = true
                         error = null

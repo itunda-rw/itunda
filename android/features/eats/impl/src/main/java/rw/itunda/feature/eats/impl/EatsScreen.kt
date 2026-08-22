@@ -3,7 +3,7 @@ package rw.itunda.feature.eats.impl
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -103,7 +103,7 @@ fun EatsContent(
                 color = Ids.colors.textBrand,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
-                modifier = Modifier.clickable { mode = if (mode == EatsMode.ORDER) EatsMode.DELIVER else EatsMode.ORDER },
+                modifier = Modifier.pressScaleClickable { mode = if (mode == EatsMode.ORDER) EatsMode.DELIVER else EatsMode.ORDER },
             )
         }
         when (mode) {
@@ -409,7 +409,7 @@ internal fun OrderFoodContent(
             ) {
                 listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
                     val selected = v == view
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pressScaleClickable { view = v }) {
                         Text(
                             label,
                             color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
@@ -479,7 +479,7 @@ internal fun OrderFoodContent(
             if (browseLocation != null) {
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { sortByFastestDelivery = !sortByFastestDelivery },
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable { sortByFastestDelivery = !sortByFastestDelivery },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
