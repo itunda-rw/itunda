@@ -1,7 +1,7 @@
 package rw.itunda.feature.shop.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,7 +129,7 @@ internal fun MerchantOrdersView() {
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (busyOrderId == o.id) Ids.colors.textTertiary else Ids.colors.brand)
-                            .clickable(enabled = busyOrderId != o.id) { advance(o) }
+                            .pressScaleClickable(enabled = busyOrderId != o.id) { advance(o) }
                             .padding(horizontal = 16.dp, vertical = 10.dp),
                     ) {
                         Text(
@@ -219,7 +219,7 @@ internal fun MerchantReturnQueueView() {
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (busyId == r.id) Ids.colors.textTertiary else Ids.colors.brand)
-                                .clickable(enabled = busyId != r.id) { decide(r.id, true) }
+                                .pressScaleClickable(enabled = busyId != r.id) { decide(r.id, true) }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busyId == r.id) "…" else "Approve", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -228,7 +228,7 @@ internal fun MerchantReturnQueueView() {
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.surface)
-                                .clickable(enabled = busyId != r.id) { decide(r.id, false) }
+                                .pressScaleClickable(enabled = busyId != r.id) { decide(r.id, false) }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text("Reject", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -301,7 +301,7 @@ internal fun MyCommerceOrdersView() {
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Ids.colors.danger)
-                                    .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                    .pressScaleClickable(enabled = cancellingId != o.id) { cancel(o.id) }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                             ) {
                                 Text(
@@ -337,7 +337,7 @@ internal fun LiveTrackingToggle(orderId: String) {
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
                 .background(Ids.colors.brand)
-                .clickable { tracking = !tracking }
+                .pressScaleClickable { tracking = !tracking }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Text(if (tracking) "Hide live tracking" else "🛵 Track your rider live", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)

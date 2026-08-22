@@ -1,7 +1,7 @@
 package rw.itunda.feature.shop.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,7 +88,7 @@ internal fun ProductInquirySection(productId: String) {
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .background(if (asking || question.isBlank()) Ids.colors.textTertiary else Ids.colors.surfaceSoft)
-                    .clickable(enabled = !asking && question.isNotBlank()) {
+                    .pressScaleClickable(enabled = !asking && question.isNotBlank()) {
                         asking = true
                         error = null
                         coroutineScope.launch {
@@ -156,7 +156,7 @@ internal fun ProductRatingBadge(productId: String) {
         Column {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable {
+                modifier = Modifier.pressScaleClickable {
                     val next = !open
                     open = next
                     if (next && reviews == null) {
@@ -221,7 +221,7 @@ internal fun ProductReviewRow(item: OrderItemDto) {
     }
     if (!open) {
         Box(
-            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Text("Rate ${item.productName}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
@@ -239,7 +239,7 @@ internal fun ProductReviewRow(item: OrderItemDto) {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = false }.padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
             Box(
@@ -247,10 +247,10 @@ internal fun ProductReviewRow(item: OrderItemDto) {
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !submitting) {
+                    .pressScaleClickable(enabled = !submitting) {
                         if (rating == 0) {
                             error = "Pick a star rating."
-                            return@clickable
+                            return@pressScaleClickable
                         }
                         submitting = true
                         error = null

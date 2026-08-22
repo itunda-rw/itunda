@@ -2,7 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -150,7 +150,7 @@ internal fun RestaurantMenuView(
                             }
                             if (hasOptions) {
                                 Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).clickable { toggleExpand(p.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { toggleExpand(p.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                 ) {
                                     Text(if (isExpanded) "Close" else "Choose options", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
@@ -176,7 +176,7 @@ internal fun RestaurantMenuView(
                                                 val selected = pendingChoices[group.id] == choice.id
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth().clickable { pendingChoices[group.id] = choice.id },
+                                                    modifier = Modifier.fillMaxWidth().pressScaleClickable { pendingChoices[group.id] = choice.id },
                                                 ) {
                                                     androidx.compose.material3.RadioButton(selected = selected, onClick = { pendingChoices[group.id] = choice.id })
                                                     Text(
@@ -193,7 +193,7 @@ internal fun RestaurantMenuView(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(if (allGroupsChosen) Ids.colors.brand else Ids.colors.textTertiary)
-                                        .clickable(enabled = allGroupsChosen) { addConfiguredToCart(p) }
+                                        .pressScaleClickable(enabled = allGroupsChosen) { addConfiguredToCart(p) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text("Add to cart", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -205,7 +205,7 @@ internal fun RestaurantMenuView(
         }
         if (cartCount > 0) {
             Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).clickable(onClick = onCheckout).padding(vertical = 16.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onCheckout).padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -274,7 +274,7 @@ internal fun AddressAutocompleteField(
                             fontSize = 13.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .pressScaleClickable {
                                     justSelected = true
                                     suggestions = emptyList()
                                     onSuggestionSelected(s)

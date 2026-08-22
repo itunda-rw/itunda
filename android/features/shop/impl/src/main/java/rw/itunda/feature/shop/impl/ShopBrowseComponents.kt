@@ -1,7 +1,7 @@
 package rw.itunda.feature.shop.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -144,7 +144,7 @@ internal fun ShoppingPointsRow(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .width(64.dp)
-                        .clickable(enabled = !done && busyType == null) { onComplete(m.type) },
+                        .pressScaleClickable(enabled = !done && busyType == null) { onComplete(m.type) },
                 ) {
                     Box(
                         modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp))
@@ -209,7 +209,7 @@ internal fun RecommendedForYouGrid(
             gridItems(deals, key = { it.id }) { d ->
                 Column(
                     modifier = Modifier.clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
-                        .clickable { onOpen(d) }.padding(10.dp),
+                        .pressScaleClickable { onOpen(d) }.padding(10.dp),
                 ) {
                     Box {
                         ProductImageThumb(d.imageUrl, size = 140.dp, corner = 10.dp)
@@ -219,7 +219,7 @@ internal fun RecommendedForYouGrid(
                         }
                         Box(
                             modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(28.dp).clip(RoundedCornerShape(14.dp))
-                                .background(Color.Black.copy(alpha = 0.35f)).clickable { onToggleFavorite(d.id) },
+                                .background(Color.Black.copy(alpha = 0.35f)).pressScaleClickable { onToggleFavorite(d.id) },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -250,7 +250,7 @@ internal fun RecommendedForYouGrid(
 @Composable
 internal fun CartFab(totalItems: Int, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).clickable(onClick = onClick).padding(vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onClick).padding(vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -270,7 +270,7 @@ internal fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit) {
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {

@@ -1,7 +1,7 @@
 package rw.itunda.feature.shop.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -69,7 +69,7 @@ internal fun ReturnExchangeAction(orderId: String) {
     }
     if (!open) {
         Box(
-            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Text("Return or exchange", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
@@ -82,7 +82,7 @@ internal fun ReturnExchangeAction(orderId: String) {
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (type == value) Ids.colors.brand else Ids.colors.textTertiary)
-                        .clickable { type = value }
+                        .pressScaleClickable { type = value }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text(label, color = if (type == value) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -95,7 +95,7 @@ internal fun ReturnExchangeAction(orderId: String) {
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (reasonCode == code) Ids.colors.brand else Ids.colors.textTertiary)
-                        .clickable { reasonCode = code }
+                        .pressScaleClickable { reasonCode = code }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
                     Text(code, color = if (reasonCode == code) Color.White else Ids.colors.textPrimary, fontSize = 11.sp)
@@ -111,7 +111,7 @@ internal fun ReturnExchangeAction(orderId: String) {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = false }.padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
             Box(
@@ -119,7 +119,7 @@ internal fun ReturnExchangeAction(orderId: String) {
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !submitting) {
+                    .pressScaleClickable(enabled = !submitting) {
                         submitting = true
                         error = null
                         coroutineScope.launch {

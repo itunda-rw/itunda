@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -201,7 +201,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                         Box(
                                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                                 .background(if (category == c) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                                .clickable { category = c }
+                                                .pressScaleClickable { category = c }
                                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                                         ) { Text("Category $c", color = if (category == c) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                     }
@@ -212,7 +212,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                         Box(
                                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                                 .background(if (purpose == value) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                                .clickable { purpose = value }
+                                                .pressScaleClickable { purpose = value }
                                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                                         ) { Text(label, color = if (purpose == value) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                     }
@@ -225,7 +225,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 )
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyId != "apply" && amount.toBigDecimalOrNull()?.signum() == 1) { apply() }
+                                        .pressScaleClickable(enabled = busyId != "apply" && amount.toBigDecimalOrNull()?.signum() == 1) { apply() }
                                         .padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == "apply") "Applying…" else "Apply", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -256,7 +256,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 Text("Demo: instantly approved -- stands in for the real SACCO officer approval step.", color = Ids.colors.textSecondary, fontSize = 10.sp)
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyId == null) { disburse(loan.id) }
+                                        .pressScaleClickable(enabled = busyId == null) { disburse(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == loan.id) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -271,7 +271,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 )
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyId == null) { repay(loan.id) }
+                                        .pressScaleClickable(enabled = busyId == null) { repay(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == loan.id) "…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }

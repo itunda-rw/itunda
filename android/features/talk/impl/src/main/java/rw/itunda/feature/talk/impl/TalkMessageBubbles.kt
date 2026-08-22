@@ -5,7 +5,7 @@ import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import coil.compose.AsyncImage
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -75,7 +75,7 @@ internal fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserI
                     .padding(end = 4.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (mine) Ids.colors.brand.copy(alpha = 0.15f) else Ids.colors.surfaceSoft)
-                    .clickable { onToggle(r.emoji) }
+                    .pressScaleClickable { onToggle(r.emoji) }
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
                 ReactionGlyph(r.emoji, size = 12.dp)
@@ -87,7 +87,7 @@ internal fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserI
                 Icons.Outlined.AddReaction,
                 contentDescription = "Add reaction",
                 tint = Ids.colors.textSecondary,
-                modifier = Modifier.size(16.dp).clip(CircleShape).clickable { pickerOpen = !pickerOpen },
+                modifier = Modifier.size(16.dp).clip(CircleShape).pressScaleClickable { pickerOpen = !pickerOpen },
             )
             if (pickerOpen) {
                 Row(
@@ -100,7 +100,7 @@ internal fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserI
                         ReactionGlyph(
                             emoji,
                             size = 22.dp,
-                            modifier = Modifier.padding(2.dp).clickable {
+                            modifier = Modifier.padding(2.dp).pressScaleClickable {
                                 onToggle(emoji)
                                 pickerOpen = false
                             },
@@ -153,7 +153,7 @@ internal fun ForwardDestinationDialog(sourceMessageId: String, isGroupSource: Bo
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
-                                    .clickable(enabled = checked || totalSelected < 10) {
+                                    .pressScaleClickable(enabled = checked || totalSelected < 10) {
                                         selectedConversationIds = if (checked) selectedConversationIds - c.conversationId else selectedConversationIds + c.conversationId
                                     }
                                     .padding(vertical = 4.dp),
@@ -167,7 +167,7 @@ internal fun ForwardDestinationDialog(sourceMessageId: String, isGroupSource: Bo
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
-                                    .clickable(enabled = checked || totalSelected < 10) {
+                                    .pressScaleClickable(enabled = checked || totalSelected < 10) {
                                         selectedGroupIds = if (checked) selectedGroupIds - g.groupId else selectedGroupIds + g.groupId
                                     }
                                     .padding(vertical = 4.dp),

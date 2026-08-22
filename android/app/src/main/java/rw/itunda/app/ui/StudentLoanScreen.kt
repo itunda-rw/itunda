@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -221,7 +221,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(999.dp))
                                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                            .clickable { level = value }
+                                            .pressScaleClickable { level = value }
                                             .padding(horizontal = 12.dp, vertical = 6.dp),
                                     )
                                 }
@@ -231,7 +231,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                             IdsTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = "Years until you graduate", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = busyId != "apply") { apply() }
+                                    .pressScaleClickable(enabled = busyId != "apply") { apply() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busyId == "apply") "Applying…" else "Apply", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -264,7 +264,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                 Text("Demo: instantly approved -- stands in for the real BRD/MINEDUC approval step.", color = Ids.colors.textTertiary, fontSize = 10.sp)
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyId != loan.id) { disburse(loan.id) }
+                                        .pressScaleClickable(enabled = busyId != loan.id) { disburse(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == loan.id) "Disbursing…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -272,7 +272,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                             if (loan.status == "DISBURSED") {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyId != loan.id) { declareGraduated(loan.id) }
+                                        .pressScaleClickable(enabled = busyId != loan.id) { declareGraduated(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == loan.id) "Updating…" else "Declare graduated", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -290,7 +290,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                 IdsTextField(value = repayAmounts[loan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (loan.id to it) }, label = "Repayment amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyId != loan.id) { repay(loan.id) }
+                                        .pressScaleClickable(enabled = busyId != loan.id) { repay(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == loan.id) "Repaying…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
