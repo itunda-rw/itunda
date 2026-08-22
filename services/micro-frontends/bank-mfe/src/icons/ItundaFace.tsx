@@ -80,6 +80,21 @@
 // spring-in/out on reaction badges appearing/disappearing, whileHover/whileTap
 // scale feedback on every tappable glyph -- not decoration, each one confirms an
 // action registered, the same real purpose Toss's own motion strategy names.
+//
+// Identity pass (2026-08-22, direct user follow-up: "like tossface itundaface
+// should have it's identity that makes unique"): TossFace's own real signature
+// traits are structural -- uniform visual weight, every directional glyph facing
+// right, one consistent internal palette -- not "everything is Toss Blue." itunda
+// needed its own equivalent, real signature, not just itunda-brand-colored generic
+// emoji shapes. Two applied here: (1) the heart now uses the SAME shared-seam
+// two-facet construction itunda's own app-icon mark uses (a heart's natural
+// bilateral symmetry is a direct fit -- applied wherever a future glyph's shape
+// allows it, not forced onto asymmetric shapes); (2) every glyph's secondary/accent
+// element (currently: the tear drop on laughing/sad) uses itunda's actual real
+// indigo brand color instead of a generic convention color -- a tear's exact hue
+// isn't semantically load-bearing (still unmistakably "a tear" in any cool tone),
+// unlike a heart's red or a face's yellow, so this is safe, deliberate brand
+// consistency without repeating Toss's own real meaning-changing misstep.
 
 import type { SVGProps } from 'react';
 
@@ -105,20 +120,37 @@ const FACE_3D_DEFS = (
       <stop offset="55%" stopColor="#e0a655" />
       <stop offset="100%" stopColor="#9c6423" />
     </radialGradient>
-    <radialGradient id="itdf-heart" cx="32%" cy="20%" r="90%">
+    {/* Two-facet heart gradients (see ReactionHeart3D's own doc comment): a
+        right-facet (lighter, lit) and left-facet (darker, shaded) pair, using the
+        SAME directional linear-gradient convention (top-left to bottom-right for
+        the lit facet, top-right to bottom-left for the shaded one) itunda's own
+        app-icon mark uses -- one shared light-source story across both. */}
+    <linearGradient id="itdf-heart-r" x1="20%" y1="0%" x2="88%" y2="95%">
       <stop offset="0%" stopColor="#ff9fb0" />
-      <stop offset="42%" stopColor="#ef4a63" />
+      <stop offset="45%" stopColor="#ef4a63" />
       <stop offset="100%" stopColor="#a91733" />
-    </radialGradient>
+    </linearGradient>
+    <linearGradient id="itdf-heart-l" x1="75%" y1="5%" x2="10%" y2="95%">
+      <stop offset="0%" stopColor="#f2748c" />
+      <stop offset="50%" stopColor="#c72e4c" />
+      <stop offset="100%" stopColor="#7a0f28" />
+    </linearGradient>
     <radialGradient id="itdf-face" cx="32%" cy="20%" r="90%">
       <stop offset="0%" stopColor="#ffe89e" />
       <stop offset="50%" stopColor="#ffcc4d" />
       <stop offset="100%" stopColor="#d98e0a" />
     </radialGradient>
+    {/* itunda's own real indigo brand family (project_itunda_brand_identity.md's
+        OKLCH-derived family, same values as --itunda-indigo/-active), not a
+        generic cyan-blue -- a tear's color isn't semantically load-bearing the way
+        a heart's red or a face's yellow is (still unmistakably "a tear" in any
+        cool tone), so this is a real, deliberate itundaface signature touch:
+        every glyph's secondary/accent elements pull from itunda's actual brand
+        color, not an arbitrary convention color. */}
     <radialGradient id="itdf-tear" cx="32%" cy="16%" r="90%">
-      <stop offset="0%" stopColor="#d8f4ff" />
-      <stop offset="55%" stopColor="#7cd9ff" />
-      <stop offset="100%" stopColor="#1c8dc4" />
+      <stop offset="0%" stopColor="#c0c6ff" />
+      <stop offset="55%" stopColor="#7c7bfd" />
+      <stop offset="100%" stopColor="#483eb6" />
     </radialGradient>
     <radialGradient id="itdf-hl" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
@@ -151,7 +183,18 @@ export function ReactionThumbsUp(props: FaceIconProps) {
 export function ReactionHeart(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <path d="M40,74 C40,74 8,52.6 8,29.6 C8,17.7 17.1,10 26.6,10 C33.6,10 38,14.4 40,18.4 C42,14.4 46.4,10 53.4,10 C62.9,10 72,17.7 72,29.6 C72,52.6 40,74 40,74 Z" fill="#ef4a63" />
+      {/* Shared-seam two-facet construction (2026-08-22, direct user follow-up:
+          "like tossface itundaface should have it's identity that makes unique") --
+          the same real technique itunda's own app-icon mark uses
+          (project_itunda_brand_identity.md): one outer silhouette split by a shared
+          center seam into two facets, rather than a single flat fill. A heart's
+          own natural bilateral symmetry (one seam straight down the middle, from
+          the center dip to the bottom point) is a direct, unforced fit for this --
+          not every future glyph will have this property, but where a shape allows
+          it, this construction is itundaface's own recognizable signature,
+          distinct from a generic single-fill emoji heart. */}
+      <path d="M40,18.4 C42,14.4 46.4,10 53.4,10 C62.9,10 72,17.7 72,29.6 C72,52.6 40,74 40,74 L40,18.4 Z" fill="#ef4a63" />
+      <path d="M40,18.4 C38,14.4 33.6,10 26.6,10 C17.1,10 8,17.7 8,29.6 C8,52.6 40,74 40,74 L40,18.4 Z" fill="#c72e4c" />
     </FaceBase>
   );
 }
@@ -163,7 +206,9 @@ export function ReactionLaughing(props: FaceIconProps) {
       <path d="M18,32 C21,26 27,26 30,32" stroke="#664500" strokeWidth={4.4} strokeLinecap="round" fill="none" />
       <path d="M50,32 C53,26 59,26 62,32" stroke="#664500" strokeWidth={4.4} strokeLinecap="round" fill="none" />
       <path d="M16,48 C16,48 24,66 40,66 C56,66 64,48 64,48 C64,48 56,54 40,54 C24,54 16,48 16,48 Z" fill="#66471b" />
-      <path d="M23,52 C23,52 26,60 25,66" stroke="#7cd9ff" strokeWidth={4} strokeLinecap="round" fill="none" />
+      {/* itunda's own real --itunda-indigo, not a generic cyan-blue -- see
+          itdf-tear's own doc comment on this same signature touch in the 3D set. */}
+      <path d="M23,52 C23,52 26,60 25,66" stroke="#7472f4" strokeWidth={4} strokeLinecap="round" fill="none" />
     </FaceBase>
   );
 }
@@ -186,7 +231,7 @@ export function ReactionSad(props: FaceIconProps) {
       <path d="M20,32 C23,36 29,36 32,32" stroke="#664500" strokeWidth={4.4} strokeLinecap="round" fill="none" />
       <path d="M48,32 C51,36 57,36 60,32" stroke="#664500" strokeWidth={4.4} strokeLinecap="round" fill="none" />
       <path d="M26,62 C30,54 50,54 54,62" stroke="#664500" strokeWidth={4.4} strokeLinecap="round" fill="none" />
-      <path d="M48,40 C51,44 54,49 54,53.6 C54,57.6 51,60.6 48,60.6 C45,60.6 42,57.6 42,53.6 C42,49 45,44 48,40 Z" fill="#5ec2ea" />
+      <path d="M48,40 C51,44 54,49 54,53.6 C54,57.6 51,60.6 48,60.6 C45,60.6 42,57.6 42,53.6 C42,49 45,44 48,40 Z" fill="#7472f4" />
     </FaceBase>
   );
 }
@@ -211,8 +256,15 @@ export function ReactionHeart3D(props: FaceIconProps) {
     <FaceBase {...props}>
       {FACE_3D_DEFS}
       <ellipse cx="40" cy="76" rx="26" ry="5" fill="url(#itdf-floor)" />
+      {/* Shared-seam two-facet construction, same real technique itunda's own
+          app-icon mark uses (project_itunda_brand_identity.md) -- see the flat
+          ReactionHeart's own doc comment for the full account. A right facet
+          (lit, itdf-heart-r) and a left facet (shaded, itdf-heart-l) share the
+          exact same seam line (the straight run from the heart's center dip to
+          its bottom point), guaranteeing zero-gap tiling into one silhouette. */}
       <g filter="url(#itdf-ds)">
-        <path d="M40,74.4 C40,74.4 7.4,52.4 7.4,28.8 C7.4,16.4 16.9,8.4 26.8,8.4 C34.1,8.4 38.7,13 40,17.2 C41.3,13 45.9,8.4 53.2,8.4 C63.1,8.4 72.6,16.4 72.6,28.8 C72.6,52.4 40,74.4 40,74.4 Z" fill="url(#itdf-heart)" />
+        <path d="M40,17.2 C41.3,13 45.9,8.4 53.2,8.4 C63.1,8.4 72.6,16.4 72.6,28.8 C72.6,52.4 40,74.4 40,74.4 L40,17.2 Z" fill="url(#itdf-heart-r)" />
+        <path d="M40,17.2 C38.7,13 34.1,8.4 26.8,8.4 C16.9,8.4 7.4,16.4 7.4,28.8 C7.4,52.4 40,74.4 40,74.4 L40,17.2 Z" fill="url(#itdf-heart-l)" />
         <path d="M24,13 C29,10.5 35,12.5 38,17" stroke="url(#itdf-rim)" strokeWidth={3} strokeLinecap="round" fill="none" />
         <ellipse cx="26" cy="24" rx="11" ry="7.5" fill="url(#itdf-hl)" />
       </g>
