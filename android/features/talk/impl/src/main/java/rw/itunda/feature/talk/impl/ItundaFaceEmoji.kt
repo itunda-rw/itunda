@@ -49,12 +49,14 @@ import rw.itunda.core.designsystem.theme.Ids
 private val smileysKeys = listOf("👍", "❤️", "😂", "😮", "😢", "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎")
 private val peopleKeys = listOf("👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏")
 private val natureKeys = listOf("🐶", "🐱", "⭐", "🌟", "🌈", "🌸", "🐦")
+private val foodKeys = listOf("🍕", "🍔", "☕", "🍰", "🍩", "🍓", "🍉", "🍎")
 
-val ITUNDAFACE_EMOJI_ALL_KEYS: List<String> = smileysKeys + peopleKeys + natureKeys
+val ITUNDAFACE_EMOJI_ALL_KEYS: List<String> = smileysKeys + peopleKeys + natureKeys + foodKeys
 val ITUNDAFACE_EMOJI_CATEGORIES: List<Pair<String, List<String>>> = listOf(
     "Smileys & Emotion" to smileysKeys,
     "People & Body" to peopleKeys,
     "Animals & Nature" to natureKeys,
+    "Food & Drink" to foodKeys,
 )
 
 @Composable
@@ -90,6 +92,14 @@ fun ItundaFaceEmojiGlyph(emoji: String, size: Dp) {
         "🌈" -> NatureRainbow(size)
         "🌸" -> NatureCherryBlossom(size)
         "🐦" -> NatureBird(size)
+        "🍕" -> FoodPizza(size)
+        "🍔" -> FoodHamburger(size)
+        "☕" -> FoodCoffee(size)
+        "🍰" -> FoodCake(size)
+        "🍩" -> FoodDonut(size)
+        "🍓" -> FoodStrawberry(size)
+        "🍉" -> FoodWatermelon(size)
+        "🍎" -> FoodApple(size)
     }
 }
 
