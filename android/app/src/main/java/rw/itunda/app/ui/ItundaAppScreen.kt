@@ -173,6 +173,7 @@ import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.rememberPressScale
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.feature.shop.impl.CommerceShopContent
@@ -1915,7 +1916,7 @@ private fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onClea
         if (query.isNotEmpty()) {
             Icon(
                 Icons.Outlined.Close, contentDescription = stringResource(R.string.home_search_clear),
-                tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp).clickable(onClick = onClear),
+                tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp).pressScaleClickable(onClick = onClear),
             )
         }
     }
@@ -1935,7 +1936,7 @@ private fun HomeSearchSectionHeader(label: String) {
 @Composable
 private fun HomeSearchResultRow(result: rw.itunda.core.network.ProductSearchResultDto, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip))
@@ -1967,7 +1968,7 @@ private fun HomeMarketWidgetRow(
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Ids.colors.chip)
-                    .clickable(onClick = onOpenBank)
+                    .pressScaleClickable(onClick = onOpenBank)
                     .padding(14.dp),
             ) {
                 Text(stringResource(R.string.bank_account_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -1981,7 +1982,7 @@ private fun HomeMarketWidgetRow(
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Ids.colors.chip)
-                    .clickable(onClick = onOpenInvest)
+                    .pressScaleClickable(onClick = onOpenInvest)
                     .padding(14.dp),
             ) {
                 Text(stock.symbol, color = Ids.colors.textSecondary, fontSize = 12.sp, maxLines = 1)
@@ -2010,7 +2011,7 @@ private fun HomeTrendingGrid(listings: List<rw.itunda.core.network.ListingDto>, 
         listings.chunked(2).forEach { row ->
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { listing ->
-                    Column(modifier = Modifier.weight(1f).clickable(onClick = onOpenMarketplace)) {
+                    Column(modifier = Modifier.weight(1f).pressScaleClickable(onClick = onOpenMarketplace)) {
                         AsyncImage(
                             model = listing.photoUrl,
                             contentDescription = null,
@@ -2041,7 +2042,7 @@ private fun HomeFeedRow(entry: HomeFeedEntry, onClick: () -> Unit) {
         else -> Icons.Outlined.Storefront to Ids.colors.textSecondary
     }
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (entry.kind == "marketplace" && !entry.photoUrl.isNullOrBlank()) {
@@ -2247,7 +2248,7 @@ private fun BankHubScreen(
             if (primaryAccount != null) {
                 item {
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAccountDetail).padding(vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccountDetail).padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -2265,7 +2266,7 @@ private fun BankHubScreen(
             }
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAutoTransfers).padding(vertical = 10.dp),
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAutoTransfers).padding(vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -2773,7 +2774,7 @@ private fun HomeTopBar(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
                 .border(1.dp, Ids.colors.divider, RoundedCornerShape(999.dp))
-                .clickable(onClick = onOpenPay)
+                .pressScaleClickable(onClick = onOpenPay)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -2844,7 +2845,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
             // own real Toss Bank account row): this row had never been clickable --
             // now opens AccountDetailScreen, the real balance+interest+ledger view.
             Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAccount).padding(horizontal = 18.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenAccount).padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
@@ -2893,7 +2894,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                 color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onOpenOverview)
+                    .pressScaleClickable(onClick = onOpenOverview)
                     .padding(horizontal = 18.dp, vertical = 12.dp),
             )
         }
@@ -2967,7 +2968,7 @@ private fun AccountDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                modifier = Modifier.size(Ids.layout.minTouchTarget).clip(CircleShape).clickable(onClick = onBack),
+                modifier = Modifier.size(Ids.layout.minTouchTarget).clip(CircleShape).pressScaleClickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
@@ -2978,13 +2979,13 @@ private fun AccountDetailScreen(
             // glyph, not bare text -- these two icons (CreditCard/Settings) are
             // already imported and used elsewhere in this file for the same real
             // destinations (see MenuScreen's own Card/Settings rows).
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onOpenCard).padding(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.pressScaleClickable(onClick = onOpenCard).padding(8.dp)) {
                 Icon(Icons.Outlined.CreditCard, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.account_detail_card), color = Ids.colors.textSecondary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
             Spacer(modifier = Modifier.width(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onOpenManage).padding(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.pressScaleClickable(onClick = onOpenManage).padding(8.dp)) {
                 Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(R.string.account_detail_manage), color = Ids.colors.textSecondary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
@@ -3189,7 +3190,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(if (row.onClick != null) Modifier.clickable(onClick = row.onClick) else Modifier)
+                    .then(if (row.onClick != null) Modifier.pressScaleClickable(onClick = row.onClick) else Modifier)
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -4381,7 +4382,7 @@ private fun MyTab(
             item { Text("My orders", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
             items(shopOrders.take(3), key = { it.id }) { order ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column {
@@ -4393,7 +4394,7 @@ private fun MyTab(
             }
             items(eatsOrders.take(3), key = { it.id }) { order ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToEats).padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onSwitchToEats).padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column {
@@ -4630,7 +4631,7 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 Text(if (kind == "email") "Email not verified" else "Phone number not verified", color = Ids.colors.textPrimary, fontSize = 13.sp)
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy) Ids.colors.textTertiary else Ids.colors.brand)
-                        .clickable(enabled = !busy) {
+                        .pressScaleClickable(enabled = !busy) {
                             busy = true
                             error = null
                             coroutineScope.launch {
@@ -4691,7 +4692,7 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, autoFocus = true, modifier = Modifier.weight(1f))
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                        .clickable(enabled = !busy && code.isNotBlank()) { confirm() }
+                        .pressScaleClickable(enabled = !busy && code.isNotBlank()) { confirm() }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) { Text(if (busy) "…" else "Confirm", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
             }
@@ -4861,7 +4862,7 @@ private fun AllTopBar(onOpenAuthentication: () -> Unit = {}, onOpenHelp: () -> U
             "Authentication",
             color = Ids.colors.textSecondary,
             fontSize = 15.sp,
-            modifier = Modifier.clickable(onClick = onOpenAuthentication),
+            modifier = Modifier.pressScaleClickable(onClick = onOpenAuthentication),
         )
         androidx.compose.material3.VerticalDivider(
             modifier = Modifier.padding(horizontal = 10.dp).height(14.dp),
@@ -4871,7 +4872,7 @@ private fun AllTopBar(onOpenAuthentication: () -> Unit = {}, onOpenHelp: () -> U
             "Help",
             color = Ids.colors.textSecondary,
             fontSize = 15.sp,
-            modifier = Modifier.clickable(onClick = onOpenHelp),
+            modifier = Modifier.pressScaleClickable(onClick = onOpenHelp),
         )
         androidx.compose.material3.VerticalDivider(
             modifier = Modifier.padding(horizontal = 10.dp).height(14.dp),
@@ -4881,7 +4882,7 @@ private fun AllTopBar(onOpenAuthentication: () -> Unit = {}, onOpenHelp: () -> U
             "Settings",
             color = Ids.colors.textSecondary,
             fontSize = 15.sp,
-            modifier = Modifier.clickable(onClick = onOpenSettings),
+            modifier = Modifier.pressScaleClickable(onClick = onOpenSettings),
         )
     }
 }

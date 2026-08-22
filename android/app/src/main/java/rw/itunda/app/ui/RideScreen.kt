@@ -8,7 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -106,7 +106,7 @@ fun RideScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { tab = value }.padding(vertical = 8.dp),
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -359,7 +359,7 @@ private fun RidePassengerContent() {
                     if (!trustedContacts.isNullOrEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                .clickable(enabled = !sendingStatus) { sendStatusToTrustedContacts(activeTrip.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = !sendingStatus) { sendStatusToTrustedContacts(activeTrip.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (sendingStatus) "Sending…" else "Send status to trusted contacts", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         sendStatusResult?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 12.sp) }
@@ -367,7 +367,7 @@ private fun RidePassengerContent() {
                     if (activeTrip.status != "IN_PROGRESS") {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
-                                .clickable(enabled = busyTripId != activeTrip.id) { cancelTrip(activeTrip.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = busyTripId != activeTrip.id) { cancelTrip(activeTrip.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busyTripId == activeTrip.id) "Cancelling…" else "Cancel ride", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -382,7 +382,7 @@ private fun RidePassengerContent() {
                             IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable(enabled = !locating) { requestLocation() }
+                                    .pressScaleClickable(enabled = !locating) { requestLocation() }
                                     .padding(horizontal = 14.dp, vertical = 14.dp),
                             ) { Text(if (locating) "…" else "Use my location", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
@@ -396,7 +396,7 @@ private fun RidePassengerContent() {
                                 Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                         Text("Stop ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
-                                        Text("Remove", fontSize = 12.sp, color = Ids.colors.danger, modifier = Modifier.clickable { stops.removeAt(index) })
+                                        Text("Remove", fontSize = 12.sp, color = Ids.colors.danger, modifier = Modifier.pressScaleClickable { stops.removeAt(index) })
                                     }
                                     IdsTextField(value = stop.address, onValueChange = { stops[index] = stop.copy(address = it) }, label = "Address", modifier = Modifier.fillMaxWidth())
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -409,14 +409,14 @@ private fun RidePassengerContent() {
                         if (stops.size < 3) {
                             Text(
                                 "+ Add a stop", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                modifier = Modifier.clickable { stops.add(StopInput()) },
+                                modifier = Modifier.pressScaleClickable { stops.add(StopInput()) },
                             )
                         }
                         IdsTextField(value = scheduleHours, onValueChange = { scheduleHours = it }, label = "Schedule for later (hours from now, optional)", modifier = Modifier.fillMaxWidth())
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(enabled = !requesting && pickupLat != null && dropoffAddress.isNotBlank()) { requestRide() }
+                                .pressScaleClickable(enabled = !requesting && pickupLat != null && dropoffAddress.isNotBlank()) { requestRide() }
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (requesting) "Requesting…" else if (scheduleHours.toDoubleOrNull() != null) "Schedule ride" else "Request ride", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -459,7 +459,7 @@ private fun RideReviewRow(busy: Boolean, onSubmit: (Int, String) -> Unit) {
             for (n in 1..5) {
                 Text(
                     "★", fontSize = 20.sp, color = if (n <= rating) Color(0xFFFFC107) else Ids.colors.textSecondary,
-                    modifier = Modifier.clickable { rating = n },
+                    modifier = Modifier.pressScaleClickable { rating = n },
                 )
             }
         }
@@ -467,7 +467,7 @@ private fun RideReviewRow(busy: Boolean, onSubmit: (Int, String) -> Unit) {
             IdsTextField(value = comment, onValueChange = { comment = it }, label = "Comment (optional)", modifier = Modifier.fillMaxWidth())
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                    .clickable(enabled = !busy) { onSubmit(rating, comment) }.padding(vertical = 10.dp),
+                    .pressScaleClickable(enabled = !busy) { onSubmit(rating, comment) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (busy) "Submitting…" else "Submit rating", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
         }
@@ -510,7 +510,7 @@ private fun TrustedContactsSection(
                         Text(
                             if (removingContactId == contact.id) "…" else "Remove",
                             color = Ids.colors.danger, fontSize = 12.sp,
-                            modifier = Modifier.clickable(enabled = removingContactId != contact.id) { onRemove(contact.id) },
+                            modifier = Modifier.pressScaleClickable(enabled = removingContactId != contact.id) { onRemove(contact.id) },
                         )
                     }
                 }
@@ -522,7 +522,7 @@ private fun TrustedContactsSection(
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (phone.isNotBlank()) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable(enabled = !adding && phone.isNotBlank()) { onAdd() }.padding(vertical = 12.dp),
+                            .pressScaleClickable(enabled = !adding && phone.isNotBlank()) { onAdd() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (adding) "Adding…" else "Add trusted contact", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 } else {
@@ -756,7 +756,7 @@ private fun RideDriverContent() {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !registering) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
+                                .pressScaleClickable(enabled = !registering) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Become a driver", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
                 }
@@ -782,7 +782,7 @@ private fun RideDriverContent() {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                     .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
-                                    .clickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    .pressScaleClickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
@@ -799,7 +799,7 @@ private fun RideDriverContent() {
                                     Text("Only offered trips heading your way.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f))
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = !destinationBusy) { clearDestination() }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                            .pressScaleClickable(enabled = !destinationBusy) { clearDestination() }.padding(horizontal = 14.dp, vertical = 8.dp),
                                     ) { Text(if (destinationBusy) "…" else "Clear", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                 }
                             } else {
@@ -816,7 +816,7 @@ private fun RideDriverContent() {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                         .background(if (destinationLat.toDoubleOrNull() != null && destinationLng.toDoubleOrNull() != null) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                        .clickable(enabled = !destinationBusy && destinationLat.toDoubleOrNull() != null && destinationLng.toDoubleOrNull() != null) { setDestination() }
+                                        .pressScaleClickable(enabled = !destinationBusy && destinationLat.toDoubleOrNull() != null && destinationLng.toDoubleOrNull() != null) { setDestination() }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (destinationBusy) "Setting…" else "Set destination", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -862,7 +862,7 @@ private fun RideDriverContent() {
                                 if (trip.status == "IN_PROGRESS" && nextStop != null) {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = busyTripId != trip.id) { arriveAtStop(trip.id) }.padding(vertical = 12.dp),
+                                            .pressScaleClickable(enabled = busyTripId != trip.id) { arriveAtStop(trip.id) }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (busyTripId == trip.id) "…" else "Arrived at ${nextStop.address}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                 }
@@ -878,7 +878,7 @@ private fun RideDriverContent() {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                             .background(if (pin.length == 4) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                            .clickable(enabled = busyTripId != trip.id && pin.length == 4) {
+                                            .pressScaleClickable(enabled = busyTripId != trip.id && pin.length == 4) {
                                                 act(trip.id) { id -> NetworkClient.apiService.startRideTrip(id, StartRideTripRequest(pin)).trip }
                                             }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
@@ -886,7 +886,7 @@ private fun RideDriverContent() {
                                 } else if (trip.status == "IN_PROGRESS") {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                            .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.completeRideTrip(id).trip } }
+                                            .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.completeRideTrip(id).trip } }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (busyTripId == trip.id) "…" else "Complete trip", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -902,13 +902,13 @@ private fun RideDriverContent() {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.declineRideTrip(id).trip } }
+                                        .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.declineRideTrip(id).trip } }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text("Decline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptRideTrip(id).trip } }
+                                        .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptRideTrip(id).trip } }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyTripId == trip.id) "…" else "Accept", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -1008,7 +1008,7 @@ private fun DriverRatingSection(driverId: String) {
         Text(
             "★ %.1f".format(r.average ?: 0.0) + " (${r.count} rating${if (r.count == 1L) "" else "s"}) ${if (expanded) "▲" else "▼"}",
             color = androidx.compose.ui.graphics.Color(0xFFFFC107), fontWeight = FontWeight.Bold, fontSize = 12.sp,
-            modifier = Modifier.clickable {
+            modifier = Modifier.pressScaleClickable {
                 expanded = !expanded
                 if (expanded && reviews == null) {
                     coroutineScope.launch {
