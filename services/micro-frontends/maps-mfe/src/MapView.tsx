@@ -36,6 +36,7 @@ import {
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
 import { ApiError, getStoredUser } from './lib/api';
+import { PlaceGlyph } from './icons/ItundaFacePlaces';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
 // OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
@@ -191,10 +192,6 @@ function merchantPinColor(category: string | null | undefined): string {
   return '#6B7280';
 }
 
-// Real per-category glyphs for the chip row (2026-07-21) -- mirrors Android's own
-// MAP_CATEGORY_ICONS lookup exactly (MapScreen.kt), same client-side-only convention:
-// no icon field on the backend's NearbyPlace/category model, plain emoji over an icon
-// font, never sent back to the server.
 // Real recent-searches persistence key (2026-07-22) -- see the `recentSearches` state's
 // own doc comment. Namespaced per-app, not just "recent_searches", since this is real
 // shared browser localStorage the whole bank-mfe origin's other features also write into.
@@ -202,19 +199,15 @@ const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
 
 // Real bookmark-folder defaults/palette (2026-07-22) -- see MapsService.addBookmark's
 // own doc comment on the backend for DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR
-// (kept in sync by hand, not imported, since this is a plain frontend literal the same
-// way CATEGORY_ICONS below already is). A small fixed palette rather than a full color
-// picker -- matches this app's own itunda-* palette, not an arbitrary hex input a user
-// could fat-finger into an unreadable pin color.
+// (kept in sync by hand, not imported, since this is a plain frontend literal). A
+// small fixed palette rather than a full color picker -- matches this app's own
+// itunda-* palette, not an arbitrary hex input a user could fat-finger into an
+// unreadable pin color. Independent of itunda's own brand color (a user-choice
+// palette, not a brand pointer -- deliberately left untouched by the itundaface
+// pass below, same real distinction the earlier indigo rebrand already drew for
+// this exact palette, see feedback captured in project_itunda_own_icons_graphics.md).
 const DEFAULT_BOOKMARK_FOLDER = 'Saved places';
 const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', 'var(--itunda-red)', '#22B07D', '#4E5968'];
-
-const CATEGORY_ICONS: Record<string, string> = {
-  RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
-  BANK: '🏦', ATM: '🏧', HOTEL: '🏨', SUPERMARKET: '🛒',
-  GAS_STATION: '⛽', SCHOOL: '🏫', ITUNDA_AGENT: '💰',
-  MARKET: '🧺', BUS_STOP: '🚌',
-};
 
 // Real fixed (non-theme-reactive) text colors for this component's own deliberately-
 // white map chrome (search pill, chip row, results dropdown, bottom sheet) -- found as a
@@ -1053,7 +1046,7 @@ export default function MapView() {
         : await searchNearbyPlaces(categoryId, center[0], center[1]);
       categoryMarkersRef.current.forEach((m) => m.remove());
       categoryMarkersRef.current = places.map((place) =>
-        new maplibregl.Marker({ color: '#8B5CF6' })
+        new maplibregl.Marker({ color: '#7472F4' })
           .setLngLat([place.longitude, place.latitude])
           .setPopup(new maplibregl.Popup({ offset: 12 }).setText(`${place.displayName} · ${place.distanceKm.toFixed(1)}km`))
           .addTo(map),
@@ -1332,12 +1325,12 @@ export default function MapView() {
                   fontSize: '12px',
                   fontWeight: 600,
                   border: 'none',
-                  boxShadow: active ? '0 2px 6px rgba(139,92,246,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
-                  backgroundColor: active ? '#8B5CF6' : '#fff',
+                  boxShadow: active ? '0 2px 6px rgba(116,114,244,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
+                  backgroundColor: active ? '#7472F4' : '#fff',
                   color: active ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                 }}
               >
-                <span>{CATEGORY_ICONS[category.id] ?? '📍'}</span>
+                <PlaceGlyph category={category.id} size={16} />
                 {active && categoryLoading ? '…' : category.label}
               </button>
             );
