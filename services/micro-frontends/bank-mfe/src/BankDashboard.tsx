@@ -8,7 +8,7 @@ import { ReactionGlyph } from './icons/ItundaFace';
 import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
-import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, BellGlyph } from './icons/ItundaFaceMisc';
+import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, BellGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, WrenchGlyph, PriceDropGlyph } from './icons/ItundaFaceMisc';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -8328,7 +8328,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><GlobeGlyph size={16} /> Start an open chat</span>
         </button>
         <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('join')}>
-          📷 Join an open chat
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><CameraGlyph size={16} /> Join an open chat</span>
         </button>
       </div>
     );
@@ -8558,7 +8558,7 @@ function OfferBubble({
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
-      <p style={{ fontWeight: 700 }}>💰 {offer.amount.toLocaleString()} RWF</p>
+      <p style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><MoneyBagGlyph size={16} /> {offer.amount.toLocaleString()} RWF</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[offer.status]}</p>
       {canRespond && !countering && (
         <div style={{ display: 'flex', gap: '6px' }}>
@@ -8854,7 +8854,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
       <div className="itunda-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>🛍 Emoticon Store</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><ShoppingBagGlyph size={18} /> Emoticon Store</p>
           {/* Real touch-target-size fix (item 244, web accessibility sweep):
               no padding meant the clickable area was just the bare glyph,
               well under WCAG 2.5.8's 24x24 CSS-pixel AA minimum. */}
@@ -9729,7 +9729,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         {showAttachMenu && (
           <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--itunda-white)', border: '1px solid var(--itunda-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
             <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
-              📷 Photo
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><CameraGlyph size={16} /> Photo</span>
             </button>
             <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               😊 Emoticon
@@ -10250,7 +10250,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         {showAttachMenu && (
           <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--itunda-white)', border: '1px solid var(--itunda-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
             <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
-              📷 Photo
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><CameraGlyph size={16} /> Photo</span>
             </button>
             <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               😊 Emoticon
@@ -11420,7 +11420,7 @@ function TodaysBirthdaySection({ onOpenConversation }: { onOpenConversation: (co
 
   return (
     <div className="itunda-card" style={{ background: 'var(--itunda-indigo-light)' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>🎂 Today's birthday</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}><CakeGlyph size={16} /> Today's birthday</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {birthdays.map((c) => (
           <button
@@ -12531,7 +12531,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? <><BellGlyph size={12} /> Alerts</> : '🔧 Inspections'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? <><BellGlyph size={12} /> Alerts</> : <><WrenchGlyph size={12} /> Inspections</>}
           </button>
         ))}
       </div>
@@ -21215,8 +21215,8 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.businessName}</p>
               <ProductPriceBlock price={f.price} originalPrice={f.originalPrice} discountPercent={f.discountPercent} />
               {f.priceDropped && (
-                <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-red, var(--itunda-red))', marginTop: '2px' }}>
-                  🔻 Price dropped
+                <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-red, var(--itunda-red))', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <PriceDropGlyph size={12} /> Price dropped
                 </p>
               )}
             </div>

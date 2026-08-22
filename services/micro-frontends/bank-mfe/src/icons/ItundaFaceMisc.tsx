@@ -147,3 +147,73 @@ export function BellGlyph({ size = 16, ...rest }: MiscIconProps) {
     </svg>
   );
 }
+
+// Third misc batch, same session, same audit -- the remaining real single-use
+// emoji that don't collide with the pin/link/chat/clock/globe/bell batch
+// above: camera (photo attach), cake (birthday), money bag (price-offer
+// amount), shopping bag (emoticon store), wrench (marketplace inspections),
+// price-drop (listing badge). 72x72 viewBox (vs. this file's other batches'
+// 24x24) -- an internal inconsistency introduced by two independent passes
+// landing the same day; left as-is rather than rescaling working, verified
+// path data purely for stylistic uniformity.
+
+export function CameraGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <path d="M10,22 H26 L30,14 H42 L46,22 H62 C64.2,22 66,23.8 66,26 V58 C66,60.2 64.2,62 62,62 H10 C7.8,62 6,60.2 6,58 V26 C6,23.8 7.8,22 10,22 Z" fill="#415676" />
+      <circle cx="36" cy="42" r="14" fill="#c0ccdd" />
+      <circle cx="36" cy="42" r="8" fill="#415676" />
+      <circle cx="56" cy="30" r="2.6" fill="#c0ccdd" />
+    </svg>
+  );
+}
+
+export function CakeGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <rect x="14" y="40" width="44" height="24" rx="3" fill="#a20800" />
+      <path d="M14,40 C14,34 20,34 24,40 C28,46 34,46 38,40 C42,34 48,34 52,40 C56,46 58,40 58,40 V48 H14 Z" fill="#feb6aa" />
+      <rect x="33" y="20" width="6" height="14" rx="2" fill="#dccb8a" />
+      <path d="M36,10 C36,10 40,14 36,18 C32,14 36,10 36,10 Z" fill="#f0740a" />
+    </svg>
+  );
+}
+
+export function MoneyBagGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <path d="M28,14 C28,9 31.6,5 36,5 C40.4,5 44,9 44,14" stroke="#483eb6" strokeWidth={3.2} fill="none" strokeLinecap="round" />
+      <path d="M22,17 H50 L57,45 C59,53 51,62 42,62 H30 C21,62 13,53 15,45 Z" fill="#483eb6" />
+      <circle cx="36" cy="40" r="8" fill="none" stroke="#c0c6ff" strokeWidth={2.6} />
+      <line x1="36" y1="34.5" x2="36" y2="45.5" stroke="#c0c6ff" strokeWidth={2.6} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ShoppingBagGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <rect x="14" y="28" width="44" height="36" rx="4" fill="#e0455c" />
+      <path d="M22,28 V20 C22,14.5 26.5,10 32,10" stroke="#e0455c" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <path d="M50,28 V20 C50,14.5 45.5,10 40,10" stroke="#e0455c" strokeWidth={4} fill="none" strokeLinecap="round" />
+      <line x1="14" y1="38" x2="58" y2="38" stroke="#ffd7dc" strokeWidth={2.6} opacity={0.8} />
+    </svg>
+  );
+}
+
+export function WrenchGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <path d="M46,10 C40,10 35,15 35,21 C35,23 35.5,24.8 36.4,26.4 L14,48.8 C12,50.8 12,54 14,56 L16,58 C18,60 21.2,60 23.2,58 L45.6,35.6 C47.2,36.5 49,37 51,37 C57,37 62,32 62,26 C62,24.3 61.6,22.7 60.9,21.3 L52.4,29.8 L45.2,22.6 L53.7,14.1 C52.3,13.4 50.7,13 49,13" fill="#415676" />
+    </svg>
+  );
+}
+
+export function PriceDropGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <path d="M36,52 L14,20 H58 Z" fill="#e0455c" />
+      <rect x="14" y="58" width="44" height="6" rx="3" fill="#e0455c" />
+    </svg>
+  );
+}
