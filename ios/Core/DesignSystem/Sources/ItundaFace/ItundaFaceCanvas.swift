@@ -44,21 +44,34 @@ public enum ItundaFaceShape {
 }
 
 /// Parses a real SVG path-data string into a SwiftUI `Path`. Supports both
-/// absolute (M L H V C A Z) and relative (m l h v c a) commands, plus the
+/// absolute (M L H V C S A Z) and relative (m l h v c s a) commands, plus the
 /// real SVG "implicit repeat" rule (a command letter followed by more than
 /// one coordinate set repeats implicitly, e.g. `L10,10 20,20` is two
-/// linetos) -- both were real gaps found the hard way (2026-08-22): itunda's
-/// own hand-authored glyphs only ever used absolute commands, so the
-/// original parser only handled those, but real-world professional SVG
-/// exports (e.g. Noto Emoji's, see ItundaFacePeople.swift) mix relative
-/// lowercase commands throughout to save file size. The Xcode build
-/// succeeding after adding those glyphs did NOT prove they rendered
-/// correctly -- Swift compiling only proves the string literal is valid,
-/// not that this parser understood it; the gap was caught by actually
-/// reasoning through what characters the real path data contained, not by
-/// trusting a green build. Web's browser-native SVG engine and Android's
-/// real `androidx.core.graphics.PathParser` both already handled this full
-/// grammar; only this hand-rolled iOS parser had the gap.
+/// linetos) and S/s's own "smooth cubic curveto" shorthand (its first
+/// control point isn't in the data at all -- it's the reflection of the
+/// preceding cubic command's own second control point about the current
+/// point, only when that preceding command was itself C/c/S/s).
+///
+/// All of this was found the hard way, in two separate passes, both on
+/// 2026-08-22: itunda's own hand-authored glyphs only ever used absolute
+/// M/L/H/V/C/A/Z, so the original parser only handled that subset. Adding
+/// Noto Emoji's real professional SVG exports (see ItundaFacePeople.swift)
+/// surfaced relative lowercase commands first, then a SECOND pass adding
+/// Noto's Animals & Nature glyphs (ItundaFaceNature.swift) surfaced S/s,
+/// used extensively across almost every one of those glyphs, which the
+/// `default:` branch had been silently dropping entirely (no visible error,
+/// just a missing curve segment). **The Xcode build succeeding after each of
+/// those additions did NOT prove the glyphs rendered correctly** -- Swift
+/// compiling only proves the string literal is valid, never that this
+/// parser understood the SVG grammar inside it. Both gaps were caught by
+/// directly reasoning through which command letters the real fetched path
+/// data actually contained (a real grep-based scan, not a visual guess),
+/// not by trusting a green build. Web's browser-native SVG engine and
+/// Android's real `androidx.core.graphics.PathParser` both already handle
+/// this full grammar; only this hand-rolled iOS parser needed catching up,
+/// twice. **Standing lesson**: before adding any new real-world SVG source
+/// to this codebase, scan its actual command-letter usage against what this
+/// function implements -- don't assume coverage from a prior fix.
 public func svgPath(_ d: String) -> Path {
     var path = Path()
     var current = CGPoint.zero
@@ -74,6 +87,20 @@ public func svgPath(_ d: String) -> Path {
     }
 
     var lastCommand: Character?
+    // Real second bug in this same parser, found the hard way (2026-08-22)
+    // right after fixing the relative-command gap: most of Noto Emoji's
+    // Animals & Nature glyphs use the S/s "smooth cubic curveto" shorthand
+    // extensively (every Bezier after the first in a smooth curve chain), and
+    // this parser had zero support for it at all -- the `default:` branch
+    // silently dropped the whole segment, meaning the earlier "BUILD
+    // SUCCEEDED" was, again, not proof the geometry rendered correctly. Per
+    // the real SVG spec, S/s's own first control point isn't present in the
+    // path data -- it's the reflection of the PRECEDING cubic command's own
+    // second control point about the current point, and only applies when
+    // the immediately preceding command was itself C/c/S/s; otherwise the
+    // first control point equals the current point. Tracked here rather than
+    // guessed at.
+    var lastCubicControl2: CGPoint?
     while !scanner.isAtEnd {
         let nextIsCommandLetter = peekIsCommandLetter(scanner)
         let command: Character
@@ -92,53 +119,81 @@ public func svgPath(_ d: String) -> Path {
             subpathStart = current
             path.move(to: current)
             lastCommand = "L" // subsequent implicit-repeat pairs after M are linetos, per spec
+            lastCubicControl2 = nil
         case "m":
             guard let x = readDouble(), let y = readDouble() else { break }
             current = CGPoint(x: current.x + x, y: current.y + y)
             subpathStart = current
             path.move(to: current)
             lastCommand = "l"
+            lastCubicControl2 = nil
         case "L":
             guard let x = readDouble(), let y = readDouble() else { break }
             current = CGPoint(x: x, y: y)
             path.addLine(to: current)
+            lastCubicControl2 = nil
         case "l":
             guard let x = readDouble(), let y = readDouble() else { break }
             current = CGPoint(x: current.x + x, y: current.y + y)
             path.addLine(to: current)
+            lastCubicControl2 = nil
         case "H":
             guard let x = readDouble() else { break }
             current = CGPoint(x: x, y: current.y)
             path.addLine(to: current)
+            lastCubicControl2 = nil
         case "h":
             guard let x = readDouble() else { break }
             current = CGPoint(x: current.x + x, y: current.y)
             path.addLine(to: current)
+            lastCubicControl2 = nil
         case "V":
             guard let y = readDouble() else { break }
             current = CGPoint(x: current.x, y: y)
             path.addLine(to: current)
+            lastCubicControl2 = nil
         case "v":
             guard let y = readDouble() else { break }
             current = CGPoint(x: current.x, y: current.y + y)
             path.addLine(to: current)
+            lastCubicControl2 = nil
         case "C":
             guard let x1 = readDouble(), let y1 = readDouble(),
                   let x2 = readDouble(), let y2 = readDouble(),
                   let x = readDouble(), let y = readDouble() else { break }
             path.addCurve(to: CGPoint(x: x, y: y), control1: CGPoint(x: x1, y: y1), control2: CGPoint(x: x2, y: y2))
             current = CGPoint(x: x, y: y)
+            lastCubicControl2 = CGPoint(x: x2, y: y2)
         case "c":
             guard let x1 = readDouble(), let y1 = readDouble(),
                   let x2 = readDouble(), let y2 = readDouble(),
                   let x = readDouble(), let y = readDouble() else { break }
             let base = current
+            let control2 = CGPoint(x: base.x + x2, y: base.y + y2)
             path.addCurve(
                 to: CGPoint(x: base.x + x, y: base.y + y),
                 control1: CGPoint(x: base.x + x1, y: base.y + y1),
-                control2: CGPoint(x: base.x + x2, y: base.y + y2)
+                control2: control2
             )
             current = CGPoint(x: base.x + x, y: base.y + y)
+            lastCubicControl2 = control2
+        case "S":
+            guard let x2 = readDouble(), let y2 = readDouble(),
+                  let x = readDouble(), let y = readDouble() else { break }
+            let control1 = lastCubicControl2.map { CGPoint(x: 2 * current.x - $0.x, y: 2 * current.y - $0.y) } ?? current
+            let control2 = CGPoint(x: x2, y: y2)
+            path.addCurve(to: CGPoint(x: x, y: y), control1: control1, control2: control2)
+            current = CGPoint(x: x, y: y)
+            lastCubicControl2 = control2
+        case "s":
+            guard let x2 = readDouble(), let y2 = readDouble(),
+                  let x = readDouble(), let y = readDouble() else { break }
+            let base = current
+            let control1 = lastCubicControl2.map { CGPoint(x: 2 * base.x - $0.x, y: 2 * base.y - $0.y) } ?? base
+            let control2 = CGPoint(x: base.x + x2, y: base.y + y2)
+            path.addCurve(to: CGPoint(x: base.x + x, y: base.y + y), control1: control1, control2: control2)
+            current = CGPoint(x: base.x + x, y: base.y + y)
+            lastCubicControl2 = control2
         case "A":
             guard let rx = readDouble(), let ry = readDouble(),
                   let xAxisRotation = readDouble(),
@@ -151,6 +206,7 @@ public func svgPath(_ d: String) -> Path {
                 largeArcFlag: largeArcFlag != 0, sweepFlag: sweepFlag != 0
             )
             current = end
+            lastCubicControl2 = nil
         case "a":
             guard let rx = readDouble(), let ry = readDouble(),
                   let xAxisRotation = readDouble(),
@@ -163,12 +219,15 @@ public func svgPath(_ d: String) -> Path {
                 largeArcFlag: largeArcFlag != 0, sweepFlag: sweepFlag != 0
             )
             current = end
+            lastCubicControl2 = nil
         case "Z", "z":
             path.closeSubpath()
             current = subpathStart
             lastCommand = nil
+            lastCubicControl2 = nil
         default:
             lastCommand = nil
+            lastCubicControl2 = nil
         }
     }
     return path
@@ -182,7 +241,7 @@ private func peekIsCommandLetter(_ scanner: Scanner) -> Bool {
     defer { scanner.currentIndex = savedIndex }
     scanner.charactersToBeSkipped = CharacterSet(charactersIn: ", ")
     guard let c = scanner.scanCharacter() else { return true }
-    return "MmLlHhVvCcAaZz".contains(c)
+    return "MmLlHhVvCcSsAaZz".contains(c)
 }
 
 /// SVG's elliptical-arc endpoint parameterization (spec section 9.5.1),

@@ -29,11 +29,13 @@ import CoreDesignSystem
 
 private let smileysKeys: [String] = ["👍", "❤️", "😂", "😮", "😢", "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎"]
 private let peopleKeys: [String] = ["👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏"]
+private let natureKeys: [String] = ["🐶", "🐱", "⭐", "🌟", "🌈", "🌸", "🐦"]
 
-let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys
+let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys
 let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Smileys & Emotion", smileysKeys),
     ("People & Body", peopleKeys),
+    ("Animals & Nature", natureKeys),
 ]
 
 @ViewBuilder
@@ -62,6 +64,13 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "💪": PeopleMuscle(size: size)
     case "🙏": PeoplePray(size: size)
     case "👏": PeopleClappingHands(size: size)
+    case "🐶": NatureDog(size: size)
+    case "🐱": NatureCat(size: size)
+    case "⭐": NatureStar(size: size)
+    case "🌟": NatureGlowingStar(size: size)
+    case "🌈": NatureRainbow(size: size)
+    case "🌸": NatureCherryBlossom(size: size)
+    case "🐦": NatureBird(size: size)
     default: EmptyView()
     }
 }
