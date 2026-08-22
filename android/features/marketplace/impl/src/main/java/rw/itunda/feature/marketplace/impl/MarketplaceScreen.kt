@@ -69,6 +69,7 @@ import retrofit2.HttpException
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.itundaface.CameraGlyph
 import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.itundaface.PackageGlyph
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
@@ -133,7 +134,7 @@ private fun HoodView.label() = when (this) {
     HoodView.MINE -> "My listings"
     HoodView.PURCHASES -> "Purchases"
     HoodView.WISHLIST -> "Wishlist"
-    HoodView.ALERTS -> "🔔 Alerts"
+    HoodView.ALERTS -> "Alerts"
 }
 
 @Composable
@@ -898,7 +899,10 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                         }
                     }
                 } else {
-                    Text("📷 Add a photo (optional)", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        CameraGlyph(size = 13.dp)
+                        Text("Add a photo (optional)", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

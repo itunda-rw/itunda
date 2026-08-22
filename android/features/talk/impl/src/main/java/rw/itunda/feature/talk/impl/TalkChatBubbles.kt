@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
+import rw.itunda.core.designsystem.itundaface.MoneyBagGlyph
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -175,7 +176,10 @@ internal fun OfferBubble(offer: OfferBubbleData, isMine: Boolean, currentUserId:
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("💰 %,.0f RWF".format(offer.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                MoneyBagGlyph(size = 16.dp)
+                Text("%,.0f RWF".format(offer.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
             Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else Ids.colors.textSecondary, fontSize = 12.sp)
             if (canRespond && !countering) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

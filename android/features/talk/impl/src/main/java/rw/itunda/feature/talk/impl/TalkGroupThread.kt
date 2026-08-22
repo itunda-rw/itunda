@@ -63,6 +63,8 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.shouldShowChatTimestamp
+import rw.itunda.core.designsystem.itundaface.CameraGlyph
+import rw.itunda.core.designsystem.itundaface.PinGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.SendEmoticonRequest
 import rw.itunda.core.network.GroupMemberDto
@@ -276,7 +278,10 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         }
         pinnedMessage?.let { pinned ->
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("📌 ${pinned.body}", color = Ids.colors.textPrimary, fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                    PinGlyph(size = 12.dp)
+                    Text(pinned.body, color = Ids.colors.textPrimary, fontSize = 12.sp, maxLines = 1)
+                }
                 TextButton(onClick = {
                     updatingPin = true
                     coroutineScope.launch { try { NetworkClient.apiService.unpinGroupMessage(group.groupId); pinnedMessage = null } catch (_: Exception) { error = "Couldn't unpin this message." } finally { updatingPin = false } }
@@ -411,7 +416,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 // Real attach menu (2026-08-04) -- Kakao's own real "+"-opens-a-menu
                 // pattern (References table: "'+' opens a multi-function attach menu").
                 DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
-                    DropdownMenuItem(text = { Text("📷 Photo") }, onClick = { attachMenuOpen = false; pickGroupPhoto.launch("image/*") })
+                    DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { CameraGlyph(size = 18.dp) }, onClick = { attachMenuOpen = false; pickGroupPhoto.launch("image/*") })
                     DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
                 }
             }

@@ -298,8 +298,8 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
     when {
         mode == OpenChatMode.CLOSED -> {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                IdsButton(text = "🌐 Start an open chat", onClick = { mode = OpenChatMode.CREATE }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
-                IdsButton(text = "📷 Join an open chat", onClick = { mode = OpenChatMode.JOIN }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+                IdsButton(text = "Start an open chat", onClick = { mode = OpenChatMode.CREATE }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
+                IdsButton(text = "Join an open chat", onClick = { mode = OpenChatMode.JOIN }, size = IdsButtonSize.Medium, modifier = Modifier.weight(1f))
             }
         }
         created != null -> {
@@ -309,7 +309,7 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
                     Text("Send friends the code — they can join instantly, wherever they are", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(10.dp))
                     IdsButton(
-                        text = "🔗 Share code",
+                        text = "Share code",
                         onClick = {
                             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                 type = "text/plain"

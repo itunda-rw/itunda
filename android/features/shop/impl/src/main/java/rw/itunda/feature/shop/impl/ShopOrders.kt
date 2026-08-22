@@ -34,6 +34,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.itundaface.PriceDropGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ProductSubscriptionDto
 import rw.itunda.core.network.FavoriteProductDto
@@ -116,7 +117,10 @@ internal fun ProductWishlistView(onRemoved: () -> Unit) {
                                 // Real Naver Shopping price-drop alert (item 227) -- see
                                 // FavoriteProductDto's own doc comment.
                                 if (f.priceDropped) {
-                                    Text("🔻 Price dropped", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        PriceDropGlyph(size = 11.dp)
+                                        Text("Price dropped", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
                                 }
                             }
                         }

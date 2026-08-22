@@ -131,6 +131,7 @@ import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.network.TrendingPlaceDto
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.itundaface.LinkGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
@@ -1739,13 +1740,15 @@ internal fun SharedFolderSection(
     onSubscribe: () -> Unit,
     onOpenPlace: (MapBookmarkDto) -> Unit,
 ) {
-    Text(
-        "🔗 Shared with you · $folderName",
-        fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
-        color = Ids.colors.textSecondary,
-        modifier = Modifier.padding(top = 8.dp),
-    )
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 8.dp)) {
+        LinkGlyph(size = 11.dp)
+        Text(
+            "Shared with you · $folderName",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp,
+            color = Ids.colors.textSecondary,
+        )
+    }
     when {
         loading -> Text("Loading shared places…", fontSize = 12.sp, color = Ids.colors.textSecondary)
         error != null -> Text(error, fontSize = 12.sp, color = Ids.colors.danger)

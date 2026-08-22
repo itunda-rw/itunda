@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.itundaface.ClockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BookBusSeatsRequest
 import rw.itunda.core.network.BusBookingDto
@@ -188,7 +189,10 @@ private fun BusRideContent() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${trip.origin} → ${trip.destination}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("🕒 Departs ${trip.departureTime.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            ClockGlyph(size = 12.dp)
+                            Text("Departs ${trip.departureTime.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                         Text(
                             "${formatMoneyBus(trip.farePerSeat)} RWF/seat · ${trip.availableSeats} seat(s) left",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
@@ -340,7 +344,10 @@ private fun BusOperateContent() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("${trip.origin} → ${trip.destination}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("🕒 Departs ${trip.departureTime.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            ClockGlyph(size = 12.dp)
+                            Text("Departs ${trip.departureTime.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                         Text(
                             "${trip.availableSeats}/${trip.totalSeats} seats left · ${formatMoneyBus(trip.farePerSeat)} RWF/seat",
                             color = Ids.colors.textSecondary, fontSize = 12.sp,

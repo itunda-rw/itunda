@@ -64,7 +64,9 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.shouldShowChatTimestamp
+import rw.itunda.core.designsystem.itundaface.CameraGlyph
 import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
+import rw.itunda.core.designsystem.itundaface.PinGlyph
 import rw.itunda.core.designsystem.itundaface.VoucherTicket
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConversationSummaryDto
@@ -380,7 +382,10 @@ internal fun ChatThreadView(
         searchResults?.let { Text("${it.size} matching message${if (it.size == 1) "" else "s"}", color = Ids.colors.textSecondary, fontSize = 12.sp) }
         pinnedMessage?.let { pinned ->
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Text("📌 ${pinned.body}", color = Ids.colors.textPrimary, fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+                    PinGlyph(size = 12.dp)
+                    Text(pinned.body, color = Ids.colors.textPrimary, fontSize = 12.sp, maxLines = 1)
+                }
                 TextButton(onClick = {
                     updatingPin = true
                     coroutineScope.launch { try { NetworkClient.apiService.unpinConversationMessage(conversation.conversationId); pinnedMessage = null } catch (_: Exception) { error = "Couldn't unpin this message." } finally { updatingPin = false } }
@@ -700,7 +705,7 @@ internal fun ChatThreadView(
                 // Real attach menu (2026-08-04) -- Kakao's own real "+"-opens-a-menu
                 // pattern, consolidating what used to be 3 separate always-visible icons.
                 DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
-                    DropdownMenuItem(text = { Text("📷 Photo") }, onClick = { attachMenuOpen = false; pickChatPhoto.launch("image/*") })
+                    DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { CameraGlyph(size = 18.dp) }, onClick = { attachMenuOpen = false; pickChatPhoto.launch("image/*") })
                     DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
                     DropdownMenuItem(text = { Text("Gift") }, leadingIcon = { GiftThemeGlyph(null, size = 18.dp) }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
                     DropdownMenuItem(text = { Text("Gift voucher") }, leadingIcon = { VoucherTicket(size = 18.dp) }, onClick = { attachMenuOpen = false; voucherComposerOpen = !voucherComposerOpen })

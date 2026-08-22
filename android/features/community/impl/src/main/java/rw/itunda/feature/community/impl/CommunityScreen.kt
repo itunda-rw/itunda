@@ -55,6 +55,8 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
+import rw.itunda.core.designsystem.itundaface.HeartFilled
+import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.ScrollFog
@@ -588,7 +590,12 @@ private fun CommunityPostCard(
             }
             Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(post.body, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            Text("❤️ ${post.likeCount} · 💬 ${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                HeartFilled(size = 12.dp)
+                Text("${post.likeCount} ·", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                SpeechBubbleGlyph(size = 12.dp)
+                Text("${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            }
             if (!isMine && post.category == "question") {
                 ListingActionButton("Answer this question", busy, onClick = onOpen)
             } else if (post.category == "meetup") {

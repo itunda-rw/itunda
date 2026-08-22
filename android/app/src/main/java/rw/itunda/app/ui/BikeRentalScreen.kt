@@ -39,6 +39,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import rw.itunda.core.designsystem.itundaface.BikeTypeGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BikeDto
 import rw.itunda.core.network.BikeRentalSessionDto
@@ -219,7 +220,10 @@ private fun BikeRentContent() {
             items(nearbyBikes, key = { it.id }) { bike ->
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BikeTypeGlyph(electric = bike.type == "ELECTRIC", size = 15.dp)
+                            Text(if (bike.type == "ELECTRIC") "Electric bike" else "Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
                         Text(if (bike.type == "ELECTRIC") "150 RWF/minute" else "80 RWF/minute", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
@@ -345,13 +349,17 @@ private fun BikeMineContent() {
                     Text("Register a bike you own", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Any itunda user can list a bike or scooter into the shared rental pool.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("ELECTRIC" to "⚡ Electric", "REGULAR" to "🚲 Regular").forEach { (value, label) ->
-                            Box(
+                        listOf("ELECTRIC" to "Electric", "REGULAR" to "Regular").forEach { (value, label) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                                     .background(if (bikeType == value) Ids.colors.brand else Ids.colors.surfaceSoft)
                                     .clickable { bikeType = value }.padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(label, color = if (bikeType == value) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) {
+                                BikeTypeGlyph(electric = value == "ELECTRIC", size = 13.dp)
+                                Text(label, color = if (bikeType == value) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                     Box(
@@ -371,7 +379,10 @@ private fun BikeMineContent() {
             items(myBikes, key = { it.id }) { bike ->
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BikeTypeGlyph(electric = bike.type == "ELECTRIC", size = 15.dp)
+                            Text(if (bike.type == "ELECTRIC") "Electric bike" else "Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)

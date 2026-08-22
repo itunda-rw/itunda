@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import rw.itunda.core.designsystem.itundaface.ClockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddRideTrustedContactRequest
 import rw.itunda.core.network.NetworkClient
@@ -938,7 +939,10 @@ private fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = null
             Text("→ ${trip.dropoffAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             val scheduledFor = trip.scheduledFor
             if (scheduledFor != null) {
-                Text("🕒 Scheduled for ${scheduledFor.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    ClockGlyph(size = 12.dp)
+                    Text("Scheduled for ${scheduledFor.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 // Real Toss reference (2026-08-11, "토스 인터랙션 디자이너의 모든 것"): a

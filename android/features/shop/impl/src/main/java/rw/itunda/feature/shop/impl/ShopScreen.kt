@@ -57,6 +57,8 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.itundaface.ClockGlyph
+import rw.itunda.core.designsystem.itundaface.FlameGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.DealProductDto
 import rw.itunda.core.network.RecentlyViewedProductDto
@@ -734,7 +736,10 @@ fun CommerceShopContent(
             if (selectedCategory == null && searchInput.isBlank() && recentlyViewed.isNotEmpty()) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("🕐 Recently viewed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ClockGlyph(size = 16.dp)
+                            Text("Recently viewed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             recentlyViewed.forEach { rv ->
                                 Column(
@@ -766,7 +771,10 @@ fun CommerceShopContent(
             if (selectedCategory == null && searchInput.isBlank() && !deals.isNullOrEmpty()) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("🔥 Deals", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FlameGlyph(size = 17.dp)
+                            Text("Deals", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
                         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             deals!!.forEach { d ->
                                 Column(

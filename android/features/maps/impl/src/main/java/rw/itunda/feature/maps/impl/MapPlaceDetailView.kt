@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.itundaface.ClockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BusTripDto
 import rw.itunda.core.network.EatsReviewDto
@@ -312,7 +313,10 @@ internal fun PlaceDetailAndRouteView(
                     Text(valueLine, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
                     val openingHours = matchedMerchant.openingHours
                     if (openingHours != null) {
-                        Text("🕒 $openingHours", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            ClockGlyph(size = 11.dp)
+                            Text(openingHours, fontSize = 11.sp, color = Ids.colors.textSecondary)
+                        }
                     }
                     val phoneNumber = matchedMerchant.phoneNumber
                     if (phoneNumber != null) {

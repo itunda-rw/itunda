@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.itundaface.ShoppingBagGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.EmoticonDto
 import rw.itunda.core.network.EmoticonPackDto
@@ -267,7 +268,12 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("🛍 Emoticon Store") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ShoppingBagGlyph(size = 18.dp)
+                Text("Emoticon Store")
+            }
+        },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
         text = {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
