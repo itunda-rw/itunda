@@ -8,6 +8,7 @@ import { ReactionGlyph } from './icons/ItundaFace';
 import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
+import { FlameGlyph, PackageGlyph } from './icons/ItundaFaceMisc';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -12083,7 +12084,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       {isMyEscrowTrade && escrow && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {escrow.deliveryAddress && (
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', margin: 0 }}>📦 Delivery address: {escrow.deliveryAddress}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}><PackageGlyph size={13} /> Delivery address: {escrow.deliveryAddress}</p>
           )}
           {escrow.status === 'HELD' && (
             <>
@@ -16572,7 +16573,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                       deliveryTimeMinutes above already includes the real delay bump when
                       this is true; this badge is why it's longer than usual, not a
                       separate/contradictory number. */}
-                  {r.isBusy && <span>· 🔥 Busy, delivery may take longer</span>}
+                  {r.isBusy && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <FlameGlyph size={12} /> Busy, delivery may take longer</span>}
                   {/* Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day
                       schedule) (2026-08-16) -- see Merchant.isClosedToday's own doc
                       comment. */}
@@ -21624,7 +21625,7 @@ function ShopView() {
           the same underlying row shape. */}
       {view === 'BROWSE' && searchResults === null && deals && deals.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>🔥 Deals</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}><FlameGlyph size={17} /> Deals</p>
           <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
             {deals.map((d) => (
               <button
@@ -21806,7 +21807,7 @@ function ShopView() {
                   {!!m.favoriteCount && m.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {m.favoriteCount.toLocaleString()}</span>}
                   {m.distanceKm != null && <span>· {m.distanceKm.toFixed(1)} km</span>}
                   {m.deliveryTimeMinutes != null && <span>· ~{m.deliveryTimeMinutes} min</span>}
-                  {m.isBusy && <span>· 🔥 Busy, delivery may take longer</span>}
+                  {m.isBusy && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <FlameGlyph size={12} /> Busy, delivery may take longer</span>}
                   {m.closedToday && <span>· 🚫 Closed today</span>}
                   {m.minOrderAmount != null && <span>· Min {m.minOrderAmount.toLocaleString()} RWF</span>}
                   {!m.category && m.rating == null && m.distanceKm == null && <span>Real cart checkout, real delivery tracking</span>}

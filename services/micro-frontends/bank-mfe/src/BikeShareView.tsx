@@ -5,6 +5,7 @@ import {
   endBikeAssetRental, fetchMyBikeAssetRentalHistory, fetchMyBikeAssets, fetchNearbyBikeAssets, registerBikeAsset, setBikeAssetAvailability,
   startBikeAssetRental, updateBikeAssetLocation, type BikeAsset, type BikeAssetRentalSession, type BikeAssetType,
 } from './lib/bikeshare';
+import { BikeGlyph, BikeTypeGlyph } from './icons/ItundaFaceMisc';
 
 // Extracted from BankDashboard.tsx (2026-08-10) into its own lazy-loaded chunk --
 // see InsuranceView.tsx's own doc comment for the full account of why. Self-contained:
@@ -173,7 +174,7 @@ export default function BikeShareView() {
           )}
           {!justCompletedRental && activeRental && (
             <div className="itunda-card">
-              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>🚲 Riding now</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}><BikeGlyph size={16} /> Riding now</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time once you end the rental.
               </p>
@@ -196,7 +197,7 @@ export default function BikeShareView() {
                   {nearbyBikes.map((bike) => (
                     <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'}</p>
+                        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><BikeTypeGlyph electric={bike.type === 'ELECTRIC'} size={15} /> {bike.type === 'ELECTRIC' ? 'Electric' : 'Regular'}</p>
                         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
                       </div>
                       <button
@@ -259,7 +260,7 @@ export default function BikeShareView() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myBikes.map((bike) => (
                   <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'} bike</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><BikeTypeGlyph electric={bike.type === 'ELECTRIC'} size={15} /> {bike.type === 'ELECTRIC' ? 'Electric' : 'Regular'} bike</p>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         className="itunda-btn itunda-btn-secondary" disabled={updatingLocationId === bike.id}
