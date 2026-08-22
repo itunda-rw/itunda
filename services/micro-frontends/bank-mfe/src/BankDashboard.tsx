@@ -7,6 +7,7 @@ import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/I
 import { ReactionGlyph } from './icons/ItundaFace';
 import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
+import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -325,7 +326,7 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
 
   return (
     <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{t('deviceStepUp.title')}</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '6px' }}><LockGlyph size={16} /> {t('deviceStepUp.title')}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
         {t('deviceStepUp.body')}
       </p>
@@ -12067,8 +12068,8 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
               {/* Real "pay via itunda" Marketplace escrow -- an opt-in safer
                   alternative to the existing in-person cash handoff, never replacing
                   it. First web client for this real backend feature (2026-08-15). */}
-              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={paying} onClick={handlePayEscrow}>
-                {paying ? 'Paying…' : '🔒 Pay via itunda'}
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} disabled={paying} onClick={handlePayEscrow}>
+                {paying ? 'Paying…' : <><LockGlyph size={14} /> Pay via itunda</>}
               </button>
             </>
           )
@@ -12086,8 +12087,8 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           )}
           {escrow.status === 'HELD' && (
             <>
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: 0 }}>
-                {isEscrowBuyer ? '🔒 Payment held by itunda until you confirm receipt' : '🔒 Payment held by itunda until the buyer confirms receipt'}
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <LockGlyph size={14} /> {isEscrowBuyer ? 'Payment held by itunda until you confirm receipt' : 'Payment held by itunda until the buyer confirms receipt'}
               </p>
               {isEscrowBuyer && (
                 showDispute ? (
@@ -22041,7 +22042,7 @@ function CardView() {
       >
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>itunda card</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, letterSpacing: '2px', margin: '10px 0' }}>•••• •••• •••• {card.last4}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.85 }}>{card.frozen ? '🔒 Frozen — no purchases can be made' : '✓ Active'}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.85, display: 'flex', alignItems: 'center', gap: '5px' }}>{card.frozen ? <><LockGlyph size={12} /> Frozen — no purchases can be made</> : '✓ Active'}</p>
       </div>
 
       <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze}>
