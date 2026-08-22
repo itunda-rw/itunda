@@ -1,0 +1,162 @@
+//
+//  ItundaFaceEmoji.swift
+//  itundaface emoji-input infrastructure -- iOS port of the real new capability
+//  shipped to bank-mfe/Android same session (icons/ItundaFaceEmoji.tsx /
+//  ItundaFaceEmoji.kt), part of the "reach TossFace's 3,600-glyph scale"
+//  initiative. See those files' own doc comments for the full rationale;
+//  itunda had zero free-text emoji input on iOS either before this (Talk's
+//  only prior "emoji" concept was the 5 fixed quickReactions, same as the
+//  other two platforms).
+//
+//  Real iOS-specific constraint neither web nor Android hit: this app's
+//  deployment target is iOS 15 (ios/build/generated/ios/Package.swift), which
+//  has no native way to embed an arbitrary custom SwiftUI View inline inside a
+//  wrapping Text run (Compose's appendInlineContent/Placeholder and the DOM's
+//  own inline-element flow both have no iOS-15-era equivalent; the `Layout`
+//  protocol needed for a hand-rolled flow layout is iOS 16+). The real,
+//  standard iOS-15-compatible technique instead: rasterize each glyph View to
+//  a UIImage once (via UIHostingController + UIGraphicsImageRenderer, a
+//  well-established pre-iOS-16 pattern), cache it, and embed it as an
+//  NSTextAttachment inside an NSAttributedString bridged to SwiftUI via
+//  `Text(AttributedString(...))` (AttributedString(NSAttributedString:) IS
+//  available iOS 15+) -- NSTextAttachment images wrap correctly within a
+//  single Text run, which is actually a closer match to how a REAL emoji font
+//  substitution works than web/Android's own inline-content approaches.
+//
+
+import SwiftUI
+import CoreDesignSystem
+
+let itundaFaceEmojiKeys: [String] = [
+    "👍", "❤️", "😂", "😮", "😢",
+    "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎",
+]
+
+@ViewBuilder
+func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
+    switch emoji {
+    case "👍": ReactionGlyph(emoji: emoji, size: size)
+    case "❤️": ReactionGlyph(emoji: emoji, size: size)
+    case "😂": ReactionGlyph(emoji: emoji, size: size)
+    case "😮": ReactionGlyph(emoji: emoji, size: size)
+    case "😢": ReactionGlyph(emoji: emoji, size: size)
+    case "😀": SmileyGrinning(size: size)
+    case "😄": SmileyGrinningEyes(size: size)
+    case "🙂": SmileySlight(size: size)
+    case "😉": SmileyWink(size: size)
+    case "😍": SmileyHeartEyes(size: size)
+    case "😘": SmileyKissHeart(size: size)
+    case "😴": SmileySleeping(size: size)
+    case "😭": SmileyLoudlyCrying(size: size)
+    case "😡": SmileyAngry(size: size)
+    case "😎": SmileyCool(size: size)
+    default: EmptyView()
+    }
+}
+
+/// Rasterizes an itundaface glyph to a UIImage once and caches it by
+/// "emoji@size" -- avoids re-hosting a SwiftUI view tree on every render pass
+/// of a chat thread. Not thread-safe by design (SwiftUI rendering is main-
+/// thread-only anyway, same as every other itundaface draw call).
+@MainActor
+private final class ItundaFaceEmojiImageCache {
+    static let shared = ItundaFaceEmojiImageCache()
+    private var cache: [String: UIImage] = [:]
+
+    func image(for emoji: String, size: CGFloat) -> UIImage? {
+        let key = "\(emoji)@\(size)"
+        if let cached = cache[key] { return cached }
+        let host = UIHostingController(rootView: itundaFaceEmojiGlyph(emoji, size: size).frame(width: size, height: size))
+        host.view.bounds = CGRect(x: 0, y: 0, width: size, height: size)
+        host.view.backgroundColor = .clear
+        let renderer = UIGraphicsImageRenderer(size: host.view.bounds.size)
+        let rendered = renderer.image { _ in
+            host.view.drawHierarchy(in: host.view.bounds, afterScreenUpdates: true)
+        }
+        cache[key] = rendered
+        return rendered
+    }
+}
+
+// Built from the registry's own real keys, longest-first (so a future multi-
+// codepoint entry, e.g. a ZWJ sequence, isn't shadowed by a shorter prefix
+// match) -- matches the same registry-driven approach Android uses (rather
+// than a broad Unicode-property scan) so both platforms degrade identically:
+// anything not registered is never matched, and flows through as plain text.
+private let itundaFaceEmojiRegex: NSRegularExpression = {
+    let pattern = itundaFaceEmojiKeys.sorted { $0.count > $1.count }.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+    return try! NSRegularExpression(pattern: pattern)
+}()
+
+/// Renders a message body with any registered emoji swapped for itundaface's
+/// own glyph inline, leaving unregistered emoji as plain text -- `body` itself
+/// is never mutated, same display-layer-only discipline as every itundaface
+/// batch. Falls back to a plain `Text` when nothing matches, the common case.
+struct MessageBodyWithEmoji: View {
+    // Named `messageText`, not `body` -- SwiftUI's View protocol requires a `var
+    // body: some View`, so a same-named stored property here is a real
+    // redeclaration error, the same class of bare-common-word collision as the
+    // `View.badge(_:)` bug documented in ItundaFaceReactions.swift's own header.
+    let messageText: String
+    var color: Color = .primary
+    var fontSize: CGFloat = 14
+
+    var body: some View {
+        let ns = messageText as NSString
+        let matches = itundaFaceEmojiRegex.matches(in: messageText, range: NSRange(location: 0, length: ns.length))
+        guard !matches.isEmpty else {
+            return AnyView(Text(messageText).foregroundColor(color).font(.system(size: fontSize)))
+        }
+        let glyphSize = fontSize * 1.15
+        let attributed = NSMutableAttributedString()
+        var lastIndex = 0
+        for match in matches {
+            let range = match.range
+            if range.location > lastIndex {
+                attributed.append(NSAttributedString(string: ns.substring(with: NSRange(location: lastIndex, length: range.location - lastIndex))))
+            }
+            let emoji = ns.substring(with: range)
+            if let image = ItundaFaceEmojiImageCache.shared.image(for: emoji, size: glyphSize) {
+                let attachment = NSTextAttachment()
+                attachment.image = image
+                attachment.bounds = CGRect(x: 0, y: (fontSize - glyphSize) / 2 - 1, width: glyphSize, height: glyphSize)
+                attributed.append(NSAttributedString(attachment: attachment))
+            } else {
+                attributed.append(NSAttributedString(string: emoji))
+            }
+            lastIndex = range.location + range.length
+        }
+        if lastIndex < ns.length {
+            attributed.append(NSAttributedString(string: ns.substring(from: lastIndex)))
+        }
+        attributed.addAttribute(.font, value: UIFont.systemFont(ofSize: fontSize), range: NSRange(location: 0, length: attributed.length))
+        return AnyView(Text(AttributedString(attributed)).foregroundColor(color))
+    }
+}
+
+/// Real chat-composer emoji picker -- distinct from the pre-existing KakaoTalk-
+/// style sticker/emoticon picker elsewhere in Talk: this is Unicode text emoji,
+/// picking one inserts the real character into the draft, no network call.
+/// Single "Smileys & Emotion" category today, same category-array shape as the
+/// other two platforms' pickers.
+struct ItundaFaceEmojiPicker: View {
+    let onPick: (String) -> Void
+    private let columns = Array(repeating: GridItem(.flexible()), count: 6)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Smileys & Emotion").font(.caption2).foregroundColor(.secondary)
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(itundaFaceEmojiKeys, id: \.self) { emoji in
+                    Button(action: { onPick(emoji) }) {
+                        itundaFaceEmojiGlyph(emoji, size: 28)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+}

@@ -34,6 +34,8 @@ struct ChatThreadScreen: View {
     // Real KakaoTalk Emoticon Store (item 136) -- see EmoticonPickerPanel's own doc
     // comment.
     @State private var emoticonPickerOpen = false
+    // Real itundaface emoji picker -- see ItundaFaceEmoji.swift's own doc comment.
+    @State private var emojiPickerOpen = false
     @State private var emoticonStoreOpen = false
     @State private var emoticonImageById: [String: String] = [:]
     // Real attach ("+") menu + photo send/gallery -- see GroupThreadScreen's own
@@ -262,6 +264,11 @@ struct ChatThreadScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
+            if emojiPickerOpen {
+                ItundaFaceEmojiPicker(onPick: { emoji in draft += emoji })
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             if emoticonPickerOpen {
                 EmoticonPickerPanel(
                     onSend: { emoticonId in
@@ -291,6 +298,7 @@ struct ChatThreadScreen: View {
                 // own real "+"-opens-a-menu pattern.
                 Menu {
                     Button("📷 Photo") { showPhotoPicker = true }
+                    Button("Emoji") { emojiPickerOpen.toggle() }
                     Button("😊 Emoticon") { emoticonPickerOpen.toggle() }
                     Button("🎁 Gift") { giftComposerOpen.toggle() }
                     Button("🎟️ Gift voucher") { voucherComposerOpen.toggle() }

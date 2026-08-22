@@ -88,6 +88,8 @@ struct GroupThreadScreen: View {
     @State private var emoticonPickerOpen = false
     @State private var emoticonStoreOpen = false
     @State private var emoticonImageById: [String: String] = [:]
+    // Real itundaface emoji picker -- see ItundaFaceEmoji.swift's own doc comment.
+    @State private var emojiPickerOpen = false
     // Real attach ("+") menu + photo send/gallery -- ports Android TalkScreen.kt's own
     // identical addition (2026-08-04) to iOS. Reuses ImagePickerView (HoodScreen.swift)
     // and NetworkClient.uploadPhoto, both already real since 2026-08-01; this is just
@@ -219,6 +221,10 @@ struct GroupThreadScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.bottom, 4)
             }
+            if emojiPickerOpen {
+                ItundaFaceEmojiPicker(onPick: { emoji in draft += emoji })
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
             if emoticonPickerOpen {
                 EmoticonPickerPanel(
                     onSend: { emoticonId in
@@ -241,6 +247,7 @@ struct GroupThreadScreen: View {
                 // multi-function attach menu").
                 Menu {
                     Button("📷 Photo") { showPhotoPicker = true }
+                    Button("Emoji") { emojiPickerOpen.toggle() }
                     Button("😊 Emoticon") { emoticonPickerOpen.toggle() }
                 } label: {
                     Text(uploadingPhoto ? "…" : "+")

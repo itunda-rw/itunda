@@ -49,9 +49,7 @@ struct GroupMessageBubble: View {
                     if !isMine {
                         Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                     }
-                    Text(message.body)
-                        .font(.subheadline)
-                        .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                    MessageBodyWithEmoji(messageText: message.body, color: isMine ? .white : IDS.Colors.textPrimary, fontSize: 15)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -234,9 +232,13 @@ struct GroupRepliesThreadView: View {
                                     }
                                     HStack {
                                         if isMine { Spacer() }
-                                        Text(m.deletedAt == nil ? m.body : "This message was deleted")
-                                            .font(.subheadline)
-                                            .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                                        Group {
+                                            if m.deletedAt == nil {
+                                                MessageBodyWithEmoji(messageText: m.body, color: isMine ? .white : IDS.Colors.textPrimary, fontSize: 15)
+                                            } else {
+                                                Text("This message was deleted").font(.subheadline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                                            }
+                                        }
                                             .padding(.horizontal, 14).padding(.vertical, 10)
                                             .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
                                             .cornerRadius(16)
