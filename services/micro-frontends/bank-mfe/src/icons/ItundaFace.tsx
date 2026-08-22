@@ -1,6 +1,15 @@
 // itundaface: itunda's own reaction glyph set (2026-08-22, direct user request
 // following a deep-research pass on Toss's real TossFace: "let's create our own
-// itundaface"). Real research (docs/DESIGN_REFERENCES.md /
+// itundaface"). Also published as its own real, standalone, MIT-licensed
+// open-source repo -- github.com/itunda-rw/itundaface (direct user follow-up:
+// "let's create our own if it's not open-source we also host them on github
+// like toss" -- TossFace itself is public but under a restrictive Toss-branded
+// license, confirmed by fetching its real LICENSE file, so itundaface is drawn
+// from scratch and released under a genuinely open one instead). This file is
+// the copy wired into bank-mfe specifically; the published repo is the
+// canonical, framework-agnostic source (raw SVGs + a thin React wrapper) --
+// keep both in sync by hand for now, no build-time sync exists yet.
+// Real research (docs/DESIGN_REFERENCES.md /
 // project_itunda_own_icons_graphics.md): TossFace (github.com/toss/tossface) is
 // real, open, 3,600 glyphs covering the full Unicode v14 emoji set, distributed as
 // a 50MB+ compiled color-emoji font, under a Toss-branded license that bars
