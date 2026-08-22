@@ -33,8 +33,9 @@ private let natureKeys: [String] = ["🐶", "🐱", "⭐", "🌟", "🌈", "🌸
 private let foodKeys: [String] = ["🍕", "🍔", "☕", "🍰", "🍩", "🍓", "🍉", "🍎"]
 private let travelKeys: [String] = ["🚗", "✈️", "🏠", "🚀", "🚲", "🌍"]
 private let activitiesKeys: [String] = ["⚽", "🏀", "🎮", "🎨", "🎵", "🎉", "🏆", "🎯"]
+private let objectsKeys: [String] = ["💳", "📱", "⌚", "🔑", "💡", "🎧", "📎", "🖊️"]
 
-let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys
+let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys
 let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Smileys & Emotion", smileysKeys),
     ("People & Body", peopleKeys),
@@ -42,6 +43,7 @@ let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Food & Drink", foodKeys),
     ("Travel & Places", travelKeys),
     ("Activities", activitiesKeys),
+    ("Objects", objectsKeys),
 ]
 
 @ViewBuilder
@@ -99,6 +101,14 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "🎉": ActivityPartyPopper(size: size)
     case "🏆": ActivityTrophy(size: size)
     case "🎯": ActivityDirectHit(size: size)
+    case "💳": ObjectCreditCard(size: size)
+    case "📱": ObjectMobilePhone(size: size)
+    case "⌚": ObjectWatch(size: size)
+    case "🔑": ObjectKey(size: size)
+    case "💡": ObjectLightBulb(size: size)
+    case "🎧": ObjectHeadphones(size: size)
+    case "📎": ObjectPaperclip(size: size)
+    case "🖊️": ObjectPen(size: size)
     default: EmptyView()
     }
 }
