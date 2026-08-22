@@ -5,7 +5,8 @@ import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
-import { GiftGlyph, DiceGlyph } from './icons/ItundaFaceGifts';
+import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
+import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -8675,7 +8676,7 @@ function GiftVoucherBubble({
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
-      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)' }}>🎟️ {voucher.productNameSnapshot ?? `${voucher.amount.toLocaleString()} RWF voucher`}</p>
+      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', display: 'flex', alignItems: 'center', gap: '6px' }}><VoucherTicket size={18} /> {voucher.productNameSnapshot ?? `${voucher.amount.toLocaleString()} RWF voucher`}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[voucher.status]}</p>
       {voucher.status === 'ACTIVE' && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.7 }}>Expires {new Date(voucher.expiresAt).toLocaleDateString()}</p>
@@ -8970,7 +8971,7 @@ function GiftVoucherComposerPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', marginBottom: '10px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>🎟️ Send a gift voucher</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><VoucherTicket size={16} /> Send a gift voucher</p>
       <input
         type="tel"
         value={phone}
@@ -9734,8 +9735,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             <button type="button" onClick={() => { setShowAttachMenu(false); setGiftComposerOpen((v) => !v); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               <GiftGlyph theme={null} size={16} /> Gift
             </button>
-            <button type="button" onClick={() => { setShowAttachMenu(false); setVoucherComposerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
-              🎟️ Gift voucher
+            <button type="button" onClick={() => { setShowAttachMenu(false); setVoucherComposerOpen((v) => !v); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
+              <VoucherTicket size={16} /> Gift voucher
             </button>
           </div>
         )}
@@ -12528,7 +12529,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? '♡ Wishlist' : v === 'ALERTS' ? '🔔 Alerts' : '🔧 Inspections'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? '🔔 Alerts' : '🔧 Inspections'}
           </button>
         ))}
       </div>
@@ -13132,8 +13133,8 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
         {post.body}
       </p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)' }}>
-        ❤️ {post.likeCount} · 💬 {post.commentCount}
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <HeartFilled size={12} /> {post.likeCount} · 💬 {post.commentCount}
       </p>
       {/* Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a "view"
           navigation: it adds the tapper to a real GroupConversation (see backend
@@ -13379,9 +13380,9 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
             className="itunda-btn itunda-btn-secondary"
             disabled={liking}
             onClick={handleLike}
-            style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-13-size)' }}
+            style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-13-size)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            {likedByMe ? '❤️' : '🤍'} {post.likeCount}
+            <WishlistHeart favorited={likedByMe} size={16} /> {post.likeCount}
           </button>
         </div>
       )}
@@ -14187,7 +14188,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : <><HeartOutline size={12} /> Wishlist</>}
           </button>
         ))}
       </div>
@@ -14953,7 +14954,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : v === 'WISHLIST' ? '♡ Wishlist' : '시세 Value'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : '시세 Value'}
           </button>
         ))}
       </div>
@@ -16562,7 +16563,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   )}
                   {/* Real Baemin 찜 (favorites) count (2026-08-16) -- see
                       ShoppingController.getEligibleMerchants's own doc comment. */}
-                  {!!r.favoriteCount && r.favoriteCount > 0 && <span>· ❤️ {r.favoriteCount.toLocaleString()}</span>}
+                  {!!r.favoriteCount && r.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {r.favoriteCount.toLocaleString()}</span>}
                   {r.distanceKm != null && <span>· {r.distanceKm.toFixed(1)} km</span>}
                   {r.deliveryTimeMinutes != null && <span>· ~{r.deliveryTimeMinutes} min</span>}
                   {/* Real Uber Eats-style "busy kitchen" delay explanation (2026-08-16) --
@@ -16695,8 +16696,8 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
         {shared && <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green-600, #16a34a)' }}>Shared!</span>}
-        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }} onClick={() => setShowShareModal(true)}>
-          ❤️ Share favorites
+        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowShareModal(true)}>
+          <HeartFilled size={14} /> Share favorites
         </button>
       </div>
       {shareError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{shareError}</p>}
@@ -20249,9 +20250,9 @@ function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; bus
       onClick={onToggle}
       disabled={busy}
       aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
-      style={{ fontSize: 'var(--itunda-type-scale-18-size)', lineHeight: 1, color: favorited ? 'var(--itunda-red)' : 'var(--itunda-grey-300)' }}
+      style={{ display: 'flex', lineHeight: 1 }}
     >
-      {favorited ? '♥' : '♡'}
+      <WishlistHeart favorited={favorited} size={18} />
     </button>
   );
 }
@@ -21481,7 +21482,7 @@ function ShopView() {
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Merchants' : v === 'ORDERS' ? 'My orders' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Merchants' : v === 'ORDERS' ? 'My orders' : <><HeartOutline size={12} /> Wishlist</>}
           </button>
         ))}
       </div>
@@ -21801,7 +21802,7 @@ function ShopView() {
                       <Star size={11} color="#F5A623" fill="#F5A623" /> {m.rating.toFixed(1)} ({m.reviewCount})
                     </span>
                   )}
-                  {!!m.favoriteCount && m.favoriteCount > 0 && <span>· ❤️ {m.favoriteCount.toLocaleString()}</span>}
+                  {!!m.favoriteCount && m.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {m.favoriteCount.toLocaleString()}</span>}
                   {m.distanceKm != null && <span>· {m.distanceKm.toFixed(1)} km</span>}
                   {m.deliveryTimeMinutes != null && <span>· ~{m.deliveryTimeMinutes} min</span>}
                   {m.isBusy && <span>· 🔥 Busy, delivery may take longer</span>}

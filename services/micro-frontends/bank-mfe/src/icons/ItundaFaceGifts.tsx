@@ -113,6 +113,19 @@ export function SplitBillDice(props: GiftIconProps) {
   );
 }
 
+export function VoucherTicket(props: GiftIconProps) {
+  return (
+    <GiftBase {...props}>
+      <circle cx="30" cy="30" r="28" fill="#97d5f5" />
+      <path
+        d="M14,24 C14,21.8 15.8,20 18,20 H42 C44.2,20 46,21.8 46,24 V26 C44.3,26 43,27.3 43,29 C43,30.7 44.3,32 46,32 V36 C46,38.2 44.2,40 42,40 H18 C15.8,40 14,38.2 14,36 V32 C15.7,32 17,30.7 17,29 C17,27.3 15.7,26 14,26 Z"
+        fill="#005d7f"
+      />
+      <line x1="30" y1="24" x2="30" y2="36" stroke="#97d5f5" strokeWidth={2} strokeDasharray="2.5,2.5" strokeLinecap="round" />
+    </GiftBase>
+  );
+}
+
 const ITUNDAFACE_GIFT_THEMES: Record<GiftTheme, (props: GiftIconProps) => React.ReactElement> = {
   CONGRATULATIONS: GiftCongratulations,
   HEARTFELT: GiftHeartfelt,
