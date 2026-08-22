@@ -84,17 +84,11 @@ internal const val MEASURE_SOURCE_ID = "measure"
 internal const val MEASURE_POINTS_LAYER_ID = "measure-points"
 internal const val MEASURE_LINE_LAYER_ID = "measure-line"
 
-// Real per-category glyphs for the chip row (2026-07-21) -- plain emoji, matching this
-// screen's own existing convention of emoji over icon-font glyphs for real content (the
-// 🚗/★/☆ already used below), not a new pattern. No icon field exists on the backend's
+// Per-category glyphs for the chip row (2026-07-21, raw emoji originally; ported
+// 2026-08-22 to itundaface's own hand-drawn PlaceGlyph in ItundaFacePlaces.kt --
+// see that file's own doc comment). No icon field exists on the backend's
 // `MapPlaceCategory` DTO -- this is a client-side-only lookup by id, honestly scoped to
 // display, never sent back to the server.
-internal val MAP_CATEGORY_ICONS = mapOf(
-    "RESTAURANT" to "🍽️", "CAFE" to "☕", "HOSPITAL" to "🏥", "PHARMACY" to "💊",
-    "BANK" to "🏦", "ATM" to "🏧", "HOTEL" to "🏨", "SUPERMARKET" to "🛒",
-    "GAS_STATION" to "⛽", "SCHOOL" to "🏫", "ITUNDA_AGENT" to "💜",
-    "MARKET" to "🧺", "BUS_STOP" to "🚌",
-)
 
 // Real teardrop pin markers (2026-07-21), replacing the flat, unlabeled `CircleLayer`
 // dots this screen used before -- MapLibre has no vector marker primitive of its own, so

@@ -131,8 +131,8 @@ internal fun MapTopChrome(
     }
 
     // Real category-chip "nearby places" search (Naver/Kakao's own convention) --
-    // mirrors bank-mfe's MapView.tsx chip row, now with a per-category emoji glyph
-    // (MAP_CATEGORY_ICONS) so chips read at a glance instead of as text-only pills.
+    // mirrors bank-mfe's MapView.tsx chip row, now with itundaface's own hand-drawn
+    // PlaceGlyph per category so chips read at a glance instead of as text-only pills.
     Row(
         modifier = Modifier
             .horizontalScroll(rememberScrollState()),
@@ -150,13 +150,13 @@ internal fun MapTopChrome(
                     .padding(start = if (active) 12.dp else 6.dp, end = 12.dp, top = if (active) 8.dp else 6.dp, bottom = if (active) 8.dp else 6.dp),
             ) {
                 if (active) {
-                    Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 13.sp)
+                    PlaceGlyph(category.id, size = 16.dp)
                 } else {
                     Box(
                         modifier = Modifier.size(24.dp).clip(CircleShape).background(Ids.colors.warningTint),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 12.sp)
+                        PlaceGlyph(category.id, size = 15.dp)
                     }
                 }
                 Text(
