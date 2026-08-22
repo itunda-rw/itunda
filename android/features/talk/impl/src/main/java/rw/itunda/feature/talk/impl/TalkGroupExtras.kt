@@ -262,7 +262,7 @@ internal fun GroupMessageBubble(
                     if (!isMine) {
                         Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
                     }
-                    Text(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                    MessageBodyWithEmoji(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
                 }
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -349,7 +349,11 @@ internal fun GroupRepliesThreadView(
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft).padding(horizontal = 14.dp, vertical = 10.dp),
                             ) {
-                                Text(if (m.deletedAt == null) m.body else "This message was deleted", color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                                if (m.deletedAt == null) {
+                                    MessageBodyWithEmoji(m.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                                } else {
+                                    Text("This message was deleted", color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                                }
                             }
                         }
                         Text(

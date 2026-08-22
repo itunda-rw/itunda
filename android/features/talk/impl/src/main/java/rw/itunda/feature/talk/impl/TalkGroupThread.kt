@@ -121,6 +121,8 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // backend endpoint. Found 2026-07-29 via the defined-but-uncalled-method sweep.
     var emoticonPickerOpen by remember { mutableStateOf(false) }
     var emoticonStoreOpen by remember { mutableStateOf(false) }
+    // Real itundaface emoji picker -- see ItundaFaceEmoji.kt's own doc comment.
+    var emojiPickerOpen by remember { mutableStateOf(false) }
     var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     // Real attach ("+") menu + photo send (2026-08-04) -- closes
     // docs/DESIGN_REFERENCES.md's Talk recommendation #6. Reuses the exact real upload
@@ -352,6 +354,10 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 TextButton(onClick = { replyingTo = null }) { Text("×") }
             }
         }
+        if (emojiPickerOpen) {
+            ItundaFaceEmojiPicker(onPick = { emoji -> draft += emoji })
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         if (emoticonPickerOpen) {
             EmoticonPickerPanel(
                 onSend = { emoticonId ->
@@ -417,6 +423,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 // pattern (References table: "'+' opens a multi-function attach menu").
                 DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
                     DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { CameraGlyph(size = 18.dp) }, onClick = { attachMenuOpen = false; pickGroupPhoto.launch("image/*") })
+                    DropdownMenuItem(text = { Text("Emoji") }, leadingIcon = { SmileySlight(size = 18.dp) }, onClick = { attachMenuOpen = false; emojiPickerOpen = !emojiPickerOpen })
                     DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
                 }
             }

@@ -139,6 +139,10 @@ internal fun ChatThreadView(
     // comment.
     var emoticonPickerOpen by remember { mutableStateOf(false) }
     var emoticonStoreOpen by remember { mutableStateOf(false) }
+    // Real itundaface emoji picker -- see ItundaFaceEmoji.kt's own doc comment.
+    // Distinct from emoticonPickerOpen above: inserts a real Unicode character
+    // into `draft`, not a separate sticker message.
+    var emojiPickerOpen by remember { mutableStateOf(false) }
     var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     // Real message forwarding (2026-08-04) -- see ForwardDestinationDialog's own doc
     // comment.
@@ -629,6 +633,10 @@ internal fun ChatThreadView(
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
+        if (emojiPickerOpen) {
+            ItundaFaceEmojiPicker(onPick = { emoji -> draft += emoji })
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         if (emoticonPickerOpen) {
             EmoticonPickerPanel(
                 onSend = { emoticonId ->
@@ -706,6 +714,7 @@ internal fun ChatThreadView(
                 // pattern, consolidating what used to be 3 separate always-visible icons.
                 DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
                     DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { CameraGlyph(size = 18.dp) }, onClick = { attachMenuOpen = false; pickChatPhoto.launch("image/*") })
+                    DropdownMenuItem(text = { Text("Emoji") }, leadingIcon = { SmileySlight(size = 18.dp) }, onClick = { attachMenuOpen = false; emojiPickerOpen = !emojiPickerOpen })
                     DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
                     DropdownMenuItem(text = { Text("Gift") }, leadingIcon = { GiftThemeGlyph(null, size = 18.dp) }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
                     DropdownMenuItem(text = { Text("Gift voucher") }, leadingIcon = { VoucherTicket(size = 18.dp) }, onClick = { attachMenuOpen = false; voucherComposerOpen = !voucherComposerOpen })
