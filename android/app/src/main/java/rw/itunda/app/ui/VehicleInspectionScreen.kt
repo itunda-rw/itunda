@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +77,7 @@ fun VehicleInspectionScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { tab = value }.padding(vertical = 8.dp),
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -181,7 +181,7 @@ private fun InspectionBuyerContent() {
                             Row(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
                                     .background(if (selected) Ids.colors.brand.copy(alpha = 0.12f) else Color.Transparent)
-                                    .clickable { selectedMechanicId = m.id }.padding(10.dp),
+                                    .pressScaleClickable { selectedMechanicId = m.id }.padding(10.dp),
                             ) { Text(m.businessName, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) }
                         }
                         if (mechanics?.isEmpty() == true) Text("No mechanics available right now.", fontSize = 12.sp, color = Ids.colors.textSecondary)
@@ -192,7 +192,7 @@ private fun InspectionBuyerContent() {
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (requesting) Ids.colors.brand.copy(alpha = 0.5f) else Ids.colors.brand)
-                            .clickable(enabled = !requesting) { requestInspection() }.padding(vertical = 12.dp),
+                            .pressScaleClickable(enabled = !requesting) { requestInspection() }.padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) { Text(if (requesting) "Booking…" else "Book & pay", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                 }
@@ -213,7 +213,7 @@ private fun InspectionBuyerContent() {
                         if (b.status == "REQUESTED" || b.status == "ACCEPTED") {
                             Row(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFFE53935))
-                                    .clickable(enabled = busyBookingId != b.id) { cancel(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .pressScaleClickable(enabled = busyBookingId != b.id) { cancel(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Cancelling…" else "Cancel", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
@@ -332,7 +332,7 @@ private fun InspectionMechanicContent() {
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (registering) Ids.colors.brand.copy(alpha = 0.5f) else Ids.colors.brand)
-                            .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
+                            .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                 }
@@ -360,7 +360,7 @@ private fun InspectionMechanicContent() {
                     Row(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
                             .background(if (current.available) Color(0xFFE53935) else Ids.colors.brand)
-                            .clickable { toggleAvailable() }.padding(horizontal = 14.dp, vertical = 8.dp),
+                            .pressScaleClickable { toggleAvailable() }.padding(horizontal = 14.dp, vertical = 8.dp),
                     ) { Text(if (current.available) "Go unavailable" else "Go available", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
@@ -378,14 +378,14 @@ private fun InspectionMechanicContent() {
                         if (b.status == "REQUESTED") {
                             Row(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = busyBookingId != b.id) { accept(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .pressScaleClickable(enabled = busyBookingId != b.id) { accept(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Accepting…" else "Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                         if (b.status == "ACCEPTED") {
                             IdsTextField(value = findingsByBooking[b.id] ?: "", onValueChange = { findingsByBooking = findingsByBooking + (b.id to it) }, label = "Inspection findings", modifier = Modifier.fillMaxWidth())
                             Row(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = busyBookingId != b.id) { complete(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .pressScaleClickable(enabled = busyBookingId != b.id) { complete(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Completing…" else "Mark complete", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }

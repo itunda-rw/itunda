@@ -2,7 +2,7 @@ package rw.itunda.feature.shop.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -133,7 +133,7 @@ internal fun MerchantDetailView(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (following) Ids.colors.surface else Ids.colors.brand)
-                    .clickable(enabled = !followBusy, onClick = onToggleFollow)
+                    .pressScaleClickable(enabled = !followBusy, onClick = onToggleFollow)
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -180,7 +180,7 @@ internal fun MerchantDetailView(
                         // Only the image/name/price area is tappable so the qty
                         // stepper below stays independently clickable for quick
                         // add-to-cart.
-                        Column(modifier = Modifier.clickable { onOpenProduct(p) }) {
+                        Column(modifier = Modifier.pressScaleClickable { onOpenProduct(p) }) {
                             Box {
                                 ProductImageThumb(p.imageUrl, size = 96.dp, corner = 12.dp)
                                 // Real Shop product wishlist heart (2026-07-24) --
@@ -195,7 +195,7 @@ internal fun MerchantDetailView(
                                         tint = if (favorited) Ids.colors.danger else Color.White,
                                         modifier = Modifier
                                             .size(20.dp)
-                                            .clickable(enabled = favoritingProductId != p.id) { onToggleFavorite(p.id) },
+                                            .pressScaleClickable(enabled = favoritingProductId != p.id) { onToggleFavorite(p.id) },
                                     )
                                     Icon(
                                         Icons.Outlined.Share,
@@ -204,7 +204,7 @@ internal fun MerchantDetailView(
                                         modifier = Modifier
                                             .padding(top = 6.dp)
                                             .size(18.dp)
-                                            .clickable(enabled = sharingProductId != p.id) { shareProduct(p.id) },
+                                            .pressScaleClickable(enabled = sharingProductId != p.id) { shareProduct(p.id) },
                                     )
                                 }
                             }
@@ -230,7 +230,7 @@ internal fun MerchantDetailView(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(Ids.colors.brand)
-                                    .clickable { onBookService(p) }
+                                    .pressScaleClickable { onBookService(p) }
                                     .padding(vertical = 8.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text("Book", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -320,7 +320,7 @@ internal fun MyBookingsView() {
                                         .padding(top = 10.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(Ids.colors.danger)
-                                        .clickable(enabled = cancellingId != b.id) { cancel(b.id) }
+                                        .pressScaleClickable(enabled = cancellingId != b.id) { cancel(b.id) }
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
                                 ) {
                                     Text(
@@ -363,7 +363,7 @@ internal fun BookingReviewButton(bookingId: String) {
                 .padding(top = 10.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Ids.colors.textTertiary)
-                .clickable { open = true }
+                .pressScaleClickable { open = true }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Text("Rate this visit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -381,7 +381,7 @@ internal fun BookingReviewButton(bookingId: String) {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = false }.padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
             Box(
@@ -389,10 +389,10 @@ internal fun BookingReviewButton(bookingId: String) {
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !submitting) {
+                    .pressScaleClickable(enabled = !submitting) {
                         if (rating == 0) {
                             error = "Pick a star rating."
-                            return@clickable
+                            return@pressScaleClickable
                         }
                         submitting = true
                         error = null

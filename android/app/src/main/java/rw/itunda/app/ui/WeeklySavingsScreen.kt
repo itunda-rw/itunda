@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -126,7 +126,7 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(Ids.colors.brand).clickable { mode = WeeklySavingsMode.NEW }
+                            .background(Ids.colors.brand).pressScaleClickable { mode = WeeklySavingsMode.NEW }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -157,7 +157,7 @@ private fun WeeklySavingsPlanRow(plan: WeeklySavingsPlanDto, onClick: () -> Unit
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -269,7 +269,7 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
                                 .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .clickable { selectedRate = option }
+                                .pressScaleClickable { selectedRate = option }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -284,7 +284,7 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
         Box(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                 .background(Ids.colors.brand)
-                .clickable(enabled = !submitting) { submit() }
+                .pressScaleClickable(enabled = !submitting) { submit() }
                 .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -439,14 +439,14 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = !submitting) { confirmingCancel = false }.padding(vertical = 14.dp),
+                                        .pressScaleClickable(enabled = !submitting) { confirmingCancel = false }.padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text("Keep plan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
                                 }
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
-                                        .clickable(enabled = !submitting) { cancelPlan() }.padding(vertical = 14.dp),
+                                        .pressScaleClickable(enabled = !submitting) { cancelPlan() }.padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(if (submitting) "Working…" else "Confirm cancel", color = Color.White, fontWeight = FontWeight.Bold)
@@ -479,7 +479,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
 private fun ActionButtonWeekly(label: String, color: Color, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(color)
-            .clickable(enabled = enabled, onClick = onClick).padding(vertical = 14.dp),
+            .pressScaleClickable(enabled = enabled, onClick = onClick).padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = Color.White, fontWeight = FontWeight.Bold)

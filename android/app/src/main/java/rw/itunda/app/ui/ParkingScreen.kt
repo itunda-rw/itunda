@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,7 +78,7 @@ fun ParkingScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { tab = value }.padding(vertical = 8.dp),
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -190,7 +190,7 @@ private fun ParkingFindContent() {
                         Text("Checked in -- billed by elapsed hours", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !ending) { endSession(session.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = !ending) { endSession(session.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (ending) "Checking out…" else "Check out (end session)", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -201,7 +201,7 @@ private fun ParkingFindContent() {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                            .clickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
+                            .pressScaleClickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (locating) "Locating…" else "Find nearby spots", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
@@ -216,7 +216,7 @@ private fun ParkingFindContent() {
                         Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = busySpotId != spot.id) { startSession(spot.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = busySpotId != spot.id) { startSession(spot.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busySpotId == spot.id) "…" else "Check in", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -320,7 +320,7 @@ private fun ParkingMineContent() {
                     IdsTextField(value = hourlyRate, onValueChange = { hourlyRate = it }, label = "Hourly rate (RWF)", modifier = Modifier.fillMaxWidth())
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                            .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
+                            .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (registering) "Registering…" else "List at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
@@ -340,7 +340,7 @@ private fun ParkingMineContent() {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                     .background(if (spot.available) Ids.colors.success else Ids.colors.surfaceSoft)
-                                    .clickable(enabled = busySpotId != spot.id) { toggleAvailable(spot) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    .pressScaleClickable(enabled = busySpotId != spot.id) { toggleAvailable(spot) }.padding(horizontal = 14.dp, vertical = 10.dp),
                             ) { Text(if (spot.available) "Available" else "Unavailable", color = if (spot.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                         Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)

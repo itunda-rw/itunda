@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -154,7 +154,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
             if (!showCreate) {
                 Box(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                        .clickable { showCreate = true }.padding(vertical = 14.dp),
+                        .pressScaleClickable { showCreate = true }.padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
                 ) { Text("+ New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
             } else {
@@ -165,7 +165,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                         Box(modifier = Modifier.weight(1f)) {
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
+                                    .pressScaleClickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
                             ) { Text(if (cycleFrequencyDays == 7) "Weekly" else "Monthly", fontSize = 14.sp) }
                             DropdownMenu(expanded = frequencyMenuOpen, onDismissRequest = { frequencyMenuOpen = false }) {
                                 DropdownMenuItem(text = { Text("Weekly") }, onClick = { cycleFrequencyDays = 7; frequencyMenuOpen = false })
@@ -177,12 +177,12 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                .clickable { showCreate = false }.padding(vertical = 14.dp),
+                                .pressScaleClickable { showCreate = false }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
+                                .pressScaleClickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -201,7 +201,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                    modifier = Modifier.fillMaxWidth().clickable { onOpen(k.id) },
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) },
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -382,13 +382,13 @@ private fun IkiminaDetailContent(id: String) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
+                                    .pressScaleClickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
                                     .padding(horizontal = 20.dp, vertical = 14.dp),
                             ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 14.dp),
+                                .pressScaleClickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busy) "…" else "Start the cycle", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -402,7 +402,7 @@ private fun IkiminaDetailContent(id: String) {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(if (iContributed) Ids.colors.surfaceSoft else Ids.colors.brand)
-                                .clickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 14.dp),
+                                .pressScaleClickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
@@ -413,7 +413,7 @@ private fun IkiminaDetailContent(id: String) {
                         if (allContributed) {
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !busy) { triggerPayout() }.padding(vertical = 14.dp),
+                                    .pressScaleClickable(enabled = !busy) { triggerPayout() }.padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Trigger this round's payout", color = Color.White, fontWeight = FontWeight.Bold) }
                         }

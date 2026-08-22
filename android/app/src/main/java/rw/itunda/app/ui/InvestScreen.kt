@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,7 +117,7 @@ fun InvestScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { mode = m }.padding(vertical = 8.dp),
+                        .pressScaleClickable { mode = m }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -176,7 +176,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
                         modifier = Modifier
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (selected) Ids.colors.brand.copy(alpha = 0.12f) else Color.Transparent)
-                            .clickable { marketFilter = id }
+                            .pressScaleClickable { marketFilter = id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
@@ -203,7 +203,7 @@ private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
     val positive = stock.changePercent >= 0
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(Ids.colors.surface).clickable(onClick = onClick).padding(16.dp),
+            .background(Ids.colors.surface).pressScaleClickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -349,7 +349,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
                 Text(
                     if (expanded) "Cancel" else "Add funds",
                     color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                    modifier = Modifier.clickable { expanded = !expanded; error = null },
+                    modifier = Modifier.pressScaleClickable { expanded = !expanded; error = null },
                 )
             }
             Text("Move money from your main account into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -361,7 +361,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
                             .background(Ids.colors.brand)
-                            .clickable(enabled = !busy) { coroutineScope.launch { doFund() } }
+                            .pressScaleClickable(enabled = !busy) { coroutineScope.launch { doFund() } }
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                     ) {
                         Text(if (busy) "Working…" else "Add", color = Color.White, fontWeight = FontWeight.Bold)
@@ -534,7 +534,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 if (watching) Icons.Filled.Star else Icons.Outlined.Star,
                 contentDescription = "Toggle watch",
                 tint = if (watching) Color(0xFFFFC107) else Ids.colors.textSecondary,
-                modifier = Modifier.size(24.dp).clickable { toggleWatch() },
+                modifier = Modifier.size(24.dp).pressScaleClickable { toggleWatch() },
             )
         }
         Text(stock.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -567,7 +567,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) (if (isBuy) Ids.colors.brand else Ids.colors.danger) else Color.Transparent)
-                        .clickable { buyMode = isBuy }.padding(vertical = 8.dp),
+                        .pressScaleClickable { buyMode = isBuy }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -581,7 +581,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .background(if (buyMode) Ids.colors.brand else Ids.colors.danger)
-                    .clickable(enabled = !submitting) { trade() }
+                    .pressScaleClickable(enabled = !submitting) { trade() }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
                 Text(if (submitting) "Working…" else if (buyMode) "Buy" else "Sell", color = Color.White, fontWeight = FontWeight.Bold)
@@ -630,7 +630,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 }
                 Text(
                     "Remove", color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable(enabled = !alertBusy) { clearAlert() },
+                    modifier = Modifier.pressScaleClickable(enabled = !alertBusy) { clearAlert() },
                 )
             }
         } else if (alertExpanded) {
@@ -642,7 +642,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                     Box(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                             .background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { alertAbove = isAbove }.padding(vertical = 8.dp),
+                            .pressScaleClickable { alertAbove = isAbove }.padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -655,7 +655,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 Spacer(modifier = Modifier.width(10.dp))
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                        .clickable(enabled = !alertBusy) { setAlert() }.padding(horizontal = 20.dp, vertical = 14.dp),
+                        .pressScaleClickable(enabled = !alertBusy) { setAlert() }.padding(horizontal = 20.dp, vertical = 14.dp),
                 ) {
                     Text(if (alertBusy) "Working…" else "Set", color = Color.White, fontWeight = FontWeight.Bold)
                 }
@@ -664,7 +664,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
         } else {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { alertExpanded = true },
+                modifier = Modifier.pressScaleClickable { alertExpanded = true },
             ) {
                 Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))

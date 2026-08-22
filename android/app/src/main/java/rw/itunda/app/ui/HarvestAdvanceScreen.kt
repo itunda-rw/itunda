@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -240,7 +240,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                             IdsTextField(value = coopCrop, onValueChange = { coopCrop = it }, label = "Crop (e.g. COFFEE)", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !busy && coopName.isNotBlank()) { registerCooperative() }
+                                    .pressScaleClickable(enabled = !busy && coopName.isNotBlank()) { registerCooperative() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Register & join", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -248,7 +248,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                             IdsTextField(value = coopId, onValueChange = { coopId = it }, label = "Cooperative ID", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable(enabled = !busy && coopId.isNotBlank()) { joinCooperative() }
+                                    .pressScaleClickable(enabled = !busy && coopId.isNotBlank()) { joinCooperative() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Join", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
@@ -279,7 +279,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                             IdsTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = "Expected harvest (months from now)", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !busy && advanceAmount.toBigDecimalOrNull()?.signum() == 1 && harvestMonthsAway.toLongOrNull() != null) { requestAdvance(membershipId) }
+                                    .pressScaleClickable(enabled = !busy && advanceAmount.toBigDecimalOrNull()?.signum() == 1 && harvestMonthsAway.toLongOrNull() != null) { requestAdvance(membershipId) }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Request advance", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -307,7 +307,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                             if (a.status == "REQUESTED") {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = !busy) { disburse(a.id) }
+                                        .pressScaleClickable(enabled = !busy) { disburse(a.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busy) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -315,7 +315,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                             if (a.status == "DISBURSED" || a.status == "OVERDUE") {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = !busy) { repayInFull(a) }
+                                        .pressScaleClickable(enabled = !busy) { repayInFull(a) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busy) "…" else "Repay in full (${formatMoneyHarvest(a.principalAmount)} RWF)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }

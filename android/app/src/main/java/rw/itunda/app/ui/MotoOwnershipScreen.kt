@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -245,7 +245,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 }
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyId != "create") { create() }
+                                        .pressScaleClickable(enabled = busyId != "create") { create() }
                                         .padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == "create") "Creating…" else "Start plan", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -288,13 +288,13 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = busyId == null) { contribute(plan.id) }
+                                            .pressScaleClickable(enabled = busyId == null) { contribute(plan.id) }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (busyId == plan.id) "Saving…" else "Contribute", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                     Box(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = busyId == null) { cancel(plan.id) }
+                                            .pressScaleClickable(enabled = busyId == null) { cancel(plan.id) }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text("Cancel", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -306,7 +306,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                     )
                                     Box(
                                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                            .clickable(enabled = busyId == null) { convert(plan.id) }
+                                            .pressScaleClickable(enabled = busyId == null) { convert(plan.id) }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (busyId == plan.id) "Converting…" else "Convert to loan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -317,7 +317,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 IdsTextField(value = repayAmounts[plan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (plan.id to it) }, label = "Repayment amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyId == null) { repay(plan.id) }
+                                        .pressScaleClickable(enabled = busyId == null) { repay(plan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == plan.id) "Repaying…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
