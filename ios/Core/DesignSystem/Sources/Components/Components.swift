@@ -1,5 +1,34 @@
 import SwiftUI
 
+// Real Toss micro-interaction reference (2026-08-22, "toss interactions" --
+// direct user directive to bring itunda's real tap feedback up to Toss's own
+// published standard, toss.im's motion-strategy writeup: "시각적 신호가 탭이
+// 발생하는 정확한 순간에 햅틱/사용자 액션과 동기화되어야 한다" -- visual cues
+// synchronized precisely with the tap). Android's IdsButton.kt/IdsListRow.kt/
+// IdsIconButton already had this (`rememberPressScale`, 0.96 scale + a medium-
+// bouncy high-stiffness spring) and web's global `button:active { transform:
+// scale(0.96) }` already had it too -- iOS's IdsButton/IdsListRow were the one
+// real gap, plain `Button`s with zero press feedback despite being the app's
+// two most-tapped shared components. `ButtonStyle` (not a raw `.scaleEffect`
+// tacked onto each view) is the real, idiomatic SwiftUI mechanism for this --
+// `configuration.isPressed` already tracks touch-down/up, and any custom
+// `Button` using this style gets a real, correctly-timed press animation for
+// free, matching Android's `rememberPressScale`'s "one shared spec, not a
+// per-call-site value that can drift" principle exactly.
+public struct PressScaleButtonStyle: ButtonStyle {
+    var enabled: Bool = true
+
+    public init(enabled: Bool = true) {
+        self.enabled = enabled
+    }
+
+    public func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && enabled ? 0.96 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
 // Real shared empty/error-state components (2026-08-04) -- closes
 // docs/DESIGN_REFERENCES.md Section 9's #1 recommendation on iOS, which had
 // literally zero shared component for this (Android already built EmptyState/
@@ -103,6 +132,7 @@ public struct IdsButton: View {
                 .background(isEnabled ? IDS.Colors.brand : IDS.Colors.divider)
                 .cornerRadius(12)
         }
+        .buttonStyle(PressScaleButtonStyle(enabled: isEnabled))
         .disabled(!isEnabled)
     }
 }
@@ -295,6 +325,6 @@ public struct IdsListRow: View {
             // this row's background stayed light-mode white in dark mode.
             .background(IDS.Colors.card)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
