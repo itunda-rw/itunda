@@ -228,6 +228,7 @@ private fun Grow31CreateContent(onCreated: () -> Unit) {
                 NetworkClient.apiService.createGrow31SavingsPlan(idempotencyKey, request)
                 error = null
                 onCreated()
+                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "31-day plan started.")
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {

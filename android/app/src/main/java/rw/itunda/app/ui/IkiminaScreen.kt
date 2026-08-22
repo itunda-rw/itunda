@@ -129,6 +129,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 name = ""; contributionAmount = ""; memberCap = "10"
                 showCreate = false
                 load()
+                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Ikimina group created.")
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {

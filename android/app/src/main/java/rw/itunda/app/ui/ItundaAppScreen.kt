@@ -745,7 +745,6 @@ fun ItundaAppScreen(
         var isSavingsSubmitting by remember { mutableStateOf(false) }
         var savingsError by remember { mutableStateOf<String?>(null) }
         val availableBalanceForSavings by viewModel.primaryAccount.collectAsState()
-        val savingsContext = androidx.compose.ui.platform.LocalContext.current
         if (savingsStep != null) {
             BackHandler { savingsFlowStep = null }
             when (savingsStep) {
@@ -773,7 +772,7 @@ fun ItundaAppScreen(
                                 is rw.itunda.app.ui.MoneyActionResult.Queued -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = null
-                                    android.widget.Toast.makeText(savingsContext, result.message, android.widget.Toast.LENGTH_LONG).show()
+                                    rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, result.message)
                                 }
                                 is rw.itunda.app.ui.MoneyActionResult.Failure -> {
                                     isSavingsSubmitting = false
@@ -790,7 +789,7 @@ fun ItundaAppScreen(
                                             is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("RWF %,d saved".format(amountRwf), retryResult.message, celebratory = false)
                                             is rw.itunda.app.ui.MoneyActionResult.Queued -> {
                                                 savingsFlowStep = null
-                                                android.widget.Toast.makeText(savingsContext, retryResult.message, android.widget.Toast.LENGTH_LONG).show()
+                                                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, retryResult.message)
                                             }
                                             is rw.itunda.app.ui.MoneyActionResult.Failure -> savingsError = retryResult.message
                                             else -> {}
@@ -2590,7 +2589,11 @@ private fun NewSavingsGoalDialog(
                                 targetDate.trim().ifBlank { null },
                             )
                         ) {
-                            is MoneyActionResult.Success -> { busy = false; onCreated() }
+                            is MoneyActionResult.Success -> {
+                                busy = false
+                                onCreated()
+                                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Savings goal created.")
+                            }
                             is MoneyActionResult.Failure -> { busy = false; error = result.message }
                             else -> busy = false
                         }

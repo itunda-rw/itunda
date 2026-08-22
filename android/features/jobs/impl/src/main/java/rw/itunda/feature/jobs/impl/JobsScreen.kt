@@ -2,7 +2,6 @@ package rw.itunda.feature.jobs.impl
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -308,8 +307,8 @@ fun JobsContent(
                             favoritingId = post.id
                             coroutineScope.launch {
                                 try {
-                                    if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id; Toast.makeText(context, "Removed from saved jobs", Toast.LENGTH_SHORT).show() }
-                                    else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id; Toast.makeText(context, "Saved to your jobs list", Toast.LENGTH_SHORT).show() }
+                                    if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Removed from saved jobs") }
+                                    else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Saved to your jobs list") }
                                 } catch (e: Exception) { error = "Couldn't update your saved jobs. Check your connection and try again." }
                                 finally { favoritingId = null }
                             }
@@ -420,8 +419,8 @@ fun JobsContent(
                         favoritingId = post.id
                         coroutineScope.launch {
                             try {
-                                if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id; Toast.makeText(context, "Removed from saved jobs", Toast.LENGTH_SHORT).show() }
-                                else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id; Toast.makeText(context, "Saved to your jobs list", Toast.LENGTH_SHORT).show() }
+                                if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Removed from saved jobs") }
+                                else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Saved to your jobs list") }
                             } catch (e: Exception) { error = "Couldn't update your saved jobs. Check your connection and try again." }
                             finally { favoritingId = null }
                         }
@@ -897,7 +896,7 @@ private fun JobPostCard(
                                             try {
                                                 NetworkClient.apiService.respondToJobApplication(app.id, RespondToApplicationRequest(accept = true))
                                                 applications = applications?.filterNot { it.id == app.id }
-                                                Toast.makeText(context, "Conversation started", Toast.LENGTH_SHORT).show()
+                                                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Conversation started")
                                             } catch (e: HttpException) {
                                                 error = superAppErrorMessage(e)
                                             } finally {

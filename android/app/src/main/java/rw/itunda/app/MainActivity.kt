@@ -33,6 +33,7 @@ import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.app.ui.LocalRealActivity
 import rw.itunda.app.ui.LoginScreen
 import rw.itunda.app.ui.PinEntryScreen
+import rw.itunda.core.designsystem.components.IdsToastHost
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.identity.NIDABiometricAuth
 import rw.itunda.core.risk.RootDetection
@@ -222,6 +223,20 @@ class MainActivity : FragmentActivity() {
                                 LoginScreen(onLoggedIn = {})
                             }
                         }
+                        // Real Toss TDS Toast component, mounted once at the true app
+                        // root (see IdsToast.kt's own doc comment for the full sourced
+                        // account) -- Surface wraps its content in an implicit Box, so
+                        // this renders on top of whichever branch above is currently
+                        // showing, regardless of which internal `if(showX)`/`when`
+                        // early-return path ItundaAppScreen itself is on. Mounting
+                        // inside ItundaAppScreen's own composable was considered first
+                        // and rejected: that function's real architecture is a long
+                        // chain of `if (showX) { ...; return@IdsTheme }` early returns
+                        // (no NavHost), so a toast host placed after them would never
+                        // render whenever any secondary screen -- including several of
+                        // the real create-flow screens this is meant to cover -- is
+                        // the active branch.
+                        IdsToastHost()
                     }
                 }
             }

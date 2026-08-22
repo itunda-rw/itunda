@@ -119,6 +119,7 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 name = ""
                 showCreate = false
                 load()
+                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Group account created.")
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {

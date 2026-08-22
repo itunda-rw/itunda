@@ -3,7 +3,6 @@ package rw.itunda.feature.property.impl
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -321,7 +320,7 @@ fun PropertyContent(
                             }
                         },
                         favorited = listing.id in favoriteIds,
-                        onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
+                        onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Removed from saved properties") } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Saved to your properties list") } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                     )
                 }
             }
@@ -451,7 +450,7 @@ fun PropertyContent(
                         }
                     },
                     favorited = listing.id in favoriteIds,
-                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
+                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Removed from saved properties") } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Saved to your properties list") } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
             }
         }

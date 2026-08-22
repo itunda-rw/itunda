@@ -234,6 +234,7 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
                 NetworkClient.apiService.createWeeklySavingsPlan(request)
                 error = null
                 onCreated()
+                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "26-week plan started.")
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
