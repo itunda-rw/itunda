@@ -18,13 +18,12 @@ import rw.itunda.core.designsystem.R
  * in commercial software) is the real, widely-recognized typeface Korean fintech apps
  * (including ones deliberately matching Toss's own visual register) actually use as a free,
  * open, redistributable stand-in for Toss's own proprietary in-house typeface -- not a guess,
- * this is the same real choice this exact class of app makes in practice. Bundled the same way
- * TossFaceFontFamily already does (see that file's own doc comment) -- 4 real static weights
+ * this is the same real choice this exact class of app makes in practice. 4 real static weights
  * (Regular/Medium/SemiBold/Bold) covering every FontWeight IdsTypography's own scale actually
  * uses, not the full 9-weight family this repo doesn't need.
  *
  * License: see core/designsystem/PRETENDARD_LICENSE.txt (bundled per the OFL's own
- * redistribution condition, same discipline TossFace's license file already established).
+ * redistribution condition).
  */
 val PretendardFontFamily = FontFamily(
     Font(R.font.pretendard_regular, FontWeight.Normal),
