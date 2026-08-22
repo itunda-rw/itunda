@@ -70,6 +70,9 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CreatePropertyListingRequest
 import rw.itunda.core.network.FavoritePropertyListingDto
@@ -769,11 +772,11 @@ private fun PropertyListingCard(
                     // text glyph, matching JobPostCard's own same-day fix -- see that
                     // file's doc comment.
                     if (!isMine) {
-                        Icon(
-                            if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                            tint = if (favorited) Ids.colors.danger else Ids.colors.textSecondary,
-                            modifier = Modifier.size(20.dp).clickable { onToggleFavorite() }.padding(end = 8.dp),
+                        WishlistHeart(
+                            favorited = favorited,
+                            size = 20.dp,
+                            modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
+                                .clickable { onToggleFavorite() }.padding(end = 8.dp),
                         )
                     }
                     Text(priceLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)

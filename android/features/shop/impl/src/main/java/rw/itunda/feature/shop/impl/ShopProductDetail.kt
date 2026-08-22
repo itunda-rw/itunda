@@ -47,6 +47,9 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.QtyButton
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
@@ -92,14 +95,13 @@ internal fun ProductDetailScreen(
                 // Chloe Youn's Coupang case study (docs/DESIGN_REFERENCES.md Section 5)
                 // names wishlist as available directly alongside add-to-cart, not
                 // buried behind a sub-menu.
-                Icon(
-                    if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                    tint = if (favorited) Ids.colors.danger else Ids.colors.textTertiary,
+                WishlistHeart(
+                    favorited = favorited,
+                    size = 26.dp,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(6.dp)
-                        .size(26.dp)
+                        .semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
                         .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                 )
             }

@@ -545,7 +545,7 @@ fun CommerceShopContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "♡ Wishlist", CommerceView.SUBSCRIPTIONS to "Subscriptions", CommerceView.QUESTIONS to "My questions").forEach { (v, label) ->
+                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "Wishlist", CommerceView.SUBSCRIPTIONS to "Subscriptions", CommerceView.QUESTIONS to "My questions").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(

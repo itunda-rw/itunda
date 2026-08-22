@@ -66,7 +66,10 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -127,7 +130,7 @@ private fun HoodView.label() = when (this) {
     HoodView.NEIGHBORHOOD -> "Neighborhood"
     HoodView.MINE -> "My listings"
     HoodView.PURCHASES -> "Purchases"
-    HoodView.WISHLIST -> "♡ Wishlist"
+    HoodView.WISHLIST -> "Wishlist"
     HoodView.ALERTS -> "🔔 Alerts"
 }
 
@@ -1104,11 +1107,11 @@ private fun ListingRow(
                             modifier = Modifier.weight(1f),
                         )
                         if (!isMine) {
-                            Icon(
-                                if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                                tint = if (favorited) Ids.colors.danger else Ids.colors.textTertiary,
-                                modifier = Modifier.size(20.dp).clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                            WishlistHeart(
+                                favorited = favorited,
+                                size = 20.dp,
+                                modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
+                                    .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                             )
                         }
                     }
@@ -1153,11 +1156,10 @@ private fun ListingRow(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = if (liked) "Unlike" else "Like",
-                    tint = if (liked) Ids.colors.danger else Ids.colors.textTertiary,
-                    modifier = Modifier.size(16.dp).clickable {
+                WishlistHeart(
+                    favorited = liked,
+                    size = 16.dp,
+                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.clickable {
                         displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
                         onToggleLike()
                     },
@@ -1322,11 +1324,11 @@ private fun ListingDetailScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
                 if (!isMine) {
-                    Icon(
-                        if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                        tint = if (favorited) Ids.colors.danger else Ids.colors.textTertiary,
-                        modifier = Modifier.size(24.dp).clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                    WishlistHeart(
+                        favorited = favorited,
+                        size = 24.dp,
+                        modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
+                            .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                     )
                 }
             }
@@ -1342,11 +1344,10 @@ private fun ListingDetailScreen(
                 Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                Icon(
-                    if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = if (liked) "Unlike" else "Like",
-                    tint = if (liked) Ids.colors.danger else Ids.colors.textTertiary,
-                    modifier = Modifier.size(16.dp).clickable {
+                WishlistHeart(
+                    favorited = liked,
+                    size = 16.dp,
+                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.clickable {
                         displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
                         onToggleLike()
                     },

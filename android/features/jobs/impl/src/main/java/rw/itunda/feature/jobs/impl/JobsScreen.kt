@@ -66,6 +66,9 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ApplyToJobRequest
 import rw.itunda.core.network.CreateJobPostRequest
@@ -715,11 +718,11 @@ private fun JobPostCard(
                     // after ListingCard's own real-Karrot-reference rewrite switched to
                     // a proper Icon.
                     if (!isMine) {
-                        Icon(
-                            if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                            tint = if (favorited) Ids.colors.danger else Ids.colors.textSecondary,
-                            modifier = Modifier.size(20.dp).clickable(enabled = !favoriteBusy) { onToggleFavorite() }.padding(end = 8.dp),
+                        WishlistHeart(
+                            favorited = favorited,
+                            size = 20.dp,
+                            modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
+                                .clickable(enabled = !favoriteBusy) { onToggleFavorite() }.padding(end = 8.dp),
                         )
                     }
                     Text(payLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
