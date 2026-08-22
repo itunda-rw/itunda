@@ -5,7 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -314,7 +314,7 @@ fun CommunityContent(
                             modifier = Modifier
                                 .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                                 .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
-                                .clickable { activeCategory = if (active) null else c.id }
+                                .pressScaleClickable { activeCategory = if (active) null else c.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
                     }
@@ -325,7 +325,7 @@ fun CommunityContent(
             item {
                 if (!showNewPost) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).clickable { showNewPost = true }.padding(vertical = 14.dp),
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewPost = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("+ Write a post", color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
@@ -463,7 +463,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                     Box(
                         modifier = Modifier
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
-                            .clickable { category = c.id }
+                            .pressScaleClickable { category = c.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
@@ -489,7 +489,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
             }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
-                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .pressScaleClickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Location shared with nearby neighbors" else "📍 Share location for nearby neighbors (optional)", fontSize = 13.sp, color = if (shareLocation) Ids.colors.brand else Ids.colors.textSecondary) }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -500,29 +500,29 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.brand)
-                        .clickable(enabled = !submitting) {
+                        .pressScaleClickable(enabled = !submitting) {
                             if (title.isBlank() || body.isBlank() || category.isBlank()) {
                                 error = "Fill in every field."
-                                return@clickable
+                                return@pressScaleClickable
                             }
                             var eventDateIso: String? = null
                             var capacity: Int? = null
                             if (category == "meetup") {
                                 if (eventDateText.isBlank() || eventTimeText.isBlank()) {
                                     error = "A meetup needs a real date and time."
-                                    return@clickable
+                                    return@pressScaleClickable
                                 }
                                 eventDateIso = "${eventDateText.trim()}T${eventTimeText.trim()}:00Z"
                                 try {
                                     java.time.Instant.parse(eventDateIso)
                                 } catch (e: Exception) {
                                     error = "Enter a real date (YYYY-MM-DD) and time (HH:mm)."
-                                    return@clickable
+                                    return@pressScaleClickable
                                 }
                                 capacity = capacityText.trim().ifBlank { null }?.toIntOrNull()
                                 if (capacityText.isNotBlank() && capacity == null) {
                                     error = "Max people must be a whole number."
-                                    return@clickable
+                                    return@pressScaleClickable
                                 }
                             }
                             submitting = true
@@ -562,7 +562,7 @@ private fun CommunityPostCard(
 
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -713,7 +713,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
             Box(
                 modifier = Modifier
                     .background(if (commentBody.isBlank()) Ids.colors.textSecondary else Ids.colors.brand, RoundedCornerShape(10.dp))
-                    .clickable(enabled = !commenting && commentBody.isNotBlank()) {
+                    .pressScaleClickable(enabled = !commenting && commentBody.isNotBlank()) {
                         commenting = true
                         coroutineScope.launch {
                             try {

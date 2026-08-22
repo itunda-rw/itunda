@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -152,7 +152,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(if (openingCurrency == code) Ids.colors.textTertiary else Ids.colors.brand)
-                                        .clickable(enabled = openingCurrency == null) { openAccount(code) }
+                                        .pressScaleClickable(enabled = openingCurrency == null) { openAccount(code) }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                 ) { Text("+ Open $code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
@@ -226,7 +226,7 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
                     val selected = v == direction
                     Box(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { direction = v }.padding(vertical = 10.dp),
+                            .pressScaleClickable { direction = v }.padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
@@ -236,7 +236,7 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
                     val selected = code == foreignCurrency
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { foreignCurrency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
+                            .pressScaleClickable { foreignCurrency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
                     ) { Text(code, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
             }
@@ -252,11 +252,11 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !submitting) {
+                    .pressScaleClickable(enabled = !submitting) {
                         val amount = amountText.trim().toDoubleOrNull()
                         if (amount == null || amount <= 0.0) {
                             error = "Enter a real amount."
-                            return@clickable
+                            return@pressScaleClickable
                         }
                         submitting = true
                         error = null
@@ -330,7 +330,7 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                     }
                     Text(
                         "Remove", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                        modifier = Modifier.clickable { clear(code) },
+                        modifier = Modifier.pressScaleClickable { clear(code) },
                     )
                 }
             }
@@ -344,7 +344,7 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                             val selected = code == currency
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                    .clickable { currency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    .pressScaleClickable { currency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text("RWF/$code", color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
@@ -355,7 +355,7 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                             val selected = v == direction
                             Box(
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (selected) Ids.colors.brand else Color.Transparent)
-                                    .clickable { direction = v }.padding(vertical = 10.dp),
+                                    .pressScaleClickable { direction = v }.padding(vertical = 10.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
@@ -365,11 +365,11 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                             .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                            .clickable(enabled = !submitting) {
+                            .pressScaleClickable(enabled = !submitting) {
                                 val target = targetText.trim().toDoubleOrNull()
                                 if (target == null || target <= 0.0) {
                                     error = "Enter a real target rate."
-                                    return@clickable
+                                    return@pressScaleClickable
                                 }
                                 submitting = true
                                 error = null

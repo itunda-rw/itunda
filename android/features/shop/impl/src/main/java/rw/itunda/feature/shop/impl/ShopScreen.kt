@@ -3,7 +3,7 @@ package rw.itunda.feature.shop.impl
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -549,7 +549,7 @@ fun CommerceShopContent(
             ) {
                 listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "Wishlist", CommerceView.SUBSCRIPTIONS to "Subscriptions", CommerceView.QUESTIONS to "My questions").forEach { (v, label) ->
                     val selected = v == view
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pressScaleClickable { view = v }) {
                         Text(
                             label,
                             color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
@@ -658,14 +658,14 @@ fun CommerceShopContent(
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
                             .background(if (productSearching || productSearchInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                            .clickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() }
+                            .pressScaleClickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (productSearching) "…" else "Search", color = Color.White, fontWeight = FontWeight.Bold) }
                     if (productSearchResults != null) {
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.textTertiary)
-                                .clickable { productSearchResults = null; productSearchInput = "" }
+                                .pressScaleClickable { productSearchResults = null; productSearchInput = "" }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text("Clear", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
@@ -681,7 +681,7 @@ fun CommerceShopContent(
                         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp)
-                                    .clickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
+                                    .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -713,7 +713,7 @@ fun CommerceShopContent(
                             nearbyAds.forEach { a ->
                                 Column(
                                     modifier = Modifier.width(160.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
-                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = a.ad.merchantId, businessName = a.businessName, category = null, cashbackRate = "1%")) }
+                                        .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = a.ad.merchantId, businessName = a.businessName, category = null, cashbackRate = "1%")) }
                                         .padding(10.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
@@ -744,7 +744,7 @@ fun CommerceShopContent(
                             recentlyViewed.forEach { rv ->
                                 Column(
                                     modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
-                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = rv.merchantId, businessName = rv.merchantName, category = null, cashbackRate = "1%")) }
+                                        .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = rv.merchantId, businessName = rv.merchantName, category = null, cashbackRate = "1%")) }
                                         .padding(10.dp),
                                 ) {
                                     ProductImageThumb(rv.imageUrl, size = 96.dp, corner = 10.dp)
@@ -779,7 +779,7 @@ fun CommerceShopContent(
                             deals!!.forEach { d ->
                                 Column(
                                     modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
-                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = d.merchantId, businessName = d.merchantName, category = null, cashbackRate = "1%")) }
+                                        .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = d.merchantId, businessName = d.merchantName, category = null, cashbackRate = "1%")) }
                                         .padding(10.dp),
                                 ) {
                                     ProductImageThumb(d.imageUrl, size = 96.dp, corner = 10.dp)
@@ -808,7 +808,7 @@ fun CommerceShopContent(
                             timeDeals!!.forEach { v ->
                                 Column(
                                     modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
-                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = v.deal.merchantId, businessName = v.businessName, category = null, cashbackRate = "1%")) }
+                                        .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = v.deal.merchantId, businessName = v.businessName, category = null, cashbackRate = "1%")) }
                                         .padding(10.dp),
                                 ) {
                                     Box {

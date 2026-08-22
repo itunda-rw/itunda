@@ -2,7 +2,7 @@ package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -81,7 +81,7 @@ internal fun PlaceActionPill(icon: String, label: String, filled: Boolean, enabl
                 if (filled) Modifier.background(Ids.colors.brand)
                 else Modifier.border(1.dp, Ids.colors.divider, RoundedCornerShape(999.dp)),
             )
-            .clickable(enabled = enabled, onClick = onClick)
+            .pressScaleClickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Text(icon, fontSize = 13.sp)

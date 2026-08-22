@@ -5,7 +5,7 @@ import android.net.Uri
 import android.graphics.Color as AndroidColor
 import coil.compose.AsyncImage
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -195,7 +195,7 @@ internal fun PlaceDetailAndRouteView(
                         val active = placeTab == tab
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { onPlaceTabChange(tab) },
+                            modifier = Modifier.pressScaleClickable { onPlaceTabChange(tab) },
                         ) {
                             Text(
                                 label, fontSize = 13.sp,
@@ -325,14 +325,14 @@ internal fun PlaceDetailAndRouteView(
                             Text(
                                 "📞 $phoneNumber",
                                 fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                modifier = Modifier.clickable {
+                                modifier = Modifier.pressScaleClickable {
                                     context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber")))
                                 },
                             )
                             Text(
                                 "Copy",
                                 fontSize = 11.sp, color = Ids.colors.textTertiary,
-                                modifier = Modifier.clickable {
+                                modifier = Modifier.pressScaleClickable {
                                     val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Phone number", phoneNumber))
                                 },
@@ -361,7 +361,7 @@ internal fun PlaceDetailAndRouteView(
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("Home", "Work").forEach { preset ->
                         val active = folderNameInput.equals(preset, ignoreCase = true)
-                        Text(preset, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).clickable { onFolderNameChange(preset) }.padding(horizontal = 10.dp, vertical = 6.dp))
+                        Text(preset, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).pressScaleClickable { onFolderNameChange(preset) }.padding(horizontal = 10.dp, vertical = 6.dp))
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -374,7 +374,7 @@ internal fun PlaceDetailAndRouteView(
                                 .then(
                                     if (folderColorInput == c) Modifier.border(2.dp, Ids.colors.textPrimary, CircleShape) else Modifier,
                                 )
-                                .clickable { onFolderColorChange(c) },
+                                .pressScaleClickable { onFolderColorChange(c) },
                         )
                     }
                 }
@@ -383,14 +383,14 @@ internal fun PlaceDetailAndRouteView(
                         modifier = Modifier
                             .weight(1f)
                             .background(Ids.colors.brand, RoundedCornerShape(8.dp))
-                            .clickable(enabled = !bookmarking, onClick = onConfirmSaveToFolder)
+                            .pressScaleClickable(enabled = !bookmarking, onClick = onConfirmSaveToFolder)
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (bookmarking) "Saving…" else "Save", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable(enabled = !bookmarking, onClick = onCancelSaveToFolder)
+                            .pressScaleClickable(enabled = !bookmarking, onClick = onCancelSaveToFolder)
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("Cancel", color = Ids.colors.textSecondary, fontSize = 13.sp) }
@@ -409,7 +409,7 @@ internal fun PlaceDetailAndRouteView(
         Box(
             modifier = Modifier
                 .background(Ids.colors.brand, RoundedCornerShape(12.dp))
-                .clickable(enabled = !routing) { onFetchDirections(travelMode) }
+                .pressScaleClickable(enabled = !routing) { onFetchDirections(travelMode) }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
         if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
@@ -420,7 +420,7 @@ internal fun PlaceDetailAndRouteView(
                 color = Ids.colors.brand,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onBack)
+                    .pressScaleClickable(onClick = onBack)
                     .padding(vertical = 8.dp),
             )
         }

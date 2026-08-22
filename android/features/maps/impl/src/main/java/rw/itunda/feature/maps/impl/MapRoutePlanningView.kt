@@ -1,7 +1,7 @@
 package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +56,7 @@ internal fun RoutePlanningView(
         Text(
             "← Back to $placeName",
             fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-            modifier = Modifier.clickable { onClearRoute() }.padding(bottom = 6.dp),
+            modifier = Modifier.pressScaleClickable { onClearRoute() }.padding(bottom = 6.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
             listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking", "BUS" to "🚌 Bus").forEach { (mode, label) ->
@@ -70,7 +70,7 @@ internal fun RoutePlanningView(
                     modifier = Modifier
                         .weight(1f)
                         .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                        .clickable(enabled = !routing && !busSearching) {
+                        .pressScaleClickable(enabled = !routing && !busSearching) {
                             if (mode == "BUS") {
                                 onSearchBus(placeName)
                             } else if (mode != travelMode) {
@@ -115,7 +115,7 @@ internal fun RoutePlanningView(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                .clickable { onSelectRouteAlternative(i, alt) }
+                                .pressScaleClickable { onSelectRouteAlternative(i, alt) }
                                 .padding(vertical = 5.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -132,7 +132,7 @@ internal fun RoutePlanningView(
                 Text(
                     if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
                     fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).clickable { onToggleShowSteps() },
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp).pressScaleClickable { onToggleShowSteps() },
                 )
             }
             // Real full-width prominent CTA (2026-08-09), matching real Naver Maps'
@@ -144,7 +144,7 @@ internal fun RoutePlanningView(
                     .fillMaxWidth()
                     .padding(top = 8.dp)
                     .background(Ids.colors.brand, RoundedCornerShape(12.dp))
-                    .clickable(onClick = onStartNavigation)
+                    .pressScaleClickable(onClick = onStartNavigation)
                     .padding(vertical = 13.dp),
             ) {
                 Text(
@@ -198,7 +198,7 @@ internal fun RoutePlanningView(
                         color = androidx.compose.ui.graphics.Color.White,
                         modifier = Modifier
                             .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                            .clickable(onClick = onEndNavigation)
+                            .pressScaleClickable(onClick = onEndNavigation)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                     Text(
@@ -207,7 +207,7 @@ internal fun RoutePlanningView(
                         color = androidx.compose.ui.graphics.Color.White,
                         modifier = Modifier
                             .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                            .clickable(onClick = onToggleVoice)
+                            .pressScaleClickable(onClick = onToggleVoice)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }

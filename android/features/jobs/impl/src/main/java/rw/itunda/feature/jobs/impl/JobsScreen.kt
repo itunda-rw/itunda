@@ -6,7 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -321,7 +321,7 @@ fun JobsContent(
         if (view == JobsView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
-                Text("${radius.toInt()} km", color = if (active) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).clickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
+                Text("${radius.toInt()} km", color = if (active) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).pressScaleClickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
             } }
         }
         if ((view == JobsView.BROWSE || view == JobsView.NEIGHBORHOOD) && categories.isNotEmpty()) {
@@ -336,7 +336,7 @@ fun JobsContent(
                             modifier = Modifier
                                 .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                                 .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
-                                .clickable { activeCategory = if (active) null else c.id }
+                                .pressScaleClickable { activeCategory = if (active) null else c.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
                     }
@@ -347,7 +347,7 @@ fun JobsContent(
             item {
                 if (!showNewPost) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).clickable { showNewPost = true }.padding(vertical = 14.dp),
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewPost = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("+ Post a job", color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
@@ -458,7 +458,7 @@ private fun JobPostWishlistView(onRemoved: () -> Unit) {
                             Text(favorite.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
                             Text("${favorite.category} · %,.0f RWF".format(favorite.payAmount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
-                        Text("Remove", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.clickable(enabled = removingId == null) {
+                        Text("Remove", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.pressScaleClickable(enabled = removingId == null) {
                             removingId = favorite.jobPostId
                             scope.launch {
                                 try { NetworkClient.apiService.removeJobPostFavorite(favorite.jobPostId); favorites = favorites!!.filterNot { it.jobPostId == favorite.jobPostId }; onRemoved() }
@@ -555,7 +555,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                     Box(
                         modifier = Modifier
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
-                            .clickable { category = c.id }
+                            .pressScaleClickable { category = c.id }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
@@ -570,7 +570,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { payType = v }
+                            .pressScaleClickable { payType = v }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
@@ -582,7 +582,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
             }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
-                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .pressScaleClickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Work location shared with nearby applicants" else "📍 Share work location for nearby applicants (optional)", fontSize = 13.sp, color = if (shareLocation) Ids.colors.brand else Ids.colors.textSecondary) }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -593,11 +593,11 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.brand)
-                        .clickable(enabled = !submitting) {
+                        .pressScaleClickable(enabled = !submitting) {
                             val amount = payAmount.toDoubleOrNull()
                             if (title.isBlank() || description.isBlank() || category.isBlank() || amount == null || amount <= 0) {
                                 error = "Fill in every field with a real pay amount."
-                                return@clickable
+                                return@pressScaleClickable
                             }
                             submitting = true
                             error = null
@@ -722,7 +722,7 @@ private fun JobPostCard(
                             favorited = favorited,
                             size = 20.dp,
                             modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
-                                .clickable(enabled = !favoriteBusy) { onToggleFavorite() }.padding(end = 8.dp),
+                                .pressScaleClickable(enabled = !favoriteBusy) { onToggleFavorite() }.padding(end = 8.dp),
                         )
                     }
                     Text(payLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)

@@ -1,7 +1,7 @@
 package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,7 +82,7 @@ internal fun MapTopChrome(
                 .shadow(3.dp, CircleShape)
                 .background(Ids.colors.surface, CircleShape)
                 .clip(CircleShape)
-                .clickable(onClick = onBack),
+                .pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
@@ -100,7 +100,7 @@ internal fun MapTopChrome(
                 Icons.Outlined.Search,
                 contentDescription = "Search",
                 tint = if (searching) Ids.colors.textSecondary else Ids.colors.brand,
-                modifier = Modifier.size(18.dp).clickable(enabled = !searching && query.isNotBlank()) { onRunSearch() },
+                modifier = Modifier.size(18.dp).pressScaleClickable(enabled = !searching && query.isNotBlank()) { onRunSearch() },
             )
             OutlinedTextField(
                 value = query,
@@ -123,7 +123,7 @@ internal fun MapTopChrome(
                     Icons.Outlined.Close,
                     contentDescription = "Clear search",
                     tint = Ids.colors.textSecondary,
-                    modifier = Modifier.size(16.dp).clickable { onClearQuery() },
+                    modifier = Modifier.size(16.dp).pressScaleClickable { onClearQuery() },
                 )
                 Box(modifier = Modifier.width(6.dp))
             }
@@ -146,7 +146,7 @@ internal fun MapTopChrome(
                 modifier = Modifier
                     .shadow(if (active) 3.dp else 1.dp, RoundedCornerShape(999.dp))
                     .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
-                    .clickable(enabled = !categoryLoading || active) { onCategoryClick(category.id) }
+                    .pressScaleClickable(enabled = !categoryLoading || active) { onCategoryClick(category.id) }
                     .padding(start = if (active) 12.dp else 6.dp, end = 12.dp, top = if (active) 8.dp else 6.dp, bottom = if (active) 8.dp else 6.dp),
             ) {
                 if (active) {
@@ -177,7 +177,7 @@ internal fun MapTopChrome(
         modifier = Modifier
             .shadow(1.dp, RoundedCornerShape(999.dp))
             .background(Ids.colors.surface, RoundedCornerShape(999.dp))
-            .clickable { onToggleItinerary() }
+            .pressScaleClickable { onToggleItinerary() }
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Text(if (itineraryBuilding) "✓ Planning ${itineraryStopCount + 1} stops" else "＋ Plan multi-stop trip", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (itineraryBuilding) Ids.colors.brand else Ids.colors.textPrimary)
@@ -203,7 +203,7 @@ internal fun MapTopChrome(
                                 .width(140.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.surfaceSoft)
-                                .clickable { onSelectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
+                                .pressScaleClickable { onSelectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
                                 .padding(10.dp),
                         ) {
                             Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -229,7 +229,7 @@ internal fun MapTopChrome(
                                 .width(140.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.surfaceSoft)
-                                .clickable { onSelectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
+                                .pressScaleClickable { onSelectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
                                 .padding(10.dp),
                         ) {
                             Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -271,7 +271,7 @@ internal fun MapTopChrome(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSearchResultTap(place) }
+                                .pressScaleClickable { onSearchResultTap(place) }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                         ) {
                             Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
@@ -307,7 +307,7 @@ internal fun MapTopChrome(
                 Text("Recent searches", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
                 Text(
                     "Clear", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                    modifier = Modifier.clickable { onClearRecentSearches() },
+                    modifier = Modifier.pressScaleClickable { onClearRecentSearches() },
                 )
             }
             recentSearches.forEach { place ->
@@ -317,7 +317,7 @@ internal fun MapTopChrome(
                     color = Ids.colors.textPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSearchResultTap(place) }
+                        .pressScaleClickable { onSearchResultTap(place) }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                 )
             }

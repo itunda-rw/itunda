@@ -17,7 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.DraggableAnchors
@@ -1390,7 +1390,7 @@ fun MapScreen(
                     if (measurePoints.isNotEmpty()) {
                         Text(
                             "Undo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                            modifier = Modifier.clickable { measurePoints = measurePoints.dropLast(1); lastMeasuredPlaceName = null },
+                            modifier = Modifier.pressScaleClickable { measurePoints = measurePoints.dropLast(1); lastMeasuredPlaceName = null },
                         )
                     }
                     if (measurePoints.size >= 2) {
@@ -1399,13 +1399,13 @@ fun MapScreen(
                             fontSize = 12.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White,
                             modifier = Modifier
                                 .background(Ids.colors.brand, RoundedCornerShape(999.dp))
-                                .clickable(enabled = !routing) { routeMeasuredItinerary() }
+                                .pressScaleClickable(enabled = !routing) { routeMeasuredItinerary() }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                         )
                     }
                     Text(
                         "Done", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textTertiary,
-                        modifier = Modifier.clickable { measuring = false; measurePoints = emptyList(); lastMeasuredPlaceName = null },
+                        modifier = Modifier.pressScaleClickable { measuring = false; measurePoints = emptyList(); lastMeasuredPlaceName = null },
                     )
                 }
             }
@@ -1430,14 +1430,14 @@ fun MapScreen(
                         .background(Ids.colors.surface, RoundedCornerShape(14.dp)),
                 ) {
                     Box(
-                        modifier = Modifier.size(44.dp).clickable {
+                        modifier = Modifier.size(44.dp).pressScaleClickable {
                             mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomIn()) }
                         },
                         contentAlignment = Alignment.Center,
                     ) { Icon(Icons.Outlined.Add, contentDescription = "Zoom in", tint = Ids.colors.textPrimary, modifier = Modifier.size(18.dp)) }
                     Box(modifier = Modifier.width(44.dp).height(1.dp).background(Ids.colors.divider))
                     Box(
-                        modifier = Modifier.size(44.dp).clickable {
+                        modifier = Modifier.size(44.dp).pressScaleClickable {
                             mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomOut()) }
                         },
                         contentAlignment = Alignment.Center,
@@ -1449,7 +1449,7 @@ fun MapScreen(
                         .shadow(3.dp, CircleShape)
                         .background(Ids.colors.surface, CircleShape)
                         .clip(CircleShape)
-                        .clickable(enabled = !locating) { requestMyLocation() },
+                        .pressScaleClickable(enabled = !locating) { requestMyLocation() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -1469,7 +1469,7 @@ fun MapScreen(
                         .shadow(3.dp, CircleShape)
                         .background(if (measuring) Ids.colors.danger else Ids.colors.surface, CircleShape)
                         .clip(CircleShape)
-                        .clickable { toggleMeasuring() },
+                        .pressScaleClickable { toggleMeasuring() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("📏", fontSize = 18.sp, color = if (measuring) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
@@ -1761,7 +1761,7 @@ internal fun SharedFolderSection(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenPlace(shared) }
+                    .pressScaleClickable { onOpenPlace(shared) }
                     .padding(vertical = 6.dp),
             ) {
                 Box(
@@ -1794,7 +1794,7 @@ internal fun SharedFolderSection(
                     .fillMaxWidth()
                     .padding(top = 10.dp)
                     .background(Ids.colors.brand, RoundedCornerShape(10.dp))
-                    .clickable(enabled = !subscribing) { onSubscribe() }
+                    .pressScaleClickable(enabled = !subscribing) { onSubscribe() }
                     .padding(vertical = 10.dp),
             )
         }

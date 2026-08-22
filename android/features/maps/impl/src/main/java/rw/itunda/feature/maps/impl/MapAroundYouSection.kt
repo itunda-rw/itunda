@@ -3,7 +3,7 @@ package rw.itunda.feature.maps.impl
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,8 +69,8 @@ internal fun AroundYouSection(
     val work = bookmarks.firstOrNull { it.folderName.equals("Work", ignoreCase = true) }
     if (home != null || work != null) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).clickable { onSelectAndRoute(PlaceSearchResultDto(home.displayName, home.latitude, home.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
-            if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).clickable { onSelectAndRoute(PlaceSearchResultDto(work.displayName, work.latitude, work.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
+            if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { onSelectAndRoute(PlaceSearchResultDto(home.displayName, home.latitude, home.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
+            if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).pressScaleClickable { onSelectAndRoute(PlaceSearchResultDto(work.displayName, work.latitude, work.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
         }
     }
     if (activeCategory != null && categoryResults != null) {
@@ -83,7 +83,7 @@ internal fun AroundYouSection(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSelectPlace(PlaceSearchResultDto(nearby.displayName, nearby.latitude, nearby.longitude)) }
+                        .pressScaleClickable { onSelectPlace(PlaceSearchResultDto(nearby.displayName, nearby.latitude, nearby.longitude)) }
                         .padding(vertical = 6.dp),
                 ) {
                     Text(
@@ -162,7 +162,7 @@ internal fun AroundYouSection(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
-                        modifier = Modifier.clickable(enabled = sharingFolder == null) { onToggleFolderShare(folderName, !isPublic) },
+                        modifier = Modifier.pressScaleClickable(enabled = sharingFolder == null) { onToggleFolderShare(folderName, !isPublic) },
                     ) {
                         if (isPublic) GlobeGlyph(size = 11.dp) else LockGlyph(size = 11.dp)
                         Text(
@@ -180,7 +180,7 @@ internal fun AroundYouSection(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSelectPlace(PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)) }
+                        .pressScaleClickable { onSelectPlace(PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)) }
                         .padding(vertical = 6.dp),
                 ) {
                     Box(
@@ -194,7 +194,7 @@ internal fun AroundYouSection(
                     Text(bookmark.displayName, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
                     Text(
                         "Move", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary,
-                        modifier = Modifier.clickable { onToggleMovingBookmark(bookmark) },
+                        modifier = Modifier.pressScaleClickable { onToggleMovingBookmark(bookmark) },
                     )
                 }
                 if (movingBookmark?.let { it.latitude == bookmark.latitude && it.longitude == bookmark.longitude } == true) {
@@ -219,13 +219,13 @@ internal fun AroundYouSection(
                                         .size(22.dp)
                                         .background(color, CircleShape)
                                         .then(if (moveFolderColorInput == c) Modifier.border(2.dp, Ids.colors.textPrimary, CircleShape) else Modifier)
-                                        .clickable { onMoveFolderColorChange(c) },
+                                        .pressScaleClickable { onMoveFolderColorChange(c) },
                                 )
                             }
                         }
                         Text(
                             "Save", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                            modifier = Modifier.clickable(enabled = moveFolderNameInput.isNotBlank(), onClick = onConfirmMove),
+                            modifier = Modifier.pressScaleClickable(enabled = moveFolderNameInput.isNotBlank(), onClick = onConfirmMove),
                         )
                     }
                 }

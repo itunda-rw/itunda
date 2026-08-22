@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -131,7 +131,7 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                                 .background(if (selected) Ids.colors.brand else Color.Transparent)
-                                .clickable { tab = value }.padding(vertical = 8.dp),
+                                .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -145,7 +145,7 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
                                 .background(if (activeCategory == null) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .clickable { activeCategory = null }.padding(horizontal = 12.dp, vertical = 6.dp),
+                                .pressScaleClickable { activeCategory = null }.padding(horizontal = 12.dp, vertical = 6.dp),
                         ) { Text("All", color = if (activeCategory == null) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
@@ -156,7 +156,7 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp))
                                     .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                    .clickable { activeCategory = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    .pressScaleClickable { activeCategory = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
                             ) { Text(c.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
@@ -175,7 +175,7 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                 items(list, key = { it.id }) { q ->
                     Card(
                         shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                        modifier = Modifier.fillMaxWidth().clickable { openQuestionId = q.id },
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable { openQuestionId = q.id },
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
@@ -218,7 +218,7 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
     if (!open) {
         Box(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                .clickable { open = true }.padding(vertical = 14.dp),
+                .pressScaleClickable { open = true }.padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,
         ) { Text("+ Ask a question", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
         return
@@ -232,7 +232,7 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { category = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
+                            .pressScaleClickable { category = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
                     ) { Text(c.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
@@ -242,7 +242,7 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(if (category.isNotEmpty() && title.isNotBlank() && body.isNotBlank()) Ids.colors.brand else Ids.colors.surfaceSoft)
-                    .clickable(enabled = !submitting && category.isNotEmpty() && title.isNotBlank() && body.isNotBlank()) {
+                    .pressScaleClickable(enabled = !submitting && category.isNotEmpty() && title.isNotBlank() && body.isNotBlank()) {
                         submitting = true
                         error = null
                         coroutineScope.launch {
@@ -332,7 +332,7 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
                             if (isAsker && q?.adoptedAnswerId == null) {
                                 Box(
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyAnswerId != a.id) {
+                                        .pressScaleClickable(enabled = busyAnswerId != a.id) {
                                             busyAnswerId = a.id
                                             error = null
                                             coroutineScope.launch {
@@ -361,7 +361,7 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                 .background(if (answerBody.isNotBlank()) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .clickable(enabled = !answering && answerBody.isNotBlank()) {
+                                .pressScaleClickable(enabled = !answering && answerBody.isNotBlank()) {
                                     answering = true
                                     error = null
                                     coroutineScope.launch {

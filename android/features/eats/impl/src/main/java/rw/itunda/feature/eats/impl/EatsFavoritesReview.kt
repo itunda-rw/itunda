@@ -1,7 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,7 +109,7 @@ internal fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, on
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
                         .background(Ids.colors.surface)
-                        .clickable { onOpen(f) }
+                        .pressScaleClickable { onOpen(f) }
                         .padding(18.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -131,7 +131,7 @@ internal fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, on
                         tint = Ids.colors.danger,
                         modifier = Modifier
                             .size(22.dp)
-                            .clickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
+                            .pressScaleClickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
                     )
                 }
             }
@@ -161,7 +161,7 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
         Column {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable {
+                modifier = Modifier.pressScaleClickable {
                     val next = !open
                     open = next
                     if (next && reviews == null) {
@@ -247,7 +247,7 @@ internal fun ReviewOrderCard(order: EatsOrderDto) {
     }
     if (!open) {
         Box(
-            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             Text("Rate this order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         }
@@ -283,7 +283,7 @@ internal fun ReviewOrderCard(order: EatsOrderDto) {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = false }.padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
             Box(
@@ -291,10 +291,10 @@ internal fun ReviewOrderCard(order: EatsOrderDto) {
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !submitting) {
+                    .pressScaleClickable(enabled = !submitting) {
                         if (restaurantRating == 0 || riderRating == 0) {
                             error = "Rate both the restaurant and the rider."
-                            return@clickable
+                            return@pressScaleClickable
                         }
                         submitting = true
                         error = null

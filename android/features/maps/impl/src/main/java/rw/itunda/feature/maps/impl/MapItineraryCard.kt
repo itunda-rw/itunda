@@ -17,7 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.DraggableAnchors
@@ -182,14 +182,14 @@ internal fun ItineraryBuilderCard(
             itineraryStops.forEachIndexed { index, stop ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text("${index + 2}. ${stop.displayName}", fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
-                    Text("Remove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand, modifier = Modifier.clickable { onRemoveStop(index) })
+                    Text("Remove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand, modifier = Modifier.pressScaleClickable { onRemoveStop(index) })
                 }
             }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Ids.colors.brand, RoundedCornerShape(9.dp))
-                    .clickable(enabled = itineraryStops.isNotEmpty() && !routing) { onFetchItinerary() }
+                    .pressScaleClickable(enabled = itineraryStops.isNotEmpty() && !routing) { onFetchItinerary() }
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -207,7 +207,7 @@ internal fun ItineraryBuilderCard(
                         modifier = Modifier
                             .weight(1f)
                             .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                            .clickable(enabled = !routing) { onModeClick(mode) }
+                            .pressScaleClickable(enabled = !routing) { onModeClick(mode) }
                             .padding(vertical = 6.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary) }
@@ -231,7 +231,7 @@ internal fun ItineraryBuilderCard(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Ids.colors.brand,
-                        modifier = Modifier.clickable { onToggleShowSteps() },
+                        modifier = Modifier.pressScaleClickable { onToggleShowSteps() },
                     )
                     if (showSteps) itineraryRoute.route.steps.forEachIndexed { index, step ->
                         Text("${index + 1}. ${step.instruction}", fontSize = 12.sp, color = Ids.colors.textSecondary)

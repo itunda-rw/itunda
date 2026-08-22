@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +77,7 @@ fun BusScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { tab = value }.padding(vertical = 8.dp),
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -173,7 +173,7 @@ private fun BusRideContent() {
                     IdsTextField(value = destination, onValueChange = { destination = it }, label = "To", modifier = Modifier.fillMaxWidth())
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                            .clickable { search() }.padding(vertical = 12.dp),
+                            .pressScaleClickable { search() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("Search", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
@@ -201,7 +201,7 @@ private fun BusRideContent() {
                             IdsTextField(value = seatCounts[trip.id] ?: "1", onValueChange = { seatCounts = seatCounts + (trip.id to it) }, label = "Seats", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.weight(2f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = busyTripId != trip.id) { bookSeats(trip.id) }.padding(vertical = 12.dp),
+                                    .pressScaleClickable(enabled = busyTripId != trip.id) { bookSeats(trip.id) }.padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busyTripId == trip.id) "…" else "Book seats", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
@@ -224,7 +224,7 @@ private fun BusRideContent() {
                         }
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                .clickable(enabled = busyBookingId != booking.id) { cancelBooking(booking.id) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                                .pressScaleClickable(enabled = busyBookingId != booking.id) { cancelBooking(booking.id) }.padding(horizontal = 14.dp, vertical = 10.dp),
                         ) { Text(if (busyBookingId == booking.id) "…" else "Cancel", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
@@ -328,7 +328,7 @@ private fun BusOperateContent() {
                     IdsTextField(value = farePerSeat, onValueChange = { farePerSeat = it }, label = "Fare per seat (RWF)", modifier = Modifier.fillMaxWidth())
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                            .clickable(enabled = !posting) { postTrip() }.padding(vertical = 12.dp),
+                            .pressScaleClickable(enabled = !posting) { postTrip() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (posting) "Posting…" else "Post route", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
@@ -354,7 +354,7 @@ private fun BusOperateContent() {
                         )
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.chip)
-                                .clickable { toggleManifest(trip.id) }.padding(horizontal = 10.dp, vertical = 6.dp),
+                                .pressScaleClickable { toggleManifest(trip.id) }.padding(horizontal = 10.dp, vertical = 6.dp),
                         ) {
                             Text(
                                 if (expandedTripId == trip.id) "Hide bookings" else "View bookings",
