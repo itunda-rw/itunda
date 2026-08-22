@@ -5,6 +5,8 @@ import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
+import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
+import { SmileySlight } from './icons/ItundaFaceSmileys';
 import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
@@ -9069,6 +9071,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [emoticonPickerOpen, setEmoticonPickerOpen] = useState(false);
   const [emoticonStoreOpen, setEmoticonStoreOpen] = useState(false);
   const [emoticonImageById, setEmoticonImageById] = useState<Record<string, string>>({});
+  // Real itundaface emoji picker (see icons/ItundaFaceEmoji.tsx's own doc comment)
+  // -- distinct from the KakaoTalk-style sticker emoticonPicker above: this inserts
+  // a real Unicode character into the message draft, not a separate sticker message.
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   // Real attach ("+") menu + photo send/gallery -- see GroupThread's own identical
   // doc comment.
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -9563,7 +9569,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                     color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                   }}
                 >
-                  {m.body}
+                  {renderTextWithEmoji(m.body)}
                 </div>
               )}
               <MessageReactions
@@ -9713,6 +9719,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         onChange={(e) => handleSendPhoto(e.target.files?.[0])}
       />
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', position: 'relative' }}>
+        {emojiPickerOpen && <EmojiPicker onPick={(emoji) => setDraft((d) => d + emoji)} />}
         {/* Real attach ("+") menu (2026-08-04 on Android, ported to bank-mfe) --
             consolidates what used to be 3 separate always-visible icons
             (gift/emoticon/gift-voucher), plus real photo send, matching Kakao's own
@@ -9730,6 +9737,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--itunda-white)', border: '1px solid var(--itunda-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
             <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><CameraGlyph size={16} /> Photo</span>
+            </button>
+            <button type="button" onClick={() => { setShowAttachMenu(false); setEmojiPickerOpen((v) => !v); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
+              <SmileySlight size={16} /> Emoji
             </button>
             <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               😊 Emoticon
@@ -10040,6 +10050,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [emoticonPickerOpen, setEmoticonPickerOpen] = useState(false);
   const [emoticonStoreOpen, setEmoticonStoreOpen] = useState(false);
   const [emoticonImageById, setEmoticonImageById] = useState<Record<string, string>>({});
+  // Real itundaface emoji picker -- see the 1:1-thread composer's identical
+  // addition and icons/ItundaFaceEmoji.tsx's own doc comment.
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   useEffect(() => {
     fetchEmoticonImageMap().then(setEmoticonImageById).catch(() => {});
@@ -10157,7 +10170,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                     color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                   }}
                 >
-                  {m.body}
+                  {renderTextWithEmoji(m.body)}
                 </div>
               )}
               <MessageReactions
@@ -10235,6 +10248,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         onChange={(e) => handleSendPhoto(e.target.files?.[0])}
       />
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', position: 'relative' }}>
+        {emojiPickerOpen && <EmojiPicker onPick={(emoji) => setDraft((d) => d + emoji)} />}
         {/* Real attach ("+") menu (2026-08-04 on Android, ported to bank-mfe) --
             Kakao's own real "+"-opens-a-menu pattern (References table: "'+' opens a
             multi-function attach menu"). */}
@@ -10251,6 +10265,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--itunda-white)', border: '1px solid var(--itunda-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
             <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}><CameraGlyph size={16} /> Photo</span>
+            </button>
+            <button type="button" onClick={() => { setShowAttachMenu(false); setEmojiPickerOpen((v) => !v); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
+              <SmileySlight size={16} /> Emoji
             </button>
             <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               😊 Emoticon
@@ -10445,7 +10462,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
                       color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                     }}
                   >
-                    {m.deletedAt ? 'This message was deleted' : m.body}
+                    {m.deletedAt ? 'This message was deleted' : renderTextWithEmoji(m.body)}
                   </div>
                   <span style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>{chatMessageTime(m.sentAt)}</span>
                 </div>
