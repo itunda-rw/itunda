@@ -1538,7 +1538,7 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { onSelect(tab) }
+                        .pressScaleClickable { onSelect(tab) }
                         .padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -2096,7 +2096,7 @@ private fun RoundUpSettingsDialog(
                         listOf(100L, 500L, 1000L).forEach { option ->
                             Row(
                                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                modifier = Modifier.clickable { increment = option }.padding(end = 8.dp)
+                                modifier = Modifier.pressScaleClickable { increment = option }.padding(end = 8.dp)
                             ) {
                                 androidx.compose.material3.RadioButton(selected = increment == option, onClick = { increment = option })
                                 Text("RWF $option")
@@ -2108,7 +2108,7 @@ private fun RoundUpSettingsDialog(
                     goals.forEach { goal ->
                         Row(
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().clickable { selectedGoalId = goal.id }
+                            modifier = Modifier.fillMaxWidth().pressScaleClickable { selectedGoalId = goal.id }
                         ) {
                             androidx.compose.material3.RadioButton(selected = selectedGoalId == goal.id, onClick = { selectedGoalId = goal.id })
                             Text(goal.name)
@@ -2756,7 +2756,7 @@ private fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier.clickable { showAccountSwitcher = true },
+            modifier = Modifier.pressScaleClickable { showAccountSwitcher = true },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -3436,7 +3436,7 @@ private fun PayTab(
                             .weight(1f)
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (active) Ids.colors.surface else androidx.compose.ui.graphics.Color.Transparent)
-                            .clickable { mode = m }
+                            .pressScaleClickable { mode = m }
                             .padding(vertical = 10.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
@@ -3591,7 +3591,7 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, 
                         modifier = Modifier
                             .clip(RoundedCornerShape(999.dp))
                             .background(IdsColors.Blue500)
-                            .clickable { revealed = true }
+                            .pressScaleClickable { revealed = true }
                             .padding(horizontal = 32.dp, vertical = 12.dp),
                     )
                 }
@@ -3651,7 +3651,7 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, 
             // Real drill-in to the "Toss Pay Money" detail/statement screen (user
             // screenshots, 2026-08-21) -- see PayMoneyDetailScreen's own doc comment.
             Row(
-                Modifier.fillMaxWidth().clickable { onOpenAccountDetail(selectedAccount) },
+                Modifier.fillMaxWidth().pressScaleClickable { onOpenAccountDetail(selectedAccount) },
                 horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
@@ -4905,7 +4905,7 @@ private fun IconGridSection(
                 rowItems.forEach { (label, icon) ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f).clickable { onItemClick(label) },
+                        modifier = Modifier.weight(1f).pressScaleClickable { onItemClick(label) },
                     ) {
                         Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
                             Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
