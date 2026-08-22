@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,7 +77,7 @@ fun BikeRentalScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { tab = value }.padding(vertical = 8.dp),
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -198,7 +198,7 @@ private fun BikeRentContent() {
                         Text("Bike unlocked -- billed by elapsed time", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !ending) { endRental(rental.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = !ending) { endRental(rental.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (ending) "Ending…" else "End rental (park here)", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -209,7 +209,7 @@ private fun BikeRentContent() {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                            .clickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
+                            .pressScaleClickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (locating) "Locating…" else "Find nearby bikes", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
@@ -227,7 +227,7 @@ private fun BikeRentContent() {
                         Text(if (bike.type == "ELECTRIC") "150 RWF/minute" else "80 RWF/minute", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = busyBikeId != bike.id) { startRental(bike.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = busyBikeId != bike.id) { startRental(bike.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busyBikeId == bike.id) "…" else "Unlock", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -355,7 +355,7 @@ private fun BikeMineContent() {
                                 horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                                     .background(if (bikeType == value) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                    .clickable { bikeType = value }.padding(vertical = 10.dp),
+                                    .pressScaleClickable { bikeType = value }.padding(vertical = 10.dp),
                             ) {
                                 BikeTypeGlyph(electric = value == "ELECTRIC", size = 13.dp)
                                 Text(label, color = if (bikeType == value) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -364,7 +364,7 @@ private fun BikeMineContent() {
                     }
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                            .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
+                            .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (registering) "Registering…" else "Register at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
@@ -386,13 +386,13 @@ private fun BikeMineContent() {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable(enabled = updatingLocationBikeId != bike.id) { updateBikeLocationAction(bike.id) }
+                                    .pressScaleClickable(enabled = updatingLocationBikeId != bike.id) { updateBikeLocationAction(bike.id) }
                                     .padding(horizontal = 12.dp, vertical = 10.dp),
                             ) { Text(if (updatingLocationBikeId == bike.id) "…" else "Update location", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                     .background(if (bike.available) Ids.colors.success else Ids.colors.surfaceSoft)
-                                    .clickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    .pressScaleClickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
                             ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }

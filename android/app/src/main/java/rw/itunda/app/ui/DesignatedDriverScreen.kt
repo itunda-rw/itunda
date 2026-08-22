@@ -8,7 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,7 +82,7 @@ fun DesignatedDriverScreen(onBack: () -> Unit) {
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
                         .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { tab = value }.padding(vertical = 8.dp),
+                        .pressScaleClickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -202,7 +202,7 @@ private fun DesignatedDriverRequestContent() {
                     if (activeTrip.status == "REQUESTED") {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
-                                .clickable(enabled = busyTripId != activeTrip.id) { cancelTrip(activeTrip.id) }.padding(vertical = 12.dp),
+                                .pressScaleClickable(enabled = busyTripId != activeTrip.id) { cancelTrip(activeTrip.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busyTripId == activeTrip.id) "Cancelling…" else "Cancel", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -221,7 +221,7 @@ private fun DesignatedDriverRequestContent() {
                             IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable(enabled = !locating) { requestLocation() }
+                                    .pressScaleClickable(enabled = !locating) { requestLocation() }
                                     .padding(horizontal = 14.dp, vertical = 14.dp),
                             ) { Text(if (locating) "…" else "Use my location", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
@@ -236,7 +236,7 @@ private fun DesignatedDriverRequestContent() {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(
+                                .pressScaleClickable(
                                     enabled = !requesting && pickupLat != null && dropoffAddress.isNotBlank() &&
                                         vehicleMake.isNotBlank() && vehicleModel.isNotBlank() && vehiclePlate.isNotBlank(),
                                 ) { requestTrip() }
@@ -399,7 +399,7 @@ private fun DesignatedDriverDriveContent() {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !registering && licenseNumber.isNotBlank()) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
+                                .pressScaleClickable(enabled = !registering && licenseNumber.isNotBlank()) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
                 }
@@ -412,7 +412,7 @@ private fun DesignatedDriverDriveContent() {
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                     .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
-                                    .clickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    .pressScaleClickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
@@ -429,7 +429,7 @@ private fun DesignatedDriverDriveContent() {
                             nextAction?.let { action ->
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyTripId != trip.id) { act(trip.id, action) }.padding(vertical = 12.dp),
+                                        .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id, action) }.padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
@@ -447,7 +447,7 @@ private fun DesignatedDriverDriveContent() {
                         DesignatedDriverTripCard(trip) {
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptDesignatedDriverTrip(id).trip } }
+                                    .pressScaleClickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptDesignatedDriverTrip(id).trip } }
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busyTripId == trip.id) "…" else "Accept", color = Color.White, fontWeight = FontWeight.Bold) }

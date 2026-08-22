@@ -7,7 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -528,7 +528,7 @@ fun MarketplaceContent(
             item {
                 if (!showNewListing) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).clickable { showNewListing = true }.padding(vertical = 14.dp),
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Ids.colors.brand).pressScaleClickable { showNewListing = true }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("+ List an item", color = Color.White, fontWeight = FontWeight.Bold) }
                 } else {
@@ -883,7 +883,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                     .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Ids.colors.surfaceSoft)
-                    .clickable(enabled = !uploadingPhoto) { pickPhoto.launch("image/*") },
+                    .pressScaleClickable(enabled = !uploadingPhoto) { pickPhoto.launch("image/*") },
                 contentAlignment = Alignment.Center,
             ) {
                 if (pickedImageUri != null) {
@@ -922,7 +922,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(Ids.colors.surfaceSoft)
-                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .pressScaleClickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
             ) {
                 Text(
@@ -941,11 +941,11 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.brand)
-                        .clickable(enabled = !submitting && !uploadingPhoto) {
+                        .pressScaleClickable(enabled = !submitting && !uploadingPhoto) {
                             val priceValue = price.toDoubleOrNull()
                             if (title.isBlank() || description.isBlank() || category.isBlank() || priceValue == null || priceValue <= 0) {
                                 error = "Fill in every field with a real price."
-                                return@clickable
+                                return@pressScaleClickable
                             }
                             submitting = true
                             error = null
@@ -1048,7 +1048,7 @@ private fun ListingRow(
             // (bold, largest). The full-width hero-image version wasn't sourced from a
             // real screenshot at the time it was written.
             Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
@@ -1117,7 +1117,7 @@ private fun ListingRow(
                                 favorited = favorited,
                                 size = 20.dp,
                                 modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
-                                    .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                                    .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                             )
                         }
                     }
@@ -1165,7 +1165,7 @@ private fun ListingRow(
                 WishlistHeart(
                     favorited = liked,
                     size = 16.dp,
-                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.clickable {
+                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.pressScaleClickable {
                         displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
                         onToggleLike()
                     },
@@ -1334,7 +1334,7 @@ private fun ListingDetailScreen(
                         favorited = favorited,
                         size = 24.dp,
                         modifier = Modifier.semantics { contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist" }
-                            .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                            .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                     )
                 }
             }
@@ -1353,7 +1353,7 @@ private fun ListingDetailScreen(
                 WishlistHeart(
                     favorited = liked,
                     size = 16.dp,
-                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.clickable {
+                    modifier = Modifier.semantics { contentDescription = if (liked) "Unlike" else "Like" }.pressScaleClickable {
                         displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
                         onToggleLike()
                     },
