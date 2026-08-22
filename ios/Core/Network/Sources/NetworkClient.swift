@@ -1142,6 +1142,28 @@ public struct SavingsGoal: Decodable {
 
 public struct SavingsGoalsResponse: Decodable { public let success: Bool; public let goals: [SavingsGoal] }
 
+// Real named-goal creation (2026-08-22, product-feel/Toss-parity work) -- iOS could
+// view and deposit into existing SavingsGoals but had no way to ever create one, a
+// real standing gap vs Android's MainViewModel.createSavingsGoal and web's own
+// createGoal (BankDashboard.tsx's CreateGoalForm) -- both real, already-shipped.
+// Mirrors SavingsController.CreateGoalRequest exactly (services/backend/savings):
+// name + targetAmount required, monthlyContribution/targetDate/category optional.
+public struct CreateSavingsGoalRequest: Encodable {
+    public let name: String
+    public let targetAmount: Double
+    public let monthlyContribution: Double?
+    public let targetDate: String?
+    public let category: String?
+}
+
+// Real backend response for POST /api/v1/savings/goals is {success, goal} --
+// SavingsController.createGoal's own body literal -- not the SavingsGoalsResponse
+// (plural `goals`) shape used by the GET list endpoint above.
+public struct CreateSavingsGoalResponse: Decodable {
+    public let success: Bool
+    public let goal: SavingsGoal
+}
+
 // Real Kakao Pay 머니굴리기 round-up auto-saving -- mirrors RoundUpSettings.kt exactly.
 public let ROUND_UP_INCREMENTS: [Double] = [100, 500, 1000]
 public struct RoundUpSettingsDto: Decodable {
@@ -1650,6 +1672,13 @@ extension NetworkClient {
     }
 
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
+    public func createSavingsGoal(name: String, targetAmount: Double, monthlyContribution: Double?, targetDate: String?, category: String? = nil) async throws -> CreateSavingsGoalResponse {
+        try await authenticatedPost(
+            "api/v1/savings/goals",
+            body: CreateSavingsGoalRequest(name: name, targetAmount: targetAmount, monthlyContribution: monthlyContribution, targetDate: targetDate, category: category),
+            idempotencyKey: UUID().uuidString
+        )
+    }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
     public func getDepositProtectionStatus() async throws -> DepositProtectionStatusResponse { try await get("api/v1/savings/deposit-protection") }
 

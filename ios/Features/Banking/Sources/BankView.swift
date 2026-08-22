@@ -204,11 +204,19 @@ public struct SavingsRowData: Identifiable {
     public let subtitle: String
     public let trailing: String
     public let onTap: (() -> Void)?
+    // Real "+ New savings goal" row (2026-08-22, product-feel/Toss-parity work) needs
+    // its own plus-icon/neutral tint, distinct from every real goal/interest-jar
+    // row's shared leaf icon below -- nil for those (unchanged, falls back to the
+    // existing hardcoded "leaf"/successTint mapping), set only for the add-new row.
+    public let symbol: String?
+    public let iconBackground: Color?
 
-    public init(title: String, subtitle: String, trailing: String, onTap: (() -> Void)? = nil) {
+    public init(title: String, subtitle: String, trailing: String, symbol: String? = nil, iconBackground: Color? = nil, onTap: (() -> Void)? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.trailing = trailing
+        self.symbol = symbol
+        self.iconBackground = iconBackground
         self.onTap = onTap
     }
 }
@@ -370,7 +378,7 @@ public struct BankView: View {
                         title: bt("savingsTitle", locale: locale),
                         actionLabel: bt("view", locale: locale),
                         rows: savingsRows.map {
-                            HomeRowData(title: $0.title, subtitle: $0.subtitle, trailing: $0.trailing, symbol: "leaf", iconBackground: IDS.Colors.successTint, onTap: $0.onTap)
+                            HomeRowData(title: $0.title, subtitle: $0.subtitle, trailing: $0.trailing, symbol: $0.symbol ?? "leaf", iconBackground: $0.iconBackground ?? IDS.Colors.successTint, onTap: $0.onTap)
                         }
                     )
                 }

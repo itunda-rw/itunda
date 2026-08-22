@@ -73,6 +73,12 @@ struct ContentView: View {
     @State private var showTransferFlow = false
     // Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
     @State private var savingsFlowStep: SavingsFlowStep?
+    // Real savings-goal creation (2026-08-22) -- see CreateSavingsGoalScreen.swift.
+    // Its own separate boolean, not folded into savingsFlowStep/SavingsFlowContainer:
+    // creation doesn't move money, so it needs none of that container's
+    // MoneyActionResult/device-step-up machinery -- matches
+    // CreateWeeklySavingsPlanView's own established self-contained-sheet pattern.
+    @State private var showCreateSavingsGoal = false
     // Real transaction history (2026-07-12) -- see TransactionHistoryScreen.swift.
     @State private var showTransactionHistory = false
     // Real account settings screen (2026-07-12) -- see SettingsScreen.swift.
@@ -167,6 +173,18 @@ struct ContentView: View {
     // views take plain data rather than owning navigation state themselves).
     private var savingsRows: [SavingsRowData] {
         var rows: [SavingsRowData] = []
+        // Real "+ New savings goal" entry point (2026-08-22, product-feel/Toss-parity
+        // work) -- matches web's CreateGoalForm/Android's identical row, both already
+        // real. Leads the section, like web's own placement, with a distinct
+        // plus-icon/neutral tint (not the shared leaf used by real goals/jar below).
+        rows.append(SavingsRowData(
+            title: "New savings goal",
+            subtitle: "Set a target and save toward it",
+            trailing: "",
+            symbol: "plus.circle",
+            iconBackground: Color(.systemGray5),
+            onTap: { showCreateSavingsGoal = true }
+        ))
         if let jar = bankViewModel.interestJar {
             // Real interest-methodology transparency (2026-08-11) -- this row only
             // ever showed the opaque earned-this-month figure, never the rate or
@@ -220,6 +238,15 @@ struct ContentView: View {
                             savingsFlowStep = nil
                             Task { await bankViewModel.load() }
                         }
+                    )
+                }
+                .sheet(isPresented: $showCreateSavingsGoal) {
+                    CreateSavingsGoalScreen(
+                        onCreated: {
+                            showCreateSavingsGoal = false
+                            Task { await bankViewModel.load() }
+                        },
+                        onCancel: { showCreateSavingsGoal = false }
                     )
                 }
                 .fullScreenCover(isPresented: $showTransactionHistory) {
