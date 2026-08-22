@@ -29,9 +29,9 @@ private let reactionThumbsUpShapes: [ItundaFaceShape] = [
     .filledPath(
         d: "M32,34 H56 C60,34 63,37.2 63,41.2 C63,42.6 62.6,44 61.9,45.1 C64.3,46.1 66,48.5 66,51.2 C66,53.4 64.9,55.3 63.2,56.6 " +
             "C64.3,58 65,59.8 65,61.7 C65,64.5 63.4,66.9 61.1,68.1 C61.4,68.9 61.6,69.8 61.6,70.7 C61.6,74.7 58.3,78 54.3,78 H36 C33.8,78 32,76.2 32,74 V34 Z",
-        color: Color(hex: 0xFFCF87)
+        color: Color(hex: 0xFFCC4D)
     ),
-    .strokedPath(d: "M32,34 L38,16 C39,12.6 42.1,10.3 45.6,10.3 C47,10.3 48,11.5 47.8,12.9 L45.6,28", color: Color(hex: 0xFFCF87), width: 6, cap: .round),
+    .strokedPath(d: "M32,34 L38,16 C39,12.6 42.1,10.3 45.6,10.3 C47,10.3 48,11.5 47.8,12.9 L45.6,28", color: Color(hex: 0xFFCC4D), width: 6, cap: .round),
 ]
 
 // Real shared-seam two-facet construction -- one outer heart silhouette split by a

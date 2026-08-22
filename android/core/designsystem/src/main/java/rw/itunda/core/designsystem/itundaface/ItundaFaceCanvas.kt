@@ -63,6 +63,14 @@ sealed interface Shape2D {
         val dashOff: Float = 0f,
     ) : Shape2D
     data class RotatedGroup(val degrees: Float, val pivotX: Float, val pivotY: Float, val shapes: List<Shape2D>) : Shape2D
+    /** Rescales+recenters a group: content originally centered at
+     * (fromCenterX, fromCenterY) is scaled by `scale` and moved so that
+     * point lands at (toCenterX, toCenterY) -- the exact composite
+     * translate(to) -> scale(s) -> translate(-from) SVG uses, needed when a
+     * source asset's own bounding-box center doesn't already sit at the
+     * canvas center (real case: Noto Emoji's real safe-zone-padded glyphs,
+     * see ItundaFacePeople.kt's own doc comment). */
+    data class ScaledGroup(val scale: Float, val fromCenterX: Float, val fromCenterY: Float, val toCenterX: Float, val toCenterY: Float, val shapes: List<Shape2D>) : Shape2D
 }
 
 fun DrawScope.drawItundaFaceShape(shape: Shape2D) {
@@ -112,6 +120,14 @@ fun DrawScope.drawItundaFaceShape(shape: Shape2D) {
             )
         is Shape2D.RotatedGroup ->
             withTransform({ rotate(shape.degrees, pivot = Offset(shape.pivotX, shape.pivotY)) }) {
+                shape.shapes.forEach { drawItundaFaceShape(it) }
+            }
+        is Shape2D.ScaledGroup ->
+            withTransform({
+                translate(shape.toCenterX, shape.toCenterY)
+                scale(shape.scale, shape.scale, pivot = Offset.Zero)
+                translate(-shape.fromCenterX, -shape.fromCenterY)
+            }) {
                 shape.shapes.forEach { drawItundaFaceShape(it) }
             }
     }

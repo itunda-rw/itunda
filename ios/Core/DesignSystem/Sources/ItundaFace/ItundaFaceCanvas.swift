@@ -33,10 +33,32 @@ public enum ItundaFaceShape {
     case filledRect(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat, rx: CGFloat, color: Color)
     case strokedLine(x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat, color: Color, width: CGFloat, cap: CGLineCap = .butt, alpha: Double = 1, dashOn: CGFloat = 0, dashOff: CGFloat = 0)
     indirect case rotatedGroup(degrees: Double, pivotX: CGFloat, pivotY: CGFloat, shapes: [ItundaFaceShape])
+    /// Rescales+recenters a group: content originally centered at
+    /// (fromCenterX, fromCenterY) is scaled by `scale` and moved so that
+    /// point lands at (toCenterX, toCenterY) -- needed when a source
+    /// asset's own bounding-box center doesn't already sit at the canvas
+    /// center (real case: Noto Emoji's real safe-zone-padded glyphs, see
+    /// ItundaFacePeople.swift's own doc comment). Mirrors Android's
+    /// Shape2D.ScaledGroup exactly.
+    indirect case scaledGroup(scale: CGFloat, fromCenterX: CGFloat, fromCenterY: CGFloat, toCenterX: CGFloat, toCenterY: CGFloat, shapes: [ItundaFaceShape])
 }
 
-/// Parses a real SVG path-data string (absolute M/L/H/V/C/A/Z commands only --
-/// the exact subset every itundaface glyph uses) into a SwiftUI `Path`.
+/// Parses a real SVG path-data string into a SwiftUI `Path`. Supports both
+/// absolute (M L H V C A Z) and relative (m l h v c a) commands, plus the
+/// real SVG "implicit repeat" rule (a command letter followed by more than
+/// one coordinate set repeats implicitly, e.g. `L10,10 20,20` is two
+/// linetos) -- both were real gaps found the hard way (2026-08-22): itunda's
+/// own hand-authored glyphs only ever used absolute commands, so the
+/// original parser only handled those, but real-world professional SVG
+/// exports (e.g. Noto Emoji's, see ItundaFacePeople.swift) mix relative
+/// lowercase commands throughout to save file size. The Xcode build
+/// succeeding after adding those glyphs did NOT prove they rendered
+/// correctly -- Swift compiling only proves the string literal is valid,
+/// not that this parser understood it; the gap was caught by actually
+/// reasoning through what characters the real path data contained, not by
+/// trusting a green build. Web's browser-native SVG engine and Android's
+/// real `androidx.core.graphics.PathParser` both already handled this full
+/// grammar; only this hand-rolled iOS parser had the gap.
 public func svgPath(_ d: String) -> Path {
     var path = Path()
     var current = CGPoint.zero
@@ -51,25 +73,54 @@ public func svgPath(_ d: String) -> Path {
         return nil
     }
 
+    var lastCommand: Character?
     while !scanner.isAtEnd {
-        guard let command = scanner.scanCharacter() else { break }
+        let nextIsCommandLetter = peekIsCommandLetter(scanner)
+        let command: Character
+        if nextIsCommandLetter, let c = scanner.scanCharacter() {
+            command = c
+            lastCommand = c
+        } else if let last = lastCommand {
+            command = last
+        } else {
+            break
+        }
         switch command {
         case "M":
             guard let x = readDouble(), let y = readDouble() else { break }
             current = CGPoint(x: x, y: y)
             subpathStart = current
             path.move(to: current)
+            lastCommand = "L" // subsequent implicit-repeat pairs after M are linetos, per spec
+        case "m":
+            guard let x = readDouble(), let y = readDouble() else { break }
+            current = CGPoint(x: current.x + x, y: current.y + y)
+            subpathStart = current
+            path.move(to: current)
+            lastCommand = "l"
         case "L":
             guard let x = readDouble(), let y = readDouble() else { break }
             current = CGPoint(x: x, y: y)
+            path.addLine(to: current)
+        case "l":
+            guard let x = readDouble(), let y = readDouble() else { break }
+            current = CGPoint(x: current.x + x, y: current.y + y)
             path.addLine(to: current)
         case "H":
             guard let x = readDouble() else { break }
             current = CGPoint(x: x, y: current.y)
             path.addLine(to: current)
+        case "h":
+            guard let x = readDouble() else { break }
+            current = CGPoint(x: current.x + x, y: current.y)
+            path.addLine(to: current)
         case "V":
             guard let y = readDouble() else { break }
             current = CGPoint(x: current.x, y: y)
+            path.addLine(to: current)
+        case "v":
+            guard let y = readDouble() else { break }
+            current = CGPoint(x: current.x, y: current.y + y)
             path.addLine(to: current)
         case "C":
             guard let x1 = readDouble(), let y1 = readDouble(),
@@ -77,6 +128,17 @@ public func svgPath(_ d: String) -> Path {
                   let x = readDouble(), let y = readDouble() else { break }
             path.addCurve(to: CGPoint(x: x, y: y), control1: CGPoint(x: x1, y: y1), control2: CGPoint(x: x2, y: y2))
             current = CGPoint(x: x, y: y)
+        case "c":
+            guard let x1 = readDouble(), let y1 = readDouble(),
+                  let x2 = readDouble(), let y2 = readDouble(),
+                  let x = readDouble(), let y = readDouble() else { break }
+            let base = current
+            path.addCurve(
+                to: CGPoint(x: base.x + x, y: base.y + y),
+                control1: CGPoint(x: base.x + x1, y: base.y + y1),
+                control2: CGPoint(x: base.x + x2, y: base.y + y2)
+            )
+            current = CGPoint(x: base.x + x, y: base.y + y)
         case "A":
             guard let rx = readDouble(), let ry = readDouble(),
                   let xAxisRotation = readDouble(),
@@ -89,14 +151,38 @@ public func svgPath(_ d: String) -> Path {
                 largeArcFlag: largeArcFlag != 0, sweepFlag: sweepFlag != 0
             )
             current = end
+        case "a":
+            guard let rx = readDouble(), let ry = readDouble(),
+                  let xAxisRotation = readDouble(),
+                  let largeArcFlag = readDouble(), let sweepFlag = readDouble(),
+                  let x = readDouble(), let y = readDouble() else { break }
+            let end = CGPoint(x: current.x + x, y: current.y + y)
+            appendArc(
+                to: &path, from: current, to: end,
+                rx: rx, ry: ry, xAxisRotationDegrees: xAxisRotation,
+                largeArcFlag: largeArcFlag != 0, sweepFlag: sweepFlag != 0
+            )
+            current = end
         case "Z", "z":
             path.closeSubpath()
             current = subpathStart
+            lastCommand = nil
         default:
-            break
+            lastCommand = nil
         }
     }
     return path
+}
+
+/// Peeks (without consuming) whether the scanner's current position is a
+/// command letter (true) vs. numeric data continuing an implicit-repeat
+/// command (false).
+private func peekIsCommandLetter(_ scanner: Scanner) -> Bool {
+    let savedIndex = scanner.currentIndex
+    defer { scanner.currentIndex = savedIndex }
+    scanner.charactersToBeSkipped = CharacterSet(charactersIn: ", ")
+    guard let c = scanner.scanCharacter() else { return true }
+    return "MmLlHhVvCcAaZz".contains(c)
 }
 
 /// SVG's elliptical-arc endpoint parameterization (spec section 9.5.1),
@@ -213,6 +299,12 @@ private func drawShape(_ shape: ItundaFaceShape, context: inout GraphicsContext)
         rotated.rotate(by: .degrees(degrees))
         rotated.translateBy(x: -pivotX, y: -pivotY)
         for s in shapes { drawShape(s, context: &rotated) }
+    case .scaledGroup(let scale, let fromCenterX, let fromCenterY, let toCenterX, let toCenterY, let shapes):
+        var scaled = context
+        scaled.translateBy(x: toCenterX, y: toCenterY)
+        scaled.scaleBy(x: scale, y: scale)
+        scaled.translateBy(x: -fromCenterX, y: -fromCenterY)
+        for s in shapes { drawShape(s, context: &scaled) }
     }
 }
 

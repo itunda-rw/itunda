@@ -29,7 +29,7 @@ import rw.itunda.core.designsystem.itundaface.Shape2D
 // Eyes keeps its original hand-authored construction -- it already read
 // clearly from the first pass, no Noto source was needed there.
 
-private const val SKIN = 0xFFFFCF87L
+private const val SKIN = 0xFFFFCC4DL
 private const val INDIGO = 0xFF7472F4L
 
 private val eyesShapes = listOf(
