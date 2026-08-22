@@ -167,3 +167,65 @@ button:active {
   animation-name: shimmer;
   animation-timing-function: linear;
 }
+
+/* itundaface reaction-glyph hover animations (2026-08-22, direct user follow-up:
+   "toss and kakao they use animated graphics for better interactions"). Real,
+   sourced grounding: Toss's own real motion strategy names "symbolic animated
+   icons" and states their Tossface homepage itself uses "mouse-over and
+   click-triggered emoji animations" (toss.im/tossfeed/article/why-motion-in-finance,
+   fetched directly) -- KakaoTalk's own real emoticon platform overwhelmingly
+   favors animated over static (emoticonstudio.kakao.com's real submission spec:
+   animated packs outperform static ones so heavily that "static stickers are hard
+   to find in the top 20"). Neither precedent is a continuous idle loop -- both are
+   TRIGGERED by a real interaction moment, matching itunda's own restraint
+   principle (motion only when it serves a real, statable purpose, see
+   project_itunda_product_feel's own gate on this) -- so these fire once on hover
+   (the quick-react picker's own deliberate "choosing" moment), not on a timer.
+   `animation-fill-mode: forwards` + a React `key` remount on each hover-start
+   (see ItundaFace.tsx) is what makes the SAME element replay the animation on
+   every hover, not just the first. */
+@keyframes itdf-heartbeat {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.16); }
+  40% { transform: scale(0.98); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes itdf-nod {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  55% { transform: rotate(9deg); }
+  80% { transform: rotate(-3deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes itdf-shake {
+  0% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-2px) rotate(-4deg); }
+  40% { transform: translateY(0) rotate(4deg); }
+  60% { transform: translateY(-1px) rotate(-3deg); }
+  80% { transform: translateY(0) rotate(2deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes itdf-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.22); }
+  55% { transform: scale(0.94); }
+  80% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes itdf-droop {
+  0% { transform: rotate(0deg) translateY(0); }
+  40% { transform: rotate(6deg) translateY(2px); }
+  70% { transform: rotate(-2deg) translateY(1px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+.itdf-anim-heart { transform-origin: 50% 60%; animation: itdf-heartbeat 0.7s ease-out forwards; }
+.itdf-anim-thumbsup { transform-origin: 50% 90%; animation: itdf-nod 0.5s ease-out forwards; }
+.itdf-anim-laughing { transform-origin: 50% 50%; animation: itdf-shake 0.55s ease-out forwards; }
+.itdf-anim-wow { transform-origin: 50% 50%; animation: itdf-pop 0.5s ease-out forwards; }
+.itdf-anim-sad { transform-origin: 50% 20%; animation: itdf-droop 0.6s ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .itdf-anim-heart, .itdf-anim-thumbsup, .itdf-anim-laughing, .itdf-anim-wow, .itdf-anim-sad {
+    animation: none;
+  }
+}

@@ -8438,52 +8438,76 @@ function MessageReactions({
   reactions: ReactionGroup[]; currentUserId: string | undefined; onToggle: (emoji: string) => void; isMine: boolean;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Real Toss/Kakao-sourced per-glyph hover animation (index.css's itdf-anim-*,
+  // see ItundaFace.tsx's ReactionGlyph doc comment) -- tracks which single picker
+  // glyph is currently hovered so only that one plays its animation.
+  const [hoveredReactionEmoji, setHoveredReactionEmoji] = useState<string | null>(null);
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-      {reactions.filter((r) => r.userIds.length > 0).map((r) => {
-        const mine = !!currentUserId && r.userIds.includes(currentUserId);
-        return (
-          <button
-            key={r.emoji}
-            onClick={() => onToggle(r.emoji)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: 'var(--itunda-type-scale-12-size)',
-              border: mine ? '1px solid var(--itunda-indigo)' : '1px solid var(--itunda-grey-200)',
-              backgroundColor: mine ? 'var(--itunda-indigo-light)' : 'var(--itunda-white)',
-            }}
-          >
-            <ReactionGlyph emoji={r.emoji} size={16} />
-            <span style={{ color: 'var(--itunda-grey-700)' }}>{r.userIds.length}</span>
-          </button>
-        );
-      })}
+      <AnimatePresence initial={false}>
+        {reactions.filter((r) => r.userIds.length > 0).map((r) => {
+          const mine = !!currentUserId && r.userIds.includes(currentUserId);
+          return (
+            <motion.button
+              key={r.emoji}
+              layout
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+              whileTap={{ scale: 0.88 }}
+              onClick={() => onToggle(r.emoji)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: 'var(--itunda-type-scale-12-size)',
+                border: mine ? '1px solid var(--itunda-indigo)' : '1px solid var(--itunda-grey-200)',
+                backgroundColor: mine ? 'var(--itunda-indigo-light)' : 'var(--itunda-white)',
+              }}
+            >
+              <ReactionGlyph emoji={r.emoji} size={16} />
+              <span style={{ color: 'var(--itunda-grey-700)' }}>{r.userIds.length}</span>
+            </motion.button>
+          );
+        })}
+      </AnimatePresence>
       <div style={{ position: 'relative' }}>
-        <button
+        <motion.button
+          whileTap={{ scale: 0.88 }}
           onClick={() => setPickerOpen((v) => !v)}
           aria-label="Add reaction"
           style={{ display: 'flex', padding: '6px', borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-500)' }}
         >
           <SmilePlus size={14} />
-        </button>
-        {pickerOpen && (
-          <div
-            style={{
-              position: 'absolute', bottom: '32px', display: 'flex', gap: '6px', padding: '8px 10px',
-              borderRadius: '14px', backgroundColor: 'var(--itunda-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
-              left: isMine ? undefined : 0, right: isMine ? 0 : undefined,
-            }}
-          >
-            {QUICK_REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => { onToggle(emoji); setPickerOpen(false); }}
-                style={{ display: 'flex', padding: '2px' }}
-              >
-                <ReactionGlyph emoji={emoji} size={32} variant="3d" />
-              </button>
-            ))}
-          </div>
-        )}
+        </motion.button>
+        <AnimatePresence>
+          {pickerOpen && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 6 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+              style={{
+                position: 'absolute', bottom: '32px', display: 'flex', gap: '6px', padding: '8px 10px',
+                borderRadius: '14px', backgroundColor: 'var(--itunda-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
+                left: isMine ? undefined : 0, right: isMine ? 0 : undefined,
+              }}
+            >
+              {QUICK_REACTIONS.map((emoji) => (
+                <motion.button
+                  key={emoji}
+                  whileHover={{ scale: 1.18, y: -3 }}
+                  whileTap={{ scale: 0.82 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  onHoverStart={() => setHoveredReactionEmoji(emoji)}
+                  onHoverEnd={() => setHoveredReactionEmoji((current) => (current === emoji ? null : current))}
+                  onClick={() => { onToggle(emoji); setPickerOpen(false); }}
+                  style={{ display: 'flex', padding: '2px' }}
+                >
+                  <ReactionGlyph emoji={emoji} size={32} variant="3d" animated={hoveredReactionEmoji === emoji} />
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
