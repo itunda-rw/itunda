@@ -5,22 +5,44 @@
 // among hand gestures specifically (the sub-group people actually reach for),
 // not spec order.
 //
-// Harder to construct correctly than Smileys' round faces -- hand/gesture
-// shapes have no forgiving symmetric base to fall back on. Built and verified
-// via 2 real rsvg-convert render-and-inspect passes (not shipped on the first
-// attempt): the initial 8-glyph draft included Muscle and Folded Hands, both
-// of which did not read clearly at a glance even after a redesign iteration
-// (Muscle looked like a comma with a hat; Folded Hands looked like a single
-// peanut) -- CUT from this batch rather than shipped broken, same standard
-// the place-category icons (restaurant/pharmacy/hotel) were held to. Only the
-// 6 glyphs that read clearly ship here; Muscle/Folded Hands are a real,
-// documented open item for a future redesign pass.
+// **Real redesign pass (2026-08-22), two direct user corrections**:
+// 1. "those emojis waving hands images they don't look good take inspiration
+//    from tossface and make sure our emoji escapes are premium with itunda
+//    identity." The first shipped draft built each hand from widely-fanned,
+//    dramatically-rotated rectangle "fingers" glued onto a separate blocky
+//    cuff rectangle -- looked crude next to TossFace's actual construction.
+//    Fetched TossFace's own real published SVG source directly
+//    (github.com/toss/tossface/dist/svg/, e.g. u1F44B.svg for waving hand,
+//    u270A.svg for fist) and rendered them for real visual reference --
+//    confirmed their real technique is a single smooth, CHUNKY, closely-
+//    packed hand silhouette (minimal gaps between fingers, no separate cuff
+//    block, fingers barely rotated) plus one soft shading-crescent accent
+//    line, not a literal skin-tone/anatomical hand. Applied the same
+//    STRUCTURE (tight packing, no cuff, rounded-rect palm/fist bases, a
+//    single accent swoosh) while keeping itunda's own identity, not
+//    TossFace's: real skin-tone palette (fill #FFCF87, matching
+//    ItundaFace.tsx's ReactionThumbsUp, itundaface's own established hand-
+//    glyph convention) instead of TossFace's gold/mitten color, and the
+//    accent swoosh uses real itunda indigo instead of TossFace's orange --
+//    the same "secondary/non-semantic accent = itunda indigo" signature rule
+//    already used for the reaction tears.
+// 2. "toss emojis are bigger and clear that's what we need" -- measured
+//    TossFace's real reference SVGs (40x40 viewBox, content spans nearly
+//    edge-to-edge) against this file's first redesign (still padded well
+//    inside its 80x80 frame) and rescaled every glyph 1.15x-1.4x around its
+//    own visual center to match that same edge-to-edge fill ratio, fixing an
+//    off-canvas clipping bug on the waving hand's motion lines along the way
+//    (they extended to y=-1, outside the 0-80 viewBox, before the rescale).
+// Both passes verified via rsvg-convert render-and-inspect before shipping,
+// same discipline as every itundaface batch.
 //
-// Shared skin-tone palette (fill #FFCF87, cuff/shade #E0A655) matches
-// ItundaFace.tsx's existing ReactionThumbsUp exactly -- itundaface's own
-// established hand-glyph convention, not a new palette. Eyes' iris uses real
-// itunda indigo (a non-semantic accent, same signature rule as the tear
-// accents elsewhere in itundaface).
+// Muscle and Folded Hands were attempted across 3 different construction
+// techniques (primitive rects, smooth single-path, TossFace-inspired chunky
+// packing) and still did not read clearly at a glance -- cut from this batch
+// rather than shipped illegible, same standard the place-category icons
+// (restaurant/pharmacy/hotel) were held to earlier. Real, documented open
+// item for a future redesign pass, ideally with a genuinely different
+// construction idea, not another iteration on the same approach.
 
 import type { SVGProps } from 'react';
 
@@ -35,17 +57,19 @@ function FaceBase({ size = 24, children, ...rest }: FaceIconProps & { children: 
 }
 
 const SKIN = '#FFCF87';
-const CUFF = '#E0A655';
+const INDIGO = '#7472F4';
 
 export function PeopleEyes(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <ellipse cx="24" cy="42" rx="17" ry="14" fill="#FFFFFF" stroke="#B8B4AA" strokeWidth={2} />
-      <ellipse cx="56" cy="42" rx="17" ry="14" fill="#FFFFFF" stroke="#B8B4AA" strokeWidth={2} />
-      <circle cx="26" cy="42" r="7" fill="#7472F4" />
-      <circle cx="58" cy="42" r="7" fill="#7472F4" />
-      <circle cx="28" cy="39" r="2" fill="#FFFFFF" />
-      <circle cx="60" cy="39" r="2" fill="#FFFFFF" />
+      <g transform="translate(40,40) scale(1.3) translate(-40,-40)">
+        <ellipse cx="24" cy="42" rx="17" ry="14" fill="#FFFFFF" stroke="#B8B4AA" strokeWidth={2} />
+        <ellipse cx="56" cy="42" rx="17" ry="14" fill="#FFFFFF" stroke="#B8B4AA" strokeWidth={2} />
+        <circle cx="26" cy="42" r="7" fill={INDIGO} />
+        <circle cx="58" cy="42" r="7" fill={INDIGO} />
+        <circle cx="28" cy="39" r="2" fill="#FFFFFF" />
+        <circle cx="60" cy="39" r="2" fill="#FFFFFF" />
+      </g>
     </FaceBase>
   );
 }
@@ -53,12 +77,20 @@ export function PeopleEyes(props: FaceIconProps) {
 export function PeopleFist(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <path d="M28,32 V72 C28,74.2 26.2,76 24,76 H16 C13.8,76 12,74.2 12,72 V38 C12,35.8 13.8,34 16,34 H24 Z" fill={CUFF} />
-      <path
-        d="M32,34 H56 C60,34 63,37.2 63,41.2 C63,42.6 62.6,44 61.9,45.1 C64.3,46.1 66,48.5 66,51.2 C66,53.4 64.9,55.3 63.2,56.6 C64.3,58 65,59.8 65,61.7 C65,64.5 63.4,66.9 61.1,68.1 C61.4,68.9 61.6,69.8 61.6,70.7 C61.6,74.7 58.3,78 54.3,78 H36 C33.8,78 32,76.2 32,74 V34 Z"
-        fill={SKIN}
-      />
-      <path d="M32,40 C27,38 23,42 24,47 C25,51 31,53 35,50 C38,47 37,42 32,40 Z" fill={SKIN} />
+      <g transform="translate(40,40) scale(1.4) translate(-38,-42)">
+        <path
+          d="M20,26 C20,18 26,12 34,10 C36,6 40,4 44,4 C48,4 52,6 54,10 C60,12 64,17 64,25 C64,30 62,34 60,36 C62,42 62,50 60,56 C57,66 48,72 38,72 C26,72 16,63 14,50 C13,42 14,32 20,26 Z"
+          fill={SKIN}
+        />
+        {/* Knuckle lines -- without these the silhouette alone reads as an
+            ambiguous blob (a real risk caught only by checking this glyph in
+            isolation at true render size, not just next to its labeled
+            siblings); 3 subtle ridges are what makes "closed fist" legible. */}
+        <path d="M32,10 C33,14 33,18 32,22" stroke="#E0A655" strokeWidth={1.6} fill="none" opacity={0.55} />
+        <path d="M44,6 C45,10 45,15 44,19" stroke="#E0A655" strokeWidth={1.6} fill="none" opacity={0.55} />
+        <path d="M55,12 C56,16 56,20 55,24" stroke="#E0A655" strokeWidth={1.6} fill="none" opacity={0.55} />
+        <path d="M18,36 C22,44 22,52 17,58" stroke={INDIGO} strokeWidth={3.2} strokeLinecap="round" fill="none" opacity={0.7} />
+      </g>
     </FaceBase>
   );
 }
@@ -66,13 +98,18 @@ export function PeopleFist(props: FaceIconProps) {
 export function PeopleWavingHand(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <rect x="26" y="64" width="28" height="16" rx="8" fill={CUFF} />
-      <ellipse cx="40" cy="50" rx="17" ry="20" fill={SKIN} />
-      <rect x="10" y="42" width="10" height="22" rx="5" fill={SKIN} transform="rotate(-55 15 53)" />
-      <rect x="18" y="14" width="9" height="26" rx="4.5" fill={SKIN} transform="rotate(-22 22.5 27)" />
-      <rect x="28" y="8" width="9" height="30" rx="4.5" fill={SKIN} transform="rotate(-8 32.5 23)" />
-      <rect x="39" y="6" width="9" height="32" rx="4.5" fill={SKIN} transform="rotate(6 43.5 22)" />
-      <rect x="50" y="10" width="9" height="28" rx="4.5" fill={SKIN} transform="rotate(20 54.5 24)" />
+      <g transform="translate(40,40) scale(1.25) translate(-43,-38)">
+        <rect x="18" y="42" width="36" height="32" rx="16" fill={SKIN} />
+        <rect x="8" y="44" width="13" height="24" rx="6.5" fill={SKIN} transform="rotate(-40 14.5 56)" />
+        <rect x="20" y="14" width="11" height="32" rx="5.5" fill={SKIN} transform="rotate(-12 25.5 30)" />
+        <rect x="31" y="8" width="11" height="34" rx="5.5" fill={SKIN} transform="rotate(-4 36.5 25)" />
+        <rect x="42" y="8" width="11" height="34" rx="5.5" fill={SKIN} transform="rotate(4 47.5 25)" />
+        <rect x="53" y="14" width="11" height="32" rx="5.5" fill={SKIN} transform="rotate(12 58.5 30)" />
+        <path d="M28,58 C34,63 42,63 48,58" stroke={INDIGO} strokeWidth={3} strokeLinecap="round" fill="none" opacity={0.6} />
+        <path d="M55,15 C59,11 63,11 65,15" stroke="#B8B4AA" strokeWidth={2.4} strokeLinecap="round" fill="none" />
+        <path d="M61,9 C65,4 70,4 72,9" stroke="#B8B4AA" strokeWidth={2.2} strokeLinecap="round" fill="none" opacity={0.8} />
+        <path d="M67,4 C70,0 75,0 77,4" stroke="#B8B4AA" strokeWidth={2} strokeLinecap="round" fill="none" opacity={0.6} />
+      </g>
     </FaceBase>
   );
 }
@@ -80,11 +117,12 @@ export function PeopleWavingHand(props: FaceIconProps) {
 export function PeopleVictoryHand(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <rect x="24" y="66" width="28" height="14" rx="7" fill={CUFF} />
-      <ellipse cx="38" cy="54" rx="19" ry="17" fill={SKIN} />
-      <ellipse cx="22" cy="56" rx="7" ry="10" fill={SKIN} />
-      <rect x="26" y="10" width="11" height="36" rx="5.5" fill={SKIN} transform="rotate(-8 31.5 28)" />
-      <rect x="40" y="10" width="11" height="36" rx="5.5" fill={SKIN} transform="rotate(8 45.5 28)" />
+      <g transform="translate(40,40) scale(1.3) translate(-40,-38)">
+        <path d="M22,50 C22,38 30,32 40,32 C50,32 58,40 58,52 C58,64 50,72 40,72 C28,72 20,64 22,50 Z" fill={SKIN} />
+        <rect x="27" y="6" width="12" height="36" rx="6" fill={SKIN} transform="rotate(-7 33 24)" />
+        <rect x="41" y="6" width="12" height="36" rx="6" fill={SKIN} transform="rotate(7 47 24)" />
+        <path d="M28,54 C33,59 41,60 47,55" stroke={INDIGO} strokeWidth={3} strokeLinecap="round" fill="none" opacity={0.6} />
+      </g>
     </FaceBase>
   );
 }
@@ -92,28 +130,50 @@ export function PeopleVictoryHand(props: FaceIconProps) {
 export function PeopleOkHand(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <rect x="34" y="60" width="28" height="14" rx="7" fill={CUFF} />
-      <ellipse cx="46" cy="46" rx="19" ry="18" fill={SKIN} />
-      <circle cx="30" cy="28" r="13" fill="none" stroke={SKIN} strokeWidth={11} />
-      <rect x="44" y="10" width="11" height="30" rx="5.5" fill={SKIN} transform="rotate(-16 49.5 25)" />
-      <rect x="55" y="8" width="11" height="32" rx="5.5" fill={SKIN} transform="rotate(2 60.5 24)" />
-      <rect x="66" y="12" width="11" height="30" rx="5.5" fill={SKIN} transform="rotate(20 71.5 27)" />
+      <g transform="translate(40,40) scale(1.15) translate(-47,-40)">
+        <path d="M32,52 C32,40 40,34 50,34 C60,34 68,42 68,54 C68,66 60,74 50,74 C38,74 30,66 32,52 Z" fill={SKIN} />
+        <circle cx="26" cy="26" r="15" fill="none" stroke={SKIN} strokeWidth={12} />
+        <rect x="40" y="4" width="12" height="34" rx="6" fill={SKIN} transform="rotate(-10 46 22)" />
+        <rect x="52" y="2" width="12" height="36" rx="6" fill={SKIN} transform="rotate(4 58 20)" />
+        <rect x="64" y="6" width="12" height="34" rx="6" fill={SKIN} transform="rotate(18 70 24)" />
+        <path d="M40,56 C45,61 53,61 59,56" stroke={INDIGO} strokeWidth={3} strokeLinecap="round" fill="none" opacity={0.6} />
+      </g>
     </FaceBase>
+  );
+}
+
+// One hand unit (palm + 4 fingers, all sharing one local frame) reused for
+// both sides of PeopleClappingHands -- fixed a real bug caught only by
+// rendering this glyph ALONE at true size (it looked plausible in a small
+// side-by-side check sheet but was actually two disconnected finger clusters
+// floating above two unrelated palm blobs): rotating each finger
+// independently relative to a mismatched local origin, instead of rotating
+// one already-correctly-assembled hand as a single rigid unit, silently
+// breaks the connection between fingers and palm.
+function ClappingHandUnit() {
+  return (
+    <g transform="rotate(-35 20 60)">
+      <rect x="2" y="30" width="36" height="34" rx="17" fill={SKIN} />
+      <rect x="4" y="2" width="11" height="34" rx="5.5" fill={SKIN} transform="rotate(-8 9.5 19)" />
+      <rect x="16" y="-4" width="11" height="36" rx="5.5" fill={SKIN} transform="rotate(-3 21.5 14)" />
+      <rect x="28" y="-3" width="11" height="35" rx="5.5" fill={SKIN} transform="rotate(4 33.5 14.5)" />
+      <rect x="39" y="4" width="11" height="32" rx="5.5" fill={SKIN} transform="rotate(12 44.5 20)" />
+    </g>
   );
 }
 
 export function PeopleClappingHands(props: FaceIconProps) {
   return (
     <FaceBase {...props}>
-      <ellipse cx="26" cy="46" rx="16" ry="20" fill={SKIN} transform="rotate(-25 26 46)" />
-      <ellipse cx="54" cy="46" rx="16" ry="20" fill={SKIN} transform="rotate(25 54 46)" />
-      <rect x="16" y="14" width="7" height="20" rx="3.5" fill={SKIN} transform="rotate(-30 19.5 24)" />
-      <rect x="24" y="8" width="7" height="22" rx="3.5" fill={SKIN} transform="rotate(-12 27.5 19)" />
-      <rect x="49" y="8" width="7" height="22" rx="3.5" fill={SKIN} transform="rotate(12 52.5 19)" />
-      <rect x="57" y="14" width="7" height="20" rx="3.5" fill={SKIN} transform="rotate(30 60.5 24)" />
-      <line x1="40" y1="2" x2="40" y2="12" stroke="#7472F4" strokeWidth={3} strokeLinecap="round" />
-      <line x1="30" y1="6" x2="35" y2="14" stroke="#7472F4" strokeWidth={3} strokeLinecap="round" />
-      <line x1="50" y1="6" x2="45" y2="14" stroke="#7472F4" strokeWidth={3} strokeLinecap="round" />
+      <g transform="translate(57,19.4) scale(0.85)">
+        <ClappingHandUnit />
+      </g>
+      <g transform="translate(23,19.4) scale(-0.85,0.85)">
+        <ClappingHandUnit />
+      </g>
+      <circle cx="40" cy="10" r="4.4" fill={INDIGO} />
+      <rect x="55" y="4" width="8.4" height="8.4" rx="2.2" fill="#F2B33D" transform="rotate(20 59.2 8.2)" />
+      <circle cx="22" cy="4" r="3.4" fill="#EF4A63" />
     </FaceBase>
   );
 }
