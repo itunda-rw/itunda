@@ -1160,6 +1160,7 @@ private struct IdsAllTopBar: View {
                     .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
                     .foregroundColor(IDS.Colors.textPrimary)
             }
+            .buttonStyle(PressScaleButtonStyle())
             // Found live via FocusOrderTests (2026-07-12): this button's action and
             // icon were changed from direct-logout to opening the real Settings
             // screen, but the accessibility label was never updated to match -- a
@@ -1288,6 +1289,80 @@ struct FlatRow {
     var action: (() -> Void)? = nil
 }
 
+// Real Toss-style press feedback (2026-08-22, "toss interactions" directive) --
+// `.onTapGesture` (what FlatSection/CollapsibleFlatSection's own rows used
+// exclusively before this) has no SwiftUI-native pressed-state at all, unlike a
+// real `Button`; this file's own FlatSection doc comment even said so directly
+// ("row.action?() is already a safe no-op with no visible pressed-state in
+// SwiftUI") when fixing an unrelated bug, without treating the missing
+// pressed-state itself as the real gap it was. Can't just swap to
+// `Button.buttonStyle(PressScaleButtonStyle())` here -- `row.action` is
+// legitimately optional (rows with no real destination yet, e.g.
+// Notifications/Privacy policy, per that same fix's own doc comment) and a
+// disabled/actionless Button would fight the existing trait-gating logic below.
+// Real fix instead: a dedicated `DragGesture(minimumDistance: 0)` tracks
+// press/release directly (the same primitive SwiftUI's own tap gesture is built
+// on), scaling only rows that actually have a real action -- matching Android's
+// `rememberPressScale`'s own "no feedback on a dead row" rule from the same fix.
+// Extracted into its own View (content can't hold @State inside a ForEach
+// closure) and shared by both FlatSection and CollapsibleFlatSection, which
+// were duplicating this exact row body before.
+private struct PressableFlatRow: View {
+    let row: FlatRow
+
+    @State private var isPressed = false
+
+    var body: some View {
+        HStack {
+            if let symbol = row.symbol {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10).fill(row.tint)
+                    Image(systemName: symbol)
+                        .font(IDS.scaledFont(size: 19, weight: .regular, relativeTo: .body))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 34, height: 34)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.title)
+                    .font(IDS.scaledFont(size: 17, weight: .medium, relativeTo: .body))
+                    .foregroundColor(IDS.Colors.textPrimary)
+                if let subtitle = row.subtitle {
+                    Text(subtitle)
+                        .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
+                        .foregroundColor(IDS.Colors.textTertiary)
+                }
+            }
+            Spacer()
+            if let trailing = row.trailing {
+                Text(trailing)
+                    .font(IDS.scaledFont(size: 15, weight: row.trailingIsLink ? .semibold : .regular, relativeTo: .subheadline))
+                    .foregroundColor(row.trailingIsLink ? IDS.Colors.brand : IDS.Colors.textSecondary)
+            } else if row.showChevron && row.action != nil {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(IDS.Colors.textTertiary)
+            }
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .scaleEffect(isPressed && row.action != nil ? 0.97 : 1)
+        .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in if row.action != nil { isPressed = true } }
+                .onEnded { _ in isPressed = false }
+        )
+        // Real dead-tap fix (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
+        // recommendation #2): the chevron/button-trait affordance above used to
+        // render for rows with no real action too (Notifications/Privacy policy/
+        // FAQ/etc. -- confirmed via Android's SupportScreen.kt doc comment that
+        // no backend exists for any of them, same real gap on this screen's
+        // Android port), matching Android's identical FlatRow bug fixed same day.
+        .onTapGesture { row.action?() }
+        .accessibilityAddTraits(row.action != nil ? [.isButton] : [])
+    }
+}
+
 struct FlatSection: View {
     let title: String
     let rows: [FlatRow]
@@ -1299,49 +1374,7 @@ struct FlatSection: View {
                 .foregroundColor(IDS.Colors.textPrimary)
                 .padding(.bottom, 6)
             ForEach(rows, id: \.title) { row in
-                HStack {
-                    if let symbol = row.symbol {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 10).fill(row.tint)
-                            Image(systemName: symbol)
-                                .font(IDS.scaledFont(size: 19, weight: .regular, relativeTo: .body))
-                                .foregroundColor(.white)
-                        }
-                        .frame(width: 34, height: 34)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(row.title)
-                            .font(IDS.scaledFont(size: 17, weight: .medium, relativeTo: .body))
-                            .foregroundColor(IDS.Colors.textPrimary)
-                        if let subtitle = row.subtitle {
-                            Text(subtitle)
-                                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
-                                .foregroundColor(IDS.Colors.textTertiary)
-                        }
-                    }
-                    Spacer()
-                    if let trailing = row.trailing {
-                        Text(trailing)
-                            .font(IDS.scaledFont(size: 15, weight: row.trailingIsLink ? .semibold : .regular, relativeTo: .subheadline))
-                            .foregroundColor(row.trailingIsLink ? IDS.Colors.brand : IDS.Colors.textSecondary)
-                    } else if row.showChevron && row.action != nil {
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(IDS.Colors.textTertiary)
-                    }
-                }
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
-                // Real dead-tap fix (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
-                // recommendation #2): the chevron/button-trait affordance below used to
-                // render for rows with no real action too (Notifications/Privacy policy/
-                // FAQ/etc. -- confirmed via Android's SupportScreen.kt doc comment that
-                // no backend exists for any of them, same real gap on this screen's
-                // Android port), matching Android's identical FlatRow bug fixed same day.
-                // `row.action?()` is already a safe no-op with no visible pressed-state
-                // in SwiftUI, so what actually misled a user was the chevron/trait, not
-                // the gesture recognizer itself -- gating those two is the real fix.
-                .onTapGesture { row.action?() }
-                .accessibilityAddTraits(row.action != nil ? [.isButton] : [])
+                PressableFlatRow(row: row)
             }
         }
     }
@@ -1360,6 +1393,8 @@ struct CollapsibleFlatSection: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
+    @State private var headerPressed = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -1372,46 +1407,56 @@ struct CollapsibleFlatSection: View {
             }
             .padding(.bottom, isExpanded ? 6 : 0)
             .contentShape(Rectangle())
+            .scaleEffect(headerPressed ? 0.98 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: headerPressed)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in headerPressed = true }
+                    .onEnded { _ in headerPressed = false }
+            )
             .onTapGesture(perform: onToggle)
             if isExpanded {
                 ForEach(rows, id: \.title) { row in
-                    HStack {
-                        if let symbol = row.symbol {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10).fill(row.tint)
-                                Image(systemName: symbol)
-                                    .font(IDS.scaledFont(size: 19, weight: .regular, relativeTo: .body))
-                                    .foregroundColor(.white)
-                            }
-                            .frame(width: 34, height: 34)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row.title)
-                                .font(IDS.scaledFont(size: 17, weight: .medium, relativeTo: .body))
-                                .foregroundColor(IDS.Colors.textPrimary)
-                            if let subtitle = row.subtitle {
-                                Text(subtitle)
-                                    .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
-                                    .foregroundColor(IDS.Colors.textTertiary)
-                            }
-                        }
-                        Spacer()
-                        if let trailing = row.trailing {
-                            Text(trailing)
-                                .font(IDS.scaledFont(size: 15, weight: row.trailingIsLink ? .semibold : .regular, relativeTo: .subheadline))
-                                .foregroundColor(row.trailingIsLink ? IDS.Colors.brand : IDS.Colors.textSecondary)
-                        } else if row.showChevron && row.action != nil {
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(IDS.Colors.textTertiary)
-                        }
-                    }
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
-                    .onTapGesture { row.action?() }
-                    .accessibilityAddTraits(row.action != nil ? [.isButton] : [])
+                    PressableFlatRow(row: row)
                 }
             }
         }
+    }
+}
+
+// Real Toss-style press feedback, same DragGesture-based technique as
+// PressableFlatRow above (`.onTapGesture` alone has no pressed-state).
+// Extracted for the same reason -- @State can't live in a ForEach closure.
+private struct PressableIconGridItem: View {
+    let label: String
+    let symbol: String
+    let onTap: (() -> Void)?
+
+    @State private var isPressed = false
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18).fill(IDS.Colors.chipBackground)
+                Image(systemName: symbol)
+                    .font(IDS.scaledFont(size: 24, weight: .regular, relativeTo: .title2))
+                    .foregroundColor(IDS.Colors.textPrimary)
+            }
+            .frame(width: 54, height: 54)
+            Text(label)
+                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
+                .foregroundColor(IDS.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .scaleEffect(isPressed && onTap != nil ? 0.94 : 1)
+        .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isPressed)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in if onTap != nil { isPressed = true } }
+                .onEnded { _ in isPressed = false }
+        )
+        .onTapGesture { onTap?() }
     }
 }
 
@@ -1435,21 +1480,7 @@ struct IconGridSection: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, rowItems in
                 HStack {
                     ForEach(rowItems, id: \.0) { label, symbol in
-                        VStack(spacing: 8) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 18).fill(IDS.Colors.chipBackground)
-                                Image(systemName: symbol)
-                                    .font(IDS.scaledFont(size: 24, weight: .regular, relativeTo: .title2))
-                                    .foregroundColor(IDS.Colors.textPrimary)
-                            }
-                            .frame(width: 54, height: 54)
-                            Text(label)
-                                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
-                                .foregroundColor(IDS.Colors.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onItemClick?(label) }
+                        PressableIconGridItem(label: label, symbol: symbol, onTap: onItemClick.map { click in { click(label) } })
                     }
                 }
             }

@@ -201,6 +201,7 @@ public struct IdsTextField: View {
                             .foregroundColor(IDS.Colors.textTertiary)
                             .frame(width: 24, height: 24)
                     }
+                    .buttonStyle(PressScaleButtonStyle())
                     .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
                 }
             }

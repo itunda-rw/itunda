@@ -10,9 +10,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -133,12 +136,16 @@ fun EmptyState(
         }
         Text(message, color = Ids.colors.textSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
         if (actionLabel != null && onAction != null) {
+            val interactionSource = remember { MutableInteractionSource() }
+            val pressScale = rememberPressScale(interactionSource)
             Text(
                 actionLabel,
                 color = Ids.colors.brand,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                modifier = Modifier.clickable(onClick = onAction),
+                modifier = Modifier
+                    .scale(pressScale)
+                    .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onAction),
             )
         }
     }
@@ -192,13 +199,16 @@ fun ListingActionButton(
     icon: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressScale = rememberPressScale(interactionSource, enabled = !disabled)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier
+            .scale(pressScale)
             .clip(RoundedCornerShape(12.dp))
             .background(if (filled) Ids.colors.brand else Ids.colors.surfaceSoft)
-            .clickable(enabled = !disabled, onClick = onClick)
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current, enabled = !disabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         icon?.invoke()
@@ -550,6 +560,8 @@ fun NeighborhoodSetupPrompt(isSecond: Boolean = false, onDone: (String) -> Unit)
 // story as everything else above.
 @Composable
 fun BackTopBar(title: String, onBack: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressScale = rememberPressScale(interactionSource)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -558,8 +570,9 @@ fun BackTopBar(title: String, onBack: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(Ids.layout.minTouchTarget)
+                .scale(pressScale)
                 .clip(CircleShape)
-                .clickable(onClick = onBack),
+                .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
@@ -577,11 +590,16 @@ val StarGold = Color(0xFFF5A623)
 fun StarRatingRow(value: Int, onChange: (Int) -> Unit) {
     Row {
         for (n in 1..5) {
+            val interactionSource = remember { MutableInteractionSource() }
+            val pressScale = rememberPressScale(interactionSource)
             Icon(
                 Icons.Outlined.Star,
                 contentDescription = "$n star${if (n == 1) "" else "s"}",
                 tint = if (n <= value) StarGold else Ids.colors.textTertiary,
-                modifier = Modifier.size(26.dp).clickable { onChange(n) },
+                modifier = Modifier
+                    .size(26.dp)
+                    .scale(pressScale)
+                    .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onChange(n) },
             )
         }
     }
@@ -615,15 +633,18 @@ fun SearchAndCategoryChips(
             ) {
                 listOf<String?>(null).plus(categories).forEach { c ->
                     val selected = c == selectedCategory
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val pressScale = rememberPressScale(interactionSource)
                     Text(
                         c ?: "All",
                         color = if (selected) Color.White else Ids.colors.textSecondary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         modifier = Modifier
+                            .scale(pressScale)
                             .clip(RoundedCornerShape(16.dp))
                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { onSelectCategory(c) }
+                            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) { onSelectCategory(c) }
                             .padding(horizontal = 14.dp, vertical = 6.dp),
                     )
                 }
@@ -636,8 +657,15 @@ fun SearchAndCategoryChips(
 // :features:shop:impl -- shared with Eats (still in :app), same story as everything else.
 @Composable
 fun QtyButton(label: String, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressScale = rememberPressScale(interactionSource)
     Box(
-        modifier = Modifier.size(30.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).clickable(onClick = onClick),
+        modifier = Modifier
+            .size(30.dp)
+            .scale(pressScale)
+            .clip(CircleShape)
+            .background(Ids.colors.surfaceSoft)
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Text(label, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
 }
