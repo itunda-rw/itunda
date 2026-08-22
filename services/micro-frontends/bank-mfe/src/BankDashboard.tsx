@@ -5,6 +5,7 @@ import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
+import { GiftGlyph, DiceGlyph } from './icons/ItundaFaceGifts';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -625,7 +626,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
       return (
         <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={onSuccess}>{t('transfer.done')}</IdsButton>}>
           <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <span style={{ fontSize: '40px', display: 'block', marginBottom: '12px' }}>🎁</span>
+            <span style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><GiftGlyph theme={giftResult.theme} size={40} /></span>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
               {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
@@ -709,7 +710,11 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
                     prevention rules require CTA labels to name the specific action, not a
                     generic verb, matching the "Clear Action" principle. */}
                 <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                  {isGift ? `🎁 Send gift · ${Number(amount).toLocaleString()} RWF` : t('transfer.send', { amount: Number(amount).toLocaleString() })}
+                  {isGift ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                      <GiftGlyph theme={null} size={16} /> Send gift · {Number(amount).toLocaleString()} RWF
+                    </span>
+                  ) : t('transfer.send', { amount: Number(amount).toLocaleString() })}
                 </IdsButton>
               </div>
               {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -871,7 +876,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
 
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginTop: '12px' }}>
         <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
-        🎁 Send as a gift instead
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><GiftGlyph theme={null} size={16} /> Send as a gift instead</span>
       </label>
       {isGift && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
@@ -8616,8 +8621,9 @@ function GiftBubble({
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
-      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-16-size)' }}>
-        {gift.theme ? GIFT_THEME_LABELS[gift.theme] : '🎁'} {gift.amount.toLocaleString()} RWF
+      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-16-size)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <GiftGlyph theme={gift.theme} size={18} />
+        {gift.theme ? GIFT_THEME_LABELS[gift.theme].replace(/^\S+\s*/, '') : ''} {gift.amount.toLocaleString()} RWF
       </p>
       {gift.note && <p style={{ fontStyle: 'italic', opacity: 0.9 }}>&ldquo;{gift.note}&rdquo;</p>}
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[gift.status]}</p>
@@ -9637,7 +9643,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', marginBottom: '10px',
           }}
         >
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>🎁 Send a gift</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><GiftGlyph theme={giftTheme || null} size={16} /> Send a gift</p>
           <input
             type="number"
             value={giftAmount}
@@ -9725,8 +9731,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               😊 Emoticon
             </button>
-            <button type="button" onClick={() => { setShowAttachMenu(false); setGiftComposerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
-              🎁 Gift
+            <button type="button" onClick={() => { setShowAttachMenu(false); setGiftComposerOpen((v) => !v); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
+              <GiftGlyph theme={null} size={16} /> Gift
             </button>
             <button type="button" onClick={() => { setShowAttachMenu(false); setVoucherComposerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 'var(--itunda-type-scale-14-size)' }}>
               🎟️ Gift voucher
@@ -10787,7 +10793,7 @@ function GroupSplitBillsView({
             style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: 'var(--itunda-type-scale-13-size)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left', font: 'inherit', color: 'inherit' }}
             onClick={() => setLadderMode((v) => !v)}
           >
-            🎲 Ladder game (randomized split)
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><DiceGlyph size={16} /> Ladder game (randomized split)</span>
             <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: ladderMode ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
@@ -10822,7 +10828,7 @@ function GroupSplitBillsView({
         const myShare = participants.find((p) => p.userId === currentUserId);
         const isOrganizer = splitBill.organizerId === currentUserId;
         const hasPending = participants.some((p) => p.status === 'PENDING');
-        const modeLabel = splitBill.mode === 'LADDER' ? ` · 🎲 Ladder L${splitBill.ladderVarianceLevel}` : '';
+        const modeLabel = splitBill.mode === 'LADDER' ? <> · <DiceGlyph size={12} /> Ladder L{splitBill.ladderVarianceLevel}</> : null;
         return (
           <div key={splitBill.id} className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{splitBill.description}</h4>
@@ -11000,7 +11006,7 @@ function DirectSplitBillsView({
             style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: 'var(--itunda-type-scale-13-size)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left', font: 'inherit', color: 'inherit' }}
             onClick={() => setLadderMode((v) => !v)}
           >
-            🎲 Ladder game (randomized split)
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><DiceGlyph size={16} /> Ladder game (randomized split)</span>
             <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: ladderMode ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
@@ -11035,7 +11041,7 @@ function DirectSplitBillsView({
         const myShare = participants.find((p) => p.userId === currentUserId);
         const isOrganizer = splitBill.organizerId === currentUserId;
         const hasPending = participants.some((p) => p.status === 'PENDING');
-        const modeLabel = splitBill.mode === 'LADDER' ? ` · 🎲 Ladder L${splitBill.ladderVarianceLevel}` : '';
+        const modeLabel = splitBill.mode === 'LADDER' ? <> · <DiceGlyph size={12} /> Ladder L{splitBill.ladderVarianceLevel}</> : null;
         return (
           <div key={splitBill.id} className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{splitBill.description}</h4>
