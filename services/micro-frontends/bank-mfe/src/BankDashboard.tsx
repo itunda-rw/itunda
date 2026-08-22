@@ -10,6 +10,7 @@ import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
 import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
+import { showToast } from './Toast';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchAccounts, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Account } from './lib/account';
 import { PayMoneyDetail } from './PayMoneyDetail';
@@ -4737,7 +4738,6 @@ function UssdSettingsView() {
   const [confirmPin, setConfirmPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11/§12):
   // a local UI-only affordance, not a security control -- especially useful here since a
   // mismatched PIN only surfaces as an error after submitting both fields.
@@ -4746,7 +4746,6 @@ function UssdSettingsView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(false);
     if (!/^\d{4,6}$/.test(pin)) {
       setError('PIN must be 4-6 digits.');
       return;
@@ -4760,7 +4759,7 @@ function UssdSettingsView() {
       await setUssdPin(pin);
       setPin('');
       setConfirmPin('');
-      setSuccess(true);
+      showToast('Your USSD PIN has been set.');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -4803,7 +4802,6 @@ function UssdSettingsView() {
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-15-size)' }}
           />
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-          {success && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: '#1E8E4F' }}>Your USSD PIN has been set.</p>}
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
             {submitting ? 'Saving…' : 'Set USSD PIN'}
           </button>
@@ -11560,6 +11558,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
       setMyLocation(null);
       setPhotoUrl(null);
       setOpen(false);
+      showToast('Listing posted.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -12935,6 +12934,7 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
       setEventDate('');
       setCapacity('');
       setOpen(false);
+      showToast('Post published.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -13592,6 +13592,7 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
       setDescription('');
       setPayAmount('');
       setOpen(false);
+      showToast('Job posted.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -14331,6 +14332,7 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
       setBedrooms('');
       setSizeSqm('');
       setOpen(false);
+      showToast('Listing posted.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -22438,6 +22440,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createGoal(name.trim(), Number(targetAmount), monthlyContribution ? Number(monthlyContribution) : undefined, targetDate || undefined);
       reset();
+      showToast('Savings goal created.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -22793,6 +22796,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
       await createGroupAccount(name);
       setName('');
       setOpen(false);
+      showToast('Group account created.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -22965,6 +22969,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createIkimina(name.trim(), Number(contributionAmount), Number(cycleFrequencyDays), Number(memberCap));
       reset();
+      showToast('Ikimina group created.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -23546,6 +23551,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createWeeklySavingsPlan(name.trim(), Number(baseWeeklyAmount), escalationRate);
       reset();
+      showToast('26-week plan started.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -23903,6 +23909,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     try {
       await createGrow31SavingsPlan(name.trim(), Number(dailyAmount));
       reset();
+      showToast('31-day plan started.');
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
