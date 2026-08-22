@@ -68,7 +68,9 @@ internal fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserI
     ) {
         reactions.filter { it.userIds.isNotEmpty() }.forEach { r ->
             val mine = currentUserId != null && r.userIds.contains(currentUserId)
-            Box(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier
                     .padding(end = 4.dp)
                     .clip(RoundedCornerShape(12.dp))
@@ -76,7 +78,8 @@ internal fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserI
                     .clickable { onToggle(r.emoji) }
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
-                Text("${r.emoji} ${r.userIds.size}", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                ReactionGlyph(r.emoji, size = 12.dp)
+                Text("${r.userIds.size}", fontSize = 11.sp, color = Ids.colors.textSecondary)
             }
         }
         Box {
@@ -94,9 +97,9 @@ internal fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserI
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     QUICK_REACTIONS.forEach { emoji ->
-                        Text(
+                        ReactionGlyph(
                             emoji,
-                            fontSize = 18.sp,
+                            size = 22.dp,
                             modifier = Modifier.padding(2.dp).clickable {
                                 onToggle(emoji)
                                 pickerOpen = false

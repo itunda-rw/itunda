@@ -1,22 +1,12 @@
 package rw.itunda.feature.maps.impl
 
-import android.graphics.Path as AndroidPath
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.asComposePath
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.PathParser
+import rw.itunda.core.designsystem.itundaface.ItundaFaceGlyphCanvas
+import rw.itunda.core.designsystem.itundaface.Shape2D
 
 // itundaface: place-category glyphs, ported from bank-mfe's
 // icons/ItundaFacePlaces.tsx / github.com/itunda-rw/itundaface's svg/places/*.svg
@@ -27,81 +17,14 @@ import androidx.core.graphics.PathParser
 // literal duplicate flagged when the web place icons first shipped.
 //
 // Every path's "d" data below is copy-pasted byte-identical from the real,
-// already-shipped web SVGs and parsed via PathParser.createPathFromPathData
-// instead of hand-re-deriving Bezier coordinates by eye -- this keeps
-// Android's shapes provably identical to web's, not just "close," and avoids
-// a whole class of subtle-geometry-drift bugs a manual re-draw would risk.
+// already-shipped web SVGs, drawn via core/designsystem's shared
+// Shape2D/ItundaFaceGlyphCanvas primitives (promoted there so other feature
+// modules, e.g. talk/impl's reaction glyphs, can reuse the same drawing code
+// without a forbidden impl-to-impl cross-feature import).
 // Compiled-verified only this pass (`:features:maps:impl:compileDebugKotlin`)
 // -- no physical device was connected this session (adb devices: empty), so
 // on-device visual confirmation is still owed as a follow-up, unlike every
 // web glyph batch which was live-rendered before shipping.
-
-private sealed interface Shape2D {
-    data class FilledPath(val d: String, val color: Long) : Shape2D
-    data class StrokedPath(
-        val d: String,
-        val color: Long,
-        val width: Float,
-        val cap: StrokeCap = StrokeCap.Butt,
-        val join: StrokeJoin = StrokeJoin.Miter,
-        val alpha: Float = 1f,
-    ) : Shape2D
-    data class FilledCircle(val cx: Float, val cy: Float, val r: Float, val color: Long) : Shape2D
-    data class StrokedCircle(val cx: Float, val cy: Float, val r: Float, val color: Long, val width: Float) : Shape2D
-    data class FilledRect(val x: Float, val y: Float, val w: Float, val h: Float, val rx: Float, val color: Long) : Shape2D
-    data class StrokedLine(
-        val x1: Float,
-        val y1: Float,
-        val x2: Float,
-        val y2: Float,
-        val color: Long,
-        val width: Float,
-        val cap: StrokeCap = StrokeCap.Butt,
-        val alpha: Float = 1f,
-    ) : Shape2D
-    data class RotatedGroup(val degrees: Float, val pivotX: Float, val pivotY: Float, val shapes: List<Shape2D>) : Shape2D
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawShape(shape: Shape2D) {
-    when (shape) {
-        is Shape2D.FilledPath ->
-            drawPath(PathParser.createPathFromPathData(shape.d).asComposePath(), Color(shape.color))
-        is Shape2D.StrokedPath ->
-            drawPath(
-                PathParser.createPathFromPathData(shape.d).asComposePath(),
-                Color(shape.color),
-                alpha = shape.alpha,
-                style = Stroke(width = shape.width, cap = shape.cap, join = shape.join),
-            )
-        is Shape2D.FilledCircle ->
-            drawCircle(Color(shape.color), radius = shape.r, center = Offset(shape.cx, shape.cy))
-        is Shape2D.StrokedCircle ->
-            drawCircle(Color(shape.color), radius = shape.r, center = Offset(shape.cx, shape.cy), style = Stroke(width = shape.width))
-        is Shape2D.FilledRect ->
-            drawRoundRect(
-                Color(shape.color),
-                topLeft = Offset(shape.x, shape.y),
-                size = Size(shape.w, shape.h),
-                cornerRadius = CornerRadius(shape.rx, shape.rx),
-            )
-        is Shape2D.StrokedLine ->
-            drawLine(Color(shape.color), Offset(shape.x1, shape.y1), Offset(shape.x2, shape.y2), strokeWidth = shape.width, cap = shape.cap, alpha = shape.alpha)
-        is Shape2D.RotatedGroup ->
-            withTransform({ rotate(shape.degrees, pivot = Offset(shape.pivotX, shape.pivotY)) }) {
-                shape.shapes.forEach { drawShape(it) }
-            }
-    }
-}
-
-@Composable
-private fun GlyphCanvas(size: Dp, shapes: List<Shape2D>) {
-    Canvas(modifier = Modifier.size(size)) {
-        val scale = this.size.width / 60f
-        withTransform({ scale(scale, scale, pivot = Offset.Zero) }) {
-            shapes.forEach { drawShape(it) }
-        }
-    }
-}
 
 private fun badge(color: Long) = Shape2D.FilledCircle(30f, 30f, 28f, color)
 
@@ -209,19 +132,19 @@ private val busStopShapes = listOf(
     Shape2D.FilledCircle(39f, 43f, 3.4f, 0xFF253142),
 )
 
-@Composable fun PlaceRestaurant(size: Dp = 24.dp) = GlyphCanvas(size, restaurantShapes)
-@Composable fun PlaceCafe(size: Dp = 24.dp) = GlyphCanvas(size, cafeShapes)
-@Composable fun PlaceHospital(size: Dp = 24.dp) = GlyphCanvas(size, hospitalShapes)
-@Composable fun PlacePharmacy(size: Dp = 24.dp) = GlyphCanvas(size, pharmacyShapes)
-@Composable fun PlaceBank(size: Dp = 24.dp) = GlyphCanvas(size, bankShapes)
-@Composable fun PlaceAtm(size: Dp = 24.dp) = GlyphCanvas(size, atmShapes)
-@Composable fun PlaceHotel(size: Dp = 24.dp) = GlyphCanvas(size, hotelShapes)
-@Composable fun PlaceSupermarket(size: Dp = 24.dp) = GlyphCanvas(size, supermarketShapes)
-@Composable fun PlaceGasStation(size: Dp = 24.dp) = GlyphCanvas(size, gasStationShapes)
-@Composable fun PlaceSchool(size: Dp = 24.dp) = GlyphCanvas(size, schoolShapes)
-@Composable fun PlaceItundaAgent(size: Dp = 24.dp) = GlyphCanvas(size, itundaAgentShapes)
-@Composable fun PlaceMarket(size: Dp = 24.dp) = GlyphCanvas(size, marketShapes)
-@Composable fun PlaceBusStop(size: Dp = 24.dp) = GlyphCanvas(size, busStopShapes)
+@Composable fun PlaceRestaurant(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, restaurantShapes)
+@Composable fun PlaceCafe(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, cafeShapes)
+@Composable fun PlaceHospital(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, hospitalShapes)
+@Composable fun PlacePharmacy(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, pharmacyShapes)
+@Composable fun PlaceBank(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, bankShapes)
+@Composable fun PlaceAtm(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, atmShapes)
+@Composable fun PlaceHotel(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, hotelShapes)
+@Composable fun PlaceSupermarket(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, supermarketShapes)
+@Composable fun PlaceGasStation(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, gasStationShapes)
+@Composable fun PlaceSchool(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, schoolShapes)
+@Composable fun PlaceItundaAgent(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, itundaAgentShapes)
+@Composable fun PlaceMarket(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, marketShapes)
+@Composable fun PlaceBusStop(size: Dp = 24.dp) = ItundaFaceGlyphCanvas(size, 60f, busStopShapes)
 
 private val ITUNDAFACE_PLACES: Map<String, List<Shape2D>> = mapOf(
     "RESTAURANT" to restaurantShapes,
@@ -245,5 +168,5 @@ private val ITUNDAFACE_PLACES: Map<String, List<Shape2D>> = mapOf(
 @Composable
 fun PlaceGlyph(category: String, size: Dp = 24.dp) {
     val shapes = ITUNDAFACE_PLACES[category] ?: listOf(badge(0xFFC0C6FF), Shape2D.FilledCircle(30f, 24f, 8f, 0xFF483EB6))
-    GlyphCanvas(size, shapes)
+    ItundaFaceGlyphCanvas(size, 60f, shapes)
 }
