@@ -8,7 +8,7 @@ import { ReactionGlyph } from './icons/ItundaFace';
 import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
-import { FlameGlyph, PackageGlyph } from './icons/ItundaFaceMisc';
+import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, BellGlyph } from './icons/ItundaFaceMisc';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
@@ -8325,7 +8325,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
     return (
       <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
         <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('create')}>
-          🌐 Start an open chat
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><GlobeGlyph size={16} /> Start an open chat</span>
         </button>
         <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('join')}>
           📷 Join an open chat
@@ -8338,8 +8338,8 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
     return (
       <div className="itunda-card" style={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Send friends a link — tapping it joins instantly, wherever they are</p>
-        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={() => handleShare(created.joinCode)}>
-          🔗 Share invite link
+        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => handleShare(created.joinCode)}>
+          <LinkGlyph size={16} /> Share invite link
         </button>
         {shareStatus === 'copied' && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)' }}>Link copied</p>}
         {shareStatus === 'failed' && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }}>Could not copy the link — try the code below.</p>}
@@ -9511,7 +9511,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
 
       {pinnedMessage && (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--itunda-grey-100)', fontSize: 'var(--itunda-type-scale-12-size)' }}>
-          <span aria-hidden="true">📌</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
+          <span aria-hidden="true" style={{ display: 'inline-flex' }}><PinGlyph size={14} /></span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
           <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-600)', fontSize: 'var(--itunda-type-scale-12-size)' }}>Unpin</button>
         </div>
       )}
@@ -10113,7 +10113,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
 
       {pinnedMessage && (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--itunda-grey-100)', fontSize: 'var(--itunda-type-scale-12-size)' }}>
-          <span aria-hidden="true">📌</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
+          <span aria-hidden="true" style={{ display: 'inline-flex' }}><PinGlyph size={14} /></span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
           <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-600)', fontSize: 'var(--itunda-type-scale-12-size)' }}>Unpin</button>
         </div>
       )}
@@ -12531,7 +12531,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? '🔔 Alerts' : '🔧 Inspections'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? <><HeartOutline size={12} /> Wishlist</> : v === 'ALERTS' ? <><BellGlyph size={12} /> Alerts</> : '🔧 Inspections'}
           </button>
         ))}
       </div>
@@ -15233,7 +15233,7 @@ function EatsOrderCard({ order, restaurant, action, onMessageRestaurant }: { ord
       )}
       {canMessageRestaurant && (
         <button className="itunda-btn itunda-btn-secondary" onClick={onMessageRestaurant}>
-          💬 Message restaurant
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><ChatGlyph size={16} /> Message restaurant</span>
         </button>
       )}
       {canShowLiveTracking && (
@@ -15998,7 +15998,7 @@ function MenuView({
                     <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{item.name}</p>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: item.soldOut ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                       {item.price.toLocaleString()} RWF{hasOptions ? ' · options required' : ''}
-                      {item.soldOut ? ' · 🚫 Sold out' : ''}
+                      {item.soldOut ? <> · <SoldOutGlyph size={12} /> Sold out</> : ''}
                     </p>
                   </div>
                   {/* Real Baemin CEO app/DoorDash-style "86" enforcement (2026-08-16) --
@@ -16577,7 +16577,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   {/* Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day
                       schedule) (2026-08-16) -- see Merchant.isClosedToday's own doc
                       comment. */}
-                  {r.closedToday && <span>· 🚫 Closed today</span>}
+                  {r.closedToday && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <SoldOutGlyph size={12} /> Closed today</span>}
                   {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>
@@ -17083,7 +17083,7 @@ function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
           {trip.scheduledFor && (
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-indigo)', fontWeight: 700, marginTop: '2px' }}>
-              🕒 Scheduled for {new Date(trip.scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><ClockGlyph size={16} /> Scheduled for {new Date(trip.scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
             </p>
           )}
         </div>
@@ -19346,7 +19346,7 @@ function GroupOrderView() {
         </div>
         {detail?.groupOrder.joinCode && (
           <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={() => handleShare(detail.groupOrder.joinCode)}>
-            🔗 Share invite link
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><LinkGlyph size={16} /> Share invite link</span>
           </button>
         )}
         {shareStatus === 'copied' && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginTop: '6px' }}>Link copied</p>}
@@ -21808,7 +21808,7 @@ function ShopView() {
                   {m.distanceKm != null && <span>· {m.distanceKm.toFixed(1)} km</span>}
                   {m.deliveryTimeMinutes != null && <span>· ~{m.deliveryTimeMinutes} min</span>}
                   {m.isBusy && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <FlameGlyph size={12} /> Busy, delivery may take longer</span>}
-                  {m.closedToday && <span>· 🚫 Closed today</span>}
+                  {m.closedToday && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <SoldOutGlyph size={12} /> Closed today</span>}
                   {m.minOrderAmount != null && <span>· Min {m.minOrderAmount.toLocaleString()} RWF</span>}
                   {!m.category && m.rating == null && m.distanceKm == null && <span>Real cart checkout, real delivery tracking</span>}
                 </p>
