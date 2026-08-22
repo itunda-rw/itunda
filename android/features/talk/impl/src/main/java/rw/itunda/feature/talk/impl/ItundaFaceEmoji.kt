@@ -47,7 +47,7 @@ import rw.itunda.core.designsystem.theme.Ids
 // and ITUNDAFACE_EMOJI_CATEGORIES, (3) adding `when` branches in
 // ItundaFaceEmojiGlyph -- same real category-array shape as the web picker.
 private val smileysKeys = listOf("👍", "❤️", "😂", "😮", "😢", "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎")
-private val peopleKeys = listOf("👀", "✊", "👋", "✌️", "👌", "👏")
+private val peopleKeys = listOf("👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏")
 
 val ITUNDAFACE_EMOJI_ALL_KEYS: List<String> = smileysKeys + peopleKeys
 val ITUNDAFACE_EMOJI_CATEGORIES: List<Pair<String, List<String>>> = listOf(
@@ -78,6 +78,8 @@ fun ItundaFaceEmojiGlyph(emoji: String, size: Dp) {
         "👋" -> PeopleWavingHand(size)
         "✌️" -> PeopleVictoryHand(size)
         "👌" -> PeopleOkHand(size)
+        "💪" -> PeopleMuscle(size)
+        "🙏" -> PeoplePray(size)
         "👏" -> PeopleClappingHands(size)
     }
 }

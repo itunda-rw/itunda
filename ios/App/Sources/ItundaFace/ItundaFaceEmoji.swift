@@ -27,9 +27,13 @@
 import SwiftUI
 import CoreDesignSystem
 
-let itundaFaceEmojiKeys: [String] = [
-    "👍", "❤️", "😂", "😮", "😢",
-    "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎",
+private let smileysKeys: [String] = ["👍", "❤️", "😂", "😮", "😢", "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎"]
+private let peopleKeys: [String] = ["👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏"]
+
+let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys
+let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
+    ("Smileys & Emotion", smileysKeys),
+    ("People & Body", peopleKeys),
 ]
 
 @ViewBuilder
@@ -50,6 +54,14 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "😭": SmileyLoudlyCrying(size: size)
     case "😡": SmileyAngry(size: size)
     case "😎": SmileyCool(size: size)
+    case "👀": PeopleEyes(size: size)
+    case "✊": PeopleFist(size: size)
+    case "👋": PeopleWavingHand(size: size)
+    case "✌️": PeopleVictoryHand(size: size)
+    case "👌": PeopleOkHand(size: size)
+    case "💪": PeopleMuscle(size: size)
+    case "🙏": PeoplePray(size: size)
+    case "👏": PeopleClappingHands(size: size)
     default: EmptyView()
     }
 }
@@ -137,19 +149,21 @@ struct MessageBodyWithEmoji: View {
 /// Real chat-composer emoji picker -- distinct from the pre-existing KakaoTalk-
 /// style sticker/emoticon picker elsewhere in Talk: this is Unicode text emoji,
 /// picking one inserts the real character into the draft, no network call.
-/// Single "Smileys & Emotion" category today, same category-array shape as the
-/// other two platforms' pickers.
+/// Renders each real category as its own labeled section, same category-array
+/// shape as the other two platforms' pickers.
 struct ItundaFaceEmojiPicker: View {
     let onPick: (String) -> Void
     private let columns = Array(repeating: GridItem(.flexible()), count: 6)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Smileys & Emotion").font(.caption2).foregroundColor(.secondary)
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(itundaFaceEmojiKeys, id: \.self) { emoji in
-                    Button(action: { onPick(emoji) }) {
-                        itundaFaceEmojiGlyph(emoji, size: 28)
+            ForEach(itundaFaceEmojiCategories, id: \.name) { category in
+                Text(category.name).font(.caption2).foregroundColor(.secondary)
+                LazyVGrid(columns: columns, spacing: 4) {
+                    ForEach(category.keys, id: \.self) { emoji in
+                        Button(action: { onPick(emoji) }) {
+                            itundaFaceEmojiGlyph(emoji, size: 28)
+                        }
                     }
                 }
             }
