@@ -3,6 +3,7 @@ package rw.itunda.feature.payments.impl
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
@@ -176,7 +177,7 @@ fun RecipientEntryScreen(
                             color = Ids.colors.brand,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { showAddContactForm = !showAddContactForm },
+                            modifier = Modifier.pressScaleClickable { showAddContactForm = !showAddContactForm },
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -206,7 +207,7 @@ fun RecipientEntryScreen(
                             color = if (newContactName.isNotBlank() && newContactPhone.isNotBlank()) Ids.colors.brand else Ids.colors.textTertiary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable(enabled = newContactName.isNotBlank() && newContactPhone.isNotBlank()) {
+                            modifier = Modifier.pressScaleClickable(enabled = newContactName.isNotBlank() && newContactPhone.isNotBlank()) {
                                 onAddContact(newContactName, newContactPhone)
                                 newContactName = ""; newContactPhone = ""; showAddContactForm = false
                             },
@@ -324,7 +325,7 @@ private fun RecipientTabRow(selected: RecipientTab, onSelect: (RecipientTab) -> 
 @Composable
 private fun RecipientTabLabel(label: String, selected: Boolean, onClick: () -> Unit) {
     Column(
-        modifier = Modifier.clickable(onClick = onClick).padding(vertical = 10.dp),
+        modifier = Modifier.pressScaleClickable(onClick = onClick).padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -428,10 +429,10 @@ fun TransferAmountScreen(
                 if (scamReported) stringResource(R.string.transfer_scam_reported_thanks) else stringResource(R.string.transfer_report_scam),
                 color = Ids.colors.textTertiary,
                 fontSize = 12.sp,
-                modifier = Modifier.clickable(enabled = !scamReported, onClick = onReportScam),
+                modifier = Modifier.pressScaleClickable(enabled = !scamReported, onClick = onReportScam),
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { isGift = !isGift }) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.pressScaleClickable { isGift = !isGift }) {
                 androidx.compose.material3.Switch(checked = isGift, onCheckedChange = { isGift = it })
                 Spacer(modifier = Modifier.width(8.dp))
                 GiftThemeGlyph(null, size = 16.dp)
@@ -642,7 +643,7 @@ internal fun FlowTopBar(onBack: () -> Unit) {
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .clickable(onClick = onBack),
+                .pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
@@ -665,7 +666,7 @@ private fun FriendRecipientRow(contact: ContactUi, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pressScaleClickable(onClick = onClick)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -709,7 +710,7 @@ internal fun QuickAmountChip(label: String, onClick: () -> Unit) {
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(Ids.colors.chip)
-            .clickable(onClick = onClick)
+            .pressScaleClickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Text(label, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)

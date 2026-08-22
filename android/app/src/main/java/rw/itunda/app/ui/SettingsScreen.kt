@@ -1,7 +1,7 @@
 package rw.itunda.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -176,7 +176,7 @@ fun SettingsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { ThemePreference.set(mode) }
+                                .pressScaleClickable { ThemePreference.set(mode) }
                                 .padding(vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
@@ -209,7 +209,7 @@ fun SettingsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { TextScalePreference.set(option) }
+                                .pressScaleClickable { TextScalePreference.set(option) }
                                 .padding(vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
@@ -237,7 +237,7 @@ fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
+                modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
@@ -293,7 +293,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .pressScaleClickable {
                                 // Real 3-way cycle (2026-08-15), widened from the
                                 // original EN/RW toggle when French (values-fr/) was
                                 // added as itunda's third real locale -- see
@@ -326,7 +326,7 @@ fun SettingsScreen(
                     // now opens a real destination instead of dumping content inline
                     // (see this screen's own header comment).
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { showNotificationSettings = true }.padding(vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable { showNotificationSettings = true }.padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -589,7 +589,7 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onLogout),
+                        .pressScaleClickable(onClick = onLogout),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Outlined.Logout, contentDescription = null, tint = Ids.colors.danger)
@@ -681,7 +681,7 @@ internal fun NotificationListScreen(
                     color = Ids.colors.brand,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable(onClick = onMarkAllRead),
+                    modifier = Modifier.pressScaleClickable(onClick = onMarkAllRead),
                 )
             }
         }
@@ -712,7 +712,7 @@ private fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing:
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
+            modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
@@ -744,7 +744,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -787,7 +787,7 @@ private fun DeviceRow(device: rw.itunda.core.network.TrustedDeviceDto, onRevoke:
             color = Ids.colors.danger,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.clickable(onClick = onRevoke),
+            modifier = Modifier.pressScaleClickable(onClick = onRevoke),
         )
     }
 }
@@ -797,7 +797,7 @@ private fun NotificationRow(notification: NotificationDto, onClick: () -> Unit) 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = !notification.isRead, onClick = onClick)
+            .pressScaleClickable(enabled = !notification.isRead, onClick = onClick)
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

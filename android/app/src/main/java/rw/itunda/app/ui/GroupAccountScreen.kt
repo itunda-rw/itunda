@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -143,12 +143,12 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                .clickable { showCreate = false; name = "" }.padding(vertical = 14.dp),
+                                .pressScaleClickable { showCreate = false; name = "" }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .clickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
+                                .pressScaleClickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -167,7 +167,7 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                    modifier = Modifier.fillMaxWidth().clickable { onOpen(account.id) },
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(account.id) },
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(account.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -385,7 +385,7 @@ private fun GroupAccountDetailContent(id: String) {
                             .weight(1f)
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .clickable { actionMode = m }
+                            .pressScaleClickable { actionMode = m }
                             .padding(vertical = 10.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
@@ -404,7 +404,7 @@ private fun GroupAccountDetailContent(id: String) {
                             IdsTextField(value = duesAmountInput, onValueChange = { duesAmountInput = it }, label = "Monthly dues (RWF)", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !duesBusy) { duesAmountInput.toBigDecimalOrNull()?.let { setDues(it) } }
+                                    .pressScaleClickable(enabled = !duesBusy) { duesAmountInput.toBigDecimalOrNull()?.let { setDues(it) } }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                             ) { Text(if (duesBusy) "…" else "Set", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
@@ -426,12 +426,12 @@ private fun GroupAccountDetailContent(id: String) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = !duesBusy) { remindUnpaid() }.padding(vertical = 12.dp),
+                                            .pressScaleClickable(enabled = !duesBusy) { remindUnpaid() }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (duesBusy) "…" else "Remind unpaid members", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = !duesBusy) { setDues(null) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                            .pressScaleClickable(enabled = !duesBusy) { setDues(null) }.padding(horizontal = 16.dp, vertical = 12.dp),
                                     ) { Text("Clear", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 }
                             }
@@ -468,7 +468,7 @@ private fun GroupAccountDetailContent(id: String) {
                             if (isOwner) {
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = !busy && amount.isNotBlank()) { withdraw() }.padding(vertical = 14.dp),
+                                        .pressScaleClickable(enabled = !busy && amount.isNotBlank()) { withdraw() }.padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busy) "…" else "Withdraw", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                             }
@@ -487,7 +487,7 @@ private fun GroupAccountDetailContent(id: String) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
+                                    .pressScaleClickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
                                     .padding(horizontal = 20.dp, vertical = 14.dp),
                             ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
@@ -504,7 +504,7 @@ private fun GroupAccountDetailContent(id: String) {
 private fun GroupAccountActionButton(title: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(Ids.colors.brand).clickable(enabled = enabled, onClick = onClick)
+            .background(Ids.colors.brand).pressScaleClickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

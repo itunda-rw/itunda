@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -214,7 +214,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                     Text("Link a family member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                            .clickable { showInvite = !showInvite }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            .pressScaleClickable { showInvite = !showInvite }.padding(horizontal = 12.dp, vertical = 8.dp),
                     ) { Text(if (showInvite) "Cancel" else "+ Link", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
@@ -225,7 +225,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                 .background(if (busy || childPhone.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                                .clickable(enabled = !busy && childPhone.isNotBlank()) { invite() }.padding(horizontal = 20.dp, vertical = 14.dp),
+                                .pressScaleClickable(enabled = !busy && childPhone.isNotBlank()) { invite() }.padding(horizontal = 20.dp, vertical = 14.dp),
                         ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                     }
                 }
@@ -246,11 +246,11 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
-                                        .clickable(enabled = busyId != inv.id) { respond(inv.id, true) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, true) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                 ) { Text("Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                 Box(
                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyId != inv.id) { respond(inv.id, false) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, false) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                 ) { Text("Decline", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             }
                         }
@@ -269,11 +269,11 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable { toggleOverview(c.link.childUserId) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            .pressScaleClickable { toggleOverview(c.link.childUserId) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                     ) { Text(if (openOverviewFor == c.link.childUserId) "Hide" else "View", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                            .clickable(enabled = busyId != c.link.id) { revoke(c.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            .pressScaleClickable(enabled = busyId != c.link.id) { revoke(c.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                     ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                                 }
                             }
@@ -285,7 +285,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                 Text(
                                     if (editingLimitFor == c.link.childUserId) "Cancel" else "Edit",
                                     color = Ids.colors.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.clickable {
+                                    modifier = Modifier.pressScaleClickable {
                                         if (editingLimitFor == c.link.childUserId) {
                                             editingLimitFor = null
                                         } else {
@@ -300,7 +300,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                     IdsTextField(value = limitInput, onValueChange = { limitInput = it }, label = "Daily limit (RWF, blank = no limit)", modifier = Modifier.weight(1f))
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                            .clickable(enabled = limitBusyId != c.link.childUserId) {
+                                            .pressScaleClickable(enabled = limitBusyId != c.link.childUserId) {
                                                 setSpendLimit(c.link.childUserId, limitInput.trim().ifBlank { null }?.toBigDecimalOrNull())
                                             }
                                             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -325,7 +325,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                         Box(
                                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                                 .background(if (sendBusy || sendAmountInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                                                .clickable(enabled = !sendBusy && sendAmountInput.isNotBlank()) { sendToChild(c.link.childUserId) }
+                                                .pressScaleClickable(enabled = !sendBusy && sendAmountInput.isNotBlank()) { sendToChild(c.link.childUserId) }
                                                 .padding(horizontal = 16.dp, vertical = 14.dp),
                                         ) { Text(if (sendBusy) "…" else "Send", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                     }
@@ -352,7 +352,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             Text(g.guardianName, color = Ids.colors.textPrimary, fontSize = 13.sp)
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable(enabled = busyId != g.link.id) { revoke(g.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .pressScaleClickable(enabled = busyId != g.link.id) { revoke(g.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
                             ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
