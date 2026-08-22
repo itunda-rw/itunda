@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -167,13 +167,13 @@ fun SaccoScreen(onBack: () -> Unit) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .clickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { buy() }
+                                    .pressScaleClickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { buy() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Buy shares", color = Color.White, fontWeight = FontWeight.Bold) }
                             Box(
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .clickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { redeem() }
+                                    .pressScaleClickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { redeem() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Redeem", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }

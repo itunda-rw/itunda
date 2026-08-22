@@ -2,7 +2,7 @@ package rw.itunda.feature.eats.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -168,7 +168,7 @@ internal fun EatsCheckoutView(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(if (selected) Ids.colors.brand else Color.Transparent)
-                                .clickable(enabled = !submitting) { mode = m; error = null }
+                                .pressScaleClickable(enabled = !submitting) { mode = m; error = null }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -229,7 +229,7 @@ internal fun EatsCheckoutView(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (submitting || !canSubmit) Ids.colors.textTertiary else Ids.colors.brand)
-                .clickable(enabled = !submitting && canSubmit) {
+                .pressScaleClickable(enabled = !submitting && canSubmit) {
                     submitting = true
                     error = null
                     needsDeviceVerification = false

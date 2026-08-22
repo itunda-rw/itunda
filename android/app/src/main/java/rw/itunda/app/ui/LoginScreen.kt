@@ -7,7 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -256,7 +256,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
-                                    .clickable { goBack() }
+                                    .pressScaleClickable { goBack() }
                                     .padding(8.dp),
                             )
                         }
@@ -432,7 +432,7 @@ private fun LanguageSwitcher(locale: String, onLocaleChange: (String) -> Unit) {
         color = Ids.colors.textSecondary,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .clickable { onLocaleChange(SUPPORTED_LOCALES[(currentIndex + 1) % SUPPORTED_LOCALES.size]) }
+            .pressScaleClickable { onLocaleChange(SUPPORTED_LOCALES[(currentIndex + 1) % SUPPORTED_LOCALES.size]) }
             .padding(horizontal = 10.dp, vertical = 6.dp)
             .semantics { contentDescription = label },
     )
@@ -475,7 +475,7 @@ private fun CompletedFieldRow(label: String, value: String, onClick: () -> Unit)
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Ids.colors.surfaceSoft)
-            .clickable(onClick = onClick)
+            .pressScaleClickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

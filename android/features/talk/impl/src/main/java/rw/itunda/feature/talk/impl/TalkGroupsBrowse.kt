@@ -3,7 +3,7 @@ package rw.itunda.feature.talk.impl
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,7 +123,7 @@ internal fun FriendsView(onStarted: (String) -> Unit) {
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                    modifier = Modifier.fillMaxWidth().clickable(enabled = startingId != contact.userId) { startChat(contact) },
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = startingId != contact.userId) { startChat(contact) },
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp).fillMaxWidth(),
@@ -426,7 +426,7 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
 @Composable
 internal fun GroupRow(group: GroupSummaryDto, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).clickable(onClick = onClick).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).pressScaleClickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Real fix, found live 2026-08-05: GroupRow had no avatar at all, unlike

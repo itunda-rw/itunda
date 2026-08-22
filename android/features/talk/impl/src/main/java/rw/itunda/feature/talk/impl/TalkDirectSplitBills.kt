@@ -7,7 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -210,7 +210,7 @@ internal fun DirectSplitBillsView(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Split with $otherUserName", fontSize = 13.sp, color = Ids.colors.textSecondary)
                         Row(
-                            modifier = Modifier.fillMaxWidth().clickable { ladderMode = !ladderMode }.padding(vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().pressScaleClickable { ladderMode = !ladderMode }.padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -234,7 +234,7 @@ internal fun DirectSplitBillsView(
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
                                             .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                            .clickable { varianceLevel = level }
+                                            .pressScaleClickable { varianceLevel = level }
                                             .padding(horizontal = 14.dp, vertical = 8.dp),
                                     ) {
                                         Text("Level $level", color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)

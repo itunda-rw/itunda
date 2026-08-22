@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -288,7 +288,7 @@ fun CardScreen(onBack: () -> Unit) {
 private fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(if (enabled) Ids.colors.brand else Ids.colors.textTertiary).clickable(enabled = enabled, onClick = onClick)
+            .background(if (enabled) Ids.colors.brand else Ids.colors.textTertiary).pressScaleClickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

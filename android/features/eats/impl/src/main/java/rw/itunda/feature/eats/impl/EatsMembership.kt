@@ -1,7 +1,7 @@
 package rw.itunda.feature.eats.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -94,7 +94,7 @@ internal fun PlatformMembershipCard() {
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(enabled = !busy) {
+                                .pressScaleClickable(enabled = !busy) {
                                     busy = true
                                     error = null
                                     coroutineScope.launch {
@@ -179,7 +179,7 @@ internal fun EatsMembershipCard() {
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(enabled = !busy) {
+                                .pressScaleClickable(enabled = !busy) {
                                     busy = true
                                     error = null
                                     coroutineScope.launch {

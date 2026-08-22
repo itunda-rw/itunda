@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,7 +97,7 @@ internal fun PayMoneyDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         Box(
-            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = 12.dp).size(Ids.layout.minTouchTarget).clip(CircleShape).clickable(onClick = onBack),
+            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = 12.dp).size(Ids.layout.minTouchTarget).clip(CircleShape).pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.CenterStart,
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)

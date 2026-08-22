@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import coil.compose.AsyncImage
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -134,7 +134,7 @@ internal fun GiftVoucherComposerPanel(onSent: () -> Unit, onCancel: () -> Unit) 
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Ids.colors.surface)
-                                    .clickable { selected = p }
+                                    .pressScaleClickable { selected = p }
                                     .padding(10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
@@ -228,7 +228,7 @@ internal fun EmoticonPickerPanel(onSend: (String) -> Unit, onOpenStore: () -> Un
                 LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(160.dp)) {
                     gridItems(emoticons, key = { it.id }) { e ->
                         Box(
-                            modifier = Modifier.padding(4.dp).clickable { onSend(e.id) },
+                            modifier = Modifier.padding(4.dp).pressScaleClickable { onSend(e.id) },
                             contentAlignment = Alignment.Center,
                         ) {
                             AsyncImage(model = e.imageUrl, contentDescription = "", modifier = Modifier.fillMaxWidth().aspectRatio(1f))

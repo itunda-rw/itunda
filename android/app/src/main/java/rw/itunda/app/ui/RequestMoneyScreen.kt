@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -153,11 +153,11 @@ private fun CreateRequestCard(onCreated: (P2pPaymentRequestDto) -> Unit) {
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !submitting) {
+                    .pressScaleClickable(enabled = !submitting) {
                         val amountBd = amount.trim().toBigDecimalOrNull()
                         if (amountBd == null || amountBd <= java.math.BigDecimal.ZERO) {
                             error = "Enter a real amount."
-                            return@clickable
+                            return@pressScaleClickable
                         }
                         submitting = true
                         error = null
@@ -227,7 +227,7 @@ private fun PayRequestCard(onPaid: () -> Unit) {
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(if (paying) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !paying && code.isNotBlank()) { coroutineScope.launch { pay() } }
+                    .pressScaleClickable(enabled = !paying && code.isNotBlank()) { coroutineScope.launch { pay() } }
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (paying) "Paying…" else "Pay", color = Color.White, fontWeight = FontWeight.Bold) }

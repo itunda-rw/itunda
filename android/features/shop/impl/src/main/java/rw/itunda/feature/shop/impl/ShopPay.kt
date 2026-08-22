@@ -4,7 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -232,7 +232,7 @@ fun PayAMerchantSection(
                         .weight(1f)
                         .clip(RoundedCornerShape(999.dp))
                         .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
-                        .clickable { payMode = mode }
+                        .pressScaleClickable { payMode = mode }
                         .padding(vertical = 10.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
@@ -316,7 +316,7 @@ internal fun ListingActionButtonShop(label: String, disabled: Boolean, filled: B
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
             .background(if (disabled) Ids.colors.textTertiary else if (filled) Ids.colors.brand else Ids.colors.surfaceSoft)
-            .clickable(enabled = !disabled, onClick = onClick)
+            .pressScaleClickable(enabled = !disabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) { Text(label, color = if (filled || disabled) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }

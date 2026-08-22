@@ -1,7 +1,7 @@
 package rw.itunda.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -90,7 +90,7 @@ fun NearbyMerchantsBanner(merchants: List<rw.itunda.core.network.NearbyMerchantD
             .fillMaxWidth()
             .clip(RoundedCornerShape(999.dp))
             .background(Ids.colors.surfaceSoft)
-            .clickable { showDialog = true }
+            .pressScaleClickable { showDialog = true }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -283,11 +283,11 @@ fun GetHelpLinks(onOpenSupport: () -> Unit) {
     Column {
         Text(
             "FAQ", fontSize = 13.sp, color = Ids.colors.textSecondary,
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenSupport).padding(vertical = 10.dp, horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenSupport).padding(vertical = 10.dp, horizontal = 4.dp),
         )
         Text(
             "Send feedback", fontSize = 13.sp, color = Ids.colors.textSecondary,
-            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenSupport).padding(vertical = 10.dp, horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenSupport).padding(vertical = 10.dp, horizontal = 4.dp),
         )
     }
 }

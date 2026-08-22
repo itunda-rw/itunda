@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -136,7 +136,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(Ids.colors.surface)
-                                .clickable {
+                                .pressScaleClickable {
                                     coroutineScope.launch {
                                         try {
                                             NetworkClient.apiService.triggerAutoTopUp(id)
@@ -187,7 +187,7 @@ private fun AutoTopUpConfigCard(
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                 .background(if (selectedAccountId == account.id) Ids.colors.brand else Ids.colors.textTertiary)
-                                .clickable { selectedAccountId = account.id }
+                                .pressScaleClickable { selectedAccountId = account.id }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             Text(
@@ -210,12 +210,12 @@ private fun AutoTopUpConfigCard(
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(if (saving) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = !saving) {
+                    .pressScaleClickable(enabled = !saving) {
                         val thresholdBd = threshold.trim().toBigDecimalOrNull()
                         val topUpBd = topUpAmount.trim().toBigDecimalOrNull()
                         if (thresholdBd == null || thresholdBd < BigDecimal.ZERO || topUpBd == null || topUpBd <= BigDecimal.ZERO) {
                             error = "Enter real amounts."
-                            return@clickable
+                            return@pressScaleClickable
                         }
                         saving = true
                         error = null

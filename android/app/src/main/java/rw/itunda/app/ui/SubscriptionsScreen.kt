@@ -2,7 +2,7 @@ package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -181,7 +181,7 @@ private fun MerchantBillingSubscriptionRow(subscription: MerchantBillingSubscrip
             if (subscription.status == "ACTIVE") {
                 Row(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surface)
-                        .clickable(enabled = !busy) {
+                        .pressScaleClickable(enabled = !busy) {
                             busy = true
                             error = null
                             coroutineScope.launch {

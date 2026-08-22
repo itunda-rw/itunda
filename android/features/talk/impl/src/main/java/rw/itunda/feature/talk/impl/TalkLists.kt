@@ -3,7 +3,7 @@ package rw.itunda.feature.talk.impl
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -188,7 +188,7 @@ internal fun DirectMessagesList(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(Ids.colors.brand)
-                                .clickable(enabled = !starting && startPhoneNumber.isNotBlank()) {
+                                .pressScaleClickable(enabled = !starting && startPhoneNumber.isNotBlank()) {
                                     starting = true
                                     startError = null
                                     coroutineScope.launch {
@@ -345,7 +345,7 @@ internal fun ConversationRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .clickable(onClick = onClick)
+            .pressScaleClickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

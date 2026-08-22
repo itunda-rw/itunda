@@ -6,7 +6,7 @@ import androidx.activity.compose.BackHandler
 import coil.compose.AsyncImage
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -300,7 +300,7 @@ internal fun GroupMessageBubble(
                 color = Ids.colors.brand,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).clickable { onOpenThread(message) },
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).pressScaleClickable { onOpenThread(message) },
                 textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
             )
         }
@@ -419,7 +419,7 @@ internal fun MentionSuggestions(draft: String, members: List<GroupMemberDto>, cu
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
                     .background(Ids.colors.brand)
-                    .clickable { onPick(member.name) }
+                    .pressScaleClickable { onPick(member.name) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             )
         }

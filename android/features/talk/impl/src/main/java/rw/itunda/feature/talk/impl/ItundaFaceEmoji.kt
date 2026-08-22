@@ -1,7 +1,7 @@
 package rw.itunda.feature.talk.impl
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -188,7 +188,7 @@ fun ItundaFaceEmojiPicker(onPick: (String) -> Unit) {
                 gridItems(keys, key = { it }) { emoji ->
                     Box(
                         modifier = Modifier
-                            .clickable { onPick(emoji) }
+                            .pressScaleClickable { onPick(emoji) }
                             .padding(6.dp),
                         contentAlignment = Alignment.Center,
                     ) {

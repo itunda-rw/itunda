@@ -7,7 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -414,7 +414,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         .size(Ids.layout.minTouchTarget)
                         .clip(CircleShape)
                         .background(Ids.colors.surfaceSoft)
-                        .clickable(enabled = !uploadingPhoto) { attachMenuOpen = true },
+                        .pressScaleClickable(enabled = !uploadingPhoto) { attachMenuOpen = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(if (uploadingPhoto) "…" else "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
@@ -447,7 +447,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                     .size(Ids.layout.minTouchTarget)
                     .clip(CircleShape)
                     .background(if (draft.isBlank() || sending) Ids.colors.textTertiary else Ids.colors.brand)
-                    .clickable(enabled = draft.isNotBlank() && !sending) {
+                    .pressScaleClickable(enabled = draft.isNotBlank() && !sending) {
                         val body = draft.trim()
                         sending = true
                         error = null
