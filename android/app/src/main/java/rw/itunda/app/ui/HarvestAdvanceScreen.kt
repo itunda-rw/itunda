@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -233,57 +232,57 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
             val hasMembership = !memberships.isNullOrEmpty()
             if (!hasMembership) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Register a cooperative", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            IdsTextField(value = coopName, onValueChange = { coopName = it }, label = "Cooperative name", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = coopCrop, onValueChange = { coopCrop = it }, label = "Crop (e.g. COFFEE)", modifier = Modifier.fillMaxWidth())
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = !busy && coopName.isNotBlank()) { registerCooperative() }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Register & join", color = Color.White, fontWeight = FontWeight.Bold) }
-                            Text("Already have a cooperative ID?", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            IdsTextField(value = coopId, onValueChange = { coopId = it }, label = "Cooperative ID", modifier = Modifier.fillMaxWidth())
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .pressScaleClickable(enabled = !busy && coopId.isNotBlank()) { joinCooperative() }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Join", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
-                        }
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // a lone form section on this screen when shown (docs/UI_UX_GUIDELINES.md §10).
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Register a cooperative", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        IdsTextField(value = coopName, onValueChange = { coopName = it }, label = "Cooperative name", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = coopCrop, onValueChange = { coopCrop = it }, label = "Crop (e.g. COFFEE)", modifier = Modifier.fillMaxWidth())
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = !busy && coopName.isNotBlank()) { registerCooperative() }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busy) "…" else "Register & join", color = Color.White, fontWeight = FontWeight.Bold) }
+                        Text("Already have a cooperative ID?", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        IdsTextField(value = coopId, onValueChange = { coopId = it }, label = "Cooperative ID", modifier = Modifier.fillMaxWidth())
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                                .pressScaleClickable(enabled = !busy && coopId.isNotBlank()) { joinCooperative() }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busy) "…" else "Join", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                     }
                 }
             } else {
                 val membershipId = memberships!!.first().id
+                // Real fix (2026-08-24, flat-design sweep): dropped both Card wrappers --
+                // 2 distinct sections shown together, separated by a real Divider instead
+                // of separate card boxes (docs/UI_UX_GUIDELINES.md §10).
                 overview?.let { o ->
                     item {
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft), modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(o.cooperative.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                Text(
-                                    "${o.cooperative.cropType} · ${o.memberCount} member${if (o.memberCount == 1) "" else "s"} · member since ${o.myMembership.memberSince.take(10)}",
-                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
-                                )
-                            }
+                        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(o.cooperative.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(
+                                "${o.cooperative.cropType} · ${o.memberCount} member${if (o.memberCount == 1) "" else "s"} · member since ${o.myMembership.memberSince.take(10)}",
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            )
+                            Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                         }
                     }
                 }
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Request an advance", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            IdsTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = "Amount (RWF, max 500,000)", isAmount = true, modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = advancePurpose, onValueChange = { advancePurpose = it }, label = "Purpose (INPUT_FINANCING / POST_HARVEST)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = "Expected harvest (months from now)", modifier = Modifier.fillMaxWidth())
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = !busy && advanceAmount.toBigDecimalOrNull()?.signum() == 1 && harvestMonthsAway.toLongOrNull() != null) { requestAdvance(membershipId) }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Request advance", color = Color.White, fontWeight = FontWeight.Bold) }
-                        }
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Request an advance", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        IdsTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = "Amount (RWF, max 500,000)", isAmount = true, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = advancePurpose, onValueChange = { advancePurpose = it }, label = "Purpose (INPUT_FINANCING / POST_HARVEST)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = "Expected harvest (months from now)", modifier = Modifier.fillMaxWidth())
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = !busy && advanceAmount.toBigDecimalOrNull()?.signum() == 1 && harvestMonthsAway.toLongOrNull() != null) { requestAdvance(membershipId) }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busy) "…" else "Request advance", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
@@ -296,32 +295,34 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 advances!!.isEmpty() -> item {
                     EmptyState("No advances yet.")
                 }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                // ledger-style history list, kept the per-row Divider convention
+                // (docs/DESIGN_REFERENCES.md §274).
                 else -> items(advances!!, key = { it.id }) { a ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyHarvest(a.principalAmount)} RWF · ${a.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Text(a.status, color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            }
-                            Text("Repay by ${a.repaymentDueDate.take(10)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                            if (a.status == "REQUESTED") {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .pressScaleClickable(enabled = !busy) { disburse(a.id) }
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busy) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                            }
-                            if (a.status == "DISBURSED" || a.status == "OVERDUE") {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .pressScaleClickable(enabled = !busy) { repayInFull(a) }
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busy) "…" else "Repay in full (${formatMoneyHarvest(a.principalAmount)} RWF)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                            }
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${formatMoneyHarvest(a.principalAmount)} RWF · ${a.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(a.status, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        }
+                        Text("Repay by ${a.repaymentDueDate.take(10)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                        if (a.status == "REQUESTED") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = !busy) { disburse(a.id) }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(if (busy) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        }
+                        if (a.status == "DISBURSED" || a.status == "OVERDUE") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                                    .pressScaleClickable(enabled = !busy) { repayInFull(a) }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(if (busy) "…" else "Repay in full (${formatMoneyHarvest(a.principalAmount)} RWF)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 }
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }

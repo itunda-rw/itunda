@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -235,24 +233,26 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
             val pending = invites
             if (!pending.isNullOrEmpty()) {
                 item { Text("Pending invitations", color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card,
+                // matching GroupAccountScreen's identical entity-list conversion
+                // (docs/UI_UX_GUIDELINES.md §10) -- no divider, this is a people list,
+                // not a transaction ledger.
                 items(pending, key = { "inv_${it.id}" }) { inv ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Family link request", color = Ids.colors.textPrimary, fontSize = 13.sp)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
-                                        .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, true) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) { Text("Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                                Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                        .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, false) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) { Text("Decline", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Family link request", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, true) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) { Text("Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
+                                    .pressScaleClickable(enabled = busyId != inv.id) { respond(inv.id, false) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            ) { Text("Decline", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -261,9 +261,9 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
             val childList = children
             if (!childList.isNullOrEmpty()) {
                 item { Text("Linked children", color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card.
                 items(childList, key = { "child_${it.link.id}" }) { c ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                                 Text(c.childName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -334,7 +334,6 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                     }
                                 }
                             }
-                        }
                     }
                 }
             }
@@ -342,19 +341,18 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
             val guardianList = guardians
             if (!guardianList.isNullOrEmpty()) {
                 item { Text("Your guardians", color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card.
                 items(guardianList, key = { "guardian_${it.link.id}" }) { g ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(g.guardianName, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                            Box(
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                    .pressScaleClickable(enabled = busyId != g.link.id) { revoke(g.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                            ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(g.guardianName, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
+                                .pressScaleClickable(enabled = busyId != g.link.id) { revoke(g.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
