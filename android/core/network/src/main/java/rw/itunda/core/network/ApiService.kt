@@ -528,6 +528,17 @@ data class ScamCheckResponse(val success: Boolean, val result: ScamCheckResultDt
 data class ScamReportResponse(val success: Boolean, val report: ScamReportDto)
 data class ScamReportsListResponse(val success: Boolean, val reports: List<ScamReportDto>)
 
+// Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
+// P2pService.resolveRecipient's own doc comment. Resolves a phone/account identifier to
+// the real account holder's name before the amount screen renders it, matching the
+// reference Toss screenshots' "To [name]" display. Already had a real web client
+// (bank-mfe's lib/p2p.ts resolveRecipient) but no Android client at all until this
+// (2026-08-23, found while porting the same real Toss "Sent" success-screen reference
+// screenshot to Android) -- meaning Android's transfer flow only ever showed the raw
+// account number, never a resolved name, throughout Recipient/Amount/Success.
+data class P2pRecipientPreviewDto(val recipientUserId: String, val displayName: String)
+data class ResolveRecipientResponse(val success: Boolean, val recipient: P2pRecipientPreviewDto)
+
 // Mirrors services/backend/savings's SavingsController.kt.
 data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromAccountId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
@@ -2523,6 +2534,9 @@ interface ApiService {
 
     @GET("api/v1/p2p/scam-reports/check")
     suspend fun checkScamStatus(@Query("identifier") identifier: String): ScamCheckResponse
+
+    @GET("api/v1/p2p/recipient")
+    suspend fun resolveRecipient(@Query("identifier") identifier: String): ResolveRecipientResponse
 
     @POST("api/v1/p2p/scam-reports")
     suspend fun reportScam(@Body request: ReportScamRequest): ScamReportResponse

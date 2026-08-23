@@ -64,7 +64,21 @@ import rw.itunda.core.designsystem.theme.IdsTypography
  * just silently re-rendered the same screen with an updated "Withdrawn" status label.
  */
 @Composable
-fun IdsCelebrationScreen(headline: String, message: String, onDone: () -> Unit, celebratory: Boolean = false) {
+fun IdsCelebrationScreen(
+    headline: String,
+    message: String,
+    onDone: () -> Unit,
+    celebratory: Boolean = false,
+    // Real Toss "Sent" success-screen reference (2026-08-23, user-supplied
+    // screenshot): a money-transfer-specific "To [name]" line and a Share action,
+    // neither of which apply to this screen's other real callers (a savings deposit
+    // or claimed interest has no "recipient" and nothing worth sharing). Both default
+    // to null so every existing call site (GroupAccountScreen/IkiminaScreen's
+    // deposit/claim, Grow31/WeeklySavingsScreen's maturity withdrawal) is completely
+    // unaffected -- additive, not a signature change those callers need to touch.
+    recipientLabel: String? = null,
+    onShare: (() -> Unit)? = null,
+) {
     BackHandler(onBack = onDone)
     val haptics = LocalHapticFeedback.current
     val checkScale = remember { Animatable(0f) }
@@ -106,10 +120,26 @@ fun IdsCelebrationScreen(headline: String, message: String, onDone: () -> Unit, 
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text(headline, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(message, fontSize = 15.sp, color = Ids.colors.textSecondary, textAlign = TextAlign.Center)
+            if (message.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(message, fontSize = 15.sp, color = Ids.colors.textSecondary, textAlign = TextAlign.Center)
+            }
+            if (recipientLabel != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("To $recipientLabel", fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = Ids.colors.textPrimary)
+            }
             Spacer(modifier = Modifier.height(40.dp))
-            IdsButton(text = "Done", onClick = onDone, modifier = Modifier.fillMaxWidth())
+            if (onShare != null) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    IdsButton(text = "Share", onClick = onShare, variant = IdsButtonVariant.Tinted, modifier = Modifier.weight(1f))
+                    IdsButton(text = "Done", onClick = onDone, modifier = Modifier.weight(1f))
+                }
+            } else {
+                IdsButton(text = "Done", onClick = onDone, modifier = Modifier.fillMaxWidth())
+            }
         }
         if (celebratory) {
             ConfettiBurst(progress = confettiProgress.value)

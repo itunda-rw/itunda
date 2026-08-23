@@ -259,7 +259,7 @@ private sealed class TransferStep : java.io.Serializable {
     // completion). Before this, a successful transfer here just set transferStep = null
     // directly -- the sheet silently closed with zero acknowledgment that real money had
     // actually moved, not even a Toast. See TransferSuccessScreen's own doc comment.
-    data class Success(val message: String, val amountRwf: Long) : TransferStep()
+    data class Success(val message: String, val amountRwf: Long, val recipientLabel: String) : TransferStep()
 }
 
 // Real Toss motion research (2026-08-11) -- see TransferStep.Success's own doc comment
@@ -274,8 +274,26 @@ private sealed class TransferStep : java.io.Serializable {
 // "co-design visual, audio, and haptic effects" principle this session's micro-
 // interaction research (Toss/general UX sources) both independently named.
 @Composable
-private fun TransferSuccessScreen(amountRwf: Long, message: String, onDone: () -> Unit) {
-    rw.itunda.core.designsystem.components.IdsCelebrationScreen(headline = "RWF %,d sent".format(amountRwf), message = message, onDone = onDone)
+private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, onDone: () -> Unit) {
+    // Real Toss "Sent" success-screen reference (2026-08-23, user-supplied screenshot):
+    // a real "To [name]" line (see recipientDisplayName's own doc comment above for
+    // where this now-resolved name comes from) and a real Share action -- itunda's
+    // established Intent.ACTION_SEND + createChooser pattern (ShopMerchantDetail.kt's
+    // own affiliate-link share), not something invented for this screen.
+    val shareContext = androidx.compose.ui.platform.LocalContext.current
+    rw.itunda.core.designsystem.components.IdsCelebrationScreen(
+        headline = "RWF %,d sent".format(amountRwf),
+        message = "",
+        recipientLabel = recipientLabel,
+        onShare = {
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(android.content.Intent.EXTRA_TEXT, "Sent RWF %,d to %s via itunda".format(amountRwf, recipientLabel))
+            }
+            shareContext.startActivity(android.content.Intent.createChooser(intent, "Share"))
+        },
+        onDone = onDone,
+    )
 }
 
 // Promoted 2026-08-12 into core:designsystem's IdsCelebrationScreen (see its own doc
@@ -537,15 +555,28 @@ fun ItundaAppScreen(
         var scamReportCount by remember { mutableStateOf<Int?>(null) }
         var scamReported by remember { mutableStateOf(false) }
         var showScamReportDialog by remember { mutableStateOf(false) }
+        // Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인",
+        // 2026-08-23) -- see ApiService.resolveRecipient's own doc comment: this
+        // endpoint already had a real web client (bank-mfe) but Android's transfer flow
+        // only ever showed the raw account number throughout, never a resolved name.
+        // Best-effort like the scam check above it: a failed lookup falls back to
+        // showing the account number on the Success screen, never blocks the transfer.
+        var recipientDisplayName by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(step) {
             if (step is TransferStep.Amount) {
                 scamReported = false
+                recipientDisplayName = null
                 try {
                     val result = rw.itunda.core.network.NetworkClient.apiService.checkScamStatus(step.accountNumber).result
                     scamReportCount = if (result.warn) result.reportCount else 0
                 } catch (_: Exception) {
                     // Real, non-critical -- a failed safety check must never block a
                     // real transfer the sender is otherwise entitled to make.
+                }
+                try {
+                    recipientDisplayName = rw.itunda.core.network.NetworkClient.apiService.resolveRecipient(step.accountNumber).recipient.displayName
+                } catch (_: Exception) {
+                    // Non-critical -- Success screen falls back to the account number.
                 }
             }
         }
@@ -616,7 +647,7 @@ fun ItundaAppScreen(
                                         when (val result = doSend()) {
                                             is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                                 isSendingTransfer = false
-                                                transferStep = TransferStep.Success(result.message, amountRwf)
+                                                transferStep = TransferStep.Success(result.message, amountRwf, recipientDisplayName ?: step.accountNumber)
                                             }
                                             // sendTransfer never actually returns Queued -- a
                                             // transfer confirm is deliberately never queued
@@ -638,7 +669,7 @@ fun ItundaAppScreen(
                                                     isSendingTransfer = true
                                                     val retryResult = doSend()
                                                     isSendingTransfer = false
-                                                    if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf)
+                                                    if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf, recipientDisplayName ?: step.accountNumber)
                                                     else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) biometricError = retryResult.message
                                                 }
                                                 showDeviceStepUp = true
@@ -661,7 +692,7 @@ fun ItundaAppScreen(
                 }
                 is TransferStep.Success -> TransferSuccessScreen(
                     amountRwf = step.amountRwf,
-                    message = step.message,
+                    recipientLabel = step.recipientLabel,
                     onDone = { transferStep = null },
                 )
             }
