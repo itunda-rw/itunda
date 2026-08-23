@@ -18920,24 +18920,24 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
     <div>
       <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {!question && !error && <div className="itunda-card skeleton" style={{ height: '120px' }} />}
+      {!question && !error && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {question && (
-        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+        <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700 }}>{question.title}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-700)', whiteSpace: 'pre-wrap' }}>{question.body}</p>
         </div>
       )}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Answers</h3>
-      {answers === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
+      {answers === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {answers !== null && answers.length === 0 && (
         <EmptyState message="No answers yet -- be the first to help." />
       )}
       {answers !== null && answers.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px' }}>
           {answers.map((a) => (
             <div
-              key={a.id} className="itunda-card"
-              style={{ padding: '10px 14px', border: a.isAdopted ? '1.5px solid var(--itunda-indigo)' : undefined }}
+              key={a.id} className="itunda-flat-section"
+              style={a.isAdopted ? { borderLeft: '2.5px solid var(--itunda-indigo)', paddingLeft: '10px' } : undefined}
             >
               {a.isAdopted && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)', marginBottom: '4px' }}>✅ Adopted answer</p>}
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>{a.body}</p>
@@ -19159,7 +19159,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
 
   if (error) {
     return (
-      <div className="itunda-card">
+      <div>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
@@ -19167,7 +19167,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   }
 
   if (menu === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   if (showCheckout) {
@@ -19179,7 +19179,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
           </button>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Checkout</h3>
         </div>
-        <form onSubmit={handlePlaceOrder} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {cartItems.map(([key, line]) => {
             const item = menu.products.find((p) => p.id === line.productId);
             if (!item) return null;
@@ -19235,7 +19235,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
             const isExpanded = expandedProductId === item.id;
             const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
             return (
-              <div key={item.id} className="itunda-card">
+              <div key={item.id} style={{ padding: '12px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{item.name}</p>
