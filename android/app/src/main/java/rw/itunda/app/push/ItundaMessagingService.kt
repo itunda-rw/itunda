@@ -99,7 +99,11 @@ class ItundaMessagingService : FirebaseMessagingService() {
     }
 
     private companion object {
-        val HIGH_PRIORITY_TYPES = setOf("MONEY_RECEIVED", "FRAUD_ALERT")
+        // MONEY_SENT added 2026-08-23 alongside the new sender-side confirmation push
+        // (P2pService.notifyMoneySent) -- the sender's own outgoing-transfer
+        // confirmation is exactly as real a money-moving alert as MONEY_RECEIVED,
+        // matching the same "never acceptable to silently drop" reasoning above.
+        val HIGH_PRIORITY_TYPES = setOf("MONEY_RECEIVED", "MONEY_SENT", "FRAUD_ALERT")
         val idCounter = AtomicInteger(0)
     }
 }
