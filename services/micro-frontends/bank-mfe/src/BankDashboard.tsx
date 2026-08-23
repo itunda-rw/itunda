@@ -2630,28 +2630,33 @@ function OverviewView() {
   const animatedNetWorth = useCountUp(overview?.netWorth ?? 0);
 
   if (!overview) {
-    return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
+    return <div className="itunda-flat-section skeleton" style={{ height: '260px' }} />;
   }
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping around
+  // each of these 4 sections -- a real Toss overview screen renders net
+  // worth/accounts/summary/linked-accounts as one continuous flat list, not
+  // separate white cards (docs/UI_UX_GUIDELINES.md §10). itunda-flat-section's own
+  // border-bottom divider now separates the sections.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="itunda-card" style={{ padding: '24px' }}>
+    <div>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.netWorth')}</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString()} RWF</h2>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>{t('overview.accounts')}</h3>
         {overview.accounts.map((a) => (
           <OverviewAccountRow key={a.id} account={a} />
         ))}
       </div>
-      <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.savings', { amount: overview.savings.totalSaved.toLocaleString(), count: overview.savings.goalCount })}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.loans', { amount: overview.loans.totalOutstanding.toLocaleString(), count: overview.loans.activeCount })}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.investments', { amount: overview.investments.totalCostBasis.toLocaleString(), count: overview.investments.holdingCount })}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.insurance', { count: overview.insurance.activePolicyCount, amount: overview.insurance.totalMonthlyPremium.toLocaleString() })}</p>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>{t('overview.linkedAccounts')}</h3>
         {linkedAccounts.map((a) => (
           <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
@@ -4118,19 +4123,23 @@ function RewardsView() {
   };
 
   if (!tasks) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-flat-section skeleton" style={{ height: '200px' }} />;
   }
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping --
+  // Total earned/Missions/Walking rewards/Invite friends are 4 real sections
+  // shown together on one screen, now separated by itunda-flat-section's own
+  // border-bottom divider instead of separate white cards.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
       <PetCard />
-      <div className="itunda-card" style={{ padding: '24px' }}>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total earned</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{tasks.rewardsTotal} RWF</h2>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Missions</h3>
         {tasks.tasks.map((t) => (
           <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 0' }}>
@@ -4152,7 +4161,7 @@ function RewardsView() {
           </div>
         ))}
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>🚶 Walking rewards</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Today: {todaySteps ?? 0} steps</p>
         {/* Real lottery-style bonus (item 248) -- the real, stated odds shown up front,
@@ -4181,7 +4190,7 @@ function RewardsView() {
         </div>
       </div>
       {referral && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Invite friends</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{referral.referralCode}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
@@ -4298,16 +4307,19 @@ function BillsView() {
   };
 
   if (!providers) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-flat-section skeleton" style={{ height: '200px' }} />;
   }
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping -- 5
+  // real sections shown together on one screen, now separated by
+  // itunda-flat-section's own border-bottom divider instead of separate cards.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
       {pending.length > 0 && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Pending bills</h3>
           {pending.map((b) => (
             <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
@@ -4323,7 +4335,7 @@ function BillsView() {
         </div>
       )}
 
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Auto-pay</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
           Register a bill once and it's paid automatically every cycle, up to the cap you set.
@@ -4376,7 +4388,7 @@ function BillsView() {
         </div>
       </div>
 
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Buy airtime</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <input
@@ -4408,7 +4420,7 @@ function BillsView() {
         </div>
       </div>
 
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>All billers</h3>
         {providers.map((p) => (
           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
@@ -5770,8 +5782,10 @@ function MyBookingsCard() {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
+  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My bookings</h3>
       {bookings.slice(0, 5).map((b) => (
         <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 'var(--itunda-type-scale-13-size)', borderTop: '1px solid var(--itunda-grey-100)' }}>
@@ -5927,8 +5941,12 @@ function MyView() {
       <VerificationCard />
       <NotificationsCard />
       <MyBookingsCard />
+      {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping --
+          My orders/My favorites/My listings/Mini apps are real sections in this
+          screen's own stack of widgets, now flat matching itunda-flat-section's
+          border-bottom divider convention. */}
       {(shopOrders.length > 0 || eatsOrders.length > 0) && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My orders</h3>
           {shopOrders.slice(0, 3).map((order) => (
             <div key={order.id} style={rowStyle}>
@@ -5944,14 +5962,14 @@ function MyView() {
           ))}
         </div>
       )}
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My favorites</h3>
         <div style={rowStyle}><span>Marketplace wishlist</span><span>{favoriteListingsCount}</span></div>
         <div style={rowStyle}><span>Jobs wishlist</span><span>{favoriteJobPostsCount}</span></div>
         <div style={rowStyle}><span>Property wishlist</span><span>{favoritePropertyListingsCount}</span></div>
         <div style={rowStyle}><span>Restaurant favorites</span><span>{favoriteRestaurantsCount}</span></div>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
         <div style={rowStyle}><span>Marketplace</span><span>{myListingsCount}</span></div>
         <div style={rowStyle}><span>Jobs posted</span><span>{myJobPostsCount}</span></div>
@@ -5962,7 +5980,7 @@ function MyView() {
       <MyProductSubscriptionsCard />
       <AffiliateEarningsCard />
       {miniApps.length > 0 && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Third-party apps reviewed and approved to run inside itunda.
@@ -6014,8 +6032,11 @@ function NotificationsCard() {
     load();
   };
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- this widget
+  // renders as one of many stacked sections on MyView's linear screen, not a
+  // genuinely separate module (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Notifications</h3>
         {unreadCount > 0 && (
@@ -6102,8 +6123,10 @@ function ProfilePhotoCard() {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
+  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -6157,8 +6180,10 @@ function VerificationCard() {
 
   if (!status || (status.emailVerified && status.phoneVerified)) return null;
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a lone
+  // conditional section on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Verify your account</h3>
       {!status.phoneVerified && <VerificationRow kind="phone" onVerified={load} />}
       {!status.emailVerified && <VerificationRow kind="email" hasEmail={status.email !== null} onVerified={load} />}
@@ -6325,8 +6350,10 @@ function MyVehiclesCard() {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
+  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>My vehicles</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -6514,8 +6541,10 @@ function FamilyLinkCard() {
 
   const hasAnything = (invites?.length ?? 0) > 0 || (children?.length ?? 0) > 0 || (guardians?.length ?? 0) > 0;
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
+  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Family</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowInvite((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -6741,8 +6770,10 @@ function MyProductSubscriptionsCard() {
 
   if (!subscriptions || subscriptions.length === 0) return null;
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
+  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Subscribe & save</h3>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {subscriptions.map((s) => (
@@ -6826,8 +6857,11 @@ function AffiliateEarningsCard() {
   const totalEarned = (commissions ?? []).reduce((sum, c) => sum + c.commissionAmount, 0);
   const totalClicks = links.reduce((sum, l) => sum + l.clickCount, 0);
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
+  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10),
+  // matching Android's identical "Partner earnings" conversion (4230bba1).
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Partner earnings</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
         Earn 3% on any purchase made through a product link you've shared.
