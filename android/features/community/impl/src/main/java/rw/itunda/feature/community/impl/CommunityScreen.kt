@@ -451,8 +451,9 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- this form renders
+    // inline as part of the main feed's linear scroll, not a separate module.
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Write a post", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -547,7 +548,6 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                     contentAlignment = Alignment.Center,
                 ) { Text(if (submitting) "Posting…" else "Post", color = Color.White, fontWeight = FontWeight.Bold) }
             }
-        }
     }
 }
 
@@ -662,8 +662,9 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
         Spacer(modifier = Modifier.height(12.dp))
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         post?.let { p ->
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper -- this is the
+            // screen's own main content, not a separate module.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(p.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     Text("by $authorName", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Text(p.body, color = Ids.colors.textPrimary, fontSize = 14.sp)
@@ -682,7 +683,6 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
                         }
                     }
                 }
-            }
         }
         post?.takeIf { it.category == "meetup" }?.let { p -> MeetupSessionsSection(post = p, currentUserId = currentUserId) }
         post?.takeIf { it.category == "group_buy" }?.let { p -> GroupBuyFinalizeSection(post = p, currentUserId = currentUserId) }
@@ -691,16 +691,16 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (comments == null) {
-                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
+                item { SkeletonBlock() }
             } else if (comments!!.isEmpty()) {
                 item { EmptyState("No comments yet -- be the first to reply.", icon = Icons.AutoMirrored.Outlined.Comment) }
             } else {
                 items(comments!!, key = { it.comment.id }) { c ->
-                    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                    // Real fix (flat-design sweep): dropped the per-row Card -- a
+                    // comment list separates entries with spacing alone.
+                    Column {
                             Text(c.authorName, color = Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             Text(c.comment.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                        }
                     }
                 }
             }
@@ -767,15 +767,16 @@ private fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String?
     Spacer(modifier = Modifier.height(8.dp))
     val list = sessions
     if (list == null) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(60.dp)) {}
+        SkeletonBlock()
     } else if (list.isEmpty()) {
         Text("No sessions scheduled yet.", color = Ids.colors.textSecondary, fontSize = 13.sp)
     } else {
+        // Real fix (flat-design sweep): dropped the per-row Card -- a session list
+        // separates entries with spacing alone.
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             list.forEach { s ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -797,14 +798,14 @@ private fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String?
                             }
                         }
                     }
-                }
             }
         }
     }
     if (isAuthor) {
         Spacer(modifier = Modifier.height(8.dp))
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Real fix (flat-design sweep): dropped the Card wrapper -- a section on an
+        // otherwise-flat detail screen.
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Schedule sessions (up to 6)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 dates.forEachIndexed { i, d ->
                     IdsTextField(
@@ -839,7 +840,6 @@ private fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String?
                         }
                     }
                 }
-            }
         }
     }
     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -864,17 +864,15 @@ private fun GroupBuyFinalizeSection(post: CommunityPostDto, currentUserId: Strin
 
     Spacer(modifier = Modifier.height(16.dp))
     if (done) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-            Text(
-                "Split request sent -- see it in your group chat's Split bill tab.",
-                color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                modifier = Modifier.padding(14.dp),
-            )
-        }
+        Text(
+            "Split request sent -- see it in your group chat's Split bill tab.",
+            color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+        )
         return
     }
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- a section on an
+    // otherwise-flat detail screen.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Split the cost", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text(
                 "Enter what you paid up front -- every real member who joined will be asked for their even share.",
@@ -902,6 +900,5 @@ private fun GroupBuyFinalizeSection(post: CommunityPostDto, currentUserId: Strin
                     }
                 }
             }
-        }
     }
 }
