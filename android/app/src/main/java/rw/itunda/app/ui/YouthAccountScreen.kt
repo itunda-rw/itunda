@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.core.network.DepositMiniAccountRequest
+import rw.itunda.core.network.DepositYouthAccountRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetBirthDateRequest
 import rw.itunda.core.network.Account
@@ -47,16 +47,16 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import java.io.IOException
 import java.util.UUID
 
-// Real KakaoBank mini-style capped starter account (rw.itunda.account.MiniAccountService,
+// Real KakaoBank mini-style capped starter account (rw.itunda.account.YouthAccountService,
 // 2026-07-28) -- first mobile client for this feature (item 100), a direct port of
-// bank-mfe's MiniAccountCard (item 99) onto Android. Same no-ViewModel,
+// bank-mfe's YouthAccountCard (item 99) onto Android. Same no-ViewModel,
 // NetworkClient-direct-from-Composable shape as WeeklySavingsScreen.kt.
-private enum class MiniAccountMode { LOADING, NEEDS_BIRTH_DATE, NOT_OPEN, OPEN }
+private enum class YouthAccountMode { LOADING, NEEDS_BIRTH_DATE, NOT_OPEN, OPEN }
 
 @Composable
-fun MiniAccountScreen(onBack: () -> Unit) {
+fun YouthAccountScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    var mode by remember { mutableStateOf(MiniAccountMode.LOADING) }
+    var mode by remember { mutableStateOf(YouthAccountMode.LOADING) }
     var account by remember { mutableStateOf<Account?>(null) }
     var birthDate by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
@@ -70,7 +70,7 @@ fun MiniAccountScreen(onBack: () -> Unit) {
                 val accounts = NetworkClient.apiService.getAccounts().accounts
                 val existing = accounts.find { it.type == "MINI" }
                 account = existing
-                mode = if (existing != null) MiniAccountMode.OPEN else MiniAccountMode.NOT_OPEN
+                mode = if (existing != null) YouthAccountMode.OPEN else YouthAccountMode.NOT_OPEN
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
@@ -85,12 +85,12 @@ fun MiniAccountScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                account = NetworkClient.apiService.openMiniAccount().account
-                mode = MiniAccountMode.OPEN
+                account = NetworkClient.apiService.openYouthAccount().account
+                mode = YouthAccountMode.OPEN
             } catch (e: HttpException) {
                 when (apiErrorCode(e)) {
-                    "MINI_ACCOUNT_BIRTH_DATE_REQUIRED" -> mode = MiniAccountMode.NEEDS_BIRTH_DATE
-                    "MINI_ACCOUNT_AGE_INELIGIBLE" -> error = "Mini accounts are only available for ages 7-18."
+                    "YOUTH_ACCOUNT_BIRTH_DATE_REQUIRED" -> mode = YouthAccountMode.NEEDS_BIRTH_DATE
+                    "YOUTH_ACCOUNT_AGE_INELIGIBLE" -> error = "Youth accounts are only available for ages 7-18."
                     else -> error = superAppErrorMessage(e)
                 }
             } catch (e: IOException) {
@@ -129,7 +129,7 @@ fun MiniAccountScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.depositMiniAccount(UUID.randomUUID().toString(), DepositMiniAccountRequest(parsedAmount))
+                NetworkClient.apiService.depositYouthAccount(UUID.randomUUID().toString(), DepositYouthAccountRequest(parsedAmount))
                 amount = ""
                 load()
             } catch (e: HttpException) {
@@ -143,7 +143,7 @@ fun MiniAccountScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Mini account", onBack = onBack)
+        BackTopBar(title = "Youth account", onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -151,31 +151,31 @@ fun MiniAccountScreen(onBack: () -> Unit) {
         ) {
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
             when (mode) {
-                MiniAccountMode.LOADING -> item {
+                YouthAccountMode.LOADING -> item {
                     SkeletonBlock(height = 120.dp)
                 }
-                MiniAccountMode.NOT_OPEN -> item {
+                YouthAccountMode.NOT_OPEN -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
                             "A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF " +
                                 "daily and 2,000,000 RWF monthly deposit limits.",
                             color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
-                        MiniAccountActionButton(if (busy) "Opening…" else "Open a Mini account", enabled = !busy) { openAccount() }
+                        YouthAccountActionButton(if (busy) "Opening…" else "Open a Youth account", enabled = !busy) { openAccount() }
                     }
                 }
-                MiniAccountMode.NEEDS_BIRTH_DATE -> item {
+                YouthAccountMode.NEEDS_BIRTH_DATE -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Enter your birth date to check eligibility.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         IdsTextField(value = birthDate, onValueChange = { birthDate = it }, label = "Birth date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
                         // Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11),
-                        // matching the identical fix on web's own MiniAccountCard the same day:
+                        // matching the identical fix on web's own YouthAccountCard the same day:
                         // "Continue" doesn't say what happens -- the text above already names
                         // the real outcome.
-                        MiniAccountActionButton(if (busy) "Checking…" else "Check eligibility", enabled = !busy) { submitBirthDateAndOpen() }
+                        YouthAccountActionButton(if (busy) "Checking…" else "Check eligibility", enabled = !busy) { submitBirthDateAndOpen() }
                     }
                 }
-                MiniAccountMode.OPEN -> {
+                YouthAccountMode.OPEN -> {
                     item {
                         Card(
                             shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
@@ -194,7 +194,7 @@ fun MiniAccountScreen(onBack: () -> Unit) {
                                 digits = amount, onDigitsChange = { amount = it },
                                 quickAmounts = listOf(1_000L, 5_000L),
                             )
-                            MiniAccountActionButton(if (busy) "Adding…" else "Add money", enabled = !busy) { deposit() }
+                            YouthAccountActionButton(if (busy) "Adding…" else "Add money", enabled = !busy) { deposit() }
                         }
                     }
                 }
@@ -204,7 +204,7 @@ fun MiniAccountScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun MiniAccountActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+private fun YouthAccountActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
             .background(Ids.colors.brand).pressScaleClickable(enabled = enabled, onClick = onClick)

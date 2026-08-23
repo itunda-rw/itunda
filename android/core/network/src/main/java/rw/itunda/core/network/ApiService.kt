@@ -66,8 +66,8 @@ data class PublicUser(
     // Real dual-neighborhood support (2026-08-04) -- see AuthService.setSecondNeighborhood's
     // own doc comment. Same real reverse-geocode-only provenance as neighborhood above.
     val secondNeighborhood: String? = null,
-    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
-    // MiniAccountService.kt's own doc comment. Set via AuthApi.setBirthDate.
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- see
+    // YouthAccountService.kt's own doc comment. Set via AuthApi.setBirthDate.
     val birthDate: String? = null,
     // Real email/phone verification (item 169/178) -- see AuthService.requestEmailVerification/
     // requestPhoneVerification's own doc comments. Backend has returned these on every
@@ -151,7 +151,7 @@ interface AuthApi {
     @PUT("api/v1/auth/profile/photo")
     suspend fun updateProfilePhoto(@Body request: UpdateProfilePhotoRequest): ProfileResponse
 
-    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
     // string ("YYYY-MM-DD").
     @POST("api/v1/auth/profile/birth-date")
@@ -4045,13 +4045,13 @@ interface ApiService {
     suspend fun withdrawUpfrontDeposit(@Path("id") id: String): UpfrontDepositResponse
 
     // Real KakaoBank mini-style capped starter account (rw.itunda.account.
-    // MiniAccountService, 2026-07-28) -- first mobile client for this feature (item 100),
+    // YouthAccountService, 2026-07-28) -- first mobile client for this feature (item 100),
     // mirroring bank-mfe's lib/miniAccount.ts equivalent added one item earlier.
-    @POST("api/v1/account/mini/open")
-    suspend fun openMiniAccount(): OpenMiniAccountResponse
+    @POST("api/v1/account/youth/open")
+    suspend fun openYouthAccount(): OpenYouthAccountResponse
 
-    @POST("api/v1/account/mini/deposit")
-    suspend fun depositMiniAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositMiniAccountRequest): DepositMiniAccountResponse
+    @POST("api/v1/account/youth/deposit")
+    suspend fun depositYouthAccount(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositYouthAccountRequest): DepositYouthAccountResponse
 
     // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
     // first Android client for this feature (item 109, found via a fresh matrix scan:
@@ -5068,11 +5068,11 @@ data class RepayMotoOwnershipPlanRequest(val amount: java.math.BigDecimal)
 data class MotoOwnershipPlanResponse(val success: Boolean, val plan: MotoOwnershipPlanDto)
 data class MotoOwnershipPlansResponse(val success: Boolean, val plans: List<MotoOwnershipPlanDto>)
 
-// Real KakaoBank mini-style capped starter account -- see MiniAccountService.kt's own
+// Real KakaoBank mini-style capped starter account -- see YouthAccountService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
-data class OpenMiniAccountResponse(val success: Boolean, val account: Account)
-data class DepositMiniAccountRequest(val amount: java.math.BigDecimal)
-data class DepositMiniAccountResponse(val success: Boolean, val id: String, val amount: java.math.BigDecimal, val completedAt: String)
+data class OpenYouthAccountResponse(val success: Boolean, val account: Account)
+data class DepositYouthAccountRequest(val amount: java.math.BigDecimal)
+data class DepositYouthAccountResponse(val success: Boolean, val id: String, val amount: java.math.BigDecimal, val completedAt: String)
 
 // Real offline-action-queue replay (2026-07-13) -- mirrors
 // services/backend/offline/src/main/kotlin/rw/itunda/offline/web/ActionsBatchController.kt
@@ -5127,7 +5127,7 @@ fun isKycRequiredError(e: retrofit2.HttpException): Boolean {
 }
 
 // Generic form of isDeviceNotVerifiedError/isKycRequiredError above, for call sites
-// (like the Mini account's birth-date/age gate, 2026-07-28) that need to distinguish
+// (like the Youth account's birth-date/age gate, 2026-07-28) that need to distinguish
 // between multiple real ApiError codes on the same HTTP status rather than just a
 // single yes/no check.
 fun apiErrorCode(e: retrofit2.HttpException): String? = try {

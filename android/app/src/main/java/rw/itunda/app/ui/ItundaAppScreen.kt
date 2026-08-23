@@ -397,7 +397,7 @@ fun ItundaAppScreen(
         // screen (2026-07-25) -- same "backend existed with zero mobile UI" gap
         // WeeklySavingsScreen closed above.
         var showUpfrontDeposit by rememberSaveable { mutableStateOf(false) }
-        var showMiniAccount by rememberSaveable { mutableStateOf(false) }
+        var showYouthAccount by rememberSaveable { mutableStateOf(false) }
         var showGroupAccounts by rememberSaveable { mutableStateOf(false) }
         // Real ikimina (Rwanda's own rotating savings & credit association) -- the
         // first feature in this codebase not sourced from Toss/Kakao/Naver/Coupang.
@@ -1165,9 +1165,9 @@ fun ItundaAppScreen(
         }
         // Real KakaoBank mini-style capped starter account screen (2026-07-28, item 100)
         // -- first mobile client for this feature. Same pattern.
-        if (showMiniAccount) {
-            BackHandler { showMiniAccount = false }
-            MiniAccountScreen(onBack = { showMiniAccount = false })
+        if (showYouthAccount) {
+            BackHandler { showYouthAccount = false }
+            YouthAccountScreen(onBack = { showYouthAccount = false })
             return@IdsTheme
         }
         // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
@@ -1461,7 +1461,7 @@ fun ItundaAppScreen(
                             onOpenWeeklySavings = { showWeeklySavings = true },
                             onOpenGrow31Savings = { showGrow31Savings = true },
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
-                            onOpenMiniAccount = { showMiniAccount = true },
+                            onOpenYouthAccount = { showYouthAccount = true },
                             onOpenCard = { showCard = true },
                             onOpenGroupAccounts = { showGroupAccounts = true },
                             onOpenIkimina = { showIkimina = true },
@@ -3837,7 +3837,7 @@ private fun MenuScreen(
     onOpenWeeklySavings: () -> Unit = {},
     onOpenGrow31Savings: () -> Unit = {},
     onOpenUpfrontDeposit: () -> Unit = {},
-    onOpenMiniAccount: () -> Unit = {},
+    onOpenYouthAccount: () -> Unit = {},
     onOpenCard: () -> Unit = {},
     onOpenGroupAccounts: () -> Unit = {},
     onOpenIkimina: () -> Unit = {},
@@ -3955,7 +3955,7 @@ private fun MenuScreen(
         FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentIndigo, onClick = onOpenWeeklySavings),
         FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
         FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
-        FlatRow("Mini account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniAccount),
+        FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenYouthAccount),
         FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
         FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
     )
@@ -4108,24 +4108,28 @@ private fun MenuScreen(
                 // Real fix (2026-08-13, direct user report: "entire app is still
                 // messy... keep fixing"): this whole grid had no onItemClick at all --
                 // IconGridSection's default is a silent no-op, so all 4 tiles here were
-                // dead taps. "Mini" (real MiniAccountScreen, ages 7-18 capped account)
-                // and "Bank" (real itunda Bank hub) both already have working
-                // destinations elsewhere in this file, just never wired here. "Games"
-                // is honestly still unbuilt -- this same file's own MenuScreen doc
-                // comment above already calls it "(planned)" -- and "Pick" has no real
-                // backing feature anywhere in this codebase (grepped). Left both
-                // unwired rather than fabricating a destination neither one has.
+                // dead taps. "Youth" (real YouthAccountScreen, ages 7-18 capped
+                // account -- renamed from the bare "Mini" label 2026-08-23, see
+                // docs/UI_UX_GUIDELINES.md §12: that label used an Apps icon that
+                // visually suggested Saronite's own real "mini-app" framework, not the
+                // banking product it actually opened) and "Bank" (real itunda Bank
+                // hub) both already have working destinations elsewhere in this file,
+                // just never wired here. "Games" is honestly still unbuilt -- this
+                // same file's own MenuScreen doc comment above already calls it
+                // "(planned)" -- and "Pick" has no real backing feature anywhere in
+                // this codebase (grepped). Left both unwired rather than fabricating a
+                // destination neither one has.
                 IconGridSection(
                     "Open",
                     listOf(
-                        "Mini" to Icons.Outlined.Apps,
+                        "Youth" to Icons.Outlined.Savings,
                         "Games" to Icons.Outlined.SportsEsports,
                         "Bank" to Icons.Outlined.AccountBalance,
                         "Pick" to Icons.Outlined.Star,
                     ),
                     onItemClick = { label ->
                         when (label) {
-                            "Mini" -> onOpenMiniAccount()
+                            "Youth" -> onOpenYouthAccount()
                             "Bank" -> onOpenBank()
                         }
                     },
