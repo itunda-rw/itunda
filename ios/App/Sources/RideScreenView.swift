@@ -95,6 +95,25 @@ private struct RideStopInput: Identifiable {
     var lng = ""
 }
 
+// Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- see
+// RidePassengerContent's own `bookmarks` doc comment. Small, local, file-scoped hex
+// parser rather than a new app-wide Color extension for one feature -- same real
+// precedent Features/Maps/Sources/MapScreenView.swift's own private colorFromHex
+// already established (can't be reused directly: different target, App doesn't
+// depend on FeatureMaps).
+private func colorFromHex(_ hex: String) -> Color {
+    var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    if sanitized.hasPrefix("#") { sanitized.removeFirst() }
+    guard sanitized.count == 6, let value = UInt64(sanitized, radix: 16) else {
+        return Color(red: 0.961, green: 0.651, blue: 0.137) // the default star-yellow, same fallback MapScreenView.swift's own copy uses
+    }
+    return Color(
+        red: Double((value >> 16) & 0xFF) / 255,
+        green: Double((value >> 8) & 0xFF) / 255,
+        blue: Double(value & 0xFF) / 255
+    )
+}
+
 private struct RidePassengerContent: View {
     @StateObject private var locationFetcher = RideLocationFetcher()
     @State private var pickupAddress = ""
@@ -125,6 +144,14 @@ private struct RidePassengerContent: View {
     @State private var contactError: String?
     @State private var sendingStatus = false
     @State private var sendStatusResult: String?
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- itunda
+    // already has a real, backend-synced "map bookmarks" feature (the Maps tab's own
+    // star/save, folders/colors and all -- MapsService.addBookmark/getMyBookmarks),
+    // never surfaced anywhere in ride booking despite being exactly the real "Home"/
+    // "Work" shortcut every real ride-hailing app shows before you type anything.
+    // Especially valuable here: this screen has no autocomplete at all -- a rider
+    // currently has to know and type the exact GPS coordinates by hand.
+    @State private var bookmarks: [MapBookmarkDto] = []
 
     private var activeTrip: RideTripDto? {
         myTrips.first { $0.status == "REQUESTED" || $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" }
@@ -189,6 +216,28 @@ private struct RidePassengerContent: View {
                         HStack(spacing: 8) {
                             IdsTextField("Dropoff latitude", text: $dropoffLat, keyboardType: .decimalPad)
                             IdsTextField("Dropoff longitude", text: $dropoffLng, keyboardType: .decimalPad)
+                        }
+                        if !bookmarks.isEmpty {
+                            Text("Saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(bookmarks) { bookmark in
+                                        Button(action: {
+                                            dropoffAddress = bookmark.displayName
+                                            dropoffLat = String(bookmark.latitude)
+                                            dropoffLng = String(bookmark.longitude)
+                                        }) {
+                                            HStack(spacing: 6) {
+                                                Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
+                                                Text(bookmark.displayName).font(.caption).bold().lineLimit(1)
+                                            }
+                                            .foregroundColor(IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 12).padding(.vertical, 10)
+                                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                        }
+                                    }
+                                }
+                            }
                         }
                         ForEach($stops) { $stop in
                             VStack(alignment: .leading, spacing: 6) {
@@ -260,6 +309,7 @@ private struct RidePassengerContent: View {
             }
         }
         .task { await loadTrustedContacts() }
+        .task { await loadBookmarks() }
         .onDisappear { pollTask?.cancel() }
         .onChange(of: activeTrip?.id) { _ in
             Task { await loadActiveTripStops(); await loadActiveTripPin() }
@@ -339,6 +389,10 @@ private struct RidePassengerContent: View {
 
     private func loadTrustedContacts() async {
         trustedContacts = (try? await NetworkClient.shared.getRideTrustedContacts().contacts) ?? trustedContacts
+    }
+
+    private func loadBookmarks() async {
+        bookmarks = (try? await NetworkClient.shared.getMyMapBookmarks().bookmarks) ?? bookmarks
     }
 
     private func addTrustedContact() async {
