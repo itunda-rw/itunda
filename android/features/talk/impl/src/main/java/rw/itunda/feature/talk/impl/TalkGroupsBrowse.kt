@@ -21,8 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -119,41 +117,40 @@ internal fun FriendsView(onStarted: (String) -> Unit) {
         list == null -> SkeletonBlock()
         list.isEmpty() -> EmptyState("No friends yet -- save someone's contact and they'll show up here once they're on itunda.", icon = Icons.Outlined.PersonOutline)
         else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+            // an entity list a user picks from (friends to start a chat with), no
+            // divider, matching GroupAccountScreen's precedent
+            // (docs/UI_UX_GUIDELINES.md §10).
             items(list, key = { it.userId }) { contact ->
-                Card(
-                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                    modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = startingId != contact.userId) { startChat(contact) },
+                Row(
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = startingId != contact.userId) { startChat(contact) }
+                        .padding(horizontal = 4.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp).fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(Icons.Outlined.PersonOutline, contentDescription = null, tint = Ids.colors.brand) }
+                        if (presence[contact.userId] == true) {
                             Box(
-                                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)),
-                                contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Outlined.PersonOutline, contentDescription = null, tint = Ids.colors.brand) }
-                            if (presence[contact.userId] == true) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .size(12.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Ids.colors.success),
-                                )
-                            }
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(12.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Ids.colors.success),
+                            )
                         }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(contact.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            if (presence[contact.userId] == true) {
-                                Text("Active now", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            }
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(contact.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        if (presence[contact.userId] == true) {
+                            Text("Active now", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
-                        if (startingId == contact.userId) {
-                            Text("…", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        }
+                    }
+                    if (startingId == contact.userId) {
+                        Text("…", color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
                 }
             }
@@ -177,12 +174,10 @@ internal fun GroupsList(
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
-            Card(
-                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+            // a form section, OpenChatCard's own button row below acts as the next
+            // section's natural visual start (docs/UI_UX_GUIDELINES.md §10).
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                     Text("New group", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("A group name and everyone's real phone number, comma-separated.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
                     IdsTextField(
@@ -228,7 +223,6 @@ internal fun GroupsList(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     createError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
-                }
             }
         }
         item { OpenChatCard(onCreated = onCreated, onJoined = onCreated) }
@@ -304,8 +298,10 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
         }
         created != null -> {
             val group = created!!
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+            // an inline confirmation panel, not a real Dialog (docs/UI_UX_GUIDELINES.md
+            // §10).
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Send friends the code — they can join instantly, wherever they are", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(10.dp))
                     IdsButton(
@@ -336,12 +332,11 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
                         size = IdsButtonSize.Medium,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                }
             }
         }
         else -> {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(20.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper.
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                     if (mode == OpenChatMode.CREATE) {
                         Text("Start an open chat", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text("Anyone with the code can join — no phone numbers needed.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
@@ -417,7 +412,6 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
                         }
                     }
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
-                }
             }
         }
     }

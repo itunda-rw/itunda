@@ -29,8 +29,6 @@ import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.filled.PushPin as PushPinFilled
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Send
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -132,12 +130,9 @@ internal fun DirectMessagesList(
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
-            Card(
-                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+            // this screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
                     Text("New chat", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("Choose a saved contact, or enter their phone number.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
                     if (!contacts.isNullOrEmpty()) {
@@ -213,7 +208,6 @@ internal fun DirectMessagesList(
                         }
                     }
                     startError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
-                }
             }
         }
         val archivedCount = archivedConversations?.size ?: 0
