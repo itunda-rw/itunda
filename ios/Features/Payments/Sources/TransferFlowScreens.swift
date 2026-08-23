@@ -221,14 +221,14 @@ public struct RecipientEntryScreen: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(pt("selectBank"))
-                            .font(.system(size: 17))
+                            .font(IDS.scaledFont(size: 17, weight: .regular, relativeTo: .body))
                             .foregroundColor(IDS.Colors.textTertiary)
                         // Real Toss auto-detects the bank from a real BIN registry;
                         // itunda has none to check against, so this doesn't claim to
                         // (2026-07-12, matching Android's RecipientEntryScreen fix).
                         if accountNumber.isEmpty {
                             Text(pt("selectBankHint"))
-                                .font(.system(size: 13))
+                                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                                 .foregroundColor(IDS.Colors.textTertiary)
                         }
                     }
@@ -245,11 +245,11 @@ public struct RecipientEntryScreen: View {
                     Spacer().frame(height: 28)
                     HStack {
                         Text(pt("contacts"))
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .subheadline))
                             .foregroundColor(IDS.Colors.textSecondary)
                         Spacer()
                         Button(showAddContact ? pt("cancel") : pt("addContact")) { showAddContact.toggle() }
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                             .foregroundColor(IDS.Colors.brand)
                     }
                     Spacer().frame(height: 12)
@@ -265,7 +265,7 @@ public struct RecipientEntryScreen: View {
                                 newContactName = ""; newContactPhone = ""; showAddContact = false
                             }
                             .disabled(newContactName.isEmpty || newContactPhone.isEmpty)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .subheadline))
                         }
                         Spacer().frame(height: 12)
                     }
@@ -359,10 +359,10 @@ public struct TransferAmountScreen: View {
                 if let scamWarning, scamWarning.reportCount > 0 {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(pt("scamWarningTitle"))
-                            .font(.system(size: 13, weight: .bold))
+                            .font(IDS.scaledFont(size: 13, weight: .bold, relativeTo: .footnote))
                             .foregroundColor(.red)
                         Text(pt("scamWarningBody", scamWarning.reportCount))
-                            .font(.system(size: 12))
+                            .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                             .foregroundColor(.red)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -373,7 +373,7 @@ public struct TransferAmountScreen: View {
                 }
                 Button(action: onReportScam) {
                     Text(scamReported ? pt("scamReportedThanks") : pt("reportScam"))
-                        .font(.system(size: 12))
+                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                         .foregroundColor(IDS.Colors.textTertiary)
                 }
                 .disabled(scamReported)
@@ -384,15 +384,15 @@ public struct TransferAmountScreen: View {
                         GiftThemeGlyph(theme: nil, size: 15)
                         Text("Send as a gift instead")
                     }
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                 }
                 .padding(.top, 8)
                 if isGift {
                     Text("Held until they claim it -- auto-refunded after 7 days if unclaimed. Only works if the recipient above is a phone number, not an account number.")
-                        .font(.system(size: 12))
+                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                         .foregroundColor(IDS.Colors.textTertiary)
                     TextField("Add a note (optional)", text: $giftNote)
-                        .font(.system(size: 14))
+                        .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .subheadline))
                         .padding(10)
                         .background(IDS.Colors.backgroundSecondary)
                         .cornerRadius(8)
@@ -411,10 +411,10 @@ public struct TransferAmountScreen: View {
 
             VStack(spacing: 16) {
                 Text(pt("amountQuestion"))
-                    .font(.system(size: 16))
+                    .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
-                    .font(.system(size: digits.isEmpty ? 32 : 42, weight: .bold))
+                    .font(IDS.scaledFont(size: digits.isEmpty ? 32 : 42, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
                 // Real gap found live (2026-08-10), applying Toss Tech's own "the best
                 // error is one that never occurs" principle (toss.tech/article/21021):
@@ -424,7 +424,7 @@ public struct TransferAmountScreen: View {
                 // Android's TransferFlow.kt.
                 if insufficientBalance {
                     Text(pt("amountInsufficient", formatAmount(Int(availableBalance))))
-                        .font(.system(size: 13))
+                        .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                         .foregroundColor(.red)
                 }
             }
@@ -518,10 +518,10 @@ public struct SavingsAmountScreen: View {
                 // screen no longer moves money, it just acknowledges what already
                 // arrived. Same fix on Android's SavingsAmountScreen the same day.
                 Text(mode == .deposit ? "How much to save?" : "Interest already added to your balance")
-                    .font(.system(size: 16))
+                    .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
-                    .font(.system(size: digits.isEmpty ? 32 : 42, weight: .bold))
+                    .font(IDS.scaledFont(size: digits.isEmpty ? 32 : 42, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
                 // Same "the best error is one that never occurs" fix (2026-08-10) as
                 // TransferAmountScreen above -- a deposit larger than the real account
@@ -529,7 +529,7 @@ public struct SavingsAmountScreen: View {
                 // wasted round trip to the backend's 422.
                 if insufficientBalance {
                     Text("Not enough balance -- you have RWF \(formatAmount(Int(availableBalance)))")
-                        .font(.system(size: 13))
+                        .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                         .foregroundColor(.red)
                 }
             }
@@ -577,7 +577,7 @@ private struct FlowTopBar: View {
         HStack {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .medium))
+                    .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3))
                     .foregroundColor(IDS.Colors.textPrimary)
                     .frame(width: 44, height: 44)
             }
@@ -600,10 +600,10 @@ private struct RecentRecipientRow: View {
                 Circle()
                     .fill(IDS.Colors.chipBackground)
                     .frame(width: 44, height: 44)
-                    .overlay(Text(String(name.prefix(1))).font(.system(size: 17, weight: .bold)).foregroundColor(IDS.Colors.textPrimary))
+                    .overlay(Text(String(name.prefix(1))).font(IDS.scaledFont(size: 17, weight: .bold, relativeTo: .body)).foregroundColor(IDS.Colors.textPrimary))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(name).font(.system(size: 16, weight: .semibold)).foregroundColor(IDS.Colors.textPrimary)
-                    Text(bankAndAccount).font(.system(size: 13)).foregroundColor(IDS.Colors.textTertiary)
+                    Text(name).font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
+                    Text(bankAndAccount).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
                 }
                 Spacer()
             }
@@ -621,14 +621,14 @@ private struct TransferPartyRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 17, weight: .semibold)).foregroundColor(IDS.Colors.textPrimary)
-                Text(sublabel).font(.system(size: 13)).foregroundColor(IDS.Colors.textTertiary)
+                Text(label).font(IDS.scaledFont(size: 17, weight: .semibold, relativeTo: .body)).foregroundColor(IDS.Colors.textPrimary)
+                Text(sublabel).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
             }
             Spacer()
             RoundedRectangle(cornerRadius: 14)
                 .fill(IDS.Colors.chipBackground)
                 .frame(width: 42, height: 42)
-                .overlay(Image(systemName: symbol).font(.system(size: 18)).foregroundColor(IDS.Colors.textPrimary))
+                .overlay(Image(systemName: symbol).font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).foregroundColor(IDS.Colors.textPrimary))
         }
         .padding(.vertical, 6)
     }
@@ -640,7 +640,7 @@ private struct QuickAmountChip: View {
     var body: some View {
         Button(action: onTap) {
             Text(label)
-                .font(.system(size: 14, weight: .semibold))
+                .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .subheadline))
                 .foregroundColor(IDS.Colors.textPrimary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -658,7 +658,7 @@ private struct FlowNextBar: View {
     var body: some View {
         Button(action: onTap) {
             Text(label)
-                .font(.system(size: 17, weight: .bold))
+                .font(IDS.scaledFont(size: 17, weight: .bold, relativeTo: .body))
                 .foregroundColor(enabled ? .white : IDS.Colors.textTertiary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
@@ -687,7 +687,7 @@ private struct NumericKeypad: View {
                                 if key == "DEL" {
                                     Image(systemName: "delete.left")
                                 } else {
-                                    Text(key).font(.system(size: 24, weight: .medium))
+                                    Text(key).font(IDS.scaledFont(size: 24, weight: .medium, relativeTo: .title2))
                                 }
                             }
                             .foregroundColor(IDS.Colors.textPrimary)
