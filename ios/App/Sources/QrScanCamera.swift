@@ -83,6 +83,19 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
     private let session = AVCaptureSession()
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var hasDetected = false
+    // Real Toss-sourced accessibility fix (2026-08-23, toss.tech/article/accessibility_face) --
+    // see bank-mfe's identical QrScanCamera/Android's identical CameraQrScanner.kt doc comments
+    // for the full sourced account. This raw AVFoundation preview had zero
+    // UIAccessibility.post calls anywhere -- a silent, purely-visual dead end for VoiceOver.
+    private let foundLabel: UILabel = {
+        let label = UILabel()
+        label.text = "QR code found"
+        label.textColor = .white
+        label.font = .preferredFont(forTextStyle: .caption1)
+        label.textAlignment = .center
+        label.isHidden = true
+        return label
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -132,15 +145,19 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         view.layer.addSublayer(preview)
         previewLayer = preview
 
+        view.addSubview(foundLabel)
+
         let session = self.session
         DispatchQueue.global(qos: .userInitiated).async {
             session.startRunning()
         }
+        UIAccessibility.post(notification: .announcement, argument: "Camera ready. Point at a QR code.")
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         previewLayer?.frame = view.bounds
+        foundLabel.frame = CGRect(x: 0, y: view.bounds.height - 34, width: view.bounds.width, height: 20)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -163,6 +180,16 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         DispatchQueue.global(qos: .userInitiated).async {
             session.stopRunning()
         }
-        onDetect?(value)
+        // Real Toss-sourced fix: a brief, announced "found" moment (matching the real
+        // article's distinct completion cue) before handing off to onDetect -- 500ms is
+        // enough for VoiceOver to pick up and start speaking the announcement before the
+        // caller reacts (typically navigating away, tearing this view controller down).
+        // Sighted users get the same visual confirmation via foundLabel instead of an
+        // instant, jarring cut.
+        foundLabel.isHidden = false
+        UIAccessibility.post(notification: .announcement, argument: "QR code found")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [onDetect] in
+            onDetect?(value)
+        }
     }
 }

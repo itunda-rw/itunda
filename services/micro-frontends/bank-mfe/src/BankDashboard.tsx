@@ -6899,9 +6899,20 @@ function couponDiscountLabel(c: MerchantCouponView['coupon']) {
 // Chrome/Chromium-based browsers, which is what itunda's own physical test devices run)
 // with getUserMedia; falls back to manual entry when unsupported or camera access is
 // denied, matching Kakao/Toss's own real "scan first, code is the fallback" hierarchy.
+// Real Toss-sourced accessibility fix (2026-08-23, toss.tech/article/accessibility_face --
+// "시각 정보를 소리로 번역하는 법", the same real article that already justified this file's
+// TalkChatThread liveAnnouncement pattern, toss.tech/article/38743, docs/DESIGN_REFERENCES.md
+// §14). Toss found their camera-based face-auth flow was a silent, purely-visual dead end for
+// screen-reader users -- no way to tell if recognition was progressing or had just succeeded --
+// and fixed it with a distinct in-progress/complete cue instead of only a visual progress bar.
+// This camera flow had the exact same gap: `status === 'starting'` was the only state ever
+// announced (as plain, non-live text), so a screen-reader user got no signal once scanning
+// actually started, and NONE at all the instant a code was found -- the view just silently
+// swapped to whatever `onDetect` renders next. Reusing the sr-only aria-live pattern already
+// established for chat instead of inventing a new one.
 function QrScanCamera({ onDetect, onUnavailable }: { onDetect: (value: string) => void; onUnavailable: () => void }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [status, setStatus] = useState<'starting' | 'scanning'>('starting');
+  const [status, setStatus] = useState<'starting' | 'scanning' | 'detected'>('starting');
 
   useEffect(() => {
     if (!('BarcodeDetector' in window)) {
@@ -6919,7 +6930,13 @@ function QrScanCamera({ onDetect, onUnavailable }: { onDetect: (value: string) =
       try {
         const codes = await detector.detect(videoRef.current);
         if (codes.length > 0) {
-          onDetect(codes[0].rawValue);
+          // Real Toss-sourced fix: a brief, announced "found" moment (matching the real
+          // article's distinct completion cue) before handing off to onDetect -- 500ms is
+          // enough for a screen reader to pick up and start speaking the live-region
+          // mutation before this component unmounts; sighted users get the same visual
+          // confirmation (the frame below turns green) instead of an instant, jarring cut.
+          setStatus('detected');
+          window.setTimeout(() => onDetect(codes[0].rawValue), 500);
           return;
         }
       } catch {
@@ -6949,15 +6966,26 @@ function QrScanCamera({ onDetect, onUnavailable }: { onDetect: (value: string) =
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onDetect/onUnavailable are stable per mount, re-subscribing on every render would restart the camera
   }, []);
 
+  let announcement = 'QR code found.';
+  if (status === 'starting') announcement = 'Starting camera…';
+  else if (status === 'scanning') announcement = 'Camera ready. Point at a QR code.';
+
   return (
     <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: '16px', overflow: 'hidden', background: '#111', marginBottom: '10px' }}>
       <video ref={videoRef} muted playsInline aria-label="Camera preview for QR scanning" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      <div style={{ position: 'absolute', inset: '14%', border: '3px solid var(--itunda-indigo-500)', borderRadius: '16px', pointerEvents: 'none' }} />
-      {status === 'starting' && (
+      <div
+        style={{
+          position: 'absolute', inset: '14%',
+          border: `3px solid ${status === 'detected' ? 'var(--itunda-green)' : 'var(--itunda-indigo-500)'}`,
+          borderRadius: '16px', pointerEvents: 'none',
+        }}
+      />
+      {(status === 'starting' || status === 'detected') && (
         <p style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center', fontSize: 'var(--itunda-type-scale-12-size)', color: '#fff' }}>
-          Starting camera…
+          {status === 'detected' ? 'QR code found' : 'Starting camera…'}
         </p>
       )}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
     </div>
   );
 }

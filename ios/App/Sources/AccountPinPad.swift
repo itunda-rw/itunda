@@ -97,6 +97,7 @@ struct AccountPinPad: View {
                     Image(systemName: "delete.left")
                         .foregroundColor(IDS.Colors.textSecondary)
                 }
+                .accessibilityLabel("Delete last digit")
                 .frame(maxWidth: .infinity)
                 .frame(height: 64)
                 .disabled(busy)
