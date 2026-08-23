@@ -64,7 +64,7 @@ class ForeignCurrencyAccountServiceTest : BehaviorSpec({
             }
             // Real bug found live (2026-08-02) -- see openAccount's own doc comment:
             // this asserts the actual fix mechanism, the same "lock a different
-            // already-existing row" precedent MiniAccountService.openMiniAccount's own
+            // already-existing row" precedent YouthAccountService.openYouthAccount's own
             // identical-shaped fix establishes for a reject-if-already-exists
             // check-then-CREATE race.
             Then("it real-locks the user's own MAIN account row before creating the new account") {

@@ -18,20 +18,20 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
-data class DepositMiniAccountRequest(val amount: BigDecimal)
+data class DepositYouthAccountRequest(val amount: BigDecimal)
 
-// Real KakaoBank mini-style capped starter account -- see MiniAccountService's own doc
+// Real KakaoBank mini-style capped starter account -- see YouthAccountService's own doc
 // comment. Normal itunda-user JWT gate, same as every other user-facing feature.
 @RestController
-@RequestMapping("/api/v1/account/mini")
-class MiniAccountController(
-    private val miniAccountService: MiniAccountService,
+@RequestMapping("/api/v1/account/youth")
+class YouthAccountController(
+    private val youthAccountService: YouthAccountService,
     private val idempotencyService: IdempotencyService,
 ) {
 
     @PostMapping("/open")
     fun open(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val account = miniAccountService.openMiniAccount(currentUser.userId)
+        val account = youthAccountService.openYouthAccount(currentUser.userId)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "account" to account))
     }
 
@@ -45,12 +45,12 @@ class MiniAccountController(
     // accident, if the retried amount happens to push a running total over a threshold).
     @PostMapping("/deposit")
     fun deposit(
-        @RequestBody request: DepositMiniAccountRequest,
+        @RequestBody request: DepositYouthAccountRequest,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/account/mini/deposit", idempotencyKey, request) {
-            val result = miniAccountService.deposit(currentUser.userId, request.amount)
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/account/youth/deposit", idempotencyKey, request) {
+            val result = youthAccountService.deposit(currentUser.userId, request.amount)
             HttpStatus.OK.value() to (mapOf("success" to true) + result)
         }
         return ResponseEntity.status(status).body(body)
@@ -60,21 +60,21 @@ class MiniAccountController(
     fun handleAccountNotFound(ex: AccountNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(InvalidMiniAccountDepositAmountException::class)
-    fun handleInvalidAmount(ex: InvalidMiniAccountDepositAmountException) =
+    @ExceptionHandler(InvalidYouthAccountDepositAmountException::class)
+    fun handleInvalidAmount(ex: InvalidYouthAccountDepositAmountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
 
-    @ExceptionHandler(MiniAccountBalanceCapExceededException::class)
-    fun handleBalanceCapExceeded(ex: MiniAccountBalanceCapExceededException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_BALANCE_CAP_EXCEEDED", ex.message ?: "Balance cap exceeded"))
+    @ExceptionHandler(YouthAccountBalanceCapExceededException::class)
+    fun handleBalanceCapExceeded(ex: YouthAccountBalanceCapExceededException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("YOUTH_ACCOUNT_BALANCE_CAP_EXCEEDED", ex.message ?: "Balance cap exceeded"))
 
-    @ExceptionHandler(MiniAccountDailyLimitExceededException::class)
-    fun handleDailyLimitExceeded(ex: MiniAccountDailyLimitExceededException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_DAILY_LIMIT_EXCEEDED", ex.message ?: "Daily limit exceeded"))
+    @ExceptionHandler(YouthAccountDailyLimitExceededException::class)
+    fun handleDailyLimitExceeded(ex: YouthAccountDailyLimitExceededException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("YOUTH_ACCOUNT_DAILY_LIMIT_EXCEEDED", ex.message ?: "Daily limit exceeded"))
 
-    @ExceptionHandler(MiniAccountMonthlyLimitExceededException::class)
-    fun handleMonthlyLimitExceeded(ex: MiniAccountMonthlyLimitExceededException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_MONTHLY_LIMIT_EXCEEDED", ex.message ?: "Monthly limit exceeded"))
+    @ExceptionHandler(YouthAccountMonthlyLimitExceededException::class)
+    fun handleMonthlyLimitExceeded(ex: YouthAccountMonthlyLimitExceededException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("YOUTH_ACCOUNT_MONTHLY_LIMIT_EXCEEDED", ex.message ?: "Monthly limit exceeded"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
@@ -84,13 +84,13 @@ class MiniAccountController(
     fun handleAccountFrozen(ex: AccountFrozenException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))
 
-    @ExceptionHandler(MiniAccountBirthDateRequiredException::class)
-    fun handleBirthDateRequired(ex: MiniAccountBirthDateRequiredException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_BIRTH_DATE_REQUIRED", ex.message ?: "Birth date required"))
+    @ExceptionHandler(YouthAccountBirthDateRequiredException::class)
+    fun handleBirthDateRequired(ex: YouthAccountBirthDateRequiredException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("YOUTH_ACCOUNT_BIRTH_DATE_REQUIRED", ex.message ?: "Birth date required"))
 
-    @ExceptionHandler(MiniAccountAgeIneligibleException::class)
-    fun handleAgeIneligible(ex: MiniAccountAgeIneligibleException) =
-        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_ACCOUNT_AGE_INELIGIBLE", ex.message ?: "Age ineligible"))
+    @ExceptionHandler(YouthAccountAgeIneligibleException::class)
+    fun handleAgeIneligible(ex: YouthAccountAgeIneligibleException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("YOUTH_ACCOUNT_AGE_INELIGIBLE", ex.message ?: "Age ineligible"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

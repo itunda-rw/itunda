@@ -74,7 +74,7 @@ class CardService(
     companion object {
         // itunda has no real production timezone service; Rwanda is a single-timezone
         // country (no DST), so a fixed zone is the correct real choice, same reasoning
-        // MiniAccountService's own age-eligibility fix just established.
+        // YouthAccountService's own age-eligibility fix just established.
         private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
     }
 

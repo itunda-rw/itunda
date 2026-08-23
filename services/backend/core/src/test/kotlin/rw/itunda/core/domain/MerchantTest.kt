@@ -8,7 +8,7 @@ import java.time.ZoneId
 class MerchantTest : BehaviorSpec({
     // Real current Rwanda weekday, computed the exact same way Merchant.isClosedToday's
     // own real implementation does -- this codebase has no Clock abstraction anywhere
-    // (confirmed: every other date-dependent check, e.g. MiniAccountServiceTest's own
+    // (confirmed: every other date-dependent check, e.g. YouthAccountServiceTest's own
     // real age check, uses real current time directly rather than injecting a fake
     // clock), so this is the honest way to test a real "is today closed" check without
     // fabricating a scenario that could silently drift from the real implementation.

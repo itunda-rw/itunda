@@ -23,12 +23,12 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.UUID
 
-class InvalidMiniAccountDepositAmountException(message: String) : RuntimeException(message)
-class MiniAccountBalanceCapExceededException(message: String) : RuntimeException(message)
-class MiniAccountDailyLimitExceededException(message: String) : RuntimeException(message)
-class MiniAccountMonthlyLimitExceededException(message: String) : RuntimeException(message)
-class MiniAccountBirthDateRequiredException(message: String) : RuntimeException(message)
-class MiniAccountAgeIneligibleException(message: String) : RuntimeException(message)
+class InvalidYouthAccountDepositAmountException(message: String) : RuntimeException(message)
+class YouthAccountBalanceCapExceededException(message: String) : RuntimeException(message)
+class YouthAccountDailyLimitExceededException(message: String) : RuntimeException(message)
+class YouthAccountMonthlyLimitExceededException(message: String) : RuntimeException(message)
+class YouthAccountBirthDateRequiredException(message: String) : RuntimeException(message)
+class YouthAccountAgeIneligibleException(message: String) : RuntimeException(message)
 
 /**
  * Real KakaoBank 카카오뱅크 mini-style limited youth/starter account -- Card Gorilla's own
@@ -59,7 +59,7 @@ class MiniAccountAgeIneligibleException(message: String) : RuntimeException(mess
  * a normal `MAIN`/`SAVINGS` account doesn't carry.
  */
 @Service
-class MiniAccountService(
+class YouthAccountService(
     private val accountRepository: AccountRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
@@ -75,21 +75,21 @@ class MiniAccountService(
         private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
     }
 
-    /** Idempotent -- opening an already-open Mini account just returns the existing one,
+    /** Idempotent -- opening an already-open Youth account just returns the existing one,
      * same "the end state is what the caller actually wants" discipline
      * `KeywordAlertService.addAlert` already establishes, rather than a real 409. */
     @Transactional
-    fun openMiniAccount(userId: String): Account {
+    fun openYouthAccount(userId: String): Account {
         accountRepository.findByUserIdAndType(userId, AccountType.MINI)?.let { return it }
         val user = userRepository.findById(userId).orElseThrow { AccountNotFoundException("No account found for this account") }
         val birthDate = user.birthDate
-            ?: throw MiniAccountBirthDateRequiredException("Set your birth date before opening a Mini account")
+            ?: throw YouthAccountBirthDateRequiredException("Set your birth date before opening a Youth account")
         // Age eligibility is a civil-date rule. Use the product's local time zone so a
         // customer is not temporarily treated as one year younger around a UTC date
         // boundary (which is especially visible from Rwanda's UTC+2 time zone).
         val age = Period.between(birthDate, LocalDate.now(RWANDA_ZONE)).years
         if (age < MIN_AGE || age > MAX_AGE) {
-            throw MiniAccountAgeIneligibleException("Mini account is only available for ages $MIN_AGE-$MAX_AGE")
+            throw YouthAccountAgeIneligibleException("Youth account is only available for ages $MIN_AGE-$MAX_AGE")
         }
         val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw AccountNotFoundException("No account found for this account")
@@ -97,7 +97,7 @@ class MiniAccountService(
         // Real bug found live (2026-08-02): the plain `findByUserIdAndType(..., MINI)`
         // check at the top of this method reads-then-CREATES a brand-new row -- there's
         // no existing MINI row to put an `@Version` guard on yet, and `accounts` has no
-        // unique constraint on (user_id, type) either, so two concurrent openMiniAccount
+        // unique constraint on (user_id, type) either, so two concurrent openYouthAccount
         // calls for the same user could both pass that check before either committed
         // and both create a real MINI account, silently doubling this user's effective
         // real 500,000 RWF balance cap across two rows. Fixed the same way this
@@ -113,7 +113,7 @@ class MiniAccountService(
         return accountRepository.save(
             Account(
                 id = "account_${UUID.randomUUID()}", userId = userId, accountNumber = accountNumberGenerator.generate(2024100000L),
-                accountName = "Mini Account", type = AccountType.MINI,
+                accountName = "Youth Account", type = AccountType.MINI,
                 balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO, currency = mainAccount.currency,
             ),
         )
@@ -127,45 +127,45 @@ class MiniAccountService(
      */
     @Transactional
     fun deposit(userId: String, amount: BigDecimal): Map<String, Any?> {
-        if (amount <= BigDecimal.ZERO) throw InvalidMiniAccountDepositAmountException("Amount must be greater than zero")
+        if (amount <= BigDecimal.ZERO) throw InvalidYouthAccountDepositAmountException("Amount must be greater than zero")
         val mainAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw AccountNotFoundException("No account found for this account")
-        val miniAccount = accountRepository.findByUserIdAndType(userId, AccountType.MINI)
-            ?: throw AccountNotFoundException("No Mini account found for this account -- open one first")
+        val youthAccount = accountRepository.findByUserIdAndType(userId, AccountType.MINI)
+            ?: throw AccountNotFoundException("No Youth account found for this account -- open one first")
 
-        if (miniAccount.balance.add(amount) > MAX_BALANCE) {
-            throw MiniAccountBalanceCapExceededException("This deposit would push the Mini account balance over the real $MAX_BALANCE RWF cap")
+        if (youthAccount.balance.add(amount) > MAX_BALANCE) {
+            throw YouthAccountBalanceCapExceededException("This deposit would push the Youth account balance over the real $MAX_BALANCE RWF cap")
         }
         val today = LocalDate.now(ZoneOffset.UTC)
         val dayStart = today.atStartOfDay().toInstant(ZoneOffset.UTC)
         val todayDeposited = transactionRepository.sumAmountByToAccountIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
-            miniAccount.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED, dayStart,
+            youthAccount.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED, dayStart,
         )
         if (todayDeposited.add(amount) > DAILY_DEPOSIT_LIMIT) {
-            throw MiniAccountDailyLimitExceededException("This deposit would exceed the real $DAILY_DEPOSIT_LIMIT RWF daily deposit limit")
+            throw YouthAccountDailyLimitExceededException("This deposit would exceed the real $DAILY_DEPOSIT_LIMIT RWF daily deposit limit")
         }
         val monthStart = today.withDayOfMonth(1).atStartOfDay().toInstant(ZoneOffset.UTC)
         val monthDeposited = transactionRepository.sumAmountByToAccountIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
-            miniAccount.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED, monthStart,
+            youthAccount.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED, monthStart,
         )
         if (monthDeposited.add(amount) > MONTHLY_DEPOSIT_LIMIT) {
-            throw MiniAccountMonthlyLimitExceededException("This deposit would exceed the real $MONTHLY_DEPOSIT_LIMIT RWF monthly deposit limit")
+            throw YouthAccountMonthlyLimitExceededException("This deposit would exceed the real $MONTHLY_DEPOSIT_LIMIT RWF monthly deposit limit")
         }
 
         val result = ledgerService.postLedgerTransaction(
             mainAccount.currency,
             listOf(
-                LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer to Mini account"),
-                LedgerLeg(miniAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer to Mini account"),
+                LedgerLeg(mainAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer to Youth account"),
+                LedgerLeg(youthAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer to Youth account"),
             ),
         )
         transactionRepository.save(
             Transaction(
                 id = result.transactionId,
-                referenceNumber = "MINI${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
-                senderId = userId, recipientId = userId, fromAccountId = mainAccount.id, toAccountId = miniAccount.id,
+                referenceNumber = "YOUTH${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = userId, recipientId = userId, fromAccountId = mainAccount.id, toAccountId = youthAccount.id,
                 amount = amount, fee = BigDecimal.ZERO, currency = mainAccount.currency, type = TransactionType.TRANSFER,
-                status = TransactionStatus.COMPLETED, description = "Transfer to Mini account", channel = "MINI_ACCOUNT_DEPOSIT",
+                status = TransactionStatus.COMPLETED, description = "Transfer to Youth account", channel = "YOUTH_ACCOUNT_DEPOSIT",
                 completedAt = Instant.now(),
             ),
         )

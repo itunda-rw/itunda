@@ -292,7 +292,7 @@ class AutoTopUpService(
      * cards" -- itunda's own Bank account is simply the first, always-available one).
      *
      * A real, ordinary internal account-to-account transfer -- same shape
-     * `MiniAccountService.deposit`'s own MAIN -> Mini funding already establishes
+     * `YouthAccountService.deposit`'s own MAIN -> Mini funding already establishes
      * (`senderId == recipientId == userId`, both legs `LedgerAccountType.WALLET`,
      * `TransactionType.TRANSFER`) -- which is exactly what delivers the real Bank/Pay
      * isolation the user asked for: this Transaction row is generic ("Top up to itunda

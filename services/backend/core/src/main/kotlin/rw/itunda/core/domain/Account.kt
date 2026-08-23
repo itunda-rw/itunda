@@ -29,7 +29,7 @@ import java.time.Instant
 // proprietors) equivalent -- see MerchantBusinessAccountService's own doc comment. One
 // per registered Merchant (unlike GROUP/WEEKLY_SAVINGS/FOREIGN_CURRENCY above), so this
 // one IS resolved via the plain findByUserIdAndType, same as MAIN/SAVINGS.
-// MINI added 2026-07-28 -- see MiniAccountService's own doc comment. No exhaustive
+// MINI added 2026-07-28 -- see YouthAccountService's own doc comment. No exhaustive
 // `when (AccountType)` exists anywhere in this codebase (checked before adding), so this
 // carries none of the blast-radius risk a new LedgerAccountType value would.
 // Real Toss Bank/Toss Pay separation (2026-08-21, direct user correction): PAY is

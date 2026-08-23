@@ -77,7 +77,7 @@ class StudentLoanService(
     // Real bug class this session has hit repeatedly: the "reject if already active"
     // check-then-CREATE race -- @Version can't protect a row that doesn't exist yet.
     // Locking the caller's own MAIN account row first (same fix VupLoanService.applyForLoan
-    // and MiniAccountService.openMiniAccount already needed for this exact shape)
+    // and YouthAccountService.openYouthAccount already needed for this exact shape)
     // serializes concurrent applications for the same user without needing a new lock
     // table.
     @Transactional

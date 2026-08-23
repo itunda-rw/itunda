@@ -15,7 +15,7 @@ import kotlin.random.Random
  * each carried their own private `generateAccountNumber()` copy, every one built on
  * `Math.random()` with zero check against the real `UNIQUE(account_number)` constraint
  * on `accounts` (V1__init_schema.sql, `uq_accounts_account_number`) -- three of them
- * (AuthService, GroupAccountService, MiniAccountService) even shared the exact same
+ * (AuthService, GroupAccountService, YouthAccountService) even shared the exact same
  * 2024100000..2024999999 range, so a collision there was never just a same-account-
  * type risk. A collision on any of the 9 would have surfaced as a raw, unhandled
  * `DataIntegrityViolationException` on whichever request lost the race, not a

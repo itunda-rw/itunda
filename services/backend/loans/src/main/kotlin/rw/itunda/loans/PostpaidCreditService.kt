@@ -107,7 +107,7 @@ class PostpaidCreditService(
      * Draws against the real available limit and credits it straight to the caller's
      * own MAIN account balance -- usable exactly like any other real money for Pay-by-
      * code/transfers/etc., the same "top up spendable balance" v1 scope
-     * MiniAccountService.deposit's own reverse direction already establishes, rather than
+     * YouthAccountService.deposit's own reverse direction already establishes, rather than
      * rewiring every existing payment path to conditionally draw from this line.
      */
     @Transactional

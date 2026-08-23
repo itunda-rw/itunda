@@ -17,7 +17,7 @@ enum class PostpaidCreditLineStatus { ACTIVE, SUSPENDED }
  * user-requestable increase; a real 12% annual late fee on overdue principal, service
  * suspended while overdue; no interest at all for on-time repayment, unlike a credit
  * card). Adopted as itunda's own honest RWF-scoped numbers (the same "reuse the sourced
- * structure, itunda's own currency figures" discipline `MiniAccountService`/
+ * structure, itunda's own currency figures" discipline `YouthAccountService`/
  * `AgentCommissionSchedule` already establish), not presented as a real published Rwanda
  * figure.
  *

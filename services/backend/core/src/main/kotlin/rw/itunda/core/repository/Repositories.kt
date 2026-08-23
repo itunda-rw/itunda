@@ -373,7 +373,7 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         from: Instant,
     ): List<Transaction>
 
-    // Real MiniAccountService daily/monthly deposit-cap enforcement (2026-07-28) -- see
+    // Real YouthAccountService daily/monthly deposit-cap enforcement (2026-07-28) -- see
     // that class's own doc comment. Coarse repo filter (this account's own real deposits
     // since a real window start), exact cap comparison in the service, same discipline
     // the recurring-payment-detection/FamilyLink spend-limit queries above establish.

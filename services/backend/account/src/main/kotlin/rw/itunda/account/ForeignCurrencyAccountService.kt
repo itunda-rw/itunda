@@ -97,7 +97,7 @@ class ForeignCurrencyAccountService(
         // unique constraint on (user_id, type, currency) either, so two concurrent
         // openAccount("USD") calls for the same user could both pass that check before
         // either committed and both create a real USD account. Fixed the same way
-        // MiniAccountService.openMiniAccount's own identical-shaped fix works: lock a
+        // YouthAccountService.openYouthAccount's own identical-shaped fix works: lock a
         // DIFFERENT already-existing row (the user's own real MAIN account) via
         // `findByIdForUpdate` to serialize the two concurrent creates.
         accountRepository.findByIdForUpdate(getMainAccount(userId).id)

@@ -353,8 +353,8 @@ class AuthService(
         return user.toPublic()
     }
 
-    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
-    // MiniAccountService's own doc comment for the sourced 만 7세~18세 real eligibility
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- see
+    // YouthAccountService's own doc comment for the sourced 만 7세~18세 real eligibility
     // window this backs. Set once; a real, plausible past date only -- neither a future
     // date (obviously wrong input) nor implausibly far in the past (a fat-fingered year).
     @Transactional

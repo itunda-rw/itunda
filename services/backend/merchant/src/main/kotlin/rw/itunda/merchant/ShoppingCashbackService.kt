@@ -77,7 +77,7 @@ import java.util.UUID
  * same source) with no fixed rule this backend could honestly replicate -- itunda's own
  * choice instead is a real, fixed, computable day: the first Monday of each month
  * (`isMembershipDay`), same "reuse the sourced structure (multiplier value, monthly
- * cadence), itunda's own specific rule" discipline `MiniAccountService`'s age
+ * cadence), itunda's own specific rule" discipline `YouthAccountService`'s age
  * range/`AgentCommissionSchedule`'s bands already establish. [MEMBERSHIP_DAY_MULTIPLIER]
  * is Naver's own real sourced ceiling (5x, not a fabricated number); the existing
  * [MAX_CASHBACK_PER_TRANSACTION] cap still applies on a boosted day, matching how a

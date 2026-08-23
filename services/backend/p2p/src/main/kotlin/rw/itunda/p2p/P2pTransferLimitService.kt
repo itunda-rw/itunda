@@ -27,7 +27,7 @@ import java.time.ZoneOffset
  * itunda already enforces this exact real shape in two other places -- confirmed by
  * reading them directly before building a third, inconsistent copy:
  * [rw.itunda.card.CardService.spend] (`DebitCard.dailyLimit`/`monthlyLimit`, real
- * default 500,000 RWF) and [rw.itunda.account.MiniAccountService] (`DAILY_DEPOSIT_LIMIT`,
+ * default 500,000 RWF) and [rw.itunda.account.YouthAccountService] (`DAILY_DEPOSIT_LIMIT`,
  * real 300,000 RWF). `P2pService.sendDirect` and `P2pDelayedTransferService
  * .sendDelayed` -- itunda's real account-to-account "bank transfer" rail, its highest-
  * value real money-movement path -- had neither: only a 30/hour *count* rate limit
@@ -76,7 +76,7 @@ class P2pTransferLimitService(
      * Real per-transfer and real daily-cumulative caps. Coarse repo filter (this
      * sender's own real completed TRANSFER-type sends since a real UTC day boundary),
      * exact cap comparison here -- same "coarse repo filter, exact logic in the
-     * service" discipline `FamilyLinkService.enforceSpendLimit`/`MiniAccountService`'s
+     * service" discipline `FamilyLinkService.enforceSpendLimit`/`YouthAccountService`'s
      * own deposit-cap enforcement already establish, deliberately reusing the exact
      * same `TransactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual`
      * query `FamilyLinkService.enforceSpendLimit` already uses rather than adding a
@@ -125,7 +125,7 @@ class P2pTransferLimitService(
 
     companion object {
         // Real values proportioned to itunda's own already-established real limits
-        // (DebitCard.DEFAULT_DAILY_LIMIT = 500,000 RWF, MiniAccountService
+        // (DebitCard.DEFAULT_DAILY_LIMIT = 500,000 RWF, YouthAccountService
         // .DAILY_DEPOSIT_LIMIT = 300,000 RWF) rather than a literal KRW->RWF currency
         // conversion of the sourced TossBank figures above -- itunda's own real
         // account balances and transaction sizes are proportioned to those two

@@ -75,7 +75,7 @@ class MotoOwnershipService(
     // active" check-then-CREATE race: @Version can't protect a row that doesn't exist
     // yet. Locking the caller's own MAIN account row first (same fix
     // VupLoanService.applyForLoan/StudentLoanService.applyForLoan/
-    // MiniAccountService.openMiniAccount already needed for this exact shape)
+    // YouthAccountService.openYouthAccount already needed for this exact shape)
     // serializes concurrent plan creations for the same user without needing a new
     // lock table.
     @Transactional
