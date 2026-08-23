@@ -10519,16 +10519,15 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
       >
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>Forward to…</p>
         {conversations === null || groups === null ? (
-          <div className="itunda-card skeleton" style={{ height: '100px' }} />
+          <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
         ) : conversations.length === 0 && groups.length === 0 ? (
           <EmptyState message="No conversations to forward to yet — start a chat first." />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {conversations.map((c) => (
               <button
                 key={c.conversationId}
-                className="itunda-card"
-                style={{ width: '100%', textAlign: 'left' }}
+                style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
                 onClick={() => onForward('DIRECT', c.conversationId)}
               >
                 {c.otherUserName}
@@ -10537,8 +10536,7 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
             {groups.map((g) => (
               <button
                 key={g.groupId}
-                className="itunda-card"
-                style={{ width: '100%', textAlign: 'left' }}
+                style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
                 onClick={() => onForward('GROUP', g.groupId)}
               >
                 {g.name} (group)
@@ -12554,8 +12552,8 @@ function KeywordAlertsView() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <form onSubmit={handleAdd} className="itunda-card" style={{ display: 'flex', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <form onSubmit={handleAdd} className="itunda-flat-section" style={{ display: 'flex', gap: '8px' }}>
         <input
           type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Alert me for (e.g. iPhone 15)"
           style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
@@ -12566,13 +12564,13 @@ function KeywordAlertsView() {
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
 
       {alerts === null ? (
-        <div className="itunda-card skeleton" style={{ height: '80px' }} />
+        <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : alerts.length === 0 ? (
         <EmptyState message="No keyword alerts yet -- add one to get notified when a matching listing is posted." />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {alerts.map((a) => (
-            <div key={a.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{a.keyword}</p>
               <button
                 className="itunda-btn itunda-btn-secondary" disabled={removingId === a.id} onClick={() => handleRemove(a.id)}
@@ -12586,7 +12584,7 @@ function KeywordAlertsView() {
       )}
 
       {quietHours !== undefined && (
-        <div className="itunda-card">
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Quiet hours</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Don't send alert notifications during these hours.
@@ -13566,9 +13564,9 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
     <div>
       <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {!post && !error && <div className="itunda-card skeleton" style={{ height: '160px' }} />}
+      {!post && !error && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {post && (
-        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+        <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{post.title}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>by {authorName}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-700)', whiteSpace: 'pre-wrap' }}>{post.body}</p>
@@ -13585,14 +13583,14 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
       {post && post.category === 'meetup' && <MeetupSessionsSection post={post} currentUserId={currentUser?.id} />}
       {post && post.category === 'group_buy' && <GroupBuyFinalizeSection post={post} currentUserId={currentUser?.id} />}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
-      {comments === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
+      {comments === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {comments !== null && comments.length === 0 && (
         <EmptyState message="No comments yet -- be the first to reply." />
       )}
       {comments !== null && comments.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px' }}>
           {comments.map(({ comment, authorName: name }) => (
-            <div key={comment.id} className="itunda-card" style={{ padding: '10px 14px' }}>
+            <div key={comment.id} className="itunda-flat-section">
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{name}</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>{comment.body}</p>
             </div>
@@ -17085,11 +17083,11 @@ function DeliverView() {
     }
   };
 
-  if (rider === undefined) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
+  if (rider === undefined) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   if (rider === null) {
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+      <div style={{ textAlign: 'center', padding: '28px 0' }}>
         <Bike size={32} color="var(--itunda-indigo)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '6px' }}>Deliver with Itunda</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
@@ -17108,7 +17106,7 @@ function DeliverView() {
 
   return (
     <div>
-      <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{rider.available ? "You're online" : "You're offline"}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{rider.available ? 'Visible for new deliveries' : 'Go online to see deliveries'}</p>
@@ -17146,7 +17144,7 @@ function DeliverView() {
         <div style={{ marginBottom: '20px' }}>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Available deliveries</h4>
           {available === null ? (
-            <div className="itunda-card skeleton" style={{ height: '100px' }} />
+            <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
           ) : available.length === 0 ? (
             <EmptyState message="No deliveries waiting right now — stay online and you'll be notified." />
           ) : (
