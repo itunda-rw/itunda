@@ -11,8 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,8 +62,11 @@ internal fun EatsOrderRow(
     // Real live rider-location tracking (item 182) -- only while a rider is actually
     // en route, same gating as bank-mfe's own canShowLiveTracking.
     val canShowLiveTracking = canShowRoute && (order.status == "RIDER_ASSIGNED" || order.status == "PICKED_UP")
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a real
+    // order-history row, kept the per-row Divider convention (matching
+    // ShopOrders.kt's identical CommerceOrderRow fix, docs/DESIGN_REFERENCES.md
+    // §274).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(EATS_STATUS_LABEL[order.status] ?: order.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -123,8 +125,8 @@ internal fun EatsOrderRow(
                 RouteMiniMap(restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
             }
             action?.invoke()
-        }
     }
+    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
 }
 
 @Composable
@@ -273,33 +275,35 @@ internal fun MyDineInOrdersView() {
             ErrorCard(error!!, onRetry = ::load)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
+                // -- a history log of table orders, kept the per-row Divider
+                // convention (docs/DESIGN_REFERENCES.md §274).
                 list!!.forEach { o ->
-                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Table ${o.tableNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("%,.0f RWF".format(o.totalAmount), color = Ids.colors.textPrimary, fontSize = 14.sp)
-                            }
-                            Text(DINE_IN_STATUS_LABEL[o.status] ?: o.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                            if (o.status == "PLACED") {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(top = 10.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Ids.colors.danger)
-                                        .pressScaleClickable(enabled = cancellingId != o.id) { cancel(o.id) }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                                ) {
-                                    Text(
-                                        if (cancellingId == o.id) "Cancelling…" else "Cancel order",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
-                                    )
-                                }
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Table ${o.tableNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("%,.0f RWF".format(o.totalAmount), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                        }
+                        Text(DINE_IN_STATUS_LABEL[o.status] ?: o.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                        if (o.status == "PLACED") {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Ids.colors.danger)
+                                    .pressScaleClickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    if (cancellingId == o.id) "Cancelling…" else "Cancel order",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                )
                             }
                         }
                     }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 }
             }
         }

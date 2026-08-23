@@ -45,7 +45,6 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -185,8 +184,9 @@ internal fun DeliverContent() {
 
     val currentRider = rider
     if (currentRider == null) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+        // this screen's own main content (docs/UI_UX_GUIDELINES.md §10).
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Deliver with Itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -228,7 +228,6 @@ internal fun DeliverContent() {
                         .padding(horizontal = 24.dp, vertical = 14.dp),
                 ) { Text(if (registering) "Registering…" else "Become a rider", color = Color.White, fontWeight = FontWeight.Bold) }
                 error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
-            }
         }
         return
     }
@@ -237,30 +236,30 @@ internal fun DeliverContent() {
     val pastDeliveries = mine.orEmpty().filter { it.status == "DELIVERED" }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap), contentPadding = PaddingValues(bottom = 20.dp)) {
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a
+        // lone status section (docs/UI_UX_GUIDELINES.md §10).
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text(if (currentRider.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(if (currentRider.available) "Visible for new deliveries" else "Go online to see deliveries", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (currentRider.available) Ids.colors.danger else Ids.colors.brand)
-                            .pressScaleClickable {
-                                coroutineScope.launch {
-                                    try {
-                                        val res = NetworkClient.apiService.setRiderAvailability(SetRiderAvailabilityRequest(!currentRider.available))
-                                        if (res.success) rider = res.rider
-                                    } catch (e: HttpException) {
-                                        error = superAppErrorMessage(e)
-                                    }
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(if (currentRider.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(if (currentRider.available) "Visible for new deliveries" else "Go online to see deliveries", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (currentRider.available) Ids.colors.danger else Ids.colors.brand)
+                        .pressScaleClickable {
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.setRiderAvailability(SetRiderAvailabilityRequest(!currentRider.available))
+                                    if (res.success) rider = res.rider
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
                                 }
                             }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                    ) { Text(if (currentRider.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) { Text(if (currentRider.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
             }
         }
         error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 12.sp) } }
