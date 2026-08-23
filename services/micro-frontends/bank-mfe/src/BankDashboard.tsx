@@ -5309,7 +5309,7 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
   useEffect(load, []);
 
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Budgets</h3>
         <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }} onClick={() => setShowForm((v) => !v)}>
@@ -7913,7 +7913,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   const positive = stock.changePercent >= 0;
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
         <button onClick={onClose} style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }} aria-label="Back">
           <ArrowLeft size={18} />
@@ -8311,7 +8311,7 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>New chat</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         Start from an Itunda contact, or enter their phone number.
@@ -8370,7 +8370,7 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>New group</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
         Name your group and add real members by phone number, separated by commas.
@@ -8503,7 +8503,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
 
   if (created) {
     return (
-      <div className="itunda-card" style={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+      <div className="itunda-flat-section" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Send friends a link — tapping it joins instantly, wherever they are</p>
         <button className="itunda-btn itunda-btn-primary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => handleShare(created.joinCode)}>
           <LinkGlyph size={16} /> Share invite link
@@ -8522,7 +8522,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
   }
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {mode === 'create' ? (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Start an open chat</h3>
@@ -9688,7 +9688,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="itunda-card skeleton" style={{ height: '120px' }} />}
+        {messages === null && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages !== null && messages.length === 0 && (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
             Say hello — no messages yet.
@@ -10297,7 +10297,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="itunda-card skeleton" style={{ height: '120px' }} />}
+        {messages === null && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages !== null && messages.length === 0 && (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
             Say hello — no messages yet.
@@ -10611,7 +10611,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
         {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginBottom: '8px' }}>{error}</p>}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
           {messages === null ? (
-            <div className="itunda-card skeleton" style={{ height: '80px' }} />
+            <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />
           ) : (
             messages.map((m, i) => {
               const isMine = m.senderId === currentUserId;
