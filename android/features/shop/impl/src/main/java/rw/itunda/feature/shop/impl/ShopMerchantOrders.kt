@@ -240,7 +240,10 @@ internal fun MerchantReturnQueueView() {
 }
 
 @Composable
-internal fun MyCommerceOrdersView() {
+internal fun MyCommerceOrdersView(
+    onReorder: (OrderDto) -> Unit,
+    reorderingId: String?,
+) {
     var orders by remember { mutableStateOf<List<OrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
@@ -317,12 +320,39 @@ internal fun MyCommerceOrdersView() {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OrderItemReviews(o)
                                 ReturnExchangeAction(o.id)
+                                CommerceReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
                             }
+                        } else if (o.status == "CANCELLED") {
+                            CommerceReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
                         }
                     }
                 }
             }
         }
+    }
+}
+
+// Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of Eats'
+// own real "Reorder" button (EatsOrders.kt's ReorderButton) -- can't be shared
+// directly (Feature module isolation, Konsist-enforced, forbids
+// :features:shop:impl importing :features:eats:impl's internal composables), so
+// duplicated here, same real precedent CameraQrScanner.kt's merchantapp copy
+// already established for a deliberate, isolation-respecting duplicate.
+@Composable
+private fun CommerceReorderButton(reordering: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Ids.colors.brand)
+            .pressScaleClickable(enabled = !reordering, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(
+            if (reordering) "Reordering…" else "Buy again",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+        )
     }
 }
 

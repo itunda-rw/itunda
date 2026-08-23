@@ -436,6 +436,54 @@ fun CommerceShopContent(
         }
     }
 
+    // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of Eats'
+    // own real "Reorder" (see EatsScreen.kt's handleReorder). Re-populates the
+    // cross-merchant `cart` from a past order's still-active products and opens the
+    // cart for review, same "review before a real-money action, not an instant
+    // one-tap purchase" precedent Eats already established (a delivery address
+    // could be stale, a price could have changed since) -- rather than a riskier
+    // instant re-checkout. Commerce products never carry option groups (only Eats'
+    // menu items do, see MerchantProductDto.optionGroups's own doc comment), so
+    // unlike Eats this needs no "drop items that now require an option selection"
+    // sanitization -- only "drop items that are no longer active."
+    var reorderingOrderId by remember { mutableStateOf<String?>(null) }
+    var reorderError by remember { mutableStateOf<String?>(null) }
+
+    fun handleReorder(order: OrderDto) {
+        reorderingOrderId = order.id
+        reorderError = null
+        coroutineScope.launch {
+            try {
+                val orderDetail = NetworkClient.apiService.getOrder(order.id)
+                val menuRes = NetworkClient.apiService.getMerchantProducts(order.merchantId)
+                if (!orderDetail.success || !menuRes.success) {
+                    reorderError = "Could not reorder."
+                    return@launch
+                }
+                val activeProducts = menuRes.products.filter { it.active }.associateBy { it.id }
+                var addedAny = false
+                orderDetail.items.forEach { item ->
+                    val product = activeProducts[item.productId] ?: return@forEach
+                    val key = "${order.merchantId}:${product.id}"
+                    val existing = cart[key]
+                    cart[key] = CommerceCartLine(order.merchantId, menuRes.merchant.businessName, product, (existing?.quantity ?: 0) + item.quantity)
+                    addedAny = true
+                }
+                if (!addedAny) {
+                    reorderError = "None of the items from that order are available anymore."
+                    return@launch
+                }
+                showCart = true
+            } catch (e: HttpException) {
+                reorderError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                reorderError = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                reorderingOrderId = null
+            }
+        }
+    }
+
     fun openMerchant(m: ShoppingMerchantDto) {
         selectedMerchant = m
         products = null
@@ -575,7 +623,14 @@ fun CommerceShopContent(
         item { MerchantOrdersView() }
         item { MerchantReturnQueueView() }
         if (view == CommerceView.ORDERS) {
-            item { MyCommerceOrdersView() }
+            item {
+                MyCommerceOrdersView(onReorder = ::handleReorder, reorderingId = reorderingOrderId)
+                val reorderErr = reorderError
+                if (reorderErr != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(reorderErr, color = Ids.colors.danger, fontSize = 13.sp)
+                }
+            }
             item { MyBookingsView() }
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
