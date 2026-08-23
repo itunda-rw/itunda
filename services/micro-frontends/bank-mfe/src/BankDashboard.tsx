@@ -20442,21 +20442,21 @@ function MerchantReturnQueueView() {
 
   if (error) {
     return (
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div style={{ marginBottom: '16px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
       </div>
     );
   }
-  if (requests === null) return <div className="itunda-card skeleton" style={{ height: '80px', marginBottom: '16px' }} />;
+  if (requests === null) return <div className="skeleton" style={{ height: '80px', marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)' }} />;
   const open = requests.filter((r) => r.status === 'REQUESTED');
   if (open.length === 0) return null;
 
   return (
     <div style={{ marginBottom: '20px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Return &amp; exchange requests</h4>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {open.map((r) => (
-          <div key={r.id} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div key={r.id} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{r.type === 'RETURN' ? 'Return' : 'Exchange'} requested</p>
               <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</span>
@@ -20510,7 +20510,7 @@ function MerchantRedeemVoucherCard() {
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '20px' }}>
+    <div style={{ marginBottom: '20px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Redeem a gift voucher</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
         Ask the customer for their voucher id and enter it below to redeem it in person.
@@ -20855,7 +20855,7 @@ function ProductDetailView({
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{merchant.businessName}</h3>
       </div>
-      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <ProductImageThumb imageUrl={product.imageUrl} size={220} />
         </div>
@@ -21013,7 +21013,7 @@ function ProductCatalogView({
   }
 
   if (catalog === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
@@ -21035,7 +21035,7 @@ function ProductCatalogView({
       </div>
       {shareNotice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', marginBottom: '12px' }} role="status">{shareNotice}</p>}
       {billingPlans.length > 0 && (
-        <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Subscription plans</h4>
           {billingPlans.map((plan) => (
             <BillingPlanRow
@@ -21279,11 +21279,11 @@ function MultiCartView({
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Your cart</h3>
       </div>
       {groups.length === 0 ? (
-        <div className="itunda-card"><p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Your cart is empty.</p></div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Your cart is empty.</p>
       ) : (
         <form onSubmit={handlePlaceOrders} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {groups.map(([merchantId, group]) => (
-            <div key={merchantId} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div key={merchantId} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{group.businessName}</p>
               {Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => (
                 <div key={productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)' }}>
@@ -21296,7 +21296,7 @@ function MultiCartView({
               ))}
             </div>
           ))}
-          <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>
               <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
               <span>{grandTotal.toLocaleString()} RWF</span>
@@ -21344,7 +21344,7 @@ function MultiCartView({
 function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutResult[]; onDone: () => void }) {
   const successCount = results.filter((r) => r.success).length;
   return (
-    <div className="itunda-card" style={{ padding: '28px' }}>
+    <div style={{ padding: '10px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700 }}>
@@ -21405,7 +21405,7 @@ function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (order: 
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (orders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
 
   const renderAction = (o: CommerceOrder) => {
@@ -21553,13 +21553,13 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved items yet -- tap ♡ on any product to save it here." />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {favorites.map((f) => (
-        <div key={f.productId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+        <div key={f.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '10px 0' }}>
           <button
             onClick={() => onOpenMerchant({ merchantId: f.merchantId, businessName: f.businessName, category: null, cashbackRate: '' })}
             style={{ textAlign: 'left', flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}
