@@ -17,8 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
@@ -138,31 +137,29 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
     }
 }
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a history/
+// progress log of savings plans, kept the per-row Divider convention
+// (docs/DESIGN_REFERENCES.md §274).
 @Composable
 private fun Grow31PlanRow(plan: Grow31SavingsPlanDto, onClick: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(grow31StatusLabel(plan), color = grow31StatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            Text("${formatMoneyGrow31(plan.totalSaved)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("Day ${plan.daysElapsed.coerceAtMost(TERM_DAYS)}/$TERM_DAYS -- streak ${plan.currentStreak}", color = Ids.colors.textSecondary, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
-            Spacer(modifier = Modifier.height(8.dp))
-            val bonus = grow31BonusRateForStreak(plan.longestStreak)
-            Text(
-                if (bonus > 0.0) "Longest streak ${plan.longestStreak} days -- +${"%.0f".format(bonus)}% bonus locked in so far" else "Save today to start your streak",
-                color = if (bonus > 0.0) Ids.colors.success else Ids.colors.textSecondary,
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-            )
+    Column(modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(grow31StatusLabel(plan), color = grow31StatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
+        Text("${formatMoneyGrow31(plan.totalSaved)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("Day ${plan.daysElapsed.coerceAtMost(TERM_DAYS)}/$TERM_DAYS -- streak ${plan.currentStreak}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
+        Spacer(modifier = Modifier.height(8.dp))
+        val bonus = grow31BonusRateForStreak(plan.longestStreak)
+        Text(
+            if (bonus > 0.0) "Longest streak ${plan.longestStreak} days -- +${"%.0f".format(bonus)}% bonus locked in so far" else "Save today to start your streak",
+            color = if (bonus > 0.0) Ids.colors.success else Ids.colors.textSecondary,
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+        )
     }
+    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
 }
 
 private fun grow31StatusLabel(plan: Grow31SavingsPlanDto): String = when (plan.status) {
@@ -389,38 +386,34 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
-                            Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("${formatMoneyGrow31(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                            Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // this detail screen's own main content (docs/UI_UX_GUIDELINES.md §10).
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("${formatMoneyGrow31(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Grow31ProgressBar(progress = plan.daysElapsed.toFloat() / TERM_DAYS.toFloat())
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text("Day ${plan.daysElapsed.coerceAtMost(TERM_DAYS)} of $TERM_DAYS", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            "Current streak: ${plan.currentStreak} days -- longest: ${plan.longestStreak} days",
+                            color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                        val bonus = grow31BonusRateForStreak(plan.longestStreak)
+                        Text(
+                            if (bonus > 0.0) {
+                                "+${"%.0f".format(bonus)}% bonus locked in on top of the ${"%.1f".format(plan.baseRate)}% base rate"
+                            } else {
+                                "Save 3 days in a row to unlock your first bonus tier"
+                            },
+                            color = if (bonus > 0.0) Ids.colors.success else Ids.colors.textSecondary,
+                            fontSize = 13.sp,
+                        )
+                        plan.totalInterestPaid?.let {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text("Day ${plan.daysElapsed.coerceAtMost(TERM_DAYS)} of $TERM_DAYS", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                "Current streak: ${plan.currentStreak} days -- longest: ${plan.longestStreak} days",
-                                color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                            )
-                            val bonus = grow31BonusRateForStreak(plan.longestStreak)
-                            Text(
-                                if (bonus > 0.0) {
-                                    "+${"%.0f".format(bonus)}% bonus locked in on top of the ${"%.1f".format(plan.baseRate)}% base rate"
-                                } else {
-                                    "Save 3 days in a row to unlock your first bonus tier"
-                                },
-                                color = if (bonus > 0.0) Ids.colors.success else Ids.colors.textSecondary,
-                                fontSize = 13.sp,
-                            )
-                            plan.totalInterestPaid?.let {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text("Total interest paid: ${formatMoneyGrow31(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            }
+                            Text("Total interest paid: ${formatMoneyGrow31(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }

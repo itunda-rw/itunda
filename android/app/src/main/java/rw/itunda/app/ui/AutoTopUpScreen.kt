@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -112,15 +110,15 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
             if (id == null || accounts == null || !settingLoaded) {
                 item { SkeletonBlock(height = 120.dp) }
             } else if (accounts.none { it.status == "LINKED" }) {
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // a lone message on this screen (docs/UI_UX_GUIDELINES.md §10).
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            "Link an external account first -- see My > Linked accounts.",
-                            color = Ids.colors.textSecondary,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
+                    Text(
+                        "Link an external account first -- see My > Linked accounts.",
+                        color = Ids.colors.textSecondary,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(vertical = 10.dp),
+                    )
                 }
             } else {
                 item {
@@ -173,71 +171,71 @@ private fun AutoTopUpConfigCard(
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(if (setting == null) "Set up auto top-up" else "Auto top-up settings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                if (setting != null) {
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
-                }
-            }
-            if (linkedAccounts.size > 1) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    linkedAccounts.forEach { account ->
-                        Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(if (selectedAccountId == account.id) Ids.colors.brand else Ids.colors.textTertiary)
-                                .pressScaleClickable { selectedAccountId = account.id }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                "${account.provider} ${account.externalAccountNumberMasked}",
-                                color = if (selectedAccountId == account.id) Color.White else Ids.colors.textPrimary,
-                                fontSize = 12.sp,
-                            )
-                        }
-                    }
-                }
-            } else {
-                Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = Ids.colors.textSecondary, fontSize = 13.sp)
-            }
-            IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when account drops below (RWF)", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
+    // form section on this screen (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(if (setting == null) "Set up auto top-up" else "Auto top-up settings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
             if (setting != null) {
-                Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Switch(checked = enabled, onCheckedChange = { enabled = it })
             }
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-            Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (saving) Ids.colors.textTertiary else Ids.colors.brand)
-                    .pressScaleClickable(enabled = !saving) {
-                        val thresholdBd = threshold.trim().toBigDecimalOrNull()
-                        val topUpBd = topUpAmount.trim().toBigDecimalOrNull()
-                        if (thresholdBd == null || thresholdBd < BigDecimal.ZERO || topUpBd == null || topUpBd <= BigDecimal.ZERO) {
-                            error = "Enter real amounts."
-                            return@pressScaleClickable
-                        }
-                        saving = true
-                        error = null
-                        coroutineScope.launch {
-                            try {
-                                NetworkClient.apiService.configureAutoTopUp(
-                                    accountId,
-                                    ConfigureAutoTopUpRequest(selectedAccountId, thresholdBd, topUpBd, enabled = enabled),
-                                )
-                                onChanged()
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            } finally {
-                                saving = false
-                            }
+        }
+        if (linkedAccounts.size > 1) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                linkedAccounts.forEach { account ->
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                            .background(if (selectedAccountId == account.id) Ids.colors.brand else Ids.colors.textTertiary)
+                            .pressScaleClickable { selectedAccountId = account.id }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            "${account.provider} ${account.externalAccountNumberMasked}",
+                            color = if (selectedAccountId == account.id) Color.White else Ids.colors.textPrimary,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
+        } else {
+            Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+        }
+        IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when account drops below (RWF)", modifier = Modifier.fillMaxWidth())
+        IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
+        if (setting != null) {
+            Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        Box(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                .background(if (saving) Ids.colors.textTertiary else Ids.colors.brand)
+                .pressScaleClickable(enabled = !saving) {
+                    val thresholdBd = threshold.trim().toBigDecimalOrNull()
+                    val topUpBd = topUpAmount.trim().toBigDecimalOrNull()
+                    if (thresholdBd == null || thresholdBd < BigDecimal.ZERO || topUpBd == null || topUpBd <= BigDecimal.ZERO) {
+                        error = "Enter real amounts."
+                        return@pressScaleClickable
+                    }
+                    saving = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.configureAutoTopUp(
+                                accountId,
+                                ConfigureAutoTopUpRequest(selectedAccountId, thresholdBd, topUpBd, enabled = enabled),
+                            )
+                            onChanged()
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            saving = false
                         }
                     }
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center,
-            ) { Text(if (saving) "Saving…" else "Save", color = Color.White, fontWeight = FontWeight.Bold) }
-        }
+                }
+                .padding(vertical = 14.dp),
+            contentAlignment = Alignment.Center,
+        ) { Text(if (saving) "Saving…" else "Save", color = Color.White, fontWeight = FontWeight.Bold) }
     }
 }

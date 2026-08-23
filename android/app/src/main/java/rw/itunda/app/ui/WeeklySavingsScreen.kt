@@ -17,8 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -152,30 +151,28 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
     }
 }
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a history/
+// progress log of savings plans, kept the per-row Divider convention
+// (docs/DESIGN_REFERENCES.md §274).
 @Composable
 private fun WeeklySavingsPlanRow(plan: WeeklySavingsPlanDto, onClick: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(planStatusLabel(plan), color = planStatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            Text("${formatMoneyWeekly(plan.currentAmount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)}/$TERM_WEEKS", color = Ids.colors.textSecondary, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                if (plan.streakBroken) "Streak broken -- bonus forfeited" else "On streak -- bonus rate on track",
-                color = if (plan.streakBroken) Ids.colors.danger else Ids.colors.success,
-                fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-            )
+    Column(modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onClick).padding(vertical = 10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(planStatusLabel(plan), color = planStatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
+        Text("${formatMoneyWeekly(plan.currentAmount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+        Text("Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)}/$TERM_WEEKS", color = Ids.colors.textSecondary, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            if (plan.streakBroken) "Streak broken -- bonus forfeited" else "On streak -- bonus rate on track",
+            color = if (plan.streakBroken) Ids.colors.danger else Ids.colors.success,
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+        )
     }
+    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
 }
 
 private fun planStatusLabel(plan: WeeklySavingsPlanDto): String = when (plan.status) {
@@ -386,42 +383,38 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
-                            Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("${formatMoneyWeekly(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                            Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // this detail screen's own main content (docs/UI_UX_GUIDELINES.md §10).
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("${formatMoneyWeekly(current.accountBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("Account balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)} of $TERM_WEEKS -- amount steps up every $ESCALATION_STEP_WEEKS weeks",
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            if (plan.streakBroken) {
+                                "Streak broken -- bonus rate (+${"%.1f".format(plan.bonusRate)}%) forfeited, " +
+                                    "base rate ${"%.1f".format(plan.baseRate)}% still applies"
+                            } else {
+                                "On streak -- an unbroken run to maturity earns +${"%.1f".format(plan.bonusRate)}% bonus " +
+                                    "on top of the ${"%.1f".format(plan.baseRate)}% base rate"
+                            },
+                            color = if (plan.streakBroken) Ids.colors.danger else Ids.colors.success,
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                        )
+                        if (plan.status == "ACTIVE") {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                "Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)} of $TERM_WEEKS -- amount steps up every $ESCALATION_STEP_WEEKS weeks",
-                                color = Ids.colors.textSecondary, fontSize = 12.sp,
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                if (plan.streakBroken) {
-                                    "Streak broken -- bonus rate (+${"%.1f".format(plan.bonusRate)}%) forfeited, " +
-                                        "base rate ${"%.1f".format(plan.baseRate)}% still applies"
-                                } else {
-                                    "On streak -- an unbroken run to maturity earns +${"%.1f".format(plan.bonusRate)}% bonus " +
-                                        "on top of the ${"%.1f".format(plan.baseRate)}% base rate"
-                                },
-                                color = if (plan.streakBroken) Ids.colors.danger else Ids.colors.success,
-                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                            )
-                            if (plan.status == "ACTIVE") {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text("Next installment due ${formatWeeklyDate(plan.nextInstallmentDueAt)}", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            }
-                            plan.totalInterestPaid?.let {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text("Total interest paid: ${formatMoneyWeekly(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            }
+                            Text("Next installment due ${formatWeeklyDate(plan.nextInstallmentDueAt)}", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        }
+                        plan.totalInterestPaid?.let {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Total interest paid: ${formatMoneyWeekly(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }
