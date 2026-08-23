@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -185,15 +183,14 @@ private fun ParkingFindContent() {
         if (session != null) {
             item { Text("Parked now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Checked in -- billed by elapsed hours", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .pressScaleClickable(enabled = !ending) { endSession(session.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (ending) "Checking out…" else "Check out (end session)", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         } else {
@@ -210,8 +207,8 @@ private fun ParkingFindContent() {
                 item { Text("No parking spots available nearby.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             }
             items(nearbySpots, key = { it.id }) { spot ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(spot.address, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
@@ -219,7 +216,6 @@ private fun ParkingFindContent() {
                                 .pressScaleClickable(enabled = busySpotId != spot.id) { startSession(spot.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busySpotId == spot.id) "…" else "Check in", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         }
@@ -312,8 +308,8 @@ private fun ParkingMineContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("List a spot you own", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Any itunda user can list a driveway or private lot space into the shared rental pool.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     IdsTextField(value = address, onValueChange = { address = it }, label = "Address", modifier = Modifier.fillMaxWidth())
@@ -323,7 +319,6 @@ private fun ParkingMineContent() {
                             .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (registering) "Registering…" else "List at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
-                }
             }
         }
         if (!loaded) {
@@ -333,8 +328,8 @@ private fun ParkingMineContent() {
         } else {
             item { Text("Your spots", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(mySpots, key = { it.id }) { spot ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(spot.address, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Box(
@@ -344,7 +339,6 @@ private fun ParkingMineContent() {
                             ) { Text(if (spot.available) "Available" else "Unavailable", color = if (spot.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                         Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    }
                 }
             }
         }
@@ -353,14 +347,14 @@ private fun ParkingMineContent() {
 
 @Composable
 private fun ParkingSessionCard(session: ParkingSessionDto) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- used as a
+    // repeated past-sessions list row.
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("${session.durationMinutes ?: 0} min parked", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             val fare = session.totalFare
             if (fare != null) {
                 Text("${formatMoneyParking(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
-        }
     }
 }
 

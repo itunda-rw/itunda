@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -166,8 +164,9 @@ private fun InspectionBuyerContent() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper -- the
+            // screen's own main content.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Book an inspection", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text(
                         "Pay a local mechanic to inspect a used car before you buy it -- held until they deliver their findings.",
@@ -195,7 +194,6 @@ private fun InspectionBuyerContent() {
                             .pressScaleClickable(enabled = !requesting) { requestInspection() }.padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) { Text(if (requesting) "Booking…" else "Book & pay", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                }
             }
         }
         val bookings = myBookings
@@ -205,8 +203,8 @@ private fun InspectionBuyerContent() {
             item { EmptyState("No inspections booked yet — book one to get a real used car checked before you buy.") }
         } else {
             items(bookings, key = { it.id }) { b ->
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Listing ${b.listingId}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         b.findings?.let { Text(it, fontSize = 13.sp) }
@@ -216,7 +214,6 @@ private fun InspectionBuyerContent() {
                                     .pressScaleClickable(enabled = busyBookingId != b.id) { cancel(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Cancelling…" else "Cancel", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                    }
                 }
             }
         }
@@ -323,20 +320,18 @@ private fun InspectionMechanicContent() {
     val current = profile
     if (current == null) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Become an inspection mechanic", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Get booked and paid to inspect used cars for real buyers before they purchase.", fontSize = 12.sp, color = Ids.colors.textSecondary)
-                    IdsTextField(value = businessName, onValueChange = { businessName = it }, label = "Business name", modifier = Modifier.fillMaxWidth())
-                    error?.let { Text(it, color = Color(0xFFE53935), fontSize = 12.sp) }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(if (registering) Ids.colors.brand.copy(alpha = 0.5f) else Ids.colors.brand)
-                            .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                    ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                }
-            }
+            // Real fix (flat-design sweep): dropped the Card wrapper -- the
+            // screen's own main content when not yet registered.
+            Text("Become an inspection mechanic", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Get booked and paid to inspect used cars for real buyers before they purchase.", fontSize = 12.sp, color = Ids.colors.textSecondary)
+            IdsTextField(value = businessName, onValueChange = { businessName = it }, label = "Business name", modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = Color(0xFFE53935), fontSize = 12.sp) }
+            Row(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                    .background(if (registering) Ids.colors.brand.copy(alpha = 0.5f) else Ids.colors.brand)
+                    .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+            ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
         }
         return
     }
@@ -347,12 +342,13 @@ private fun InspectionMechanicContent() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+            // Real fix (flat-design sweep): dropped the Card wrapper -- a status
+            // row on an otherwise-flat screen.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                     Column {
                         Text(current.businessName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(if (current.available) "Visible for new bookings" else "Not accepting bookings", fontSize = 12.sp, color = Ids.colors.textSecondary)
@@ -362,7 +358,6 @@ private fun InspectionMechanicContent() {
                             .background(if (current.available) Color(0xFFE53935) else Ids.colors.brand)
                             .pressScaleClickable { toggleAvailable() }.padding(horizontal = 14.dp, vertical = 8.dp),
                     ) { Text(if (current.available) "Go unavailable" else "Go available", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                }
             }
         }
         error?.let { item { Text(it, color = Color(0xFFE53935), fontSize = 13.sp) } }
@@ -371,8 +366,8 @@ private fun InspectionMechanicContent() {
             item { EmptyState("No bookings yet — they'll show up here once a buyer books an inspection.") }
         } else {
             items(list, key = { it.id }) { b ->
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Listing ${b.listingId}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         if (b.status == "REQUESTED") {
@@ -388,7 +383,6 @@ private fun InspectionMechanicContent() {
                                     .pressScaleClickable(enabled = busyBookingId != b.id) { complete(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Completing…" else "Mark complete", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                    }
                 }
             }
         }
