@@ -4423,22 +4423,22 @@ private fun MyTab(
             item {
                 val totalClicks = affiliateLinks.sumOf { it.clickCount }
                 val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
-                IdsCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Earn 3% on any purchase made through a product link you've shared.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Links shared", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                            Text("${affiliateLinks.size}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Total clicks", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                            Text("$totalClicks", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Total earned", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                            Text("${"%,.0f".format(totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
+                // Real fix (2026-08-24, flat-design sweep): dropped the IdsCard wrapper,
+                // matching "My orders" below (already flat) (docs/UI_UX_GUIDELINES.md §10).
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Earn 3% on any purchase made through a product link you've shared.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Links shared", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text("${affiliateLinks.size}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Total clicks", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text("$totalClicks", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Total earned", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text("${"%,.0f".format(totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -4511,29 +4511,32 @@ private fun MyTab(
         // reply -- the endpoint existed and worked, it just had no caller.
         if (myBookingReviews.isNotEmpty()) {
             item { Text("My reviews", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            // Real fix (2026-08-24, flat-design sweep): dropped the per-row IdsCard --
+            // this is a ledger-style history list (a log of past reviews), matching the
+            // deliberate per-row-divider convention already established for statement/
+            // ledger lists (docs/DESIGN_REFERENCES.md §274), not a catalog list.
             items(myBookingReviews, key = { it.id }) { review ->
-                IdsCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(review.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                            Text("★".repeat(review.rating.coerceIn(0, 5)), color = StarGold, fontSize = 13.sp)
-                        }
-                        review.comment?.takeIf { it.isNotBlank() }?.let {
-                            Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        }
-                        review.ownerReply?.takeIf { it.isNotBlank() }?.let { reply ->
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                                    .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                                    .padding(10.dp),
-                            ) {
-                                Text("Owner replied", color = Ids.colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Text(reply, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                            }
-                        }
-                        Text(relativeTimeAgo(review.createdAt), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(review.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text("★".repeat(review.rating.coerceIn(0, 5)), color = StarGold, fontSize = 13.sp)
                     }
+                    review.comment?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    }
+                    review.ownerReply?.takeIf { it.isNotBlank() }?.let { reply ->
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                                .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                .padding(10.dp),
+                        ) {
+                            Text("Owner replied", color = Ids.colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(reply, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        }
+                    }
+                    Text(relativeTimeAgo(review.createdAt), color = Ids.colors.textTertiary, fontSize = 11.sp)
                 }
+                Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
         // Real read-back of scam reports this user filed from the Transfer flow's own
@@ -4541,14 +4544,15 @@ private fun MyTab(
         // never did, on any client.
         if (myScamReports.isNotEmpty()) {
             item { Text("My scam reports", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            // Real fix (2026-08-24, flat-design sweep): see "My reviews" above -- same
+            // ledger-style history list, same per-row-divider convention.
             items(myScamReports, key = { it.id }) { report ->
-                IdsCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(report.reportedIdentifier, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                        Text(report.reason, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        Text(relativeTimeAgo(report.createdAt), color = Ids.colors.textTertiary, fontSize = 11.sp)
-                    }
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(report.reportedIdentifier, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text(report.reason, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Text(relativeTimeAgo(report.createdAt), color = Ids.colors.textTertiary, fontSize = 11.sp)
                 }
+                Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
         // "My account" (My assets/Get a loan/Credit score/etc) deliberately dropped
@@ -4672,12 +4676,13 @@ private fun VerificationCard() {
 
     if (!loaded || (emailVerified && phoneVerified)) return
 
-    IdsCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Verify your account", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            if (!phoneVerified) VerificationRow(kind = "phone", hasEmail = true, onVerified = ::load)
-            if (!emailVerified) VerificationRow(kind = "email", hasEmail = email != null, onVerified = ::load)
-        }
+    // Real fix (2026-08-24, flat-design sweep): dropped the IdsCard wrapper -- a
+    // lone conditional section in the "My" LazyColumn, no sibling to separate it
+    // from (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Verify your account", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        if (!phoneVerified) VerificationRow(kind = "phone", hasEmail = true, onVerified = ::load)
+        if (!emailVerified) VerificationRow(kind = "email", hasEmail = email != null, onVerified = ::load)
     }
 }
 
