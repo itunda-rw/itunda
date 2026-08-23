@@ -1390,10 +1390,12 @@ fun ItundaAppScreen(
                         // view (interest jar, Card/Manage, full ledger) -- same category of
                         // mistake this file's own onOpenCreditScore/onOpenSpendingInsight/
                         // autoTransferCount comments already document being caught and moved
-                        // off Home once before. Tapping "itunda account" in the account
-                        // switcher now goes to Bank (its real home) instead of opening the
-                        // ledger directly over Home; Bank's own new account-account card
-                        // below is what actually opens AccountDetailScreen.
+                        // off Home once before. Tapping "itunda Bank account" (renamed
+                        // 2026-08-23, see this row's own doc comment in
+                        // AccountSwitcherSheet) in the account switcher now goes to Bank
+                        // (its real home) instead of opening the ledger directly over Home;
+                        // Bank's own new account-account card below is what actually opens
+                        // AccountDetailScreen.
                         onOpenAccountDetail = { showBank = true },
                         // Real Naver-style Home redesign (2026-08-14, direct user
                         // reference: 5 real Naver Home screenshots -- search bar, weather/
@@ -2853,18 +2855,22 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
             ) {
                 Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
                 Spacer(modifier = Modifier.width(12.dp))
-                // Real naming decision, checked twice (2026-08-11): TOSS_FEATURE_SPECIFICATION.md
-                // names an aspirational "Itunda Bank" (Pillar 3, RBDB-licensed) as a roadmap
-                // item, which first read as reason to rename this row to match. Corrected after
-                // checking TOSS_PARITY_MATRIX.md -- the doc that tracks what's actually built and
-                // live-verified -- which has zero real banking-license implementation anywhere;
-                // this Account(MAIN) row is itunda's real, currently-built general-purpose e-money
-                // account. Confirmed against real KakaoPay vs KakaoBank sourcing: KakaoPay is a
-                // real e-account embedded in KakaoTalk, KakaoBank a separately, actually-licensed
-                // digital bank -- genuinely distinct regulated products, not a generic/specific
-                // pair. Calling this row "Itunda Bank" would have been a real overclaim of
-                // regulatory status the product doesn't have, not a naming nitpick.
-                Text("itunda account", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                // Renamed from bare "itunda account" (2026-08-23, direct user
+                // correction, see docs/UI_UX_GUIDELINES.md §12): collided with the
+                // real, universal "[Brand] Account = identity layer" convention
+                // (Google/Samsung/Apple/Kakao Account) -- the exact same shape of
+                // confusion as "Kakao Account" being ambiguous between identity,
+                // KakaoTalk, and KakaoBank. An earlier pass (2026-08-11) had
+                // deliberately avoided "Itunda Bank" here specifically to not
+                // overclaim a real banking license this project doesn't have --
+                // direct user follow-up superseded that concern for this project's
+                // real context (a research/demo super-app modeling real fintech UX
+                // patterns, not a product seeking actual regulatory approval), and
+                // "itunda Bank" is already the established name for this exact
+                // product everywhere else in the app (BankHubScreen, the Bank tab,
+                // etc.) -- this row was the one remaining holdout still saying bare
+                // "itunda account."
+                Text("itunda Bank account", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Icon(Icons.Outlined.CheckCircle, contentDescription = stringResource(R.string.home_current_account), modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
             }
             when {
