@@ -15803,6 +15803,18 @@ function AddressAutocomplete({
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+  // already closed for ride booking (ShopView's PlaceSearchInput) and Android's Eats
+  // AddressAutocompleteField: itunda's own "map bookmarks" feature (the Maps tab's
+  // star/save) was never surfaced here either, despite a delivery address being an
+  // even more universal need than a ride destination. No new backend work -- the same
+  // existing GET /api/v1/maps/bookmarks this field's own search suggestions already
+  // sit alongside.
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    fetchMyMapBookmarks().then(setBookmarks).catch(() => {});
+  }, []);
 
   const handleChange = (text: string) => {
     onChangeText(text);
@@ -15835,13 +15847,32 @@ function AddressAutocomplete({
     <div style={{ position: 'relative' }}>
       <input
         type="text" value={value} onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => setOpen(suggestions.length > 0)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => { setFocused(true); setOpen(suggestions.length > 0); }}
+        onBlur={() => setTimeout(() => { setFocused(false); setOpen(false); }, 150)}
         placeholder={placeholder} required autoComplete="off"
         style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {searching && (
         <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>…</span>
+      )}
+      {!open && focused && !value.trim() && bookmarks.length > 0 && (
+        <div
+          className="itunda-card"
+          style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', padding: '6px', zIndex: 10, maxHeight: '220px', overflowY: 'auto' }}
+        >
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, padding: '4px 6px 2px' }}>Saved places</p>
+          {bookmarks.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onMouseDown={() => { onSelectSuggestion({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude }); onChangeText(b.displayName); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: '6px' }}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
+              {b.displayName}
+            </button>
+          ))}
+        </div>
       )}
       {open && (
         <div
