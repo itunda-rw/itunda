@@ -43,6 +43,14 @@ class LoansServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real mockk gotcha (see SavingsServiceTest's own identical fix, added the same
+        // session while testing the sibling goal-completion celebratory push): a
+        // relaxed mock throws a genuine ClassCastException synthesizing a default
+        // return for JpaRepository's generic `<S extends T> S save(S entity)` --
+        // declared at the Given level (not inside one When block) since
+        // IsolationMode.InstancePerLeaf below only re-walks the path to each leaf, so a
+        // stub declared inside one When block never applies to a different When's leaf.
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = LoansService(accountRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
@@ -52,7 +60,6 @@ class LoansServiceTest : BehaviorSpec({
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { loanAccountRepository.save(any()) } answers { firstArg() }
-            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.applyForLoan("user_1", "loan_1", BigDecimal("400000"))
 
@@ -172,6 +179,10 @@ class LoansServiceTest : BehaviorSpec({
                 loan.status shouldBe LoanStatus.ACTIVE
                 result["remaining"] shouldBe BigDecimal("40000")
             }
+
+            Then("no celebratory payoff push fires for a partial repayment") {
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any(), "LOAN_PAID_OFF") }
+            }
         }
 
         When("repaying the exact outstanding balance") {
@@ -188,6 +199,11 @@ class LoansServiceTest : BehaviorSpec({
 
             Then("the loan is marked PAID") {
                 loan.status shouldBe LoanStatus.PAID
+            }
+
+            Then("a real celebratory notification and push fire exactly once for the payoff") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "LOAN_PAID_OFF" && it.userId == "user_1" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any(), "LOAN_PAID_OFF") }
             }
         }
 
@@ -206,6 +222,10 @@ class LoansServiceTest : BehaviorSpec({
             Then("it only debits the actual outstanding amount, not the full requested amount") {
                 result["transaction"].let { it as Map<*, *> }["amount"] shouldBe BigDecimal("5000")
                 loan.status shouldBe LoanStatus.PAID
+            }
+
+            Then("the celebratory payoff push still fires exactly once on an overpayment") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any(), "LOAN_PAID_OFF") }
             }
         }
 

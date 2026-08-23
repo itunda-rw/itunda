@@ -166,6 +166,43 @@ class LoansService(
         })
     }
 
+    // Real celebratory moment (2026-08-23, itunda's own product-feel initiative) -- the
+    // literal Toss example this pass is sourced from
+    // (toss.tech/article/1st_interaction_designer): a congratulatory message when a
+    // loan is fully paid off, "recognizing the real effort" behind it rather than just
+    // confirming the transaction. Same real backend-event-with-zero-notification gap
+    // this pass already found+fixed for SavingsGoal completion (SavingsService's own
+    // notifyGoalCompleted). Deliberately doesn't name the specific loan product --
+    // LoansService has no LoanOfferRepository injected to look up `offer.name` here,
+    // and adding one just for copy isn't worth the extra dependency for this small a
+    // feature; "your loan" is honest given what's actually available.
+    private fun notifyLoanPaidOff(loan: LoanAccount) {
+        try {
+            val title = "Loan fully paid off! 🎉"
+            val body = "You've paid off your loan of ${loan.principal} RWF -- nice work."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "LOAN_PAID_OFF",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+                ),
+            )
+            sendLoanPaidOffPushAfterCommit(loan.userId, title, body, loan.id)
+        } catch (e: Exception) {
+            // Non-critical -- the real repayment already succeeded.
+        }
+    }
+
+    private fun sendLoanPaidOffPushAfterCommit(userId: String, title: String, body: String, loanId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("loanId" to loanId), type = "LOAN_PAID_OFF") }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
+    }
+
     @Transactional
     fun repayLoan(userId: String, loanId: String, amount: BigDecimal): Map<String, Any?> {
         val loan = loanAccountRepository.findById(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
@@ -182,8 +219,10 @@ class LoansService(
         )
 
         loan.outstanding = loan.outstanding.subtract(repayAmount)
-        if (loan.outstanding <= BigDecimal.ZERO) loan.status = LoanStatus.PAID
+        val justPaidOff = loan.status != LoanStatus.PAID && loan.outstanding <= BigDecimal.ZERO
+        if (justPaidOff) loan.status = LoanStatus.PAID
         val account = accountRepository.findById(loan.accountId).orElseThrow { NoAccountException("Account not found") }
+        if (justPaidOff) notifyLoanPaidOff(loan)
 
         return mapOf(
             "transaction" to mapOf(
