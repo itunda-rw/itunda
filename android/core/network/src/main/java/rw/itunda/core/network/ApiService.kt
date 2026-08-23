@@ -2821,6 +2821,16 @@ interface ApiService {
     @POST("api/v1/marketplace/listings")
     suspend fun createListing(@Body request: CreateListingRequest): ListingResponse
 
+    // Real single-listing fetch (item 270) -- a real, defined-but-uncalled backend
+    // endpoint found via this session's own "check before assuming a gap needs new
+    // backend work" discipline: MarketplaceController.getListing has existed since
+    // 2026-07-18 with zero callers on any client (Android/iOS/web all only ever
+    // called this listing's own SUB-resources -- mark-sold/boost/review -- never the
+    // plain listing itself). Needed for a real "recently viewed listings" rail entry
+    // to reopen a listing that's since scrolled out of the currently-loaded feed.
+    @GET("api/v1/marketplace/listings/{id}")
+    suspend fun getListing(@Path("id") listingId: String): ListingResponse
+
     @GET("api/v1/marketplace/listings")
     suspend fun browseListings(@Query("category") category: String? = null): ListingsResponse
 
