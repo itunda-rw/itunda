@@ -21162,7 +21162,7 @@ function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutRe
   );
 }
 
-function MyCommerceOrdersView() {
+function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (order: CommerceOrder) => void; reorderingId: string | null }) {
   const { t } = useI18n();
   const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21200,27 +21200,41 @@ function MyCommerceOrdersView() {
   if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
 
+  const renderAction = (o: CommerceOrder) => {
+    if (o.status === 'PLACED') {
+      return (
+        <button className="itunda-btn itunda-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+          {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
+        </button>
+      );
+    }
+    if (o.status === 'DELIVERED') {
+      return (
+        <div>
+          <OrderItemReviews order={o} />
+          <ReturnExchangeAction orderId={o.id} />
+          <button className="itunda-btn itunda-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
+            {reorderingId === o.id ? 'Reordering…' : 'Buy again'}
+          </button>
+        </div>
+      );
+    }
+    if (o.status === 'CANCELLED') {
+      return (
+        <button className="itunda-btn itunda-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
+          {reorderingId === o.id ? 'Reordering…' : 'Buy again'}
+        </button>
+      );
+    }
+    return undefined;
+  };
+
   return (
     <div>
       <MyReturnRequestsView />
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {orders.map((o) => (
-        <CommerceOrderCard
-          key={o.id}
-          order={o}
-          action={
-            o.status === 'PLACED' ? (
-              <button className="itunda-btn itunda-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
-                {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
-              </button>
-            ) : o.status === 'DELIVERED' ? (
-              <div>
-                <OrderItemReviews order={o} />
-                <ReturnExchangeAction orderId={o.id} />
-              </div>
-            ) : undefined
-          }
-        />
+        <CommerceOrderCard key={o.id} order={o} action={renderAction(o)} />
       ))}
       </div>
     </div>
@@ -21394,6 +21408,52 @@ function ShopView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<string | null>(null);
+
+  // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of this
+  // file's own real Eats "Reorder" (see EatsView's handleReorder). Re-populates the
+  // cross-merchant `cart` from a past order's still-active products and opens the
+  // cart for review, same "review before a real-money action, not an instant one-tap
+  // purchase" precedent Eats already established (a delivery address could be stale,
+  // a price could have changed since). Commerce products never carry option groups
+  // (only Eats' menu items do), so unlike Eats this needs no "drop items that now
+  // require an option selection" sanitization -- only "drop items that are no longer
+  // active."
+  const handleReorder = async (order: CommerceOrder) => {
+    setReorderingId(order.id);
+    setReorderError(null);
+    try {
+      const [detail, menu] = await Promise.all([fetchOrderDetail(order.id), fetchMerchantProducts(order.merchantId)]);
+      if (!detail.success || !menu.success) {
+        setReorderError('Could not reorder.');
+        return;
+      }
+      const activeProducts = new Map(menu.products.filter((p) => p.active).map((p) => [p.id, p]));
+      const newLines: CommerceCartGroup['lines'] = {};
+      detail.items.forEach((item) => {
+        const product = activeProducts.get(item.productId);
+        if (!product) return;
+        newLines[product.id] = { product, quantity: (newLines[product.id]?.quantity ?? 0) + item.quantity };
+      });
+      if (Object.keys(newLines).length === 0) {
+        setReorderError('None of the items from that order are available anymore.');
+        return;
+      }
+      setCart((prev) => {
+        const mergedLines = { ...prev[order.merchantId]?.lines };
+        Object.entries(newLines).forEach(([productId, line]) => {
+          mergedLines[productId] = { product: line.product, quantity: (mergedLines[productId]?.quantity ?? 0) + line.quantity };
+        });
+        return { ...prev, [order.merchantId]: { businessName: menu.merchant.businessName, lines: mergedLines } };
+      });
+      setShowCart(true);
+    } catch (err) {
+      setReorderError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setReorderingId(null);
+    }
+  };
 
   // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
   // recommendation #8. Every entry is a real merchant-set discount, never a
@@ -21851,7 +21911,10 @@ function ShopView() {
       )}
 
       {view === 'ORDERS' ? (
-        <MyCommerceOrdersView />
+        <div>
+          <MyCommerceOrdersView onReorder={handleReorder} reorderingId={reorderingId} />
+          {reorderError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{reorderError}</p>}
+        </div>
       ) : view === 'WISHLIST' ? (
         <WishlistView onOpenMerchant={setSelected} />
       ) : view === 'BROWSE' && searchResults !== null ? (
