@@ -212,6 +212,7 @@ import LiveRiderMap from './LiveRiderMap';
 import SimpleLiveRiderMap from './SimpleLiveRiderMap';
 import { fetchMyMapBookmarks, searchPlaces, type MapBookmark, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
+import { recentlyViewedProductsStore, recentlyViewedRestaurantsStore } from './lib/recentlyViewed';
 import { checkScamStatus, reportScam, type ScamCheckResult } from './lib/scamReports';
 import { fetchMyVehicles, fetchVehicleValuation, registerVehicle, removeVehicle, updateVehicleMileage, type Vehicle, type VehicleValuation } from './lib/vehicles';
 import {
@@ -16462,6 +16463,20 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
   const [reorderCart, setReorderCart] = useState<Record<string, number> | null>(null);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
+  // Real "recently viewed restaurants" rail (2026-08-23) -- ported from Android's
+  // identical real feature (RecentlyViewedRestaurantsStore.kt), never shipped to web
+  // before now -- see lib/recentlyViewed.ts's own doc comment. A plain effect on
+  // `selected` (rather than wrapping every one of this view's several real
+  // restaurant-opening call sites -- the browse list, favorites, dish grid, Reorder,
+  // deep links) covers every real entry point uniformly.
+  const [recentlyViewedRestaurants, setRecentlyViewedRestaurants] = useState(recentlyViewedRestaurantsStore.getAll());
+  useEffect(() => {
+    if (!selected) return;
+    setRecentlyViewedRestaurants(
+      recentlyViewedRestaurantsStore.add({ id: selected.merchantId, businessName: selected.businessName, category: selected.category, photoUrl: selected.photoUrl }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.merchantId]);
   // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for a
   // fast star-toggle lookup on each browse card.
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -16644,6 +16659,29 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
           </div>
           {sortLocationError && (
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{sortLocationError}</p>
+          )}
+          {/* Real "recently viewed restaurants" rail -- see lib/recentlyViewed.ts's own
+              doc comment. Hidden once the user starts filtering, same "merchandising
+              above the raw list, gone once actively searching" discipline the Shop
+              rails below already establish. */}
+          {!selectedCategory && !debouncedSearch && recentlyViewedRestaurants.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>🕒 Recently viewed</p>
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
+                {recentlyViewedRestaurants.map((rv) => (
+                  <button
+                    key={rv.id}
+                    onClick={() => setSelected({ merchantId: rv.id, businessName: rv.businessName, category: rv.category ?? null, cashbackRate: '1%' })}
+                    className="itunda-card"
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '130px', flexShrink: 0, gap: '4px' }}
+                  >
+                    <ProductImageThumb imageUrl={rv.photoUrl} size={100} />
+                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{rv.businessName}</p>
+                    {rv.category && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{rv.category}</p>}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {error ? (
             <ErrorCard message={error} onRetry={load} />
@@ -21509,6 +21547,20 @@ function ShopView() {
   const [searching, setSearching] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
+  // Real "recently viewed products" rail (2026-08-23) -- ported from Android's
+  // identical real feature (RecentlyViewedProductsStore.kt), never shipped to web
+  // before now -- see lib/recentlyViewed.ts's own doc comment.
+  const [recentlyViewedProducts, setRecentlyViewedProducts] = useState(recentlyViewedProductsStore.getAll());
+  useEffect(() => {
+    if (!selectedProduct) return;
+    setRecentlyViewedProducts(
+      recentlyViewedProductsStore.add({
+        id: selectedProduct.id, merchantId: selectedProduct.merchantId, businessName: selected?.businessName ?? '',
+        name: selectedProduct.name, price: selectedProduct.price, imageUrl: selectedProduct.imageUrl, discountPercent: selectedProduct.discountPercent,
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct?.id]);
 
   // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of this
   // file's own real Eats "Reorder" (see EatsView's handleReorder). Re-populates the
@@ -21904,6 +21956,31 @@ function ShopView() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{a.businessName}</p>
                 {a.ad.description && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-700)' }}>{a.ad.description}</p>}
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-indigo)', fontWeight: 600 }}>{a.distanceKm.toFixed(1)} km away</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Real "recently viewed products" rail -- see lib/recentlyViewed.ts's own doc
+          comment. Same "merchandising above the raw list, hidden once the user starts
+          filtering" discipline the Deals rail just below already establishes.
+          Reopens the merchant (same shortcut the Deals/Time Deals rails use), not a
+          possibly-stale cached product snapshot. */}
+      {view === 'BROWSE' && searchResults === null && recentlyViewedProducts.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>🕒 Recently viewed</p>
+          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
+            {recentlyViewedProducts.map((rv) => (
+              <button
+                key={rv.id}
+                onClick={() => setSelected({ merchantId: rv.merchantId, businessName: rv.businessName, category: null, cashbackRate: '1%' })}
+                className="itunda-card"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '120px', flexShrink: 0, gap: '4px' }}
+              >
+                <ProductImageThumb imageUrl={rv.imageUrl} size={96} />
+                <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{rv.name}</p>
+                <ProductPriceBlock price={rv.price} originalPrice={null} discountPercent={rv.discountPercent} />
               </button>
             ))}
           </div>
