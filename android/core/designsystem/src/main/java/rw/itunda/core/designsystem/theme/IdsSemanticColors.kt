@@ -57,7 +57,19 @@ data class IdsSemanticColors(
 )
 
 val IdsLightSemanticColors = IdsSemanticColors(
-    background = Color(0xFFF2F4F6),
+    // Real fix (2026-08-24, direct user directive, real Toss screenshots: Finance
+    // catalog menu/"All" apps grid/Pay Money detail/membership list all sit on a pure
+    // white page, never grey). Was 0xFFF2F4F6 (the same value as surfaceSoft below) --
+    // the classic "grey canvas + white cards" dashboard look, but itunda's own
+    // flat-design direction (2026-08-21) means most screens no longer have card-vs-page
+    // color contrast to justify keeping grey as the page default. surfaceSoft (still
+    // grey) stays the fill for genuinely inset elements -- search bars, chips,
+    // segmented-control tracks -- never the page itself. See IdsCard's own new
+    // `border` for how cards stay visually distinct now that the page under them is
+    // white too. Dark mode intentionally untouched -- background (0xFF17171C) vs
+    // surface (0xFF202027) is real Toss's own published adaptive-elevation split
+    // (see this file's own header comment), not the same bug.
+    background = Color(0xFFFFFFFF),
     surface = Color(0xFFFFFFFF),
     surfaceSoft = Color(0xFFF2F4F6),
     textPrimary = Color(0xFF191F28),
