@@ -206,9 +206,14 @@ struct ContentView: View {
         }
         for goal in bankViewModel.savingsGoals {
             let percent = goal.targetAmount > 0 ? Int(goal.currentAmount / goal.targetAmount * 100) : 0
+            // Real fix (2026-08-23, same session as a backend guard against depositing
+            // into an already-completed goal): this row never distinguished a completed
+            // goal at all -- matches Android's identical fix the same day, and web's own
+            // "· Completed 🎉" subtitle marker (BankDashboard.tsx) that already existed.
+            let completedSuffix = goal.status == "completed" ? " · Completed 🎉" : ""
             rows.append(SavingsRowData(
                 title: goal.name,
-                subtitle: "RWF \(Int(goal.currentAmount)) of \(Int(goal.targetAmount))",
+                subtitle: "RWF \(Int(goal.currentAmount)) of \(Int(goal.targetAmount))\(completedSuffix)",
                 trailing: "\(percent)%",
                 onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) }
             ))
