@@ -476,8 +476,9 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
     var loading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
+    // form section (docs/UI_UX_GUIDELINES.md §10).
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("우리집 시세 — Estimate my home's value", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text("A real estimate based on comparable listings near you, not a fabricated number.", color = Ids.colors.textSecondary, fontSize = 12.sp)
             IdsTextField(value = latitude, onValueChange = { latitude = it }, label = "Latitude", keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal, modifier = Modifier.fillMaxWidth())
@@ -538,7 +539,6 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                     )
                 }
             }
-        }
     }
 }
 
@@ -547,7 +547,10 @@ private fun PropertyWishlistView(onRemoved: () -> Unit) {
     var favorites by remember { mutableStateOf<List<FavoritePropertyListingDto>?>(null) }; var error by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
     fun load() = scope.launch { try { favorites = NetworkClient.apiService.getMyFavoritePropertyListings().favorites; error = null } catch (e: Exception) { error = "Couldn't load your saved properties. Check your connection and try again." } }
     LaunchedEffect(Unit) { load() }
-    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text("${f.listingType} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } } }
+    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card -- an
+    // entity list a user manages (saved properties), no divider, matching
+    // GroupAccountScreen's precedent (docs/UI_UX_GUIDELINES.md §10).
+    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> EmptyState("No saved properties yet — tap ♡ on a property to keep it here.", icon = Icons.Outlined.FavoriteBorder); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold); Text("${f.listingType} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 12.sp) }; Text("Remove", color = Ids.colors.textPrimary, modifier = Modifier.pressScaleClickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } }
 }
 
 @Composable
@@ -571,8 +574,9 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- this
+    // screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List a property", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("RENT" to "For rent", "SALE" to "For sale").forEach { (v, label) ->
@@ -657,7 +661,6 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                     contentAlignment = Alignment.Center,
                 ) { Text(if (submitting) "Listing…" else "List it", color = Color.White, fontWeight = FontWeight.Bold) }
             }
-        }
     }
 }
 

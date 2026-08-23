@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -450,22 +451,23 @@ private fun JobPostWishlistView(onRemoved: () -> Unit) {
         favorites == null -> SkeletonBlock()
         favorites!!.isEmpty() -> Text("No saved jobs yet — tap ♡ on a job to keep it here.", color = Ids.colors.textSecondary, fontSize = 14.sp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+            // an entity list a user manages (saved jobs), no divider, matching
+            // GroupAccountScreen's precedent (docs/UI_UX_GUIDELINES.md §10).
             favorites!!.forEach { favorite ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(favorite.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                            Text("${favorite.category} · %,.0f RWF".format(favorite.payAmount), color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        }
-                        Text("Remove", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.pressScaleClickable(enabled = removingId == null) {
-                            removingId = favorite.jobPostId
-                            scope.launch {
-                                try { NetworkClient.apiService.removeJobPostFavorite(favorite.jobPostId); favorites = favorites!!.filterNot { it.jobPostId == favorite.jobPostId }; onRemoved() }
-                                catch (e: Exception) { error = "Couldn't remove this saved job. Check your connection and try again." }
-                                finally { removingId = null }
-                            }
-                        })
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(favorite.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                        Text("${favorite.category} · %,.0f RWF".format(favorite.payAmount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
+                    Text("Remove", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.pressScaleClickable(enabled = removingId == null) {
+                        removingId = favorite.jobPostId
+                        scope.launch {
+                            try { NetworkClient.apiService.removeJobPostFavorite(favorite.jobPostId); favorites = favorites!!.filterNot { it.jobPostId == favorite.jobPostId }; onRemoved() }
+                            catch (e: Exception) { error = "Couldn't remove this saved job. Check your connection and try again." }
+                            finally { removingId = null }
+                        }
+                    })
                 }
             }
         }
@@ -504,20 +506,22 @@ private fun MyJobApplicationsView() {
         applications == null -> SkeletonBlock()
         applications!!.isEmpty() -> Text("You haven't applied to any jobs yet.", color = Ids.colors.textSecondary, fontSize = 14.sp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+            // an application-status history log, kept the per-row Divider
+            // convention (docs/DESIGN_REFERENCES.md §274).
             applications!!.forEach { (app, post) ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(post?.title ?: "Job post", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                            Text(
-                                when (app.status) { "ACCEPTED" -> "Accepted"; "DECLINED" -> "Declined"; else -> "Pending" },
-                                color = when (app.status) { "ACCEPTED" -> Ids.colors.brand; "DECLINED" -> Ids.colors.danger; else -> Ids.colors.textSecondary },
-                                fontWeight = FontWeight.Bold, fontSize = 12.sp,
-                            )
-                        }
-                        Text(app.message, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(post?.title ?: "Job post", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                        Text(
+                            when (app.status) { "ACCEPTED" -> "Accepted"; "DECLINED" -> "Declined"; else -> "Pending" },
+                            color = when (app.status) { "ACCEPTED" -> Ids.colors.brand; "DECLINED" -> Ids.colors.danger; else -> Ids.colors.textSecondary },
+                            fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                        )
                     }
+                    Text(app.message, color = Ids.colors.textSecondary, fontSize = 13.sp)
                 }
+                Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
     }
@@ -542,8 +546,9 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- this
+    // screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Post a job", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -618,7 +623,6 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                     contentAlignment = Alignment.Center,
                 ) { Text(if (submitting) "Posting…" else "Post job", color = Color.White, fontWeight = FontWeight.Bold) }
             }
-        }
     }
 }
 
