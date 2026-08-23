@@ -80,7 +80,11 @@ class SecurityConfig(
                     // original handler set. Confirmed live: a valid USER-role token denied
                     // ADMIN-only /api/v1/system/** came back 401 instead of 403 until this
                     // was added.
-                    .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/check-phone", "/api/v1/auth/terms").permitAll()
+                    // Real passwordless-login rollout (2026-08-24) -- login/device/challenge
+                    // and login/device/verify are unauthenticated by definition (there's no
+                    // JWT yet, that's the entire point of a brand-new-session flow), same as
+                    // register/login/refresh above.
+                    .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/login/device/challenge", "/api/v1/auth/login/device/verify", "/api/v1/auth/refresh", "/api/v1/auth/check-phone", "/api/v1/auth/terms").permitAll()
                     // Real WebSocket live-transport for messaging (2026-07-18) -- the
                     // handshake carries its own JWT as a `?token=` query param (a native
                     // WebSocket client can't set a custom Authorization header), verified

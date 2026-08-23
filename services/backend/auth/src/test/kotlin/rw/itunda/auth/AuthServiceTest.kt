@@ -106,7 +106,8 @@ class AuthServiceTest : BehaviorSpec({
         When("registering a brand-new phone number") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000001") } returns false
-            every { userRepository.save(any()) } answers { firstArg() }
+            val registeredUserSlot = mutableListOf<User>()
+            every { userRepository.save(capture(registeredUserSlot)) } answers { firstArg() }
             every { accountRepository.save(any()) } answers { firstArg() }
             val jarSlot = mutableListOf<InterestJar>()
             every { interestJarRepository.save(capture(jarSlot)) } answers { firstArg() }
@@ -117,7 +118,7 @@ class AuthServiceTest : BehaviorSpec({
             val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
             every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
 
-            val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
+            val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
 
             Then("it rate-limits, creates a user, provisions real zero-balance MAIN, PAY, SAVINGS, and INVESTMENT accounts, and issues real tokens") {
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:register:+250788000001", 3, any()) }
@@ -151,6 +152,26 @@ class AuthServiceTest : BehaviorSpec({
                 termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
                 termsAcceptanceSlot.all { it.userId.isNotBlank() } shouldBe true
             }
+            // Real Toss-sourced passwordless-login rollout (2026-08-24) -- every NEW
+            // registration is on the 6-digit-PIN scheme, not the pre-existing free-
+            // form-password one -- see User.pinSet's own doc comment.
+            Then("the new user is marked pinSet = true, the new 6-digit-PIN scheme") {
+                registeredUserSlot.single().pinSet shouldBe true
+            }
+        }
+
+        When("registering with a free-form password instead of a real 6-digit PIN") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000030") } returns false
+
+            Then("it throws InvalidPinException before ever saving a user -- the real Toss-sourced 6-digit-PIN requirement") {
+                try {
+                    service.register(RegisterRequest("+250788000030", null, "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidPinException")
+                } catch (e: InvalidPinException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
         }
 
         When("registering with a valid referral code") {
@@ -168,7 +189,7 @@ class AuthServiceTest : BehaviorSpec({
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
 
-            service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01", acceptedTermsIds = requiredTermsIds))
+            service.register(RegisterRequest("+250788000011", null, "New", "User", "123456", "ITDREF01", acceptedTermsIds = requiredTermsIds))
 
             Then("the new user is saved with a real referredByUserId pointing at the referrer") {
                 userSlot.single().referredByUserId shouldBe "user_referrer"
@@ -182,7 +203,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it throws ReferralCodeNotFoundException before ever saving a user -- an invalid code fails loudly, not silently") {
                 try {
-                    service.register(RegisterRequest("+250788000012", null, "New", "User", "password123", "BOGUSCODE", acceptedTermsIds = requiredTermsIds))
+                    service.register(RegisterRequest("+250788000012", null, "New", "User", "123456", "BOGUSCODE", acceptedTermsIds = requiredTermsIds))
                     error("expected ReferralCodeNotFoundException")
                 } catch (e: ReferralCodeNotFoundException) {
                     verify(exactly = 0) { userRepository.save(any()) }
@@ -196,7 +217,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it throws PhoneAlreadyRegisteredException without touching the account repository") {
                 try {
-                    service.register(RegisterRequest("+250788000002", null, "Jean", "B", "password123"))
+                    service.register(RegisterRequest("+250788000002", null, "Jean", "B", "123456"))
                     error("expected PhoneAlreadyRegisteredException")
                 } catch (e: PhoneAlreadyRegisteredException) {
                     verify(exactly = 0) { accountRepository.save(any()) }
@@ -217,7 +238,7 @@ class AuthServiceTest : BehaviorSpec({
                 // partial-consent case, not just "accepted nothing at all".
                 val partialTermsIds = listOf(requiredTermsIds.first())
                 try {
-                    service.register(RegisterRequest("+250788000020", null, "Jean", "B", "password123", acceptedTermsIds = partialTermsIds))
+                    service.register(RegisterRequest("+250788000020", null, "Jean", "B", "123456", acceptedTermsIds = partialTermsIds))
                     error("expected RequiredTermsNotAcceptedException")
                 } catch (e: RequiredTermsNotAcceptedException) {
                     verify(exactly = 0) { userRepository.save(any()) }
@@ -238,7 +259,7 @@ class AuthServiceTest : BehaviorSpec({
             every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
 
             Then("registration succeeds -- an optional term is honestly optional, never a blocker") {
-                service.register(RegisterRequest("+250788000021", null, "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
+                service.register(RegisterRequest("+250788000021", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
                 termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
                 (TermsCatalog.requiredIds() - termsAcceptanceSlot.map { it.termsId }.toSet()).isEmpty() shouldBe true
             }
@@ -257,7 +278,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it records a real TermsAcceptance for the optional term too, not just the required ones") {
                 val allTermsIds = TermsCatalog.documents.map { it.id }
-                service.register(RegisterRequest("+250788000022", null, "Jean", "B", "password123", acceptedTermsIds = allTermsIds))
+                service.register(RegisterRequest("+250788000022", null, "Jean", "B", "123456", acceptedTermsIds = allTermsIds))
                 termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe allTermsIds.toSet()
             }
         }
@@ -274,7 +295,7 @@ class AuthServiceTest : BehaviorSpec({
             every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
 
             Then("it silently ignores the unknown id rather than 500ing registration over it") {
-                service.register(RegisterRequest("+250788000023", null, "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds + "some_removed_terms_id"))
+                service.register(RegisterRequest("+250788000023", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds + "some_removed_terms_id"))
                 termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
             }
         }
@@ -285,7 +306,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it throws before ever checking whether the phone is taken") {
                 try {
-                    service.register(RegisterRequest("+250788000003", null, "Jean", "B", "password123"))
+                    service.register(RegisterRequest("+250788000003", null, "Jean", "B", "123456"))
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
                     verify(exactly = 0) { userRepository.existsByPhoneNumber(any()) }
@@ -336,6 +357,78 @@ class AuthServiceTest : BehaviorSpec({
                     error("expected InvalidCredentialsException")
                 } catch (e: InvalidCredentialsException) {
                     // expected
+                }
+            }
+        }
+
+        // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see
+        // DeviceService.verifyLoginSignature's own doc comment for why this is a
+        // distinct login path. deviceService is mocked (relaxed) in this Given block,
+        // so this only asserts the real delegation + AuthResponse shape -- the actual
+        // signature-verification crypto has its own DeviceServiceTest coverage.
+        When("logging in via a device signature (passwordless)") {
+            val user = User(
+                id = "user_6", phoneNumber = "+250788000006", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", createdAt = Instant.now(),
+            )
+            every { deviceService.verifyLoginSignature("+250788000006", "device_1", "sig") } returns user
+
+            val response = service.loginWithDeviceSignature(LoginWithSignatureRequest("+250788000006", "device_1", "sig"))
+
+            Then("it issues a real token for the user DeviceService's signature check resolved -- no password or PIN involved") {
+                jwtService.verify(response.accessToken)!!.userId shouldBe "user_6"
+            }
+        }
+
+        // Real Toss-sourced "set your 6-digit PIN" flow (2026-08-24) -- see
+        // AuthService.setPin's own doc comment.
+        When("a pre-PIN-era user sets their real 6-digit PIN, proving ownership with their existing password") {
+            val user = User(
+                id = "user_7", phoneNumber = "+250788000007", firstName = "Jean", lastName = "B",
+                passwordHash = passwordEncoder.encode("old-free-form-password"), pinSet = false, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_7") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setPin("user_7", SetPinRequest("old-free-form-password", "654321"))
+
+            Then("it accepts the new PIN, sets pinSet = true, and the old free-form password no longer verifies") {
+                result.pinSet shouldBe true
+                passwordEncoder.matches("654321", user.passwordHash) shouldBe true
+                passwordEncoder.matches("old-free-form-password", user.passwordHash) shouldBe false
+            }
+        }
+
+        When("setting a new PIN with the wrong current credential") {
+            val user = User(
+                id = "user_8", phoneNumber = "+250788000008", firstName = "Jean", lastName = "B",
+                passwordHash = passwordEncoder.encode("real-password"), createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_8") } returns Optional.of(user)
+
+            Then("it throws InvalidCredentialsException before ever touching the stored hash") {
+                try {
+                    service.setPin("user_8", SetPinRequest("wrong-password", "654321"))
+                    error("expected InvalidCredentialsException")
+                } catch (e: InvalidCredentialsException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("setting a new PIN that isn't a real 6 digits") {
+            val user = User(
+                id = "user_9", phoneNumber = "+250788000009", firstName = "Jean", lastName = "B",
+                passwordHash = passwordEncoder.encode("real-password"), createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_9") } returns Optional.of(user)
+
+            Then("it throws InvalidPinException -- checked before the current-credential proof, matching register()'s own fail-fast order") {
+                try {
+                    service.setPin("user_9", SetPinRequest("real-password", "12345"))
+                    error("expected InvalidPinException")
+                } catch (e: InvalidPinException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
                 }
             }
         }

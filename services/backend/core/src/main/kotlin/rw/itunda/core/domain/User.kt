@@ -71,6 +71,16 @@ class User(
     @Column(name = "phone_verified", nullable = false)
     var phoneVerified: Boolean = false,
 
+    // Real Toss passwordless-login rollout (2026-08-24) -- distinguishes a real
+    // 6-digit-PIN registration (this session's own sourced Toss flow: phone+OTP, then
+    // a 6-digit PIN, real repeat-open unlock via biometric/PIN-pad against an already-
+    // recognized device) from an existing user who registered under the old free-
+    // form-password scheme. `passwordHash` itself is untouched either way -- see
+    // V293__user_pin_login.sql's own doc comment for why this is a safe, zero-
+    // migration-risk column rather than a passwordHash reshape.
+    @Column(name = "pin_set", nullable = false)
+    var pinSet: Boolean = true,
+
     // Real hyperlocal neighborhood (2026-07-20) -- closes the "User has no address/
     // district field" gap Marketplace/Community/Jobs/RealEstate's own doc comments all
     // name. Set once via AuthService.setNeighborhood from a real coordinate the user

@@ -48,6 +48,32 @@ class AuthController(
     fun login(@RequestBody request: LoginRequest): ResponseEntity<AuthResponse> =
         ResponseEntity.ok(authService.login(request))
 
+    // Real passwordless-login rollout (2026-08-24) -- see AuthService.
+    // loginWithDeviceSignature's own doc comment. Public (see SecurityConfig): there's
+    // no valid JWT yet, that's the entire point -- a real, unauthenticated challenge/
+    // signature pair establishing a BRAND NEW session, distinct from /devices/challenge
+    // and /devices/verify-signature above (which both require an already-valid JWT and
+    // are step-up re-verification of an EXISTING session, not this).
+    @PostMapping("/login/device/challenge")
+    fun issueLoginChallenge(@RequestBody request: LoginChallengeRequest): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "challenge" to deviceService.issueLoginChallenge(request.phoneNumber, request.deviceId)))
+
+    @PostMapping("/login/device/verify")
+    fun loginWithDeviceSignature(@RequestBody request: LoginWithSignatureRequest): ResponseEntity<AuthResponse> =
+        ResponseEntity.ok(authService.loginWithDeviceSignature(request))
+
+    // Real Toss-sourced "set your 6-digit PIN" flow (2026-08-24) -- see AuthService.
+    // setPin's own doc comment. Authenticated (a valid JWT plus the real current
+    // credential re-proof setPin itself requires) -- covers both a pre-PIN-era user's
+    // real upgrade prompt and a real "forgot PIN" reset once phone re-verification has
+    // re-established a fresh credential.
+    @PutMapping("/pin")
+    fun setPin(
+        @RequestBody request: SetPinRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "user" to authService.setPin(currentUser.userId, request)))
+
     /** Public (see SecurityConfig): the refresh token itself, not an access token, is
      * the credential here — there's no valid access token to require by the time a
      * client needs this. Rotates the refresh token (old one is revoked immediately). */
@@ -287,4 +313,8 @@ class AuthController(
     @ExceptionHandler(InvalidBirthDateException::class)
     fun handleInvalidBirthDate(ex: InvalidBirthDateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BIRTH_DATE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidPinException::class)
+    fun handleInvalidPin(ex: InvalidPinException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PIN", ex.message ?: "Bad request"))
 }

@@ -24,6 +24,10 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
+// Real Toss-sourced 6-digit numeric PIN (support.toss.im's own real help-center
+// articles: "6자리 비밀번호") -- see AuthService.register's own doc comment.
+private val PIN_PATTERN = Regex("^\\d{6}$")
+
 /**
  * Port of backend/src/controllers/auth.controller.ts's login/register, with one fix
  * applied from day one instead of ported as a known gap: registration provisions a real
@@ -67,6 +71,15 @@ class AuthService(
         if (missingRequiredTermsIds.isNotEmpty()) {
             throw RequiredTermsNotAcceptedException("Please agree to all required terms to continue")
         }
+        // Real Toss-sourced passwordless-login rollout (2026-08-24, direct user
+        // follow-up "we need that simplification" after real sourced research into
+        // exactly how Toss's own flow works): registration is phone+OTP, then a real
+        // 6-digit numeric PIN -- not a free-form password. Real Toss's own actual term
+        // is literally "6자리 비밀번호" (6-digit password), confirmed via
+        // support.toss.im's own real help-center articles.
+        if (!PIN_PATTERN.matches(request.password)) {
+            throw InvalidPinException("Your PIN must be exactly 6 digits")
+        }
         // Real, not honor-system: an invalid/typo'd code fails registration loudly
         // rather than silently registering with no attribution, matching this repo's
         // general "don't swallow the error" convention.
@@ -86,6 +99,7 @@ class AuthService(
             createdAt = Instant.now(),
             referralCode = generateReferralCode(),
             referredByUserId = referredByUserId,
+            pinSet = true,
         )
         userRepository.save(user)
         // Real immutable consent audit trail -- one row per real accepted term
@@ -194,6 +208,11 @@ class AuthService(
         // proved password ownership in this same request, so it's auto-trusted rather
         // than needing a separate step-up immediately after signing up.
         deviceService.recordRegistrationDevice(user.id, request.deviceId, request.deviceName)
+        // Real passwordless-login rollout (2026-08-24) -- see DeviceService.
+        // registerKeyDuringAuth's own doc comment: folds real device-key registration
+        // into this same request when the client supplies one, so the very next app
+        // open can use biometric/PIN-pad against this device instead of the full PIN.
+        request.devicePublicKey?.let { deviceService.registerKeyDuringAuth(user.id, request.deviceId, it) }
         return issueAuthResponse(user, "Registration successful", request.deviceId)
     }
 
@@ -226,7 +245,45 @@ class AuthService(
         // recorded as untrusted until a real step-up re-verification -- see
         // DeviceVerificationFilter for where that's actually enforced.
         deviceService.recordLoginDevice(user.id, request.deviceId, request.deviceName)
+        // Real passwordless-login rollout (2026-08-24) -- see DeviceService.
+        // registerKeyDuringAuth's own doc comment. Covers both a pre-existing user
+        // establishing a key for the first time and a device re-establishing one
+        // (e.g. after being revoked) -- either way the caller just proved PIN/password
+        // ownership in this exact request.
+        request.devicePublicKey?.let { deviceService.registerKeyDuringAuth(user.id, request.deviceId, it) }
         return issueAuthResponse(user, "Login successful", request.deviceId)
+    }
+
+    // Real passwordless LOGIN (2026-08-24) -- see DeviceService.verifyLoginSignature's
+    // own doc comment for why this is a distinct method from the existing JWT-gated
+    // device-verify endpoints. This IS the "no PIN needed on a recognized device"
+    // outcome Toss's own real flow is built on -- a valid signature issues a real,
+    // fresh session exactly like login()/register() do, no password/PIN involved.
+    fun loginWithDeviceSignature(request: LoginWithSignatureRequest): AuthResponse {
+        val user = deviceService.verifyLoginSignature(request.phoneNumber, request.deviceId, request.signature)
+        return issueAuthResponse(user, "Login successful", request.deviceId)
+    }
+
+    // Real Toss-sourced "set your 6-digit PIN" flow (2026-08-24) -- used both by a
+    // pre-PIN-era user upgrading (currentCredential = their existing, any-shape
+    // password) and by a real "forgot PIN" reset (currentCredential = a fresh
+    // credential re-established via phone OTP re-verification -- itself a separate,
+    // already-real UserVerificationService flow, not duplicated here). Either way,
+    // the exact same passwordEncoder.matches proof-of-ownership login() already
+    // requires, reused rather than re-implemented.
+    @Transactional
+    fun setPin(userId: String, request: SetPinRequest): PublicUser {
+        if (!PIN_PATTERN.matches(request.newPin)) {
+            throw InvalidPinException("Your PIN must be exactly 6 digits")
+        }
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        if (!passwordEncoder.matches(request.currentCredential, user.passwordHash)) {
+            throw InvalidCredentialsException("Incorrect current password or PIN")
+        }
+        user.passwordHash = passwordEncoder.encode(request.newPin)
+        user.pinSet = true
+        userRepository.save(user)
+        return user.toPublic()
     }
 
     fun getProfile(userId: String): PublicUser {
@@ -397,4 +454,5 @@ internal fun User.toPublic() = PublicUser(
     neighborhoodVerificationCount = neighborhoodVerificationCount,
     secondNeighborhood = secondNeighborhood,
     birthDate = birthDate,
+    pinSet = pinSet,
 )

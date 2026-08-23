@@ -14,3 +14,4 @@ class NeighborhoodNotResolvedException(message: String) : RuntimeException(messa
 class InvalidProfilePhotoUrlException(message: String) : RuntimeException(message)
 class InvalidBirthDateException(message: String) : RuntimeException(message)
 class RequiredTermsNotAcceptedException(message: String) : RuntimeException(message)
+class InvalidPinException(message: String) : RuntimeException(message)

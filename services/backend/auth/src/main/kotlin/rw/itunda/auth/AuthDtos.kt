@@ -27,9 +27,44 @@ data class RegisterRequest(
     // against the old RegisterRequest shape -- the real enforcement lives in
     // AuthService.register's own explicit check, not a Kotlin default.
     val acceptedTermsIds: List<String> = emptyList(),
+    // Real passwordless-login rollout (2026-08-24) -- see DeviceService.
+    // registerKeyDuringAuth's own doc comment. Optional: an older, not-yet-updated
+    // client that doesn't send one just doesn't get the passwordless-login upgrade,
+    // same additive-rollout convention deviceId/deviceName above already established.
+    // Raw uncompressed P-256 point (0x04 || X || Y, base64), same real wire format
+    // RegisterDeviceKeyRequest.publicKey already uses -- Android Keystore/iOS Secure
+    // Enclave hand this back natively on either platform, no per-platform conversion.
+    val devicePublicKey: String? = null,
 )
 
-data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
+data class LoginRequest(
+    val phoneNumber: String,
+    val password: String,
+    val deviceId: String? = null,
+    val deviceName: String? = null,
+    // See RegisterRequest.devicePublicKey's own doc comment -- the same real one-time
+    // key-registration fold-in, for a device that's logging in with its PIN/password
+    // for the first time (or re-establishing a key after RegisterDeviceKeyRequest was
+    // never called).
+    val devicePublicKey: String? = null,
+)
+
+// Real Toss-sourced 6-digit PIN, replacing the free-form password RegisterRequest.password
+// still accepts for backward compatibility (existing rows keep whatever shape they
+// registered with) -- see User.pinSet's own doc comment. currentCredential re-proves
+// ownership before the change takes effect: the caller's EXISTING password (any shape,
+// pre-PIN-era) if pinSet is still false, or their current 6-digit PIN if pinSet is
+// already true -- either way, the exact same passwordEncoder.matches check AuthService.
+// login already does, just reused here instead of re-implemented.
+data class SetPinRequest(val currentCredential: String, val newPin: String)
+
+// Real passwordless LOGIN (2026-08-24) -- unauthenticated counterpart to
+// DeviceChallengeResponse/VerifyDeviceSignatureRequest above, which both require an
+// already-valid JWT (step-up re-verification of an existing session). This pair is for
+// establishing a BRAND NEW session with no JWT at all -- see DeviceService.
+// issueLoginChallenge/verifyLoginSignature's own doc comments.
+data class LoginChallengeRequest(val phoneNumber: String, val deviceId: String)
+data class LoginWithSignatureRequest(val phoneNumber: String, val deviceId: String, val signature: String)
 
 // Real unified phone-first entry (2026-08-13, direct user description of the real
 // Toss flow): rather than making a user pick "Log in" vs "Sign up" upfront, the
@@ -66,6 +101,11 @@ data class PublicUser(
     val neighborhoodVerificationCount: Int = 0,
     val secondNeighborhood: String? = null,
     val birthDate: LocalDate? = null,
+    // Real Toss passwordless-login rollout (2026-08-24) -- see User.pinSet's own doc
+    // comment. false means this account predates the 6-digit-PIN scheme -- a client
+    // should prompt a real, non-blocking "set your new 6-digit PIN" upgrade via
+    // PUT /api/v1/auth/pin, not silently ignore it.
+    val pinSet: Boolean = true,
 )
 
 data class AuthResponse(

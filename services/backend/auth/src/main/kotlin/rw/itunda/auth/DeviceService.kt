@@ -9,6 +9,7 @@ import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.TrustedDevice
+import rw.itunda.core.domain.User
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TrustedDeviceRepository
@@ -233,6 +234,83 @@ class DeviceService(
             ?: throw DeviceNotFoundException("Device not found")
         val publicKeyBase64 = device.publicKey
             ?: throw InvalidDeviceVerificationException("No key registered for this device")
+        verifySignature(publicKeyBase64, challenge, signatureBase64)
+        device.trusted = true
+        device.verifiedAt = Instant.now()
+        device.lastSeenAt = Instant.now()
+        return trustedDeviceRepository.save(device)
+    }
+
+    // Real passwordless-login rollout (2026-08-24, direct user follow-up after a real
+    // Toss login-flow research pass: registration is phone+OTP then a 6-digit PIN,
+    // but every REPEAT open of the app is biometric/PIN-pad against an already-
+    // recognized device, never re-typing the full credential) -- see AuthService's
+    // own doc comment for the full account. This is the real "no PIN needed on a
+    // recognized device" login path, distinct from [issueChallenge]/
+    // [verifyDeviceBySignature] above (which are STEP-UP re-verification for an
+    // ALREADY-authenticated session, not usable here since there's no JWT yet).
+
+    /** Unauthenticated counterpart to [issueChallenge]. Requires the device to already
+     * have a registered key (set during a prior password/PIN login via
+     * [registerKeyDuringAuth]) -- there's nothing to sign a challenge with otherwise.
+     * Deliberately returns the SAME generic error whether the phone number doesn't
+     * exist or exists with no keyed device -- the same bounded account-enumeration
+     * trade-off [AuthService.checkPhoneExists]'s own doc comment already accepts for
+     * phone-number-identified accounts, not a new privacy leak class. */
+    fun issueLoginChallenge(phoneNumber: String, deviceId: String): String {
+        rateLimiter.checkLimit("auth:login-challenge:$phoneNumber", limit = 10, window = Duration.ofMinutes(1))
+        val trimmedId = deviceId.trim().take(128)
+        val user = userRepository.findByPhoneNumber(phoneNumber)
+        val device = user?.let { trustedDeviceRepository.findByUserIdAndDeviceId(it.id, trimmedId) }
+        if (user == null || device?.publicKey == null) {
+            throw InvalidDeviceVerificationException("No signed-in device found for this number")
+        }
+        val nonce = ByteArray(32).also { SecureRandom().nextBytes(it) }
+        val challenge = Base64.getEncoder().encodeToString(nonce)
+        redisTemplate.opsForValue().set("device-login-challenge:${user.id}:$trimmedId", challenge, Duration.ofMinutes(2))
+        return challenge
+    }
+
+    /** Unauthenticated counterpart to [verifyDeviceBySignature] -- on a valid
+     * signature, returns the real user so [AuthService.loginWithDeviceSignature] can
+     * issue a fresh session, the actual passwordless-login outcome. */
+    @Transactional
+    fun verifyLoginSignature(phoneNumber: String, deviceId: String, signatureBase64: String): User {
+        rateLimiter.checkLimit("auth:login-verify:$phoneNumber", limit = 5, window = Duration.ofMinutes(1))
+        val trimmedId = deviceId.trim().take(128)
+        val user = userRepository.findByPhoneNumber(phoneNumber)
+            ?: throw InvalidDeviceVerificationException("Signature verification failed")
+        val device = trustedDeviceRepository.findByUserIdAndDeviceId(user.id, trimmedId)
+            ?: throw InvalidDeviceVerificationException("Signature verification failed")
+        val publicKeyBase64 = device.publicKey ?: throw InvalidDeviceVerificationException("Signature verification failed")
+        val challenge = redisTemplate.execute(consumeChallengeScript, listOf("device-login-challenge:${user.id}:$trimmedId"))
+            ?: throw InvalidDeviceVerificationException("No pending challenge for this device, or it expired -- request a new one")
+        verifySignature(publicKeyBase64, challenge, signatureBase64)
+        device.lastSeenAt = Instant.now()
+        trustedDeviceRepository.save(device)
+        return user
+    }
+
+    /** Folds real device-key registration directly into register()/login() instead of
+     * requiring a separate later [registerDeviceKey] call -- no password re-check here
+     * (unlike registerDeviceKey), since the caller already proved password/PIN
+     * ownership in THIS SAME register/login request; asking a second time in the same
+     * round trip would be pure friction, not real security. A no-op if the device row
+     * doesn't exist yet (recordRegistrationDevice/recordLoginDevice must run first) or
+     * no deviceId was supplied -- an older client that doesn't send a public key keeps
+     * working exactly as before, just without the passwordless-login upgrade. */
+    @Transactional
+    fun registerKeyDuringAuth(userId: String, deviceId: String?, publicKeyBase64: String) {
+        if (deviceId == null) return
+        parsePublicKey(publicKeyBase64) // fail fast on a malformed key
+        val trimmedId = deviceId.trim().take(128)
+        val device = trustedDeviceRepository.findByUserIdAndDeviceId(userId, trimmedId) ?: return
+        device.publicKey = publicKeyBase64
+        device.lastSeenAt = Instant.now()
+        trustedDeviceRepository.save(device)
+    }
+
+    private fun verifySignature(publicKeyBase64: String, challengeBase64: String, signatureBase64: String) {
         val publicKey = parsePublicKey(publicKeyBase64)
         val signatureBytes = try {
             Base64.getDecoder().decode(signatureBase64)
@@ -241,14 +319,10 @@ class DeviceService(
         }
         val verifier = Signature.getInstance("SHA256withECDSA")
         verifier.initVerify(publicKey)
-        verifier.update(Base64.getDecoder().decode(challenge))
+        verifier.update(Base64.getDecoder().decode(challengeBase64))
         if (!verifier.verify(signatureBytes)) {
             throw InvalidDeviceVerificationException("Signature does not match this device's registered key")
         }
-        device.trusted = true
-        device.verifiedAt = Instant.now()
-        device.lastSeenAt = Instant.now()
-        return trustedDeviceRepository.save(device)
     }
 
     /** Reconstructs a Java EC public key from the raw uncompressed P-256 point (0x04 ||
