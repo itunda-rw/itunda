@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
@@ -168,6 +169,7 @@ class P2pService(
         request.paidByUserId = payerUserId
         p2pPaymentRequestRepository.save(request)
         notifyMoneyReceived(request.requesterUserId, payerUserId, request.amount)
+        notifyMoneySent(payerUserId, payerAccount, request.requesterUserId, request.amount)
 
         // Re-fetch, same as AccountService.confirmTransfer -- postLedgerTransaction doesn't
         // mutate the Account instance already held in memory, only the underlying row.
@@ -347,6 +349,7 @@ class P2pService(
         fraudRuleEngine.evaluate(senderUserId, recipientAccount.userId, amount, transaction.id)
         transactionRepository.save(transaction)
         notifyMoneyReceived(recipientAccount.userId, senderUserId, amount)
+        notifyMoneySent(senderUserId, senderAccount, recipientAccount.userId, amount)
         // Real round-up auto-saving (2026-07-25) -- see RoundUpService's own doc
         // comment for the full account, including why P2P transfer specifically is
         // this feature's honest v1 scope.
@@ -439,10 +442,11 @@ class P2pService(
     // already does write real notifications (auth, savings, account budget alerts,
     // messaging, commerce, community, agents), `p2p` and `merchant` were the two
     // conspicuously absent ones for money actually arriving in someone's account.
-    // Deliberately recipient-only, not sender-side too: the sender already gets an
-    // immediate synchronous success response in the app UI from the action they just
-    // took -- a second notification telling them what they just did themselves would be
-    // redundant, matching real Toss's own behavior of notifying the *other* party.
+    // Was written recipient-only, on the unsourced assumption that real Toss only
+    // notifies the *other* party -- **corrected 2026-08-23** by a real, user-supplied
+    // Toss screenshot showing the SENDER's own device getting a push confirming their
+    // own outgoing transfer. See notifyMoneySent below for the sender-side equivalent
+    // this file now also sends.
     // Best-effort: a notification failure must never roll back or fail money that
     // already moved, same "auxiliary side-effect can't block real money movement"
     // discipline `MerchantService.collect`'s own cashback-award try/catch established.
@@ -490,6 +494,67 @@ class P2pService(
                 body,
                 mapOf("amount" to amount.toString(), "senderId" to senderUserId),
                 type = "MONEY_RECEIVED",
+            )
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
+    }
+
+    // Real Toss-parity correction (2026-08-23, user-supplied real Toss push-notification
+    // screenshot: "3,000원 출금" / "내 전북은행 통장 → 토스 김민석" -- a real Toss SENDER's
+    // own device getting a push confirming their own outgoing transfer). The
+    // notifyMoneyReceived doc comment above claims "Deliberately recipient-only... matching
+    // real Toss's own behavior of notifying the *other* party" -- that claim was never
+    // sourced (no citation, unlike the rest of this file's decisions), and this real
+    // screenshot directly contradicts it, so it's corrected here rather than left standing
+    // against real evidence. A sender-side confirmation also serves a real security purpose
+    // already established elsewhere in this codebase: an unauthorized transfer from a
+    // hijacked session is exactly the kind of thing the real account owner needs to see
+    // immediately, the same reasoning LoansService.applyForLoan's own real
+    // NEW_LOAN_DISBURSED Asset Protection Alert push already uses.
+    //
+    // Title says "sent," not Toss's own "출금" (withdrawal) -- itunda's transfer model
+    // moves money directly between itunda accounts, not a withdrawal from an external
+    // linked bank account the way Toss Pay's own real product works, so "sent" is the
+    // honest term for what actually happened here, matching this file's own existing
+    // "Money received" title language for the recipient side.
+    private fun notifyMoneySent(senderUserId: String, senderAccount: Account, recipientUserId: String, amount: BigDecimal) {
+        try {
+            val recipient = userRepository.findById(recipientUserId).orElse(null)
+            val recipientName = recipient?.let { "${it.firstName} ${it.lastName}" } ?: "the recipient"
+            val title = "$amount RWF sent"
+            val body = "${senderAccount.accountName} → $recipientName"
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = senderUserId,
+                    type = "MONEY_SENT",
+                    title = title,
+                    body = body,
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$amount\",\"recipientId\":\"$recipientUserId\"}",
+                ),
+            )
+            sendMoneySentPushAfterCommit(senderUserId, title, body, amount, recipientUserId)
+        } catch (e: Exception) {
+            // Non-critical -- the real transfer already completed and succeeded.
+        }
+    }
+
+    private fun sendMoneySentPushAfterCommit(senderUserId: String, title: String, body: String, amount: BigDecimal, recipientUserId: String) {
+        val send = {
+            pushNotificationService.sendToUser(
+                senderUserId,
+                title,
+                body,
+                mapOf("amount" to amount.toString(), "recipientId" to recipientUserId),
+                type = "MONEY_SENT",
             )
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {

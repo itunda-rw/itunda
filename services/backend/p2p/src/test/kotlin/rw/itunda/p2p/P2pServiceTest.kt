@@ -69,6 +69,12 @@ class P2pServiceTest : BehaviorSpec({
         every { accountRepository.findByUserIdAndType("payer_1", AccountType.MAIN) } returns account("account_payer", "payer_1", "10000")
         every { accountRepository.findByUserIdAndType("requester_1", AccountType.MAIN) } returns account("account_requester", "requester_1", "0")
         every { accountRepository.findById("account_payer") } returns Optional.of(account("account_payer", "payer_1", "8000"))
+        // Real Toss-parity fix (2026-08-23): payRequest now also notifies the payer
+        // themselves (notifyMoneySent), which looks the requester up by id to name them
+        // in the payer's own confirmation copy.
+        every { userRepository.findById("requester_1") } returns Optional.of(
+            User(id = "requester_1", phoneNumber = "+250788000099", firstName = "Alice", lastName = "M", passwordHash = "x"),
+        )
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -78,8 +84,11 @@ class P2pServiceTest : BehaviorSpec({
             every { userRepository.findById("payer_1") } returns Optional.of(
                 User(id = "payer_1", phoneNumber = "+250788000001", firstName = "Jean", lastName = "Paul", passwordHash = "x"),
             )
-            val notificationSlot = slot<Notification>()
-            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+            // A single slot only ever holds the LAST captured call -- payRequest now
+            // saves 2 real notifications (requester's MONEY_RECEIVED, payer's own
+            // MONEY_SENT), so this needs a list to assert on both independently.
+            val notificationSlots = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlots)) } answers { firstArg() }
 
             val (transaction, newBalance) = service.payRequest("payer_1", "p2p_1")
 
@@ -88,13 +97,26 @@ class P2pServiceTest : BehaviorSpec({
             // notification the moment money arrives), a real gap found by auditing this
             // file directly: zero Notification references existed anywhere in it before.
             Then("the requester gets a real, immediate notification naming the real payer, not a generic message") {
-                notificationSlot.captured.userId shouldBe "requester_1"
-                notificationSlot.captured.type shouldBe "MONEY_RECEIVED"
-                notificationSlot.captured.body shouldBe "Jean Paul sent you 2000 RWF."
+                val received = notificationSlots.first { it.type == "MONEY_RECEIVED" }
+                received.userId shouldBe "requester_1"
+                received.body shouldBe "Jean Paul sent you 2000 RWF."
             }
 
             Then("the requester also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("requester_1", "Money received", "Jean Paul sent you 2000 RWF.", any(), type = "MONEY_RECEIVED") }
+            }
+
+            // Real Toss-parity fix (2026-08-23, real user-supplied Toss screenshot): the
+            // PAYER now gets their own confirmation push too -- see
+            // P2pService.notifyMoneySent's own doc comment.
+            Then("the payer also gets their own real push confirming their outgoing payment") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("payer_1", "2000 RWF sent", "Test account → Alice M", any(), type = "MONEY_SENT") }
+            }
+
+            Then("the payer's own notification names the real requester and the real debited account") {
+                val sent = notificationSlots.first { it.type == "MONEY_SENT" }
+                sent.userId shouldBe "payer_1"
+                sent.body shouldBe "Test account → Alice M"
             }
 
             Then("it's a direct account-to-account ledger pair -- no rail_suspense hop, no fee, unlike a regular transfer") {
@@ -324,6 +346,10 @@ class P2pServiceTest : BehaviorSpec({
         every { userRepository.findByPhoneNumber("+250788000099") } returns recipientUser
         every { accountRepository.findByUserIdAndType("recipient_1", AccountType.MAIN) } returns account("account_recipient", "recipient_1", "0")
         every { accountRepository.findById("account_sender") } returns Optional.of(account("account_sender", "sender_1", "8000"))
+        // Real Toss-parity fix (2026-08-23): sendDirect now also notifies the sender
+        // themselves (notifyMoneySent), which looks the recipient up by id to name them
+        // in the sender's own confirmation copy.
+        every { userRepository.findById("recipient_1") } returns Optional.of(recipientUser)
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_10", emptyList())
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -332,8 +358,11 @@ class P2pServiceTest : BehaviorSpec({
             every { userRepository.findById("sender_1") } returns Optional.of(
                 User(id = "sender_1", phoneNumber = "+250788000001", firstName = "Eric", lastName = "Uwase", passwordHash = "x"),
             )
-            val notificationSlot = slot<Notification>()
-            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+            // A single slot only ever holds the LAST captured call -- sendDirect now
+            // saves 2 real notifications (recipient's MONEY_RECEIVED, sender's own
+            // MONEY_SENT), so this needs a list to assert on both independently.
+            val notificationSlots = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlots)) } answers { firstArg() }
 
             val (transaction, newBalance) = service.sendDirect("sender_1", "+250788000099", BigDecimal("2000"), "Rent")
 
@@ -355,9 +384,23 @@ class P2pServiceTest : BehaviorSpec({
             }
 
             Then("the recipient gets a real, immediate notification naming the real sender -- direct sendDirect transfers get the same real-time alert payRequest does") {
-                notificationSlot.captured.userId shouldBe "recipient_1"
-                notificationSlot.captured.type shouldBe "MONEY_RECEIVED"
-                notificationSlot.captured.body shouldBe "Eric Uwase sent you 2000 RWF."
+                val received = notificationSlots.first { it.type == "MONEY_RECEIVED" }
+                received.userId shouldBe "recipient_1"
+                received.body shouldBe "Eric Uwase sent you 2000 RWF."
+            }
+
+            // Real Toss-parity fix (2026-08-23, real user-supplied Toss screenshot): the
+            // SENDER now gets their own confirmation push too, not just the recipient --
+            // see P2pService.notifyMoneySent's own doc comment for the corrected,
+            // previously-unsourced "recipient-only" assumption this closes.
+            Then("the real sender also gets their own real push confirming their outgoing transfer") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("sender_1", "2000 RWF sent", "Test account → R T", any(), type = "MONEY_SENT") }
+            }
+
+            Then("the sender's own notification names the real recipient and the real debited account") {
+                val sent = notificationSlots.first { it.type == "MONEY_SENT" }
+                sent.userId shouldBe "sender_1"
+                sent.body shouldBe "Test account → R T"
             }
 
             Then("it real-checks the real FamilyLink spend limit before the ledger moves any money") {
