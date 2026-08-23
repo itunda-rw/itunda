@@ -283,6 +283,11 @@ class SavingsServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        // See the earlier "a user with a savings goal and an interest jar" Given
+        // block's own identical comment -- relaxed mockk can't synthesize a valid
+        // return for JpaRepository's generic save(), and this stub must live at the
+        // Given level (IsolationMode.InstancePerLeaf only re-walks the path to each leaf).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
@@ -333,6 +338,11 @@ class SavingsServiceTest : BehaviorSpec({
                     transactionRepository.save(match { it.type == TransactionType.INTEREST && it.recipientId == "user_1" && it.amount == BigDecimal("7.50") })
                 }
             }
+
+            Then("a real celebratory notification and push fire once for this jar's first-ever accrual") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "FIRST_INTEREST_ACCRUAL" && it.userId == "user_1" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any(), "FIRST_INTEREST_ACCRUAL") }
+            }
         }
 
         When("accruing interest for a jar whose savings account is still empty") {
@@ -347,6 +357,10 @@ class SavingsServiceTest : BehaviorSpec({
                 theJar.earnedThisMonth shouldBe BigDecimal.ZERO
                 theJar.earnedTotal shouldBe BigDecimal.ZERO
                 theJar.nextPayoutAt shouldBe originalNextPayoutAt.plus(1, java.time.temporal.ChronoUnit.DAYS)
+            }
+
+            Then("no celebratory push fires when nothing was actually earned") {
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any(), "FIRST_INTEREST_ACCRUAL") }
             }
         }
 
@@ -368,6 +382,10 @@ class SavingsServiceTest : BehaviorSpec({
             Then("each real day posts its own real ledger credit and transaction row -- two real days, two real postings") {
                 verify(exactly = 2) { ledgerService.postLedgerTransaction("RWF", any()) }
                 verify(exactly = 2) { transactionRepository.save(match { it.type == TransactionType.INTEREST }) }
+            }
+
+            Then("the celebratory push fires only once -- day 2 already has a nonzero earnedTotal, not a first accrual") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_3", any(), any(), any(), "FIRST_INTEREST_ACCRUAL") }
             }
         }
     }

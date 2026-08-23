@@ -215,6 +215,16 @@ class SavingsService(
         val account = accountRepository.findById(jar.accountId).orElse(null) ?: return
         val dailyRate = BigDecimal.valueOf(jar.rate).divide(BigDecimal(100), 10, RoundingMode.HALF_UP).divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
         val accrued = account.balance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
+        // Real celebratory moment (2026-08-23) -- see notifyGoalCompleted/
+        // notifyLoanPaidOff's own doc comments for the sourced Toss rationale this
+        // continues. Deliberately a ONE-TIME signal, not fired on every accrual --
+        // this scheduler runs daily per jar, so a push on every single accrual would be
+        // real notification fatigue, exactly what the interaction-philosophy research
+        // this whole initiative is grounded in (toss.tech/article/interaction) names as
+        // a reason a design gets discarded, not shipped. earnedTotal is a lifetime
+        // running total that's never reset (unlike earnedThisMonth), so "was zero,
+        // about to become positive" is a safe, genuinely once-ever signal per jar.
+        val isFirstAccrualEver = jar.earnedTotal == BigDecimal.ZERO && accrued > BigDecimal.ZERO
         if (accrued > BigDecimal.ZERO) {
             val ledger = ledgerService.postLedgerTransaction(
                 "RWF",
@@ -245,7 +255,35 @@ class SavingsService(
         val updatedAccount = accountRepository.findById(jar.accountId).orElse(account)
         jar.balance = updatedAccount.balance
         jar.nextPayoutAt = jar.nextPayoutAt.plus(INTEREST_ACCRUAL_INTERVAL_DAYS, ChronoUnit.DAYS)
-        interestJarRepository.save(jar)
+        val saved = interestJarRepository.save(jar)
+        if (isFirstAccrualEver) notifyFirstInterestAccrual(saved, accrued)
+    }
+
+    private fun notifyFirstInterestAccrual(jar: InterestJar, accrued: BigDecimal) {
+        try {
+            val title = "Your money started earning 🎉"
+            val body = "You just earned your first $accrued RWF in savings interest -- it'll keep adding up automatically."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = jar.userId, type = "FIRST_INTEREST_ACCRUAL",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"accountId\":\"${jar.accountId}\"}",
+                ),
+            )
+            sendFirstInterestAccrualPushAfterCommit(jar.userId, title, body, jar.accountId)
+        } catch (e: Exception) {
+            // Non-critical -- the real interest accrual already succeeded.
+        }
+    }
+
+    private fun sendFirstInterestAccrualPushAfterCommit(userId: String, title: String, body: String, accountId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("accountId" to accountId), type = "FIRST_INTEREST_ACCRUAL") }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Real KB국민은행-style 상품만기알림서비스 (product maturity alert service,
