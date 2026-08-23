@@ -182,6 +182,21 @@ background unless it adds its own hairline border (`var(--itunda-grey-200)` /
 `IdsCard`, and iOS's new `idsCardBorder(cornerRadius:)` extension all do this now, so
 prefer those over a raw inline card box that would otherwise render invisibly.
 
+**Second corollary, same day (direct user follow-up on the itunda Bank screen)**: a
+flat *product-catalog* list (Save & Grow's items, a group-accounts list, a savings-
+plans list — a short list of distinct features/entities a user picks from) separates
+rows with whitespace alone, no divider per row — real Toss doesn't put a line under
+every item. Reserve the divider for the boundary *between* whole sections (e.g.
+between the standalone Auto-transfer row and the Save & Grow catalog below it), never
+between individual rows inside one section/list. This is a different real convention
+from a *transaction/statement ledger* (a dense, numbered list of past transactions) —
+those keep a per-row divider deliberately (see iOS's `AccountLedgerDetailRow`/
+`PayMoneyDetailScreen`, unchanged in this pass) since that's a real, separate Toss
+pattern, not the same bug. Fixed the catalog-list case across all 3 platforms this
+pass — Android's `ShellSection` (`40b3ead3`), bank-mfe's `accounts.map`/
+`ikiminas.map`/two `plans.map` call sites (`593c62b6`), iOS's `HomeSectionCard`
+(`bc62444a`).
+
 ## 11. itunda's brand identity: petal mark, indigo primary (2026-08-22)
 
 itunda's app icon and primary brand color, after a full 14-shape x 16-color

@@ -17119,3 +17119,51 @@ both visually confirmed working this same pass.
 
 *Shipped: web `index.css` (`b7a7908a`), Android `IdsSemanticColors.kt`/`IdsCard.kt`
 (`a5571921`), iOS `IDS.swift`/`Components.swift`/48 call-site files (`0cfdd908`).*
+
+## 274. Chrome bars matching content + no per-row dividers in product-catalog lists
+
+Two more direct user corrections (2026-08-24), both given while looking at the
+itunda Bank screen right after installing and running the just-fixed Android app.
+
+**Chrome bars not matching content**: pointed at real Toss/Coupang screenshots in
+both themes showing the status bar, app bar, and bottom nav all sharing the exact
+page-content color, no visible seam. Two real, separate Android gaps found:
+`ItundaBottomBar` used `Ids.colors.surface` (diverges from `Ids.colors.background`
+in dark mode, 0x202027 vs 0x17171C) instead of `background`; and
+`values/styles.xml`'s `Theme.Itunda` had its own separate hardcoded `#F2F4F6` for
+`android:windowBackground`/`navigationBarColor`/`statusBarColor` -- native Android
+chrome the earlier §273 Kotlin-side fix never reached, so the SYSTEM status/nav bars
+stayed grey while in-app content turned white. Fixed both; verified on a real
+physical device (SM-A165N) in both themes via `adb shell cmd uimode night no/yes` --
+screenshots confirm one continuous surface with no seam in either theme. Checked web
+(no persistent bottom bar, uses a top tab-pill row that already inherits the fixed
+page background) and iOS (native `TabView`/`UITabBar`, no custom appearance override,
+auto-adapts) -- confirmed Android-only, not the same bug on the other 2 platforms.
+*Shipped: `ItundaAppScreen.kt`/`styles.xml` (`94a12657`).*
+
+**Per-row dividers in product-catalog lists**: itunda Bank's "Save & grow" catalog
+(New savings goal/26-week savings/31-day savings/12-month deposit/Ikimina/SACCO
+shares/Investments) showed a divider line under every row -- real Toss product
+catalogs separate rows with whitespace alone, no line per item; a divider belongs
+only at the boundary *between* whole sections (Auto-transfer vs. the catalog below
+it), never between rows within one list. Found and fixed the same bug on all 3
+platforms: Android's `ShellSection` (used by all 3 of `BankHubScreen`'s catalog
+sections) had `if (index != rows.lastIndex) { Divider(...) }` inside its row loop;
+bank-mfe had 4 separate `.map()` loops (`GroupAccountsSection`'s accounts,
+`IkiminaSection`'s ikiminas, and both `WeeklySavingsSection`/`Grow31SavingsSection`'s
+plans lists) reusing `.itunda-flat-section`'s section-boundary CSS class per row
+instead of per section; iOS's `HomeSectionCard` (the `BankView.swift` catalog card)
+had the identical per-row `Divider()` in its `ForEach`. Same fix shape everywhere:
+drop the per-row divider, keep the legitimate section-boundary one.
+
+**Deliberately NOT touched**: transaction/statement ledger lists (iOS's
+`AccountLedgerDetailRow`/`PayMoneyDetailScreen`, both with their own per-row
+`Divider()` in a `ForEach`) -- checked bank-mfe's own `index.css` comment first,
+which explicitly name-checks iOS's `AccountLedgerDetailRow` as already correctly
+flat *with* a per-row divider from the original 2026-08-21/22 flat-design pass. A
+dense list of past transactions is a different, deliberate real Toss convention from
+a short feature-catalog list, not the same bug -- confirmed via itunda's own existing
+design decision, not assumed.
+
+*Shipped: Android `ItundaAppScreen.kt` (`40b3ead3`), bank-mfe `BankDashboard.tsx`
+(`593c62b6`), iOS `BankViewComponents.swift` (`bc62444a`).*
