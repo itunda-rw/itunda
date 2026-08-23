@@ -12362,7 +12362,7 @@ function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: bool
   };
 
   return (
-    <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+    <div className="itunda-flat-section" style={{ textAlign: 'center' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>{isSecond ? 'Add a second neighborhood' : 'Set your neighborhood'}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
         {isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you."}
@@ -12401,7 +12401,7 @@ function NeighborhoodSwitcherRow({
   };
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', marginTop: '10px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{secondNeighborhoodName ? `Second: ${secondNeighborhoodName}` : 'Add a second neighborhood'}</span>
       <div style={{ display: 'flex', gap: '12px' }}>
         <button style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-indigo)' }} onClick={onAddTapped}>
@@ -12452,7 +12452,7 @@ function ListingWishlistView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.listingId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.listingId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{f.title}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.price.toLocaleString()} RWF</p>
@@ -12776,15 +12776,13 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           )}
           {!error && listings === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-            <div className="itunda-card">
-              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass --
-                  docs/COPY_VOICE.md's rules, ported from the same-day Android/iOS
-                  fix): say what's missing AND what fixes it, per this screen's own
-                  real "+ List an item" button above in the MINE view. */}
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-                {view === 'BROWSE' ? 'No listings yet — be the first to list something for sale.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet — try Browse to see listings from everywhere.' : view === 'PURCHASES' ? 'No purchases recorded yet — items you buy will show up here.' : 'You haven\'t listed anything yet — tap "+ List an item" above to list your first one.'}
-              </p>
-            </div>
+            // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+            // docs/COPY_VOICE.md's rules, ported from the same-day Android/iOS
+            // fix): say what's missing AND what fixes it, per this screen's own
+            // real "+ List an item" button above in the MINE view.
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+              {view === 'BROWSE' ? 'No listings yet — be the first to list something for sale.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet — try Browse to see listings from everywhere.' : view === 'PURCHASES' ? 'No purchases recorded yet — items you buy will show up here.' : 'You haven\'t listed anything yet — tap "+ List an item" above to list your first one.'}
+            </p>
           )}
           {!error && listings !== null && listings.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -14561,7 +14559,7 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
   }
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>List a property</h3>
       <div style={{ display: 'flex', gap: '10px' }}>
         <select
