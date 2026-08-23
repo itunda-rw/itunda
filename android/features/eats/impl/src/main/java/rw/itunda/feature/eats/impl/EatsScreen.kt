@@ -56,6 +56,8 @@ import rw.itunda.core.network.EatsDishDto
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.RecentlyViewedRestaurantDto
+import rw.itunda.core.network.RecentlyViewedRestaurantsStore
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -152,6 +154,14 @@ internal fun OrderFoodContent(
     // Real dish grid (2026-08-03) -- see EatsDishGrid's own doc comment.
     var dishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
+    // Real "recently viewed restaurants" rail (2026-08-23) -- Baemin/Coupang Eats both
+    // show this; itunda already shipped the identical real feature for Shop's own
+    // product catalog (RecentlyViewedProductsStore.kt) and never ported it to this
+    // sibling product. Purely local, same as that file's own doc comment (no
+    // account-wide sync, no backend needed).
+    val recentlyViewedContext = LocalContext.current
+    val recentlyViewedStore = remember { RecentlyViewedRestaurantsStore(recentlyViewedContext) }
+    var recentlyViewedRestaurants by remember { mutableStateOf(recentlyViewedStore.getAll()) }
 
     // Real distance/ETA enrichment (2026-08-14) -- see ShoppingMerchantDto's own
     // buyerLat/buyerLng doc comment: the backend has real distanceKm/
@@ -256,6 +266,9 @@ internal fun OrderFoodContent(
 
     fun openRestaurant(m: ShoppingMerchantDto) {
         selectedRestaurant = m
+        recentlyViewedRestaurants = recentlyViewedStore.add(
+            RecentlyViewedRestaurantDto(m.merchantId, m.businessName, m.category, m.photoUrl, m.rating),
+        )
         cart.clear()
         menu = null
         coroutineScope.launch {
@@ -499,6 +512,13 @@ internal fun OrderFoodContent(
             }
             if (searchInput.isBlank() && dishes.isNotEmpty()) {
                 item { EatsDishGrid(dishes, onOpen = ::openDish) }
+            }
+            // Real "recently viewed restaurants" rail -- see RecentlyViewedRestaurantsRail's
+            // own doc comment (EatsRecentlyViewed.kt). Hidden once the user starts
+            // filtering, same "merchandising above the raw list, gone once actively
+            // searching" discipline Shop's own identical rail already established.
+            if (selectedCategory == null && searchInput.isBlank() && recentlyViewedRestaurants.isNotEmpty()) {
+                item { RecentlyViewedRestaurantsRail(recentlyViewedRestaurants, onOpen = ::openRestaurant) }
             }
             if (error != null) {
                 item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
