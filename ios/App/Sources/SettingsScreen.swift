@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreNetwork
 import CoreIdentity
+import CoreDesignSystem
 
 /// Real account settings screen, matching Android's SettingsScreen.kt exactly
 /// (2026-07-12): "내 정보" (real name/phone from /api/v1/auth/profile), a real
@@ -135,11 +136,11 @@ struct SettingsScreen: View {
             HStack {
                 Button(action: onDone) {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .medium))
+                        .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3))
                         .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel(t("back"))
-                Text(t("title")).font(.system(size: 20, weight: .bold))
+                Text(t("title")).font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2))
                 Spacer()
                 // Real in-app language switcher for logged-in users (2026-08-08) -- see
                 // this file's own top-of-file doc comment: LoginScreen.swift's own
@@ -155,7 +156,7 @@ struct SettingsScreen: View {
                     UserDefaults.standard.set(locale.rawValue, forKey: localeStorageKey)
                 }) {
                     Text(locale.rawValue.uppercased())
-                        .font(.system(size: 15, weight: .medium))
+                        .font(IDS.scaledFont(size: 15, weight: .medium, relativeTo: .subheadline))
                         .foregroundColor(.secondary)
                 }
                 .accessibilityLabel(t("language"))
@@ -169,9 +170,9 @@ struct SettingsScreen: View {
                             .overlay(Image(systemName: "person.fill"))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(viewModel.profile.map { "\($0.firstName) \($0.lastName)" } ?? "—")
-                                .font(.system(size: 17, weight: .semibold))
+                                .font(IDS.scaledFont(size: 17, weight: .semibold, relativeTo: .body))
                             Text(viewModel.profile?.phoneNumber ?? "")
-                                .font(.system(size: 14))
+                                .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .subheadline))
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -191,14 +192,14 @@ struct SettingsScreen: View {
                                 .clipShape(Circle())
                             VStack(alignment: .leading, spacing: 2) {
                                 Text((device.deviceName ?? t("unknownDevice")) + (device.deviceId == DeviceStore.shared.getOrCreateDeviceId() ? t("thisDevice") : ""))
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline))
                                 Text(device.trusted ? t("trusted") : t("notVerified"))
-                                    .font(.system(size: 12))
+                                    .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                                     .foregroundColor(device.trusted ? .secondary : .red)
                             }
                             Spacer()
                             Button(t("remove")) { Task { await viewModel.revokeDevice(device.deviceId) } }
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                                 .foregroundColor(.red)
                         }
                     }
@@ -212,9 +213,9 @@ struct SettingsScreen: View {
                             Button(action: { Task { await viewModel.markRead(notification.id) } }) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(notification.title)
-                                        .font(.system(size: 15, weight: notification.isRead ? .regular : .bold))
+                                        .font(IDS.scaledFont(size: 15, weight: notification.isRead ? .regular : .bold, relativeTo: .subheadline))
                                         .foregroundColor(.primary)
-                                    Text(notification.body).font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text(notification.body).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(.secondary)
                                 }
                             }
                             .buttonStyle(.plain)
@@ -227,7 +228,7 @@ struct SettingsScreen: View {
                         Spacer()
                         if viewModel.unreadCount > 0 {
                             Button(t("markAllRead")) { Task { await viewModel.markAllRead() } }
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                         }
                     }
                 }
@@ -245,8 +246,8 @@ struct SettingsScreen: View {
                                     .background(Color.gray.opacity(0.15))
                                     .clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(t("unlockBiometrics")).font(.system(size: 16, weight: .semibold))
-                                    Text(t("unlockBiometricsBody")).font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text(t("unlockBiometrics")).font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout))
+                                    Text(t("unlockBiometricsBody")).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(.secondary)
                                 }
                             }
                         }
@@ -272,8 +273,8 @@ struct SettingsScreen: View {
                                     .background(Color.gray.opacity(0.15))
                                     .clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(t("verifyBiometrics")).font(.system(size: 16, weight: .semibold))
-                                    Text(t("verifyBiometricsBody")).font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text(t("verifyBiometrics")).font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout))
+                                    Text(t("verifyBiometricsBody")).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(.secondary)
                                 }
                             }
                         }
