@@ -69,11 +69,11 @@ struct NearbyMerchantsBanner: View {
                     HStack(spacing: 8) {
                         Image(systemName: "mappin.circle").foregroundColor(IDS.Colors.textSecondary)
                         Text("\(merchants.count) itunda merchant\(merchants.count == 1 ? "" : "s") nearby — earn cashback")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                             .foregroundColor(IDS.Colors.textPrimary)
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 12)).foregroundColor(IDS.Colors.textTertiary)
+                    Image(systemName: "chevron.right").font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1)).foregroundColor(IDS.Colors.textTertiary)
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
                 .background(Color(.secondarySystemBackground))
@@ -95,11 +95,11 @@ struct NearbyMerchantsSheet: View {
             List(merchants.prefix(20)) { merchant in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(merchant.businessName).font(.system(size: 14, weight: .semibold))
-                        Text(merchant.category ?? "Merchant").font(.system(size: 12)).foregroundColor(IDS.Colors.textSecondary)
+                        Text(merchant.businessName).font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .subheadline))
+                        Text(merchant.category ?? "Merchant").font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1)).foregroundColor(IDS.Colors.textSecondary)
                     }
                     Spacer()
-                    Text(String(format: "%.1f km", merchant.distanceKm)).font(.system(size: 13)).foregroundColor(IDS.Colors.textSecondary)
+                    Text(String(format: "%.1f km", merchant.distanceKm)).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary)
                 }
             }
             .navigationTitle("Merchants nearby")
@@ -116,8 +116,8 @@ struct RewardsSummaryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Rewards earned").font(.system(size: 13)).foregroundColor(IDS.Colors.textSecondary)
-            Text("\(Int(rewardsTotal)) RWF").font(.system(size: 15, weight: .bold)).foregroundColor(IDS.Colors.textPrimary)
+            Text("Rewards earned").font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary)
+            Text("\(Int(rewardsTotal)) RWF").font(IDS.scaledFont(size: 15, weight: .bold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -132,11 +132,11 @@ struct GetHelpLinks: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: onOpenSupport) {
-                Text("FAQ").font(.system(size: 13)).foregroundColor(IDS.Colors.textSecondary).frame(maxWidth: .infinity, alignment: .leading)
+                Text("FAQ").font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary).frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 10)
             Button(action: onOpenSupport) {
-                Text("Send feedback").font(.system(size: 13)).foregroundColor(IDS.Colors.textSecondary).frame(maxWidth: .infinity, alignment: .leading)
+                Text("Send feedback").font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary).frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.vertical, 10)
         }
@@ -155,18 +155,18 @@ struct RewardsPreviewSection: View {
         if !preview.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Get more rewards")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textPrimary)
                 ForEach(preview) { task in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(task.title).font(.system(size: 14, weight: .semibold)).foregroundColor(IDS.Colors.textPrimary)
-                            Text(task.subtitle).font(.system(size: 12)).foregroundColor(IDS.Colors.textSecondary)
+                            Text(task.title).font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.textPrimary)
+                            Text(task.subtitle).font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1)).foregroundColor(IDS.Colors.textSecondary)
                         }
                         Spacer()
                         Button(action: { onClaim(task.id) }) {
                             Text(claimingId == task.id ? "…" : "+\(Int(task.rewardAmount)) RWF")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(IDS.scaledFont(size: 13, weight: .bold, relativeTo: .footnote))
                                 .foregroundColor(IDS.Colors.brand)
                                 .padding(.horizontal, 12).padding(.vertical, 6)
                                 .background(IDS.Colors.brand.opacity(0.12))
@@ -202,12 +202,12 @@ struct PayScreen: View {
             VStack(spacing: 20) {
                 HStack {
                     Text("Pay")
-                        .font(.system(size: 28, weight: .bold))
+                        .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
                         .foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
                     Button(action: onSwitchToYou) {
                         Image(systemName: "gearshape")
-                            .font(.system(size: 18, weight: .medium))
+                            .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3))
                             .foregroundColor(IDS.Colors.textSecondary)
                     }
                     .accessibilityLabel("Pay settings")
