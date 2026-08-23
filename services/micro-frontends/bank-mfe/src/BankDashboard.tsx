@@ -12446,7 +12446,7 @@ function ListingWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved listings yet -- tap ♡ on any listing to save it here." />;
 
   return (
@@ -12774,7 +12774,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           {error && (
             <ErrorCard message={error} onRetry={load} />
           )}
-          {!error && listings === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
+          {!error && listings === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             <div className="itunda-card">
               {/* Real copy-voice fix (item 244, round 5 of the empty-state pass --
@@ -14119,7 +14119,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
             {showApplicants ? 'Hide applicants' : 'View applicants'}
           </button>
           {showApplicants && (
-            applications === null ? <div className="itunda-card skeleton" style={{ height: '60px' }} /> :
+            applications === null ? <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} /> :
             applications.filter((a) => a.status === 'PENDING').length === 0 ? (
               <EmptyState message="No applications yet — apply to a job post and it'll show up here." />
             ) : (
@@ -15000,7 +15000,7 @@ function PropertyListingWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved properties yet -- tap ♡ on any listing to save it here." />;
 
   return (
@@ -15211,7 +15211,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           {error && (
             <ErrorCard message={error} onRetry={load} />
           )}
-          {!error && listings === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
+          {!error && listings === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             <div className="itunda-card">
               {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
@@ -15615,7 +15615,7 @@ function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string })
   useEffect(load, [restaurantId]);
 
   if (error) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
-  if (reviews === null) return <div className="itunda-card skeleton" style={{ height: '80px' }} />;
+  if (reviews === null) return <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (reviews.length === 0) return null;
 
   return (
@@ -16352,7 +16352,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSelle
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (orders.length === 0) return <EmptyState message="No orders yet — order from a nearby restaurant and it'll show up here." />;
 
   return (
@@ -22311,7 +22311,7 @@ function DevicesView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (devices === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (devices === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -22322,7 +22322,7 @@ function DevicesView() {
         <EmptyState message="No other devices yet — this is the only one signed in right now." />
       ) : (
         devices.map((d) => (
-          <div key={d.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
                 {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-indigo)' }}>(this device)</span>}
@@ -22492,11 +22492,11 @@ function CardView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (card === undefined) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (card === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   if (card === null) {
     return (
-      <div className="itunda-card" style={{ textAlign: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>You don't have an itunda debit card yet</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           App-controlled spend limits and one-tap freeze — no branch visit, no waiting.
@@ -22785,7 +22785,7 @@ function InterestJarCard() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (jar === null) return <div className="itunda-card skeleton" style={{ height: '140px', marginBottom: '16px' }} />;
+  if (jar === null) return <div className="skeleton" style={{ height: '140px', marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   const canClaim = jar.earnedThisMonth > 0;
 
@@ -23216,7 +23216,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       </div>
     );
   }
-  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   // Real fix (2026-08-24, flat-design sweep): 5 distinct non-exclusive sections
   // shown together -- reused .itunda-flat-section for section-boundary dividers.
@@ -23414,7 +23414,7 @@ function GroupAccountsSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {accounts === null ? (
-        <div className="itunda-card skeleton" style={{ height: '64px' }} />
+        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : accounts.length === 0 ? (
         <EmptyState message="No group accounts yet -- start one to save or split expenses with others." />
       ) : (
@@ -23471,7 +23471,7 @@ function IkiminaSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {ikiminas === null ? (
-        <div className="itunda-card skeleton" style={{ height: '64px' }} />
+        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : ikiminas.length === 0 ? (
         <EmptyState message="No ikimina groups yet -- start one with people you trust." />
       ) : (
@@ -23663,7 +23663,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       </div>
     );
   }
-  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   const { ikimina, members, currentRoundContributions } = detail;
   const isOrganizer = ikimina.organizerId === myUserId;
@@ -23992,7 +23992,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
     );
   }
-  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   const { plan, accountBalance, installments } = detail;
   const pct = Math.min(100, Math.round((plan.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
@@ -24244,7 +24244,7 @@ function WeeklySavingsSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {plans === null ? (
-        <div className="itunda-card skeleton" style={{ height: '64px' }} />
+        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : plans.length === 0 ? (
         <EmptyState message="No 26-week savings plans yet — start one with an escalating weekly auto-debit and a streak-gated bonus rate." />
       ) : (
@@ -24363,7 +24363,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
     );
   }
-  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   const { plan, accountBalance, deposits } = detail;
   const pct = Math.min(100, Math.round((plan.daysElapsed / GROW31_TERM_DAYS) * 100));
@@ -24581,7 +24581,7 @@ function Grow31SavingsSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {plans === null ? (
-        <div className="itunda-card skeleton" style={{ height: '64px' }} />
+        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : plans.length === 0 ? (
         <EmptyState message="No 31-day plans yet — save a small fixed amount every real day for an escalating streak bonus." />
       ) : (
@@ -24633,12 +24633,10 @@ function UpfrontDepositSection() {
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>12-month deposit</h3>
       <OpenUpfrontDepositForm onOpened={load} />
       {error && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
-        </div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '16px' }} role="alert">{error}</p>
       )}
       {deposits === null ? (
-        <div className="itunda-card skeleton" style={{ height: '64px' }} />
+        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : deposits.length === 0 ? (
         <EmptyState message="No 12-month deposits yet — open one to get a full year's interest paid today, principal locked for 12 months." />
       ) : (
@@ -24670,7 +24668,7 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
         {UPFRONT_DEPOSIT_ANNUAL_RATE}% interest for the full year, paid to your account today. Principal is locked for 12 months — no early withdrawal.
       </p>
