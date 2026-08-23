@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -166,17 +164,12 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 EmptyState("No group accounts yet — start one to split a shared expense with roommates or friends.")
             }
             else -> items(accounts!!, key = { it.id }) { account ->
-                Card(
-                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                    modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(account.id) },
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(account.id) }) {
                         Text(account.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         account.monthlyDuesAmount?.let {
                             Text("${formatMoneyGroup(it)} RWF / month dues", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
-                    }
                 }
             }
         }
@@ -351,18 +344,17 @@ private fun GroupAccountDetailContent(id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(20.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper -- the screen's
+            // own main content.
+            Column {
                     Text(current.groupAccount.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     val animatedBalance = rememberCountUp(current.balance.toDouble())
                     Text("${formatMoneyGroup(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                     Text("${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                }
             }
         }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
+            Column {
                     Text("Members", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     current.members.forEach { m ->
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -370,7 +362,6 @@ private fun GroupAccountDetailContent(id: String) {
                             if (m.isOwner) Text("Organizer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
-                }
             }
         }
         item {
@@ -397,12 +388,13 @@ private fun GroupAccountDetailContent(id: String) {
         }
         if (actionMode == GroupAccountActionMode.DUES) {
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper -- a section
+            // on an otherwise-flat detail screen.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Monthly dues", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     val currentDues = dues
                     when {
-                        currentDues == null -> Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(40.dp)) {}
+                        currentDues == null -> SkeletonBlock(height = 40.dp)
                         currentDues.duesAmount == null && isOwner -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = duesAmountInput, onValueChange = { duesAmountInput = it }, label = "Monthly dues (RWF)", modifier = Modifier.weight(1f))
                             Box(
@@ -446,7 +438,6 @@ private fun GroupAccountDetailContent(id: String) {
                             }
                         }
                     }
-                }
             }
         }
         }
@@ -459,8 +450,9 @@ private fun GroupAccountDetailContent(id: String) {
                     onVerified = { val action = pendingDeviceAction; pendingDeviceAction = null; action?.invoke() },
                 )
             } else {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper -- a
+                // section on an otherwise-flat detail screen.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (isOwner) "Deposit or withdraw" else "Deposit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         rw.itunda.core.designsystem.components.AmountKeypadInput(
                             digits = amount, onDigitsChange = { amount = it },
@@ -476,15 +468,15 @@ private fun GroupAccountDetailContent(id: String) {
                                 ) { Text(if (busy) "…" else "Withdraw", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                             }
                         }
-                    }
                 }
             }
         }
         }
         if (isOwner && actionMode == GroupAccountActionMode.INVITE) {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper -- a
+                // section on an otherwise-flat detail screen.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
@@ -494,7 +486,6 @@ private fun GroupAccountDetailContent(id: String) {
                                     .padding(horizontal = 20.dp, vertical = 14.dp),
                             ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
-                    }
                 }
             }
         }

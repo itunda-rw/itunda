@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -111,15 +109,15 @@ fun KnowledgeScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                // Real fix (flat-design sweep): dropped the Card wrapper -- a stat
+                // row on an otherwise-flat screen.
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Your reputation", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         val count = reputation
                         Text(
                             if (count == null) "…" else "$count adopted answer${if (count == 1) "" else "s"}",
                             color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         )
-                    }
                 }
             }
             item {
@@ -173,17 +171,17 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                 item { EmptyState("No questions yet — be the first to ask.") }
             } else {
                 items(list, key = { it.id }) { q ->
-                    Card(
-                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+                    // Real fix (flat-design sweep): dropped the per-row Card -- a
+                    // question list separates entries with spacing alone.
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth().pressScaleClickable { openQuestionId = q.id },
                     ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 (if (q.adoptedAnswerId != null) "✅ " else "") + q.title,
                                 color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                             )
                             Text(categories.find { it.id == q.category }?.label ?: q.category, color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        }
                     }
                 }
             }
@@ -192,11 +190,10 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                 if (answers != null && answers.isNotEmpty()) {
                     item { Text("Your answers", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(answers, key = { it.id }) { a ->
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Real fix (flat-design sweep): dropped the per-row Card.
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(if (a.isAdopted) "✅ Adopted" else "Pending", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                 Text(a.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                            }
                         }
                     }
                 }
@@ -224,8 +221,9 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
         return
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- an inline form
+    // section on an otherwise-flat screen.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 categories.forEach { c ->
                     val selected = category == c.id
@@ -261,7 +259,6 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
                     }.padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (submitting) "Posting…" else "Post question", color = Color.White, fontWeight = FontWeight.Bold) }
-        }
     }
 }
 
@@ -305,11 +302,11 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
             val q = question
             if (q != null) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Real fix (flat-design sweep): dropped the Card wrapper -- the
+                    // screen's own main content.
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(q.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                             Text(q.body, color = Ids.colors.textSecondary, fontSize = 14.sp)
-                        }
                     }
                 }
             }
@@ -321,12 +318,8 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
                 item { EmptyState("No answers yet — be the first to help.") }
             } else {
                 items(list, key = { it.id }) { a ->
-                    Card(
-                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Real fix (flat-design sweep): dropped the per-row Card.
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             if (a.isAdopted) Text("✅ Adopted answer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             Text(a.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
                             if (isAsker && q?.adoptedAnswerId == null) {
@@ -350,7 +343,6 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
                                         }.padding(horizontal = 12.dp, vertical = 8.dp),
                                 ) { Text(if (busyAnswerId == a.id) "…" else "Adopt this answer", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             }
-                        }
                     }
                 }
             }
