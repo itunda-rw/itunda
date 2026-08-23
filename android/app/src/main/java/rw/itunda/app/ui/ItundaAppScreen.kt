@@ -1561,7 +1561,11 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Ids.colors.surface)
+                // Real fix (2026-08-24): was Ids.colors.surface, which diverges from
+                // Ids.colors.background in dark mode (0x202027 vs 0x17171C), making
+                // the bottom bar visibly stand out from the page -- real Toss/Coupang
+                // keep every chrome bar the same color as the content underneath it.
+                .background(Ids.colors.background)
                 .padding(top = 8.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically

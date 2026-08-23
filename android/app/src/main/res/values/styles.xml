@@ -15,10 +15,20 @@
          own background fell through to this hardcoded light windowBackground
          even in dark mode, showing a cream flash instead of
          Ids.colors.background, matching IdsLightSemanticColors.background
-         (0xFFF2F4F6) exactly; see values-night/styles.xml for the dark match. -->
+         exactly; see values-night/styles.xml for the dark match.
+
+         Real fix (2026-08-24, direct user directive, real Toss/Coupang
+         screenshots): was #F2F4F6, stale after IdsSemanticColors.kt's own
+         2026-08-24 fix moved IdsLightSemanticColors.background to white
+         (0xFFFFFFFF), since this file has its own separate hardcoded copy the
+         Kotlin-side fix doesn't reach, so the SYSTEM status bar and SYSTEM
+         navigation bar (native Android chrome, outside Compose) stayed grey
+         while the in-app content turned white, the exact "bars don't match
+         content" seam the user's reference screenshots show real Toss/Coupang
+         never has. -->
     <style name="Theme.Itunda" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <item name="android:windowBackground">#F2F4F6</item>
-        <item name="android:navigationBarColor">#F2F4F6</item>
-        <item name="android:statusBarColor">#F2F4F6</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
     </style>
 </resources>
