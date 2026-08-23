@@ -2343,21 +2343,31 @@ private fun BankHubScreen(
                             val progressPercent = if (goal.targetAmount > 0) {
                                 (goal.currentAmount / goal.targetAmount * 100).toInt()
                             } else 0
+                            // Real fix (2026-08-23, same session as the backend guard
+                            // against depositing into an already-completed goal): this row
+                            // had no visual distinction for a completed goal at all --
+                            // tapping opened the same deposit flow as any active goal,
+                            // matching what used to be a real silent-money-loss bug on the
+                            // backend. Web's own equivalent card already appends this same
+                            // "· Completed 🎉" marker (BankDashboard.tsx).
+                            val completed = goal.status == "completed"
                             add(
                                 ShellRow(
                                     goal.name,
-                                    // The backend has carried a real targetDate on every
-                                    // savings goal all along, but this row only ever showed
-                                    // progress -- a goal without its deadline is just a
-                                    // balance. Falls back to the plain pattern when the
-                                    // goal genuinely has no date set.
-                                    goal.targetDate?.takeIf { it.isNotBlank() }?.let { date ->
-                                        savingsProgressByDatePattern.format(
-                                            "%,.0f".format(goal.currentAmount),
-                                            "%,.0f".format(goal.targetAmount),
-                                            date.take(10),
-                                        )
-                                    } ?: savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
+                                    (
+                                        // The backend has carried a real targetDate on every
+                                        // savings goal all along, but this row only ever showed
+                                        // progress -- a goal without its deadline is just a
+                                        // balance. Falls back to the plain pattern when the
+                                        // goal genuinely has no date set.
+                                        goal.targetDate?.takeIf { it.isNotBlank() }?.let { date ->
+                                            savingsProgressByDatePattern.format(
+                                                "%,.0f".format(goal.currentAmount),
+                                                "%,.0f".format(goal.targetAmount),
+                                                date.take(10),
+                                            )
+                                        } ?: savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount))
+                                    ) + if (completed) " · Completed 🎉" else "",
                                     "$progressPercent%",
                                     Icons.Outlined.Savings,
                                     AccentIndigo,
