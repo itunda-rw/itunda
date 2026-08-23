@@ -31,8 +31,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ShoppingBag
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -669,31 +667,33 @@ private fun ListingWishlistView(onRemoved: () -> Unit) {
         favorites == null -> SkeletonBlock()
         favorites!!.isEmpty() -> EmptyState("No saved listings yet -- tap ♡ on any listing to save it here.", icon = Icons.Outlined.FavoriteBorder)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+            // an entity list a user manages (saved listings), no divider, matching
+            // GroupAccountScreen's identical entity-list conversion
+            // (docs/UI_UX_GUIDELINES.md §10).
             favorites!!.forEach { f ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("${f.category} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        }
-                        ListingActionButton(if (removingId == f.listingId) "Removing…" else "Remove", removingId == f.listingId) {
-                            removingId = f.listingId
-                            coroutineScope.launch {
-                                try {
-                                    NetworkClient.apiService.removeListingFavorite(f.listingId)
-                                    favorites = favorites?.filterNot { it.listingId == f.listingId }
-                                    onRemoved()
-                                } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
-                                } catch (e: IOException) {
-                                    error = "Couldn't reach itunda. Check your connection and try again."
-                                } finally {
-                                    removingId = null
-                                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(f.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("${f.category} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    }
+                    ListingActionButton(if (removingId == f.listingId) "Removing…" else "Remove", removingId == f.listingId) {
+                        removingId = f.listingId
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.removeListingFavorite(f.listingId)
+                                favorites = favorites?.filterNot { it.listingId == f.listingId }
+                                onRemoved()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                removingId = null
                             }
                         }
                     }
@@ -797,16 +797,19 @@ private fun KeywordAlertsView() {
         }
     }
 
+    // Real fix (2026-08-24, flat-design sweep): dropped all 3 Card wrappers in this
+    // function -- add-alert form (lone), the alert list (an entity list a user
+    // manages, no divider, matching GroupAccountScreen), and Quiet hours (its own
+    // bold title already marks the section boundary, no divider needed)
+    // (docs/UI_UX_GUIDELINES.md §10).
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IdsTextField(
-                    value = keyword, onValueChange = { keyword = it }, label = "Alert me for (e.g. iPhone 15)",
-                    singleLine = true, modifier = Modifier.weight(1f),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                ListingActionButton(if (adding) "…" else "Add", adding, filled = true) { addAlert() }
-            }
+        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            IdsTextField(
+                value = keyword, onValueChange = { keyword = it }, label = "Alert me for (e.g. iPhone 15)",
+                singleLine = true, modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            ListingActionButton(if (adding) "…" else "Add", adding, filled = true) { addAlert() }
         }
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         when {
@@ -814,33 +817,29 @@ private fun KeywordAlertsView() {
             alerts!!.isEmpty() -> EmptyState("No keyword alerts yet -- add one to get notified when a matching listing is posted.", icon = Icons.Outlined.Notifications)
             else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 alerts!!.forEach { a ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(a.keyword, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            ListingActionButton(if (removingId == a.id) "Removing…" else "Remove", removingId == a.id) { removeAlert(a.id) }
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(a.keyword, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        ListingActionButton(if (removingId == a.id) "Removing…" else "Remove", removingId == a.id) { removeAlert(a.id) }
                     }
                 }
             }
         }
         if (quietHoursLoaded) {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Quiet hours", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text("Don't send alert notifications during these hours.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IdsTextField(value = quietStart, onValueChange = { quietStart = it }, label = "Start (HH:mm)", modifier = Modifier.weight(1f))
-                        IdsTextField(value = quietEnd, onValueChange = { quietEnd = it }, label = "End (HH:mm)", modifier = Modifier.weight(1f))
-                    }
-                    ListingActionButton(
-                        if (savingQuietHours) "…" else if (quietHours?.enabled == true) "Turn off quiet hours" else "Turn on quiet hours",
-                        savingQuietHours, filled = quietHours?.enabled != true,
-                    ) { saveQuietHours(quietHours?.enabled != true) }
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Quiet hours", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Don't send alert notifications during these hours.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IdsTextField(value = quietStart, onValueChange = { quietStart = it }, label = "Start (HH:mm)", modifier = Modifier.weight(1f))
+                    IdsTextField(value = quietEnd, onValueChange = { quietEnd = it }, label = "End (HH:mm)", modifier = Modifier.weight(1f))
                 }
+                ListingActionButton(
+                    if (savingQuietHours) "…" else if (quietHours?.enabled == true) "Turn off quiet hours" else "Turn on quiet hours",
+                    savingQuietHours, filled = quietHours?.enabled != true,
+                ) { saveQuietHours(quietHours?.enabled != true) }
             }
         }
     }
@@ -908,8 +907,9 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- this
+    // screen's own main content, a lone form (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List an item", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             IdsTextField(value = title, onValueChange = { title = it }, label = "What are you selling?", singleLine = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "Description", modifier = Modifier.fillMaxWidth())
@@ -1011,7 +1011,6 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) { Text(if (submitting) "Listing…" else "List it", color = Color.White, fontWeight = FontWeight.Bold) }
             }
-        }
     }
 }
 
