@@ -141,7 +141,7 @@ import {
 } from './lib/marketplace';
 import { clearSecondNeighborhood, fetchProfile, setBirthDate, setNeighborhood, setSecondNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
-import { depositToMiniAccount, openMiniAccount } from './lib/miniAccount';
+import { depositToYouthAccount, openYouthAccount } from './lib/youthAccount';
 import { claimGift, fetchGiftsForConversation, sendGift, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
 import {
   addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommentNotificationsEnabled, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
@@ -249,6 +249,7 @@ import {
   fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
+import { useCountUp } from './hooks/useCountUp';
 
 // Consumer navigation is organised around jobs, not the repository's feature
 // inventory: Home / Pay / Explore / Messages / You (2026-08-10, explicit product
@@ -1098,11 +1099,11 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
 // and isolated -- itunda bank is a complete product... tabs are not products, are
 // just access points." This tab used to render the account balance, transfer flow,
 // quick actions, coop-savings teaser, transaction history, scheduled/auto
-// transfers, auto top-up, request-money, and the Mini account card directly --
+// transfers, auto top-up, request-money, and the Youth account card directly --
 // real Bank- and Pay-product content baked into what's meant to be a generic
 // access point. AccountBalance/QuickActions/TransactionHistory/RequestMoneyCard/
 // AutoTopUpCard/ScheduledTransfersCard moved into PayHub (itunda's real,
-// self-contained account product); AutoTransfersCard/MiniAccountCard moved into
+// self-contained account product); AutoTransfersCard/YouthAccountCard moved into
 // SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
 // linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
 // it's removed outright rather than moved -- nothing it showed was unique.
@@ -1466,12 +1467,12 @@ function DiscoverSection() {
   );
 }
 
-// Real KakaoBank mini-style capped starter account -- see lib/miniAccount.ts's own doc
+// Real KakaoBank mini-style capped starter account -- see lib/youthAccount.ts's own doc
 // comment. First client UI for this backend feature on any platform (item 99, found
 // with zero client anywhere despite the backend being real and live since 2026-07-28).
-function MiniAccountCard() {
+function YouthAccountCard() {
   const { t } = useI18n();
-  const [miniAccount, setMiniAccount] = useState<Account | null | undefined>(undefined);
+  const [youthAccount, setYouthAccount] = useState<Account | null | undefined>(undefined);
   const [needsBirthDate, setNeedsBirthDate] = useState(false);
   const [birthDate, setBirthDateInput] = useState('');
   const [amount, setAmount] = useState('');
@@ -1480,25 +1481,27 @@ function MiniAccountCard() {
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
-    fetchAccounts().then((accounts) => setMiniAccount(accounts.find((w) => w.type === 'MINI') ?? null)).catch(() => setMiniAccount(null));
+    fetchAccounts().then((accounts) => setYouthAccount(accounts.find((w) => w.type === 'MINI') ?? null)).catch(() => setYouthAccount(null));
   };
 
   useEffect(load, []);
+  // Real Toss motion pattern -- see useCountUp's own doc comment.
+  const animatedBalance = useCountUp(youthAccount?.balance ?? 0);
 
   const handleOpen = async () => {
     setBusy(true);
     setError(null);
     try {
-      const account = await openMiniAccount();
-      setMiniAccount(account);
+      const account = await openYouthAccount();
+      setYouthAccount(account);
       setNeedsBirthDate(false);
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'MINI_ACCOUNT_BIRTH_DATE_REQUIRED') {
+      if (err instanceof ApiError && err.code === 'YOUTH_ACCOUNT_BIRTH_DATE_REQUIRED') {
         setNeedsBirthDate(true);
-      } else if (err instanceof ApiError && err.code === 'MINI_ACCOUNT_AGE_INELIGIBLE') {
-        setError(t('miniAccount.ageIneligible'));
+      } else if (err instanceof ApiError && err.code === 'YOUTH_ACCOUNT_AGE_INELIGIBLE') {
+        setError(t('youthAccount.ageIneligible'));
       } else {
-        setError(err instanceof ApiError ? err.message : t('miniAccount.openError'));
+        setError(err instanceof ApiError ? err.message : t('youthAccount.openError'));
       }
     } finally {
       setBusy(false);
@@ -1514,7 +1517,7 @@ function MiniAccountCard() {
       await setBirthDate(birthDate);
       await handleOpen();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('miniAccount.birthDateError'));
+      setError(err instanceof ApiError ? err.message : t('youthAccount.birthDateError'));
       setBusy(false);
     }
   };
@@ -1526,44 +1529,44 @@ function MiniAccountCard() {
     setBusy(true);
     setError(null);
     try {
-      await depositToMiniAccount(parsedAmount);
+      await depositToYouthAccount(parsedAmount);
       setAmount('');
       setShowDeposit(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('miniAccount.depositError'));
+      setError(err instanceof ApiError ? err.message : t('youthAccount.depositError'));
     } finally {
       setBusy(false);
     }
   };
 
-  if (miniAccount === undefined) return null;
+  if (youthAccount === undefined) return null;
 
   return (
     <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('miniAccount.title')}</h3>
-        {miniAccount && (
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('youthAccount.title')}</h3>
+        {youthAccount && (
           <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
-            {showDeposit ? t('miniAccount.cancel') : t('miniAccount.addMoney')}
+            {showDeposit ? t('youthAccount.cancel') : t('youthAccount.addMoney')}
           </button>
         )}
       </div>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
-      {!miniAccount && !needsBirthDate && (
+      {!youthAccount && !needsBirthDate && (
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-            {t('miniAccount.description')}
+            {t('youthAccount.description')}
           </p>
-          <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('miniAccount.opening') : t('miniAccount.open')}</button>
+          <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('youthAccount.opening') : t('youthAccount.open')}</button>
         </div>
       )}
 
-      {!miniAccount && needsBirthDate && (
+      {!youthAccount && needsBirthDate && (
         <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('miniAccount.birthDatePrompt')}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('youthAccount.birthDatePrompt')}</p>
           <input
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
@@ -1571,21 +1574,21 @@ function MiniAccountCard() {
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
               doesn't say what happens next -- the paragraph above already names the real
               outcome ("check eligibility"), so the button says it too. */}
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniAccount.checking') : t('miniAccount.checkEligibility')}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('youthAccount.checking') : t('youthAccount.checkEligibility')}</button>
         </form>
       )}
 
-      {miniAccount && (
+      {youthAccount && (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{miniAccount.balance.toLocaleString()} RWF</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{miniAccount.accountNumber}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
           {showDeposit && (
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
-                type="number" placeholder={t('miniAccount.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+                type="number" placeholder={t('youthAccount.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
                 style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
               />
-              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniAccount.adding') : t('miniAccount.add')}</button>
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('youthAccount.adding') : t('youthAccount.add')}</button>
             </form>
           )}
         </div>
@@ -4856,13 +4859,7 @@ function ForeignCurrencyView() {
           </p>
         </div>
       ) : (
-        accounts.map((w) => (
-          <div key={w.id} className="itunda-card" style={{ padding: '20px' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{w.currency} account</p>
-            <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{w.balance.toLocaleString()} {w.currency}</h2>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{w.accountNumber}</p>
-          </div>
-        ))
+        accounts.map((w) => <ForeignCurrencyAccountRow key={w.id} account={w} />)
       )}
 
       {availableToOpen.length > 0 && <OpenForeignAccountCard currencies={availableToOpen} onOpened={load} />}
@@ -4880,6 +4877,20 @@ function ForeignCurrencyView() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Extracted so useCountUp -- see its own doc comment -- can be called once per
+// real row rather than inside the parent's accounts.map() callback, which the
+// Rules of Hooks forbid.
+function ForeignCurrencyAccountRow({ account }: { account: ForeignCurrencyAccount }) {
+  const animatedBalance = useCountUp(account.balance);
+  return (
+    <div className="itunda-card" style={{ padding: '20px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.currency} account</p>
+      <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} {account.currency}</h2>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.accountNumber}</p>
     </div>
   );
 }
@@ -6970,6 +6981,10 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
   // explicitly swipes to a different account), MAIN kept only as a defensive fallback.
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const account = accounts.find((w) => w.id === selectedAccountId) ?? accounts.find((w) => w.type === 'PAY') ?? accounts.find((w) => w.type === 'MAIN') ?? accounts[0] ?? null;
+  // Real Toss motion pattern (toss.im/tossfeed/article/why-motion-in-finance) --
+  // see useCountUp's own doc comment. This is itunda's real Pay-tab headline
+  // balance, the closest analogue to Toss Pay's own animated balance.
+  const animatedBalance = useCountUp(account?.balance ?? 0);
 
   // Real auto-refresh shortly before the code's own real 2-minute expiry, matching
   // Android's identical MyPaymentCodeCard -- a customer standing at a register
@@ -7093,7 +7108,7 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
         >
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>itunda Pay</span>
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {account.balance.toLocaleString()} RWF <ChevronRight size={16} color="var(--itunda-grey-500)" />
+            {animatedBalance.toLocaleString()} RWF <ChevronRight size={16} color="var(--itunda-grey-500)" />
           </span>
         </button>
       )}
@@ -22253,6 +22268,10 @@ function InterestJarCard() {
     fetchInterestJar().then(setJar).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
+  // Real Toss motion pattern -- see useCountUp's own doc comment. Called before
+  // either early return below (Rules of Hooks), using jar?.balance so it's
+  // already correct once jar loads.
+  const animatedBalance = useCountUp(jar?.balance ?? 0);
 
   const handleClaim = async () => {
     setClaiming(true);
@@ -22291,7 +22310,7 @@ function InterestJarCard() {
           which is the actual number times ~365 too high a read for anyone taking it
           literally. Now states the real methodology instead of a bare adjective. */}
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>Safe Box · {jar.rate}% annual, accrued daily on your balance</p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
         <div>
           {/* Real fix (2026-08-11): interest now auto-credits to the account the
@@ -22644,6 +22663,10 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   };
 
   const isOwner = detail?.groupAccount.ownerId === myUserId;
+  // Real Toss motion pattern -- see useCountUp's own doc comment. Called before
+  // either early return below (Rules of Hooks: a hook can't be skipped on some
+  // renders), using detail?.balance so it's already correct once detail loads.
+  const animatedBalance = useCountUp(detail?.balance ?? 0);
 
   const handleDeposit = async () => {
     setBusy(true);
@@ -22712,7 +22735,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
 
       <div className="itunda-card" style={{ marginBottom: '16px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{detail.groupAccount.name}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{detail.balance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
       </div>
 
@@ -23129,6 +23152,10 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
     fetchIkimina(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
   useEffect(load, []);
+  // Real Toss motion pattern -- see useCountUp's own doc comment. Called before
+  // either early return below (Rules of Hooks), using detail?.balance so it's
+  // already correct once detail loads.
+  const animatedBalance = useCountUp(detail?.balance ?? 0);
 
   if (error && !detail) {
     return (
@@ -23140,7 +23167,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   }
   if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
-  const { ikimina, balance, members, currentRoundContributions } = detail;
+  const { ikimina, members, currentRoundContributions } = detail;
   const isOrganizer = ikimina.organizerId === myUserId;
   const myMember = members.find((m) => m.userId === myUserId);
   const iContributed = currentRoundContributions.find((c) => c.userId === myUserId)?.contributed ?? false;
@@ -23216,7 +23243,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 
       <div className="itunda-card" style={{ marginBottom: '16px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{ikimina.name}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{balance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           {ikimina.status === 'FORMING'
             ? `Forming — ${members.length} of up to ${ikimina.memberCap} members`
@@ -24293,7 +24320,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
         <UpfrontDepositSection />
       </div>
       {/* Real architectural fix (2026-08-13) -- see this view's own coop-rail doc
-          comment above: AutoTransfersCard (recurring 자동이체) and MiniAccountCard (a
+          comment above: AutoTransfersCard (recurring 자동이체) and YouthAccountCard (a
           capped starter account) both used to render on Home too, same "real Bank-
           product content on a generic access point" violation. Homed here now,
           matching Android's identical "Auto Transfer -> BankHubScreen" move. */}
@@ -24301,7 +24328,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
         <AutoTransfersCard />
       </div>
       <div style={{ marginTop: '24px' }}>
-        <MiniAccountCard />
+        <YouthAccountCard />
       </div>
       {onNavigateToTab && (
         <div className="itunda-card" style={{ marginTop: '24px', padding: '20px' }}>

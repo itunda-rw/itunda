@@ -196,6 +196,63 @@ rebrand; a color that's one option in an independent user-choice palette (bookma
 colors, category tags) does not — it isn't the brand pointer, just happens to share
 a hue.
 
+## 12. A product name is an ecosystem-wide promise, not a per-screen label (Google, Samsung,
+Apple, Kakao, Toss)
+
+Direct user correction (2026-08-23): "itunda account" (bare, no qualifier) was being used
+for itunda's real MAIN financial-account row — but "[Brand] Account" already means something
+specific and different across every major platform a user has already learned from: it's
+**exclusively the SSO/identity layer**, never a specific money-holding product. Confirmed
+directly, not assumed — Google Account, Samsung Account, and Apple Account (renamed from
+Apple ID in 2024) are each their platform's one foundational login identity, existing
+*alongside* rather than *as* any specific banking/payment product. Kakao Account (카카오계정)
+is the identical pattern: the shared login across KakaoTalk/KakaoBank/KakaoPay, confirmed
+distinct from KakaoBank's own real deposit accounts and KakaoPay's own separate e-wallet.
+Toss goes further and doesn't even brand its identity layer at all — login is just phone
+number + name, no "Toss Account" product name exists; "account" in Toss's own real
+vocabulary is reserved exclusively for actual banking terms (토스뱅크 계좌, "Toss Bank
+account"), and the stored-value e-money balance gets its own distinct, non-generic name
+(토스머니, "Toss Money") rather than "Toss account" or "Toss wallet."
+
+**A second, real, live collision found the same pass, worse than the first**: itunda's
+KakaoBank-Mini-style capped teen banking product ("Mini account," ages 7-18) and Saronite's
+real embedded partner mini-program framework ("Mini apps") were BOTH shipped, user-facing
+labels in the same "All"/Explore-tab area on iOS (`BenefitsShopAllScreens.swift`) — and
+Android had an actual grid tile labeled bare **"Mini"** (using an Apps icon) that opened the
+banking product, not mini-apps. Checking KakaoBank's own real branding confirmed the fix
+shape directly: their product is never referred to as bare "미니"/"Mini" — always the full
+"카카오뱅크 미니" (KakaoBank Mini), the parent-product prefix travels with the qualifier every
+time. itunda's own follow-up correction (direct user feedback): an abstract borrowed label
+like "Mini" needs its own subtitle to explain itself (itunda's real existing copy already
+carries `"Capped starter account, ages 7-18"` next to it) — a plain, descriptive name
+wouldn't need that crutch at all, more in line with rule 7's own "Casual Concept" principle
+than mirroring a borrowed brand term. Renamed to **"Youth account"** — a real, common banking
+term that covers the full 7-18 range (unlike "Teen," which usually implies 13-19) without
+needing an explanatory subtitle to be understood on sight.
+
+**The standing rule, not just this one fix**: two real fixes, one general practice.
+
+1. **A bare "[itunda] Account" is retired everywhere it names a specific financial product
+   row or screen.** Always qualify it — "itunda Bank account" for MAIN, "itunda Pay" for PAY
+   (already itunda's own established Bank/Pay-separation naming). Bare "itunda account"
+   survives only in its real identity/signup sense ("has an itunda account" = "is signed up
+   with itunda") — the same restrained usage Google/Kakao/Samsung/Apple make of their own
+   bare "[Brand] Account" phrase, where it IS the identity term and is never reused for a
+   sub-product.
+2. **Before shipping any new user-facing product/feature name, grep the whole live codebase
+   (all platforms) for the exact same bare qualifier word already in use elsewhere.** A bare
+   generic word ("Mini," "Account," "Home," "Pay") is a real collision risk the instant two
+   unrelated features both reach for it independently — the fix is always the same shape:
+   attach the specific product/vertical prefix, never let a bare qualifier carry meaning
+   alone. Don't discover this after shipping, the way both cases above were found.
+
+**How to apply**: before naming a new screen, product, or section, check this rule first. If
+the candidate name could plausibly collide with something that already exists (shares a bare
+noun with unrelated meaning, or reuses "Account" for something that isn't the identity
+layer), rename before shipping rather than after a live collision is found. This applies
+ecosystem-wide — a name has to stay unambiguous across web, Android, and iOS at once, not
+just within the one screen it was written for.
+
 ## Standing checklist before shipping a new screen
 
 1. Does it do more than one job? → apply rule 1.
@@ -208,3 +265,5 @@ a hue.
    component instead of the shared one? → apply rules 8-9.
 8. Is a linear screen's content boxed in `itunda-card` out of habit rather than because
    it's a genuinely separate module? → apply rule 10.
+9. Does this new name collide with an existing one anywhere in the ecosystem, or misuse
+   "[itunda] Account" for something that isn't the identity layer? → apply rule 12.

@@ -156,22 +156,22 @@ export type TranslationKey =
   | 'coopRail.harvestAdvance.title'
   | 'coopRail.harvestAdvance.subtitle'
   | 'coopRail.seeAll'
-  | 'miniAccount.title'
-  | 'miniAccount.cancel'
-  | 'miniAccount.addMoney'
-  | 'miniAccount.ageIneligible'
-  | 'miniAccount.openError'
-  | 'miniAccount.birthDateError'
-  | 'miniAccount.depositError'
-  | 'miniAccount.description'
-  | 'miniAccount.opening'
-  | 'miniAccount.open'
-  | 'miniAccount.birthDatePrompt'
-  | 'miniAccount.checking'
-  | 'miniAccount.checkEligibility'
-  | 'miniAccount.amountPlaceholder'
-  | 'miniAccount.adding'
-  | 'miniAccount.add'
+  | 'youthAccount.title'
+  | 'youthAccount.cancel'
+  | 'youthAccount.addMoney'
+  | 'youthAccount.ageIneligible'
+  | 'youthAccount.openError'
+  | 'youthAccount.birthDateError'
+  | 'youthAccount.depositError'
+  | 'youthAccount.description'
+  | 'youthAccount.opening'
+  | 'youthAccount.open'
+  | 'youthAccount.birthDatePrompt'
+  | 'youthAccount.checking'
+  | 'youthAccount.checkEligibility'
+  | 'youthAccount.amountPlaceholder'
+  | 'youthAccount.adding'
+  | 'youthAccount.add'
   | 'scheduledTransfers.title'
   | 'scheduledTransfers.cancel'
   | 'scheduledTransfers.schedule'
@@ -362,22 +362,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.harvestAdvance.title': 'Harvest advance',
     'coopRail.harvestAdvance.subtitle': 'Input financing from your coffee cooperative',
     'coopRail.seeAll': 'See all in itunda Bank',
-    'miniAccount.title': 'Mini account',
-    'miniAccount.cancel': 'Cancel',
-    'miniAccount.addMoney': '+ Add money',
-    'miniAccount.ageIneligible': 'Mini accounts are only available for ages 7-18.',
-    'miniAccount.openError': 'Could not open a Mini account.',
-    'miniAccount.birthDateError': 'Could not save your birth date.',
-    'miniAccount.depositError': 'Could not add money to your Mini account.',
-    'miniAccount.description': 'A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.',
-    'miniAccount.opening': 'Opening…',
-    'miniAccount.open': 'Open a Mini account',
-    'miniAccount.birthDatePrompt': 'Enter your birth date to check eligibility.',
-    'miniAccount.checking': 'Checking…',
-    'miniAccount.checkEligibility': 'Check eligibility',
-    'miniAccount.amountPlaceholder': 'Amount (RWF)',
-    'miniAccount.adding': 'Adding…',
-    'miniAccount.add': 'Add',
+    'youthAccount.title': 'Youth account',
+    'youthAccount.cancel': 'Cancel',
+    'youthAccount.addMoney': '+ Add money',
+    'youthAccount.ageIneligible': 'Youth accounts are only available for ages 7-18.',
+    'youthAccount.openError': 'Could not open a Youth account.',
+    'youthAccount.birthDateError': 'Could not save your birth date.',
+    'youthAccount.depositError': 'Could not add money to your Youth account.',
+    'youthAccount.description': 'A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.',
+    'youthAccount.opening': 'Opening…',
+    'youthAccount.open': 'Open a Youth account',
+    'youthAccount.birthDatePrompt': 'Enter your birth date to check eligibility.',
+    'youthAccount.checking': 'Checking…',
+    'youthAccount.checkEligibility': 'Check eligibility',
+    'youthAccount.amountPlaceholder': 'Amount (RWF)',
+    'youthAccount.adding': 'Adding…',
+    'youthAccount.add': 'Add',
     'scheduledTransfers.title': 'Scheduled transfers',
     'scheduledTransfers.cancel': 'Cancel',
     'scheduledTransfers.schedule': '+ Schedule',
@@ -576,22 +576,30 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.harvestAdvance.title': 'Inguzanyo yo gutera imbere isarura',
     'coopRail.harvestAdvance.subtitle': "Inguzanyo y'ibikoresho biva kuri koperative y'ikawa",
     'coopRail.seeAll': 'Reba byose muri itunda Bank',
-    'miniAccount.title': 'Konti ntoya',
-    'miniAccount.cancel': 'Hagarika',
-    'miniAccount.addMoney': '+ Ongeraho amafaranga',
-    'miniAccount.ageIneligible': 'Konti ntoya ziboneka gusa ku myaka 7-18.',
-    'miniAccount.openError': 'Ntibishoboka gufungura konti ntoya.',
-    'miniAccount.birthDateError': 'Ntibishoboka kubika itariki y\'amavuko yawe.',
-    'miniAccount.depositError': 'Ntibishoboka kongeraho amafaranga kuri konti ntoya.',
-    'miniAccount.description': "Konti ntoya y'itangira ku myaka 7-18 -- ntirengeje 500,000 RWF, ntirengeje 300,000 RWF ku munsi cyangwa 2,000,000 RWF ku kwezi.",
-    'miniAccount.opening': 'Gufungura…',
-    'miniAccount.open': 'Fungura konti ntoya',
-    'miniAccount.birthDatePrompt': "Andika itariki y'amavuko yawe kugira ngo tumenye niba ubishoboye.",
-    'miniAccount.checking': 'Kugenzura…',
-    'miniAccount.checkEligibility': 'Genzura niba wemerewe',
-    'miniAccount.amountPlaceholder': 'Amafaranga (RWF)',
-    'miniAccount.adding': 'Kongeraho…',
-    'miniAccount.add': 'Ongeraho',
+    // Real, honest gap (2026-08-23): the English/French "Mini account" -> "Youth
+    // account" rename (see docs/UI_UX_GUIDELINES.md §12) deliberately did NOT touch
+    // this block's own Kinyarwanda text (still "Konti ntoya," i.e. "small/mini
+    // account") -- matching this codebase's own standing rule against fabricating
+    // real-user-facing translations without native review (see
+    // project_itunda_product_feel's own item 9 on backend error-copy). Needs a real
+    // native Kinyarwanda phrase for "youth account" before this fully matches the
+    // other 2 languages -- flagged, not silently left inconsistent.
+    'youthAccount.title': 'Konti ntoya',
+    'youthAccount.cancel': 'Hagarika',
+    'youthAccount.addMoney': '+ Ongeraho amafaranga',
+    'youthAccount.ageIneligible': 'Konti ntoya ziboneka gusa ku myaka 7-18.',
+    'youthAccount.openError': 'Ntibishoboka gufungura konti ntoya.',
+    'youthAccount.birthDateError': 'Ntibishoboka kubika itariki y\'amavuko yawe.',
+    'youthAccount.depositError': 'Ntibishoboka kongeraho amafaranga kuri konti ntoya.',
+    'youthAccount.description': "Konti ntoya y'itangira ku myaka 7-18 -- ntirengeje 500,000 RWF, ntirengeje 300,000 RWF ku munsi cyangwa 2,000,000 RWF ku kwezi.",
+    'youthAccount.opening': 'Gufungura…',
+    'youthAccount.open': 'Fungura konti ntoya',
+    'youthAccount.birthDatePrompt': "Andika itariki y'amavuko yawe kugira ngo tumenye niba ubishoboye.",
+    'youthAccount.checking': 'Kugenzura…',
+    'youthAccount.checkEligibility': 'Genzura niba wemerewe',
+    'youthAccount.amountPlaceholder': 'Amafaranga (RWF)',
+    'youthAccount.adding': 'Kongeraho…',
+    'youthAccount.add': 'Ongeraho',
     'scheduledTransfers.title': 'Kohereza byateganyijwe',
     'scheduledTransfers.cancel': 'Hagarika',
     'scheduledTransfers.schedule': '+ Tegura',
@@ -781,22 +789,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.harvestAdvance.title': 'Avance sur récolte',
     'coopRail.harvestAdvance.subtitle': 'Financement d’intrants par votre coopérative de café',
     'coopRail.seeAll': 'Tout voir dans itunda Bank',
-    'miniAccount.title': 'Mini-compte',
-    'miniAccount.cancel': 'Annuler',
-    'miniAccount.addMoney': '+ Ajouter de l’argent',
-    'miniAccount.ageIneligible': 'Les mini-comptes sont réservés aux 7-18 ans.',
-    'miniAccount.openError': 'Impossible d’ouvrir un Mini-compte.',
-    'miniAccount.birthDateError': 'Impossible d’enregistrer votre date de naissance.',
-    'miniAccount.depositError': 'Impossible d’ajouter de l’argent à votre Mini-compte.',
-    'miniAccount.description': 'Un compte de départ plafonné pour les 7-18 ans -- solde plafonné à 500 000 RWF, dépôts limités à 300 000 RWF/jour et 2 000 000 RWF/mois.',
-    'miniAccount.opening': 'Ouverture en cours…',
-    'miniAccount.open': 'Ouvrir un Mini-compte',
-    'miniAccount.birthDatePrompt': 'Saisissez votre date de naissance pour vérifier votre éligibilité.',
-    'miniAccount.checking': 'Vérification en cours…',
-    'miniAccount.checkEligibility': 'Vérifier l’éligibilité',
-    'miniAccount.amountPlaceholder': 'Montant (RWF)',
-    'miniAccount.adding': 'Ajout en cours…',
-    'miniAccount.add': 'Ajouter',
+    'youthAccount.title': 'Compte Jeunes',
+    'youthAccount.cancel': 'Annuler',
+    'youthAccount.addMoney': '+ Ajouter de l’argent',
+    'youthAccount.ageIneligible': 'Les comptes jeunes sont réservés aux 7-18 ans.',
+    'youthAccount.openError': 'Impossible d’ouvrir un Compte Jeunes.',
+    'youthAccount.birthDateError': 'Impossible d’enregistrer votre date de naissance.',
+    'youthAccount.depositError': 'Impossible d’ajouter de l’argent à votre Compte Jeunes.',
+    'youthAccount.description': 'Un compte de départ plafonné pour les 7-18 ans -- solde plafonné à 500 000 RWF, dépôts limités à 300 000 RWF/jour et 2 000 000 RWF/mois.',
+    'youthAccount.opening': 'Ouverture en cours…',
+    'youthAccount.open': 'Ouvrir un Compte Jeunes',
+    'youthAccount.birthDatePrompt': 'Saisissez votre date de naissance pour vérifier votre éligibilité.',
+    'youthAccount.checking': 'Vérification en cours…',
+    'youthAccount.checkEligibility': 'Vérifier l’éligibilité',
+    'youthAccount.amountPlaceholder': 'Montant (RWF)',
+    'youthAccount.adding': 'Ajout en cours…',
+    'youthAccount.add': 'Ajouter',
     'scheduledTransfers.title': 'Transferts programmés',
     'scheduledTransfers.cancel': 'Annuler',
     'scheduledTransfers.schedule': '+ Programmer',
