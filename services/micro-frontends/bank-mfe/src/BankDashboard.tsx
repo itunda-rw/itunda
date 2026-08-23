@@ -210,7 +210,7 @@ const BusView = lazy(() => import('./BusView'));
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import SimpleLiveRiderMap from './SimpleLiveRiderMap';
-import { searchPlaces, type PlaceSearchResult } from './lib/maps';
+import { fetchMyMapBookmarks, searchPlaces, type MapBookmark, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
 import { checkScamStatus, reportScam, type ScamCheckResult } from './lib/scamReports';
 import { fetchMyVehicles, fetchVehicleValuation, registerVehicle, removeVehicle, updateVehicleMileage, type Vehicle, type VehicleValuation } from './lib/vehicles';
@@ -17166,6 +17166,21 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
   // fields (BankDashboard.tsx), not dead code.
   const inputId = useId();
 
+  // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- itunda already
+  // has a real, backend-synced "map bookmarks" feature (the Maps tab's own star/save,
+  // folders/colors and all), never surfaced anywhere in ride booking despite being
+  // exactly the real "Home"/"Work" shortcut every real ride-hailing app shows before
+  // you type anything -- a real, confirmed gap (grep found zero references to
+  // bookmarks anywhere in the ride-booking code). Fetched once per mount (a small,
+  // per-account list, no pagination needed) rather than threaded in as a prop, so all
+  // 5 existing call sites of this shared component (ride + rental pickup/dropoff/stops)
+  // get it for free.
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    fetchMyMapBookmarks().then(setBookmarks).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!query || query === value?.displayName) { setResults(null); return; }
     const handle = setTimeout(() => {
@@ -17175,6 +17190,12 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  const selectBookmark = (b: MapBookmark) => {
+    onSelect({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude });
+    setQuery(b.displayName);
+    setFocused(false);
+  };
+
   return (
     <div style={{ position: 'relative', marginBottom: '12px' }}>
       <label htmlFor={inputId} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
@@ -17182,6 +17203,8 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
         id={inputId}
         type="text" value={query} placeholder={placeholder}
         onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
         style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       {results && results.length > 0 && (
@@ -17193,6 +17216,24 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
               onClick={() => { onSelect(r); setQuery(r.displayName); setResults(null); }}
             >
               {r.displayName}
+            </button>
+          ))}
+        </div>
+      )}
+      {!query && focused && bookmarks.length > 0 && (
+        <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', fontWeight: 700, padding: '6px 10px 2px' }}>Saved places</p>
+          {bookmarks.map((b) => (
+            <button
+              key={b.id} type="button"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', textAlign: 'left', padding: '10px', fontSize: 'var(--itunda-type-scale-13-size)', borderRadius: '6px' }}
+              onClick={() => selectBookmark(b)}
+            >
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
+              <span>
+                <span style={{ display: 'block', fontWeight: 700 }}>{b.displayName}</span>
+                <span style={{ display: 'block', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.folderName}</span>
+              </span>
             </button>
           ))}
         </div>
