@@ -16105,13 +16105,12 @@ function MenuView({
   };
 
   if (needsDeviceVerification) {
-    return (
-      <div className="itunda-card">
-        {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
-            account. handlePlaceOrder resets needsDeviceVerification itself. */}
-        <DeviceStepUpPrompt onVerified={() => handlePlaceOrder()} onCancel={() => setNeedsDeviceVerification(false)} />
-      </div>
-    );
+    // Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
+    // account. handlePlaceOrder resets needsDeviceVerification itself.
+    // Real fix (2026-08-24, flat-design sweep): dropped the itunda-card wrapper --
+    // DeviceStepUpPrompt already renders its own inset grey background, matching
+    // every other real call site in this file (none of them wrap it in a card).
+    return <DeviceStepUpPrompt onVerified={() => handlePlaceOrder()} onCancel={() => setNeedsDeviceVerification(false)} />;
   }
 
   if (error) {
@@ -16121,7 +16120,7 @@ function MenuView({
   }
 
   if (menu === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-flat-section skeleton" style={{ height: '220px' }} />;
   }
 
   if (showCheckout) {
@@ -16133,7 +16132,9 @@ function MenuView({
           </button>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Checkout</h3>
         </div>
-        <form onSubmit={handlePlaceOrder} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- this form
+            IS the whole checkout screen's content (docs/UI_UX_GUIDELINES.md §10). */}
+        <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {cartItems.map(([key, line]) => {
             const item = menu.products.find((p) => p.id === line.productId);
             if (!item) return null;
@@ -16215,8 +16216,10 @@ function MenuView({
             const simpleQty = hasOptions ? 0 : (cart[simpleKey]?.quantity ?? 0);
             const isExpanded = expandedProductId === item.id;
             const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
+            // Real fix (2026-08-24, flat-design sweep): dropped itunda-card, reusing
+            // itunda-flat-section for this real Baemin-style flat menu-item list.
             return (
-              <div key={item.id} className="itunda-card">
+              <div key={item.id} className="itunda-flat-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{item.name}</p>
@@ -22175,14 +22178,17 @@ function ShopView() {
         <WishlistView onOpenMerchant={setSelected} />
       ) : view === 'BROWSE' && searchResults !== null ? (
         searchResults.length === 0 ? (
-          <div className="itunda-card"><p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>No products matched "{searchQuery}".</p></div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>No products matched "{searchQuery}".</p>
         ) : (
+          // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a real
+          // product-search catalog list, matching the same flat-entity-list convention
+          // Android's VehicleValuationScreen/GroupAccountScreen already established
+          // (docs/UI_UX_GUIDELINES.md §10).
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {searchResults.map((r) => (
               <button
                 key={r.id}
                 onClick={() => openSearchResult(r)}
-                className="itunda-card"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', width: '100%', gap: '12px' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -22203,24 +22209,26 @@ function ShopView() {
       ) : error ? (
         <ErrorCard message={error} onRetry={load} />
       ) : merchants === null ? (
-        <div className="itunda-card skeleton" style={{ height: '220px' }} />
+        <div className="itunda-flat-section skeleton" style={{ height: '220px' }} />
       ) : merchants.length === 0 ? (
-        <div className="itunda-card">
-          {/* Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
-              from the same-day Android/iOS fix): "registered yet" is honest about
-              whose gap this is -- no merchant has joined yet, not something the
-              reader is missing a step on. */}
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-            {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search — try a different category or search term.' : 'No merchants registered yet — check back once merchants in your area join itunda Shop.'}
-          </p>
-        </div>
+        // Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
+        // from the same-day Android/iOS fix): "registered yet" is honest about
+        // whose gap this is -- no merchant has joined yet, not something the
+        // reader is missing a step on.
+        // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a plain
+        // one-line empty-state message.
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+          {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search — try a different category or search term.' : 'No merchants registered yet — check back once merchants in your area join itunda Shop.'}
+        </p>
       ) : (
+        // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a real
+        // merchant catalog list, same flat-entity-list convention as the product
+        // search list above.
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: totalItems > 0 ? '80px' : 0 }}>
           {merchants.map((m) => (
             <button
               key={m.merchantId}
               onClick={() => setSelected(m)}
-              className="itunda-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
             >
               {/* Real fix (2026-08-19): this row used to show a generic icon and the exact
