@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, Check, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, Check, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, QrCode, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -11,7 +11,7 @@ import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, BellGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, WrenchGlyph, PriceDropGlyph } from './icons/ItundaFaceMisc';
-import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsBanner, NearbyMerchantsDialog, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
+import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -1181,8 +1181,9 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   // Real Toss Pay home reference (2026-08-22) -- "Get more rewards" preview; see
   // PayHomeExtras.tsx's own top doc comment for the full honest-scoping rationale.
   const [rewardsPreview, setRewardsPreview] = useState<RewardTasksResult | null>(null);
-  // Real "345 stores nearby" banner -- see PayHomeExtras.tsx's NearbyMerchantsBanner.
+  // Real embedded nearby-merchants map -- see PayHomeExtras.tsx's NearbyMerchantsMap.
   const [nearbyMerchants, setNearbyMerchants] = useState<NearbyMerchant[]>([]);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [showNearbyMerchantsDialog, setShowNearbyMerchantsDialog] = useState(false);
   // Real "Toss Pay Money" detail/statement screen -- see PayMoneyDetail's own doc
   // comment. Holds the specific account drilled into, not just a boolean, since
@@ -1221,7 +1222,10 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (position) => { fetchNearbyMerchants(position.coords.latitude, position.coords.longitude).then(setNearbyMerchants).catch(() => {}); },
+      (position) => {
+        setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        fetchNearbyMerchants(position.coords.latitude, position.coords.longitude).then(setNearbyMerchants).catch(() => {});
+      },
       () => {},
       { enableHighAccuracy: true, timeout: 10000 },
     );
@@ -1263,15 +1267,29 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 
   return (
     <div>
-      {/* Bold "Pay" wordmark + settings icon (routes to You -- no dedicated
-          Pay-settings screen exists), not the generic ProductPageHeader. */}
+      {/* Bold "Pay" wordmark + a real QR scan shortcut + settings icon (routes to
+          You -- no dedicated Pay-settings screen exists), not the generic
+          ProductPageHeader. Real Toss Pay reference (2026-08-23): the QR button
+          jumps straight to PayByCodeCard's own already-real camera-scan flow
+          (id="pay-by-code-section" below) -- not a new scanner, just a faster,
+          top-bar-level entry point to the existing real one, matching the
+          reference's own prominent QR placement. */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 4px 16px' }}>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>Pay</h2>
-        <button onClick={() => onNavigateToTab('YOU')} aria-label="Pay settings" style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}>
-          <Settings size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            onClick={() => document.getElementById('pay-by-code-section')?.scrollIntoView({ behavior: 'smooth' })}
+            aria-label="Scan to pay"
+            style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}
+          >
+            <QrCode size={20} />
+          </button>
+          <button onClick={() => onNavigateToTab('YOU')} aria-label="Pay settings" style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}>
+            <Settings size={20} />
+          </button>
+        </div>
       </div>
-      <NearbyMerchantsBanner merchants={nearbyMerchants} onTap={() => setShowNearbyMerchantsDialog(true)} />
+      <NearbyMerchantsMap merchants={nearbyMerchants} userLocation={userLocation} onTap={() => setShowNearbyMerchantsDialog(true)} />
       {showNearbyMerchantsDialog && <NearbyMerchantsDialog merchants={nearbyMerchants} onClose={() => setShowNearbyMerchantsDialog(false)} />}
       <FacePayStatusRow enrolled={facePayEnrolled} busy={facePayBusy} cashbackRatePercent={cashbackRatePercent} onToggle={handleFacePayToggle} />
       <MyPaymentCodeCard accounts={accounts} onOpenAccountDetail={setOpenAccountDetail} />
@@ -1295,7 +1313,9 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
       {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
       <RequestMoneyCard />
-      <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
+      <div id="pay-by-code-section">
+        <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
+      </div>
       <PayByStaticQrCard onPaid={setPaymentResult} />
       <ScheduledTransfersCard />
       <DelayedTransfersCard />

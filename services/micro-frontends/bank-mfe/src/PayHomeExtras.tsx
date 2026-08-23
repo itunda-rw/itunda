@@ -1,4 +1,8 @@
-import { ChevronRight, MapPin, ScanFace } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { ChevronRight, Navigation, ScanFace } from 'lucide-react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { TILES_SOURCE_URL } from './lib/maps';
 import type { RewardTasksResult } from './lib/rewards';
 import type { NearbyMerchant } from './lib/shopping';
 
@@ -18,28 +22,88 @@ import type { NearbyMerchant } from './lib/shopping';
 export const averageCashbackRatePercent = (merchants: NearbyMerchant[]): number | null =>
   merchants.length > 0 ? Math.round((merchants.reduce((sum, m) => sum + m.cashbackRate, 0) / merchants.length) * 1000) / 10 : null;
 
-export function NearbyMerchantsBanner({ merchants, onTap }: { merchants: NearbyMerchant[]; onTap: () => void }) {
-  if (merchants.length === 0) return null;
+// Same self-hosted vector tile style LiveRiderMap.tsx already established (background/
+// landcover/water/roads only -- no route layer needed here, this map has no route to
+// draw). Duplicated rather than shared, matching this codebase's own small-per-file-
+// duplication precedent for style objects (LiveRiderMap's own header comment).
+const NEARBY_MAP_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: { rwanda: { type: 'vector', tiles: [TILES_SOURCE_URL], minzoom: 0, maxzoom: 14 } },
+  layers: [
+    { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
+    { id: 'landcover', type: 'fill', source: 'rwanda', 'source-layer': 'landcover', paint: { 'fill-color': '#d8e8c8', 'fill-opacity': 0.6 } },
+    { id: 'water', type: 'fill', source: 'rwanda', 'source-layer': 'water', paint: { 'fill-color': '#a8d0e6' } },
+    {
+      id: 'transportation', type: 'line', source: 'rwanda', 'source-layer': 'transportation',
+      paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 16, 3] },
+    },
+  ],
+};
+
+// Real Toss Bank reference (2 more screenshots, 2026-08-23, direct user follow-up:
+// "map view etc as it's in that screen") -- a real embedded map, not the flat pill
+// banner this replaces. Reuses LiveRiderMap.tsx's own real MapLibre + self-hosted
+// tile pattern (already a real dependency, already live-verified for ride tracking)
+// rather than starting from scratch. Deliberately non-interactive (pan/zoom/rotate
+// all disabled) -- this is a compact PREVIEW, not itunda's real full Explore Map
+// destination (a separate, heavier screen); tapping still opens the same real
+// NearbyMerchantsDialog list as before, not an attempt to rebuild Explore here.
+export function NearbyMerchantsMap({ merchants, userLocation, onTap }: { merchants: NearbyMerchant[]; userLocation: { latitude: number; longitude: number } | null; onTap: () => void }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !userLocation) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: NEARBY_MAP_STYLE,
+      center: [userLocation.longitude, userLocation.latitude],
+      zoom: 14,
+      attributionControl: false,
+      interactive: false,
+    });
+    mapRef.current = map;
+    new maplibregl.Marker({ color: 'var(--itunda-indigo)' }).setLngLat([userLocation.longitude, userLocation.latitude]).addTo(map);
+    merchants.slice(0, 30).forEach((m) => {
+      const el = document.createElement('div');
+      el.textContent = '🏪';
+      el.style.fontSize = '18px';
+      new maplibregl.Marker({ element: el }).setLngLat([m.longitude, m.latitude]).addTo(map);
+    });
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [userLocation, merchants]);
+
+  if (!userLocation || merchants.length === 0) return null;
   return (
-    <button
-      onClick={onTap}
-      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 16px', borderRadius: '999px', backgroundColor: 'var(--itunda-grey-100)' }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>
-        <MapPin size={16} color="var(--itunda-grey-500)" />
-        {merchants.length} itunda merchant{merchants.length === 1 ? '' : 's'} nearby — earn cashback
+    <button onClick={onTap} style={{ position: 'relative', width: '100%', height: '150px', borderRadius: '16px', overflow: 'hidden', display: 'block' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <span
+        style={{
+          position: 'absolute', left: '10px', bottom: '10px', right: '10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+          padding: '10px 14px', borderRadius: '999px', backgroundColor: 'rgba(25,31,40,0.85)', backdropFilter: 'blur(4px)',
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: '#fff' }}>
+          <Navigation size={15} color="#fff" />
+          {merchants.length} itunda merchant{merchants.length === 1 ? '' : 's'} nearby — earn cashback
+        </span>
+        <ChevronRight size={16} color="rgba(255,255,255,0.7)" />
       </span>
-      <ChevronRight size={16} color="var(--itunda-grey-400)" />
     </button>
   );
 }
 
-// Real destination for NearbyMerchantsBanner's tap -- a plain list of the same real
+// Real destination for NearbyMerchantsMap's tap -- a plain list of the same real
 // merchants (name, category, distance, real per-merchant cashback rate), not a dead
-// link. No embedded map here -- itunda's own self-hosted maps stack lives on a
-// separate, heavier screen (the Explore tab's Map destination); this is a
-// lightweight preview, matching this file's own "preview, not the full destination"
-// scope elsewhere (RewardsPreviewSection, payment history on PayHub itself).
+// link. itunda's real full interactive map (pan/zoom/search) still lives on its own
+// separate, heavier screen (the Explore tab's Map destination); this stays a
+// lightweight preview + list, matching this file's own "preview, not the full
+// destination" scope elsewhere (RewardsPreviewSection, payment history on PayHub
+// itself).
 export function NearbyMerchantsDialog({ merchants, onClose }: { merchants: NearbyMerchant[]; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 50 }} onClick={onClose}>
