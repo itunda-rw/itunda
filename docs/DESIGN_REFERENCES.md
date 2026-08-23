@@ -16930,3 +16930,40 @@ iOS, and web alike.
 *Shipped: Android `ShopProductDetail.kt`, bank-mfe `BankDashboard.tsx`
 (`MultiCartView`), iOS `ShopProductDetail.swift` (commits `a77f5147`,
 `e2c8d946`, `5964842c`).*
+
+## 270. Real "recently viewed" for Eats restaurants (Android) and, for the first time, web + iOS -- both products
+
+Another internal-consistency find, same class as §266-269: Shop's own
+product catalog already shipped a real "recently viewed" rail
+(RecentlyViewedProductsStore.kt, 2026-08-10, sourced from real Coupang/
+Naver/Toss/Kakao Shopping) but it had two real gaps -- Eats never got the
+sibling feature on ANY platform (Baemin/Coupang Eats both show the
+identical real "최근 본 가게" rail), and Shop's own existing feature had
+itself never been ported past Android at all: web and iOS had zero
+"recently viewed" anywhere, for either product, until this pass.
+
+Closed both gaps together, same session:
+- **Android** (`663bd773`): new `RecentlyViewedRestaurantsStore.kt`
+  (core:network) mirrors the Shop store exactly. Hooked into the existing
+  `openRestaurant()` (the one real entry point every browse/favorites/
+  Reorder/dish-grid/deep-link path already shares). Extracted the rail's
+  own rendering to a new `EatsRecentlyViewed.kt` -- kept EatsScreen.kt's
+  own growth to +20 lines instead of +67.
+- **bank-mfe** (`7b7f3334`): new `lib/recentlyViewed.ts`, a small generic
+  localStorage-store factory (one real implementation, not two near-copies,
+  since the add/get/cap logic is genuinely identical between products and
+  restaurants) backing BOTH Shop and Eats for the first time on web. Wired
+  via a plain `useEffect` on `selected`/`selectedProduct` rather than
+  wrapping every one of Eats'/Shop's several real "open" call sites.
+- **iOS** (`daa39c84`): new `RecentlyViewedStores.swift` (two separate
+  UserDefaults+Codable stores, matching Android's own choice not to
+  over-abstract), backing both products for the first time on iOS too.
+  Needed `tuist generate && pod install` before the new file was visible to
+  `xcodebuild` (a real, standing gotcha this session already knew about --
+  see feedback_tuist_generate_then_pod_install_order). Verified with a real
+  `xcodebuild build` -- BUILD SUCCEEDED.
+
+*Shipped: Android `RecentlyViewedRestaurantsStore.kt`/`EatsScreen.kt`/
+`EatsRecentlyViewed.kt`, bank-mfe `lib/recentlyViewed.ts`/`BankDashboard.tsx`,
+iOS `RecentlyViewedStores.swift`/`EatsScreen.swift`/`ShopScreen.swift`
+(commits `663bd773`, `7b7f3334`, `daa39c84`).*
