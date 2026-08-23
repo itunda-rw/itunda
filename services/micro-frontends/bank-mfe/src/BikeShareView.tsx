@@ -162,8 +162,10 @@ export default function BikeShareView() {
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {riderError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
+          {/* Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+              dropped itunda-card -- lone conditional sections on this screen. */}
           {justCompletedRental && (
-            <div className="itunda-card" style={{ textAlign: 'center', padding: '24px' }}>
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString()} RWF</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
@@ -173,7 +175,7 @@ export default function BikeShareView() {
             </div>
           )}
           {!justCompletedRental && activeRental && (
-            <div className="itunda-card">
+            <div style={{ padding: '10px 0' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}><BikeGlyph size={16} /> Riding now</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time once you end the rental.
@@ -194,8 +196,10 @@ export default function BikeShareView() {
                 <EmptyState message="No bikes nearby right now — try a different area or check back soon." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Real fix (2026-08-24, flat-design sweep): entity list (bikes to
+                      unlock), no divider needed. */}
                   {nearbyBikes.map((bike) => (
-                    <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={bike.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                       <div>
                         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><BikeTypeGlyph electric={bike.type === 'ELECTRIC'} size={15} /> {bike.type === 'ELECTRIC' ? 'Electric' : 'Regular'}</p>
                         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
@@ -216,8 +220,12 @@ export default function BikeShareView() {
             <div>
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rentals</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Real fix (2026-08-24, flat-design sweep): history log of past
+                    rentals -- reused .itunda-flat-section for its per-row divider
+                    with :last-child auto-dropping the trailing one
+                    (docs/DESIGN_REFERENCES.md §274). */}
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
-                  <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div key={r.id} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
                   </div>
@@ -231,7 +239,8 @@ export default function BikeShareView() {
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {ownerError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
-          <div className="itunda-card">
+          {/* Real fix (2026-08-24, flat-design sweep): lone form section on this tab. */}
+          <div style={{ padding: '10px 0' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Add your bike to the pool</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Uses your real current location as the bike's starting spot.
@@ -258,8 +267,10 @@ export default function BikeShareView() {
             <div>
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bikes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Real fix (2026-08-24, flat-design sweep): entity list (bikes owned),
+                    no divider needed. */}
                 {myBikes.map((bike) => (
-                  <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                  <div key={bike.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '10px 0' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><BikeTypeGlyph electric={bike.type === 'ELECTRIC'} size={15} /> {bike.type === 'ELECTRIC' ? 'Electric' : 'Regular'} bike</p>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button

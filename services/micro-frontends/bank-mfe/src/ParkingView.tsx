@@ -129,8 +129,10 @@ export default function ParkingView() {
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {renterError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{renterError}</p>}
+          {/* Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+              dropped itunda-card -- a lone conditional section on this screen. */}
           {justCompletedSession && (
-            <div className="itunda-card" style={{ textAlign: 'center', padding: '24px' }}>
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Parking complete</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700, margin: '8px 0' }}>{(justCompletedSession.totalFare ?? 0).toLocaleString()} RWF</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{justCompletedSession.durationMinutes} minutes</p>
@@ -140,7 +142,7 @@ export default function ParkingView() {
             </div>
           )}
           {!justCompletedSession && activeSession && (
-            <div className="itunda-card">
+            <div style={{ padding: '10px 0' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>🅿️ Parked now</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time (rounded up to the next hour) once you check out.
@@ -161,8 +163,10 @@ export default function ParkingView() {
                 <EmptyState message="No parking nearby right now — try a different area or check back soon." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card --
+                      entity list (spots to check into), no divider needed. */}
                   {nearbySpots.map((spot) => (
-                    <div key={spot.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={spot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                       <div>
                         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{spot.address}</p>
                         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
@@ -183,8 +187,12 @@ export default function ParkingView() {
             <div>
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past sessions</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Real fix (2026-08-24, flat-design sweep): history log of past
+                    sessions -- reused .itunda-flat-section for its per-row divider
+                    with :last-child auto-dropping the trailing one
+                    (docs/DESIGN_REFERENCES.md §274). */}
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
-                  <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div key={r.id} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
                   </div>
@@ -198,7 +206,8 @@ export default function ParkingView() {
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {ownerError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
-          <div className="itunda-card">
+          {/* Real fix (2026-08-24, flat-design sweep): lone form section on this tab. */}
+          <div style={{ padding: '10px 0' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>List your spot</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Uses your real current location as the spot's location.
@@ -222,8 +231,10 @@ export default function ParkingView() {
             <div>
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your spots</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Real fix (2026-08-24, flat-design sweep): entity list (spots owned),
+                    no divider needed. */}
                 {mySpots.map((spot) => (
-                  <div key={spot.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={spot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                     <div>
                       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{spot.address}</p>
                       <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>

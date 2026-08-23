@@ -4520,8 +4520,10 @@ function AgentOperatorView() {
   };
 
   if (notOperator) {
+    // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+    // dropped itunda-card -- the screen's only content in this state.
     return (
-      <div className="itunda-card">
+      <div style={{ padding: '10px 0' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
           You are not assigned as an Itunda agent till operator. Ask an Itunda staff admin to assign your account to a store.
         </p>
@@ -4543,7 +4545,11 @@ function AgentOperatorView() {
       <>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
-      <div className="itunda-card" style={{ padding: '24px' }}>
+      {/* Real fix (2026-08-24, flat-design sweep): 5 distinct non-exclusive
+          sections shown together -- reused .itunda-flat-section for its
+          section-boundary divider, :last-child auto-drops the trailing one
+          (docs/UI_UX_GUIDELINES.md §10, docs/DESIGN_REFERENCES.md §274). */}
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{till.agentName}</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{till.expectedCash.toLocaleString()} RWF expected in till</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
@@ -4556,7 +4562,7 @@ function AgentOperatorView() {
         )}
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Accept cash-in</h3>
         <input type="text" placeholder="Customer account number" value={cashInAccount} onChange={(e) => setCashInAccount(e.target.value)}
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
@@ -4567,7 +4573,7 @@ function AgentOperatorView() {
         <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleCashIn}>{busy ? 'Working…' : 'Accept cash-in'}</button>
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Pay cash-out</h3>
         <input type="text" placeholder="Customer account number" value={cashOutAccount} onChange={(e) => setCashOutAccount(e.target.value)}
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
@@ -4580,14 +4586,14 @@ function AgentOperatorView() {
         <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleCashOut}>{busy ? 'Working…' : 'Pay cash-out'}</button>
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Submit today's till count</h3>
         <input type="number" placeholder="Counted cash (RWF)" value={countedCash} onChange={(e) => setCountedCash(e.target.value)}
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
         <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSubmitTillCount}>{busy ? 'Working…' : 'Submit count'}</button>
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Recent activity</h3>
         {activity.length === 0 && <EmptyState message="No cash movements yet today — your cash-in/cash-out activity will show up here." />}
         {activity.map((a) => (
@@ -19508,8 +19514,10 @@ function GroupOrderView() {
   };
 
   if (placedOrder) {
+    // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+    // dropped itunda-card -- the screen's only content in this state.
     return (
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div style={{ padding: '10px 0' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Order placed</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
           Real order #{placedOrder.id.slice(-8)} placed for {placedOrder.totalAmount.toLocaleString()} RWF. Every other participant with items in the cart has been sent a real Dutch-pay request via Split Bill.
@@ -19519,9 +19527,11 @@ function GroupOrderView() {
   }
 
   if (!groupOrderId) {
+    // Real fix (2026-08-24, flat-design sweep): 2 distinct sections shown together --
+    // reused .itunda-flat-section for the section-boundary divider.
     return (
       <div>
-        <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Start a together order</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Share one restaurant's cart with friends -- everyone adds their own items, you place one real order, and itunda asks each of them for their own share afterward.
@@ -19543,7 +19553,7 @@ function GroupOrderView() {
             {busy ? '…' : 'Start together order'}
           </button>
         </div>
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Join a together order</h3>
           {!manualJoinEntry ? (
             <>
@@ -19577,9 +19587,12 @@ function GroupOrderView() {
   const currentUser = getStoredUser();
   const isHost = !!detail && !!currentUser && detail.groupOrder.hostUserId === currentUser.id;
 
+  // Real fix (2026-08-24, flat-design sweep): 3 distinct sections shown together --
+  // reused .itunda-flat-section for section-boundary dividers, :last-child auto-drops
+  // the trailing one before the finalize/cancel buttons.
   return (
     <div>
-      <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '10px' }}>
           {qrDataUrl && <img src={qrDataUrl} alt={`QR code to join order ${detail?.groupOrder.joinCode}`} width={72} height={72} style={{ borderRadius: '8px', flexShrink: 0 }} />}
           <div>
@@ -19596,7 +19609,7 @@ function GroupOrderView() {
         {shareStatus === 'failed' && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '6px' }}>Could not copy the link — share the code above instead.</p>}
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
-      <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Add your own item</h3>
         <select value={menuItemId} onChange={(e) => setMenuItemId(e.target.value)} className="itunda-input" style={{ marginBottom: '8px', width: '100%' }}>
           <option value="">Select an item…</option>
@@ -19611,7 +19624,7 @@ function GroupOrderView() {
           </button>
         </div>
       </div>
-      <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Everyone's items -- {detail?.grandTotal.toLocaleString() ?? 0} RWF total</h3>
         {(detail?.participants ?? []).map((p) => (
           <div key={p.userId} style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--itunda-grey-100)' }}>
