@@ -7,7 +7,7 @@ import CoreNetwork
 // feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/Android
 // ported the same day as items 106/107). Same no-ViewModel,
 // "call NetworkClient.shared directly from Task {} blocks" convention as
-// MiniAccountScreenView.swift/GroupAccountScreenView.swift.
+// YouthAccountScreenView.swift/GroupAccountScreenView.swift.
 struct SpendingScreenView: View {
     var onBack: () -> Void = {}
     @State private var insight: SpendingInsightResponse?

@@ -122,7 +122,7 @@ struct EntireMenuScreen: View {
     @State private var showGrow31Savings = false
     // Real KakaoBank mini-style capped starter account (2026-07-28, item 101) -- last
     // remaining client platform for this feature (bank-mfe/Android already have it).
-    @State private var showMiniAccount = false
+    @State private var showYouthAccount = false
     // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
     // bank-mfe/Android shipped first; this is the last remaining client platform.
     @State private var showCard = false
@@ -249,7 +249,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                 FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
-                FlatRow(title: "Mini account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniAccount = true }),
+                FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showYouthAccount = true }),
                 FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentIndigo, action: { showCard = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                 FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
@@ -411,7 +411,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
-                        FlatRow(title: "Mini account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniAccount = true }),
+                        FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showYouthAccount = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentIndigo, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
@@ -424,13 +424,23 @@ struct EntireMenuScreen: View {
                     IconGridSection(
                         title: "Quick access",
                         items: [
-                            ("Mini", "square.grid.2x2.fill"),
+                            // Renamed from bare "Mini" (2026-08-23, see
+                            // docs/UI_UX_GUIDELINES.md §12) -- collided with the real
+                            // "Mini apps" section immediately below, and was itself a
+                            // real, silent dead tap (no case for it in onItemClick at
+                            // all, unlike Android's equivalent grid which at least
+                            // opened the Youth account screen). Wired to the same real
+                            // showYouthAccount destination the "Youth account" FlatRow
+                            // above already uses, matching Android's fixed behavior
+                            // exactly.
+                            ("Youth", "banknote.fill"),
                             ("Games", "gamecontroller.fill"),
                             ("Bank", "building.columns.fill"),
                             ("Pick", "star.fill"),
                         ],
                         onItemClick: { label in
                             if label == "Bank" { onOpenBank() }
+                            if label == "Youth" { showYouthAccount = true }
                         }
                     )
                     // All four now open real granite mini-apps (see this file's header) --
@@ -712,8 +722,8 @@ struct EntireMenuScreen: View {
         .sheet(isPresented: $showGrow31Savings) {
             Grow31SavingsScreenView(onBack: { showGrow31Savings = false })
         }
-        .sheet(isPresented: $showMiniAccount) {
-            MiniAccountScreenView(onBack: { showMiniAccount = false })
+        .sheet(isPresented: $showYouthAccount) {
+            YouthAccountScreenView(onBack: { showYouthAccount = false })
         }
         .sheet(isPresented: $showCard) {
             CardScreenView(onBack: { showCard = false })

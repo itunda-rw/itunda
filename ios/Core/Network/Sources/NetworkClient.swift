@@ -56,8 +56,8 @@ public struct PublicUser: Decodable {
     // Real second neighborhood (2026-07-30) -- see AuthService.setSecondNeighborhood's own
     // doc comment. Same real-coordinate, reverse-geocoded-server-side rule as `neighborhood`.
     public let secondNeighborhood: String?
-    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
-    // MiniAccountService.kt's own doc comment. Set via NetworkClient.setBirthDate.
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- see
+    // YouthAccountService.kt's own doc comment. Set via NetworkClient.setBirthDate.
     public let birthDate: String?
     // Real email/phone verification (item 169/179) -- see AuthService.requestEmailVerification/
     // requestPhoneVerification's own doc comments. Backend has returned these on every
@@ -90,11 +90,11 @@ public struct SetBirthDateRequest: Encodable {
     public let birthDate: String
 }
 
-// Real KakaoBank mini-style capped starter account -- see MiniAccountService.kt's own
+// Real KakaoBank mini-style capped starter account -- see YouthAccountService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
-public struct OpenMiniAccountResponse: Decodable { public let success: Bool; public let account: Account }
-public struct DepositMiniAccountRequest: Encodable { public let amount: Double }
-public struct DepositMiniAccountResponse: Decodable { public let success: Bool; public let id: String; public let amount: Double; public let completedAt: String }
+public struct OpenYouthAccountResponse: Decodable { public let success: Bool; public let account: Account }
+public struct DepositYouthAccountRequest: Encodable { public let amount: Double }
+public struct DepositYouthAccountResponse: Decodable { public let success: Bool; public let id: String; public let amount: Double; public let completedAt: String }
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
 // GroupAccount.kt/GroupAccountService.kt exactly.
@@ -341,14 +341,14 @@ public enum NetworkError: Error {
     // mirroring the backend's own DeviceVerificationFilter, which only ever gates
     // requests carrying a real Idempotency-Key header.
     case deviceNotVerified
-    // Real age-eligibility gate for the Mini account (2026-07-28) -- purely additive,
-    // same rationale as deviceNotVerified above: thrown only from the Mini account's
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- purely additive,
+    // same rationale as deviceNotVerified above: thrown only from the Youth account's
     // own dedicated request methods, which decode the real ApiError.code on a 422.
-    case miniAccountBirthDateRequired
-    case miniAccountAgeIneligible
+    case youthAccountBirthDateRequired
+    case youthAccountAgeIneligible
     // Real cash-agent operator gate (AgentOperatorController's own
     // AGENT_OPERATOR_NOT_AUTHORIZED, 403) -- purely additive, same rationale as
-    // deviceNotVerified/miniAccount* above. Thrown only from getAgentTill's own
+    // deviceNotVerified/youthAccount* above. Thrown only from getAgentTill's own
     // dedicated request method below, which decodes the real ApiError.code on a 403.
     case agentOperatorNotAuthorized
     // Real gap found 2026-08-08 (Toss Simplicity21 "adding innovation upon innovation"
@@ -1743,7 +1743,7 @@ extension NetworkClient {
         try await authenticatedPut("api/v1/auth/profile/photo", body: UpdateProfilePhotoRequest(profilePhotoUrl: profilePhotoUrl))
     }
 
-    // Real age-eligibility gate for the Mini account (2026-07-28) -- see
+    // Real age-eligibility gate for the Youth account (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
     // string ("YYYY-MM-DD").
     public func setBirthDate(_ birthDate: String) async throws -> ProfileResponse {
@@ -1771,23 +1771,23 @@ extension NetworkClient {
     }
 
     // Real KakaoBank mini-style capped starter account (rw.itunda.account.
-    // MiniAccountService, 2026-07-28) -- first iOS client for this feature (item 101),
-    // mirroring bank-mfe's lib/miniAccount.ts and Android's ApiService.kt equivalents.
+    // YouthAccountService, 2026-07-28) -- first iOS client for this feature (item 101),
+    // mirroring bank-mfe's lib/youthAccount.ts and Android's ApiService.kt equivalents.
     // open() carries no Idempotency-Key (a second call naturally just returns the same
     // real, already-open account, no duplicate side effect), so it keeps its own
     // dedicated request path, decoding the real ApiError.code directly on a 422 for the
     // birth-date/age-eligibility cases neither authenticatedPost nor deposit's own error
     // surface needs. deposit() moved to authenticatedPost's idempotency-gated path
     // 2026-08-05 (real bug found live via a repo-wide idempotency-coverage audit):
-    // MiniAccountController.kt's own deposit endpoint posted a real account-to-account
+    // YouthAccountController.kt's own deposit endpoint posted a real account-to-account
     // ledger transaction on every call with no Idempotency-Key requirement -- a
     // network-timeout retry of the exact same deposit would move the same money twice.
-    public func openMiniAccount() async throws -> OpenMiniAccountResponse {
-        try await postMiniAccount("api/v1/account/mini/open", body: EmptyBody())
+    public func openYouthAccount() async throws -> OpenYouthAccountResponse {
+        try await postYouthAccount("api/v1/account/youth/open", body: EmptyBody())
     }
 
-    public func depositMiniAccount(amount: Double) async throws -> DepositMiniAccountResponse {
-        try await authenticatedPost("api/v1/account/mini/deposit", body: DepositMiniAccountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    public func depositYouthAccount(amount: Double) async throws -> DepositYouthAccountResponse {
+        try await authenticatedPost("api/v1/account/youth/deposit", body: DepositYouthAccountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first iOS client for
@@ -2001,7 +2001,7 @@ extension NetworkClient {
         return try decoder.decode(UploadResponse.self, from: responseData)
     }
 
-    private func postMiniAccount<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+    private func postYouthAccount<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -2014,8 +2014,8 @@ extension NetworkClient {
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorBody = try? decoder.decode(ApiErrorBody.self, from: data) {
                 switch errorBody.code {
-                case "MINI_ACCOUNT_BIRTH_DATE_REQUIRED": throw NetworkError.miniAccountBirthDateRequired
-                case "MINI_ACCOUNT_AGE_INELIGIBLE": throw NetworkError.miniAccountAgeIneligible
+                case "YOUTH_ACCOUNT_BIRTH_DATE_REQUIRED": throw NetworkError.youthAccountBirthDateRequired
+                case "YOUTH_ACCOUNT_AGE_INELIGIBLE": throw NetworkError.youthAccountAgeIneligible
                 default: break
                 }
             }
@@ -2100,7 +2100,7 @@ extension NetworkClient {
 
     // Dedicated request path for sendDirect/payP2pRequest only -- see
     // NetworkError.httpErrorWithMessage's own doc comment for why this doesn't reuse
-    // authenticatedPost. Mirrors postMiniAccount's own precedent (a dedicated function
+    // authenticatedPost. Mirrors postYouthAccount's own precedent (a dedicated function
     // scoped to the one flow that needs to decode extra fields) rather than widening a
     // shared helper every other endpoint also calls.
     fileprivate func postP2p<Body: Encodable, Response: Decodable>(
@@ -6347,7 +6347,7 @@ extension NetworkClient {
     // `@RequestHeader("Idempotency-Key") idempotencyKey: String`, non-nullable) was
     // simply never sent -- every create/cancel/withdraw call on this screen has been
     // silently 400ing with IDEMPOTENCY_KEY_REQUIRED since it shipped. Fixed to match
-    // every other real money-moving call in this file (e.g. depositMiniAccount,
+    // every other real money-moving call in this file (e.g. depositYouthAccount,
     // contributeToIkimina).
     public func createWeeklySavingsPlan(name: String, baseWeeklyAmount: Double, escalationRate: Double) async throws -> CreateWeeklySavingsPlanResponse {
         try await authenticatedPost(
