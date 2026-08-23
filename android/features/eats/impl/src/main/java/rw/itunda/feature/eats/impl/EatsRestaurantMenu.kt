@@ -51,6 +51,7 @@ import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddressSuggestionDto
+import rw.itunda.core.network.MapBookmarkDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ShoppingMerchantDto
@@ -232,6 +233,21 @@ internal fun AddressAutocompleteField(
 ) {
     var suggestions by remember { mutableStateOf<List<AddressSuggestionDto>>(emptyList()) }
     var justSelected by remember { mutableStateOf(false) }
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+    // already closed for ride booking (RideScreen.kt): itunda's own "map bookmarks"
+    // feature (the Maps tab's star/save) was never surfaced here either, despite a
+    // delivery address being an even more universal need than a ride destination
+    // (every single delivery order needs one). No new backend work -- same existing
+    // GET /api/v1/maps/bookmarks this field's own search suggestions already sit
+    // alongside.
+    var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try {
+            bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+        } catch (_: Exception) {
+            // Real, non-critical -- the quick-select list just won't render if this fails.
+        }
+    }
 
     LaunchedEffect(address) {
         if (justSelected) {
@@ -281,6 +297,38 @@ internal fun AddressAutocompleteField(
                                 }
                                 .padding(12.dp),
                         )
+                    }
+                }
+            }
+        } else if (address.isBlank() && bookmarks.isNotEmpty()) {
+            Card(
+                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+                colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) {
+                Column {
+                    Text(
+                        "Saved places", color = Ids.colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                    bookmarks.forEach { b ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .pressScaleClickable {
+                                    justSelected = true
+                                    onSuggestionSelected(AddressSuggestionDto(b.displayName, b.latitude, b.longitude))
+                                }
+                                .padding(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp))
+                                    .background(runCatching { Color(android.graphics.Color.parseColor(b.color)) }.getOrDefault(Ids.colors.brand)),
+                            )
+                            Text(b.displayName, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        }
                     }
                 }
             }
