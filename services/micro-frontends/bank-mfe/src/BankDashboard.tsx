@@ -5423,12 +5423,16 @@ function SubscriptionsView() {
   }, []);
 
   if (subscriptions === null) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-flat-section skeleton" style={{ height: '160px' }} />;
   }
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping
+  // throughout -- Estimated monthly total/detected subscriptions/Merchant
+  // subscriptions are real sections shown together, now separated by
+  // itunda-flat-section's own border-bottom divider (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="itunda-card" style={{ padding: '24px' }}>
+    <div>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Estimated monthly total</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{total.toLocaleString()} RWF</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
@@ -5441,7 +5445,7 @@ function SubscriptionsView() {
         <EmptyState message="No recurring payments detected yet — once a payment repeats a few times, it'll show up here." />
       ) : (
         subscriptions.map((s) => (
-          <div key={`${s.displayName}-${s.cadence}`} className="itunda-card" style={{ padding: '16px' }}>
+          <div key={`${s.displayName}-${s.cadence}`} className="itunda-flat-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{s.displayName}</h4>
@@ -5462,14 +5466,14 @@ function SubscriptionsView() {
           actually authorized (item 145) -- distinct from the detected-from-history
           section above: these are real active billing-key authorizations that charge
           automatically until cancelled, not a heuristic guess. */}
-      <div className="itunda-card" style={{ padding: '24px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '4px' }}>Merchant subscriptions</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
           Plans you've subscribed to. These charge your account automatically until you cancel.
         </p>
         {billingError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{billingError}</p>}
         {billingSubs === null && !billingError ? (
-          <div className="itunda-card skeleton" style={{ height: '80px' }} />
+          <div className="itunda-flat-section skeleton" style={{ height: '80px' }} />
         ) : billingSubs && billingSubs.length === 0 ? (
           <EmptyState message="No merchant subscriptions yet — plans you subscribe to will show up here." />
         ) : (
@@ -16623,8 +16627,10 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
   };
 
   if (confirmed) {
+    // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- this IS
+    // the whole confirmation screen's content (docs/UI_UX_GUIDELINES.md §10).
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+      <div style={{ textAlign: 'center', padding: '28px' }}>
         <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
@@ -16748,17 +16754,17 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
           {error ? (
             <ErrorCard message={error} onRetry={load} />
           ) : restaurants === null ? (
-            <div className="itunda-card skeleton" style={{ height: '220px' }} />
+            <div className="itunda-flat-section skeleton" style={{ height: '220px' }} />
           ) : restaurants.length === 0 ? (
-            <div className="itunda-card">
-              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
-                  ported from the same-day Android/iOS fix): "registered yet" is
-                  honest about whose gap this is -- no restaurant has joined yet,
-                  not something the reader is missing a step on. */}
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-                {selectedCategory || debouncedSearch ? 'No restaurants match your search — try a different category or search term.' : 'No restaurants registered yet — check back once restaurants in your area join itunda Eats.'}
-              </p>
-            </div>
+            // Real copy-voice fix (item 244, round 5 of the empty-state pass,
+            // ported from the same-day Android/iOS fix): "registered yet" is
+            // honest about whose gap this is -- no restaurant has joined yet,
+            // not something the reader is missing a step on.
+            // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a
+            // plain one-line empty-state message.
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+              {selectedCategory || debouncedSearch ? 'No restaurants match your search — try a different category or search term.' : 'No restaurants registered yet — check back once restaurants in your area join itunda Eats.'}
+            </p>
           ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {restaurants.map((r) => (
@@ -19319,8 +19325,10 @@ function DineInCustomerView() {
   }, [view]);
 
   if (confirmed) {
+    // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- this IS the
+    // whole confirmation screen's content (docs/UI_UX_GUIDELINES.md §10).
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+      <div style={{ textAlign: 'center', padding: '28px' }}>
         <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
@@ -19351,15 +19359,18 @@ function DineInCustomerView() {
           </button>
         ))}
       </div>
+      {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card throughout --
+          a flat entity list (matching Android's VehicleValuationScreen/
+          GroupAccountScreen precedent), no per-row divider (docs/UI_UX_GUIDELINES.md §10). */}
       {view === 'BROWSE' ? (
         error ? (
-          <div className="itunda-card"><p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p></div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         ) : restaurants === null ? (
-          <div className="itunda-card skeleton" style={{ height: '160px' }} />
+          <div className="itunda-flat-section skeleton" style={{ height: '160px' }} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {restaurants.map((r) => (
-              <button key={r.merchantId} onClick={() => setSelected(r)} className="itunda-card" style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}>
+              <button key={r.merchantId} onClick={() => setSelected(r)} style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{r.businessName}</p>
                 {r.category && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.category}</p>}
               </button>
@@ -19367,7 +19378,7 @@ function DineInCustomerView() {
           </div>
         )
       ) : orders === null ? (
-        <div className="itunda-card skeleton" style={{ height: '160px' }} />
+        <div className="itunda-flat-section skeleton" style={{ height: '160px' }} />
       ) : orders.length === 0 ? (
         <EmptyState message="No table orders yet — they'll show up here as diners order from their table." />
       ) : (
@@ -24837,18 +24848,14 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
       {onNavigateToTab && onNavigateToLoansMode && onNavigateToSavingsTarget && (
         <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} onNavigateToSavingsTarget={onNavigateToSavingsTarget} />
       )}
-      {error && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
-        </div>
-      )}
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '16px' }} role="alert">{error}</p>}
 
       <CatalogSectionHeader title="Savings" />
       <InterestJarCard />
       <RoundUpCard goals={goals ?? []} />
       <CreateGoalForm onCreated={load} />
       {goals === null ? (
-        <div className="itunda-card skeleton" style={{ height: '100px' }} />
+        <div className="itunda-flat-section skeleton" style={{ height: '100px' }} />
       ) : goals.length === 0 ? (
         <EmptyState message="No savings goals yet — set one to start putting money aside for something specific." />
       ) : (
@@ -25299,23 +25306,23 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'RIDES' && <RidesView onReportIssue={handleReportRideIssue} />}
       {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
       {tab === 'BIKESHARE' && (
-        <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '200px' }} />}>
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
           <BikeShareView />
         </Suspense>
       )}
       {tab === 'PARKING' && (
-        <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '200px' }} />}>
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
           <ParkingView />
         </Suspense>
       )}
       {tab === 'BUS' && (
-        <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '200px' }} />}>
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
           <BusView />
         </Suspense>
       )}
       {tab === 'KNOWLEDGE' && <KnowledgeView />}
       {tab === 'MAP' && (
-        <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px' }} />}>
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '300px' }} />}>
           <MapView />
         </Suspense>
       )}
@@ -25329,7 +25336,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
       {tab === 'REWARDS' && <RewardsView />}
       {tab === 'INSURANCE' && (
-        <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '200px' }} />}>
+        <Suspense fallback={<div className="itunda-flat-section skeleton" style={{ height: '200px' }} />}>
           <InsuranceView />
         </Suspense>
       )}
