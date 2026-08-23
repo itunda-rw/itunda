@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -197,45 +196,45 @@ fun StudentLoanScreen(onBack: () -> Unit) {
         ) {
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("BRD Student Loan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(
-                            "Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate, " +
-                                "with a grace period after graduation before repayment starts. Declared household income is self-declared -- not verified against BRD's real " +
-                                "Financial Means Testing process. Repayment here is user-initiated from your account -- itunda cannot deduct from your paycheck like the real " +
-                                "8%-of-income scheme BRD uses.",
-                            color = Ids.colors.textSecondary, fontSize = 12.sp,
-                        )
-                        if (hasActiveLoan) {
-                            Text("You already have an active student loan -- repay it before applying for another.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        } else {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("UNDERGRADUATE" to "Undergraduate (11%)", "POSTGRADUATE" to "Postgraduate (12%)").forEach { (value, label) ->
-                                    val selected = value == level
-                                    Text(
-                                        label,
-                                        color = if (selected) Color.White else Ids.colors.textPrimary,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(999.dp))
-                                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                            .pressScaleClickable { level = value }
-                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    )
-                                }
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // a lone form section on this screen (docs/UI_UX_GUIDELINES.md §10).
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("BRD Student Loan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        "Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate, " +
+                            "with a grace period after graduation before repayment starts. Declared household income is self-declared -- not verified against BRD's real " +
+                            "Financial Means Testing process. Repayment here is user-initiated from your account -- itunda cannot deduct from your paycheck like the real " +
+                            "8%-of-income scheme BRD uses.",
+                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                    )
+                    if (hasActiveLoan) {
+                        Text("You already have an active student loan -- repay it before applying for another.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("UNDERGRADUATE" to "Undergraduate (11%)", "POSTGRADUATE" to "Postgraduate (12%)").forEach { (value, label) ->
+                                val selected = value == level
+                                Text(
+                                    label,
+                                    color = if (selected) Color.White else Ids.colors.textPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                        .pressScaleClickable { level = value }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                )
                             }
-                            IdsTextField(value = income, onValueChange = { income = it }, label = "Declared annual household income (RWF)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Loan amount (RWF, up to 2,000,000)", isAmount = true, modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = "Years until you graduate", modifier = Modifier.fillMaxWidth())
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                    .pressScaleClickable(enabled = busyId != "apply") { apply() }
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busyId == "apply") "Applying…" else "Apply", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
+                        IdsTextField(value = income, onValueChange = { income = it }, label = "Declared annual household income (RWF)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = amount, onValueChange = { amount = it }, label = "Loan amount (RWF, up to 2,000,000)", isAmount = true, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = "Years until you graduate", modifier = Modifier.fillMaxWidth())
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                .pressScaleClickable(enabled = busyId != "apply") { apply() }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busyId == "apply") "Applying…" else "Apply", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
@@ -248,9 +247,10 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                 loans!!.isEmpty() -> item {
                     EmptyState("No student loans yet.")
                 }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                // history log of loan requests, kept the per-row Divider convention.
                 else -> items(loans!!, key = { it.id }) { loan ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${formatMoneyStudentLoan(loan.principalAmount)} RWF · ${loan.level}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -295,8 +295,8 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (busyId == loan.id) "Repaying…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
-                        }
                     }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 }
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }

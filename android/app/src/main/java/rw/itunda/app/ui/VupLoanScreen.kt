@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -183,53 +182,53 @@ fun VupLoanScreen(onBack: () -> Unit) {
                 }
             } else {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // a lone form section on this screen (docs/UI_UX_GUIDELINES.md §10).
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            "${(eligibilityNow.interestRate * 100).let { "%.0f".format(it) }}% interest · Ubudehe categories ${eligibilityNow.minUbudeheCategory}-${eligibilityNow.maxUbudeheCategory} only",
+                            color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                        )
+                        if (!eligibilityNow.canApply) {
                             Text(
-                                "${(eligibilityNow.interestRate * 100).let { "%.0f".format(it) }}% interest · Ubudehe categories ${eligibilityNow.minUbudeheCategory}-${eligibilityNow.maxUbudeheCategory} only",
-                                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                                "You already have an active VUP loan -- repay it before applying for another.",
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
                             )
-                            if (!eligibilityNow.canApply) {
-                                Text(
-                                    "You already have an active VUP loan -- repay it before applying for another.",
-                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
-                                )
-                            } else {
-                                Text("Ubudehe category", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    listOf(1, 2, 3).forEach { c ->
-                                        Box(
-                                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                                .background(if (category == c) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                                .pressScaleClickable { category = c }
-                                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                                        ) { Text("Category $c", color = if (category == c) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
-                                    }
+                        } else {
+                            Text("Ubudehe category", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(1, 2, 3).forEach { c ->
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                            .background(if (category == c) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .pressScaleClickable { category = c }
+                                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    ) { Text("Category $c", color = if (category == c) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 }
-                                Text("Purpose", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    listOf("FARMING" to "Farming", "LIVESTOCK" to "Livestock", "BUSINESS" to "Business").forEach { (value, label) ->
-                                        Box(
-                                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                                .background(if (purpose == value) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                                .pressScaleClickable { purpose = value }
-                                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                                        ) { Text(label, color = if (purpose == value) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
-                                    }
-                                }
-                                IdsTextField(
-                                    value = amount, onValueChange = { amount = it },
-                                    label = "Loan amount (RWF, up to ${"%,.0f".format(eligibilityNow.maxAmount)})",
-                                    isAmount = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .pressScaleClickable(enabled = busyId != "apply" && amount.toBigDecimalOrNull()?.signum() == 1) { apply() }
-                                        .padding(vertical = 14.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == "apply") "Applying…" else "Apply", color = Color.White, fontWeight = FontWeight.Bold) }
                             }
+                            Text("Purpose", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("FARMING" to "Farming", "LIVESTOCK" to "Livestock", "BUSINESS" to "Business").forEach { (value, label) ->
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                            .background(if (purpose == value) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .pressScaleClickable { purpose = value }
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    ) { Text(label, color = if (purpose == value) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                            IdsTextField(
+                                value = amount, onValueChange = { amount = it },
+                                label = "Loan amount (RWF, up to ${"%,.0f".format(eligibilityNow.maxAmount)})",
+                                isAmount = true,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = busyId != "apply" && amount.toBigDecimalOrNull()?.signum() == 1) { apply() }
+                                    .padding(vertical = 14.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(if (busyId == "apply") "Applying…" else "Apply", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -241,43 +240,45 @@ fun VupLoanScreen(onBack: () -> Unit) {
                 loans!!.isEmpty() -> item {
                     EmptyState("No VUP loans yet.")
                 }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                // history log of loan requests, kept the per-row Divider convention
+                // (docs/DESIGN_REFERENCES.md §274).
                 else -> items(loans!!, key = { it.id }) { loan ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyVup(loan.principalAmount)} RWF · ${loan.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else Ids.colors.textSecondary, fontSize = 12.sp)
-                            }
-                            Text(
-                                "Outstanding: ${formatMoneyVup(loan.outstandingPrincipal)} RWF" + (loan.dueDate?.let { " · Due ${it.take(10)}" } ?: ""),
-                                color = Ids.colors.textSecondary, fontSize = 11.sp,
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${formatMoneyVup(loan.principalAmount)} RWF · ${loan.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else Ids.colors.textSecondary, fontSize = 12.sp)
+                        }
+                        Text(
+                            "Outstanding: ${formatMoneyVup(loan.outstandingPrincipal)} RWF" + (loan.dueDate?.let { " · Due ${it.take(10)}" } ?: ""),
+                            color = Ids.colors.textSecondary, fontSize = 11.sp,
+                        )
+                        if (loan.status == "REQUESTED") {
+                            Text("Demo: instantly approved -- stands in for the real SACCO officer approval step.", color = Ids.colors.textSecondary, fontSize = 10.sp)
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = busyId == null) { disburse(loan.id) }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(if (busyId == loan.id) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        }
+                        if (loan.status == "DISBURSED" || loan.status == "OVERDUE") {
+                            IdsTextField(
+                                value = repayAmounts[loan.id] ?: "",
+                                onValueChange = { repayAmounts = repayAmounts + (loan.id to it) },
+                                label = "Repayment amount (RWF)",
+                                isAmount = true,
+                                modifier = Modifier.fillMaxWidth(),
                             )
-                            if (loan.status == "REQUESTED") {
-                                Text("Demo: instantly approved -- stands in for the real SACCO officer approval step.", color = Ids.colors.textSecondary, fontSize = 10.sp)
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .pressScaleClickable(enabled = busyId == null) { disburse(loan.id) }
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == loan.id) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                            }
-                            if (loan.status == "DISBURSED" || loan.status == "OVERDUE") {
-                                IdsTextField(
-                                    value = repayAmounts[loan.id] ?: "",
-                                    onValueChange = { repayAmounts = repayAmounts + (loan.id to it) },
-                                    label = "Repayment amount (RWF)",
-                                    isAmount = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .pressScaleClickable(enabled = busyId == null) { repay(loan.id) }
-                                        .padding(vertical = 12.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == loan.id) "…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                            }
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                                    .pressScaleClickable(enabled = busyId == null) { repay(loan.id) }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(if (busyId == loan.id) "…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 }
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }

@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -229,27 +228,27 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                 }
             } else {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Moto-Taxi Ownership Plan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            if (hasActivePlan) {
-                                Text(
-                                    "You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.",
-                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
-                                )
-                            } else {
-                                IdsTextField(value = bikePrice, onValueChange = { bikePrice = it }, label = "Bike price (RWF, 300,000-2,500,000)", modifier = Modifier.fillMaxWidth())
-                                IdsTextField(value = dailyContribution, onValueChange = { dailyContribution = it }, label = "Daily contribution (RWF)", modifier = Modifier.fillMaxWidth())
-                                previewDownPayment?.let {
-                                    Text("Down payment target (30%): ${formatMoneyMoto(it)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                }
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                        .pressScaleClickable(enabled = busyId != "create") { create() }
-                                        .padding(vertical = 14.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == "create") "Creating…" else "Start plan", color = Color.White, fontWeight = FontWeight.Bold) }
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // a lone form section on this screen (docs/UI_UX_GUIDELINES.md §10).
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Moto-Taxi Ownership Plan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        if (hasActivePlan) {
+                            Text(
+                                "You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.",
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            )
+                        } else {
+                            IdsTextField(value = bikePrice, onValueChange = { bikePrice = it }, label = "Bike price (RWF, 300,000-2,500,000)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = dailyContribution, onValueChange = { dailyContribution = it }, label = "Daily contribution (RWF)", modifier = Modifier.fillMaxWidth())
+                            previewDownPayment?.let {
+                                Text("Down payment target (30%): ${formatMoneyMoto(it)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
                             }
+                            Box(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                    .pressScaleClickable(enabled = busyId != "create") { create() }
+                                    .padding(vertical = 14.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(if (busyId == "create") "Creating…" else "Start plan", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -261,12 +260,14 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                 plans!!.isEmpty() -> item {
                     EmptyState("No moto-taxi ownership plans yet.")
                 }
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                // history/progress log of ownership plans, kept the per-row Divider
+                // convention (docs/DESIGN_REFERENCES.md §274).
                 else -> items(plans!!, key = { it.id }) { plan ->
                     val progressPct = if (plan.downPaymentTarget.signum() > 0) {
                         (plan.savedAmount.divide(plan.downPaymentTarget, 4, java.math.RoundingMode.HALF_UP).toDouble() * 100).coerceIn(0.0, 100.0)
                     } else 0.0
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${formatMoneyMoto(plan.bikePrice)} RWF bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Text(plan.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
@@ -325,8 +326,8 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                             if (plan.status == "COMPLETED") {
                                 Text("Paid off -- this bike is now fully yours.", color = Ids.colors.textSecondary, fontSize = 11.sp)
                             }
-                        }
                     }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 }
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }

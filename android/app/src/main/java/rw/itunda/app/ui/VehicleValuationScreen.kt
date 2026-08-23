@@ -15,8 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
@@ -179,22 +177,22 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
             }
             if (showCreate) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IdsTextField(value = make, onValueChange = { make = it }, label = "Make (e.g. Toyota)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = model, onValueChange = { model = it }, label = "Model (e.g. RAV4)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = modelYear, onValueChange = { modelYear = it }, label = "Model year", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = purchasePrice, onValueChange = { purchasePrice = it }, label = "Purchase price (RWF)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = purchaseDate, onValueChange = { purchaseDate = it }, label = "Purchase date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = mileageKm, onValueChange = { mileageKm = it }, label = "Current mileage (km)", modifier = Modifier.fillMaxWidth())
-                            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    .background(if (busy) Ids.colors.textTertiary else Ids.colors.brand)
-                                    .pressScaleClickable(enabled = !busy) { register() }.padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "Adding…" else "Add vehicle", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-                        }
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // a lone conditional form (docs/UI_UX_GUIDELINES.md §10).
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IdsTextField(value = make, onValueChange = { make = it }, label = "Make (e.g. Toyota)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = model, onValueChange = { model = it }, label = "Model (e.g. RAV4)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = modelYear, onValueChange = { modelYear = it }, label = "Model year", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = purchasePrice, onValueChange = { purchasePrice = it }, label = "Purchase price (RWF)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = purchaseDate, onValueChange = { purchaseDate = it }, label = "Purchase date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = mileageKm, onValueChange = { mileageKm = it }, label = "Current mileage (km)", modifier = Modifier.fillMaxWidth())
+                        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                .background(if (busy) Ids.colors.textTertiary else Ids.colors.brand)
+                                .pressScaleClickable(enabled = !busy) { register() }.padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busy) "Adding…" else "Add vehicle", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     }
                 }
             }
@@ -205,10 +203,11 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
             } else if (list.isEmpty()) {
                 item { EmptyState("No vehicles added yet — add one to track its value and get real offers.") }
             } else {
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card,
+                // matching GroupAccountScreen's identical entity-list conversion.
                 items(list, key = { it.id }) { v ->
                     val valuation = valuations[v.id]
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                                 Column {
                                     Text("${v.modelYear} ${v.make} ${v.model}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -239,7 +238,6 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                                     Text("+3y: ${"%,.0f".format(valuation.estimatedValueIn3Years)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
                                 }
                             }
-                        }
                     }
                 }
             }
