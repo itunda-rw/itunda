@@ -22074,6 +22074,26 @@ function CardView() {
     }
   };
 
+  // Real Toss Bank reference (2026-08-23, user-supplied 분실신고/"Report lost"
+  // screenshot): itunda has no distinct lost-card-report flow on the backend, only
+  // freeze/unfreeze -- but freezing genuinely accomplishes the real protective intent
+  // of "report lost or stolen" (no purchases can go through), so this reuses the same
+  // real freezeCard() call rather than inventing a separate endpoint. Unlike the
+  // Freeze/Unfreeze toggle button above (which flips either direction), this always
+  // freezes -- matching "report lost" real one-way meaning.
+  const handleReportLost = async () => {
+    if (!card || card.frozen) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCard(await freezeCard());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSaveLimits = async () => {
     setBusy(true);
     setError(null);
@@ -22106,7 +22126,15 @@ function CardView() {
     }
   };
 
-  if (error) {
+  // Real bug found+fixed while restructuring this screen (2026-08-23): `error` is
+  // shared between the initial load AND every later action (freeze/save-limits/
+  // report-lost/charge) -- this early-return used to fire unconditionally, so any
+  // one of those LATER action failures replaced the entire, already-loaded card
+  // screen with a full-page ErrorCard, not just an inline message next to the
+  // control that actually failed. Scoped to the real initial-load-failure case only
+  // (card never successfully loaded) -- a later action error now renders inline
+  // within the still-visible screen instead (see the error <p> below).
+  if (error && card === undefined) {
     return (
       <ErrorCard message={error} onRetry={load} />
     );
@@ -22127,26 +22155,104 @@ function CardView() {
     );
   }
 
+  // Real Toss Bank reference (2 more screenshots, 2026-08-23, direct user
+  // instruction: "when user click on card in topbar of itunda bank this is what
+  // they should see"): real Toss's own card screen leads with a month-spend
+  // headline + a small card thumbnail, a real usage-history list, then a flat
+  // "convenient features" row list -- not the card-first, form-heavy layout this
+  // screen used to have. Restructured to that same order using itunda's own real
+  // capabilities only: no "My card number" (itunda never stores/exposes a full
+  // card number, only last4 -- a real, honest gap, not fabricated), no month
+  // navigation arrows (spentThisMonth is a live running total, no per-past-month
+  // breakdown endpoint exists), no postpaid-transit-card/reissue/ATM-guide/
+  // overseas-fee/ongoing-events rows (all genuinely Korea-transit/card-network-
+  // specific, itunda has no backend for any of them). "Report lost or stolen"
+  // reuses the same real freezeCard() the Freeze/Unfreeze toggle already calls --
+  // freezing genuinely accomplishes that real protective intent, not a fabricated
+  // separate flow (see handleReportLost's own doc comment).
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <div
-        className="itunda-card"
-        style={{
-          background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-indigo), #1B64DA)',
-          color: 'white', padding: '20px',
-        }}
-      >
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>itunda card</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, letterSpacing: '2px', margin: '10px 0' }}>•••• •••• •••• {card.last4}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.85, display: 'flex', alignItems: 'center', gap: '5px' }}>{card.frozen ? <><LockGlyph size={12} /> Frozen — no purchases can be made</> : '✓ Active'}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+        <div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>This month</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>{card.spentThisMonth.toLocaleString()} RWF</p>
+        </div>
+        <div
+          style={{
+            width: '64px', height: '40px', borderRadius: '8px', flexShrink: 0,
+            background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-indigo), #1B64DA)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          {card.frozen && <LockGlyph size={16} color="#fff" />}
+        </div>
       </div>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+        •••• {card.last4} · {card.frozen ? 'Frozen — no purchases can be made' : 'Active'}
+      </p>
 
-      <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze}>
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
+
+      <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze} style={{ marginBottom: '20px' }}>
         {card.frozen ? 'Unfreeze card' : 'Freeze card'}
       </button>
 
-      <div className="itunda-card">
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>Spend limits</p>
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Usage history</h3>
+        {transactions.length === 0 ? (
+          <EmptyState message="No card purchases yet — once you use your card, they'll show up here." />
+        ) : (
+          transactions.map((t) => (
+            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+              <div>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t.merchantName}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
+              </div>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{t.amount.toLocaleString()} RWF</span>
+            </div>
+          ))
+        )}
+      </div>
+
+      {(cardUsageFactor || cardSuggestion) && (
+        <div className="itunda-flat-section">
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Card benefits</h3>
+          {cardUsageFactor && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardUsageFactor.description}</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>+{cardUsageFactor.points} credit score</span>
+            </div>
+          )}
+          {cardSuggestion && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardSuggestion.description}</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{cardSuggestion.pointsGain} more</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Convenient features</h3>
+        <button
+          onClick={() => document.getElementById('card-spend-limits-section')?.scrollIntoView({ behavior: 'smooth' })}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left' }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>Spend limits</span>
+          <ChevronRight size={18} color="var(--itunda-grey-400)" />
+        </button>
+        <button
+          onClick={handleReportLost}
+          disabled={busy || card.frozen}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.frozen ? 0.5 : 1 }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.frozen ? 'Reported lost or stolen' : 'Report lost or stolen'}</span>
+          <ChevronRight size={18} color="var(--itunda-grey-400)" />
+        </button>
+      </div>
+
+      <div id="card-spend-limits-section" className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Spend limits</h3>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Today</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentToday.toLocaleString()} / {card.dailyLimit.toLocaleString()} RWF</span>
@@ -22170,26 +22276,8 @@ function CardView() {
         </button>
       </div>
 
-      {(cardUsageFactor || cardSuggestion) && (
-        <div className="itunda-card">
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>Card benefits</p>
-          {cardUsageFactor && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardUsageFactor.description}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>+{cardUsageFactor.points} credit score</span>
-            </div>
-          )}
-          {cardSuggestion && (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{cardSuggestion.description}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{cardSuggestion.pointsGain} more</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="itunda-card">
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '4px' }}>Pay with your card</p>
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Pay with your card</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
           itunda has no real card-network partnership yet, so this simulates a real card-present purchase — real money moves, real limits apply.
         </p>
@@ -22208,23 +22296,6 @@ function CardView() {
             {card.frozen ? 'Card is frozen' : busy ? 'Paying…' : 'Pay'}
           </button>
         </form>
-      </div>
-
-      <div className="itunda-card">
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '10px' }}>Recent card activity</p>
-        {transactions.length === 0 ? (
-          <EmptyState message="No card purchases yet — once you use your card, they'll show up here." />
-        ) : (
-          transactions.map((t) => (
-            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
-              <div>
-                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t.merchantName}</p>
-                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
-              </div>
-              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{t.amount.toLocaleString()} RWF</span>
-            </div>
-          ))
-        )}
       </div>
     </div>
   );
