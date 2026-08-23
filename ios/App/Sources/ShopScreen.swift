@@ -110,6 +110,9 @@ struct CommerceShopContent: View {
     // doc comment.
     @State private var favoriteProductIds: Set<String> = []
     @State private var favoritingProductId: String?
+    // Real "recently viewed products" rail (2026-08-23) -- see
+    // RecentlyViewedStores.swift's own doc comment.
+    @State private var recentlyViewedProducts: [RecentlyViewedProduct] = RecentlyViewedProductsStore.shared.getAll()
 
     // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client
     // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,
@@ -220,7 +223,7 @@ struct CommerceShopContent: View {
                     cart: $cart,
                     onBack: { selectedMerchant = nil },
                     onViewCart: { showCart = true },
-                    onOpenProduct: { selectedProduct = $0 },
+                    onOpenProduct: { openProduct($0, businessName: merchant.businessName) },
                     onBookService: { bookingService = $0 },
                     favoriteProductIds: favoriteProductIds,
                     favoritingProductId: favoritingProductId,
@@ -419,6 +422,36 @@ struct CommerceShopContent: View {
                                 }
                             }
                         } else {
+                        // Real "recently viewed products" rail (2026-08-23) -- see
+                        // RecentlyViewedStores.swift's own doc comment. Same "merchandising
+                        // above the raw list, hidden once filtering starts" discipline the
+                        // Nearby/Deals rails below already establish. Reopens the merchant
+                        // (same shortcut those rails use), not a possibly-stale cached
+                        // product snapshot.
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, !recentlyViewedProducts.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("🕒 Recently viewed").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(recentlyViewedProducts) { rv in
+                                            Button(action: {
+                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: rv.merchantId, businessName: rv.businessName, category: nil, cashbackRate: "1%")) }
+                                            }) {
+                                                VStack(alignment: .leading, spacing: 6) {
+                                                    ProductImageThumb(imageUrl: rv.imageUrl, side: 96)
+                                                    Text(rv.name).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                                    if let discountPercent = rv.discountPercent, discountPercent > 0 {
+                                                        Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
+                                                    }
+                                                    Text("\(Int(rv.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                }
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- only shown
                         // on the unfiltered landing state, same discipline the Deals rail
                         // below follows. Tapping one opens that merchant's real catalog,
@@ -607,6 +640,15 @@ struct CommerceShopContent: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    // Real "recently viewed products" rail (2026-08-23) -- see
+    // RecentlyViewedStores.swift's own doc comment.
+    private func openProduct(_ product: MerchantProductDto, businessName: String) {
+        selectedProduct = product
+        recentlyViewedProducts = RecentlyViewedProductsStore.shared.add(
+            RecentlyViewedProduct(id: product.id, merchantId: product.merchantId, businessName: businessName, name: product.name, price: product.price, imageUrl: product.imageUrl, discountPercent: product.discountPercent)
+        )
     }
 
     // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of this

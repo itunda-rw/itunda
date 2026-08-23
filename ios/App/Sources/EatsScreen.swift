@@ -119,6 +119,9 @@ struct OrderFoodContent: View {
     // a fast star-toggle lookup on each browse card.
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
+    // Real "recently viewed restaurants" rail (2026-08-23) -- see
+    // RecentlyViewedStores.swift's own doc comment.
+    @State private var recentlyViewedRestaurants: [RecentlyViewedRestaurant] = RecentlyViewedRestaurantsStore.shared.getAll()
 
     var body: some View {
         Group {
@@ -254,6 +257,35 @@ struct OrderFoodContent: View {
                         onSelectCategory: selectCategory
                     )
 
+                    // Real "recently viewed restaurants" rail -- see
+                    // RecentlyViewedStores.swift's own doc comment. Hidden once the user
+                    // starts filtering, same "merchandising above the raw list, gone once
+                    // actively searching" discipline this codebase's own equivalent rails
+                    // already establish.
+                    if selectedCategory == nil && searchInput.trimmingCharacters(in: .whitespaces).isEmpty && !recentlyViewedRestaurants.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("🕒 Recently viewed").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(recentlyViewedRestaurants) { rv in
+                                        Button(action: {
+                                            Task { await openRestaurant(ShoppingMerchantDto(merchantId: rv.merchantId, businessName: rv.businessName, category: rv.category, cashbackRate: "1%")) }
+                                        }) {
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                RestaurantPhotoThumb(imageUrl: rv.photoUrl, side: 96)
+                                                    .frame(width: 120, height: 96)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                                Text(rv.businessName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                            }
+                                            .frame(width: 120)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.bottom, 8)
+                    }
+
                     if let error {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(error).foregroundColor(.red).font(.subheadline)
@@ -351,6 +383,9 @@ struct OrderFoodContent: View {
 
     private func openRestaurant(_ restaurant: ShoppingMerchantDto) async {
         selectedRestaurant = restaurant
+        recentlyViewedRestaurants = RecentlyViewedRestaurantsStore.shared.add(
+            RecentlyViewedRestaurant(merchantId: restaurant.merchantId, businessName: restaurant.businessName, category: restaurant.category, photoUrl: restaurant.photoUrl)
+        )
         cart = [:]
         menu = nil
         do {
