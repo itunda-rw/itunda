@@ -16967,3 +16967,35 @@ Closed both gaps together, same session:
 `EatsRecentlyViewed.kt`, bank-mfe `lib/recentlyViewed.ts`/`BankDashboard.tsx`,
 iOS `RecentlyViewedStores.swift`/`EatsScreen.swift`/`ShopScreen.swift`
 (commits `663bd773`, `7b7f3334`, `daa39c84`).*
+
+## 271. "Recently viewed listings" for Marketplace -- Android only, honest scope decision
+
+Extended the same real pattern to a third sibling product, itunda's own
+Karrot-modeled Marketplace, same real "no backend needed" shape as
+§270 -- new `RecentlyViewedListingsStore.kt` (Android). Real bonus find
+while wiring it: `MarketplaceController.getListing` (`GET /listings/{id}`)
+has existed on the backend since 2026-07-18 with zero Android callers --
+bank-mfe already closed this exact gap for itself back on 2026-08-16
+(`fetchListingDetail`, wired for a real view-count trigger), but Android
+never got it. Added `ApiService.getListing()`, used as a fallback when a
+recently-viewed listing has scrolled out of the currently-loaded feed (the
+instant local-list lookup is tried first).
+
+**Deliberately NOT ported to iOS or web this time** -- checked both before
+starting, per this session's own "check every sibling surface" discipline,
+and found a real architectural mismatch, not an oversight: Android's
+Marketplace has a genuine navigate-to-detail moment (`selectedListing`
+state, a dedicated `ListingDetailScreen`) to hook a "just opened this"
+signal into. iOS's `HoodMarketplace.swift` and bank-mfe's `ListingCard` both
+render the full listing inline in the browse feed with no separate detail
+view at all (confirmed via bank-mfe's own doc comment: "ListingCard already
+renders the full listing inline -- no separate detail-page navigation
+exists"). Building "recently viewed" there would mean either recording
+every card that scrolls past (not a real "I wanted to come back to this"
+signal, since it's not a deliberate action) or inventing a new detail-view
+navigation model on two platforms just to host this one convenience feature
+-- a real, unprompted UX-architecture change, not a small port. Flagged,
+not built.
+
+*Shipped: Android `RecentlyViewedListingsStore.kt`/`MarketplaceScreen.kt`/
+`MarketplaceRecentlyViewed.kt`/`ApiService.kt` (commit `b87128ba`).*
