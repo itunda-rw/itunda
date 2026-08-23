@@ -72,7 +72,7 @@ import {
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, resolveRecipient, sendDirect, sendToFamilyMember, type P2pPaymentRequestDto, type P2pPaymentRequestStatus, type P2pRecipientPreview } from './lib/p2p';
 import { getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature, type Certificate, type VerifyCertificateSignatureResult } from './lib/certificate';
-import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
+import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type AccountSummary, type LinkedAccount, type Overview } from './lib/overview';
 import {
   applyForLoan, applyForPostpaidCredit, drawOverdraft, fetchLenders, fetchLoanOffers, fetchMyLoans, fetchMyOverdraft,
   fetchMyPostpaidCredit, openOverdraft, refinanceLoan, repayLoan, repayOverdraft, repayPostpaidCredit, spendPostpaidCredit,
@@ -2574,6 +2574,11 @@ function OverviewView() {
     }
   };
 
+  // Real Toss motion pattern -- see useCountUp's own doc comment. Called before the
+  // null check below (Rules of Hooks) with a ?? 0 fallback, same convention as this
+  // file's other overview/detail balance hooks.
+  const animatedNetWorth = useCountUp(overview?.netWorth ?? 0);
+
   if (!overview) {
     return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
   }
@@ -2582,15 +2587,12 @@ function OverviewView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div className="itunda-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.netWorth')}</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{overview.netWorth.toLocaleString()} RWF</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString()} RWF</h2>
       </div>
       <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>{t('overview.accounts')}</h3>
         {overview.accounts.map((a) => (
-          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
-            <span>{a.name} ({a.type})</span>
-            <span>{a.currency} {a.balance.toLocaleString()}</span>
-          </div>
+          <OverviewAccountRow key={a.id} account={a} />
         ))}
       </div>
       <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2647,6 +2649,19 @@ function OverviewView() {
         )}
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+// Extracted so useCountUp -- see its own doc comment -- can be called once per real
+// row rather than inside the parent's accounts.map() callback, which the Rules of
+// Hooks forbid (same pattern as ForeignCurrencyAccountRow below).
+function OverviewAccountRow({ account }: { account: AccountSummary }) {
+  const animatedBalance = useCountUp(account.balance);
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
+      <span>{account.name} ({account.type})</span>
+      <span>{account.currency} {animatedBalance.toLocaleString()}</span>
     </div>
   );
 }
