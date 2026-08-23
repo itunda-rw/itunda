@@ -2852,7 +2852,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && payoffMessage && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{payoffMessage}</p>}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && refinanceResult && (
-        <div className="itunda-card" style={{ padding: '16px', border: '1px solid var(--itunda-indigo)' }}>
+        <div style={{ padding: '12px 0', borderLeft: '2px solid var(--itunda-indigo)', paddingLeft: '12px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
         </div>
@@ -2880,7 +2880,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
               ))}
             </div>
           )}
-          {offers === null ? <div className="itunda-card skeleton" style={{ height: '160px' }} /> :
+          {offers === null ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> :
            offers.length === 0 ? <EmptyState message="No offers right now — check back later or explore another lender." /> :
            offers.map((offer) => (
             <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
@@ -2888,10 +2888,10 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
         </>
       )}
       {mode === 'MY_LOANS' && (
-        myLoans === null ? <div className="itunda-card skeleton" style={{ height: '160px' }} /> :
+        myLoans === null ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> :
         myLoans.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no loans yet.</p> :
         myLoans.map((loan) => (
-          <div key={loan.id} className="itunda-card" style={{ padding: '16px' }}>
+          <div key={loan.id} className="itunda-flat-section">
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{loan.principal.toLocaleString()} RWF loan</h4>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Outstanding: {loan.outstanding.toLocaleString()} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Status: {loan.status} · {loan.interestRate}%</p>
@@ -2921,7 +2921,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
 function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boolean; onApply: (amount: number) => void }) {
   const [amount, setAmount] = useState(String(offer.maxAmount));
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div style={{ padding: '12px 0' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{offer.name}</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{offer.lenderName}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Up to {offer.maxAmount.toLocaleString()} RWF · {offer.interestRate}% · {offer.term}</p>
@@ -3015,11 +3015,11 @@ function OverdraftView() {
     }
   };
 
-  if (account === undefined) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (account === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   if (account === null) {
     return (
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div>
         <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Open an overdraft line</h4>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.
@@ -3038,7 +3038,7 @@ function OverdraftView() {
 
   const availableCredit = account.creditLimit - account.drawnBalance;
   return (
-    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Overdraft line</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Drawn: {account.drawnBalance.toLocaleString()} RWF of {account.creditLimit.toLocaleString()} RWF</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
@@ -3129,11 +3129,11 @@ function PostpaidCreditView() {
     }
   };
 
-  if (line === undefined) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (line === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   if (line === null) {
     return (
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div>
         <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Get postpaid credit</h4>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           A small credit line for real purchases, interest-free if you pay within 30 days -- your limit is set automatically from your credit score, up to 300,000 RWF.
@@ -3148,7 +3148,7 @@ function PostpaidCreditView() {
 
   const availableCredit = line.creditLimit - line.currentBalance;
   return (
-    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Postpaid credit</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Owed: {line.currentBalance.toLocaleString()} RWF of {line.creditLimit.toLocaleString()} RWF</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available: {availableCredit.toLocaleString()} RWF · interest-free if repaid within 30 days</p>
@@ -3278,12 +3278,12 @@ function HarvestAdvanceView() {
     }
   };
 
-  if (memberships === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (memberships === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Cooperative harvest advance</h4>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           Input financing or post-harvest advances for coffee cooperative members. Cooperative registration is self-declared -- not verified against a real RCA registry.
@@ -3308,7 +3308,7 @@ function HarvestAdvanceView() {
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>You're not a member of any cooperative yet.</p>
       ) : (
         memberships.map((m) => (
-          <div key={m.id} className="itunda-card" style={{ padding: '16px' }}>
+          <div key={m.id} style={{ padding: '12px 0' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Cooperative membership {m.cooperativeId}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Member since {new Date(m.memberSince).toLocaleDateString()}</p>
             <input
@@ -3338,7 +3338,7 @@ function HarvestAdvanceView() {
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My advances</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {advances.map((a) => (
-              <div key={a.id} className="itunda-card" style={{ padding: '14px' }}>
+              <div key={a.id} className="itunda-flat-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.principalAmount.toLocaleString()} RWF · {a.purpose}</p>
                   <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{a.status}</span>
@@ -3440,12 +3440,12 @@ function VupLoanView() {
     }
   };
 
-  if (loans === null || eligibility === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (loans === null || eligibility === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>VUP Financial Services</h4>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           Rwanda's Vision 2020 Umurenge Programme subsidized microloan for farming, livestock, or small business -- {eligibility.interestRate * 100}% interest, for
@@ -3487,7 +3487,7 @@ function VupLoanView() {
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My VUP loans</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {loans.map((loan) => (
-              <div key={loan.id} className="itunda-card" style={{ padding: '14px' }}>
+              <div key={loan.id} className="itunda-flat-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.purpose}</p>
                   <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-indigo)' }}>{loan.status}</span>
@@ -3620,12 +3620,12 @@ function StudentLoanView() {
     }
   };
 
-  if (loans === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (loans === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>BRD Student Loan</h4>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate,
@@ -3668,7 +3668,7 @@ function StudentLoanView() {
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My student loans</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {loans.map((loan) => (
-              <div key={loan.id} className="itunda-card" style={{ padding: '14px' }}>
+              <div key={loan.id} className="itunda-flat-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.level}</p>
                   <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-indigo)' }}>{loan.status}</span>
@@ -3824,12 +3824,12 @@ function MotoOwnershipView() {
     }
   };
 
-  if (plans === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (plans === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Moto-Taxi Ownership Plan</h4>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           Save toward a 30% down payment on your own moto-taxi bike (itunda's own down-payment policy), then convert the rest into an unsecured loan.
@@ -3867,7 +3867,7 @@ function MotoOwnershipView() {
             {plans.map((plan) => {
               const progressPct = plan.downPaymentTarget > 0 ? Math.min(100, Math.round((plan.savedAmount / plan.downPaymentTarget) * 100)) : 0;
               return (
-                <div key={plan.id} className="itunda-card" style={{ padding: '14px' }}>
+                <div key={plan.id} className="itunda-flat-section">
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{plan.bikePrice.toLocaleString()} RWF bike</p>
                     <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{plan.status}</span>
@@ -3956,17 +3956,17 @@ function CreditScoreView() {
   }, []);
 
   if (!result) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="itunda-card" style={{ padding: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Your score</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{result.score} / 850</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Based on your own account activity, not a bureau report.</p>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>What makes up your score</h3>
         {result.factors.map((f) => (
           <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
@@ -3979,7 +3979,7 @@ function CreditScoreView() {
         ))}
       </div>
       {suggestions !== null && suggestions.length > 0 && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>What would raise your score</h3>
           {suggestions.map((s) => (
             <div key={s.action} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
@@ -4012,17 +4012,17 @@ function TrustScoreView() {
   }, []);
 
   if (!result) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="itunda-card" style={{ padding: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Your trust score</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{result.score} / 1000</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>How your neighbors see you on Marketplace, Jobs, and Property.</p>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>What makes up your score</h3>
         {result.factors.map((f) => (
           <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
