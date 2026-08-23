@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
@@ -177,17 +175,14 @@ fun YouthAccountScreen(onBack: () -> Unit) {
                     }
                 }
                 YouthAccountMode.OPEN -> {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                    // around this balance summary -- a lone section on this screen, no
+                    // sibling section to separate it from (docs/UI_UX_GUIDELINES.md §10).
                     item {
-                        Card(
-                            shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                            colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                val animatedBalance = rememberCountUp(account?.balance ?: 0.0)
-                                Text("${formatMoneyMini(animatedBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                                Text(account?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                            }
+                        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                            val animatedBalance = rememberCountUp(account?.balance ?: 0.0)
+                            Text("${formatMoneyMini(animatedBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                            Text(account?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                     item {

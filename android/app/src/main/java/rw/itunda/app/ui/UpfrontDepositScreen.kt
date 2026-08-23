@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -135,45 +133,45 @@ private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit)
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth(),
+    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card wrapper --
+    // each row in this list gets no card, just vertical padding, matching
+    // ShellSection's already-fixed shape (docs/UI_UX_GUIDELINES.md §10).
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${formatMoneyUpfront(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Text(depositStatusLabel(deposit), color = depositStatusColor(deposit), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            Text("Interest paid upfront: ${formatMoneyUpfront(deposit.interestPaid)} RWF at ${deposit.interestRate}%/yr", color = Ids.colors.success, fontSize = 13.sp)
-            Text(
-                if (deposit.status == "ACTIVE") "Locked until ${formatUpfrontDate(deposit.maturesAt)}" else "Matured ${formatUpfrontDate(deposit.maturesAt)}",
-                color = Ids.colors.textSecondary, fontSize = 12.sp,
-            )
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-            if (deposit.status == "MATURED" && deposit.withdrawnAt == null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                        .pressScaleClickable(enabled = !withdrawing) {
-                            withdrawing = true
-                            coroutineScope.launch {
-                                try {
-                                    NetworkClient.apiService.withdrawUpfrontDeposit(deposit.id)
-                                    onChanged()
-                                } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
-                                } catch (e: IOException) {
-                                    error = "Couldn't reach itunda. Check your connection and try again."
-                                } finally {
-                                    withdrawing = false
-                                }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${formatMoneyUpfront(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text(depositStatusLabel(deposit), color = depositStatusColor(deposit), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+        Text("Interest paid upfront: ${formatMoneyUpfront(deposit.interestPaid)} RWF at ${deposit.interestRate}%/yr", color = Ids.colors.success, fontSize = 13.sp)
+        Text(
+            if (deposit.status == "ACTIVE") "Locked until ${formatUpfrontDate(deposit.maturesAt)}" else "Matured ${formatUpfrontDate(deposit.maturesAt)}",
+            color = Ids.colors.textSecondary, fontSize = 12.sp,
+        )
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        if (deposit.status == "MATURED" && deposit.withdrawnAt == null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                    .pressScaleClickable(enabled = !withdrawing) {
+                        withdrawing = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.withdrawUpfrontDeposit(deposit.id)
+                                onChanged()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                withdrawing = false
                             }
-                        }.padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(if (withdrawing) "Working…" else "Withdraw to main account", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
+                        }
+                    }.padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (withdrawing) "Working…" else "Withdraw to main account", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }

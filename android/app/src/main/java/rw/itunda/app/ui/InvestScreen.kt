@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -275,27 +276,30 @@ private fun PortfolioContent() {
         else -> {
             val p = portfolio!!
             val positive = p.totalReturn >= 0
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrappers around
+            // the summary/add-funds sections and each holding row (docs/UI_UX_GUIDELINES.md
+            // §10) -- a divider now marks the boundary between the summary+add-funds
+            // section and the holdings list below it, matching ShellSection's shape.
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Total value", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                    Text("Total value", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                    Text(
+                        "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${"%.2f".format(p.totalReturnPercent)}%)",
+                        color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                    )
+                    if (!history.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Sparkline(history!!.map { it.value }, positive = positive)
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${"%.2f".format(p.totalReturnPercent)}%)",
-                            color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                            "Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction",
+                            color = Ids.colors.textSecondary, fontSize = 11.sp,
                         )
-                        if (!history.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Sparkline(history!!.map { it.value }, positive = positive)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                "Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction",
-                                color = Ids.colors.textSecondary, fontSize = 11.sp,
-                            )
-                        }
                     }
                 }
                 AddFundsCard(onFunded = ::load)
+                Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 if (p.holdings.isEmpty()) {
                     Text("You don't hold any real shares yet. Browse the Market tab to buy some.", color = Ids.colors.textSecondary, fontSize = 14.sp)
                 } else {
@@ -342,33 +346,31 @@ private fun AddFundsCard(onFunded: () -> Unit) {
         }
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Investment cash", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text(
-                    if (expanded) "Cancel" else "Add funds",
-                    color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                    modifier = Modifier.pressScaleClickable { expanded = !expanded; error = null },
-                )
-            }
-            Text("Move money from your main account into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-            if (expanded) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Box(
-                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                            .background(Ids.colors.brand)
-                            .pressScaleClickable(enabled = !busy) { coroutineScope.launch { doFund() } }
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
-                    ) {
-                        Text(if (busy) "Working…" else "Add", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Investment cash", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                if (expanded) "Cancel" else "Add funds",
+                color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                modifier = Modifier.pressScaleClickable { expanded = !expanded; error = null },
+            )
+        }
+        Text("Move money from your main account into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+        if (expanded) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                        .background(Ids.colors.brand)
+                        .pressScaleClickable(enabled = !busy) { coroutineScope.launch { doFund() } }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
+                    Text(if (busy) "Working…" else "Add", color = Color.White, fontWeight = FontWeight.Bold)
                 }
-                error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
             }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
         }
     }
     DeviceStepUpHost(
@@ -381,19 +383,17 @@ private fun AddFundsCard(onFunded: () -> Unit) {
 @Composable
 private fun HoldingRow(holding: StockHoldingDto) {
     val positive = holding.`return` >= 0
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(holding.symbol, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("${formatMoney(holding.value)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${holding.shares} shares @ ${formatMoney(holding.avgPrice)} avg", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                Text(
-                    "${if (positive) "+" else ""}${"%.2f".format(holding.`return`)}%",
-                    color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                )
-            }
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(holding.symbol, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("${formatMoney(holding.value)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${holding.shares} shares @ ${formatMoney(holding.avgPrice)} avg", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            Text(
+                "${if (positive) "+" else ""}${"%.2f".format(holding.`return`)}%",
+                color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
