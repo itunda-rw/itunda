@@ -29,7 +29,16 @@
 body {
   margin: 0;
   font-family: var(--itunda-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
-  background-color: var(--itunda-grey-100);
+  /* Real Toss reference (2026-08-24, direct user directive, screenshots of Toss's
+     Finance menu/All apps grid/Pay Money detail/membership list): every one of those
+     real screens sits on a pure white page canvas, not grey-100 -- grey-100 is reserved
+     for genuinely inset fills (search bars, chips, segmented-control tracks), never the
+     page itself. Previously this was grey-100 app-wide, which is the classic
+     "grey canvas + white cards" dashboard look, but itunda's own flat-design direction
+     (see .itunda-card's own header below) means most screens no longer have that
+     grey-vs-white contrast to justify -- see .itunda-card's new border for how cards
+     stay visually distinct now that the page under them is white too. */
+  background-color: var(--itunda-white);
   color: var(--itunda-grey-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -57,7 +66,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100svh;
-  background-color: var(--itunda-grey-100);
+  background-color: var(--itunda-white);
   box-shadow: 0 0 20px rgba(0,0,0,0.05);
   position: relative;
   overflow-x: hidden;
@@ -85,6 +94,13 @@ button:active {
   background: var(--itunda-white);
   border-radius: var(--itunda-radius-md);
   padding: 24px;
+  /* Real fix (2026-08-24, same page-background pass as body/#root above): with the
+     page canvas now white too, the shadow alone was the only thing separating a card
+     from its background -- at --itunda-shadow's real Toss-subtle 4% opacity that's not
+     always enough on its own. Added a hairline border (matches real Toss's own
+     white-card-on-white-page treatment) so cards stay visually distinct without
+     needing a grey page underneath them. */
+  border: 1px solid var(--itunda-grey-200);
   box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
   transition: var(--itunda-transition);
