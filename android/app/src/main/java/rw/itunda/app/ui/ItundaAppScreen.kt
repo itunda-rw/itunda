@@ -3237,6 +3237,11 @@ private data class ShellRow(
 // AccountDetailScreen.tsx's flat row pattern built the same session. 38dp
 // circular icon badge (was 42dp square-ish RoundedCornerShape(16.dp)) to match
 // those exactly.
+// Real fix (2026-08-24, direct user directive, real Toss product-list
+// screenshots): dropped the Divider() this used to render between rows -- real
+// Toss lists separate rows with whitespace alone, not a hairline rule per row.
+// FlatSection below already got this right (see its own doc comment); this was
+// the one real remaining list style still adding one.
 @Composable
 private fun ShellSection(title: String, rows: List<ShellRow>) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -3244,7 +3249,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
             Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
             Spacer(modifier = Modifier.height(4.dp))
         }
-        rows.forEachIndexed { index, row ->
+        rows.forEach { row ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -3290,9 +3295,6 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     // nothing while tapping elsewhere in the same row worked.
                     IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }
-            }
-            if (index != rows.lastIndex) {
-                Divider(color = Ids.colors.divider)
             }
         }
     }
