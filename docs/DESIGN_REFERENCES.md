@@ -17053,3 +17053,69 @@ pre-existing debt rather than bumped).
 
 *Shipped across 7 commits on `agent/itunda-agent-network`: `710fd95e`,
 `3d0bef43`, `31e6238b`, `ec339c0a`, `8d59ac8f`, `e335670a`.*
+
+## 273. Light-theme page canvas: grey -> white, matching real Toss
+
+Direct user directive (2026-08-24), given while looking at real Toss screenshots
+(Finance catalog menu, "All" apps grid, Pay Money detail, membership list): "toss
+still uses white color not only for cards designs but also for flat designs ...
+itunda ... is not using white color which makes our designs don't look good in light
+mode." Every one of those real screens -- card-heavy or flat -- sits on a pure white
+page canvas; itunda's own `body`/`#root` (web), `IdsLightSemanticColors.background`
+(Android), and `IDS.Colors.backgroundPrimary` (iOS) all used the grey token
+(`#F2F4F6`) as the page default instead, the classic "grey canvas + white cards"
+dashboard look. Confirmed real prior evidence this was wrong: two web screens already
+built to match a Toss screenshot directly (`PayMoneyDetail.tsx`, `AccountDetailScreen
+.tsx`) had already independently overridden to explicit white for exactly this reason
+-- the rest of the app just never got the same treatment since it inherits the page
+default instead. See UI_UX_GUIDELINES.md §10's new corollary for the standing rule.
+
+User's explicit scope call when asked: flip the whole page to white on all 3
+platforms in one pass (not just non-card flat screens, and not web-only) -- cards
+distinguished by a hairline border instead of grey-vs-white contrast.
+
+**web**: `index.css` `body`/`#root` `background-color` from `var(--itunda-grey-100)`
+to `var(--itunda-white)` (already theme-reactive, flips to a dark surface in dark
+mode -- no separate dark-mode change needed). `.itunda-card` gained a
+`border: 1px solid var(--itunda-grey-200)` alongside its existing shadow. Verified:
+`tsc -b` + `vite build` + `oxlint` clean; real browser check via headless Chrome + CDP
+`Emulation.setEmulatedMedia` forcing `prefers-color-scheme: light` (Chrome extension
+wasn't connected this session) against the real dev server -- login card and PIN-pad
+screens both confirmed white with a visible card border.
+
+**Android**: `IdsLightSemanticColors.background` from `0xFFF2F4F6` to `0xFFFFFFFF`
+(`IdsSemanticColors.kt`) -- cascades everywhere via `MainActivity.kt`'s existing
+"real single-root background" `Surface`. `IdsCard.kt` gained a `BorderStroke(1.dp,
+Ids.colors.divider)` (border, not elevation, so it can't re-trigger the real
+tonal-elevation-tint bug that file's own header already documents). Real,
+pre-existing debt found, not fixed: ~46 files build their own inline `Card(...)`
+instead of reusing `IdsCard`, so the new border doesn't reach them -- spot-checked
+one, they keep Material3's default nonzero elevation shadow so likely still visible,
+not individually verified across all 46. Verified: real
+`:core:designsystem:compileDebugKotlin :app:compileDebugKotlin` BUILD SUCCESSFUL, and
+a real physical device (SM-A165N, light mode forced via `adb shell cmd uimode night
+no`) screenshot confirmed the Home tab's flat rows now show a clean hairline border
+on a white page, matching the real Toss reference exactly.
+
+**iOS**: `IDS.Colors.backgroundPrimary` from `0xF2F4F6` to `0xFFFFFF` (`IDS.swift`).
+Unlike web/Android, iOS has no single shared card component -- every screen builds
+its own inline `.background(IDS.Colors.card).cornerRadius(...)` box (~188 real call
+sites across 49 files). Added a new `idsCardBorder(cornerRadius:)` `View` extension
+(hairline border, `IDS.Colors.divider`) and applied it via a verified regex sweep to
+178 of 188 raw occurrences (the `.background(IDS.Colors.card).cornerRadius(X)`
+shape, same-line or split across lines); the remaining 10 handled individually after
+checking real context -- 4 unselected-state filter chips (`selected ? brand : card`),
+1 shared `IdsListRow` (a flat full-width row, no corner radius, so it got a bottom
+hairline divider instead of `idsCardBorder`'s rounded-rect stroke), and 5 confirmed
+unrelated (a shimmer-loading gradient, a focused-textfield background with its own
+brand-colored focus ring, 2 avatar-ring strokes using `card` as a stroke color, not
+a background fill). Verified: real `xcodebuild` (ItundaApp scheme) BUILD SUCCEEDED
+across all 49 changed files. iOS Simulator visual verification attempted (3
+reboot/relaunch attempts) but blocked by a `simctl ui appearance light` sync quirk
+unrelated to this code -- not pursued further per the "don't loop on repeated
+failures" rule; relying instead on the successful build plus Android/web shipping
+the exact same real color values and the same border-based separation technique,
+both visually confirmed working this same pass.
+
+*Shipped: web `index.css` (`b7a7908a`), Android `IdsSemanticColors.kt`/`IdsCard.kt`
+(`a5571921`), iOS `IDS.swift`/`Components.swift`/48 call-site files (`0cfdd908`).*

@@ -166,6 +166,22 @@ new/touched screens, not a retroactive sweep — itunda's existing card-heavy sc
 convert one when you're already touching that screen for another reason, same
 discipline as rule 9's `IdsButton` backlog.
 
+**Corollary, 2026-08-24 (direct user follow-up, same real Toss screenshots)**: the
+page canvas itself should be white, not the grey `--itunda-grey-100` /
+`Ids.colors.surfaceSoft` / `IDS.Colors.chipBackground` shade — every real Toss screen
+referenced above, card-heavy or flat, sits on pure white; grey is reserved for
+genuinely inset fills (search bars, chips, segmented-control tracks), never the page
+itself. This was a real, repo-wide gap: itunda's `body`/`#root` (web),
+`IdsLightSemanticColors.background` (Android), and `IDS.Colors.backgroundPrimary`
+(iOS) all used the grey token as the page default. Fixed across all 3 platforms this
+pass (commits `b7a7908a`, `a5571921`, `0cfdd908`) — this is now the standing default,
+not an opt-in. One consequence worth knowing before touching a card-bearing screen:
+with the page now white too, a white card has nothing left to separate it from its
+background unless it adds its own hairline border (`var(--itunda-grey-200)` /
+`Ids.colors.divider` / `IDS.Colors.divider`) — web's `.itunda-card`, Android's
+`IdsCard`, and iOS's new `idsCardBorder(cornerRadius:)` extension all do this now, so
+prefer those over a raw inline card box that would otherwise render invisibly.
+
 ## 11. itunda's brand identity: petal mark, indigo primary (2026-08-22)
 
 itunda's app icon and primary brand color, after a full 14-shape x 16-color
