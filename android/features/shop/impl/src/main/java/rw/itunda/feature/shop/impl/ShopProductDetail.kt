@@ -3,6 +3,7 @@ package rw.itunda.feature.shop.impl
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +53,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.MapBookmarkDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OrderItemRequest
@@ -180,6 +183,21 @@ internal fun MultiCartView(
     // MultiCartView.
     var needsDeviceVerification by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+    // already closed for ride booking/Eats delivery address: itunda's own "map
+    // bookmarks" feature was never surfaced in Commerce checkout's own delivery-
+    // address field either. No new backend work. Unlike Ride/Eats, this field captures
+    // no coordinates at all (PlaceOrderRequest only ever takes a plain deliveryAddress
+    // string) -- a plain tap-to-fill chip row, same treatment RideScreen.kt's own
+    // dropoff fields already use.
+    var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try {
+            bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+        } catch (_: Exception) {
+            // Real, non-critical -- the quick-select row just won't render if this fails.
+        }
+    }
 
     val groups = cart.values.groupBy { it.merchantId }
     val groupList = remember(groups) { groups.entries.toList() }
@@ -260,6 +278,31 @@ internal fun MultiCartView(
                         label = "Delivery address",
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (bookmarks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        ) {
+                            bookmarks.forEach { b ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Ids.colors.surfaceSoft)
+                                        .pressScaleClickable { address = b.displayName }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp))
+                                            .background(runCatching { Color(android.graphics.Color.parseColor(b.color)) }.getOrDefault(Ids.colors.brand)),
+                                    )
+                                    Text(b.displayName, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                }
+                            }
+                        }
+                    }
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                 }
             }
