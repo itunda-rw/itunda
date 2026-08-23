@@ -1397,7 +1397,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
       ) : (
         <>
           {recentTabs.length > 0 && (
-            <section className="itunda-card" style={{ padding: '16px', marginBottom: '12px' }}>
+            <section className="itunda-flat-section">
               <h2 style={{ margin: '0 0 10px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Clock size={12} /> Recently used
               </h2>
@@ -1418,7 +1418,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
               pattern Android's MenuScreen had before that fix -- web just never got the
               same correction until now. */}
           {groups.map((group) => (
-            <section key={group.title} className="itunda-card" style={{ padding: '16px', marginBottom: '12px' }}>
+            <section key={group.title} className="itunda-flat-section">
               <h2 style={{ margin: '0 0 12px', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
                 {group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500, fontSize: 'var(--itunda-type-scale-12-size)' }}>· {group.ids.length}</span>
               </h2>
@@ -1446,7 +1446,7 @@ function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
     <div>
       <ProductPageHeader title="You" subtitle="Your profile, insights, and account security in one place." />
       <MyView />
-      <div className="itunda-card" style={{ padding: '16px', marginTop: '12px' }}>
+      <div className="itunda-flat-section">
         <h2 style={{ margin: 0, fontSize: 'var(--itunda-type-scale-16-size)' }}>Insights</h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
           {[
@@ -1458,7 +1458,7 @@ function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
           ))}
         </div>
       </div>
-      <div className="itunda-card" style={{ padding: '16px', marginTop: '12px' }}>
+      <div className="itunda-flat-section">
         <h2 style={{ margin: 0, fontSize: 'var(--itunda-type-scale-16-size)' }}>Account & security</h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
           {[
@@ -1715,7 +1715,7 @@ function ScheduledTransfersCard() {
   const minDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('scheduledTransfers.title')}</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -1870,7 +1870,7 @@ function DelayedTransfersCard() {
   const past = (transfers ?? []).filter((tr) => tr.status !== 'PENDING');
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('delayedTransfers.title')}</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -2167,7 +2167,7 @@ function RequestMoneyCard() {
   };
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('requestMoney.title')}</h3>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -2304,7 +2304,7 @@ function AutoTopUpCard({ accountId }: { accountId: string }) {
   if (setting === undefined) return null;
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div style={{ marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{t('autoTopUp.title')}</h3>
         {linkedAccounts.length > 0 && (
@@ -2404,11 +2404,11 @@ function CertificateView() {
   };
 
   if (certificate === undefined) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
-    <div className="itunda-card" style={{ padding: '28px' }}>
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
         <ShieldCheck size={22} color={certificate?.status === 'ACTIVE' ? 'var(--itunda-green)' : 'var(--itunda-grey-500)'} />
         <h2 style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>Itunda Certificate</h2>
@@ -4544,7 +4544,7 @@ function AgentOperatorView() {
   }
 
   if (!till) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
@@ -4870,7 +4870,7 @@ function UssdSettingsView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="itunda-card" style={{ padding: '20px' }}>
+      <div>
         <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '4px' }}>USSD access</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           Roughly two-thirds of people in Rwanda have a feature phone, not a smartphone. Set a real 4-6 digit
@@ -4998,7 +4998,7 @@ function OpenForeignAccountCard({ currencies, onOpened }: { currencies: readonly
   };
 
   return (
-    <div className="itunda-card">
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Open an account</h3>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
@@ -5054,7 +5054,7 @@ function ConvertCurrencyCard({ accounts, onConverted }: { accounts: ForeignCurre
   };
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Convert</h3>
       <div style={{ display: 'flex', gap: '8px' }}>
         <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
@@ -5143,7 +5143,7 @@ function RateAlertCard({ accounts }: { accounts: ForeignCurrencyAccount[] }) {
   if (alerts === null) return null;
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Rate alerts</h3>
       {accounts.map((w) => {
         const a = alertFor(w.currency);
