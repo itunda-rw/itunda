@@ -10740,7 +10740,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   }
 
   if (conversations === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   // Pinned rooms float to the top of the active list, same as real KakaoTalk --
@@ -10760,13 +10760,11 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
         </button>
       )}
       {visibleConversations.length === 0 ? (
-        <div className="itunda-card">
-          <EmptyState message={showArchived ? "You haven't archived any chats." : "No conversations yet — start one from Friends, or say hi to someone you already know."} />
-        </div>
+        <EmptyState message={showArchived ? "You haven't archived any chats." : "No conversations yet — start one from Friends, or say hi to someone you already know."} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {visibleConversations.map((c) => (
-            <div key={c.conversationId} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 20px' }}>
+            <div key={c.conversationId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 0' }}>
               <button
                 onClick={() => setOpenConversationId(c.conversationId)}
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
@@ -10940,7 +10938,7 @@ function GroupSplitBillsView({
       {!showNewForm ? (
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
       ) : (
-        <form onSubmit={handleCreate} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px 0' }}>
           <input
             type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Total amount (RWF)" required
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
@@ -11003,7 +11001,7 @@ function GroupSplitBillsView({
           </div>
         </form>
       )}
-      {splitBills === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
+      {splitBills === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {splitBills !== null && splitBills.length === 0 && (
         <EmptyState message="No split bills in this group yet — split one to divide a shared expense evenly." />
       )}
@@ -11013,7 +11011,7 @@ function GroupSplitBillsView({
         const hasPending = participants.some((p) => p.status === 'PENDING');
         const modeLabel = splitBill.mode === 'LADDER' ? <> · <DiceGlyph size={12} /> Ladder L{splitBill.ladderVarianceLevel}</> : null;
         return (
-          <div key={splitBill.id} className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div key={splitBill.id} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{splitBill.description}</h4>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
               Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}{modeLabel}
@@ -11174,7 +11172,7 @@ function DirectSplitBillsView({
       {!showNewForm ? (
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
       ) : (
-        <form onSubmit={handleCreate} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px 0' }}>
           <input
             type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Total amount (RWF)" required
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
@@ -11216,7 +11214,7 @@ function DirectSplitBillsView({
           </div>
         </form>
       )}
-      {splitBills === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
+      {splitBills === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {splitBills !== null && splitBills.length === 0 && (
         <EmptyState message={`No split bills with ${otherUserName} yet — split one to divide a shared expense evenly.`} />
       )}
@@ -11226,7 +11224,7 @@ function DirectSplitBillsView({
         const hasPending = participants.some((p) => p.status === 'PENDING');
         const modeLabel = splitBill.mode === 'LADDER' ? <> · <DiceGlyph size={12} /> Ladder L{splitBill.ladderVarianceLevel}</> : null;
         return (
-          <div key={splitBill.id} className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div key={splitBill.id} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{splitBill.description}</h4>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
               Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}{modeLabel}
@@ -11444,7 +11442,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
   }
 
   if (groups === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
@@ -11455,17 +11453,14 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
       />
       <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
       {groups.length === 0 ? (
-        <div className="itunda-card">
-          <EmptyState message="No groups yet — start one to chat with more than one person at a time." />
-        </div>
+        <EmptyState message="No groups yet — start one to chat with more than one person at a time." />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {groups.map((g) => (
             <button
               key={g.groupId}
               onClick={() => setOpenGroupId(g.groupId)}
-              className="itunda-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 0', textAlign: 'left', width: '100%' }}
             >
               <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Users size={20} color="var(--itunda-indigo)" />
@@ -11650,12 +11645,10 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
   };
 
   if (error) return <ErrorCard message={error} onRetry={load} />;
-  if (contacts === null) return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+  if (contacts === null) return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (contacts.length === 0) {
     return (
-      <div className="itunda-card">
-        <EmptyState message="No friends yet -- save someone's contact and they'll show up here once they're on itunda." />
-      </div>
+      <EmptyState message="No friends yet -- save someone's contact and they'll show up here once they're on itunda." />
     );
   }
 
@@ -11667,8 +11660,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
           key={c.userId}
           onClick={() => handleTap(c)}
           disabled={startingId === c.userId}
-          className="itunda-card"
-          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', width: '100%', textAlign: 'left', background: 'var(--itunda-white)', border: 'none', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 0', width: '100%', textAlign: 'left', background: 'var(--itunda-white)', border: 'none', cursor: 'pointer' }}
         >
           <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -11791,7 +11783,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>List an item</h3>
       <input
         type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you selling?" required
@@ -13001,7 +12993,7 @@ function VehicleInspectionsView() {
           </div>
 
           {myBookings === null ? (
-            <div className="itunda-card skeleton" style={{ height: '100px' }} />
+            <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
           ) : myBookings.length === 0 ? (
             <EmptyState message="No inspections booked yet — book one to get a real used car checked before you buy." />
           ) : (
@@ -13027,7 +13019,7 @@ function VehicleInspectionsView() {
           )}
         </div>
       ) : mechanicProfile === undefined ? (
-        <div className="itunda-card skeleton" style={{ height: '160px' }} />
+        <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />
       ) : mechanicProfile === null ? (
         // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
         // form section shown in this state.
@@ -13060,7 +13052,7 @@ function VehicleInspectionsView() {
           </div>
           {mechanicError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{mechanicError}</p>}
           {mechanicBookings === null ? (
-            <div className="itunda-card skeleton" style={{ height: '100px' }} />
+            <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
           ) : mechanicBookings.length === 0 ? (
             <EmptyState message="No bookings yet — they'll show up here once a buyer books an inspection." />
           ) : (
@@ -13177,7 +13169,7 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
   }
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Write a post</h3>
       <select
         value={category} onChange={(e) => setCategory(e.target.value)}
@@ -13260,7 +13252,7 @@ function CommentNotificationToggle() {
   if (enabled === null) return null;
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', marginBottom: '12px' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', marginBottom: '12px' }}>
       <div>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Notify me about new comments</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>On your own posts, in this neighborhood</p>
@@ -13401,14 +13393,14 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
   return (
     <div style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
-      {sessions === null && <div className="itunda-card skeleton" style={{ height: '60px' }} />}
+      {sessions === null && <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {sessions !== null && sessions.length === 0 && (
         <EmptyState message="No sessions scheduled yet — start one to meet up with neighbors." />
       )}
       {sessions !== null && sessions.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px' }}>
           {sessions.map((s) => (
-            <div key={s.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+            <div key={s.id} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{new Date(s.scheduledFor).toLocaleString()}</p>
               <button
                 className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 12px' }}
@@ -13422,7 +13414,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
         </div>
       )}
       {isAuthor && (
-        <div className="itunda-card">
+        <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '8px' }}>Schedule sessions (up to 6)</p>
           {dates.map((d, i) => (
             <input
@@ -13477,14 +13469,14 @@ function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost;
 
   if (done) {
     return (
-      <div className="itunda-card" style={{ marginTop: '16px' }}>
+      <div style={{ marginTop: '16px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>Split request sent -- see it in your group chat's Split bill tab.</p>
       </div>
     );
   }
 
   return (
-    <div className="itunda-card" style={{ marginTop: '16px' }}>
+    <div style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Split the cost</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
         Enter what you paid up front -- every real member who joined will be asked for their even share.
@@ -13747,16 +13739,14 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
       {error && (
         <ErrorCard message={error} onRetry={load} />
       )}
-      {!error && posts === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
+      {!error && posts === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-        <div className="itunda-card">
-          {/* Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
-              from the same-day Android/iOS fix): say what's missing AND what fixes
-              it, per this screen's own real "+ Write a post" button above in MINE. */}
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-            {view === 'BROWSE' ? 'No posts yet — be the first to share something with your neighbors.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet — try Browse to see posts from everywhere.' : 'You haven\'t posted anything yet — tap "+ Write a post" above to share your first one.'}
-          </p>
-        </div>
+        // Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
+        // from the same-day Android/iOS fix): say what's missing AND what fixes
+        // it, per this screen's own real "+ Write a post" button above in MINE.
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+          {view === 'BROWSE' ? 'No posts yet — be the first to share something with your neighbors.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet — try Browse to see posts from everywhere.' : 'You haven\'t posted anything yet — tap "+ Write a post" above to share your first one.'}
+        </p>
       )}
       {!error && posts !== null && posts.length > 0 && (() => {
         // Real 같이해요 (join-together) pinned mid-feed slot (2026-07-24) -- Karrot's
@@ -13835,7 +13825,7 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Post a job</h3>
       <select
         value={category} onChange={(e) => setCategory(e.target.value)}
@@ -14180,13 +14170,13 @@ function MyJobApplicationsView() {
   }, []);
 
   if (error) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
-  if (applications === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (applications === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (applications.length === 0) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You haven't applied to any jobs yet.</p>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {applications.map(({ application, title }) => (
-        <div key={application.id} className="itunda-card">
+        <div key={application.id} className="itunda-flat-section">
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{title ?? 'Job post'}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{application.message}</p>
           <span
@@ -14235,13 +14225,13 @@ function JobPostWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved jobs yet -- tap ♡ on any job post to save it here." />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {favorites.map((f) => (
-        <div key={f.jobPostId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.jobPostId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{f.title}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString()} RWF</p>
@@ -14460,9 +14450,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
           {view === 'BROWSE' && searchResults !== null && (
             <>
               {searchResults.posts.length === 0 ? (
-                <div className="itunda-card">
-                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>No jobs matched "{searchQuery}".</p>
-                </div>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>No jobs matched "{searchQuery}".</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {searchResults.posts.map((post) => (
@@ -14489,17 +14477,15 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
               {error && (
                 <ErrorCard message={error} onRetry={load} />
               )}
-              {!error && posts === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
+              {!error && posts === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
               {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-                <div className="itunda-card">
-                  {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
-                      ported from the same-day Android/iOS fix): say what's missing AND
-                      what fixes it, per this screen's own real "+ Post a job" button
-                      above in the MINE view. */}
-                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-                    {view === 'BROWSE' ? 'No jobs posted yet — check back soon, or post one yourself.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet — try Browse to see jobs from everywhere.' : view === 'WORKED' ? 'No completed jobs recorded yet — jobs you complete will show up here.' : 'You haven\'t posted any jobs yet — tap "+ Post a job" above to post your first one.'}
-                  </p>
-                </div>
+                // Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                // ported from the same-day Android/iOS fix): say what's missing AND
+                // what fixes it, per this screen's own real "+ Post a job" button
+                // above in the MINE view.
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+                  {view === 'BROWSE' ? 'No jobs posted yet — check back soon, or post one yourself.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet — try Browse to see jobs from everywhere.' : view === 'WORKED' ? 'No completed jobs recorded yet — jobs you complete will show up here.' : 'You haven\'t posted any jobs yet — tap "+ Post a job" above to post your first one.'}
+                </p>
               )}
               {!error && posts !== null && posts.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
