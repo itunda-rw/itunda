@@ -21111,6 +21111,17 @@ function MultiCartView({
   // restarting the loop from scratch.
   const checkoutResultsRef = useRef<CommerceCheckoutResult[]>([]);
   const checkoutResumeIndexRef = useRef(0);
+  // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+  // already closed for ride booking and Eats delivery address: itunda's own "map
+  // bookmarks" feature was never surfaced in Commerce checkout's own delivery-address
+  // field either. Unlike those two, this field has no coordinate-capture at all
+  // (placeOrder's own real contract only ever takes a plain deliveryAddress string,
+  // no lat/lng) -- a plain tap-to-fill chip row rather than a full search-autocomplete
+  // dropdown, since there's no coordinate value a real autocomplete would add here.
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  useEffect(() => {
+    fetchMyMapBookmarks().then(setBookmarks).catch(() => {});
+  }, []);
 
   const groups = Object.entries(cart).filter(([, g]) => Object.values(g.lines).some((l) => l.quantity > 0));
   const grandTotal = groups.reduce(
@@ -21185,6 +21196,22 @@ function MultiCartView({
               type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
             />
+            {bookmarks.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+                {bookmarks.map((b) => (
+                  <button
+                    key={b.id} type="button" onClick={() => setAddress(b.displayName)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, padding: '8px 12px',
+                      borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+                    }}
+                  >
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: b.color, flexShrink: 0 }} />
+                    {b.displayName}
+                  </button>
+                ))}
+              </div>
+            )}
             {needsDeviceVerification ? (
               // Real fix (2026-08-10) -- see checkoutResumeIndexRef's own doc comment.
               // Resumes the remaining orders from where the loop stopped instead of
