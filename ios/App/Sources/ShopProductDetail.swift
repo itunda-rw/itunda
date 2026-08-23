@@ -144,6 +144,14 @@ struct MultiCartView: View {
     @State private var checkoutGroups: [(merchantId: String, businessName: String, lines: [CommerceCartLine])]?
     @State private var checkoutResults: [CommerceCheckoutResult] = []
     @State private var checkoutResumeIndex = 0
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+    // already closed for ride booking/Eats delivery address: itunda's own "map
+    // bookmarks" feature was never surfaced in Commerce checkout's own delivery-
+    // address field either. No new backend work. Unlike Ride/Eats, this field captures
+    // no coordinates at all (PlaceOrderRequest only ever takes a plain deliveryAddress
+    // string) -- a plain tap-to-fill chip row, same treatment RideScreenView's own
+    // dropoff fields already use.
+    @State private var bookmarks: [MapBookmarkDto] = []
 
     private var groups: [(merchantId: String, businessName: String, lines: [CommerceCartLine])] {
         Dictionary(grouping: cart.values, by: { $0.merchantId })
@@ -195,6 +203,23 @@ struct MultiCartView: View {
                                 .padding(12)
                                 .background(IDS.Colors.chipBackground)
                                 .cornerRadius(12)
+                            if !bookmarks.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(bookmarks) { bookmark in
+                                            Button(action: { address = bookmark.displayName }) {
+                                                HStack(spacing: 6) {
+                                                    Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
+                                                    Text(bookmark.displayName).font(.caption).bold().lineLimit(1)
+                                                }
+                                                .foregroundColor(IDS.Colors.textPrimary)
+                                                .padding(.horizontal, 12).padding(.vertical, 10)
+                                                .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if let error {
                                 Text(error).font(.caption).foregroundColor(.red)
                             }
@@ -227,6 +252,11 @@ struct MultiCartView: View {
             )
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task { await loadBookmarks() }
+    }
+
+    private func loadBookmarks() async {
+        bookmarks = (try? await NetworkClient.shared.getMyMapBookmarks().bookmarks) ?? bookmarks
     }
 
     private func placeOrders() async {
