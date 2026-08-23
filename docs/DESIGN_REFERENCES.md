@@ -16905,3 +16905,28 @@ identical parsing.
 *Shipped: Android `EatsRestaurantMenu.kt`, bank-mfe `BankDashboard.tsx`
 (`AddressAutocomplete`), iOS `EatsRestaurantMenu.swift`/`RideScreenView.swift`/
 `NetworkClient.swift` (commits `52966ceb`, `e325b005`, `220bbfff`).*
+
+## 269. Same saved-places quick-select, third and final surface -- Commerce checkout, all 3 platforms
+
+Closes the sweep §267/§268 started: checked every real remaining checkout/
+address surface across the app for the same shape of gap, and found one
+more -- Commerce/Shop's own `MultiCartView` checkout (Android
+`ShopProductDetail.kt`, bank-mfe's `MultiCartView`, iOS
+`ShopProductDetail.swift`) had the identical missing-bookmarks gap. No new
+backend work, same existing `GET /api/v1/maps/bookmarks`.
+
+Different treatment from §267/§268 on purpose: this field captures no
+coordinates at all -- `PlaceOrderRequest`'s own real contract only ever
+takes a plain `deliveryAddress` string, never `latitude`/`longitude` (unlike
+Eats' `PlaceEatsOrderRequest`, which does). A full search-autocomplete
+dropdown would add nothing over a bookmark's plain display name here, so
+this got the simpler tap-to-fill chip row (matching Ride's own treatment)
+rather than the dropdown-on-focus pattern §266/§268 used.
+
+With this, saved places now surface everywhere itunda asks a user to name a
+location: ride booking, Eats delivery, and Commerce checkout, on Android,
+iOS, and web alike.
+
+*Shipped: Android `ShopProductDetail.kt`, bank-mfe `BankDashboard.tsx`
+(`MultiCartView`), iOS `ShopProductDetail.swift` (commits `a77f5147`,
+`e2c8d946`, `5964842c`).*
