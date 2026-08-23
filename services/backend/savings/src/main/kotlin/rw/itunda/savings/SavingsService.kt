@@ -3,6 +3,8 @@ package rw.itunda.savings
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccountType
@@ -39,6 +41,7 @@ class AccountNotOwnedException(message: String) : RuntimeException(message)
 class NoAccountException(message: String) : RuntimeException(message)
 class NoInterestJarException(message: String) : RuntimeException(message)
 class NoInterestAvailableException(message: String) : RuntimeException(message)
+class GoalAlreadyCompletedException(message: String) : RuntimeException(message)
 
 /**
  * Port of backend/src/controllers/savings.controller.ts, with the same ownership check
@@ -83,6 +86,13 @@ class SavingsService(
     @Transactional
     fun depositToGoal(userId: String, goalId: String, amount: BigDecimal, fromAccountId: String?): SavingsGoal {
         val goal = savingsGoalRepository.findById(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
+        // Real bug found+fixed (2026-08-23): nothing previously stopped a deposit into an
+        // already-completed goal -- the real money debit/ledger-credit below ran
+        // unconditionally, but `currentAmount` is capped at `targetAmount`, so the money
+        // would leave the user's account and land in the savings_goal_payable ledger
+        // account with no corresponding increase anywhere the user can see -- functionally
+        // vanishing, since this module has no withdraw/close-goal endpoint to reclaim it.
+        if (goal.status == SavingsGoalStatus.completed) throw GoalAlreadyCompletedException("This goal has already reached its target")
 
         val sourceAccount = if (fromAccountId != null) {
             val account = accountRepository.findById(fromAccountId).orElseThrow { NoAccountException("Account not found") }
@@ -101,8 +111,11 @@ class SavingsService(
         )
 
         goal.currentAmount = goal.currentAmount.add(amount).min(goal.targetAmount)
-        if (goal.currentAmount >= goal.targetAmount) goal.status = SavingsGoalStatus.completed
-        return savingsGoalRepository.save(goal)
+        val justCompleted = goal.status != SavingsGoalStatus.completed && goal.currentAmount >= goal.targetAmount
+        if (justCompleted) goal.status = SavingsGoalStatus.completed
+        val saved = savingsGoalRepository.save(goal)
+        if (justCompleted) notifyGoalCompleted(saved)
+        return saved
     }
 
     // Real recurring auto-save (2026-07-13) -- monthlyContribution was accepted and stored
@@ -139,9 +152,13 @@ class SavingsService(
         )
 
         goal.currentAmount = goal.currentAmount.add(goal.monthlyContribution).min(goal.targetAmount)
-        if (goal.currentAmount >= goal.targetAmount) goal.status = SavingsGoalStatus.completed
+        // getGoalsDueForAutoContribution already filters to status == active, so this is
+        // always a genuine active->completed transition, unlike depositToGoal's own guard.
+        val justCompleted = goal.currentAmount >= goal.targetAmount
+        if (justCompleted) goal.status = SavingsGoalStatus.completed
         goal.lastAutoContributionAt = Instant.now()
-        savingsGoalRepository.save(goal)
+        val saved = savingsGoalRepository.save(goal)
+        if (justCompleted) notifyGoalCompleted(saved)
         return true
     }
 
@@ -274,5 +291,45 @@ class SavingsService(
         pushNotificationService.sendToUser(goal.userId, title, body, mapOf("goalId" to goal.id))
         goal.maturityNotifiedAt = Instant.now()
         savingsGoalRepository.save(goal)
+    }
+
+    // Real celebratory moment (2026-08-23, itunda's own product-feel initiative) --
+    // Toss's own real interaction-design writing (toss.tech/article/1st_interaction_designer)
+    // cites a congratulatory message on a fully-paid-off loan as a real example of "finding
+    // the hidden emotion" behind a transaction, not just confirming it happened. A completed
+    // savings goal is the direct savings-side analogue: real user effort (recurring
+    // deposits/auto-contributions over time) reaching a real target, deserving the same
+    // acknowledgement -- and itunda already had the exact backend event
+    // (SavingsGoalStatus.completed) with zero notification wired to it before this.
+    // Deferred to after-commit -- see PushNotificationService's own doc comment and
+    // P2pService.sendMoneyReceivedPushAfterCommit's identical pattern: this fires from
+    // inside an already-open @Transactional method, so the push must wait for that
+    // transaction to actually commit rather than firing (and potentially misleading the
+    // user) ahead of a rollback.
+    private fun notifyGoalCompleted(goal: SavingsGoal) {
+        try {
+            val title = "Goal reached! 🎉"
+            val body = "You've saved ${goal.currentAmount} RWF for \"${goal.name}\" -- goal complete."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = goal.userId, type = "SAVINGS_GOAL_COMPLETED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"goalId\":\"${goal.id}\"}",
+                ),
+            )
+            sendGoalCompletedPushAfterCommit(goal.userId, title, body, goal.id)
+        } catch (e: Exception) {
+            // Non-critical -- the real deposit/auto-contribution already succeeded.
+        }
+    }
+
+    private fun sendGoalCompletedPushAfterCommit(userId: String, title: String, body: String, goalId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("goalId" to goalId), type = "SAVINGS_GOAL_COMPLETED") }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

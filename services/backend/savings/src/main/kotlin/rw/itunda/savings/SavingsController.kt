@@ -125,6 +125,11 @@ class SavingsController(
     @ExceptionHandler(NoInterestAvailableException::class)
     fun handleNoInterest(ex: NoInterestAvailableException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_INTEREST_AVAILABLE", ex.message ?: "Conflict"))
 
+    // Real bug fix (2026-08-23) -- see depositToGoal's own doc comment: a deposit into an
+    // already-completed goal used to move real money with no corresponding effect.
+    @ExceptionHandler(GoalAlreadyCompletedException::class)
+    fun handleGoalAlreadyCompleted(ex: GoalAlreadyCompletedException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("GOAL_ALREADY_COMPLETED", ex.message ?: "Conflict"))
+
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 

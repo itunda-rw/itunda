@@ -42,6 +42,12 @@ class SavingsServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        // Real mockk gotcha found while adding the goal-completed celebratory push test
+        // below: JpaRepository's generic `<S extends T> S save(S entity)` return type
+        // defeats relaxed auto-mocking (a bare relaxed mock throws a real
+        // ClassCastException trying to synthesize a default return value for it), the
+        // same reason sendMaturityReminder's own test below needs this explicit stub.
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
@@ -81,6 +87,30 @@ class SavingsServiceTest : BehaviorSpec({
             Then("progress is capped at the target, not overshot, and the goal completes") {
                 result.currentAmount shouldBe BigDecimal("250000")
                 result.status shouldBe SavingsGoalStatus.completed
+            }
+
+            Then("a real celebratory notification and push fire exactly once for the completion") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "SAVINGS_GOAL_COMPLETED" && it.userId == "user_1" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any(), "SAVINGS_GOAL_COMPLETED") }
+            }
+        }
+
+        When("depositing into a goal that has already reached its target") {
+            val goal = SavingsGoal(
+                id = "sg_done_1", userId = "user_1", accountId = "account_savings", name = "Already done",
+                targetAmount = BigDecimal("100000"), currentAmount = BigDecimal("100000"),
+                monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
+                status = SavingsGoalStatus.completed,
+            )
+            every { savingsGoalRepository.findById("sg_done_1") } returns Optional.of(goal)
+
+            Then("it throws GoalAlreadyCompletedException before moving any real money") {
+                try {
+                    service.depositToGoal("user_1", "sg_done_1", BigDecimal("1000"), null)
+                    error("expected GoalAlreadyCompletedException")
+                } catch (e: GoalAlreadyCompletedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
             }
         }
 
