@@ -5605,12 +5605,12 @@ function IdentityView() {
       )}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {hasPending ? (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Submission pending review</h4>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>We'll update your status once it's reviewed.</p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
             {(['NATIONAL_ID', 'PASSPORT'] as IdentityDocumentType[]).map((t) => (
               <button
@@ -5634,10 +5634,10 @@ function IdentityView() {
         </form>
       )}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Your submissions</h3>
-      {submissions === null ? <div className="itunda-card skeleton" style={{ height: '80px' }} /> :
+      {submissions === null ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> :
         submissions.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no submissions yet.</p> :
         submissions.map((s) => (
-          <div key={s.id} className="itunda-card" style={{ padding: '16px' }}>
+          <div key={s.id} className="itunda-flat-section">
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{IDENTITY_DOCUMENT_LABELS[s.documentType as IdentityDocumentType] ?? s.documentType} · {s.documentNumber}</h4>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Status: {IDENTITY_STATUS_LABELS[s.status] ?? s.status}</p>
             {s.decisionReason && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{s.decisionReason}</p>}
@@ -5709,7 +5709,7 @@ function SupportView({ initialTransactionId, initialCategory, onConsumedInitial 
       {!showNewForm ? (
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
       ) : (
-        <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {initialTransactionId && (
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', fontWeight: 700 }}>
               🚗 Reporting an issue with this ride's payment
@@ -5744,10 +5744,10 @@ function SupportView({ initialTransactionId, initialCategory, onConsumedInitial 
         </form>
       )}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Your tickets</h3>
-      {tickets === null ? <div className="itunda-card skeleton" style={{ height: '80px' }} /> :
+      {tickets === null ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> :
         tickets.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no support tickets.</p> :
         tickets.map((t) => (
-          <div key={t.id} className="itunda-card" style={{ padding: '16px' }}>
+          <div key={t.id} className="itunda-flat-section">
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{t.category}</h4>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t.description}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Status: {t.status}</p>
@@ -6910,10 +6910,10 @@ function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null
     }
   };
 
-  if (enrolled === null) return <div className="itunda-card skeleton" style={{ height: '64px', marginBottom: '16px' }} />;
+  if (enrolled === null) return <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>😊 Face Pay</p>
@@ -7497,7 +7497,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{manualEntry ? 'Pay by code' : 'Scan to pay'}</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         {manualEntry
@@ -7628,7 +7628,7 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-flat-section">
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Pay a merchant's static QR</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         For a merchant with one permanent code (like a market stall) -- scan their code, then say how much you're paying.
@@ -7676,7 +7676,7 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
 
 function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult; onDone: () => void }) {
   return (
-    <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+    <div style={{ textAlign: 'center', padding: '28px 0' }}>
       <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
       <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
@@ -7731,13 +7731,13 @@ function ShoppingView() {
   }
 
   if (merchants === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
     <div>
       {membershipDay?.isMembershipDay && (
-        <div className="itunda-card" style={{ marginBottom: '16px', backgroundColor: 'var(--itunda-indigo-light)', border: '1px solid var(--itunda-indigo)' }}>
+        <div style={{ marginBottom: '16px', padding: '12px 14px', backgroundColor: 'var(--itunda-indigo-light)', borderRadius: 'var(--itunda-radius-md)' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
         </div>
@@ -7749,13 +7749,11 @@ function ShoppingView() {
         Earn cashback every time you shop with Itunda merchants.
       </p>
       {merchants.length === 0 ? (
-        <div className="itunda-card">
-          <EmptyState message="No stores here yet — check back soon as more merchants join itunda." />
-        </div>
+        <EmptyState message="No stores here yet — check back soon as more merchants join itunda." />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {merchants.map((m) => (
-            <div key={m.merchantId} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px' }}>
+            <div key={m.merchantId} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 0' }}>
               <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShoppingBag size={20} color="var(--itunda-indigo)" />
               </div>
@@ -8150,8 +8148,7 @@ function StocksView() {
         tabIndex={0}
         onClick={() => setSelectedStock(stock)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedStock(stock); } }}
-        className="itunda-card"
-        style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', cursor: 'pointer' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 0', cursor: 'pointer' }}
       >
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
@@ -8206,7 +8203,7 @@ function StocksView() {
       )}
 
       {subTab === 'MARKET' && (
-        stocks === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : (
+        stocks === null ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
               {([{ id: 'ALL', label: 'All' }, { id: 'RSE', label: 'Rwanda (RSE)' }, { id: 'NASDAQ', label: 'Overseas' }] as const).map(({ id, label }) => (
@@ -8229,7 +8226,7 @@ function StocksView() {
       )}
 
       {subTab === 'PORTFOLIO' && (
-        portfolio === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : (
+        portfolio === null ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : (
           // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- summary
           // section on a multi-section screen.
           <div>
@@ -8277,7 +8274,7 @@ function StocksView() {
       )}
 
       {subTab === 'WATCHLIST' && (
-        watchlist === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
+        watchlist === null ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : watchlist.length === 0 ? (
           // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
           // conditional empty-state message.
           <EmptyState message="No stocks watched yet. Tap the star on any stock in the Market tab to follow it." />
