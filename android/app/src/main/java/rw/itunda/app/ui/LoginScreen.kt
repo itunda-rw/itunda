@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.app.R
+import rw.itunda.core.identity.DeviceKeyManager
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.AuthResult
 import rw.itunda.core.network.SessionManager
@@ -64,6 +65,7 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
+import java.util.Base64
 
 // Real per-app language override -- found live on the emulator (not just a clean
 // compile) that AppCompatDelegate.setApplicationLocales, the "normal" per-app
@@ -151,6 +153,47 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         val scope = rememberCoroutineScope()
         val checkingPhoneError = stringResource(R.string.login_checking_phone_error)
 
+        // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+        // AccountPinPad's own doc comment for the full sourced account. `pinFirstEntry`
+        // holds the register-mode "create" step's PIN while the "confirm" step is
+        // shown; `attemptingPasswordless` gates a silent biometric-first login attempt
+        // (see the LaunchedEffect below) before ever showing the PIN pad at all --
+        // real Toss's own actual day-to-day login is Face ID/fingerprint, with the PIN
+        // only as its standing fallback.
+        var pinFirstEntry by remember { mutableStateOf<String?>(null) }
+        var attemptingPasswordless by remember { mutableStateOf(false) }
+        val deviceKeyManager = remember { DeviceKeyManager() }
+        val activity = LocalRealActivity.current
+
+        LaunchedEffect(stage) {
+            if (stage != AuthStage.PASSWORD || isRegisterMode || !deviceKeyManager.hasKey()) return@LaunchedEffect
+            attemptingPasswordless = true
+            try {
+                val challenge = SessionManager.loginDeviceChallenge(phoneNumber)
+                deviceKeyManager.signChallenge(
+                    activity = activity,
+                    challenge = Base64.getDecoder().decode(challenge),
+                    reason = "Sign in to itunda",
+                ) { signatureBase64, _ ->
+                    if (signatureBase64 == null) {
+                        attemptingPasswordless = false
+                        return@signChallenge
+                    }
+                    scope.launch {
+                        when (val result = SessionManager.loginWithDeviceSignature(phoneNumber, signatureBase64)) {
+                            is AuthResult.Success -> onLoggedIn()
+                            // Falls through silently to the PIN pad already rendered
+                            // below -- a declined/failed biometric attempt must never
+                            // strand the user with no other way in.
+                            is AuthResult.Failure -> attemptingPasswordless = false
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+                attemptingPasswordless = false
+            }
+        }
+
         val stepIndex = when (stage) {
             AuthStage.PHONE, AuthStage.NOT_FOUND -> 0
             AuthStage.NAME -> 1
@@ -162,13 +205,21 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             errorMessage = null
             isSubmitting = true
             scope.launch {
+                // Real Toss-sourced passwordless-login rollout (2026-08-23) -- publish
+                // this device's Keystore key alongside the password/PIN submission
+                // (same real key item 246 already established, see
+                // DeviceKeyManager.exportPublicKeyIfPresent's own doc comment), so the
+                // NEXT login can skip straight to the biometric attempt above with no
+                // separate Settings-toggle trip required.
+                val devicePublicKey = deviceKeyManager.exportPublicKeyIfPresent() ?: deviceKeyManager.generateKeyPair()
                 val result = if (isRegisterMode) {
                     SessionManager.register(
                         phoneNumber, password, firstName, lastName,
                         referralCode = referralCode.trim().ifBlank { null },
+                        devicePublicKey = devicePublicKey,
                     )
                 } else {
-                    SessionManager.login(phoneNumber, password)
+                    SessionManager.login(phoneNumber, password, devicePublicKey = devicePublicKey)
                 }
                 isSubmitting = false
                 when (result) {
@@ -210,6 +261,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
         fun goBack() {
             errorMessage = null
+            pinFirstEntry = null
+            attemptingPasswordless = false
             stage = when (stage) {
                 AuthStage.PHONE -> AuthStage.PHONE
                 AuthStage.NOT_FOUND -> AuthStage.PHONE
@@ -333,14 +386,29 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                     onLastNameChange = { lastName = it },
                                 )
                                 AuthStage.PASSWORD -> PasswordStep(
-                                    password = password,
-                                    onPasswordChange = { password = it },
                                     isRegisterMode = isRegisterMode,
+                                    pinFirstEntry = pinFirstEntry,
+                                    attemptingPasswordless = attemptingPasswordless,
+                                    isSubmitting = isSubmitting,
                                     errorMessage = errorMessage,
                                     showReferralField = showReferralField,
                                     onShowReferralField = { showReferralField = true },
                                     referralCode = referralCode,
                                     onReferralCodeChange = { referralCode = it },
+                                    onPinCreated = { entered -> errorMessage = null; pinFirstEntry = entered },
+                                    onPinConfirmed = { entered ->
+                                        if (entered == pinFirstEntry) {
+                                            password = entered
+                                            submit()
+                                        } else {
+                                            pinFirstEntry = null
+                                            errorMessage = "That didn't match. Try again."
+                                        }
+                                    },
+                                    onPinEntered = { entered ->
+                                        password = entered
+                                        submit()
+                                    },
                                 )
                             }
                         }
@@ -374,31 +442,37 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             // own doc comment for why this replaced a Column-weight approach) so it
             // sits flush against the real keyboard exactly like the real Toss
             // reference, with no gap and no risk of vanishing.
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(vertical = if (isImeVisible) 0.dp else Ids.layout.screenVertical),
-            ) {
-                if (isSubmitting) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp).padding(vertical = 14.dp),
-                            color = Ids.colors.brand,
-                            strokeWidth = 3.dp,
+            // Real Toss-sourced passwordless-login rollout (2026-08-23): PASSWORD
+            // stage no longer renders this docked button at all -- AccountPinPad
+            // auto-submits on its own at 6 digits (see PasswordStep below), the same
+            // real convention PinScreen.kt's own PIN entry already used.
+            if (stage != AuthStage.PASSWORD) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(vertical = if (isImeVisible) 0.dp else Ids.layout.screenVertical),
+                ) {
+                    if (isSubmitting) {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp).padding(vertical = 14.dp),
+                                color = Ids.colors.brand,
+                                strokeWidth = 3.dp,
+                            )
+                        }
+                    } else {
+                        val buttonLabel = when (stage) {
+                            AuthStage.PHONE, AuthStage.NAME -> stringResource(R.string.login_button_next)
+                            AuthStage.NOT_FOUND -> stringResource(R.string.login_button_create_account)
+                            AuthStage.PASSWORD -> ""
+                        }
+                        IdsKeyboardDockedButton(
+                            text = buttonLabel,
+                            onClick = { goNext() },
+                            enabled = currentStepValid,
                         )
                     }
-                } else {
-                    val buttonLabel = when (stage) {
-                        AuthStage.PHONE, AuthStage.NAME -> stringResource(R.string.login_button_next)
-                        AuthStage.NOT_FOUND -> stringResource(R.string.login_button_create_account)
-                        AuthStage.PASSWORD -> stringResource(if (isRegisterMode) R.string.login_button_create_account else R.string.login_button_log_in)
-                    }
-                    IdsKeyboardDockedButton(
-                        text = buttonLabel,
-                        onClick = { goNext() },
-                        enabled = currentStepValid,
-                    )
                 }
             }
         }
@@ -575,55 +649,79 @@ private fun NameStep(
     }
 }
 
+// Real Toss-sourced passwordless-login rollout (2026-08-23, direct user correction
+// after "tosses password less flow?" -> "we need that simplification" -> "search
+// clear how toss do it and let's do it as they do"): replaces the free-form
+// password IdsTextField this step used to render with AccountPinPad -- see that
+// composable's own doc comment for the full sourced account. Login shows a single
+// PIN pad (auto-submits at 6 digits, real biometric attempt already tried silently
+// first -- see LoginScreen's own LaunchedEffect(stage)); register shows a real
+// create-then-confirm pair, same two-step convention PinScreen.kt's own
+// PinSetupScreen already established for the separate local app-lock PIN, catching a
+// mistyped PIN before it's permanent (this step's own previous doc comment named
+// this exact risk for the free-form password it's replacing).
 @Composable
 private fun PasswordStep(
-    password: String,
-    onPasswordChange: (String) -> Unit,
     isRegisterMode: Boolean,
+    pinFirstEntry: String?,
+    attemptingPasswordless: Boolean,
+    isSubmitting: Boolean,
     errorMessage: String?,
     showReferralField: Boolean,
     onShowReferralField: () -> Unit,
     referralCode: String,
     onReferralCodeChange: (String) -> Unit,
+    onPinCreated: (String) -> Unit,
+    onPinConfirmed: (String) -> Unit,
+    onPinEntered: (String) -> Unit,
 ) {
-    val focusRequester = rememberAutoFocus("password")
-    Column {
-        StepHeadline(
-            stringResource(if (isRegisterMode) R.string.login_headline_password_register else R.string.login_headline_password_login),
-            if (isRegisterMode) stringResource(R.string.login_subtitle_password_register) else null,
-        )
-        // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11/§12): switched
-        // to IdsTextField's new isPassword mode (show/hide toggle) instead of an always-
-        // masked PasswordVisualTransformation -- especially valuable in isRegisterMode,
-        // where a silent typo here locks the new account behind a password the user
-        // doesn't actually know.
-        IdsTextField(
-            value = password,
-            onValueChange = onPasswordChange,
-            label = stringResource(R.string.login_label_password),
-            isPassword = true,
-            keyboardType = KeyboardType.Password,
-            isError = errorMessage != null,
-            errorText = errorMessage,
-            modifier = Modifier.focusRequester(focusRequester),
-        )
-        if (isRegisterMode) {
-            Spacer(modifier = Modifier.height(Ids.layout.inlineGap))
-            if (showReferralField) {
-                IdsTextField(
-                    value = referralCode,
-                    onValueChange = onReferralCodeChange,
-                    label = stringResource(R.string.login_label_referral_code),
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        if (attemptingPasswordless) {
+            Spacer(modifier = Modifier.height(48.dp))
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Ids.colors.brand, strokeWidth = 3.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(stringResource(R.string.login_checking_device), style = IdsTypography.Body1, color = Ids.colors.textSecondary)
+        } else if (isRegisterMode) {
+            if (pinFirstEntry == null) {
+                AccountPinPad(
+                    headline = stringResource(R.string.login_headline_password_register),
+                    subtitle = stringResource(R.string.login_subtitle_password_register),
+                    errorMessage = errorMessage,
+                    onComplete = onPinCreated,
                 )
             } else {
-                TextButton(onClick = onShowReferralField) {
-                    Text(
-                        text = stringResource(R.string.login_referral_prompt),
-                        style = IdsTypography.Body2,
-                        color = Ids.colors.textSecondary,
+                AccountPinPad(
+                    headline = stringResource(R.string.login_headline_password_confirm),
+                    errorMessage = errorMessage,
+                    busy = isSubmitting,
+                    onComplete = onPinConfirmed,
+                )
+            }
+            if (pinFirstEntry == null) {
+                Spacer(modifier = Modifier.height(Ids.layout.inlineGap))
+                if (showReferralField) {
+                    IdsTextField(
+                        value = referralCode,
+                        onValueChange = onReferralCodeChange,
+                        label = stringResource(R.string.login_label_referral_code),
                     )
+                } else {
+                    TextButton(onClick = onShowReferralField) {
+                        Text(
+                            text = stringResource(R.string.login_referral_prompt),
+                            style = IdsTypography.Body2,
+                            color = Ids.colors.textSecondary,
+                        )
+                    }
                 }
             }
+        } else {
+            AccountPinPad(
+                headline = stringResource(R.string.login_headline_password_login),
+                errorMessage = errorMessage,
+                busy = isSubmitting,
+                onComplete = onPinEntered,
+            )
         }
     }
 }

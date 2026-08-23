@@ -70,11 +70,18 @@ object SessionManager {
     // deviceId/deviceName added 2026-07-21 -- real device binding (see DeviceStore.kt),
     // mirrors bank-mfe's real login()/register() calls exactly. A stable per-install
     // id, not a one-off random value per call -- DeviceStore persists it.
-    suspend fun login(phoneNumber: String, password: String): AuthResult {
+    // devicePublicKey added 2026-08-23 -- real Toss-sourced passwordless-login rollout,
+    // see ApiService.kt's LoginRequest/RegisterRequest doc comments. Computed by the
+    // UI layer (LoginScreen.kt, via DeviceKeyManager) and passed in rather than
+    // generated here: :core:network deliberately doesn't depend on :core:identity
+    // (see this module's own build.gradle.kts doc comment on why it was split out of
+    // :app in the first place -- adding a Keystore/biometric dependency here would
+    // undo that).
+    suspend fun login(phoneNumber: String, password: String, devicePublicKey: String? = null): AuthResult {
         val deviceStore = NetworkClient.currentDeviceStore()
         return runAuthCall {
             NetworkClient.authApi.login(
-                LoginRequest(phoneNumber, password, deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName()),
+                LoginRequest(phoneNumber, password, deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName(), devicePublicKey),
             )
         }
     }
@@ -86,16 +93,55 @@ object SessionManager {
         lastName: String,
         email: String? = null,
         referralCode: String? = null,
+        devicePublicKey: String? = null,
     ): AuthResult {
         val deviceStore = NetworkClient.currentDeviceStore()
         return runAuthCall {
             NetworkClient.authApi.register(
                 RegisterRequest(
                     phoneNumber, email, firstName, lastName, password, referralCode,
-                    deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName(),
+                    deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName(), devicePublicKey,
                 ),
             )
         }
+    }
+
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see AuthApi
+    // .loginDeviceChallenge/loginWithDeviceSignature's own doc comments. Thin
+    // passthroughs (same shape as checkPhoneExists above): the actual biometric
+    // signing happens in LoginScreen.kt via DeviceKeyManager (:core:identity), which
+    // this module can't depend on -- these two calls are the pure-network half of
+    // that flow, plus (for the signature call) the same real session-persisting
+    // runAuthCall a password login already goes through, since a successful
+    // passwordless login is a real login, not a lesser variant of one.
+    suspend fun loginDeviceChallenge(phoneNumber: String): String {
+        val deviceStore = NetworkClient.currentDeviceStore()
+        return NetworkClient.authApi.loginDeviceChallenge(
+            LoginDeviceChallengeRequest(phoneNumber, deviceStore.getOrCreateDeviceId()),
+        ).challenge
+    }
+
+    suspend fun loginWithDeviceSignature(phoneNumber: String, signatureBase64: String): AuthResult {
+        val deviceStore = NetworkClient.currentDeviceStore()
+        return runAuthCall {
+            NetworkClient.authApi.loginWithDeviceSignature(
+                LoginWithDeviceSignatureRequest(phoneNumber, deviceStore.getOrCreateDeviceId(), signatureBase64),
+            )
+        }
+    }
+
+    // Real PIN upgrade (2026-08-23) -- see AuthApi.setAccountPin's own doc comment.
+    // Named `updateAccountPin`, not `setPin`, so it's never confused with
+    // TokenStore.setPin (a completely different, local, device-only app-unlock PIN)
+    // at any call site. Doesn't touch _sessionState/tokenStore -- the existing access
+    // token stays valid, only the credential used on the NEXT login changes.
+    suspend fun updateAccountPin(currentCredential: String, newPin: String): AuthResult = try {
+        NetworkClient.authApi.setAccountPin(SetAccountPinRequest(currentCredential, newPin))
+        AuthResult.Success
+    } catch (e: retrofit2.HttpException) {
+        AuthResult.Failure(apiErrorMessage(e) ?: "Something went wrong. Please try again.")
+    } catch (e: Exception) {
+        AuthResult.Failure("Couldn't reach itunda. Check your connection and try again.")
     }
 
     suspend fun logout() {

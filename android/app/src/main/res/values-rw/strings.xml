@@ -19,9 +19,11 @@
     <string name="login_subtitle_name">Ni ko uzagaragara ku ncuti n\'abacuruzi.</string>
     <string name="login_label_first_name">Izina rya mbere</string>
     <string name="login_label_last_name">Izina rya nyuma</string>
-    <string name="login_headline_password_register">Shyiraho ijambo ry\'ibanga</string>
-    <string name="login_headline_password_login">Andika ijambo ry\'ibanga</string>
-    <string name="login_subtitle_password_register">Koresha inyuguti nibura 8.</string>
+    <string name="login_headline_password_register">Shyiraho PIN y\'imibare 6</string>
+    <string name="login_headline_password_login">Andika PIN yawe</string>
+    <string name="login_subtitle_password_register">Uzakoresha iyi PIN igihe uzongera kwinjira.</string>
+    <string name="login_headline_password_confirm">Emeza PIN yawe</string>
+    <string name="login_checking_device">Kugenzura iyi terefone…</string>
     <string name="login_label_password">Ijambo ry\'ibanga</string>
     <string name="login_referral_prompt">Ufite kode yo kwifashisha?</string>
     <string name="login_label_referral_code">Kode yo kwifashisha</string>

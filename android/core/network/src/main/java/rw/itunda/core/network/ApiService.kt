@@ -37,11 +37,27 @@ data class RegisterRequest(
     // separate step-up needed.
     val deviceId: String? = null,
     val deviceName: String? = null,
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+    // DeviceKeyManager.exportPublicKeyIfPresent's own doc comment. The SAME real
+    // hardware-backed Keystore key item 246 already established, just published at
+    // register time too (not only via the separate opt-in Settings toggle) so a brand
+    // new device can go straight to biometric-only login next time -- see
+    // AuthService.register's own doc comment on the backend for
+    // DeviceService.registerKeyDuringAuth.
+    val devicePublicKey: String? = null,
 )
 
 // deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding login
 // call exactly (lib/api.ts's login()). See DeviceStore.kt for how these are generated.
-data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
+// devicePublicKey added 2026-08-23 -- mirrors RegisterRequest's own field exactly, same
+// real reasoning (see its own doc comment).
+data class LoginRequest(
+    val phoneNumber: String,
+    val password: String,
+    val deviceId: String? = null,
+    val deviceName: String? = null,
+    val devicePublicKey: String? = null,
+)
 
 data class PhoneCheckRequest(val phoneNumber: String)
 data class PhoneCheckResponse(val exists: Boolean)
@@ -79,6 +95,11 @@ data class PublicUser(
     // real, working endpoint with zero client anywhere, and this field wasn't even
     // carried by this DTO until now.
     val profilePhotoUrl: String? = null,
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see backend
+    // User.pinSet's own doc comment. false only for a pre-PIN-era account whose
+    // existing password hasn't been upgraded to a real 6-digit PIN yet -- gates
+    // PinUpgradeCard, never blocks the existing password login either way.
+    val pinSet: Boolean = true,
 )
 
 data class UpdateProfilePhotoRequest(val profilePhotoUrl: String)
@@ -218,7 +239,37 @@ interface AuthApi {
 
     @POST("api/v1/auth/profile/verify-phone/confirm")
     suspend fun confirmPhoneVerification(@Body request: ConfirmPhoneVerificationRequest): ProfileResponse
+
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see this session's
+    // real, sourced research on Toss's own actual mechanism (support.toss.im/
+    // toss.im/tosscert): registration is phone + OTP, then a real 6-digit "비밀번호"
+    // (Toss's own literal term -- not zero credential), with biometric as day-to-day
+    // login's real fast path and the PIN as its standing fallback -- exactly what
+    // AuthController.kt's own doc comment on the backend implements. Unauthenticated
+    // (permitAll, see SecurityConfig.kt) since this IS the initial login itself, not a
+    // step-up re-verification of an already-authenticated session like
+    // issueDeviceChallenge/verifyDeviceSignature above -- resolves the user from
+    // phoneNumber, not a JWT claim.
+    @POST("api/v1/auth/login/device/challenge")
+    suspend fun loginDeviceChallenge(@Body request: LoginDeviceChallengeRequest): LoginDeviceChallengeResponse
+
+    @POST("api/v1/auth/login/device/verify")
+    suspend fun loginWithDeviceSignature(@Body request: LoginWithDeviceSignatureRequest): AuthResponse
+
+    // Real PIN upgrade (2026-08-23) -- see AuthService.setPin's own doc comment on the
+    // backend. currentCredential re-proves ownership of the EXISTING password/PIN
+    // (whatever shape it currently is) before it's replaced -- same real cost as
+    // registerDeviceKey's own password re-entry above, never trusting a client-only
+    // check for a credential change.
+    @PUT("api/v1/auth/pin")
+    suspend fun setAccountPin(@Body request: SetAccountPinRequest): SetAccountPinResponse
 }
+
+data class LoginDeviceChallengeRequest(val phoneNumber: String, val deviceId: String)
+data class LoginDeviceChallengeResponse(val success: Boolean, val challenge: String)
+data class LoginWithDeviceSignatureRequest(val phoneNumber: String, val deviceId: String, val signature: String)
+data class SetAccountPinRequest(val currentCredential: String, val newPin: String)
+data class SetAccountPinResponse(val success: Boolean, val user: PublicUser)
 
 enum class DevicePlatform { ANDROID, IOS, WEB }
 data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)

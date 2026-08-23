@@ -4407,6 +4407,11 @@ private fun MyTab(
     ) {
         item { BackTopBar("My", onBack) }
         item { ProfilePhotoCard() }
+        // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+        // PinUpgradeCard.kt's own doc comment. Own file, not inline here, matching
+        // this session's own file-size-lint discipline for this already-oversized
+        // file.
+        item { PinUpgradeCard() }
         item { VerificationCard() }
         if (affiliateLinks.isNotEmpty()) {
             item {

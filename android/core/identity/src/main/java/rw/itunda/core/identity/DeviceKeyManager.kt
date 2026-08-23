@@ -144,6 +144,23 @@ class DeviceKeyManager {
         prompt.authenticate(promptInfo, cryptoObject)
     }
 
+    /** Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+     * AuthDtos.RegisterRequest/LoginRequest's own devicePublicKey doc comment. Returns
+     * the SAME already-generated key's public half so register()/login() can publish
+     * it alongside a normal password submission (auto-enrolling this device for
+     * biometric-only login next time, no separate Settings-toggle trip required) --
+     * reads it back from the Keystore's self-signed certificate rather than
+     * generating a fresh key, since [generateKeyPair] must only ever run once per
+     * device (a second call would silently replace the first key, invalidating
+     * anything the server already has on file for it). Reading a certificate's public
+     * key needs no biometric gate, unlike [signChallenge]. */
+    fun exportPublicKeyIfPresent(): String? {
+        if (!hasKey()) return null
+        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+        val publicKey = keyStore.getCertificate(KEYSTORE_ALIAS)?.publicKey as? ECPublicKey ?: return null
+        return encodePublicKey(publicKey)
+    }
+
     /** Real "forget this device"'s client-side counterpart -- called after
      * DeviceService.revokeDevice so a stale local key doesn't outlive its server record. */
     fun removeKey() {
