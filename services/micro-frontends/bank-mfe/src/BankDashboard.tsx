@@ -16869,16 +16869,15 @@ function ShareFavoritesModal({
       >
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>{title}</p>
         {conversations === null ? (
-          <div className="itunda-card skeleton" style={{ height: '100px' }} />
+          <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
         ) : conversations.length === 0 ? (
           <EmptyState message="No conversations to share to yet — start a chat first." />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {conversations.map((c) => (
               <button
                 key={c.conversationId}
-                className="itunda-card"
-                style={{ width: '100%', textAlign: 'left' }}
+                style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
                 onClick={() => onShare(c.conversationId)}
               >
                 {c.otherUserName}
@@ -16938,7 +16937,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
     );
   }
   if (favorites === null) {
-    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
+    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
   if (favorites.length === 0) {
     return <EmptyState message="No favorite restaurants yet. Tap the heart on a restaurant to save it here." />;
@@ -16960,8 +16959,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
           tabIndex={0}
           onClick={() => onOpen(f)}
           onKeyDown={(e) => { if (e.key === 'Enter') onOpen(f); }}
-          className="itunda-card"
-          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 0', textAlign: 'left', width: '100%', cursor: 'pointer' }}
         >
           <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Utensils size={20} color="var(--itunda-indigo)" />
@@ -17225,7 +17223,7 @@ function RestaurantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (orders.length === 0) return null;
 
   return (
@@ -17625,7 +17623,7 @@ function TrustedContactsSection() {
   };
 
   return (
-    <div className="itunda-card" style={{ marginBottom: '20px' }}>
+    <div style={{ marginBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <ShieldCheck size={16} color="var(--itunda-green)" /> Trusted contacts
@@ -18129,7 +18127,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       {subTab === 'DRIVE' && (
         <div>
           {driver === undefined ? (
-            <div className="itunda-card skeleton" style={{ height: '180px' }} />
+            <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />
           ) : driver === null ? (
             // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
             // onboarding message.
@@ -18270,7 +18268,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                 <div style={{ marginBottom: '20px' }}>
                   <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Trip requests near you</h4>
                   {availableTrips === null ? (
-                    <div className="itunda-card skeleton" style={{ height: '100px' }} />
+                    <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
                   ) : availableTrips.length === 0 ? (
                     <EmptyState message="No trip requests waiting right now — stay online and you'll be notified." />
                   ) : (
@@ -18327,7 +18325,7 @@ const DESIGNATED_DRIVER_STATUS_LABEL: Record<DesignatedDriverTrip['status'], str
 
 function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip; action?: React.ReactNode }) {
   return (
-    <div className="itunda-card">
+    <div style={{ padding: '10px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.pickupAddress}</p>
@@ -18534,7 +18532,7 @@ function DesignatedDriverView() {
               }
             />
           ) : (
-            <div className="itunda-card">
+            <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Get a designated driver</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 A real professional driver comes to you and drives YOUR OWN CAR home.
@@ -18577,7 +18575,7 @@ function DesignatedDriverView() {
         <div>
           {driver === undefined && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>}
           {driver === null && (
-            <div className="itunda-card">
+            <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Become a designated driver</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Any itunda user can register. License number is self-declared, not verified against a real registry.
@@ -18597,7 +18595,7 @@ function DesignatedDriverView() {
           )}
           {driver && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{driver.available ? 'Online' : 'Offline'}</p>
                 <button className="itunda-btn itunda-btn-secondary" onClick={handleToggleAvailable}>
                   {driver.available ? 'Go offline' : 'Go online'}
@@ -18713,7 +18711,7 @@ function KnowledgeView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Your reputation</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{reputation ?? '…'} adopted answer{reputation === 1 ? '' : 's'}</p>
       </div>
@@ -18760,10 +18758,10 @@ function KnowledgeView() {
         // right above, MINE doesn't (it needs to point back to BROWSE instead).
         <EmptyState message={subTab === 'BROWSE' ? 'No questions yet — ask one above.' : "You haven't asked anything yet — switch to Browse to ask your first question."} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {questions.map((q) => (
             <button
-              key={q.id} className="itunda-card" style={{ textAlign: 'left', width: '100%' }}
+              key={q.id} className="itunda-flat-section" style={{ textAlign: 'left', width: '100%' }}
               onClick={() => setOpenQuestionId(q.id)}
             >
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
@@ -18779,9 +18777,9 @@ function KnowledgeView() {
       {subTab === 'MINE' && myAnswers !== null && myAnswers.length > 0 && (
         <div>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Your answers</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {myAnswers.map((a) => (
-              <div key={a.id} className="itunda-card" style={{ padding: '10px 14px' }}>
+              <div key={a.id} className="itunda-flat-section">
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{a.isAdopted ? '✅ Adopted' : 'Pending'}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>{a.body}</p>
               </div>
@@ -18827,7 +18825,7 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
   };
 
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <select
         value={category} onChange={(e) => setCategory(e.target.value)}
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
@@ -18970,7 +18968,7 @@ const DINE_IN_STATUS_CHAIN: DineInOrderStatus[] = ['PLACED', 'ACCEPTED', 'PREPAR
 
 function DineInOrderCard({ order, action }: { order: DineInOrder; action?: React.ReactNode }) {
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{DINE_IN_STATUS_LABEL[order.status]}</p>
@@ -19045,7 +19043,7 @@ function DineInRestaurantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (orders.length === 0) return null;
 
   return (
@@ -19860,7 +19858,7 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
   // route, matching OrderService.getRiderLocation's own real SHIPPED-only gate exactly.
   const [showLiveTracking, setShowLiveTracking] = useState(false);
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
@@ -20385,9 +20383,9 @@ function MyReturnRequestsView() {
   return (
     <div style={{ marginBottom: '16px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>My return &amp; exchange requests</h4>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {requests.map((r) => (
-          <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={r.id} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{r.type === 'RETURN' ? 'Return' : 'Exchange'}</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</p>
@@ -21497,7 +21495,7 @@ function MerchantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
   if (orders.length === 0) return null;
 
   return (
