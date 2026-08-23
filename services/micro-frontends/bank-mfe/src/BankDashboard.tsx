@@ -4930,7 +4930,7 @@ function ForeignCurrencyView() {
   useEffect(load, []);
 
   if (accounts === null) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   const openCurrencies = new Set(accounts.map((w) => w.currency));
@@ -4939,11 +4939,9 @@ function ForeignCurrencyView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {accounts.length === 0 ? (
-        <div className="itunda-card">
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-            Open a USD, EUR, or GBP account to hold foreign currency and convert between it and RWF at a real live rate.
-          </p>
-        </div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+          Open a USD, EUR, or GBP account to hold foreign currency and convert between it and RWF at a real live rate.
+        </p>
       ) : (
         accounts.map((w) => <ForeignCurrencyAccountRow key={w.id} account={w} />)
       )}
@@ -4953,7 +4951,7 @@ function ForeignCurrencyView() {
       {accounts.length > 0 && <RateAlertCard accounts={accounts} />}
 
       {conversions.length > 0 && (
-        <div className="itunda-card">
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Recent conversions</h3>
           {conversions.map((c) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
@@ -4973,7 +4971,7 @@ function ForeignCurrencyView() {
 function ForeignCurrencyAccountRow({ account }: { account: ForeignCurrencyAccount }) {
   const animatedBalance = useCountUp(account.balance);
   return (
-    <div className="itunda-card" style={{ padding: '20px' }}>
+    <div style={{ padding: '12px 0' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.currency} account</p>
       <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} {account.currency}</h2>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.accountNumber}</p>
@@ -5217,13 +5215,13 @@ function MonthlySpendingReportCard() {
   }, []);
 
   if (!report) {
-    return error ? null : <div className="itunda-card skeleton" style={{ height: '120px' }} />;
+    return error ? null : <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   const changed = report.categories.filter((c) => c.percentChange !== null).sort((a, b) => Math.abs(b.percentChange ?? 0) - Math.abs(a.percentChange ?? 0));
 
   return (
-    <div className="itunda-card" style={{ padding: '16px' }}>
+    <div className="itunda-flat-section">
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>This month so far</p>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700 }}>{report.currentTotal.toLocaleString()} RWF</h3>
@@ -5259,20 +5257,20 @@ function SpendingInsightView() {
   }, []);
 
   if (!categories) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   const maxAmount = Math.max(...categories.map((c) => c.amount), 1);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <MonthlySpendingReportCard />
-      <div className="itunda-card" style={{ padding: '24px' }}>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total spent, all time</p>
         <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{totalSpent.toLocaleString()} RWF</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Real, ledger-based -- what every account debit actually paid for.</p>
       </div>
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>By category</h3>
         {categories.length === 0 ? (
           <EmptyState message="No spending recorded yet — your breakdown will show up here once you use your account." />
