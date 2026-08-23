@@ -112,7 +112,7 @@ struct MyReturnRequestsView: View {
                                 .font(.caption).bold()
                                 .foregroundColor(r.status == "APPROVED" ? IDS.Colors.brand : r.status == "REJECTED" ? .red : IDS.Colors.textSecondary)
                         }
-                        .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                 }
             }

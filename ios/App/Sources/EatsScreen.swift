@@ -294,7 +294,7 @@ struct OrderFoodContent: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20)
                         .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius)
+                        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else if restaurants == nil {
                         SkeletonBlock(height: 120)
                     } else if restaurants!.isEmpty {
@@ -356,7 +356,7 @@ struct OrderFoodContent: View {
                             }
                             .padding(18)
                             .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             .contentShape(Rectangle())
                             .onTapGesture { Task { await openRestaurant(restaurant) } }
                         }

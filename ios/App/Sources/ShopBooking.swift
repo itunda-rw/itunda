@@ -195,6 +195,7 @@ struct BookingFlowView: View {
                                 .padding(.horizontal, 12).padding(.vertical, 8)
                                 .background(selected ? IDS.Colors.brand : IDS.Colors.card)
                                 .cornerRadius(10)
+                                .idsCardBorder(cornerRadius: 10)
                                 .onTapGesture { selectedDate = date; selectedSlot = nil }
                             }
                         }
@@ -214,6 +215,7 @@ struct BookingFlowView: View {
                                         .frame(maxWidth: .infinity).padding(.vertical, 10)
                                         .background(selected ? IDS.Colors.brand : IDS.Colors.card)
                                         .cornerRadius(8)
+                                        .idsCardBorder(cornerRadius: 8)
                                         .onTapGesture { selectedSlot = slot }
                                 }
                             }
@@ -223,7 +225,7 @@ struct BookingFlowView: View {
                     }
 
                     TextField("Notes (optional)", text: $notes)
-                        .padding(12).background(IDS.Colors.card).cornerRadius(10)
+                        .padding(12).background(IDS.Colors.card).cornerRadius(10).idsCardBorder(cornerRadius: 10)
 
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
@@ -326,7 +328,7 @@ struct MerchantBookingInfoSection: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(12)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(10)
+                                .cornerRadius(10).idsCardBorder(cornerRadius: 10)
                             }
                         }
                     }

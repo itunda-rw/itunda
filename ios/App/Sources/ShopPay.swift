@@ -43,7 +43,7 @@ struct PayAMerchantSection: View {
                         .background(IDS.Colors.brand).cornerRadius(10)
                 }
             }
-            .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         } else {
             VStack(alignment: .leading, spacing: 10) {
                 MyPaymentCodeCard()
@@ -262,7 +262,7 @@ struct PayByCodeCard: View {
                 }
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
         // full account. payDirect resets needsDeviceVerification itself.
         DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { await payDirect(couponId: selectedCouponId) })
@@ -385,7 +385,7 @@ struct PayByStaticQrCard: View {
                 Text(error).font(.caption).foregroundColor(.red)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func handleScan(_ raw: String) {

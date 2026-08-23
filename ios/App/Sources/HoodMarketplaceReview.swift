@@ -144,7 +144,7 @@ struct ListingWishlistView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
                 HoodFeedSkeleton()
             } else if favorites!.isEmpty {
@@ -168,7 +168,7 @@ struct ListingWishlistView: View {
                     }
                     .padding(16)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 }
             }
         }
@@ -250,7 +250,7 @@ struct KeywordAlertsView: View {
                     }
                     .padding(16)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 }
             }
             if quietHoursLoaded {
@@ -274,7 +274,7 @@ struct KeywordAlertsView: View {
                 }
                 .padding(16)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task { await load() }

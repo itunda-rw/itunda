@@ -135,7 +135,7 @@ private struct Grow31SavingsPlanRow: View {
             }
             .padding()
             .background(IDS.Colors.card)
-            .cornerRadius(14)
+            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
         }
         .buttonStyle(.plain)
     }
@@ -178,7 +178,7 @@ private struct Grow31SavingsErrorCard: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(IDS.Colors.card)
-        .cornerRadius(14)
+        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
     }
 }
 
@@ -316,7 +316,7 @@ private struct Grow31SavingsDetailContent: View {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(IDS.Colors.card)
-                    .cornerRadius(14)
+                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -346,7 +346,7 @@ private struct Grow31SavingsDetailContent: View {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(IDS.Colors.card)
-                    .cornerRadius(14)
+                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                     if !deposits.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -363,7 +363,7 @@ private struct Grow31SavingsDetailContent: View {
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(IDS.Colors.card)
-                        .cornerRadius(14)
+                        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                     }
 
                     if let actionError {
@@ -386,7 +386,7 @@ private struct Grow31SavingsDetailContent: View {
                             }
                             .padding()
                             .background(IDS.Colors.card)
-                            .cornerRadius(14)
+                            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                         } else {
                             VStack(spacing: 8) {
                                 if !alreadyDepositedToday {

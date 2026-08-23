@@ -78,7 +78,7 @@ struct NewJobPostForm: View {
         }
         .padding(20)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate
@@ -300,7 +300,7 @@ struct JobPostCard: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .confirmationDialog("Report this job", isPresented: $showingReportOptions, titleVisibility: .visible) {
             Button("Asks for money or a fee") { Task { await report("The post asks applicants to pay money or a fee") } }
             Button("Pay or work details are misleading") { Task { await report("The pay or work details appear misleading") } }

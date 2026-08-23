@@ -746,7 +746,7 @@ public struct MapScreenView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: geo.size.height, alignment: .top)
                     .background(IDS.Colors.card)
-                    .cornerRadius(20)
+                    .cornerRadius(20).idsCardBorder(cornerRadius: 20)
                     .offset(y: currentSheetY)
                     .gesture(
                         DragGesture()

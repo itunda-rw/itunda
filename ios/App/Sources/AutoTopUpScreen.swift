@@ -69,7 +69,7 @@ struct AutoTopUpScreenView: View {
                     } else if let accounts = linkedAccounts, !accounts.contains(where: { $0.status == "LINKED" }) {
                         Text("Link an external account first -- see My > Linked accounts.")
                             .font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else if let accountId, let accounts = linkedAccounts {
                         AutoTopUpConfigCard(
                             accountId: accountId,
@@ -92,7 +92,7 @@ struct AutoTopUpScreenView: View {
                             }) {
                                 Text("Check now").bold().foregroundColor(IDS.Colors.brand)
                                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                    .background(IDS.Colors.card).cornerRadius(10)
+                                    .background(IDS.Colors.card).cornerRadius(10).idsCardBorder(cornerRadius: 10)
                             }
                         }
                     }
@@ -175,7 +175,7 @@ private struct AutoTopUpConfigCard: View {
             }
             .disabled(saving)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func save() async {

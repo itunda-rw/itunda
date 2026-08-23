@@ -40,7 +40,7 @@ public struct CreditScoreScreenView: View {
                             Text("Based on your own account activity, not a bureau report.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text("What makes up your score").bold()
@@ -55,7 +55,7 @@ public struct CreditScoreScreenView: View {
                                 }
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         if !suggestions.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
@@ -71,7 +71,7 @@ public struct CreditScoreScreenView: View {
                                     }
                                 }
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     } else { ProgressView() }
                 }

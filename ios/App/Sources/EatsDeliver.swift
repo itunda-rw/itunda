@@ -57,7 +57,7 @@ struct DeliverContent: View {
         .frame(maxWidth: .infinity)
         .padding(28)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private var riderDashboard: some View {
@@ -82,7 +82,7 @@ struct DeliverContent: View {
             }
             .padding(18)
             .background(IDS.Colors.card)
-            .cornerRadius(IDS.Layout.cardCornerRadius)
+            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
             if let error { Text(error).font(.caption).foregroundColor(.red) }
 

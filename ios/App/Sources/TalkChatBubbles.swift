@@ -86,7 +86,7 @@ struct OfferBubble: View {
             Text(label).font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
                 .padding(.horizontal, 10).padding(.vertical, 6)
                 .background(IDS.Colors.card)
-                .cornerRadius(10)
+                .cornerRadius(10).idsCardBorder(cornerRadius: 10)
         }
         .buttonStyle(.plain)
     }
@@ -141,7 +141,7 @@ struct GiftBubble: View {
                     Text("Open gift").font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(IDS.Colors.card)
-                        .cornerRadius(10)
+                        .cornerRadius(10).idsCardBorder(cornerRadius: 10)
                 }
                 .buttonStyle(.plain)
             }

@@ -43,7 +43,7 @@ struct RequestMoneyScreenView: View {
                             Text(created.id).font(.subheadline).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
 
                     PayRequestCard(onPaid: { Task { await load() } })
@@ -70,7 +70,7 @@ struct RequestMoneyScreenView: View {
                                         .font(.caption).bold()
                                         .foregroundColor(req.status == "COMPLETED" ? .green : req.status == "EXPIRED" ? IDS.Colors.textSecondary : IDS.Colors.brand)
                                 }
-                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                         }
                     } else {
@@ -114,7 +114,7 @@ private struct CreateRequestCard: View {
             }
             .disabled(submitting)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func submit() async {
@@ -161,7 +161,7 @@ private struct PayRequestCard: View {
                 }
                 .disabled(paying || code.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             DeviceStepUpHost(
                 visible: needsDeviceVerification,
                 onDismiss: { needsDeviceVerification = false },

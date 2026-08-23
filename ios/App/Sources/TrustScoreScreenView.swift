@@ -35,7 +35,7 @@ struct TrustScoreScreenView: View {
                             Text("How your neighbors see you on Marketplace, Jobs, and Property.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text("What makes up your score").bold()
@@ -50,7 +50,7 @@ struct TrustScoreScreenView: View {
                                 }
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else { ProgressView() }
                 }
                 .padding(IDS.Layout.screenHorizontal)

@@ -247,7 +247,7 @@ struct MyPaymentCodeCard: View {
                 AccountCardCarousel(accounts: accounts, selectedAccountId: selectedAccountId) { selectedAccountId = $0 }
             }
         }
-        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .task {
             // Real gap found+fixed (2026-08-21, direct user confirmation): only the
             // real payment-eligible types, not the customer's full account list --

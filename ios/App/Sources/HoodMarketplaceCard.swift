@@ -318,7 +318,7 @@ struct ListingCard: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .confirmationDialog("Report this listing", isPresented: $showingReportOptions, titleVisibility: .visible) {
             Button("Item is unavailable or misleading") { Task { await report("The item appears unavailable or misleading") } }
             Button("Unsafe payment or contact request") { Task { await report("The seller made an unsafe payment or contact request") } }

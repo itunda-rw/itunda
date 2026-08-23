@@ -347,7 +347,7 @@ struct RestaurantMenuView: View {
         }
         .padding(16)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     // For a no-option item only -- the original single-stepper interaction, completely

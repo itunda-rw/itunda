@@ -130,7 +130,7 @@ struct OverviewScreenView: View {
                             Text("\(Int(overview.netWorth)) RWF").font(.title).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text(t("accounts")).bold()
@@ -138,7 +138,7 @@ struct OverviewScreenView: View {
                                 HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(Int(a.balance))") }.font(.subheadline)
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(String(format: t("savings"), Int(overview.savings.totalSaved), overview.savings.goalCount)).font(.subheadline)
@@ -146,7 +146,7 @@ struct OverviewScreenView: View {
                             Text(String(format: t("investments"), Int(overview.investments.totalCostBasis), overview.investments.holdingCount)).font(.subheadline)
                             Text(String(format: t("insurance"), overview.insurance.activePolicyCount, Int(overview.insurance.totalMonthlyPremium))).font(.subheadline)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text(t("linkedAccounts")).bold()
@@ -196,7 +196,7 @@ struct OverviewScreenView: View {
                                 }
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else {
                         ProgressView()
                     }
@@ -295,7 +295,7 @@ struct LoansScreenView: View {
                             Text("Refinanced into \(refinanceResult.newLoanName)").font(.subheadline).bold()
                             Text("\(refinanceResult.oldInterestRate, specifier: "%.1f")% → \(refinanceResult.newInterestRate, specifier: "%.1f")%").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                     if mode == .offers {
                         if let lenders {
@@ -335,7 +335,7 @@ struct LoansScreenView: View {
                                         .disabled(busyId != nil)
                                     }
                                 }
-                                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                         } else { ProgressView() }
                     } else if mode == .overdraft {
@@ -440,7 +440,7 @@ private struct LoanOfferCard: View {
             }
             .disabled(busy)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 
@@ -481,7 +481,7 @@ private struct OverdraftPanel: View {
                     }
                     .disabled(busy || account.drawnBalance <= 0)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Open an overdraft line").bold()
@@ -494,7 +494,7 @@ private struct OverdraftPanel: View {
                     }
                     .disabled(busy)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task {
@@ -586,7 +586,7 @@ private struct PostpaidCreditPanel: View {
                     }
                     .disabled(busy || line.currentBalance <= 0)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Get postpaid credit").bold()
@@ -598,7 +598,7 @@ private struct PostpaidCreditPanel: View {
                     }
                     .disabled(busy)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task {
@@ -703,7 +703,7 @@ struct CertificateScreenView: View {
                                 .disabled(busy)
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         if let issuedPrivateKey {
                             VStack(alignment: .leading, spacing: 6) {
@@ -802,7 +802,7 @@ private struct VerifyCertificateCard: View {
             }
             if let error { Text(error).font(.caption).foregroundColor(.red) }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func checkStatus() async {
@@ -864,7 +864,7 @@ struct IdentityScreenView: View {
                             Text("Submission pending review").bold()
                             Text("We'll update your status once it's reviewed.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -882,7 +882,7 @@ struct IdentityScreenView: View {
                             }
                             .disabled(busy || documentNumber.isEmpty || documentReference.isEmpty)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
 
                     Text("Your submissions").bold()
@@ -895,7 +895,7 @@ struct IdentityScreenView: View {
                                 if let reason = s.decisionReason { Text(reason).font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                                 Text("Filed: \(s.submittedAt)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     } else { ProgressView() }
                 }
@@ -984,7 +984,7 @@ struct SupportScreenView: View {
                             }
                             .disabled(busy || selectedTransactionId == nil || descriptionText.isEmpty)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
 
                     Text("Your tickets").bold()
@@ -998,7 +998,7 @@ struct SupportScreenView: View {
                                 if let resolution = t.resolution { Text("Resolution: \(resolution)").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                                 Text("Filed: \(t.createdAt)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     } else { ProgressView() }
                 }

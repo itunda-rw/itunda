@@ -44,7 +44,7 @@ struct KnowledgeScreenView: View {
                             Text(reputation.map { "\($0) adopted answer\($0 == 1 ? "" : "s")" } ?? "…")
                                 .font(.subheadline).bold()
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         Picker("", selection: $tab) {
                             Text("Browse").tag(Tab.browse)
@@ -82,7 +82,7 @@ struct KnowledgeScreenView: View {
                                         }
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     }
-                                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                                 }
                             }
                         } else {
@@ -97,7 +97,7 @@ struct KnowledgeScreenView: View {
                                     Text(a.body).font(.subheadline)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                         }
                     }
@@ -187,7 +187,7 @@ private struct KnowledgeAskCard: View {
                 }
                 .disabled(submitting || category.isEmpty || title.trimmingCharacters(in: .whitespaces).isEmpty || questionBody.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         }
     }
 
@@ -240,7 +240,7 @@ private struct KnowledgeQuestionDetailScreen: View {
                             Text(q.body).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
 
                     Text("Answers").bold()
@@ -262,7 +262,7 @@ private struct KnowledgeQuestionDetailScreen: View {
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                         }
                     } else {

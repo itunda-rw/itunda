@@ -122,7 +122,22 @@ public struct IDS {
         // 4.82:1 (was 5.00:1, both clear 4.5:1 AA-normal-text). Matches the identical
         // rebrand applied the same day to Android's IdsSemanticColors.kt.
         public static let brand = Color(light: 0x7472F4, dark: 0x7675F8)
-        public static let backgroundPrimary = Color(light: 0xF2F4F6, dark: 0x17171C)
+        // Real fix (2026-08-24, direct user directive, same pass as web's index.css
+        // and Android's IdsSemanticColors.kt): was 0xF2F4F6 (the classic "grey canvas
+        // + white cards" dashboard look). Real Toss screenshots (Finance catalog menu,
+        // "All" apps grid, Pay Money detail, membership list) all sit on pure white
+        // instead -- itunda's own flat-design direction means most screens no longer
+        // have card-vs-page color contrast to justify grey as the page default.
+        // chipBackground below stays grey for genuinely inset fills. Dark mode
+        // intentionally untouched -- backgroundPrimary (0x17171C) vs card (0x202027)
+        // is real Toss's own published adaptive-elevation split (this file's own
+        // header), not the same bug. See the new `idsCardBorder` View extension at
+        // the bottom of this file for how cards stay visually distinct now that the
+        // page under them is white too -- iOS has no single shared card component
+        // like web's .itunda-card or Android's IdsCard, so this shipped as an
+        // extension call sites opt into, applied across ~180 real call sites this
+        // same pass.
+        public static let backgroundPrimary = Color(light: 0xFFFFFF, dark: 0x17171C)
         public static let backgroundSecondary = Color(light: 0xFFFFFF, dark: 0x202027)
         public static let backgroundTertiary = Color(light: 0xEDF2F7, dark: 0x2C2C35)
         public static let card = Color(light: 0xFFFFFF, dark: 0x202027)
@@ -230,5 +245,26 @@ public struct IDS {
         public static let floatingTabShadowRadius: CGFloat = 14
 
         public static let standardPadding: CGFloat = cardPadding
+    }
+}
+
+/// Real fix (2026-08-24, direct user directive, same pass as Android's IdsCard
+/// border and web's .itunda-card border): IDS.Colors.backgroundPrimary is now
+/// white in light mode too (matches real Toss reference screenshots), so a view
+/// using IDS.Colors.card as its background -- itself already white -- has nothing
+/// left to separate it from the page behind it. Unlike Android's shared IdsCard
+/// composable or web's single .itunda-card CSS class, iOS has no one shared card
+/// component -- every screen builds its own inline `.background(IDS.Colors.card)`
+/// box, so this ships as a `View` extension call sites opt into individually
+/// rather than a one-place fix. Matches Android/web's identical choice: a hairline
+/// border (Ids.colors.divider / --itunda-grey-200), not elevation/shadow, since a
+/// border can't trigger the tonal-elevation-tint class of bug Android's IdsCard
+/// already had to work around.
+public extension View {
+    func idsCardBorder(cornerRadius: CGFloat) -> some View {
+        self.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(IDS.Colors.divider, lineWidth: 1)
+        )
     }
 }

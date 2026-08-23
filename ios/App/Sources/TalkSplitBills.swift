@@ -82,7 +82,7 @@ struct GroupSplitBillsView: View {
                             }
                             .disabled(busyId == "new" || selectedIds.isEmpty || amountText.isEmpty || descriptionText.isEmpty)
                         }
-                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                     if let splitBills {
                         if splitBills.isEmpty {
@@ -144,7 +144,7 @@ struct GroupSplitBillsView: View {
                                     .disabled(busyId != nil)
                                 }
                             }
-                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     } else {
                         ProgressView()
@@ -269,7 +269,7 @@ struct DirectSplitBillsView: View {
                             }
                             .disabled(busyId == "new" || amountText.isEmpty || descriptionText.isEmpty)
                         }
-                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                     if let splitBills {
                         if splitBills.isEmpty {
@@ -331,7 +331,7 @@ struct DirectSplitBillsView: View {
                                     .disabled(busyId != nil)
                                 }
                             }
-                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     } else {
                         ProgressView()

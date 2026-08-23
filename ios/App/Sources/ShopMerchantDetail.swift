@@ -97,7 +97,7 @@ struct MerchantDetailView: View {
                             )
                         }
                     }
-                    .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     .padding(.bottom, 10)
                 }
                 if let products {
@@ -176,7 +176,7 @@ struct MerchantDetailView: View {
                                 .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                         }
                     }
@@ -259,7 +259,7 @@ struct MyBookingsView: View {
                             }
                         }
                         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                 }
                 .padding(.top, 16)

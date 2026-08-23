@@ -98,7 +98,7 @@ struct CommunityContent: View {
                             Button("Retry") { Task { await load() } }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else if posts == nil {
                         HoodFeedSkeleton()
                     } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -313,7 +313,7 @@ struct NewCommunityPostForm: View {
         }
         .padding(20)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate

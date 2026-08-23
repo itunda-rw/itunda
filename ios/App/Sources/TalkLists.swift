@@ -83,7 +83,7 @@ struct DirectMessagesList: View {
             }
             .padding(20)
             .background(IDS.Colors.card)
-            .cornerRadius(IDS.Layout.cardCornerRadius)
+            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, 12)
             .listRowInsets(EdgeInsets())
@@ -118,7 +118,7 @@ struct DirectMessagesList: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -275,7 +275,7 @@ struct ConversationRow: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 

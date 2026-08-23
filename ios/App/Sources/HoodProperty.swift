@@ -112,7 +112,7 @@ struct PropertyContent: View {
                         Button("Retry") { Task { await load() } }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
                     HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -334,7 +334,7 @@ struct NewPropertyListingForm: View {
         }
         .padding(20)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate
@@ -439,7 +439,7 @@ struct PropertyValuationCard: View {
                 .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func estimateValue() async {

@@ -71,7 +71,7 @@ struct EatsOrderRow<Action: View>: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 
@@ -102,7 +102,7 @@ struct MyEatsOrdersView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if orders == nil {
                 SkeletonBlock(height: 120)
             } else if orders!.isEmpty {
@@ -187,7 +187,7 @@ struct MyDineInOrdersView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if orders == nil {
                 SkeletonBlock(height: 80)
             } else if orders!.isEmpty {
@@ -216,7 +216,7 @@ struct MyDineInOrdersView: View {
                             }
                             .padding(16)
                             .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     }
                 }
@@ -291,7 +291,7 @@ struct FavoriteRestaurantsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
                 SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
@@ -317,7 +317,7 @@ struct FavoriteRestaurantsView: View {
                     }
                     .padding(18)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     .contentShape(Rectangle())
                     .onTapGesture { onOpen(favorite) }
                 }

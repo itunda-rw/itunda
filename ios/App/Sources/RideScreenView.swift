@@ -186,7 +186,7 @@ private struct RidePassengerContent: View {
                                     Text(sendingStatus ? "Sending…" : "Send status to trusted contacts")
                                         .bold().foregroundColor(IDS.Colors.textPrimary)
                                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                        .background(IDS.Colors.card).cornerRadius(10)
+                                        .background(IDS.Colors.card).cornerRadius(10).idsCardBorder(cornerRadius: 10)
                                 }
                                 .disabled(sendingStatus)
                                 if let sendStatusResult {
@@ -881,7 +881,7 @@ private struct DriverRatingSection: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(8)
                                     .background(IDS.Colors.card)
-                                    .cornerRadius(8)
+                                    .cornerRadius(8).idsCardBorder(cornerRadius: 8)
                                 }
                             }
                         } else {

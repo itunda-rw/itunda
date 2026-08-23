@@ -133,7 +133,7 @@ private struct WeeklySavingsPlanRow: View {
             }
             .padding()
             .background(IDS.Colors.card)
-            .cornerRadius(14)
+            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
         }
         .buttonStyle(.plain)
     }
@@ -179,7 +179,7 @@ private struct WeeklySavingsErrorCard: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(IDS.Colors.card)
-        .cornerRadius(14)
+        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
     }
 }
 
@@ -344,7 +344,7 @@ private struct WeeklySavingsDetailContent: View {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(IDS.Colors.card)
-                    .cornerRadius(14)
+                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -382,7 +382,7 @@ private struct WeeklySavingsDetailContent: View {
                     .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(IDS.Colors.card)
-                    .cornerRadius(14)
+                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                     if !installments.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -399,7 +399,7 @@ private struct WeeklySavingsDetailContent: View {
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(IDS.Colors.card)
-                        .cornerRadius(14)
+                        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                     }
 
                     if let actionError {
@@ -422,7 +422,7 @@ private struct WeeklySavingsDetailContent: View {
                             }
                             .padding()
                             .background(IDS.Colors.card)
-                            .cornerRadius(14)
+                            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                         } else {
                             Button(action: { confirmingCancel = true }) {
                                 Text("Cancel plan (early withdrawal)")

@@ -375,7 +375,7 @@ struct CommerceShopContent: View {
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
                             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                         HStack(spacing: 8) {
                             TextField("Search products across every merchant", text: $productSearchInput)
@@ -417,7 +417,7 @@ struct CommerceShopContent: View {
                                             Spacer()
                                             Text("\(Int(r.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                         }
-                                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                                     }
                                 }
                             }
@@ -474,7 +474,7 @@ struct CommerceShopContent: View {
                                                     Text(String(format: "%.1f km away", a.distanceKm)).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
                                                 }
                                                 .padding(10).frame(width: 160, alignment: .leading)
-                                                .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                                .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                                             }
                                             .buttonStyle(.plain)
                                         }
@@ -513,7 +513,7 @@ struct CommerceShopContent: View {
                                             .frame(width: 120, alignment: .leading)
                                             .padding(10)
                                             .background(IDS.Colors.card)
-                                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                                             .onTapGesture {
                                                 Task { await openMerchant(ShoppingMerchantDto(merchantId: d.merchantId, businessName: d.merchantName, category: nil, cashbackRate: "1%")) }
                                             }
@@ -545,7 +545,7 @@ struct CommerceShopContent: View {
                                             .frame(width: 120, alignment: .leading)
                                             .padding(10)
                                             .background(IDS.Colors.card)
-                                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                                             .onTapGesture {
                                                 Task { await openMerchant(ShoppingMerchantDto(merchantId: v.deal.merchantId, businessName: v.businessName, category: nil, cashbackRate: "1%")) }
                                             }
@@ -571,7 +571,7 @@ struct CommerceShopContent: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(20)
                             .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         } else if merchants == nil {
                             SkeletonBlock(height: 120)
                         } else if merchants!.isEmpty {
@@ -601,7 +601,7 @@ struct CommerceShopContent: View {
                                 }
                                 .padding(18)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                             .buttonStyle(.plain)
                         }

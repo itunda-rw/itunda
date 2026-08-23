@@ -31,7 +31,7 @@ struct CommerceOrderRow<Action: View>: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 
@@ -62,7 +62,7 @@ struct ProductWishlistView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
                 SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
@@ -96,7 +96,7 @@ struct ProductWishlistView: View {
                     }
                     .padding(16)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 }
             }
         }
@@ -144,7 +144,7 @@ struct MyProductSubscriptionsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if subscriptions == nil {
                 SkeletonBlock(height: 120)
             } else if subscriptions!.isEmpty {
@@ -184,7 +184,7 @@ struct MyProductSubscriptionsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 }
             }
         }

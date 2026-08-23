@@ -30,7 +30,7 @@ struct FriendsList: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if contacts == nil {
                 SkeletonBlock(height: 120)
             } else if contacts!.isEmpty {
@@ -62,7 +62,7 @@ struct FriendsList: View {
                                 }
                                 .padding(16)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                             }
                             .disabled(startingId == contact.userId)
                         }
@@ -143,7 +143,7 @@ struct GroupsList: View {
                 }
                 .padding(20)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                 OpenChatCard(onCreated: onCreated, onJoined: onCreated)
 
@@ -155,7 +155,7 @@ struct GroupsList: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if groups == nil {
                     SkeletonBlock(height: 120)
                 } else if groups!.isEmpty {
@@ -225,7 +225,7 @@ struct GroupRow: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 
@@ -310,7 +310,7 @@ struct OpenChatCard: View {
                             .background(Color(.tertiarySystemBackground)).cornerRadius(12)
                     }
                 }
-                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     if mode == .create {
@@ -371,7 +371,7 @@ struct OpenChatCard: View {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
                 }
-                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
     }

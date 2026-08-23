@@ -172,7 +172,7 @@ struct NeighborhoodSetupPrompt: View {
         .frame(maxWidth: .infinity)
         .padding(28)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 busy = true
@@ -231,7 +231,7 @@ struct NeighborhoodSwitcherOverlay: View {
                 }
                 .padding(16)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
         }
@@ -252,7 +252,7 @@ struct HoodFeedSkeleton: View {
                 }
                 .padding(18)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .accessibilityLabel("Loading Hood content")

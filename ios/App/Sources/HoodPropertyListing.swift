@@ -14,7 +14,7 @@ struct PropertyWishlistView: View {
             if let error { ErrorCardView(error) { Task { await load() } } }
             else if favorites == nil { HoodFeedSkeleton() }
             else if favorites!.isEmpty { Text("No saved properties yet — tap ♡ on a property to keep it here.").foregroundColor(IDS.Colors.textSecondary) }
-            else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(Int(favorite.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius) } }
+            else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(Int(favorite.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius) } }
         }.task { await load() }
     }
     private func load() async { do { favorites = try await NetworkClient.shared.getMyFavoritePropertyListings().favorites; error = nil } catch { self.error = "Couldn't load your saved properties. Check your connection and try again." } }
@@ -265,7 +265,7 @@ struct PropertyListingCard: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .confirmationDialog("Report this property", isPresented: $showingReportOptions, titleVisibility: .visible) {
             Button("Suspected fake or unavailable property") { Task { await report("The property may be fake or unavailable") } }
             Button("Misleading price or property details") { Task { await report("The price or property details appear misleading") } }

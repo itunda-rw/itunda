@@ -58,7 +58,7 @@ struct PlatformMembershipCard: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task { await load() }
@@ -133,7 +133,7 @@ struct EatsMembershipCard: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius)
+                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task { await load() }

@@ -117,7 +117,7 @@ private struct TransferHubRow: View {
             }
             .padding(18)
             .background(IDS.Colors.card)
-            .cornerRadius(IDS.Layout.cardCornerRadius)
+            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         }
         .buttonStyle(.plain)
     }
@@ -286,7 +286,7 @@ private struct AutoTransferCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 

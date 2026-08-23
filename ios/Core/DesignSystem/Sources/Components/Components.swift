@@ -101,7 +101,7 @@ public struct ErrorCardView: View {
         .padding(.vertical, 24)
         .padding(.horizontal, 20)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 
@@ -325,6 +325,12 @@ public struct IdsListRow: View {
             // Real fix (2026-07-13): same static-vs-reactive bug as IdsButton above --
             // this row's background stayed light-mode white in dark mode.
             .background(IDS.Colors.card)
+            // Real fix (2026-08-24): a flat full-width row, not a rounded card (no
+            // cornerRadius anywhere on this component) -- IDS.Colors.backgroundPrimary
+            // is now white in light mode too, so this needed a hairline bottom divider,
+            // not idsCardBorder's rounded-rect stroke, matching web's identical
+            // .itunda-flat-section row-divider treatment for the same flat-row shape.
+            .overlay(Rectangle().fill(IDS.Colors.divider).frame(height: 1), alignment: .bottom)
         }
         .buttonStyle(PressScaleButtonStyle())
     }

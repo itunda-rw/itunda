@@ -191,7 +191,7 @@ struct MultiCartView: View {
                             .padding(16)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -227,7 +227,7 @@ struct MultiCartView: View {
                         .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius)
+                        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                     .padding(.horizontal, IDS.Layout.screenHorizontal)
                     .padding(.top, 12)

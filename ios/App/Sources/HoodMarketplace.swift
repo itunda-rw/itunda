@@ -102,7 +102,7 @@ struct MarketplaceContent: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
                     HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -355,7 +355,7 @@ struct NewListingForm: View {
         }
         .padding(20)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate

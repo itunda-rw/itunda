@@ -172,7 +172,7 @@ private struct StockRow: View {
             }
             .padding()
             .background(IDS.Colors.card)
-            .cornerRadius(14)
+            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
         }
         .buttonStyle(.plain)
     }
@@ -203,7 +203,7 @@ private struct PortfolioContent: View {
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(IDS.Colors.card)
-                .cornerRadius(14)
+                .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                 AddFundsCard(onFunded: load)
 
@@ -256,7 +256,7 @@ private struct HoldingRow: View {
         }
         .padding()
         .background(IDS.Colors.card)
-        .cornerRadius(14)
+        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
     }
 }
 
@@ -306,7 +306,7 @@ private struct AddFundsCard: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(IDS.Colors.card)
-        .cornerRadius(14)
+        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
         DeviceStepUpHost(
             visible: needsDeviceVerification,
             onDismiss: { needsDeviceVerification = false },
@@ -642,7 +642,7 @@ private struct InvestErrorCard: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(IDS.Colors.card)
-        .cornerRadius(14)
+        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
     }
 }
 

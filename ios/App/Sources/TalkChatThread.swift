@@ -235,6 +235,7 @@ struct ChatThreadScreen: View {
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(selected ? IDS.Colors.brand : IDS.Colors.card)
                                     .cornerRadius(10)
+                                    .idsCardBorder(cornerRadius: 10)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -245,7 +246,7 @@ struct ChatThreadScreen: View {
                             Text(sendingGift ? "Sending…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                 .padding(.horizontal, 10).padding(.vertical, 6)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(10)
+                                .cornerRadius(10).idsCardBorder(cornerRadius: 10)
                         }
                         .buttonStyle(.plain)
                         .disabled(sendingGift || Double(giftAmount) == nil || (Double(giftAmount) ?? 0) <= 0)
@@ -253,7 +254,7 @@ struct ChatThreadScreen: View {
                             Text("Cancel").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                 .padding(.horizontal, 10).padding(.vertical, 6)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(10)
+                                .cornerRadius(10).idsCardBorder(cornerRadius: 10)
                         }
                         .buttonStyle(.plain)
                     }

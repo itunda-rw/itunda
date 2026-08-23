@@ -864,7 +864,7 @@ struct MyTabView: View {
                         }
                     }
                     .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 }
                 // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
                 // recent orders across every product, not a settings list. Tapping
@@ -978,12 +978,12 @@ private struct ProfilePhotoCard: View {
                 Button(action: { Task { await save() } }) {
                     Text(saving ? "Saving…" : "Save photo").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                         .padding(.horizontal, 10).padding(.vertical, 6)
-                        .background(IDS.Colors.card).cornerRadius(10)
+                        .background(IDS.Colors.card).cornerRadius(10).idsCardBorder(cornerRadius: 10)
                 }
                 .disabled(saving)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .task {
             do {
                 let user = try await NetworkClient.shared.getProfile().user
@@ -1034,7 +1034,7 @@ private struct VerificationCard: View {
                     if !phoneVerified { VerificationRow(kind: "phone", hasEmail: true, onVerified: { Task { await load() } }) }
                     if !emailVerified { VerificationRow(kind: "email", hasEmail: email != nil, onVerified: { Task { await load() } }) }
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task { await load() }

@@ -24,7 +24,7 @@ struct MerchantOrdersView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if let orders, !orders.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Orders for your store").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -117,12 +117,12 @@ struct MerchantReturnQueueView: View {
                                     Button(action: { Task { await decide(r.id, approve: false) } }) {
                                         Text("Reject").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                             .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                            .background(IDS.Colors.card).cornerRadius(10)
+                                            .background(IDS.Colors.card).cornerRadius(10).idsCardBorder(cornerRadius: 10)
                                     }
                                     .disabled(busyId == r.id)
                                 }
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     }
                 }
@@ -180,7 +180,7 @@ struct MyCommerceOrdersView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
                     .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if orders == nil {
                     SkeletonBlock(height: 120)
                 } else if orders!.isEmpty {

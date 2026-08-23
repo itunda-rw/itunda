@@ -40,7 +40,7 @@ struct GiftVoucherComposerPanel: View {
                 }
                 .padding(10)
                 .background(IDS.Colors.card)
-                .cornerRadius(8)
+                .cornerRadius(8).idsCardBorder(cornerRadius: 8)
             } else {
                 HStack(spacing: 8) {
                     IdsTextField("Search a product to gift", text: $query)
@@ -48,7 +48,7 @@ struct GiftVoucherComposerPanel: View {
                         Text(searching ? "…" : "Search").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                             .padding(.horizontal, 10).padding(.vertical, 8)
                             .background(IDS.Colors.card)
-                            .cornerRadius(8)
+                            .cornerRadius(8).idsCardBorder(cornerRadius: 8)
                     }
                     .buttonStyle(.plain)
                     .disabled(searching || query.trimmingCharacters(in: .whitespaces).count < 2)
@@ -66,7 +66,7 @@ struct GiftVoucherComposerPanel: View {
                                 }
                                 .padding(10)
                                 .background(IDS.Colors.card)
-                                .cornerRadius(8)
+                                .cornerRadius(8).idsCardBorder(cornerRadius: 8)
                             }
                             .buttonStyle(.plain)
                         }
@@ -83,7 +83,7 @@ struct GiftVoucherComposerPanel: View {
                     Text(sending ? "…" : "Send gift voucher").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(IDS.Colors.card)
-                        .cornerRadius(10)
+                        .cornerRadius(10).idsCardBorder(cornerRadius: 10)
                 }
                 .buttonStyle(.plain)
                 .disabled(selected == nil || phone.trimmingCharacters(in: .whitespaces).isEmpty || sending)
@@ -91,7 +91,7 @@ struct GiftVoucherComposerPanel: View {
                     Text("Cancel").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                         .padding(.horizontal, 10).padding(.vertical, 6)
                         .background(IDS.Colors.card)
-                        .cornerRadius(10)
+                        .cornerRadius(10).idsCardBorder(cornerRadius: 10)
                 }
                 .buttonStyle(.plain)
             }
@@ -149,7 +149,7 @@ struct EmoticonPickerPanel: View {
                         Button(action: onOpenStore) {
                             Text("Browse Emoticon Store").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                 .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(IDS.Colors.card).cornerRadius(10)
+                                .background(IDS.Colors.card).cornerRadius(10).idsCardBorder(cornerRadius: 10)
                         }
                         .buttonStyle(.plain)
                     }
@@ -165,13 +165,14 @@ struct EmoticonPickerPanel: View {
                                         .padding(.horizontal, 10).padding(.vertical, 6)
                                         .background(selectedPackId == op.packId ? IDS.Colors.brand : IDS.Colors.card)
                                         .cornerRadius(8)
+                                        .idsCardBorder(cornerRadius: 8)
                                 }
                                 .buttonStyle(.plain)
                             }
                             Button(action: onOpenStore) {
                                 Text("Get more").font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
                                     .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(IDS.Colors.card).cornerRadius(8)
+                                    .background(IDS.Colors.card).cornerRadius(8).idsCardBorder(cornerRadius: 8)
                             }
                             .buttonStyle(.plain)
                         }
@@ -259,14 +260,14 @@ struct EmoticonStoreView: View {
                                     Button(action: { Task { await buy(pack.id) } }) {
                                         Text(owned ? "Owned" : (busyPackId == pack.id ? "…" : "Buy")).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                             .padding(.horizontal, 10).padding(.vertical, 6)
-                                            .background(IDS.Colors.card).cornerRadius(8)
+                                            .background(IDS.Colors.card).cornerRadius(8).idsCardBorder(cornerRadius: 8)
                                     }
                                     .buttonStyle(.plain)
                                     .disabled(owned || busyPackId != nil)
                                     Button(action: { giftingPackId = (giftingPackId == pack.id) ? nil : pack.id }) {
                                         Text("Gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                             .padding(.horizontal, 10).padding(.vertical, 6)
-                                            .background(IDS.Colors.card).cornerRadius(8)
+                                            .background(IDS.Colors.card).cornerRadius(8).idsCardBorder(cornerRadius: 8)
                                     }
                                     .buttonStyle(.plain)
                                     .disabled(busyPackId != nil)
@@ -277,7 +278,7 @@ struct EmoticonStoreView: View {
                                         Button(action: { Task { await gift(pack.id) } }) {
                                             Text(busyPackId == pack.id ? "…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                                 .padding(.horizontal, 10).padding(.vertical, 6)
-                                                .background(IDS.Colors.card).cornerRadius(8)
+                                                .background(IDS.Colors.card).cornerRadius(8).idsCardBorder(cornerRadius: 8)
                                         }
                                         .buttonStyle(.plain)
                                         .disabled(busyPackId != nil || giftPhone.trimmingCharacters(in: .whitespaces).isEmpty)

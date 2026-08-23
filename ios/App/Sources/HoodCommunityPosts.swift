@@ -84,7 +84,7 @@ struct CommunityPostCard: View {
         }
         .padding(18)
         .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .confirmationDialog("Report this post", isPresented: $showingReportOptions, titleVisibility: .visible) {
             Button("Harassment or hateful content") { Task { await report("The post contains harassment or hateful content") } }
             Button("Spam or misleading information") { Task { await report("The post is spam or misleading information") } }
@@ -166,7 +166,7 @@ struct CommunityPostDetailView: View {
                         }
                         .padding(18)
                         .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius)
+                        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         if post.category == "meetup" {
                             MeetupSessionsSection(post: post, currentUserId: currentUserId)
@@ -289,7 +289,7 @@ struct MeetupSessionsSection: View {
                         }
                         .disabled(checkingInId == s.id || checkedInIds.contains(s.id))
                     }
-                    .padding(12).background(IDS.Colors.card).cornerRadius(12)
+                    .padding(12).background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
                 }
             }
             if isAuthor {
@@ -311,7 +311,7 @@ struct MeetupSessionsSection: View {
                         .disabled(scheduling)
                     }
                 }
-                .padding(12).background(IDS.Colors.card).cornerRadius(12)
+                .padding(12).background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
             }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -378,7 +378,7 @@ struct GroupBuyFinalizeSection: View {
             Text("Split request sent -- see it in your group chat's Split bill tab.")
                 .font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(IDS.Colors.card).cornerRadius(12)
+                .background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Split the cost").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -396,7 +396,7 @@ struct GroupBuyFinalizeSection: View {
                 }
                 .disabled(submitting)
             }
-            .padding(14).background(IDS.Colors.card).cornerRadius(12)
+            .padding(14).background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
         }
     }
 
