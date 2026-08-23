@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -205,34 +203,36 @@ internal fun MerchantReturnQueueView() {
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 20.dp)) {
         Text("Return & exchange requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card -- an
+        // action-item list (pending requests a merchant approves/rejects), no
+        // divider, matching the KeywordAlerts precedent (docs/UI_UX_GUIDELINES.md
+        // §10).
         open.forEach { r ->
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (r.type == "RETURN") "Return requested" else "Exchange requested", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(r.reasonCode.replace("_", " ").lowercase(), color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    }
-                    r.reasonNote?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (busyId == r.id) Ids.colors.textTertiary else Ids.colors.brand)
-                                .pressScaleClickable(enabled = busyId != r.id) { decide(r.id, true) }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text(if (busyId == r.id) "…" else "Approve", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Ids.colors.surface)
-                                .pressScaleClickable(enabled = busyId != r.id) { decide(r.id, false) }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("Reject", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                    }
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (r.type == "RETURN") "Return requested" else "Exchange requested", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(r.reasonCode.replace("_", " ").lowercase(), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
+                r.reasonNote?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (busyId == r.id) Ids.colors.textTertiary else Ids.colors.brand)
+                            .pressScaleClickable(enabled = busyId != r.id) { decide(r.id, true) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (busyId == r.id) "…" else "Approve", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Ids.colors.surface)
+                            .pressScaleClickable(enabled = busyId != r.id) { decide(r.id, false) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("Reject", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 }
             }
         }

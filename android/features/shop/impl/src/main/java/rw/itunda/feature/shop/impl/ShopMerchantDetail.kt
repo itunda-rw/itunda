@@ -25,8 +25,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ShoppingBag
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -306,34 +305,36 @@ internal fun MyBookingsView() {
             ErrorCard(error!!, onRetry = ::load)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
+                // -- a history log of bookings, kept the per-row Divider convention
+                // (docs/DESIGN_REFERENCES.md §274).
                 list!!.forEach { b ->
-                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(b.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text(BOOKING_STATUS_LABEL[b.status] ?: b.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
-                            Text("${b.bookingDate} at ${b.startTime.take(5)}", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                            if (b.status == "REQUESTED" || b.status == "CONFIRMED") {
-                                Box(
-                                    modifier = Modifier
-                                        .padding(top = 10.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Ids.colors.danger)
-                                        .pressScaleClickable(enabled = cancellingId != b.id) { cancel(b.id) }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                                ) {
-                                    Text(
-                                        if (cancellingId == b.id) "Cancelling…" else "Cancel booking",
-                                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                                    )
-                                }
-                            }
-                            if (b.status == "COMPLETED") {
-                                BookingReviewButton(bookingId = b.id)
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(b.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(BOOKING_STATUS_LABEL[b.status] ?: b.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Text("${b.bookingDate} at ${b.startTime.take(5)}", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                        if (b.status == "REQUESTED" || b.status == "CONFIRMED") {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Ids.colors.danger)
+                                    .pressScaleClickable(enabled = cancellingId != b.id) { cancel(b.id) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    if (cancellingId == b.id) "Cancelling…" else "Cancel booking",
+                                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                )
                             }
                         }
+                        if (b.status == "COMPLETED") {
+                            BookingReviewButton(bookingId = b.id)
+                        }
                     }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
                 }
             }
         }

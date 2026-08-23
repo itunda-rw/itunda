@@ -193,16 +193,17 @@ fun PayAMerchantSection(
 
     val result = paymentResult
     if (result != null) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Payment complete", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(result.merchantName, color = Ids.colors.textPrimary, fontSize = 14.sp)
-                Text("%,.0f RWF".format(result.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                if (result.cashbackEarned > java.math.BigDecimal.ZERO) {
-                    Text("+ %,.0f RWF cashback".format(result.cashbackEarned), color = Ids.colors.brand, fontSize = 13.sp)
-                }
-                ListingActionButtonShop("Done", false) { paymentResult = null }
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- an
+        // inline confirmation panel replacing this screen's content, not a real
+        // Dialog (docs/UI_UX_GUIDELINES.md §10).
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Payment complete", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(result.merchantName, color = Ids.colors.textPrimary, fontSize = 14.sp)
+            Text("%,.0f RWF".format(result.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            if (result.cashbackEarned > java.math.BigDecimal.ZERO) {
+                Text("+ %,.0f RWF cashback".format(result.cashbackEarned), color = Ids.colors.brand, fontSize = 13.sp)
             }
+            ListingActionButtonShop("Done", false) { paymentResult = null }
         }
         return
     }
@@ -265,37 +266,38 @@ private fun FacePaySettingsCard(enrolled: Boolean?, onChanged: () -> Unit) {
         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
         return
     }
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("😊 Face Pay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(
-                        if (enrolled) "Enabled -- authorize payment codes with your face, no code re-entry needed" else "Not enabled on this account",
-                        color = Ids.colors.textSecondary, fontSize = 12.sp,
-                    )
-                }
-                ListingActionButtonShop(if (busy) "…" else if (enrolled) "Disable" else "Enable", busy, filled = !enrolled) {
-                    busy = true
-                    error = null
-                    coroutineScope.launch {
-                        try {
-                            if (enrolled) NetworkClient.apiService.revokeFacePay() else NetworkClient.apiService.enrollFacePay()
-                            onChanged()
-                        } catch (e: Exception) {
-                            error = "Could not update Face Pay."
-                        } finally {
-                            busy = false
-                        }
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- the
+    // pay-mode picker Row right below acts as the next section's natural visual
+    // start (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("😊 Face Pay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(
+                    if (enrolled) "Enabled -- authorize payment codes with your face, no code re-entry needed" else "Not enabled on this account",
+                    color = Ids.colors.textSecondary, fontSize = 12.sp,
+                )
+            }
+            ListingActionButtonShop(if (busy) "…" else if (enrolled) "Disable" else "Enable", busy, filled = !enrolled) {
+                busy = true
+                error = null
+                coroutineScope.launch {
+                    try {
+                        if (enrolled) NetworkClient.apiService.revokeFacePay() else NetworkClient.apiService.enrollFacePay()
+                        onChanged()
+                    } catch (e: Exception) {
+                        error = "Could not update Face Pay."
+                    } finally {
+                        busy = false
                     }
                 }
             }
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
     }
 }
 

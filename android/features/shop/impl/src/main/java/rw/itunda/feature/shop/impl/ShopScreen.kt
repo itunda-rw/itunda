@@ -24,8 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -732,25 +730,27 @@ fun CommerceShopContent(
                 if (searchResults.isEmpty()) {
                     item { EmptyState("No products matched \"$productSearchInput\".", icon = Icons.Outlined.ShoppingCart) }
                 } else {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the per-row
+                    // Card -- a product-browse list a user picks from, no divider,
+                    // matching GroupAccountScreen's precedent (docs/UI_UX_GUIDELINES.md
+                    // §10).
                     items(searchResults, key = { it.id }) { r ->
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp)
-                                    .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    ProductImageThumb(r.imageUrl, size = 48.dp, corner = 10.dp)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Column {
-                                        Text(r.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text(r.merchantName, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                                        Text(r.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (r.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 11.sp)
-                                    }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
+                                .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                ProductImageThumb(r.imageUrl, size = 48.dp, corner = 10.dp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(r.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text(r.merchantName, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                                    Text(r.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (r.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 11.sp)
                                 }
-                                Text("%,.0f RWF".format(r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             }
+                            Text("%,.0f RWF".format(r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                 }

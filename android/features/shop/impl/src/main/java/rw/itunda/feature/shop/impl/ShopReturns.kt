@@ -11,8 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -159,21 +158,23 @@ internal fun MyReturnRequestsView() {
     if (list != null && list.isNotEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("My return/exchange requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+            // a history log of past return/exchange requests, kept the per-row
+            // Divider convention (docs/DESIGN_REFERENCES.md §274).
             list.forEach { r ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (r.type == "RETURN") "Return" else "Exchange", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(
-                                RETURN_STATUS_LABEL[r.status] ?: r.status,
-                                color = when (r.status) { "APPROVED" -> Ids.colors.brand; "REJECTED" -> Ids.colors.danger; else -> Ids.colors.textSecondary },
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                            )
-                        }
-                        Text(r.reasonCode, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (r.type == "RETURN") "Return" else "Exchange", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(
+                            RETURN_STATUS_LABEL[r.status] ?: r.status,
+                            color = when (r.status) { "APPROVED" -> Ids.colors.brand; "REJECTED" -> Ids.colors.danger; else -> Ids.colors.textSecondary },
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                        )
                     }
+                    Text(r.reasonCode, color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
+                Divider(color = Ids.colors.divider, thickness = 0.5.dp)
             }
         }
     }

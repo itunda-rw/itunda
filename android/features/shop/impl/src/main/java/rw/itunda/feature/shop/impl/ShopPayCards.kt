@@ -40,8 +40,6 @@ import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.text.input.KeyboardType
@@ -225,8 +223,9 @@ internal fun PayByCodeCard(
         error = null
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
+    // form section (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay by code", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(
                 if (facePayEnrolled) {
@@ -266,7 +265,6 @@ internal fun PayByCodeCard(
                 }
                 error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             }
-        }
     }
     // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
     // full account. payDirect resets needsDeviceVerification itself.
@@ -372,8 +370,9 @@ internal fun PayByScanCard(
         }
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
+    // form section (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Scan a merchant's QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             val currentPreview = preview
             when {
@@ -416,7 +415,6 @@ internal fun PayByScanCard(
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
                 }
             }
-        }
     }
     deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { payDirect(selectedCouponId) })
 }
@@ -429,46 +427,46 @@ internal fun PayByStaticQrCard(onPaid: (CollectPaymentResultDto) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Pay a merchant's static QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(
-                "For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.",
-                color = Ids.colors.textSecondary, fontSize = 12.sp,
-            )
-            IdsTextField(value = merchantId, onValueChange = { merchantId = it }, label = "Merchant ID", modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", keyboardType = KeyboardType.Number, isAmount = true, modifier = Modifier.weight(1f))
-                ListingActionButtonShop(
-                    if (submitting) "Paying…" else "Pay",
-                    submitting || merchantId.isBlank() || amount.toBigDecimalOrNull() == null,
-                    filled = true,
-                ) {
-                    val numericAmount = amount.toBigDecimalOrNull()
-                    if (numericAmount == null || numericAmount <= java.math.BigDecimal.ZERO) {
-                        error = "Enter a valid amount."
-                        return@ListingActionButtonShop
-                    }
-                    submitting = true
-                    error = null
-                    coroutineScope.launch {
-                        try {
-                            val result = NetworkClient.apiService.payByStaticQr(merchantId.trim(), UUID.randomUUID().toString(), StaticQrPayRequest(numericAmount))
-                            merchantId = ""
-                            amount = ""
-                            onPaid(result)
-                        } catch (e: HttpException) {
-                            error = superAppErrorMessage(e)
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            submitting = false
-                        }
+    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
+    // form section (docs/UI_UX_GUIDELINES.md §10).
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Pay a merchant's static QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text(
+            "For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.",
+            color = Ids.colors.textSecondary, fontSize = 12.sp,
+        )
+        IdsTextField(value = merchantId, onValueChange = { merchantId = it }, label = "Merchant ID", modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", keyboardType = KeyboardType.Number, isAmount = true, modifier = Modifier.weight(1f))
+            ListingActionButtonShop(
+                if (submitting) "Paying…" else "Pay",
+                submitting || merchantId.isBlank() || amount.toBigDecimalOrNull() == null,
+                filled = true,
+            ) {
+                val numericAmount = amount.toBigDecimalOrNull()
+                if (numericAmount == null || numericAmount <= java.math.BigDecimal.ZERO) {
+                    error = "Enter a valid amount."
+                    return@ListingActionButtonShop
+                }
+                submitting = true
+                error = null
+                coroutineScope.launch {
+                    try {
+                        val result = NetworkClient.apiService.payByStaticQr(merchantId.trim(), UUID.randomUUID().toString(), StaticQrPayRequest(numericAmount))
+                        merchantId = ""
+                        amount = ""
+                        onPaid(result)
+                    } catch (e: HttpException) {
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    } finally {
+                        submitting = false
                     }
                 }
             }
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
     }
 }
 
