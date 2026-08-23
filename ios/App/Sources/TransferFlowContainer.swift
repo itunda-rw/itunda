@@ -1,11 +1,21 @@
 import SwiftUI
 import FeaturePayments
+import CoreDesignSystem
 import CoreIdentity
 import CoreNetwork
 
 private enum TransferStep: Equatable {
     case recipient
     case amount(accountNumber: String)
+    // Real Toss reference (2026-08-11, toss.im/tossfeed/article/why-motion-in-finance,
+    // ported to iOS 2026-08-23 alongside a real user-supplied "Sent" screenshot):
+    // Toss's own headline example of motion in a financial product is exactly this
+    // moment -- a real check animation after a transfer completes, intuitively
+    // communicating completion. Before this, a successful transfer called onDone()
+    // directly -- the flow silently closed with zero acknowledgment that real money
+    // had actually moved, matching (and now closing) the exact gap Android's own
+    // TransferStep.Success doc comment describes having already fixed 2026-08-11.
+    case success(amountRwf: Int, recipientLabel: String)
 }
 
 // Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- the scam-report
@@ -85,6 +95,12 @@ struct TransferFlowContainer: View {
     @State private var showScamReportSheet = false
     @State private var scamReportReason = ""
     @State private var scamReportBusy = false
+    // Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인",
+    // 2026-08-23) -- see NetworkClient.resolveRecipient's own doc comment: this
+    // endpoint already had real web/Android clients but iOS's transfer flow only ever
+    // showed the raw account number, never a resolved name. Best-effort like the scam
+    // check above it -- a failed lookup falls back to the account number on Success.
+    @State private var recipientDisplayName: String?
     let availableBalance: Double
     let onDone: () -> Void
 
@@ -138,6 +154,7 @@ struct TransferFlowContainer: View {
                     onConfirm: { amountRwf, isGift, note, theme in confirm(accountNumber: accountNumber, amountRwf: amountRwf, isGift: isGift, note: note, theme: theme) }
                 )
                 .task(id: accountNumber) { await checkScamStatus(accountNumber) }
+                .task(id: accountNumber) { await resolveRecipientName(accountNumber) }
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.system(size: 13))
@@ -145,6 +162,27 @@ struct TransferFlowContainer: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
                 }
+            case .success(let amountRwf, let recipientLabel):
+                IdsCelebrationScreen(
+                    headline: "RWF \(amountRwf.formatted()) sent",
+                    message: "",
+                    onDone: onDone,
+                    recipientLabel: recipientLabel,
+                    onShare: {
+                        // Same real, already-proven UIActivityViewController pattern as
+                        // ShopMerchantDetail.swift's own affiliate-link share -- walks
+                        // to the topmost presentedViewController since this flow is
+                        // itself already presented modally.
+                        let text = "Sent RWF \(amountRwf.formatted()) to \(recipientLabel) via itunda"
+                        let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+                        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let root = scene.windows.first?.rootViewController {
+                            var top = root
+                            while let presented = top.presentedViewController { top = presented }
+                            top.present(activityVC, animated: true)
+                        }
+                    }
+                )
             }
         }
         // Found live on-device (2026-07-12): typing into RecipientEntryScreen's
@@ -199,6 +237,12 @@ struct TransferFlowContainer: View {
         scamReportCount = result.warn ? result.reportCount : 0
     }
 
+    private func resolveRecipientName(_ accountNumber: String) async {
+        recipientDisplayName = nil
+        guard let recipient = try? await NetworkClient.shared.resolveRecipient(identifier: accountNumber).recipient else { return }
+        recipientDisplayName = recipient.displayName
+    }
+
     private func submitScamReport() {
         guard case .amount(let accountNumber) = step else { return }
         scamReportBusy = true
@@ -226,7 +270,7 @@ struct TransferFlowContainer: View {
                         ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: pendingAmountRwf, note: pendingGiftNote, theme: pendingGiftTheme)
                         : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf)
                     isSubmitting = false
-                    if case .success = retryResult { onDone() }
+                    if case .success = retryResult { step = .success(amountRwf: pendingAmountRwf, recipientLabel: recipientDisplayName ?? accountNumber) }
                     else if case .failure(let message) = retryResult { errorMessage = message }
                 }
             case .failure(let message):
@@ -263,7 +307,7 @@ struct TransferFlowContainer: View {
                 isSubmitting = false
                 switch result {
                 case .success:
-                    onDone()
+                    step = .success(amountRwf: amountRwf, recipientLabel: recipientDisplayName ?? accountNumber)
                 // sendTransfer never actually returns .queued -- a transfer confirm
                 // is deliberately never queued offline (see
                 // TransferViewModel.depositToSavingsGoal's doc comment for why) --

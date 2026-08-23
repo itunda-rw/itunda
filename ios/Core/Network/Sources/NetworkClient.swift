@@ -2262,6 +2262,14 @@ public struct ScamCheckResponse: Decodable { public let success: Bool; public le
 public struct ScamReportResponse: Decodable { public let success: Bool; public let report: ScamReportDto }
 public struct ScamReportsListResponse: Decodable { public let success: Bool; public let reports: [ScamReportDto] }
 
+// Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
+// P2pService.resolveRecipient's own doc comment. Already had real web (bank-mfe) and
+// Android clients; iOS had none until this (2026-08-23, found while porting the same
+// real Toss "Sent" success-screen reference screenshot to iOS) -- meaning iOS's
+// transfer flow only ever showed the raw account number, never a resolved name.
+public struct P2pRecipientPreviewDto: Decodable { public let recipientUserId: String; public let displayName: String }
+public struct ResolveRecipientResponse: Decodable { public let success: Bool; public let recipient: P2pRecipientPreviewDto }
+
 public struct DepositRequest: Encodable { public let goalId: String; public let amount: Double }
 public struct DepositResponse: Decodable { public let success: Bool; public let message: String; public let goal: SavingsGoal }
 public struct ClaimInterestResponse: Decodable { public let success: Bool; public let message: String }
@@ -2470,6 +2478,10 @@ extension NetworkClient {
 
     public func checkScamStatus(identifier: String) async throws -> ScamCheckResponse {
         try await get("api/v1/p2p/scam-reports/check?identifier=\(identifier.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? identifier)")
+    }
+
+    public func resolveRecipient(identifier: String) async throws -> ResolveRecipientResponse {
+        try await get("api/v1/p2p/recipient?identifier=\(identifier.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? identifier)")
     }
 
     public func reportScam(identifier: String, reason: String) async throws -> ScamReportResponse {
