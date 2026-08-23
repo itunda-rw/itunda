@@ -4738,19 +4738,22 @@ function FloatMarketplaceSection() {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10): 5
+  // distinct non-exclusive sections shown together -- reused .itunda-flat-section
+  // for section-boundary dividers between them.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Offer surplus float</h3>
         <input type="number" placeholder="Amount to offer (RWF)" value={listAmount} onChange={(e) => setListAmount(e.target.value)}
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
         <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handlePostListing}>{busy ? 'Working…' : 'Post listing'}</button>
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Nearby agents with float to spare</h3>
         <button className="itunda-btn itunda-btn-secondary" disabled={locating} onClick={handleFindNearby} style={{ marginBottom: '8px' }}>
           {locating ? 'Finding…' : 'Find nearby listings'}
@@ -4774,7 +4777,7 @@ function FloatMarketplaceSection() {
         ))}
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
         {myListings.length === 0 && <EmptyState message="No float listings yet — post one to let nearby agents claim your spare cash." />}
         {myListings.map((l) => (
@@ -4785,7 +4788,7 @@ function FloatMarketplaceSection() {
         ))}
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Requests against my listings</h3>
         {incomingRequests.length === 0 && <EmptyState message="No requests yet — they'll show up here once another agent claims from your listing." />}
         {incomingRequests.map((r) => (
@@ -4801,7 +4804,7 @@ function FloatMarketplaceSection() {
         ))}
       </div>
 
-      <div className="itunda-card">
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My requests</h3>
         {myRequests.length === 0 && <EmptyState message="No requests yet — claim from a nearby listing above and it'll show up here." />}
         {myRequests.map((r) => (
@@ -8024,8 +8027,11 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10): dropped
+  // itunda-card -- matches Android's identical AddFundsCard composable, already
+  // flattened this session (InvestScreen.kt).
   return (
-    <div className="itunda-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Investment cash</p>
         <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
@@ -8186,8 +8192,10 @@ function StocksView() {
 
       {subTab === 'PORTFOLIO' && (
         portfolio === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : (
+          // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- summary
+          // section on a multi-section screen.
           <div>
-            <div className="itunda-card" style={{ marginBottom: '16px' }}>
+            <div className="itunda-flat-section">
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', fontWeight: 600 }}>Total value</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString()} RWF</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--itunda-green)' : 'var(--itunda-red)', marginBottom: '12px' }}>
@@ -8204,13 +8212,14 @@ function StocksView() {
             </div>
             <AddFundsCard onFunded={loadPortfolio} />
             {portfolio.holdings.length === 0 ? (
-              <div className="itunda-card">
-                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
-              </div>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', padding: '10px 0' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- entity
+              // list (holdings owned), no divider needed, matching Android's identical
+              // HoldingRow conversion this session (InvestScreen.kt).
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {portfolio.holdings.map((h) => (
-                  <div key={h.stockId} className="itunda-card" style={{ padding: '16px 18px' }}>
+                  <div key={h.stockId} style={{ padding: '10px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{h.symbol}</p>
                       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{h.value.toLocaleString()} RWF</p>
@@ -8231,9 +8240,9 @@ function StocksView() {
 
       {subTab === 'WATCHLIST' && (
         watchlist === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
-          <div className="itunda-card">
-            <EmptyState message="No stocks watched yet. Tap the star on any stock in the Market tab to follow it." />
-          </div>
+          // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+          // conditional empty-state message.
+          <EmptyState message="No stocks watched yet. Tap the star on any stock in the Market tab to follow it." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {watchlist.map(renderStockRow)}
@@ -12926,7 +12935,9 @@ function VehicleInspectionsView() {
 
       {tab === 'BUYER' ? (
         <div>
-          <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+              form section on this tab. */}
+          <div style={{ padding: '10px 0' }}>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Book an inspection</h3>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Pay a local mechanic to inspect a used car before you buy it -- held until they deliver their findings.
@@ -12963,9 +12974,11 @@ function VehicleInspectionsView() {
           ) : myBookings.length === 0 ? (
             <EmptyState message="No inspections booked yet — book one to get a real used car checked before you buy." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            // Real fix (2026-08-24, flat-design sweep): history log of booked
+            // inspections, kept the per-row divider convention.
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {myBookings.map((b) => (
-                <div key={b.id} className="itunda-card">
+                <div key={b.id} className="itunda-flat-section">
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Listing {b.listingId}</p>
                   <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
                   {b.findings && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', marginTop: '6px' }}>{b.findings}</p>}
@@ -12985,7 +12998,9 @@ function VehicleInspectionsView() {
       ) : mechanicProfile === undefined ? (
         <div className="itunda-card skeleton" style={{ height: '160px' }} />
       ) : mechanicProfile === null ? (
-        <div className="itunda-card">
+        // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+        // form section shown in this state.
+        <div style={{ padding: '10px 0' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Become an inspection mechanic</h3>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
             Get booked and paid to inspect used cars for real buyers before they purchase.
@@ -13000,8 +13015,10 @@ function VehicleInspectionsView() {
           {mechanicError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{mechanicError}</p>}
         </div>
       ) : (
+        // Real fix (2026-08-24, flat-design sweep): 2 distinct sections shown
+        // together -- reused .itunda-flat-section for the section-boundary divider.
         <div>
-          <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{mechanicProfile.businessName}</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{mechanicProfile.available ? 'Visible for new bookings' : 'Not accepting bookings'}</p>
@@ -13016,9 +13033,11 @@ function VehicleInspectionsView() {
           ) : mechanicBookings.length === 0 ? (
             <EmptyState message="No bookings yet — they'll show up here once a buyer books an inspection." />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            // Real fix (2026-08-24, flat-design sweep): history log of mechanic
+            // bookings, kept the per-row divider convention.
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               {mechanicBookings.map((b) => (
-                <div key={b.id} className="itunda-card">
+                <div key={b.id} className="itunda-flat-section">
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Listing {b.listingId}</p>
                   <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
                   {b.status === 'REQUESTED' && (
