@@ -23144,8 +23144,10 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   };
 
   if (error && !detail) {
+    // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+    // dropped itunda-card -- the screen's only content in this state.
     return (
-      <div className="itunda-card">
+      <div style={{ padding: '10px 0' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
@@ -23153,17 +23155,19 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   }
   if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
+  // Real fix (2026-08-24, flat-design sweep): 5 distinct non-exclusive sections
+  // shown together -- reused .itunda-flat-section for section-boundary dividers.
   return (
     <div>
       <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to group accounts</button>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{detail.groupAccount.name}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
       </div>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Members</h3>
         {detail.members.map((m) => (
           <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 'var(--itunda-type-scale-13-size)' }}>
@@ -23173,7 +23177,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
         ))}
       </div>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Monthly dues</h3>
         {dues === null ? (
           <div className="skeleton" style={{ height: '40px', borderRadius: '8px' }} />
@@ -23229,7 +23233,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
           />
         </div>
       ) : (
-        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{isOwner ? 'Deposit or withdraw' : 'Deposit'}</h3>
           <input
             type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
@@ -23251,7 +23255,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       )}
 
       {isOwner && (
-        <form onSubmit={handleInvite} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <form onSubmit={handleInvite} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Invite a member</h3>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
@@ -23304,8 +23308,10 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- a lone toggled
+  // form section (docs/UI_UX_GUIDELINES.md §10).
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <form onSubmit={handleSubmit} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <input
         type="text" required placeholder="Group name (e.g. Roommates)" value={name} onChange={(e) => setName(e.target.value)}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
@@ -23339,10 +23345,10 @@ function GroupAccountsSection() {
     <div>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>Group accounts</h3>
       <CreateGroupAccountForm onCreated={load} />
+      {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+          conditional error message. */}
       {error && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
-        </div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {accounts === null ? (
         <div className="itunda-card skeleton" style={{ height: '64px' }} />
@@ -23396,10 +23402,10 @@ function IkiminaSection() {
         Everyone contributes the same amount each round; one member takes home the full pot, in turn.
       </p>
       <CreateIkiminaForm onCreated={load} />
+      {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+          conditional error message. */}
       {error && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
-        </div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {ikiminas === null ? (
         <div className="itunda-card skeleton" style={{ height: '64px' }} />
@@ -23585,8 +23591,10 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const animatedBalance = useCountUp(detail?.balance ?? 0);
 
   if (error && !detail) {
+    // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+    // dropped itunda-card -- the screen's only content in this state.
     return (
-      <div className="itunda-card">
+      <div style={{ padding: '10px 0' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
@@ -23664,11 +23672,13 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
     }
   };
 
+  // Real fix (2026-08-24, flat-design sweep): distinct non-exclusive sections shown
+  // together -- reused .itunda-flat-section for section-boundary dividers.
   return (
     <div>
       <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to ikimina</button>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{ikimina.name}</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
@@ -23680,7 +23690,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
         </p>
       </div>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Rotation order</h3>
         {members.map((m) => {
           const contributed = currentRoundContributions.find((c) => c.userId === m.userId)?.contributed ?? false;
@@ -23698,7 +23708,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       </div>
 
       {ikimina.status === 'FORMING' && isOrganizer && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <div className="itunda-flat-section">
           <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy || members.length < 2} onClick={handleStart}>
             {busy ? '…' : members.length < 2 ? 'Invite at least 1 more member to start' : 'Start the cycle'}
           </button>
@@ -23706,7 +23716,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       )}
 
       {ikimina.status === 'ACTIVE' && myMember && (
-        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Round {ikimina.currentRound}</h3>
           <button className="itunda-btn itunda-btn-primary" disabled={busy || iContributed} onClick={handleContribute}>
             {busy ? '…' : iContributed ? '✓ You contributed this round' : `Contribute ${ikimina.contributionAmount.toLocaleString()} RWF`}
@@ -23719,7 +23729,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       )}
 
       {ikimina.status === 'FORMING' && isOrganizer && (
-        <form onSubmit={handleInvite} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <form onSubmit={handleInvite} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Invite a member</h3>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
