@@ -24,8 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -397,8 +395,9 @@ private fun RidePassengerContent() {
             }
         } else {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper -- the
+                // screen's own main content when no ride is active.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Request a ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
@@ -443,8 +442,9 @@ private fun RidePassengerContent() {
                             }
                         }
                         stops.forEachIndexed { index, stop ->
-                            Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft), modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // Real fix (flat-design sweep): dropped the per-row Card --
+                            // a stop list separates entries with spacing alone.
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                         Text("Stop ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
                                         Text("Remove", fontSize = 12.sp, color = Ids.colors.danger, modifier = Modifier.pressScaleClickable { stops.removeAt(index) })
@@ -454,7 +454,6 @@ private fun RidePassengerContent() {
                                         IdsTextField(value = stop.lat, onValueChange = { stops[index] = stop.copy(lat = it) }, label = "Latitude", modifier = Modifier.weight(1f))
                                         IdsTextField(value = stop.lng, onValueChange = { stops[index] = stop.copy(lng = it) }, label = "Longitude", modifier = Modifier.weight(1f))
                                     }
-                                }
                             }
                         }
                         if (stops.size < 3) {
@@ -471,7 +470,6 @@ private fun RidePassengerContent() {
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (requesting) "Requesting…" else if (scheduleHours.toDoubleOrNull() != null) "Schedule ride" else "Request ride", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         }
@@ -539,8 +537,9 @@ private fun TrustedContactsSection(
     removingContactId: String?, onRemove: (String) -> Unit,
     error: String?,
 ) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- a section on an
+    // otherwise-flat linear screen.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Trusted contacts", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(
                 "Add up to 5 people who can get your live trip status with one tap.",
@@ -580,7 +579,6 @@ private fun TrustedContactsSection(
                     Text("You've reached the limit of 5 trusted contacts.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
             }
-        }
     }
 }
 
@@ -796,8 +794,9 @@ private fun RideDriverContent() {
         when {
             !loaded -> item { SkeletonBlock(height = 120.dp) }
             current == null -> item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                // Real fix (flat-design sweep): dropped the Card wrapper -- the
+                // screen's own main content when not yet a driver.
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Drive with Itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                         Text(
@@ -809,13 +808,13 @@ private fun RideDriverContent() {
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .pressScaleClickable(enabled = !registering) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Become a driver", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
             else -> {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    // Real fix (flat-design sweep): dropped the Card wrapper -- a
+                    // section on an otherwise-flat driver screen.
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column {
                                 Text(if (current.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Text(
@@ -835,14 +834,14 @@ private fun RideDriverContent() {
                                     .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
                                     .pressScaleClickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                        }
                     }
                 }
                 // Real Uber "Destination Filter" -- see RideDriverDto.destinationLatitude's
                 // own doc comment.
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                    // Real fix (flat-design sweep): dropped the Card wrapper -- a
+                    // section on an otherwise-flat driver screen.
+                    Column {
                             Text("Heading somewhere?", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
                             if (current.destinationLatitude != null) {
@@ -872,7 +871,6 @@ private fun RideDriverContent() {
                                     contentAlignment = Alignment.Center,
                                 ) { Text(if (destinationBusy) "Setting…" else "Set destination", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
-                        }
                     }
                 }
                 // Real Uber Driver-style earnings report -- see ApiService's own
@@ -881,8 +879,9 @@ private fun RideDriverContent() {
                 val weekEarnings = earnings
                 if (weekEarnings != null && weekEarnings.isNotEmpty()) {
                     item {
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                        // Real fix (flat-design sweep): dropped the Card wrapper -- a
+                        // section on an otherwise-flat driver screen.
+                        Column {
                                 Text("This week", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(10.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -899,7 +898,6 @@ private fun RideDriverContent() {
                                         Text("${weekEarnings.sumOf { it.netEarnings }} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                 }
-                            }
                         }
                     }
                 }
@@ -976,10 +974,13 @@ private fun RideDriverContent() {
     }
 }
 
+// Real fix (flat-design sweep): dropped the Card wrapper -- used both as the sole
+// "Your ride" status widget and as a repeated past/active-trips list row, and a
+// per-row card was the same anti-pattern already fixed for ShellSection. Flat rows
+// with spacing alone match this session's established list convention.
 @Composable
 private fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = null, action: (@Composable () -> Unit)? = null) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(trip.pickupAddress, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             stops?.forEach { stop ->
                 Text(
@@ -1033,7 +1034,6 @@ private fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = null
                 it()
             }
         }
-    }
 }
 
 // Real "meet your driver" rating + reviews during an active trip (item 233) -- found
