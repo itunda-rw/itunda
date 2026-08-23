@@ -214,6 +214,15 @@ struct QuickActionsRow: View {
 // cards. Matches the identical flat-conversion of Android's ShellSection and
 // bank-mfe's .itunda-flat-section shipped the same session: no background/
 // cornerRadius/shadow, just a thin bottom divider between whole sections.
+//
+// Real fix (2026-08-24, direct user directive, real Toss reference): dropped
+// the per-row Divider() the ForEach below used to render between rows -- real
+// Toss lists separate rows with whitespace (IDS.Layout.rowGap) alone, not a
+// hairline rule per row. Matches the identical fix just made to Android's
+// ShellSection and bank-mfe's accounts.map/ikiminas.map/plans.map. The
+// trailing section-boundary Divider below (this struct's own .overlay) stays
+// -- that separates this whole section from its sibling, the same distinction
+// ShellSection's own fix drew between per-row and per-section dividers.
 struct HomeSectionCard: View {
     let title: String
     let actionLabel: String
@@ -231,13 +240,9 @@ struct HomeSectionCard: View {
                     .foregroundColor(IDS.Colors.textTertiary)
             }
 
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+            VStack(spacing: IDS.Layout.rowGap) {
+                ForEach(Array(rows.enumerated()), id: \.element.id) { _, row in
                     CompactListRow(row: row)
-                    if index < rows.count - 1 {
-                        Divider()
-                            .overlay(IDS.Colors.divider)
-                    }
                 }
             }
         }
