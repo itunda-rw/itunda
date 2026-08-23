@@ -75,9 +75,9 @@ struct DeviceStepUpView: View {
                 LockGlyph(size: 16)
                 Text(dsu("title"))
             }
-                .font(.system(size: 16, weight: .bold))
+                .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .subheadline))
             Text(dsu("body"))
-                .font(.system(size: 13))
+                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                 .foregroundColor(.secondary)
             // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11, rule #4),
             // matching the identical same-day fix on Android's DeviceStepUpDialog: this
@@ -106,7 +106,7 @@ struct DeviceStepUpView: View {
             .cornerRadius(10)
             .onAppear { passwordFocused = true }
             if let error {
-                Text(error).font(.system(size: 12)).foregroundColor(.red)
+                Text(error).font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1)).foregroundColor(.red)
             }
             HStack(spacing: 10) {
                 Button(dsu("cancel"), action: onCancel)
