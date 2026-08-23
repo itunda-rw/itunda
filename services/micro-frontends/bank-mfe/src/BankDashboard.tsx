@@ -15004,7 +15004,7 @@ function PropertyListingWishlistView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.propertyListingId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.propertyListingId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{f.title}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.propertyType} · {f.price.toLocaleString()} RWF</p>
@@ -15211,15 +15211,13 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           )}
           {!error && listings === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-            <div className="itunda-card">
-              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
-                  ported from the same-day Android/iOS fix): say what's missing AND
-                  what fixes it, per this screen's own real "+ List a property"
-                  button above in the MINE view. */}
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-                {view === 'BROWSE' ? 'No properties listed yet — check back soon, or list your own.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet — try Browse to see properties from everywhere.' : view === 'ACQUIRED' ? 'No properties acquired yet — properties you acquire will show up here.' : 'You haven\'t listed any properties yet — tap "+ List a property" above to list your first one.'}
-              </p>
-            </div>
+            // Real copy-voice fix (item 244, round 5 of the empty-state pass,
+            // ported from the same-day Android/iOS fix): say what's missing AND
+            // what fixes it, per this screen's own real "+ List a property"
+            // button above in the MINE view.
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+              {view === 'BROWSE' ? 'No properties listed yet — check back soon, or list your own.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet — try Browse to see properties from everywhere.' : view === 'ACQUIRED' ? 'No properties acquired yet — properties you acquire will show up here.' : 'You haven\'t listed any properties yet — tap "+ List a property" above to list your first one.'}
+            </p>
           )}
           {!error && listings !== null && listings.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -15294,7 +15292,7 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
   };
 
   return (
-    <div className="itunda-card">
+    <div>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '4px' }}>우리집 시세 — Estimate my home's value</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
         A real estimate based on comparable listings near you, not a fabricated number.
@@ -15392,7 +15390,7 @@ function EatsOrderCard({ order, restaurant, action, onMessageRestaurant }: { ord
   const canShowLiveTracking = canShowRoute && (order.status === 'RIDER_ASSIGNED' || order.status === 'PICKED_UP');
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{EATS_STATUS_LABEL[order.status]}</p>
@@ -15649,7 +15647,7 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
   };
 
   return (
-    <div className="itunda-card" style={{ padding: '14px' }}>
+    <div className="itunda-flat-section">
       <span style={{ color: '#F5A623', fontSize: 'var(--itunda-type-scale-13-size)' }}>{'★'.repeat(review.restaurantRating)}{'☆'.repeat(5 - review.restaurantRating)}</span>
       {review.restaurantComment && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', marginTop: '4px' }}>{review.restaurantComment}</p>}
       {review.ownerReply ? (
