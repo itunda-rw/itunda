@@ -4108,6 +4108,18 @@ public struct AddressSuggestionDto: Decodable, Identifiable {
     public let displayName: String
     public let latitude: Double
     public let longitude: Double
+
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- a public
+    // memberwise init wasn't needed before (every existing instance came straight off
+    // the wire via Decodable), but EatsRestaurantMenu.swift's own bookmark-quick-select
+    // fix now needs to construct one client-side from a MapBookmarkDto. The compiler's
+    // own synthesized memberwise init is only `internal` for a struct declared in this
+    // module, not visible from the App target.
+    public init(displayName: String, latitude: Double, longitude: Double) {
+        self.displayName = displayName
+        self.latitude = latitude
+        self.longitude = longitude
+    }
 }
 public struct AddressSearchResponse: Decodable { public let success: Bool; public let suggestions: [AddressSuggestionDto] }
 

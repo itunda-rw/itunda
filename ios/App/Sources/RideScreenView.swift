@@ -96,12 +96,14 @@ private struct RideStopInput: Identifiable {
 }
 
 // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- see
-// RidePassengerContent's own `bookmarks` doc comment. Small, local, file-scoped hex
-// parser rather than a new app-wide Color extension for one feature -- same real
-// precedent Features/Maps/Sources/MapScreenView.swift's own private colorFromHex
-// already established (can't be reused directly: different target, App doesn't
-// depend on FeatureMaps).
-private func colorFromHex(_ hex: String) -> Color {
+// RidePassengerContent's own `bookmarks` doc comment. Small hex parser rather than a
+// new app-wide Color extension for one feature -- same real precedent Features/Maps/
+// Sources/MapScreenView.swift's own private colorFromHex already established (can't
+// be reused directly: different target, App doesn't depend on FeatureMaps). Internal
+// (not private/fileprivate), not just file-scoped, since EatsRestaurantMenu.swift
+// reuses this same copy for the identical fix on the Eats delivery-address field --
+// both live in the App target, so widening this one avoids a third duplicate.
+func colorFromHex(_ hex: String) -> Color {
     var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
     if sanitized.hasPrefix("#") { sanitized.removeFirst() }
     guard sanitized.count == 6, let value = UInt64(sanitized, radix: 16) else {

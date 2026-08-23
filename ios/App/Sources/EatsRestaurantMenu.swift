@@ -401,6 +401,14 @@ struct AddressAutocompleteField: View {
 
     @State private var suggestions: [AddressSuggestionDto] = []
     @State private var searchTask: Task<Void, Never>?
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- same real gap
+    // already closed for ride booking (RideScreenView's RidePassengerContent) and
+    // Android's AddressAutocompleteField: itunda's own "map bookmarks" feature was
+    // never surfaced here either, despite a delivery address being an even more
+    // universal need than a ride destination. No new backend work -- the same
+    // existing GET /api/v1/maps/bookmarks this field's own search suggestions already
+    // sit alongside.
+    @State private var bookmarks: [MapBookmarkDto] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -423,8 +431,30 @@ struct AddressAutocompleteField: View {
                 }
                 .background(IDS.Colors.chipBackground)
                 .cornerRadius(12)
+            } else if address.isEmpty && !bookmarks.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Saved places").font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
+                        .padding(.horizontal, 12).padding(.top, 8)
+                    ForEach(bookmarks) { bookmark in
+                        Button(action: { selectSuggestion(AddressSuggestionDto(displayName: bookmark.displayName, latitude: bookmark.latitude, longitude: bookmark.longitude)) }) {
+                            HStack(spacing: 8) {
+                                Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
+                                Text(bookmark.displayName).font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                        }
+                    }
+                }
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
             }
         }
+        .task { await loadBookmarks() }
+    }
+
+    private func loadBookmarks() async {
+        bookmarks = (try? await NetworkClient.shared.getMyMapBookmarks().bookmarks) ?? bookmarks
     }
 
     private func handleChange(_ text: String) {
