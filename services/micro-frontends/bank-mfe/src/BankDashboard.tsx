@@ -23337,11 +23337,14 @@ function GroupAccountsSection() {
         <EmptyState message="No group accounts yet -- start one to save or split expenses with others." />
       ) : (
         accounts.map((a) => (
+          // Real fix (2026-08-24, direct user directive, real Toss reference): dropped
+          // itunda-flat-section -- that class's border-bottom divider is for separating
+          // distinct sections, not individual rows within one repeated list, matching
+          // the same fix just made to Android's ShellSection.
           <button
             key={a.id}
             onClick={() => setOpenId(a.id)}
-            className="itunda-flat-section"
-            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', padding: '10px 0' }}
           >
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{a.name}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Tap to view balance and members</p>
@@ -23391,11 +23394,11 @@ function IkiminaSection() {
         <EmptyState message="No ikimina groups yet -- start one with people you trust." />
       ) : (
         ikiminas.map((k) => (
+          // Real fix (2026-08-24): see accounts.map's own identical comment above.
           <button
             key={k.id}
             onClick={() => setOpenId(k.id)}
-            className="itunda-flat-section"
-            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
+            style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', padding: '10px 0' }}
           >
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{k.name}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
@@ -24154,11 +24157,11 @@ function WeeklySavingsSection() {
         plans.map((p) => {
           const pct = Math.min(100, Math.round((p.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
           return (
+            // Real fix (2026-08-24): see accounts.map's own identical comment above.
             <button
               key={p.id}
               onClick={() => setOpenId(p.id)}
-              className="itunda-flat-section"
-              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', padding: '10px 0' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{p.name}</p>
@@ -24484,11 +24487,11 @@ function Grow31SavingsSection() {
           const pct = Math.min(100, Math.round((p.daysElapsed / GROW31_TERM_DAYS) * 100));
           const bonus = grow31BonusRateForStreak(p.longestStreak);
           return (
+            // Real fix (2026-08-24): see accounts.map's own identical comment above.
             <button
               key={p.id}
               onClick={() => setOpenId(p.id)}
-              className="itunda-flat-section"
-              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', padding: '10px 0' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{p.name}</p>
