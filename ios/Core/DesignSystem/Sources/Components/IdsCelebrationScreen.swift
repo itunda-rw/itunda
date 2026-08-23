@@ -51,21 +51,21 @@ public struct IdsCelebrationScreen: View {
                         .fill(IDS.Colors.success)
                         .frame(width: 96, height: 96)
                     Image(systemName: "checkmark")
-                        .font(.system(size: 40, weight: .bold))
+                        .font(IDS.scaledFont(size: 40, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(.white)
                 }
                 .scaleEffect(checkScale)
                 .opacity(checkOpacity)
 
                 Text(headline)
-                    .font(.system(size: 26, weight: .heavy))
+                    .font(IDS.scaledFont(size: 26, weight: .heavy, relativeTo: .title1))
                     .foregroundColor(IDS.Colors.textPrimary)
                     .padding(.top, 24)
                     .multilineTextAlignment(.center)
 
                 if !message.isEmpty {
                     Text(message)
-                        .font(.system(size: 15))
+                        .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
                         .foregroundColor(IDS.Colors.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 8)
@@ -73,7 +73,7 @@ public struct IdsCelebrationScreen: View {
 
                 if let recipientLabel {
                     Text("To \(recipientLabel)")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(IDS.scaledFont(size: 18, weight: .semibold, relativeTo: .headline))
                         .foregroundColor(IDS.Colors.textPrimary)
                         .padding(.top, 4)
                 }
@@ -84,7 +84,7 @@ public struct IdsCelebrationScreen: View {
                     HStack(spacing: 10) {
                         Button(action: onShare) {
                             Text("Share")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout))
                                 .foregroundColor(IDS.Colors.brand)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 56)

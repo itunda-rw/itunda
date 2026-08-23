@@ -16999,3 +16999,57 @@ not built.
 
 *Shipped: Android `RecentlyViewedListingsStore.kt`/`MarketplaceScreen.kt`/
 `MarketplaceRecentlyViewed.kt`/`ApiService.kt` (commit `b87128ba`).*
+
+## 272. iOS Dynamic Type sweep, closing the Uber Senior Accounts gap
+
+Sourced from Uber's real "Senior Accounts"/Simple Mode launch (2025-06-04):
+itunda's iOS app already has a real accessibility text-scaling primitive,
+`IDS.scaledFont(size:weight:relativeTo:)` in
+`ios/Core/DesignSystem/Sources/IDS.swift` (wraps
+`UIFontMetrics(forTextStyle:).scaledFont(for:)`), but it was only used in a
+minority of call sites -- 80 raw `Font.system(size:weight:)` /
+`.font(.system(size:...))` sites across 24 files never responded to a
+user's real iOS accessibility text-size setting at all (Settings > Display &
+Text Size > Larger Text does nothing for that text).
+
+Converted all 80 sites across all 24 files this session:
+`TransferFlowScreens.swift` (27), `SettingsScreen.swift` (15),
+`PayHomeExtras.swift` (15), `TalkGroupThread.swift` (5),
+`MyPaymentCodeCard.swift` (5), `TalkChatThread.swift` (4),
+`DeviceStepUpView.swift` (3), and 16 files with 1-2 sites each
+(`ShopProductDetail.swift`, `SavingsFlowContainer.swift`,
+`EatsCheckout.swift`, `MapScreenView.swift`, `TransferFlowContainer.swift`,
+`TalkLists.swift`, `TalkGroupsBrowse.swift`, `ShopReturns.swift`,
+`ShopMerchantDetail.swift`, `ShopBrowseComponents.swift`,
+`ShopBooking.swift`, `RideScreenView.swift`, `InvestScreenView.swift`,
+`EatsRestaurantMenu.swift`, `EatsDeliver.swift`, `ContentView.swift` already
+clean, `AppLockScreenView.swift`). Each `size:` value kept, mapped to the
+closest matching `UIFont.TextStyle` (e.g. 13pt regular body copy ->
+`.footnote`, 18pt medium icons -> `.title3`, 28-32pt hero numbers/icons ->
+`.title1`) so text still scales with the OS setting instead of being pinned
+to today's exact pixel size.
+
+Hit the same real `UIFont.TextStyle` vs SwiftUI `Font.TextStyle` naming gap
+twice (`.caption` -> `.caption1`, `.title` -> `.title1`) -- UIKit's enum
+doesn't share SwiftUI's names, a real compile error each time, both fixed.
+
+One deliberately deferred follow-up found via a repo-wide sweep-completion
+grep: `ItundaFaceEmoji.swift:167`'s `MessageBodyWithEmoji` has a raw
+`Font.system(size:)` too, but it's a different code shape -- an
+`NSAttributedString`/`UIFont.systemFont` render path used when a message
+contains a registered itundaface emoji, not a plain SwiftUI `.font()`
+modifier -- so converting just the plain-text fallback branch would make
+emoji-containing and plain-text messages scale inconsistently. Needs a real
+`UIFontMetrics`-based fix applied to both branches together, not included
+here.
+
+Every file verified with a real `xcodebuild ... build` (not `swiftc
+-parse`) -- `** BUILD SUCCEEDED **` -- plus `accessibility-lint.py` (clean
+throughout, modulo one pre-existing unrelated finding) and
+`file-size-lint.py` (two pre-existing baseline overages hit,
+`TalkChatThread.swift` and `RideScreenView.swift`, both confirmed net-zero
+line change via `git diff --stat` before committing, so disclosed as
+pre-existing debt rather than bumped).
+
+*Shipped across 7 commits on `agent/itunda-agent-network`: `710fd95e`,
+`3d0bef43`, `31e6238b`, `ec339c0a`, `8d59ac8f`, `e335670a`.*

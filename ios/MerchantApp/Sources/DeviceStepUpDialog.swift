@@ -20,16 +20,16 @@ struct DeviceStepUpDialog: View {
                 LockGlyph(size: 16)
                 Text("Verify this device")
             }
-                .font(.system(size: 16, weight: .bold))
+                .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .subheadline))
             Text("This is a new device for your account. Re-enter your password to allow it to move money, then try again.")
-                .font(.system(size: 13))
+                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                 .foregroundColor(.secondary)
             SecureField("Password", text: $password)
                 .padding(12)
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(10)
             if let error {
-                Text(error).font(.system(size: 12)).foregroundColor(.red)
+                Text(error).font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1)).foregroundColor(.red)
             }
             HStack(spacing: 10) {
                 Button("Cancel", action: onCancel)

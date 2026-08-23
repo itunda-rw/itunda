@@ -70,14 +70,14 @@ public struct ToastOverlay: View {
             if let message = center.message {
                 HStack(spacing: 12) {
                     Text(message)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
                         .foregroundColor(.white)
                     if let actionLabel = center.actionLabel {
                         Button(actionLabel) {
                             center.onAction?()
                             center.dismiss()
                         }
-                        .font(.system(size: 14, weight: .bold))
+                        .font(IDS.scaledFont(size: 14, weight: .bold, relativeTo: .footnote))
                         // Fixed, theme-invariant accent -- matches IDS.Colors.brand's
                         // dark-mode value exactly (both light/dark IDS.Colors.brand
                         // resolve close to this indigo), kept as a literal here since
