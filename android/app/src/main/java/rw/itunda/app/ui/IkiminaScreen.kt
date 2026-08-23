@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
@@ -200,12 +198,8 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 EmptyState("No ikimina groups yet — start one with people you trust.")
             }
             else -> items(ikiminas!!, key = { it.id }) { k ->
-                Card(
-                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-                    modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) },
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(modifier = Modifier.fillMaxWidth().pressScaleClickable { onOpen(k.id) }) {
                         Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
                             when (k.status) {
@@ -215,7 +209,6 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                             },
                             color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
-                    }
                 }
             }
         }
@@ -337,8 +330,8 @@ private fun IkiminaDetailContent(id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(20.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column {
                     Text(current.ikimina.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     val animatedBalance = rememberCountUp(current.balance.toDouble())
                     Text("${formatMoneyGroup(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
@@ -350,12 +343,10 @@ private fun IkiminaDetailContent(id: String) {
                         },
                         color = Ids.colors.textSecondary, fontSize = 12.sp,
                     )
-                }
             }
         }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
+            Column {
                     Text("Members & payout order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     current.members.sortedBy { it.payoutOrder }.forEach { m ->
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -373,13 +364,12 @@ private fun IkiminaDetailContent(id: String) {
                             else if (m.isOrganizer) Text("Organizer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
-                }
             }
         }
         if (current.ikimina.status == "FORMING" && isOrganizer) {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
@@ -394,14 +384,13 @@ private fun IkiminaDetailContent(id: String) {
                                 .pressScaleClickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busy) "…" else "Start the cycle", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         }
         if (current.ikimina.status == "ACTIVE") {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(if (iContributed) Ids.colors.surfaceSoft else Ids.colors.brand)
@@ -421,7 +410,6 @@ private fun IkiminaDetailContent(id: String) {
                             ) { Text(if (busy) "…" else "Trigger this round's payout", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
                         payoutMessage?.let { Text(it, color = Ids.colors.success, fontSize = 13.sp) }
-                    }
                 }
             }
         }

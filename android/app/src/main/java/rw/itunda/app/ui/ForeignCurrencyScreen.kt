@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -128,20 +126,15 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                 item { SkeletonBlock(height = 80.dp) }
             } else {
                 items(list, key = { it.id }) { account ->
-                    Card(
-                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+                    // Real fix (flat-design sweep): dropped the per-row Card.
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
                             Text(account.currency, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             val animatedBalance = rememberCountUp(account.balance)
                             Text("${formatFx(animatedBalance)} ${account.currency}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        }
                     }
                 }
                 val openCurrencies = list.map { it.currency }.toSet()
@@ -183,11 +176,10 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                     Text("Recent conversions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 items(history, key = { it.id }) { c ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(14.dp)) {
+                    // Real fix (flat-design sweep): dropped the per-row Card.
+                    Column {
                             Text("${formatFx(c.fromAmount)} ${c.fromCurrency} → ${formatFx(c.toAmount)} ${c.toCurrency}", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                             Text("Rate ${c.rate} · itunda fee ${formatFx(c.marginAmount)} ${c.toCurrency}", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        }
                     }
                 }
             }
@@ -219,8 +211,9 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
 
     val previewAmount = amountText.trim().toDoubleOrNull()?.let { amt -> rate?.let { r -> amt * r * 0.985 } }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- an inline form
+    // section on an otherwise-flat screen.
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft),
             ) {
@@ -283,7 +276,6 @@ private fun ConvertPanel(accounts: List<AccountDto>, onConverted: () -> Unit) {
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (submitting) "Converting…" else "Convert", color = Color.White, fontWeight = FontWeight.Bold) }
-        }
     }
 }
 
@@ -313,11 +305,11 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Real fix (flat-design sweep): dropped the per-row Card.
         alerts.forEach { a ->
             val code = if (a.fromCurrency == "RWF") a.toCurrency else a.fromCurrency
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -335,12 +327,11 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                         modifier = Modifier.pressScaleClickable { clear(code) },
                     )
                 }
-            }
         }
 
         if (accounts.isNotEmpty()) {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         accounts.map { it.currency }.forEach { code ->
                             val selected = code == currency
@@ -394,7 +385,6 @@ private fun RateAlertsPanel(accounts: List<AccountDto>, alerts: List<ExchangeRat
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (submitting) "Setting…" else "Set alert", color = Color.White, fontWeight = FontWeight.Bold) }
-                }
             }
         }
     }
