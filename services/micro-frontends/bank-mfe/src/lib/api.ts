@@ -9,12 +9,24 @@ export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4
 const TOKEN_KEY = 'itunda_bank_access_token';
 const REFRESH_KEY = 'itunda_bank_refresh_token';
 const USER_KEY = 'itunda_bank_user';
+// Real Toss-sourced passwordless-login rollout (2026-08-24) -- a phone number isn't a
+// secret (see AuthService.checkPhoneExists's own doc comment on this exact real
+// trade-off), so remembering it locally to attempt tryPasswordlessLogin on the next
+// app load is safe. Deliberately NOT cleared by logout() below -- "remember which
+// number to try passwordless login with" is expected UX even after an explicit
+// logout, the same way a real phone's own lock screen still shows whose device it is.
+const REMEMBERED_PHONE_KEY = 'itunda_bank_remembered_phone';
 
 export interface AuthedUser {
   id: string;
   phoneNumber: string;
   firstName: string;
   lastName: string;
+  // Real Toss-sourced passwordless-login rollout (2026-08-24) -- false means this
+  // account predates the real 6-digit-PIN scheme (see backend User.pinSet's own doc
+  // comment). RegisterPage/LoginPage's own callers use this to show a real,
+  // non-blocking "set your new PIN" upgrade prompt rather than silently ignoring it.
+  pinSet: boolean;
 }
 
 export class ApiError extends Error {
@@ -66,15 +78,41 @@ export async function parseErrorBody(response: Response): Promise<{ code: string
   }
 }
 
-export async function login(phoneNumber: string, password: string): Promise<AuthedUser> {
+export function getRememberedPhoneNumber(): string | null {
+  return localStorage.getItem(REMEMBERED_PHONE_KEY);
+}
+
+function persistSession(body: { accessToken: string; refreshToken: string; user: AuthedUser }): AuthedUser {
+  localStorage.setItem(TOKEN_KEY, body.accessToken);
+  localStorage.setItem(REFRESH_KEY, body.refreshToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(body.user));
+  localStorage.setItem(REMEMBERED_PHONE_KEY, body.user.phoneNumber);
+  // Real push device-token registration (item 119) -- see device.ts's own doc comment
+  // on registerDeviceToken. Best-effort and fire-and-forget: a registration failure
+  // must never block a real, otherwise-successful login.
+  import('./device').then(({ registerDeviceToken }) => registerDeviceToken()).catch(() => {});
+  return body.user;
+}
+
+// `pin` is the real 6-digit credential (see backend AuthService's own doc comment on
+// the sourced Toss "6자리 비밀번호" flow) -- still sent as the wire-format `password`
+// field for backward compatibility with existing rows whose credential predates the
+// PIN scheme (any shape, still verified the same way server-side), matching this
+// session's own "server field name unchanged, client-facing name matches what it
+// actually is" convention.
+export async function login(phoneNumber: string, pin: string): Promise<AuthedUser> {
   // Real device binding (2026-07-20) -- see lib/device.ts's own doc comment. Imported
   // lazily inline (not at module top) to avoid a circular import, since device.ts's own
   // fetchMyDevices/verifyDevice/revokeDevice call back into apiFetch from this same file.
   const { getOrCreateDeviceId, getDeviceName } = await import('./device');
+  const { getDevicePublicKeyBase64 } = await import('./deviceKey');
   const response = await fetch(`${BASE_URL}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phoneNumber, password, deviceId: getOrCreateDeviceId(), deviceName: getDeviceName() }),
+    body: JSON.stringify({
+      phoneNumber, password: pin, deviceId: getOrCreateDeviceId(), deviceName: getDeviceName(),
+      devicePublicKey: await getDevicePublicKeyBase64(),
+    }),
   });
 
   if (!response.ok) {
@@ -82,15 +120,54 @@ export async function login(phoneNumber: string, password: string): Promise<Auth
     throw new ApiError(response.status, code, message);
   }
 
-  const body = await response.json();
-  localStorage.setItem(TOKEN_KEY, body.accessToken);
-  localStorage.setItem(REFRESH_KEY, body.refreshToken);
+  return persistSession(await response.json());
+}
+
+// Real Toss-sourced passwordless LOGIN (2026-08-24) -- see backend DeviceService.
+// issueLoginChallenge/verifyLoginSignature's own doc comments. The real "no PIN
+// needed on a recognized device" outcome: a valid signature issues a fresh session
+// exactly like login() does, no credential typed at all. Returns null (not a thrown
+// error) on any failure -- this is always a background attempt on app load, falling
+// through to the real PIN-pad login screen, never itself the thing that blocks a user.
+export async function tryPasswordlessLogin(phoneNumber: string): Promise<AuthedUser | null> {
+  const { hasDeviceKey, signChallenge } = await import('./deviceKey');
+  const { getOrCreateDeviceId } = await import('./device');
+  if (!(await hasDeviceKey())) return null;
+  const deviceId = getOrCreateDeviceId();
+  try {
+    const challengeResponse = await fetch(`${BASE_URL}/api/v1/auth/login/device/challenge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber, deviceId }),
+    });
+    if (!challengeResponse.ok) return null;
+    const { challenge } = await challengeResponse.json();
+    const signature = await signChallenge(challenge);
+    if (!signature) return null;
+    const verifyResponse = await fetch(`${BASE_URL}/api/v1/auth/login/device/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phoneNumber, deviceId, signature }),
+    });
+    if (!verifyResponse.ok) return null;
+    return persistSession(await verifyResponse.json());
+  } catch {
+    return null;
+  }
+}
+
+// Real Toss-sourced "set your 6-digit PIN" flow (2026-08-24) -- see backend
+// AuthService.setPin's own doc comment. Used both for a pre-PIN-era user's real
+// upgrade prompt (currentCredential = their existing, any-shape password) and for a
+// real "forgot PIN" reset once phone re-verification re-establishes a fresh
+// credential -- distinct flows, same underlying call.
+export async function setPin(currentCredential: string, newPin: string): Promise<AuthedUser> {
+  const body = await apiFetch<{ success: boolean; user: AuthedUser }>('/api/v1/auth/pin', {
+    method: 'PUT',
+    body: JSON.stringify({ currentCredential, newPin }),
+  });
   localStorage.setItem(USER_KEY, JSON.stringify(body.user));
-  // Real push device-token registration (item 119) -- see device.ts's own doc comment
-  // on registerDeviceToken. Best-effort and fire-and-forget: a registration failure
-  // must never block a real, otherwise-successful login.
-  import('./device').then(({ registerDeviceToken }) => registerDeviceToken()).catch(() => {});
-  return body.user as AuthedUser;
+  return body.user;
 }
 
 export interface TermsDocument {
@@ -128,15 +205,18 @@ export async function getTerms(): Promise<TermsDocument[]> {
 // client-side gate already failed -- this is real defense in depth against a modified
 // client, not the primary enforcement (that's AuthService.register's own real
 // RequiredTermsNotAcceptedException check, which fires regardless of what any client does).
+// `pin` is the real 6-digit credential -- see login's own doc comment on why it's
+// still sent as the wire-format `password` field.
 export async function register(
   phoneNumber: string,
-  password: string,
+  pin: string,
   firstName: string,
   lastName: string,
   acceptedTermsIds: string[],
   referralCode?: string,
 ): Promise<AuthedUser> {
   const { getOrCreateDeviceId, getDeviceName } = await import('./device');
+  const { getDevicePublicKeyBase64 } = await import('./deviceKey');
   const response = await fetch(`${BASE_URL}/api/v1/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -145,11 +225,12 @@ export async function register(
       email: null,
       firstName,
       lastName,
-      password,
+      password: pin,
       referralCode: referralCode?.trim() || null,
       deviceId: getOrCreateDeviceId(),
       deviceName: getDeviceName(),
       acceptedTermsIds,
+      devicePublicKey: await getDevicePublicKeyBase64(),
     }),
   });
 
@@ -158,12 +239,7 @@ export async function register(
     throw new ApiError(response.status, code, message);
   }
 
-  const body = await response.json();
-  localStorage.setItem(TOKEN_KEY, body.accessToken);
-  localStorage.setItem(REFRESH_KEY, body.refreshToken);
-  localStorage.setItem(USER_KEY, JSON.stringify(body.user));
-  import('./device').then(({ registerDeviceToken }) => registerDeviceToken()).catch(() => {});
-  return body.user as AuthedUser;
+  return persistSession(await response.json());
 }
 
 // Real silent session-refresh (2026-08-15) -- matches Android's refreshAuthenticator

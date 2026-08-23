@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import { ApiError, getTerms, register, type TermsDocument } from './lib/api';
+import { PinPad } from './PinPad';
 
 // Real sign-up page (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8
 // recommendation #7: bank-mfe had no registration page at all, unlike Android/iOS's
@@ -24,17 +25,21 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
   const [phoneNumber, setPhoneNumber] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [password, setPassword] = useState('');
+  // Real Toss-sourced passwordless-login rollout (2026-08-24) -- a real 6-digit PIN
+  // (matching Toss's own literal "6자리 비밀번호"), not a free-form password. `pin`
+  // holds the completed 6 digits (PinPad's onComplete fires once, not per keystroke);
+  // `pinConfirm` is a real second real entry to catch a mistyped PIN before it's
+  // permanent -- a mistyped PIN at registration silently locks the account behind a
+  // typo neither the user nor itunda can recover, the exact same real risk this
+  // screen's own pre-existing doc comment already named for the free-form password
+  // this replaces.
+  const [pin, setPin] = useState<string | null>(null);
+  const [pinConfirm, setPinConfirm] = useState<string | null>(null);
+  const [pinMismatch, setPinMismatch] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [showReferralField, setShowReferralField] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11),
-  // matching the identical same-day fix on LoginPage.tsx: a local UI-only affordance,
-  // not a security control. Especially valuable here -- a mistyped password at
-  // registration silently locks the account behind a typo neither the user nor
-  // itunda can recover.
-  const [showPassword, setShowPassword] = useState(false);
 
   const [terms, setTerms] = useState<TermsDocument[]>([]);
   // Starts empty on purpose -- never pre-checked. See this file's own top doc comment.
@@ -74,10 +79,11 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!pinConfirm) return;
     setError(null);
     setSubmitting(true);
     try {
-      await register(phoneNumber, password, firstName, lastName, Array.from(acceptedTermsIds), referralCode);
+      await register(phoneNumber, pinConfirm, firstName, lastName, Array.from(acceptedTermsIds), referralCode);
       onRegistered();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -89,6 +95,46 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
       setSubmitting(false);
     }
   };
+
+  // Real Toss-sourced 6-digit PIN, entered twice -- see this file's own state-hook
+  // doc comment above. Shown as its own real moment before the rest of the form
+  // (name/referral/terms), matching this screen's own established "single scroll,
+  // not a wizard" philosophy while still keeping the PIN pad visually uncluttered
+  // rather than squeezed between text fields.
+  if (pin === null || pinConfirm === null) {
+    return (
+      <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div className="itunda-card" style={{ width: '100%', maxWidth: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldCheck size={24} color="var(--itunda-indigo)" />
+            <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
+          </div>
+          <PinPad
+            label={pin === null ? 'Create a 6-digit PIN' : 'Confirm your PIN'}
+            error={pinMismatch ? "That didn't match. Try again." : null}
+            onComplete={(entered) => {
+              if (pin === null) {
+                setPinMismatch(false);
+                setPin(entered);
+              } else if (entered === pin) {
+                setPinConfirm(entered);
+              } else {
+                setPinMismatch(true);
+                setPin(null);
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={onBackToLogin}
+            style={{ background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', cursor: 'pointer', alignSelf: 'center' }}
+          >
+            Already have an account? Log in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -157,34 +203,6 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
             />
           </label>
         </div>
-
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Password</span>
-          <div style={{ position: 'relative' }}>
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              padding: '12px 40px 12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--itunda-grey-200)',
-              fontSize: 'var(--itunda-type-scale-15-size)',
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
-            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
-          >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-          </div>
-        </label>
 
         {showReferralField ? (
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

@@ -23,6 +23,9 @@ export const fetchProfile = () =>
       emailVerified: boolean;
       phoneVerified: boolean;
       profilePhotoUrl: string | null;
+      // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see backend
+      // User.pinSet's own doc comment.
+      pinSet: boolean;
     };
   }>('/api/v1/auth/profile').then((r) => r.user);
 

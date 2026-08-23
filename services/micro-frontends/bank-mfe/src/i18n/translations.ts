@@ -44,6 +44,14 @@ export type TranslationKey =
   | 'login.signIn'
   | 'login.createAccount'
   | 'login.connectionError'
+  // Real Toss-sourced passwordless-login rollout (2026-08-24) -- see LoginPage.tsx's
+  // own doc comment. 'login.password'/'login.showPassword'/'login.hidePassword' above
+  // are no longer used by this screen (superseded by the real 6-digit PIN pad) --
+  // left in place rather than hunted down and removed across all 3 languages, since
+  // an unused translation key is harmless, unlike a missing one.
+  | 'login.next'
+  | 'login.enterPin'
+  | 'login.checkingDevice'
   // Real second slice (2026-08-08): account overview, itunda's own second-highest-traffic
   // screen (the one every user lands on right after login) -- following the exact phased
   // rollout named in docs/DESIGN_REFERENCES.md Section 19's own "real next steps" list.
@@ -283,6 +291,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signIn': 'Sign in',
     'login.createAccount': 'New to itunda? Create an account',
     'login.connectionError': "Can't connect right now. Please try again in a moment.",
+    'login.next': 'Next',
+    'login.enterPin': 'Enter your PIN',
+    'login.checkingDevice': 'Checking this device…',
     'overview.netWorth': 'Net worth',
     'overview.accounts': 'Accounts',
     'overview.savings': 'Savings: {{amount}} RWF across {{count}} goal(s)',
@@ -498,6 +509,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signIn': 'Injira',
     'login.createAccount': 'Uri mushya kuri itunda? Fungura konti',
     'login.connectionError': 'Ntibishoboka guhuza ubu. Ongera ugerageze mu kanya.',
+    'login.next': 'Komeza',
+    'login.enterPin': 'Injiza PIN yawe',
+    'login.checkingDevice': 'Kugenzura iyi terefone…',
     'overview.netWorth': 'Umutungo wose',
     'overview.accounts': 'Konti',
     'overview.savings': "Ubwizigame: {{amount}} RWF mu migambi {{count}}",
@@ -712,6 +726,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signIn': 'Se connecter',
     'login.createAccount': 'Nouveau sur itunda ? Créer un compte',
     'login.connectionError': 'Connexion impossible pour le moment. Veuillez réessayer dans un instant.',
+    'login.next': 'Suivant',
+    'login.enterPin': 'Entrez votre code PIN',
+    'login.checkingDevice': 'Vérification de cet appareil…',
     'overview.netWorth': 'Valeur nette',
     'overview.accounts': 'Comptes',
     'overview.savings': 'Épargne : {{amount}} RWF sur {{count}} objectif(s)',

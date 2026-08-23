@@ -13,6 +13,7 @@ import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, BellGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, WrenchGlyph, PriceDropGlyph } from './icons/ItundaFaceMisc';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
+import { PinSetupCard } from './PinSetupCard';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -5912,6 +5913,7 @@ function MyView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <ProfilePhotoCard />
+      <PinSetupCard />
       <VerificationCard />
       <NotificationsCard />
       <MyBookingsCard />
@@ -6127,6 +6129,14 @@ function ProfilePhotoCard() {
   );
 }
 
+// Real Toss-sourced passwordless-login rollout (2026-08-24) -- see backend
+// User.pinSet's own doc comment. A real, non-blocking upgrade prompt for a
+// pre-PIN-era user -- their existing password keeps working exactly as before either
+// way (AuthService.login is shape-agnostic); this is purely an offered convenience,
+// never forced. `currentCredential` is a plain text field (their existing password
+// could be any shape, not necessarily 6 digits, so PinPad doesn't apply there);
+// `newPin`/confirm reuse the real PinPad component RegisterPage/LoginPage already
+// established.
 function VerificationCard() {
   const [status, setStatus] = useState<{ email: string | null; emailVerified: boolean; phoneVerified: boolean } | null>(null);
 
