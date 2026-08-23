@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -193,15 +191,14 @@ private fun BikeRentContent() {
         if (rental != null) {
             item { Text("Riding now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Bike unlocked -- billed by elapsed time", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .pressScaleClickable(enabled = !ending) { endRental(rental.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (ending) "Ending…" else "End rental (park here)", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         } else {
@@ -218,8 +215,8 @@ private fun BikeRentContent() {
                 item { Text("No bikes available nearby.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             }
             items(nearbyBikes, key = { it.id }) { bike ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             BikeTypeGlyph(electric = bike.type == "ELECTRIC", size = 15.dp)
                             Text(if (bike.type == "ELECTRIC") "Electric bike" else "Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -230,7 +227,6 @@ private fun BikeRentContent() {
                                 .pressScaleClickable(enabled = busyBikeId != bike.id) { startRental(bike.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busyBikeId == bike.id) "…" else "Unlock", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         }
@@ -344,8 +340,8 @@ private fun BikeMineContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Register a bike you own", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Any itunda user can list a bike or scooter into the shared rental pool.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -367,7 +363,6 @@ private fun BikeMineContent() {
                             .pressScaleClickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (registering) "Registering…" else "Register at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
-                }
             }
         }
         if (!loaded) {
@@ -377,8 +372,8 @@ private fun BikeMineContent() {
         } else {
             item { Text("Your bikes", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(myBikes, key = { it.id }) { bike ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             BikeTypeGlyph(electric = bike.type == "ELECTRIC", size = 15.dp)
                             Text(if (bike.type == "ELECTRIC") "Electric bike" else "Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -395,7 +390,6 @@ private fun BikeMineContent() {
                                     .pressScaleClickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
                             ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                    }
                 }
             }
         }
@@ -404,14 +398,14 @@ private fun BikeMineContent() {
 
 @Composable
 private fun BikeRentalSessionCard(session: BikeRentalSessionDto) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- used as a
+    // repeated past-rides list row.
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("${session.durationMinutes ?: 0} min ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             val fare = session.totalFare
             if (fare != null) {
                 Text("${formatMoneyBike(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
-        }
     }
 }
 

@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -167,8 +165,8 @@ private fun BusRideContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     IdsTextField(value = origin, onValueChange = { origin = it }, label = "From", modifier = Modifier.fillMaxWidth())
                     IdsTextField(value = destination, onValueChange = { destination = it }, label = "To", modifier = Modifier.fillMaxWidth())
                     Box(
@@ -176,7 +174,6 @@ private fun BusRideContent() {
                             .pressScaleClickable { search() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text("Search", color = Color.White, fontWeight = FontWeight.Bold) }
-                }
             }
         }
         val list = trips
@@ -186,8 +183,8 @@ private fun BusRideContent() {
             item { Text("No upcoming trips found.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         } else {
             items(list, key = { it.id }) { trip ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${trip.origin} → ${trip.destination}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             ClockGlyph(size = 12.dp)
@@ -205,7 +202,6 @@ private fun BusRideContent() {
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busyTripId == trip.id) "…" else "Book seats", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
-                    }
                 }
             }
         }
@@ -213,11 +209,11 @@ private fun BusRideContent() {
         if (activeBookings.isNotEmpty()) {
             item { Text("Your bookings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(activeBookings, key = { it.id }) { booking ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Row(
+                    modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                         Column {
                             Text("${booking.seatCount} seat(s)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Text("${formatMoneyBus(booking.totalFare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -226,7 +222,6 @@ private fun BusRideContent() {
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                 .pressScaleClickable(enabled = busyBookingId != booking.id) { cancelBooking(booking.id) }.padding(horizontal = 14.dp, vertical = 10.dp),
                         ) { Text(if (busyBookingId == booking.id) "…" else "Cancel", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         }
@@ -317,8 +312,8 @@ private fun BusOperateContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Real fix (flat-design sweep): dropped the Card wrapper.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Post a route", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Any itunda user can post a scheduled trip -- no transport-licensing check.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     IdsTextField(value = origin, onValueChange = { origin = it }, label = "Origin", modifier = Modifier.fillMaxWidth())
@@ -331,7 +326,6 @@ private fun BusOperateContent() {
                             .pressScaleClickable(enabled = !posting) { postTrip() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (posting) "Posting…" else "Post route", color = Color.White, fontWeight = FontWeight.Bold) }
-                }
             }
         }
         if (!loaded) {
@@ -341,8 +335,8 @@ private fun BusOperateContent() {
         } else {
             item { Text("Your routes", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(myTrips, key = { it.id }) { trip ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Real fix (flat-design sweep): dropped the per-row Card.
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("${trip.origin} → ${trip.destination}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             ClockGlyph(size = 12.dp)
@@ -387,7 +381,6 @@ private fun BusOperateContent() {
                                 }
                             }
                         }
-                    }
                 }
             }
         }
