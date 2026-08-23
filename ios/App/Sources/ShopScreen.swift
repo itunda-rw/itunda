@@ -101,6 +101,8 @@ struct CommerceShopContent: View {
     @State private var cart: [String: CommerceCartLine] = [:]
     @State private var showCart = false
     @State private var results: [CommerceCheckoutResult]?
+    @State private var reorderingId: String?
+    @State private var reorderError: String?
 
     // Real Shop product wishlist (2026-07-24) -- lifted here same as Marketplace's own
     // favoriteIds (HoodScreen.swift), so the heart on a product card (grid or detail)
@@ -348,7 +350,13 @@ struct CommerceShopContent: View {
                     MerchantReturnQueueView()
 
                     if view == .orders {
-                        MyCommerceOrdersView()
+                        MyCommerceOrdersView(
+                            onReorder: { order in Task { await handleReorder(order) } },
+                            reorderingId: reorderingId
+                        )
+                        if let reorderError {
+                            Text(reorderError).foregroundColor(.red).font(.caption)
+                        }
                         MyBookingsView()
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
@@ -598,6 +606,45 @@ struct CommerceShopContent: View {
             products = res.products
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of this
+    // app's own real Eats "Reorder" (see EatsScreen.swift's handleReorder). Re-populates
+    // the cross-merchant `cart` from a past order's still-active products and opens the
+    // cart for review, same "review before a real-money action, not an instant one-tap
+    // purchase" precedent Eats already established (a delivery address could be stale, a
+    // price could have changed since). Commerce products never carry option groups
+    // (only Eats' menu items do), so unlike Eats this needs no "drop items that now
+    // require an option selection" sanitization -- only "drop items that are no longer
+    // active."
+    private func handleReorder(_ order: OrderDto) async {
+        reorderingId = order.id
+        reorderError = nil
+        defer { reorderingId = nil }
+        do {
+            let orderDetail = try await NetworkClient.shared.getOrder(order.id)
+            let menuRes = try await NetworkClient.shared.getMerchantProducts(merchantId: order.merchantId)
+            guard orderDetail.success, menuRes.success else {
+                reorderError = "Could not reorder."
+                return
+            }
+            let activeProducts = Dictionary(uniqueKeysWithValues: menuRes.products.filter(\.active).map { ($0.id, $0) })
+            var addedAny = false
+            for item in orderDetail.items {
+                guard let product = activeProducts[item.productId] else { continue }
+                let key = "\(order.merchantId):\(product.id)"
+                let existingQuantity = cart[key]?.quantity ?? 0
+                cart[key] = CommerceCartLine(merchantId: order.merchantId, businessName: menuRes.merchant.businessName, product: product, quantity: existingQuantity + item.quantity)
+                addedAny = true
+            }
+            guard addedAny else {
+                reorderError = "None of the items from that order are available anymore."
+                return
+            }
+            showCart = true
+        } catch {
+            reorderError = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 }

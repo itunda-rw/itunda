@@ -250,10 +250,18 @@ struct MyDineInOrdersView: View {
 struct ReorderButton: View {
     let reordering: Bool
     let onClick: () -> Void
+    // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- Commerce/Shop's own
+    // ShopMerchantOrders.swift reuses this exact button directly (no Feature-module
+    // isolation boundary on iOS between these, unlike Android's Konsist-enforced
+    // split, which needed a real duplicate there) with its own copy instead of
+    // "Reorder"/"Reordering…", defaulting to Eats' original text so every existing
+    // call site here stays unchanged.
+    var label = "Reorder"
+    var reorderingLabel = "Reordering…"
 
     var body: some View {
         Button(action: onClick) {
-            Text(reordering ? "Reordering…" : "Reorder")
+            Text(reordering ? reorderingLabel : label)
                 .font(.subheadline).bold().foregroundColor(.white)
                 .padding(.horizontal, 16).padding(.vertical, 10)
                 .background(IDS.Colors.brand).cornerRadius(12)

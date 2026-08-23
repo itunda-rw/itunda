@@ -161,6 +161,9 @@ struct MerchantReturnQueueView: View {
 }
 
 struct MyCommerceOrdersView: View {
+    let onReorder: (OrderDto) -> Void
+    let reorderingId: String?
+
     @State private var orders: [OrderDto]?
     @State private var error: String?
     @State private var cancellingId: String?
@@ -200,7 +203,18 @@ struct MyCommerceOrdersView: View {
                                     VStack(alignment: .leading, spacing: 8) {
                                         OrderItemReviews(order: order)
                                         ReturnExchangeAction(orderId: order.id)
+                                        ReorderButton(
+                                            reordering: reorderingId == order.id,
+                                            onClick: { onReorder(order) },
+                                            label: "Buy again", reorderingLabel: "Reordering…"
+                                        )
                                     }
+                                } else if order.status == "CANCELLED" {
+                                    ReorderButton(
+                                        reordering: reorderingId == order.id,
+                                        onClick: { onReorder(order) },
+                                        label: "Buy again", reorderingLabel: "Reordering…"
+                                    )
                                 }
                             }
                         }
