@@ -173,7 +173,7 @@ private struct RidePassengerContent: View {
                             if let pin = activeTripPin, active.status == "DRIVER_ASSIGNED" {
                                 VStack(spacing: 2) {
                                     Text("Tell your driver this PIN before you get in").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                    Text(pin).font(.system(size: 28, weight: .bold)).foregroundColor(IDS.Colors.brand).tracking(4)
+                                    Text(pin).font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1)).foregroundColor(IDS.Colors.brand).tracking(4)
                                 }
                                 .frame(maxWidth: .infinity).padding(.vertical, 12)
                                 .background(IDS.Colors.brand.opacity(0.1)).cornerRadius(10)

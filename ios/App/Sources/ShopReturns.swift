@@ -47,7 +47,7 @@ struct ReturnExchangeAction: View {
                     HStack(spacing: 8) {
                         ForEach(orderReturnReasonCodes, id: \.self) { code in
                             Button(action: { reasonCode = code }) {
-                                Text(code).font(.system(size: 11)).foregroundColor(reasonCode == code ? .white : IDS.Colors.textPrimary)
+                                Text(code).font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(reasonCode == code ? .white : IDS.Colors.textPrimary)
                                     .padding(.horizontal, 12).padding(.vertical, 8)
                                     .background(reasonCode == code ? IDS.Colors.brand : IDS.Colors.chipBackground).cornerRadius(12)
                             }

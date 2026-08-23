@@ -113,7 +113,7 @@ struct ProductImageThumb: View {
     private var placeholder: some View {
         ZStack {
             IDS.Colors.chipBackground
-            Image(systemName: "bag").foregroundColor(IDS.Colors.brand).font(.system(size: side / 2.5))
+            Image(systemName: "bag").foregroundColor(IDS.Colors.brand).font(IDS.scaledFont(size: side / 2.5, weight: .regular, relativeTo: .title3))
         }
     }
 }

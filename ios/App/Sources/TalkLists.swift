@@ -254,7 +254,7 @@ struct ConversationRow: View {
                     // deliberately simpler card than Android's ConversationRow).
                     if conversation.pinnedToTop == true {
                         Image(systemName: "pin.fill")
-                            .font(.system(size: 10))
+                            .font(IDS.scaledFont(size: 10, weight: .regular, relativeTo: .caption2))
                             .foregroundColor(IDS.Colors.brand)
                     }
                 }

@@ -303,7 +303,7 @@ struct OpenChatCard: View {
                         Image(uiImage: qrImage).interpolation(.none).resizable().frame(width: 140, height: 140).cornerRadius(12)
                     }
                     Text("Or read them this code:").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    Text(created.joinCode).font(.system(size: 22, weight: .bold)).tracking(4).foregroundColor(IDS.Colors.textPrimary)
+                    Text(created.joinCode).font(IDS.scaledFont(size: 22, weight: .bold, relativeTo: .title2)).tracking(4).foregroundColor(IDS.Colors.textPrimary)
                     Button(action: { let id = created.id; self.created = nil; mode = .closed; onCreated(id) }) {
                         Text("Done").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)

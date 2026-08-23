@@ -157,7 +157,7 @@ struct TransferFlowContainer: View {
                 .task(id: accountNumber) { await resolveRecipientName(accountNumber) }
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.system(size: 13))
+                        .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                         .foregroundColor(.red)
                         .padding(.horizontal, 24)
                         .padding(.top, 8)

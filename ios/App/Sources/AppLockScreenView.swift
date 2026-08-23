@@ -29,7 +29,7 @@ struct AppLockScreenView: View {
             VStack(spacing: 16) {
                 ZStack {
                     Circle().fill(Color(.tertiarySystemBackground)).frame(width: 76, height: 76)
-                    Image(systemName: "faceid").font(.system(size: 32)).foregroundColor(IDS.Colors.brand)
+                    Image(systemName: "faceid").font(IDS.scaledFont(size: 32, weight: .regular, relativeTo: .title1)).foregroundColor(IDS.Colors.brand)
                 }
                 Text("Itunda is locked").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                 if let error {

@@ -44,7 +44,7 @@ struct EatsCheckoutView: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) {
-                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
+                    Image(systemName: "chevron.left").font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3)).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Back")
                 Text("Checkout").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
@@ -202,7 +202,7 @@ struct DineInOrderConfirmationView: View {
     var body: some View {
         VStack(spacing: 12) {
             Spacer()
-            Image(systemName: "checkmark.seal.fill").font(.system(size: 44)).foregroundColor(.green)
+            Image(systemName: "checkmark.seal.fill").font(IDS.scaledFont(size: 44, weight: .regular, relativeTo: .largeTitle)).foregroundColor(.green)
             Text("Order placed").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
             Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
             Text("Table \(order.tableNumber)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)

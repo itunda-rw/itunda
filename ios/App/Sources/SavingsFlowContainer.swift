@@ -1,5 +1,6 @@
 import SwiftUI
 import FeaturePayments
+import CoreDesignSystem
 
 /// Owns the real savings deposit/claim flow's network calls (2026-07-12) -- mirrors
 /// TransferFlowContainer.swift's pattern exactly. Lives in the App target because it
@@ -63,14 +64,14 @@ struct SavingsFlowContainer: View {
             }
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.system(size: 13))
+                    .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                     .foregroundColor(.red)
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
             }
             if let queuedMessage {
                 Text(queuedMessage)
-                    .font(.system(size: 13))
+                    .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                     .foregroundColor(.blue)
                     .padding(.horizontal, 24)
                     .padding(.top, 8)

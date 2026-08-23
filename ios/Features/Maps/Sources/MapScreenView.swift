@@ -487,7 +487,7 @@ public struct MapScreenView: View {
                         // from bank-mfe's own real MapView.tsx.
                         Button(action: { toggleMeasuring() }) {
                             Text("📏")
-                                .font(.system(size: 18))
+                                .font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3))
                                 .frame(width: 46, height: 46)
                                 .background(measuring ? Color(red: 0.898, green: 0.224, blue: 0.208) : IdsPalette.white)
                                 .clipShape(Circle())

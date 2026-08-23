@@ -150,7 +150,7 @@ private struct StockRow: View {
                     HStack(spacing: 6) {
                         Text(stock.symbol).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         if stock.market != "RSE" {
-                            Text(stock.market).font(.system(size: 9, weight: .bold)).foregroundColor(IDS.Colors.textSecondary)
+                            Text(stock.market).font(IDS.scaledFont(size: 9, weight: .bold, relativeTo: .caption2)).foregroundColor(IDS.Colors.textSecondary)
                                 .padding(.horizontal, 5).padding(.vertical, 2)
                                 .background(IDS.Colors.chipBackground).cornerRadius(4)
                         }

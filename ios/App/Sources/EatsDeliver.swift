@@ -39,7 +39,7 @@ struct DeliverContent: View {
 
     private var riderOnboarding: some View {
         VStack(spacing: 12) {
-            Image(systemName: "bicycle").font(.system(size: 30)).foregroundColor(IDS.Colors.brand)
+            Image(systemName: "bicycle").font(IDS.scaledFont(size: 30, weight: .regular, relativeTo: .title2)).foregroundColor(IDS.Colors.brand)
             Text("Deliver with Itunda").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             Text("Earn a real delivery fee for every order you deliver, paid straight to your account.")
                 .font(.subheadline)
