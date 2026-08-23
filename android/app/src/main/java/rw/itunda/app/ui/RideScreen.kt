@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,6 +53,7 @@ import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.itundaface.ClockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddRideTrustedContactRequest
+import rw.itunda.core.network.MapBookmarkDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.RequestRideTripRequest
 import rw.itunda.core.network.RideDailyEarnings
@@ -126,6 +130,24 @@ private fun RidePassengerContent() {
     var dropoffAddress by remember { mutableStateOf("") }
     var dropoffLat by remember { mutableStateOf("") }
     var dropoffLng by remember { mutableStateOf("") }
+    // Real Uber/Kakao T-style saved-places quick-select (2026-08-23) -- itunda
+    // already has a real, backend-synced "map bookmarks" feature (the Maps tab's own
+    // star/save, folders/colors and all -- MapsService.addBookmark/getMyBookmarks),
+    // never surfaced anywhere in ride booking despite being exactly the real "Home"/
+    // "Work" shortcut every real ride-hailing app shows before you type anything.
+    // Especially valuable here: unlike bank-mfe's real search-autocomplete dropoff
+    // field, this screen has no autocomplete at all -- a rider currently has to know
+    // and type the exact GPS coordinates by hand. Fetched once on entering this
+    // content, not gated behind any interaction (no focus-driven dropdown mechanism
+    // exists on this screen to gate it behind).
+    var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try {
+            bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+        } catch (_: Exception) {
+            // Real, non-critical -- the quick-select row just won't render if this fails.
+        }
+    }
     // Real Kakao T 예약 호출 (item 212) -- empty means ASAP, unchanged from before. See
     // this file's own doc comment for the real "hours from now" platform scope-down.
     var scheduleHours by remember { mutableStateOf("") }
@@ -390,6 +412,35 @@ private fun RidePassengerContent() {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = dropoffLat, onValueChange = { dropoffLat = it }, label = "Dropoff latitude", modifier = Modifier.weight(1f))
                             IdsTextField(value = dropoffLng, onValueChange = { dropoffLng = it }, label = "Dropoff longitude", modifier = Modifier.weight(1f))
+                        }
+                        if (bookmarks.isNotEmpty()) {
+                            Text("Saved places", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            ) {
+                                bookmarks.forEach { b ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(Ids.colors.surfaceSoft)
+                                            .pressScaleClickable {
+                                                dropoffAddress = b.displayName
+                                                dropoffLat = b.latitude.toString()
+                                                dropoffLng = b.longitude.toString()
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp))
+                                                .background(runCatching { Color(android.graphics.Color.parseColor(b.color)) }.getOrDefault(Ids.colors.brand)),
+                                        )
+                                        Text(b.displayName, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                    }
+                                }
+                            }
                         }
                         stops.forEachIndexed { index, stop ->
                             Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft), modifier = Modifier.fillMaxWidth()) {
