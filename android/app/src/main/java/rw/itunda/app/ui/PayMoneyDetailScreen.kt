@@ -3,6 +3,7 @@ package rw.itunda.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.rememberCountUp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -109,7 +110,8 @@ internal fun PayMoneyDetailScreen(
             item {
                 Column(modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
                     Text(stringResource(R.string.pay_money_detail_title), fontSize = 13.sp, color = Ids.colors.textSecondary)
-                    Text("${account.currency} %,.0f".format(account.balance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    val animatedBalance = rememberCountUp(account.balance)
+                    Text("${account.currency} %,.0f".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
                 }
             }
             item {

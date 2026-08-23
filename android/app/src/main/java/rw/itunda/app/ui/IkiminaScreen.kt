@@ -3,6 +3,7 @@ package rw.itunda.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.rememberCountUp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -339,7 +340,8 @@ private fun IkiminaDetailContent(id: String) {
             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(current.ikimina.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    Text("${formatMoneyGroup(current.balance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    val animatedBalance = rememberCountUp(current.balance.toDouble())
+                    Text("${formatMoneyGroup(java.math.BigDecimal.valueOf(animatedBalance))} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                     Text(
                         when (current.ikimina.status) {
                             "FORMING" -> "Forming · ${current.members.size} member${if (current.members.size == 1) "" else "s"}"

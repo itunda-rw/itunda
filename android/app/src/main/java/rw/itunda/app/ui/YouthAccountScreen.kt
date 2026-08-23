@@ -3,6 +3,7 @@ package rw.itunda.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.rememberCountUp
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -183,7 +184,8 @@ fun YouthAccountScreen(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
-                                Text("${formatMoneyMini(account?.balance ?: 0.0)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                                val animatedBalance = rememberCountUp(account?.balance ?: 0.0)
+                                Text("${formatMoneyMini(animatedBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                                 Text(account?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                         }

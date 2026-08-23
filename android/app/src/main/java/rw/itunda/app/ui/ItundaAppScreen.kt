@@ -174,6 +174,7 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.feature.shop.impl.CommerceShopContent
@@ -1973,7 +1974,8 @@ private fun HomeMarketWidgetRow(
                     .padding(14.dp),
             ) {
                 Text(stringResource(R.string.bank_account_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
-                Text("${primaryAccount.currency} %,.0f".format(primaryAccount.balance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                val animatedBalance = rememberCountUp(primaryAccount.balance)
+                Text("${primaryAccount.currency} %,.0f".format(animatedBalance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         stocks.forEach { stock ->
@@ -2256,8 +2258,9 @@ private fun BankHubScreen(
                         Column {
                             Text(stringResource(R.string.bank_account_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
                             Spacer(modifier = Modifier.height(4.dp))
+                            val animatedBalance = rememberCountUp(primaryAccount!!.balance)
                             Text(
-                                "${primaryAccount!!.currency} %,.0f".format(primaryAccount!!.balance),
+                                "${primaryAccount!!.currency} %,.0f".format(animatedBalance),
                                 fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                             )
                         }
@@ -3012,7 +3015,8 @@ private fun AccountDetailScreen(
                             fontSize = 13.sp, color = Ids.colors.textSecondary,
                         )
                     }
-                    Text("$currency %,.0f".format(balance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    val animatedBalance = rememberCountUp(balance)
+                    Text("$currency %,.0f".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
                 }
             }
             val earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0
