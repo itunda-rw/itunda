@@ -23953,8 +23953,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   };
 
   if (error && !detail) {
+    // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+    // dropped itunda-card -- the screen's only content in this state.
     return (
-      <div className="itunda-card">
+      <div style={{ padding: '10px 0' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
@@ -23986,7 +23988,11 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         </p>
       </div>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      {/* Real fix (2026-08-24, flat-design sweep): 2 distinct sections shown
+          together -- reused .itunda-flat-section for section-boundary dividers.
+          The hero balance card above deliberately kept its gradient itunda-card
+          styling -- a real branded treatment, not reflexive wrapping. */}
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
         <Row label="Status" value={plan.status} />
         <Row label="Base weekly amount" value={`${plan.baseWeeklyAmount.toLocaleString()} RWF`} />
@@ -23997,7 +24003,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
 
       {installments.length > 0 && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Installments</h3>
           {installments.map((inst) => (
             <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 'var(--itunda-type-scale-13-size)' }}>
@@ -24018,8 +24024,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         />
       ) : (
         <>
+          {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+              conditional action section. */}
           {plan.status === 'ACTIVE' && (
-            <div className="itunda-card">
+            <div style={{ padding: '10px 0' }}>
               {confirmingCancel ? (
                 <div>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '10px' }}>
@@ -24200,10 +24208,10 @@ function WeeklySavingsSection() {
     <div>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>26-week savings</h3>
       <CreateWeeklySavingsPlanForm onCreated={load} />
+      {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+          conditional error message. */}
       {error && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
-        </div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {plans === null ? (
         <div className="itunda-card skeleton" style={{ height: '64px' }} />
@@ -24316,8 +24324,10 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   };
 
   if (error && !detail) {
+    // Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+    // dropped itunda-card -- the screen's only content in this state.
     return (
-      <div className="itunda-card">
+      <div style={{ padding: '10px 0' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
@@ -24349,7 +24359,11 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         </p>
       </div>
 
-      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+      {/* Real fix (2026-08-24, flat-design sweep): 2 distinct sections shown
+          together -- reused .itunda-flat-section for section-boundary dividers.
+          The hero balance card above deliberately kept its gradient itunda-card
+          styling -- a real branded treatment, not reflexive wrapping. */}
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
         <Row label="Status" value={plan.status} />
         <Row label="Daily amount" value={`${plan.dailyAmount.toLocaleString()} RWF`} />
@@ -24358,7 +24372,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
 
       {deposits.length > 0 && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Deposits</h3>
           {[...deposits].sort((a, b) => b.dayNumber - a.dayNumber).map((d) => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 'var(--itunda-type-scale-13-size)' }}>
@@ -24396,8 +24410,10 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
             </div>
           )}
 
+          {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+              conditional confirmation section. */}
           {plan.status === 'ACTIVE' && confirmingCancel && (
-            <div className="itunda-card">
+            <div style={{ padding: '10px 0' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '10px' }}>
                 Cancelling now forfeits your streak bonus — you'll only get principal plus base-rate interest, paid out immediately. This can't be undone.
               </p>
@@ -24529,10 +24545,10 @@ function Grow31SavingsSection() {
     <div>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>31-day savings</h3>
       <CreateGrow31SavingsPlanForm onCreated={load} />
+      {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+          conditional error message. */}
       {error && (
-        <div className="itunda-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
-        </div>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {plans === null ? (
         <div className="itunda-card skeleton" style={{ height: '64px' }} />
