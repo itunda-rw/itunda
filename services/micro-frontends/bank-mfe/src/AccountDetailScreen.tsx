@@ -6,6 +6,7 @@ import {
 import { IdsButton } from './IdsButton';
 import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from './EmptyState';
+import { AccountManageScreen } from './AccountManageScreen';
 import { fetchAccountTransactions, type Account, type Transaction } from './lib/account';
 
 // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user instruction:
@@ -28,9 +29,10 @@ import { fetchAccountTransactions, type Account, type Transaction } from './lib/
 // bar into a real Top up/Send button pair directly under the balance, matching the
 // real reference's own layout exactly -- Toss's real account-detail screen has no
 // bottom-pinned CTA at all here. Also added the real Card/Manage top-bar pair.
-export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }: { account: Account; onBack: () => void; onSend: (account: Account) => void; onNavigateToTab?: (tab: 'CARD' | 'MY') => void }) {
+export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }: { account: Account; onBack: () => void; onSend: (account: Account) => void; onNavigateToTab?: (tab: 'CARD' | 'SAVINGS' | 'PAY' | 'BILLS' | 'FOREIGN_CURRENCY' | 'DEVICES' | 'SUPPORT') => void }) {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showManage, setShowManage] = useState(false);
 
   useEffect(() => {
     fetchAccountTransactions(account.id).then(setTransactions).catch(() => setError('Could not load your transaction history.'));
@@ -48,13 +50,15 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Real Toss Bank reference (9 more screenshots, 2026-08-23, direct user
+        {/* Real Toss Bank reference (9 more screenshots, 2026-08-21/23, direct user
             instruction: "top bar with card, manage"): real Toss's account-detail top
             bar pairs the back arrow with two real destinations -- 카드 (Card) and 관리
-            (Manage). itunda's own honest equivalents: the real Card tab (itunda's
-            actual card management screen) and the real My/settings tab -- not a
-            fabricated "Manage account" screen with menu items (transfer-limit editor,
-            document downloads, etc.) this codebase doesn't actually have built yet. */}
+            (Manage). "Card" routes straight to the real Card tab; "Manage" opens the
+            new AccountManageScreen (own file, 2026-08-23 follow-up: "this is what
+            users should [see] when they click on manage") rather than the generic
+            My/settings tab this used to route to -- see that screen's own doc comment
+            for exactly which real itunda features it surfaces and what's honestly
+            scoped out. */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
           <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px' }}>
             <ChevronLeft size={24} color="var(--itunda-grey-900)" />
@@ -64,12 +68,15 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
               <button onClick={() => onNavigateToTab('CARD')} style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
                 Card
               </button>
-              <button onClick={() => onNavigateToTab('MY')} style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
+              <button onClick={() => setShowManage(true)} style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
                 Manage
               </button>
             </div>
           )}
         </div>
+        {showManage && onNavigateToTab && (
+          <AccountManageScreen account={account} onBack={() => setShowManage(false)} onNavigateToTab={onNavigateToTab} />
+        )}
 
         <div style={{ padding: '4px 20px 24px' }}>
           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
