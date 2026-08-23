@@ -17336,9 +17336,16 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
   );
 }
 
+// Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10): dropped
+// itunda-card. Deliberately NOT using .itunda-flat-section's per-row divider here --
+// this shared component is reused across 5 different contexts in RidesView (a lone
+// active trip, an active-trips list, an available-to-accept list, and 2 genuine
+// past-trip history lists), and a divider baked into the component would be wrong
+// for the non-list/non-history cases. Plain flat spacing instead, safe everywhere
+// it's used.
 function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.ReactNode; stops?: RideTripStop[] | null }) {
   return (
-    <div className="itunda-card">
+    <div style={{ padding: '10px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.pickupAddress}</p>
@@ -18005,7 +18012,9 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               )}
             </div>
           ) : (
-            <div className="itunda-card" style={{ marginBottom: '20px' }}>
+            // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+            // form section shown when there's no active trip.
+            <div style={{ padding: '10px 0' }}>
               <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Car size={18} color="var(--itunda-indigo)" /> Request a ride
               </h3>
@@ -18100,7 +18109,9 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
           {driver === undefined ? (
             <div className="itunda-card skeleton" style={{ height: '180px' }} />
           ) : driver === null ? (
-            <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+            // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
+            // onboarding message.
+            <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <Car size={32} color="var(--itunda-indigo)" style={{ marginBottom: '10px' }} />
               <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, marginBottom: '6px' }}>Drive with Itunda</h3>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
@@ -18112,8 +18123,11 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               {driverError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{driverError}</p>}
             </div>
           ) : (
+            // Real fix (2026-08-24, flat-design sweep): 3 distinct non-exclusive
+            // sections shown together -- reused .itunda-flat-section for
+            // section-boundary dividers.
             <div>
-              <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{driver.available ? "You're online" : "You're offline"}</p>
                   <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{driver.available ? 'Visible for new trip requests' : 'Go online to see trip requests'}</p>
@@ -18134,7 +18148,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                   own doc comment. Set once, works across sessions until cleared (no
                   expiry client-side; matches the real backend, which never expires it
                   on its own either). */}
-              <div className="itunda-card" style={{ marginBottom: '16px' }}>
+              <div className="itunda-flat-section">
                 <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Heading somewhere?</p>
                 {driver.destinationLatitude != null ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -18161,7 +18175,7 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               </div>
 
               {earnings && earnings.length > 0 && (
-                <div className="itunda-card" style={{ marginBottom: '16px' }}>
+                <div className="itunda-flat-section">
                   <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>This week</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>

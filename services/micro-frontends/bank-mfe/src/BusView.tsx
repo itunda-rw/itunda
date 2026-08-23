@@ -134,7 +134,9 @@ export default function BusView() {
       {subTab === 'RIDE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {riderError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
-          <div className="itunda-card">
+          {/* Real fix (2026-08-24, flat-design sweep, docs/UI_UX_GUIDELINES.md §10):
+              dropped itunda-card -- lone form section on this tab. */}
+          <div style={{ padding: '10px 0' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Search routes</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input
@@ -154,8 +156,10 @@ export default function BusView() {
             <EmptyState message="No upcoming trips — request a ride and it'll show up here." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Real fix (2026-08-24, flat-design sweep): entity/pick list (trips to
+                  book), no divider needed. */}
               {trips.map((trip) => (
-                <div key={trip.id} className="itunda-card">
+                <div key={trip.id} style={{ padding: '10px 0' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
                   <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                     {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -182,8 +186,10 @@ export default function BusView() {
             <div>
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bookings</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Real fix (2026-08-24, flat-design sweep): entity list (active
+                    bookings to manage), no divider needed. */}
                 {myBookings.filter((b) => b.status === 'BOOKED').map((b) => (
-                  <div key={b.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                     <div>
                       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{b.seatCount} seat(s)</p>
                       <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
@@ -202,7 +208,8 @@ export default function BusView() {
       {subTab === 'OPERATE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {operatorError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{operatorError}</p>}
-          <div className="itunda-card">
+          {/* Real fix (2026-08-24, flat-design sweep): lone form section on this tab. */}
+          <div style={{ padding: '10px 0' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Post a route</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Any itunda user can post a scheduled trip -- no transport-licensing check.
@@ -239,8 +246,10 @@ export default function BusView() {
             <div>
               <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your routes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* Real fix (2026-08-24, flat-design sweep): entity list (routes the
+                    operator has posted), no divider needed. */}
                 {myTrips.map((trip) => (
-                  <div key={trip.id} className="itunda-card">
+                  <div key={trip.id} style={{ padding: '10px 0' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
                     <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                       {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
