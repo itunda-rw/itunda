@@ -837,6 +837,11 @@ struct MyTabView: View {
                     Color.clear.frame(width: 20)
                 }
                 ProfilePhotoCard()
+                // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+                // PinUpgradeCard.swift's own doc comment. Own file, not inline here,
+                // matching this session's own file-size-lint discipline for this
+                // already-large file.
+                PinUpgradeCard()
                 VerificationCard()
                 if !affiliateLinks.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {

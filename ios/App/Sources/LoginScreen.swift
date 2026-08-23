@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreIdentity
 
 // Real first slice of Kinyarwanda localization on iOS (2026-08-08) -- see Android's
 // LoginScreen.kt and bank-mfe's src/i18n/ for the full context (docs/DESIGN_REFERENCES.md
@@ -43,6 +44,14 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "switchToLogin": "Already have an account? Log in",
         "switchToRegister": "New to itunda? Create an account",
         "language": "Language",
+        // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+        // AccountPinPad.swift's own doc comment.
+        "pinCreateHeadline": "Create a 6-digit PIN",
+        "pinCreateSubtitle": "You'll use this PIN to sign in next time.",
+        "pinConfirmHeadline": "Confirm your PIN",
+        "pinLoginHeadline": "Enter your PIN",
+        "pinMismatch": "That didn't match. Try again.",
+        "checkingDevice": "Checking this device…",
     ],
     .rw: [
         "tagline_register": "Fungura konti yawe",
@@ -57,6 +66,12 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "switchToLogin": "Usanzwe ufite konti? Injira",
         "switchToRegister": "Uri mushya kuri itunda? Fungura konti",
         "language": "Ururimi",
+        "pinCreateHeadline": "Shyiraho PIN y'imibare 6",
+        "pinCreateSubtitle": "Uzakoresha iyi PIN igihe uzongera kwinjira.",
+        "pinConfirmHeadline": "Emeza PIN yawe",
+        "pinLoginHeadline": "Andika PIN yawe",
+        "pinMismatch": "Ntibihuye. Ongera ugerageze.",
+        "checkingDevice": "Kugenzura iyi terefone…",
     ],
     .fr: [
         "tagline_register": "Créez votre compte",
@@ -71,6 +86,12 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "switchToLogin": "Vous avez déjà un compte ? Connectez-vous",
         "switchToRegister": "Nouveau sur itunda ? Créez un compte",
         "language": "Langue",
+        "pinCreateHeadline": "Créez un code PIN à 6 chiffres",
+        "pinCreateSubtitle": "Vous utiliserez ce code PIN pour vous connecter la prochaine fois.",
+        "pinConfirmHeadline": "Confirmez votre code PIN",
+        "pinLoginHeadline": "Entrez votre code PIN",
+        "pinMismatch": "Cela ne correspond pas. Réessayez.",
+        "checkingDevice": "Vérification de cet appareil…",
     ],
 ]
 
@@ -105,6 +126,16 @@ struct LoginScreen: View {
     @State private var referralCode = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+    // AccountPinPad.swift's own doc comment for the full sourced account.
+    // `pinFirstEntry` holds the register-mode "create" step's PIN while the
+    // "confirm" step is shown; `attemptingPasswordless` gates a silent biometric-
+    // first login attempt (see the `.task` below) tried automatically on this
+    // screen's appearance -- real Toss's own actual day-to-day login is Face ID/
+    // fingerprint, with the PIN only as its standing fallback.
+    @State private var pinFirstEntry: String?
+    @State private var attemptingPasswordless = false
 
     private func t(_ key: String) -> String {
         loginStrings[locale]?[key] ?? loginStrings[.en]?[key] ?? key
@@ -149,51 +180,93 @@ struct LoginScreen: View {
 
                     Spacer(minLength: 24)
 
-                    // Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md
-                    // §11, rule #4), closing an iOS-only gap Android's own LoginScreen.kt
-                    // already had a real fix for (rememberAutoFocus). Auto-focuses whichever
-                    // field is first visible for the current mode.
-                    if isRegisterMode {
-                        IdsTextField(t("firstName"), text: $firstName, autoFocus: true)
-                        IdsTextField(t("lastName"), text: $lastName)
-                        IdsTextField(t("referralCode"), text: $referralCode)
-                    }
+                    // Real Toss-sourced passwordless-login rollout (2026-08-23) --
+                    // while a real biometric-signed attempt is in flight (see this
+                    // screen's own .task below), the whole form is replaced by this
+                    // indicator, same as bank-mfe's identical "Checking this
+                    // device…" LoginPage state -- Toss's own real day-to-day login
+                    // is a near-blank screen plus Face ID, not a form sitting behind
+                    // a biometric prompt.
+                    if attemptingPasswordless {
+                        VStack(spacing: 12) {
+                            ProgressView().tint(IDS.Colors.brand)
+                            Text(t("checkingDevice"))
+                                .font(IDS.Typography.bodyMedium)
+                                .foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    } else {
+                        // Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md
+                        // §11, rule #4), closing an iOS-only gap Android's own LoginScreen.kt
+                        // already had a real fix for (rememberAutoFocus). Auto-focuses whichever
+                        // field is first visible for the current mode.
+                        if isRegisterMode {
+                            IdsTextField(t("firstName"), text: $firstName, autoFocus: true)
+                            IdsTextField(t("lastName"), text: $lastName)
+                            IdsTextField(t("referralCode"), text: $referralCode)
+                        }
 
-                    IdsTextField(t("phoneNumber"), text: $phoneNumber, keyboardType: .phonePad, autoFocus: !isRegisterMode)
+                        IdsTextField(t("phoneNumber"), text: $phoneNumber, keyboardType: .phonePad, autoFocus: !isRegisterMode)
 
-                    IdsTextField(t("password"), text: $password, isSecure: true)
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(IDS.Typography.caption)
-                            .foregroundColor(.red)
+                        // Real Toss-sourced passwordless-login rollout (2026-08-23) --
+                        // replaces the free-form password IdsTextField this used to
+                        // render with AccountPinPad (see that file's own doc comment).
+                        // Auto-submits on its own at 6 digits, so the bottom
+                        // Log in/Create account button below is gone entirely --
+                        // register does a real create-then-confirm pair first.
+                        if isRegisterMode {
+                            if pinFirstEntry == nil {
+                                AccountPinPad(
+                                    headline: t("pinCreateHeadline"),
+                                    subtitle: t("pinCreateSubtitle"),
+                                    errorMessage: errorMessage,
+                                    onComplete: { entered in
+                                        errorMessage = nil
+                                        pinFirstEntry = entered
+                                    }
+                                )
+                            } else {
+                                AccountPinPad(
+                                    headline: t("pinConfirmHeadline"),
+                                    errorMessage: errorMessage,
+                                    busy: isSubmitting,
+                                    onComplete: { entered in
+                                        if entered == pinFirstEntry {
+                                            password = entered
+                                            submit()
+                                        } else {
+                                            pinFirstEntry = nil
+                                            errorMessage = t("pinMismatch")
+                                        }
+                                    }
+                                )
+                            }
+                        } else {
+                            AccountPinPad(
+                                headline: t("pinLoginHeadline"),
+                                errorMessage: errorMessage,
+                                busy: isSubmitting,
+                                onComplete: { entered in
+                                    password = entered
+                                    submit()
+                                }
+                            )
+                        }
                     }
 
                     Spacer(minLength: 16)
                 }
 
                 Group {
-                    if isSubmitting {
-                        HStack {
-                            Spacer()
-                            ProgressView().tint(IDS.Colors.brand)
-                            Spacer()
+                    if !attemptingPasswordless {
+                        Button(action: { isRegisterMode.toggle(); errorMessage = nil; pinFirstEntry = nil }) {
+                            Text(isRegisterMode ? t("switchToLogin") : t("switchToRegister"))
+                                .font(IDS.Typography.bodyMedium)
+                                .foregroundColor(IDS.Colors.textBrand)
                         }
-                        .padding(.vertical, 16)
-                    } else {
-                        IdsButton(
-                            text: isRegisterMode ? t("createAccount") : t("logIn"),
-                            isEnabled: canSubmit,
-                            action: { submit() }
-                        )
+                        .padding(.top, 8)
                     }
-
-                    Button(action: { isRegisterMode.toggle(); errorMessage = nil }) {
-                        Text(isRegisterMode ? t("switchToLogin") : t("switchToRegister"))
-                            .font(IDS.Typography.bodyMedium)
-                            .foregroundColor(IDS.Colors.textBrand)
-                    }
-                    .padding(.top, 8)
 
                     Spacer(minLength: 80)
                 }
@@ -201,11 +274,51 @@ struct LoginScreen: View {
             .padding(.horizontal, IDS.Layout.screenHorizontal)
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task {
+            await tryPasswordlessLogin()
+        }
     }
 
-    private var canSubmit: Bool {
-        let baseFieldsFilled = !phoneNumber.isEmpty && !password.isEmpty
-        return isRegisterMode ? baseFieldsFilled && !firstName.isEmpty && !lastName.isEmpty : baseFieldsFilled
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see this
+    // screen's own attemptingPasswordless doc comment. Mirrors DeviceStepUpHost's
+    // own tryBiometricStepUp exactly (same withCheckedContinuation bridge over
+    // DeviceKeyManager's completion-handler-based signChallenge), except this
+    // resolves the user from a remembered phone number rather than an
+    // already-authenticated JWT -- this IS the initial login itself.
+    @MainActor
+    private func tryPasswordlessLogin() async {
+        guard !isRegisterMode,
+              let remembered = SessionManager.rememberedPhoneNumber(),
+              DeviceKeyManager.shared.hasKey()
+        else { return }
+        phoneNumber = remembered
+        attemptingPasswordless = true
+        do {
+            let challenge = try await sessionManager.loginDeviceChallenge(phoneNumber: remembered)
+            guard let challengeData = Data(base64Encoded: challenge) else {
+                attemptingPasswordless = false
+                return
+            }
+            let signatureBase64: String? = await withCheckedContinuation { continuation in
+                DeviceKeyManager.shared.signChallenge(challengeData, reason: "Sign in to itunda") { signature, _ in
+                    continuation.resume(returning: signature)
+                }
+            }
+            guard let signatureBase64 else {
+                attemptingPasswordless = false
+                return
+            }
+            // Falls through silently to the PIN pad already rendered below on any
+            // failure (a declined/failed biometric attempt must never strand the
+            // user with no other way in) -- attemptingPasswordless = false does
+            // that on its own; success flips sessionManager.sessionState instead,
+            // which the caller (ContentView/ItundaApp.swift) already observes to
+            // swap away from this screen.
+            _ = await sessionManager.loginWithDeviceSignature(phoneNumber: remembered, signatureBase64: signatureBase64)
+            attemptingPasswordless = false
+        } catch {
+            attemptingPasswordless = false
+        }
     }
 
     private func submit() {
@@ -213,12 +326,20 @@ struct LoginScreen: View {
         isSubmitting = true
         Task {
             let trimmedReferralCode = referralCode.trimmingCharacters(in: .whitespaces)
+            // Real Toss-sourced passwordless-login rollout (2026-08-23) -- publish
+            // this device's Secure Enclave key alongside the password/PIN submission
+            // (same real key item 246 already established, see DeviceKeyManager
+            // .exportPublicKeyIfPresent's own doc comment), so the NEXT login can
+            // skip straight to the biometric attempt above with no separate
+            // Settings-toggle trip required.
+            let devicePublicKey = DeviceKeyManager.shared.exportPublicKeyIfPresent() ?? (try? DeviceKeyManager.shared.generateKeyPair())
             let result = isRegisterMode
                 ? await sessionManager.register(
                     phoneNumber: phoneNumber, password: password, firstName: firstName, lastName: lastName,
-                    referralCode: trimmedReferralCode.isEmpty ? nil : trimmedReferralCode
+                    referralCode: trimmedReferralCode.isEmpty ? nil : trimmedReferralCode,
+                    devicePublicKey: devicePublicKey
                 )
-                : await sessionManager.login(phoneNumber: phoneNumber, password: password)
+                : await sessionManager.login(phoneNumber: phoneNumber, password: password, devicePublicKey: devicePublicKey)
             isSubmitting = false
             if case let .failure(message) = result {
                 errorMessage = message

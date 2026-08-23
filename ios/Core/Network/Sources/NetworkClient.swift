@@ -15,17 +15,28 @@ public struct RegisterRequest: Encodable {
     // separate step-up needed.
     public let deviceId: String?
     public let deviceName: String?
-    public init(phoneNumber: String, email: String?, firstName: String, lastName: String, password: String, referralCode: String?, deviceId: String?, deviceName: String?) { self.phoneNumber = phoneNumber; self.email = email; self.firstName = firstName; self.lastName = lastName; self.password = password; self.referralCode = referralCode; self.deviceId = deviceId; self.deviceName = deviceName }
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+    // DeviceKeyManager.exportPublicKeyIfPresent's own doc comment. The SAME real
+    // Secure-Enclave-backed key item 246 already established, just published at
+    // register time too (not only via the separate opt-in device-verification flow)
+    // so a brand new device can go straight to biometric-only login next time -- see
+    // AuthService.register's own doc comment on the backend for
+    // DeviceService.registerKeyDuringAuth.
+    public let devicePublicKey: String?
+    public init(phoneNumber: String, email: String?, firstName: String, lastName: String, password: String, referralCode: String?, deviceId: String?, deviceName: String?, devicePublicKey: String? = nil) { self.phoneNumber = phoneNumber; self.email = email; self.firstName = firstName; self.lastName = lastName; self.password = password; self.referralCode = referralCode; self.deviceId = deviceId; self.deviceName = deviceName; self.devicePublicKey = devicePublicKey }
 }
 
 // deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding
 // login call exactly. See DeviceStore.swift for how these are generated.
+// devicePublicKey added 2026-08-23 -- mirrors RegisterRequest's own field exactly,
+// same real reasoning (see its own doc comment).
 public struct LoginRequest: Encodable {
     public let phoneNumber: String
     public let password: String
     public let deviceId: String?
     public let deviceName: String?
-    public init(phoneNumber: String, password: String, deviceId: String?, deviceName: String?) { self.phoneNumber = phoneNumber; self.password = password; self.deviceId = deviceId; self.deviceName = deviceName }
+    public let devicePublicKey: String?
+    public init(phoneNumber: String, password: String, deviceId: String?, deviceName: String?, devicePublicKey: String? = nil) { self.phoneNumber = phoneNumber; self.password = password; self.deviceId = deviceId; self.deviceName = deviceName; self.devicePublicKey = devicePublicKey }
 }
 
 public struct RefreshRequest: Encodable {
@@ -69,6 +80,15 @@ public struct PublicUser: Decodable {
     // real, working endpoint with zero client anywhere, and this field wasn't even
     // carried by this DTO until now.
     public let profilePhotoUrl: String?
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see backend
+    // User.pinSet's own doc comment. false only for a pre-PIN-era account whose
+    // existing password hasn't been upgraded to a real 6-digit PIN yet -- gates
+    // PinUpgradeCard, never blocks the existing password login either way. Optional
+    // (not defaulted to true like the backend's own field) since PublicUser relies on
+    // synthesized Decodable conformance, matching this struct's existing
+    // emailVerified/phoneVerified fields' own nil-safe pattern -- nil is treated the
+    // same as true (no prompt) at every call site.
+    public let pinSet: Bool?
 }
 
 public struct UpdateProfilePhotoRequest: Encodable { public let profilePhotoUrl: String }
@@ -474,6 +494,40 @@ public final class NetworkClient {
 
     public func login(_ request: LoginRequest) async throws -> AuthResponse {
         try await post("api/v1/auth/login", body: request, authToken: nil)
+    }
+
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see this session's
+    // real, sourced research on Toss's own actual mechanism (support.toss.im/
+    // toss.im/tosscert): registration is phone + OTP, then a real 6-digit "비밀번호"
+    // (Toss's own literal term -- not zero credential), with biometric as day-to-day
+    // login's real fast path and the PIN as its standing fallback -- exactly what
+    // AuthController.kt's own doc comment on the backend implements. Unauthenticated
+    // (permitAll, see SecurityConfig.kt) since this IS the initial login itself, not a
+    // step-up re-verification of an already-authenticated session like
+    // issueDeviceChallenge/verifyDeviceSignature below -- resolves the user from
+    // phoneNumber, not a JWT claim, so this uses the plain `post` helper (no auth
+    // token) rather than `authenticatedPost`.
+    public func loginDeviceChallenge(_ request: LoginDeviceChallengeRequest) async throws -> LoginDeviceChallengeResponse {
+        try await post("api/v1/auth/login/device/challenge", body: request, authToken: nil)
+    }
+
+    public func loginWithDeviceSignature(_ request: LoginWithDeviceSignatureRequest) async throws -> AuthResponse {
+        try await post("api/v1/auth/login/device/verify", body: request, authToken: nil)
+    }
+
+    // Real PIN upgrade (2026-08-23) -- see AuthService.setPin's own doc comment on the
+    // backend. currentCredential re-proves ownership of the EXISTING password/PIN
+    // (whatever shape it currently is) before it's replaced -- same real cost as
+    // registerDeviceKey's own password re-entry above, never trusting a client-only
+    // check for a credential change. Authenticated (needs the existing session's JWT),
+    // unlike the two calls above.
+    // Real, specific backend message (wrong current credential vs. an invalid new PIN
+    // shape) matters here, so this uses its own dedicated PUT path rather than the
+    // generic authenticatedPut -- same "dedicated function scoped to the one flow that
+    // needs it" convention postP2p's own doc comment already established, not
+    // widening authenticatedPut for every other caller.
+    public func setAccountPin(currentCredential: String, newPin: String) async throws -> SetAccountPinResponse {
+        try await authenticatedPutWithMessage("api/v1/auth/pin", body: SetAccountPinRequest(currentCredential: currentCredential, newPin: newPin))
     }
 
     public func refresh(_ request: RefreshRequest) async throws -> AuthResponse {
@@ -2098,6 +2152,29 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+    // setAccountPin's own doc comment for why this exists instead of reusing
+    // authenticatedPut, same real reasoning as postP2p just below.
+    fileprivate func authenticatedPutWithMessage<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
     // Dedicated request path for sendDirect/payP2pRequest only -- see
     // NetworkError.httpErrorWithMessage's own doc comment for why this doesn't reuse
     // authenticatedPost. Mirrors postYouthAccount's own precedent (a dedicated function
@@ -2344,6 +2421,18 @@ public struct RevokeDeviceResponse: Decodable { public let success: Bool }
 public struct RegisterDeviceKeyRequest: Encodable { public let publicKey: String; public let password: String }
 public struct DeviceChallengeResponse: Decodable { public let success: Bool; public let challenge: String }
 public struct VerifyDeviceSignatureRequest: Encodable { public let signature: String }
+
+// Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
+// NetworkClient.loginDeviceChallenge/loginWithDeviceSignature's own doc comment.
+public struct LoginDeviceChallengeRequest: Encodable { public let phoneNumber: String; public let deviceId: String
+    public init(phoneNumber: String, deviceId: String) { self.phoneNumber = phoneNumber; self.deviceId = deviceId }
+}
+public struct LoginDeviceChallengeResponse: Decodable { public let success: Bool; public let challenge: String }
+public struct LoginWithDeviceSignatureRequest: Encodable { public let phoneNumber: String; public let deviceId: String; public let signature: String
+    public init(phoneNumber: String, deviceId: String, signature: String) { self.phoneNumber = phoneNumber; self.deviceId = deviceId; self.signature = signature }
+}
+public struct SetAccountPinRequest: Encodable { public let currentCredential: String; public let newPin: String }
+public struct SetAccountPinResponse: Decodable { public let success: Bool; public let user: PublicUser }
 
 // Real push device-token registration (item 121) -- see backend DeviceToken.kt's own
 // doc comment: PushNotificationService.sendToUser silently no-ops for every real user

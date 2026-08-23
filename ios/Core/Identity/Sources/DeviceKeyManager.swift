@@ -116,6 +116,21 @@ public final class DeviceKeyManager {
         }
     }
 
+    /// Real Toss-sourced passwordless-login rollout (2026-08-23) -- see NetworkClient
+    /// .swift's RegisterRequest/LoginRequest devicePublicKey doc comment. Returns the
+    /// SAME already-generated key's public half so register()/login() can publish it
+    /// alongside a normal password submission, no separate Settings-toggle trip
+    /// required. Fetching the private key REFERENCE alone (not using it to sign, as
+    /// [signChallenge] does) needs no Face ID/Touch ID prompt -- same as [hasKey]'s own
+    /// existing no-prompt behavior above -- so [SecKeyCopyPublicKey] can run
+    /// synchronously here with no completion handler needed.
+    public func exportPublicKeyIfPresent() -> String? {
+        guard let key = privateKey(), let publicKey = SecKeyCopyPublicKey(key) else { return nil }
+        var exportError: Unmanaged<CFError>?
+        guard let rawPoint = SecKeyCopyExternalRepresentation(publicKey, &exportError) as Data? else { return nil }
+        return rawPoint.base64EncodedString()
+    }
+
     /// Real "forget this device"'s client-side counterpart -- called after
     /// DeviceService.revokeDevice so a stale local key doesn't outlive its server record.
     public func removeKey() {
