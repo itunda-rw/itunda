@@ -16877,3 +16877,31 @@ is the difference between "usable" and "requires knowing raw coordinates."
 *Shipped: bank-mfe `BankDashboard.tsx` (`PlaceSearchInput`), Android
 `RideScreen.kt`, iOS `RideScreenView.swift` (commits `f16bbb77`, `c62b4fd9`,
 `e8e2ed03`).*
+
+## 268. Same saved-places quick-select extended to Eats delivery address -- all 3 platforms
+
+Direct continuation of §267, same session: an even more universal surface
+than a ride destination -- every single Eats delivery order needs an
+address, and itunda's own real map-bookmarks feature was never surfaced in
+any platform's delivery-address autocomplete either (Android's
+`AddressAutocompleteField`, bank-mfe's `AddressAutocomplete`, iOS's
+`AddressAutocompleteField`). No new backend work, same existing
+`GET /api/v1/maps/bookmarks` each platform's own real Nominatim-backed
+search-suggestion dropdown already sits alongside -- shown only when the
+field is empty/focused so it never fights the real search results once
+typing starts.
+
+One real, minimal iOS-only gap this exposed: `AddressSuggestionDto`
+(`NetworkClient.swift`) is a `Decodable`-only DTO -- every prior instance
+came straight off the wire, so its compiler-synthesized memberwise init,
+`internal` by default for a cross-module type, was never needed from the App
+target before. Constructing one client-side from a tapped `MapBookmarkDto`
+needed a real, explicit `public init(displayName:latitude:longitude:)`
+added. Also deduped iOS's `colorFromHex(_:)` (§267 gave `RideScreenView.swift`
+its own private copy) by widening it to internal (still App-target-scoped)
+rather than adding a third copy, since `EatsRestaurantMenu.swift` needed the
+identical parsing.
+
+*Shipped: Android `EatsRestaurantMenu.kt`, bank-mfe `BankDashboard.tsx`
+(`AddressAutocomplete`), iOS `EatsRestaurantMenu.swift`/`RideScreenView.swift`/
+`NetworkClient.swift` (commits `52966ceb`, `e325b005`, `220bbfff`).*
