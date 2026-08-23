@@ -92,6 +92,7 @@ export type TranslationKey =
   | 'transfer.send'
   | 'transfer.newBalance'
   | 'transfer.done'
+  | 'transfer.sentHeadline'
   | 'transfer.saveContactError'
   | 'transfer.sendError'
   | 'transfer.insufficientBalance'
@@ -314,6 +315,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.send': 'Send {{amount}} RWF',
     'transfer.newBalance': 'New balance: {{amount}} RWF',
     'transfer.done': 'Done',
+    'transfer.sentHeadline': 'Sent',
     'transfer.saveContactError': 'Could not save that contact.',
     'transfer.sendError': 'Could not complete this transfer.',
     'transfer.insufficientBalance': 'Not enough balance — you have {{amount}} RWF.',
@@ -528,6 +530,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.send': 'Ohereza {{amount}} RWF',
     'transfer.newBalance': 'Amafaranga asigaye: {{amount}} RWF',
     'transfer.done': 'Byarangiye',
+    'transfer.sentHeadline': 'Byoherejwe',
     'transfer.saveContactError': 'Ntibishoboka kubika uwo muntu.',
     'transfer.sendError': 'Ntibishoboka kurangiza kohereza amafaranga.',
     'transfer.insufficientBalance': 'Amafaranga ntahagije — ufite {{amount}} RWF.',
@@ -741,6 +744,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.send': 'Envoyer {{amount}} RWF',
     'transfer.newBalance': 'Nouveau solde : {{amount}} RWF',
     'transfer.done': 'Terminé',
+    'transfer.sentHeadline': 'Envoyé',
     'transfer.saveContactError': 'Impossible d’enregistrer ce contact.',
     'transfer.sendError': 'Impossible de finaliser ce transfert.',
     'transfer.insufficientBalance': 'Solde insuffisant — vous avez {{amount}} RWF.',

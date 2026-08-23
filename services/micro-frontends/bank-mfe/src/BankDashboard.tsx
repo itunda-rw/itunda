@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, Check, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -645,31 +645,59 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
     return (
       <FullScreenFlow
         bottomCTA={
-          <div style={{ display: 'flex', gap: '10px' }}>
-            {typeof navigator !== 'undefined' && !!navigator.share && (
-              <IdsButton
-                variant="tinted" fullWidth style={{ flex: 1 }}
-                onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString()} RWF to ${recipientName} via itunda` }).catch(() => {})}
-              >
-                Share
-              </IdsButton>
-            )}
-            <IdsButton fullWidth style={{ flex: 1 }} onClick={onSuccess}>{t('transfer.done')}</IdsButton>
+          <div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {typeof navigator !== 'undefined' && !!navigator.share && (
+                <IdsButton
+                  variant="tinted" fullWidth style={{ flex: 1 }}
+                  onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString()} RWF to ${recipientName} via itunda` }).catch(() => {})}
+                >
+                  Share
+                </IdsButton>
+              )}
+              <IdsButton fullWidth style={{ flex: 1 }} onClick={onSuccess}>{t('transfer.done')}</IdsButton>
+            </div>
+            {/* Real Toss reference screenshot (2026-08-23, user-supplied): the fee-
+                covered reassurance sits on its own line BELOW the buttons, not crammed
+                into the same line as other info -- moved here from the content area to
+                match. */}
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '10px' }}>
+              {t('transfer.feeCovered')}
+            </p>
           </div>
         }
       >
+        {/* Real Toss "Sent" screen (2026-08-23, user-supplied reference screenshot):
+            a distinct "Sent" headline (not the generic "Done" this used to share with
+            the button below it), amount and recipient as their own clear stacked
+            lines rather than crammed onto one "{amount} → {name}" row, and a real
+            spring entrance on the icon -- itunda had zero animation on this screen
+            before. Solid green circle + plain white check (not this draft's earlier
+            indigo/ShieldCheck attempt) to match Android's own already-shipped, more
+            established IdsCelebrationScreen pattern (real haptics + spring + confetti,
+            reused across 4 real success moments) -- found while porting this same
+            screen to Android/iOS the same session: itunda's real identity for THIS
+            specific moment is green+check, not a one-off invented here. Literal white,
+            not the --itunda-white token, which flips to a dark grey in dark mode and
+            would go invisible against the green circle. */}
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '32px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <ShieldCheck size={34} color="var(--itunda-indigo)" />
-          </div>
-          <h3 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 800, marginBottom: '4px' }}>{t('transfer.done')}</h3>
-          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, marginBottom: '4px' }}>
-            {Number(amount).toLocaleString()} RWF → {recipientName}
-          </p>
-          {memo.trim() && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-            {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })} · {t('transfer.feeCovered')}
-          </p>
+          <motion.div
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 22 }}
+            style={{ width: '72px', height: '72px', borderRadius: '36px', backgroundColor: 'var(--itunda-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}
+          >
+            <Check size={38} color="#ffffff" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.3, ease: 'easeOut' }}>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>{t('transfer.sentHeadline')}</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, marginBottom: '4px' }}>{Number(amount).toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.toLabel')} {recipientName}</p>
+            {memo.trim() && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '10px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)', marginTop: '14px' }}>
+              {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })}
+            </p>
+          </motion.div>
         </div>
       </FullScreenFlow>
     );
