@@ -146,7 +146,7 @@ export default function InsuranceView() {
   };
 
   if (!plans) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   const enrolledPlanIds = new Set(policies.map((p) => p.planId));
@@ -157,7 +157,7 @@ export default function InsuranceView() {
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)' }}>{message}</p>}
 
       {policies.length > 0 && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My policies</h3>
           {policies.map((p) => (
             <div key={p.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
@@ -259,7 +259,7 @@ export default function InsuranceView() {
       )}
 
       {claims.length > 0 && (
-        <div className="itunda-card" style={{ padding: '16px' }}>
+        <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>My claims</h3>
           {claims.map((c) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
@@ -273,7 +273,7 @@ export default function InsuranceView() {
         </div>
       )}
 
-      <div className="itunda-card" style={{ padding: '16px' }}>
+      <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
         {plans.map((plan) => (
           <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
@@ -368,11 +368,11 @@ function CropWeatherIndexSection() {
   };
 
   if (!catalog) {
-    return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+    return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
   }
 
   return (
-    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Crop Weather Insurance</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
