@@ -16838,3 +16838,42 @@ needed -- only "drop items that are no longer active."
 `BankDashboard.tsx` (`ShopView`/`MyCommerceOrdersView`), iOS
 `ShopScreen.swift`/`ShopMerchantOrders.swift`/`EatsOrders.swift` (commits
 `84887b99`, `5e1fbae8`, `f5240c65`).*
+
+## 267. Real Uber/Kakao T-style saved-places quick-select for ride booking -- all 3 platforms
+
+Another internal-consistency find, same class as §266: itunda already has a
+full, real, backend-synced "map bookmarks" feature (folders, colors, display
+names -- the Maps tab's own real star/save,
+`MapsService.addBookmark`/`getMyBookmarks`, exposed via
+`GET/POST/DELETE /api/v1/maps/bookmarks`) that was never surfaced anywhere in
+ride booking on any platform (grep confirmed zero references), despite being
+exactly the real "Home"/"Work" shortcut every real ride-hailing app (Uber,
+Kakao T) shows before you type anything. No new backend work needed at all --
+purely client-side wiring to an existing, working endpoint.
+
+Turned out to matter more on native than expected: bank-mfe's ride-booking
+dropoff field already has real search-autocomplete (`PlaceSearchInput`,
+backed by Nominatim via `searchPlaces`), so bookmarks there are a nice-to-have
+alongside search. Android/iOS's ride screens have **no autocomplete at all**
+-- a rider had to already know and manually type the exact GPS latitude/
+longitude into two bare text fields. On those two platforms this quick-select
+is the difference between "usable" and "requires knowing raw coordinates."
+
+- **bank-mfe** (`f16bbb77`): fixed in the ONE shared `PlaceSearchInput`
+  component (reused 5× across ride + rental pickup/dropoff/stops), not per
+  call site -- fetches bookmarks once per mount, shows them in the same
+  dropdown container search results already use, gated on the field being
+  focused and empty.
+- **Android** (`c62b4fd9`): a horizontally-scrolling row of tap-to-fill chips
+  (each showing its real folder color, parsed via
+  `android.graphics.Color.parseColor`) below the manual lat/lng fields in
+  `RidePassengerContent`.
+- **iOS** (`e8e2ed03`): same chip-row treatment in `RidePassengerContent`,
+  `.task { await loadBookmarks() }` matching this file's own existing
+  `loadTrustedContacts` pattern. Needed a small file-scoped `colorFromHex(_:)`
+  duplicate (Features/Maps' own identical private helper isn't reachable from
+  the App target). Verified with a real `xcodebuild build` -- BUILD SUCCEEDED.
+
+*Shipped: bank-mfe `BankDashboard.tsx` (`PlaceSearchInput`), Android
+`RideScreen.kt`, iOS `RideScreenView.swift` (commits `f16bbb77`, `c62b4fd9`,
+`e8e2ed03`).*
