@@ -61,7 +61,7 @@ public struct PayMoneyDetailScreen: View {
                         Text("itunda Pay Money")
                             .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .subheadline))
                             .foregroundColor(IDS.Colors.textSecondary)
-                        Text("\(currency) \(formatAmount(Int(balance)))")
+                        CountUpText("\(currency) \(formatAmount(Int(balance)))")
                             .font(IDS.scaledFont(size: 32, weight: .bold, relativeTo: .largeTitle))
                             .foregroundColor(IDS.Colors.textPrimary)
                     }

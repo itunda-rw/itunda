@@ -212,7 +212,7 @@ struct MyPaymentCodeCard: View {
                     HStack {
                         Text("itunda Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
-                        Text("\(Int(account.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        CountUpText("\(Int(account.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
                     }
                 }

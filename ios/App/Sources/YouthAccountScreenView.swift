@@ -55,7 +55,7 @@ struct YouthAccountScreenView: View {
                         YouthAccountActionButton(title: busy ? "Checking…" : "Check eligibility", disabled: busy, action: submitBirthDateAndOpen)
                     case .open:
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(formatMoney(account?.balance ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                            CountUpText("\(formatMoney(account?.balance ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
                             Text(account?.accountNumber ?? "").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)

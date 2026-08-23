@@ -71,7 +71,7 @@ struct ForeignCurrencyScreenView: View {
                                 HStack {
                                     Text(account.currency).bold()
                                     Spacer()
-                                    Text("\(formatFx(account.balance)) \(account.currency)").bold()
+                                    CountUpText("\(formatFx(account.balance)) \(account.currency)").bold()
                                 }
                                 .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                             }

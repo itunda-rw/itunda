@@ -48,7 +48,7 @@ public struct AccountLedgerDetailView: View {
                             .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                             .foregroundColor(IDS.Colors.textTertiary)
                     }
-                    Text(balanceText)
+                    CountUpText(balanceText)
                         .font(IDS.scaledFont(size: 32, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(IDS.Colors.textPrimary)
                 }

@@ -162,7 +162,7 @@ private struct GroupAccountDetailContent: View {
                     VStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(current.groupAccount.name).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            Text("\(formatMoney(current.balance)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                            CountUpText("\(formatMoney(current.balance)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
                             Text("\(current.members.count) member\(current.members.count == 1 ? "" : "s")").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

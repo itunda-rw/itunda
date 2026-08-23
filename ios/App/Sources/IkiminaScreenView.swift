@@ -185,7 +185,7 @@ private struct IkiminaDetailContent: View {
                 VStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(current.ikimina.name).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        Text("\(formatMoney(current.balance)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                        CountUpText("\(formatMoney(current.balance)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
                         Text(statusSummary(current)).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

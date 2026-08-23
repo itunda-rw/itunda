@@ -117,7 +117,7 @@ struct AccountSummaryCard: View {
                             .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                             .foregroundColor(IDS.Colors.textTertiary)
                     }
-                    Text(balanceText)
+                    CountUpText(balanceText)
                         .font(IDS.Typography.largeAmount)
                         .foregroundColor(IDS.Colors.textPrimary)
                     Text(bt("balanceSubtitle", locale: locale))
