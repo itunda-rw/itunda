@@ -16794,3 +16794,47 @@ backspace button (`Image(systemName: "delete.left")` with no
 *Shipped: bank-mfe `BankDashboard.tsx` (`QrScanCamera`), Android
 `CameraQrScanner.kt` (core:designsystem + merchantapp), iOS `QrScanCamera.swift`,
 `AccountPinPad.swift` (commit `0cba0522`).*
+
+## 266. Real Coupang/Amazon-style "Buy it again" for Commerce/Shop -- all 3 platforms
+
+Continuing the same standing directive as §265 with an internal-consistency
+check rather than fresh external research this time: itunda's own Eats product
+already has a real, working "Reorder" button (all 3 platforms, 2026-07-19) --
+re-populate the cart from a past order's still-active items, then open it for
+review rather than an instant one-tap re-purchase (a delivery address could be
+stale, a price could have changed since a real-money action). Commerce/Shop's
+own order history never got the sibling feature, despite the identical real
+backend capability (`OrderService.placeOrder` already accepts arbitrary items,
+no new endpoint needed) sitting unused -- a real, confirmed gap between two
+products with the same real need, matching Coupang's own actual "재구매" /
+Amazon's "Buy it again."
+
+Direct port of Eats' own shape on every platform, simpler in one way: Commerce
+products never carry option groups (only Eats' menu items do), so none of
+Eats' "drop items that now require an option selection" sanitization was
+needed -- only "drop items that are no longer active."
+
+- **Android** (`84887b99`): new `CommerceReorderButton` in
+  `ShopMerchantOrders.kt` -- a deliberate duplicate of Eats'
+  `ReorderButton` rather than a shared import, since Feature-module isolation
+  (Konsist-enforced) forbids `:features:shop:impl` importing
+  `:features:eats:impl`'s internals.
+- **bank-mfe** (`5e1fbae8`): reused the file's existing cross-merchant
+  `CommerceCart` (keyed by merchantId, each group holding its own
+  `lines: Record<productId, ...>`) directly. Refactored the order-action
+  render from a 2-deep nested ternary (which a third CANCELLED branch would
+  have made worse) into a small `renderAction()` function with early
+  returns, self-caught via oxlint's own `no-nested-ternary` rule before it
+  ever shipped as a warning.
+- **iOS** (`f5240c65`): reused `EatsOrders.swift`'s existing `ReorderButton`
+  directly (no Feature-module boundary between Eats/Shop on iOS the way
+  Android has one) -- widened it with optional `label`/`reorderingLabel`
+  params (defaulting to the original "Reorder"/"Reordering…" text, every
+  existing Eats call site unaffected) so Commerce could show "Buy again"
+  instead, matching the copy already shipped on Android/web. Verified with a
+  real `xcodebuild build` -- BUILD SUCCEEDED.
+
+*Shipped: Android `ShopScreen.kt`/`ShopMerchantOrders.kt`, bank-mfe
+`BankDashboard.tsx` (`ShopView`/`MyCommerceOrdersView`), iOS
+`ShopScreen.swift`/`ShopMerchantOrders.swift`/`EatsOrders.swift` (commits
+`84887b99`, `5e1fbae8`, `f5240c65`).*
