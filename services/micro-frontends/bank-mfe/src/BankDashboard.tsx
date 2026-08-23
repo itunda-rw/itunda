@@ -24257,6 +24257,28 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   );
 }
 
+// Real Toss Bank reference (9 screenshots, 2026-08-23, direct user instruction: "all
+// services itunda provide with all in clear UX and UX writing as it's in those
+// pictures"): the real Toss Bank account screen organizes its whole product catalog
+// under bold, flat category headers (Demand Deposits / Savings / Foreign Currency /
+// Loan / Service / ...), not one undifferentiated scroll -- this had been a real,
+// previously-BLOCKED gap (SavingsView's own stacked sections had no headers at all,
+// and an earlier pass explicitly couldn't find a real Toss reference for organizing a
+// long product list -- see docs/DESIGN_REFERENCES.md). Flat text, no card wrapper,
+// matching this codebase's own standing flat-design law and Toss's real screenshots
+// exactly (a bold label sits directly on the page background, not inside a boxed
+// section). Names itunda's own REAL product categories, not Toss's invented ones --
+// no "Refinancing"/"Bonds & notes"/"Mortgage Finder" here, since itunda doesn't have
+// those; "Cooperative & Group" replaces Toss's own category shape with itunda's real,
+// Rwanda-specific SACCO/Ikimina/group-account products instead.
+function CatalogSectionHeader({ title }: { title: string }) {
+  return (
+    <h2 style={{ margin: '32px 4px 8px', fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+      {title}
+    </h2>
+  );
+}
+
 function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void; onNavigateToTab?: (tab: Tab) => void; onNavigateToLoansMode?: (mode: LoansMode) => void; onNavigateToSavingsTarget?: (target: 'sacco' | 'ikimina') => void } = {}) {
   const { t } = useI18n();
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
@@ -24309,6 +24331,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
           account={openAccountDetail}
           onBack={() => setOpenAccountDetail(null)}
           onSend={(account) => { setOpenAccountDetail(null); setTransferAccountBalance(account.balance); setShowTransfer(true); }}
+          onNavigateToTab={onNavigateToTab ? (tab) => { setOpenAccountDetail(null); onNavigateToTab(tab); } : undefined}
         />
       )}
       {showTransfer && (
@@ -24329,14 +24352,16 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
       {onNavigateToTab && onNavigateToLoansMode && onNavigateToSavingsTarget && (
         <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} onNavigateToSavingsTarget={onNavigateToSavingsTarget} />
       )}
-      <InterestJarCard />
-      <RoundUpCard goals={goals ?? []} />
-      <CreateGoalForm onCreated={load} />
       {error && (
         <div className="itunda-card" style={{ marginBottom: '16px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
+
+      <CatalogSectionHeader title="Savings" />
+      <InterestJarCard />
+      <RoundUpCard goals={goals ?? []} />
+      <CreateGoalForm onCreated={load} />
       {goals === null ? (
         <div className="itunda-card skeleton" style={{ height: '100px' }} />
       ) : goals.length === 0 ? (
@@ -24344,15 +24369,6 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
       ) : (
         goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
       )}
-      <div style={{ marginTop: '24px' }}>
-        <GroupAccountsSection />
-      </div>
-      <div id="savings-ikimina-section" style={{ marginTop: '24px' }}>
-        <IkiminaSection />
-      </div>
-      <div id="savings-sacco-section" style={{ marginTop: '24px' }}>
-        <SaccoSection />
-      </div>
       <div style={{ marginTop: '24px' }}>
         <WeeklySavingsSection />
       </div>
@@ -24362,20 +24378,36 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
       <div style={{ marginTop: '24px' }}>
         <UpfrontDepositSection />
       </div>
-      {/* Real architectural fix (2026-08-13) -- see this view's own coop-rail doc
-          comment above: AutoTransfersCard (recurring 자동이체) and YouthAccountCard (a
-          capped starter account) both used to render on Home too, same "real Bank-
-          product content on a generic access point" violation. Homed here now,
-          matching Android's identical "Auto Transfer -> BankHubScreen" move. */}
-      <div style={{ marginTop: '24px' }}>
-        <AutoTransfersCard />
-      </div>
       <div style={{ marginTop: '24px' }}>
         <YouthAccountCard />
       </div>
+
+      {/* itunda's own real category, standing in for Toss's category shape here --
+          SACCO/Ikimina/group accounts are genuine, distinct, Rwanda-specific
+          cooperative-savings products, not a Toss import. */}
+      <CatalogSectionHeader title="Cooperative & Group" />
+      <div id="savings-ikimina-section">
+        <IkiminaSection />
+      </div>
+      <div id="savings-sacco-section" style={{ marginTop: '24px' }}>
+        <SaccoSection />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <GroupAccountsSection />
+      </div>
+
+      {/* Real architectural fix (2026-08-13) -- see this view's own coop-rail doc
+          comment above: AutoTransfersCard (recurring 자동이체) used to render on Home
+          too, same "real Bank-product content on a generic access point" violation.
+          Homed here now, matching Android's identical "Auto Transfer -> BankHubScreen"
+          move -- and matching the real Toss reference's own "Service" category, which
+          also houses Auto Transfer. */}
+      <CatalogSectionHeader title="Service" />
+      <AutoTransfersCard />
+
       {onNavigateToTab && (
-        <div className="itunda-card" style={{ marginTop: '24px', padding: '20px' }}>
-          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '0 0 12px' }}>More from itunda Bank</h3>
+        <>
+          <CatalogSectionHeader title="More from itunda Bank" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <button
               onClick={() => onNavigateToTab('LOANS')}
@@ -24398,7 +24430,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
               <ChevronRight size={18} color="var(--itunda-grey-400)" />
             </button>
           </div>
-        </div>
+        </>
       )}
       {/* Real licensed-bank disclosure (2026-08-11) -- see docs/TOSS_PARITY_MATRIX.md's
           own confirmation of "zero real banking-license implementation anywhere" and

@@ -3,6 +3,7 @@ import {
   ChevronLeft, ArrowLeftRight, Car, Utensils, Gift, ShoppingBag, Percent,
   Landmark, Phone, Receipt, Smartphone, Wallet,
 } from 'lucide-react';
+import { IdsButton } from './IdsButton';
 import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 import { fetchAccountTransactions, type Account, type Transaction } from './lib/account';
@@ -18,11 +19,16 @@ import { fetchAccountTransactions, type Account, type Transaction } from './lib/
 // account details screen ... they suppose to be in itunda bank home screen like
 // toss does") corrected that -- this is the resulting separate screen, and
 // SavingsView's own AccountLedgerHeader shrank to just a tappable summary row that
-// opens it. Send is bottom-pinned (not scrolling with the ledger above it) per the
-// same live follow-up ("those buttons at bottom"). Each row carries a real
-// category icon (classified from the transaction's own description/type, not a
-// fabricated per-merchant logo) matching Android's identical ledgerRowIcon fix.
-export function AccountDetailScreen({ account, onBack, onSend }: { account: Account; onBack: () => void; onSend: (account: Account) => void }) {
+// opens it. Each row carries a real category icon (classified from the transaction's
+// own description/type, not a fabricated per-merchant logo) matching Android's
+// identical ledgerRowIcon fix.
+//
+// **Updated 2026-08-23** (9 more real Toss screenshots, direct user instruction: "top
+// bar with card, manage... top up and send button"): Send moved from a bottom-pinned
+// bar into a real Top up/Send button pair directly under the balance, matching the
+// real reference's own layout exactly -- Toss's real account-detail screen has no
+// bottom-pinned CTA at all here. Also added the real Card/Manage top-bar pair.
+export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }: { account: Account; onBack: () => void; onSend: (account: Account) => void; onNavigateToTab?: (tab: 'CARD' | 'MY') => void }) {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,10 +48,27 @@ export function AccountDetailScreen({ account, onBack, onSend }: { account: Acco
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px' }}>
+        {/* Real Toss Bank reference (9 more screenshots, 2026-08-23, direct user
+            instruction: "top bar with card, manage"): real Toss's account-detail top
+            bar pairs the back arrow with two real destinations -- 카드 (Card) and 관리
+            (Manage). itunda's own honest equivalents: the real Card tab (itunda's
+            actual card management screen) and the real My/settings tab -- not a
+            fabricated "Manage account" screen with menu items (transfer-limit editor,
+            document downloads, etc.) this codebase doesn't actually have built yet. */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
           <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px' }}>
             <ChevronLeft size={24} color="var(--itunda-grey-900)" />
           </button>
+          {onNavigateToTab && (
+            <div style={{ display: 'flex', gap: '18px' }}>
+              <button onClick={() => onNavigateToTab('CARD')} style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
+                Card
+              </button>
+              <button onClick={() => onNavigateToTab('MY')} style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
+                Manage
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ padding: '4px 20px 24px' }}>
@@ -55,6 +78,19 @@ export function AccountDetailScreen({ account, onBack, onSend }: { account: Acco
           <p style={{ margin: '6px 0 0', fontSize: '32px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
             {account.currency} {account.balance.toLocaleString()}
           </p>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            {/* Real, honest gap: itunda has no consumer-facing "add cash to my own
+                account" flow yet -- the closest real mechanism (AgentService.cashIn)
+                is operator-side only (an agent credits a customer, not self-service).
+                Disabled with a real explanation rather than a dead tap or an invented
+                flow, matching this codebase's own standing "no dead-tap" law. */}
+            <div title="Coming soon — visit an itunda agent to add cash to your account" style={{ flex: 1 }}>
+              <IdsButton variant="tinted" fullWidth disabled onClick={() => {}}>Top up</IdsButton>
+            </div>
+            <div style={{ flex: 1 }}>
+              <IdsButton variant="tinted" fullWidth onClick={() => onSend(account)}>Send</IdsButton>
+            </div>
+          </div>
         </div>
 
         <div style={{ padding: '0 20px' }}>
@@ -94,12 +130,6 @@ export function AccountDetailScreen({ account, onBack, onSend }: { account: Acco
             </div>
           )}
         </div>
-      </div>
-
-      <div style={{ padding: '12px 20px', paddingBottom: 'max(12px, env(safe-area-inset-bottom))', borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-white)' }}>
-        <button onClick={() => onSend(account)} className="itunda-btn itunda-btn-primary" style={{ minHeight: '48px', borderRadius: '999px', width: '100%' }}>
-          Send
-        </button>
       </div>
     </div>
   );
