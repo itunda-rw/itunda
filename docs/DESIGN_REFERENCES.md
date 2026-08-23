@@ -16697,3 +16697,100 @@ simulator boot attempted).
 `AccountDetailScreen.tsx`, iOS `AccountLedgerDetailView.swift`/`BankView.swift`
 (commits `81cee9bf`, `e2342cfc`, `75f8fa43`, `bf405f67`, `38970d4d`,
 `eb6dc641`).*
+
+## 264. Real Toss passwordless login (phone + OTP + 6-digit PIN + biometric) -- all 4 codebases
+
+Direct user thread: "tosses password less flow?" → "we need that simplification" →
+(via `AskUserQuestion`) "search clear how toss do it and let's do it as they do" →
+"Design the backend contract now, implement all 4 layers together."
+
+Real, sourced Toss mechanism (support.toss.im, toss.im/tosscert -- not invented):
+registration is phone number + real OTP, THEN a real 6-digit numeric PIN ("6자리
+비밀번호", Toss's own literal term -- **not** zero credential, correcting an
+initial framing that assumed "passwordless" meant no credential at all). Day-to-day
+login is biometric-first (Face ID/fingerprint), with the PIN as its standing
+fallback -- exactly what got built.
+
+**Backend** (`b59e8d84`): additive `users.pin_set` column (migration V293,
+defaults `false` for existing rows so no login is ever broken, `true` for new
+registrations), 6-digit-PIN validation on register, and new *unauthenticated*
+`POST /auth/login/device/challenge` + `/auth/login/device/verify` -- a real
+extension of the existing `DeviceService` Keystore/Secure-Enclave-signed-challenge
+mechanism (item 246) that had only ever been used for authenticated step-up
+re-verification, to the *initial* login itself (resolves the user by phoneNumber
+instead of a JWT claim, via a new `issueLoginChallenge`/`verifyLoginSignature`
+pair that reuses the existing `verifySignature()` crypto helper rather than
+duplicating it). Plus `PUT /auth/pin` to let an existing password-only account
+upgrade.
+
+**Web** (`b14b4909`): a real, non-extractable Web Crypto P-256 keypair in
+IndexedDB -- no OS biometric API exposed to a browser tab, but the same
+"device-bound key that can never be exported" security property a native
+Keystore/Secure Enclave gives. Needed a real raw-r‖s-to-DER signature conversion
+the native clients don't (Java's `SHA256withECDSA` expects DER; Web Crypto
+produces raw r‖s bytes).
+
+**Android** (`961d8aa0`) / **iOS** (`c92e70c0`): reused each platform's
+*existing* device-key class outright (`DeviceKeyManager.kt`/`.swift`, already
+built for item 246's step-up flow, already producing DER-compatible signatures
+natively) -- just added `exportPublicKeyIfPresent()`/`exportPublicKeyIfPresent()`
+to read the public half back without a biometric prompt. New shared
+`AccountPinPad` component each platform, wired into the existing login screen's
+credential step and a new non-blocking "set your PIN" upgrade card on the
+My/profile tab. iOS verified with a real `xcodebuild -workspace ... -scheme
+ItundaApp build` (BUILD SUCCEEDED), not a syntax-only `swiftc -parse`.
+
+Cross-cutting: the client-side "upgrade to PIN" function/endpoint is named
+`updateAccountPin` (never `setPin`) on every platform specifically to avoid
+colliding with each platform's own *separate*, local, device-only app-unlock PIN
+concept (Android already had one, `TokenStore.setPin`/`PinScreen.kt`).
+
+*Full account: [[project_itunda_passwordless_login]] (memory). Shipped:
+`services/backend/auth/.../AuthService.kt`/`DeviceService.kt`/`AuthController.kt`,
+bank-mfe `lib/deviceKey.ts`/`PinPad.tsx`/`PinSetupCard.tsx`, Android
+`AccountPinPad.kt`/`PinUpgradeCard.kt`, iOS `AccountPinPad.swift`/
+`PinUpgradeCard.swift` (commits `b59e8d84`, `b14b4909`, `961d8aa0`, `c92e70c0`).*
+
+## 265. Real Toss accessibility fix (audio cues for a silent camera flow) -- QR scan, all 3 platforms
+
+Continuing the standing "keep searching online for real big-tech simplifications"
+directive (direct user instruction, 2026-08-23) with fresh research rather than
+re-mining old leads: toss.tech/article/accessibility_face ("시각 정보를 소리로
+번역하는 법"), the same real Toss engineering article that already justified
+bank-mfe's `TalkChatThread` `liveAnnouncement` pattern (§14, toss.tech/article/38743).
+
+Toss found their camera-based face-authentication flow was a silent, purely-visual
+dead end for screen-reader users -- a percentage progress bar and a "retake"
+button carried ALL the state, so a blind user had no way to know if recognition
+was progressing or had just succeeded, and had to hunt for a small button after a
+30-second timeout just to retry. Their fix: a distinct in-progress/complete sound
+cue, and toast-style errors ("your face left the circle") that auto-continue with
+no button tap needed.
+
+Checked itunda's own repeated QR-payment-scan camera flow (bank-mfe's
+`QrScanCamera`, Android's shared CameraX+ML Kit `CameraQrScanner.kt` plus
+merchantapp's deliberate duplicate, iOS's native AVFoundation
+`QrScannerViewController`) against this exact pattern: errors already had real
+accessible announcements on all 3 platforms, but the in-progress "scanning" state
+and the success transition the instant a code was found were both completely
+silent -- `onDetect`/`onScanned` fired immediately with zero non-visual signal,
+the view just swapped away.
+
+**Fixed, same real pattern, all 3 platforms**: a distinct "Camera ready. Point at
+a QR code." / "QR code found." announcement where none existed before (web's
+existing sr-only `aria-live="polite"` idiom; Android's `announceForAccessibility`,
+newly added; iOS's `UIAccessibility.post(notification: .announcement, ...)`,
+newly added), plus a 500ms delay before the success callback fires so the
+announcement has time to be picked up before the view unmounts -- and a brief
+visible "QR code found" caption / green frame, so sighted users get the same
+moment of confirmation Toss's own article notes benefited everyone, not just
+accessibility users.
+
+Also caught and fixed a real, newly-introduced bug from §264's own iOS commit
+while running `accessibility-lint.py` as part of this pass: `AccountPinPad.swift`'s
+backspace button (`Image(systemName: "delete.left")` with no
+`.accessibilityLabel`) was silent to VoiceOver.
+
+*Shipped: bank-mfe `BankDashboard.tsx` (`QrScanCamera`), Android
+`CameraQrScanner.kt` (core:designsystem + merchantapp), iOS `QrScanCamera.swift`,
+`AccountPinPad.swift` (commit `0cba0522`).*
