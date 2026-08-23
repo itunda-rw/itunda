@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -149,17 +147,15 @@ fun SaccoScreen(onBack: () -> Unit) {
                 )
             }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column {
                         Text("Shares held", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         Text("${formatMoneySacco(sharesHeld ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                         Text("Total contributed: ${formatMoneySacco(totalContributed ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                    }
                 }
             }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         rw.itunda.core.designsystem.components.AmountKeypadInput(
                             digits = amount, onDigitsChange = { amount = it },
                             quickAmounts = listOf(10_000L, 100_000L),
@@ -178,7 +174,6 @@ fun SaccoScreen(onBack: () -> Unit) {
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Redeem", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         }
-                    }
                 }
             }
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
@@ -191,11 +186,10 @@ fun SaccoScreen(onBack: () -> Unit) {
                     EmptyState("No dividends declared yet.")
                 }
                 else -> items(dividends!!, key = { it.id }) { d ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    // Real fix (flat-design sweep): dropped the per-row Card.
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(d.createdAt.take(10), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Text("+${formatMoneySacco(d.amount)} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
                     }
                 }
             }

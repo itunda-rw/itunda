@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -210,8 +208,8 @@ private fun DesignatedDriverRequestContent() {
             }
         } else {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Get a designated driver", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(
                             "A real professional driver comes to you and drives YOUR OWN CAR home.",
@@ -243,7 +241,6 @@ private fun DesignatedDriverRequestContent() {
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (requesting) "Requesting…" else "Request a driver", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
         }
@@ -386,8 +383,8 @@ private fun DesignatedDriverDriveContent() {
         when {
             !loaded -> item { SkeletonBlock(height = 120.dp) }
             current == null -> item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Become a designated driver", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                         Text(
@@ -401,20 +398,18 @@ private fun DesignatedDriverDriveContent() {
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .pressScaleClickable(enabled = !registering && licenseNumber.isNotBlank()) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
                 }
             }
             else -> {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    // Real fix (flat-design sweep): dropped the Card wrapper.
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(if (current.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                     .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
                                     .pressScaleClickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                        }
                     }
                 }
                 if (activeDriverTrips.isNotEmpty()) {
@@ -465,8 +460,9 @@ private fun DesignatedDriverDriveContent() {
 
 @Composable
 private fun DesignatedDriverTripCard(trip: DesignatedDriverTripDto, action: (@Composable () -> Unit)? = null) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper -- used as a
+    // repeated active/past-trips list row.
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(trip.pickupAddress, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Text("→ ${trip.dropoffAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             Text("${trip.vehicleMake} ${trip.vehicleModel} · ${trip.vehiclePlate}", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -502,7 +498,6 @@ private fun DesignatedDriverTripCard(trip: DesignatedDriverTripDto, action: (@Co
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
                 it()
             }
-        }
     }
 }
 

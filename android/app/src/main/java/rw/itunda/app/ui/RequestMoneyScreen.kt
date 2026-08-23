@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -92,11 +90,10 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
             item { CreateRequestCard(onCreated = { created = it; refreshKey++ }) }
             created?.let { req ->
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                    // Real fix (flat-design sweep): dropped the Card wrapper.
+                    Column {
                             Text("Share this code -- expires in 15 minutes", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Text(req.id, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
                     }
                 }
             }
@@ -110,12 +107,12 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
                 item { EmptyState("No requests yet — ask someone to pay you above.") }
             } else {
                 items(list, key = { it.id }) { req ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
+                    // Real fix (flat-design sweep): dropped the per-row Card.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                             Column {
                                 Text("${formatMoneyRequest(req.amount.toDouble())} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 if (req.description.isNotBlank()) Text(req.description, color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -125,7 +122,6 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
                                 color = if (req.status == "COMPLETED") Ids.colors.success else if (req.status == "EXPIRED") Ids.colors.textSecondary else Ids.colors.brand,
                                 fontWeight = FontWeight.Bold, fontSize = 13.sp,
                             )
-                        }
                     }
                 }
             }
@@ -141,8 +137,8 @@ private fun CreateRequestCard(onCreated: (P2pPaymentRequestDto) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("New request", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
             rw.itunda.core.designsystem.components.AmountKeypadInput(
                 digits = amount, onDigitsChange = { amount = it },
@@ -181,7 +177,6 @@ private fun CreateRequestCard(onCreated: (P2pPaymentRequestDto) -> Unit) {
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (submitting) "Creating…" else "Create request", color = Color.White, fontWeight = FontWeight.Bold) }
-        }
     }
 }
 
@@ -219,8 +214,8 @@ private fun PayRequestCard(onPaid: () -> Unit) {
         }
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Real fix (flat-design sweep): dropped the Card wrapper.
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay a request", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
             IdsTextField(value = code, onValueChange = { code = it }, label = "Request code", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -231,7 +226,6 @@ private fun PayRequestCard(onPaid: () -> Unit) {
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (paying) "Paying…" else "Pay", color = Color.White, fontWeight = FontWeight.Bold) }
-        }
     }
     DeviceStepUpHost(
         visible = needsDeviceVerification,

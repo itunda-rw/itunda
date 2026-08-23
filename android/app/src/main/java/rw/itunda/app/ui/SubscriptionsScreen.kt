@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -90,24 +88,23 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                 item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             } else {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(20.dp)) {
+                    // Real fix (flat-design sweep): dropped the Card wrapper.
+                    Column {
                             Text("Estimated monthly total", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Text("${"%,.0f".format(estimatedMonthlyTotal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
                             Text("Detected from your own real payment history, not a linked-card feed.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        }
                     }
                 }
                 if (detectedList.isEmpty()) {
                     item { EmptyState("No recurring payments detected yet — they'll show up here once we spot a pattern.") }
                 } else {
                     items(detectedList, key = { "detected_${it.displayName}_${it.cadence}" }) { s ->
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top,
-                            ) {
+                        // Real fix (flat-design sweep): dropped the per-row Card.
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top,
+                        ) {
                                 Column {
                                     Text(s.displayName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     Text(
@@ -122,15 +119,14 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                                         Text("↑ from ${"%,.0f".format(previous)} RWF", color = Ids.colors.danger, fontSize = 11.sp)
                                     }
                                 }
-                            }
                         }
                     }
                 }
             }
 
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Real fix (flat-design sweep): dropped the Card wrapper.
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Merchant subscriptions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
                             "Plans you've subscribed to. These charge your account automatically until you cancel.",
@@ -147,7 +143,6 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                                 subs.forEach { sub -> MerchantBillingSubscriptionRow(subscription = sub, onChanged = ::loadBilling) }
                             }
                         }
-                    }
                 }
             }
         }
