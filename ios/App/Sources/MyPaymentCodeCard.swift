@@ -83,9 +83,9 @@ private struct AccountCardCarousel: View {
                     RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.35)).frame(width: 32, height: 24)
                     Spacer()
                     Text(w.type == "PAY" ? "itunda Pay" : w.type == "MAIN" ? "itunda Bank" : "itunda Pay \(w.currency)")
-                        .font(.system(size: 13, weight: .bold)).foregroundColor(.white)
+                        .font(IDS.scaledFont(size: 13, weight: .bold, relativeTo: .footnote)).foregroundColor(.white)
                     Text("\(w.currency) \(w.currency == "RWF" ? String(Int(w.availableBalance)) : String(format: "%.2f", w.availableBalance))")
-                        .font(.system(size: 19, weight: .bold)).foregroundColor(.white)
+                        .font(IDS.scaledFont(size: 19, weight: .bold, relativeTo: .title3)).foregroundColor(.white)
                 }
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -233,9 +233,9 @@ struct MyPaymentCodeCard: View {
                             ForEach(nearbyAds) { nearbyAd in
                                 VStack(spacing: 4) {
                                     Circle().fill(IDS.Colors.brand.opacity(0.15)).frame(width: 40, height: 40)
-                                        .overlay(Text(String(nearbyAd.businessName.prefix(1)).uppercased()).font(.system(size: 16, weight: .bold)).foregroundColor(IDS.Colors.brand))
-                                    Text(nearbyAd.businessName).font(.system(size: 11)).foregroundColor(IDS.Colors.textPrimary).lineLimit(1)
-                                    Text("\(Int(nearbyAd.distanceKm * 1000))m").font(.system(size: 11)).foregroundColor(IDS.Colors.textSecondary)
+                                        .overlay(Text(String(nearbyAd.businessName.prefix(1)).uppercased()).font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.brand))
+                                    Text(nearbyAd.businessName).font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textPrimary).lineLimit(1)
+                                    Text("\(Int(nearbyAd.distanceKm * 1000))m").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textSecondary)
                                 }
                                 .frame(width: 64)
                             }

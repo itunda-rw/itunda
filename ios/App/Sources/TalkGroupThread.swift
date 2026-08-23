@@ -128,21 +128,21 @@ struct GroupThreadScreen: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) {
-                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
+                    Image(systemName: "chevron.left").font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3)).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Back")
                 Text(group.name).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Button(action: { showMediaGallery = true }) {
-                    Image(systemName: "photo.on.rectangle").font(.system(size: 18)).frame(width: 40, height: 40)
+                    Image(systemName: "photo.on.rectangle").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Shared photos")
                 Button(action: { showManageMembers = true }) {
-                    Image(systemName: "person.2").font(.system(size: 18)).frame(width: 40, height: 40)
+                    Image(systemName: "person.2").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Manage members")
                 Button(action: { showSplitBills = true }) {
-                    Image(systemName: "receipt").font(.system(size: 18)).frame(width: 40, height: 40)
+                    Image(systemName: "receipt").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Split a bill")
             }
@@ -251,7 +251,7 @@ struct GroupThreadScreen: View {
                     Button("😊 Emoticon") { emoticonPickerOpen.toggle() }
                 } label: {
                     Text(uploadingPhoto ? "…" : "+")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title3))
                         .foregroundColor(IDS.Colors.textPrimary)
                         .frame(width: 44, height: 44)
                         .background(IDS.Colors.chipBackground)
