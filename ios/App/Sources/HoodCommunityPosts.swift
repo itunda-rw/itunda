@@ -164,9 +164,7 @@ struct CommunityPostDetailView: View {
                             }
                             .disabled(liking)
                         }
-                        .padding(18)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        .padding(.vertical, 10)
 
                         if post.category == "meetup" {
                             MeetupSessionsSection(post: post, currentUserId: currentUserId)
@@ -289,7 +287,8 @@ struct MeetupSessionsSection: View {
                         }
                         .disabled(checkingInId == s.id || checkedInIds.contains(s.id))
                     }
-                    .padding(12).background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
+                    .padding(.vertical, 10)
+                    Divider().overlay(IDS.Colors.divider)
                 }
             }
             if isAuthor {
@@ -311,7 +310,7 @@ struct MeetupSessionsSection: View {
                         .disabled(scheduling)
                     }
                 }
-                .padding(12).background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
+                .padding(.vertical, 10)
             }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -377,8 +376,7 @@ struct GroupBuyFinalizeSection: View {
         } else if done {
             Text("Split request sent -- see it in your group chat's Split bill tab.")
                 .font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
-                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
+                .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Split the cost").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -396,7 +394,7 @@ struct GroupBuyFinalizeSection: View {
                 }
                 .disabled(submitting)
             }
-            .padding(14).background(IDS.Colors.card).cornerRadius(12).idsCardBorder(cornerRadius: 12)
+            .padding(.vertical, 10)
         }
     }
 
