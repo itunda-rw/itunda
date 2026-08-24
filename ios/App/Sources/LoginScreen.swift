@@ -52,6 +52,17 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "pinLoginHeadline": "Enter your PIN",
         "pinMismatch": "That didn't match. Try again.",
         "checkingDevice": "Checking this device…",
+        // Real, sourced Toss simplification (2026-08-24, toss.tech/article/signup):
+        // Toss found iOS users completed signup at a real, measurably higher rate
+        // than Android, root-caused to iOS's first screen explaining WHY personal
+        // info was being asked for, while Android's jumped straight to the field
+        // with zero context -- adding the missing context closed the gap. itunda
+        // had the identical divergence, just flipped: Android's own LoginScreen.kt
+        // already had these two subtitles (login_subtitle_name/login_subtitle_phone
+        // in strings.xml), iOS never did. Same copy, same tone, ported verbatim
+        // rather than reworded, to stay consistent across platforms.
+        "nameContext": "This is how you'll appear to friends and merchants.",
+        "phoneContext": "We'll check if you already have an account.",
     ],
     .rw: [
         "tagline_register": "Fungura konti yawe",
@@ -72,6 +83,8 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "pinLoginHeadline": "Andika PIN yawe",
         "pinMismatch": "Ntibihuye. Ongera ugerageze.",
         "checkingDevice": "Kugenzura iyi terefone…",
+        "nameContext": "Ni ko uzagaragara ku ncuti n'abacuruzi.",
+        "phoneContext": "Tuzareba niba ufite konti isanzwe.",
     ],
     .fr: [
         "tagline_register": "Créez votre compte",
@@ -92,6 +105,8 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "pinLoginHeadline": "Entrez votre code PIN",
         "pinMismatch": "Cela ne correspond pas. Réessayez.",
         "checkingDevice": "Vérification de cet appareil…",
+        "nameContext": "C'est ainsi que vous apparaîtrez auprès de vos amis et des commerçants.",
+        "phoneContext": "Nous allons vérifier si vous avez déjà un compte.",
     ],
 ]
 
@@ -202,9 +217,20 @@ struct LoginScreen: View {
                         // already had a real fix for (rememberAutoFocus). Auto-focuses whichever
                         // field is first visible for the current mode.
                         if isRegisterMode {
+                            // Real, sourced Toss simplification (2026-08-24) -- see
+                            // this file's own loginStrings doc comment for
+                            // nameContext/phoneContext. Toss's own real finding:
+                            // explaining WHY before asking for personal info
+                            // measurably reduces signup drop-off.
+                            Text(t("nameContext"))
+                                .font(IDS.Typography.caption)
+                                .foregroundColor(IDS.Colors.textSecondary)
                             IdsTextField(t("firstName"), text: $firstName, autoFocus: true)
                             IdsTextField(t("lastName"), text: $lastName)
                             IdsTextField(t("referralCode"), text: $referralCode)
+                            Text(t("phoneContext"))
+                                .font(IDS.Typography.caption)
+                                .foregroundColor(IDS.Colors.textSecondary)
                         }
 
                         IdsTextField(t("phoneNumber"), text: $phoneNumber, keyboardType: .phonePad, autoFocus: !isRegisterMode)

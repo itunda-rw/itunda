@@ -151,6 +151,16 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
           Create your Itunda account.
         </p>
 
+        {/* Real, sourced Toss simplification (2026-08-24, toss.tech/article/signup):
+            Toss found iOS signup completed at a measurably higher rate than Android,
+            root-caused to iOS's first screen explaining WHY personal info was being
+            asked for while Android jumped straight to the field with zero context.
+            itunda had the same gap on web (and iOS, fixed the same pass) -- Android's
+            own LoginScreen.kt already had this exact copy (login_subtitle_phone),
+            ported verbatim for cross-platform consistency. */}
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0 }}>
+          We&apos;ll check if you already have an account.
+        </p>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
@@ -171,6 +181,11 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
           />
         </label>
 
+        {/* Same real Toss-sourced fix as the phone context line above, Android's own
+            login_subtitle_name copy. */}
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: 0 }}>
+          This is how you&apos;ll appear to friends and merchants.
+        </p>
         <div style={{ display: 'flex', gap: '10px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>First name</span>
