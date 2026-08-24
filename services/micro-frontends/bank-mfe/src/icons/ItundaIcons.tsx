@@ -98,3 +98,65 @@ export function IconYou(props: ItundaIconProps) {
     </IconBase>
   );
 }
+
+// Phase 2 (2026-08-24, direct user follow-up: "let's search how toss archived
+// [cross-platform consistency] ... let's itunda look the same across all three
+// platforms as toss do") -- real research: Toss's own TDS icon/illustration system
+// is private (confirmed by checking tossmini-docs.toss.im's own nav -- only Colors/
+// Typography have public Foundation pages), but the generalizable lesson from their
+// engineering blog is architectural: one custom icon set exported natively per
+// platform, not each platform reaching for its own stock library. Confirmed that's
+// itunda's real gap by auditing all 3 platforms directly: web uses lucide-react,
+// Android uses Material Icons (`Icons.Outlined.X`), iOS uses SF Symbols
+// (`Image(systemName:)`) -- the exact same UI concept (e.g. "back") renders as 3
+// visually different glyphs today. This phase covers the 5 highest-value, most
+// universal navigation/action concepts, prioritized by REAL combined cross-platform
+// usage frequency (not guessed): Back (~90 combined uses -- Android's ArrowBackIosNew
+// +ArrowBack, iOS's chevron.left alone at 55(!), web's ArrowLeft+ChevronLeft),
+// ChevronRight (~29), Close (~14), Search (~12), Add (~11). Same 24x24/2.4px-stroke
+// construction as phase 1, verified via rsvg-convert at both full size and the real
+// 18px deployed size before shipping. Same shape ported byte-identical to Android
+// (IdsIcons.kt, PathParser) and iOS (IDS.Icons, the existing ItundaFaceCanvas SVG
+// path parser) in the same pass -- all 3 platforms render the literal same path data.
+export function IconBack(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M15,4 L7,12 L15,20" />
+    </IconBase>
+  );
+}
+
+export function IconChevronRight(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M9,4 L17,12 L9,20" />
+    </IconBase>
+  );
+}
+
+export function IconClose(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5,5 L19,19" />
+      <path d="M19,5 L5,19" />
+    </IconBase>
+  );
+}
+
+export function IconSearch(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="10.5" cy="10.5" r="7" />
+      <path d="M20,20 L15.3,15.3" />
+    </IconBase>
+  );
+}
+
+export function IconAdd(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12,4 V20" />
+      <path d="M4,12 H20" />
+    </IconBase>
+  );
+}

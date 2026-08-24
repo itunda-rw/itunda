@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import {  } from 'lucide-react';
+import { IconBack } from './icons/ItundaIcons';
 import { EmptyState } from './EmptyState';
 import { fetchAccountTransactions, type Account, type Transaction } from './lib/account';
 
@@ -43,7 +44,7 @@ export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { accoun
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px' }}>
           <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px' }}>
-            <ChevronLeft size={24} color="var(--itunda-grey-900)" />
+            <IconBack size={24} color="var(--itunda-grey-900)" />
           </button>
         </div>
 

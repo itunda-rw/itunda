@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {  } from 'lucide-react';
+import { IconBack, IconChevronRight } from './icons/ItundaIcons';
 import type { Account } from './lib/account';
 
 // Real Toss Bank reference (5 more screenshots, 2026-08-23, direct user instruction:
@@ -39,7 +40,7 @@ export function AccountManageScreen({ account, onBack, onNavigateToTab }: { acco
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0' }}>
           <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px', marginLeft: '-4px' }}>
-            <ChevronLeft size={24} color="var(--itunda-grey-900)" />
+            <IconBack size={24} color="var(--itunda-grey-900)" />
           </button>
         </div>
 
@@ -86,7 +87,7 @@ function ManageRow({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left' }}>
       <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>{label}</span>
-      <ChevronRight size={18} color="var(--itunda-grey-400)" />
+      <IconChevronRight size={18} color="var(--itunda-grey-400)" />
     </button>
   );
 }

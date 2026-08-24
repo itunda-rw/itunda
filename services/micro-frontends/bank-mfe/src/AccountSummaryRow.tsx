@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import {  } from 'lucide-react';
+import { IconChevronRight } from './icons/ItundaIcons';
 import { fetchAccounts, type Account } from './lib/account';
 
 // Real Toss Bank reference (20 screenshots, 2026-08-21): itunda's web "itunda
@@ -37,7 +38,7 @@ export function AccountSummaryRow({ onOpen }: { onOpen: (account: Account) => vo
           {account.currency} {account.balance.toLocaleString()}
         </p>
       </div>
-      <ChevronRight size={20} color="var(--itunda-grey-400)" />
+      <IconChevronRight size={20} color="var(--itunda-grey-400)" />
     </button>
   );
 }

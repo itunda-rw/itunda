@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  ChevronLeft, ArrowLeftRight, Car, Utensils, Gift, ShoppingBag, Percent,
-  Landmark, Phone, Receipt, Smartphone, Wallet,
-} from 'lucide-react';
+import { ArrowLeftRight, Car, Utensils, Gift, ShoppingBag, Percent, Landmark, Phone, Receipt, Smartphone, Wallet,  } from 'lucide-react';
+import { IconBack } from './icons/ItundaIcons';
 import { IdsButton } from './IdsButton';
 import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from './EmptyState';
@@ -61,7 +59,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
             scoped out. */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
           <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px' }}>
-            <ChevronLeft size={24} color="var(--itunda-grey-900)" />
+            <IconBack size={24} color="var(--itunda-grey-900)" />
           </button>
           {onNavigateToTab && (
             <div style={{ display: 'flex', gap: '18px' }}>

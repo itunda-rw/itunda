@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { ChevronRight, Navigation, ScanFace } from 'lucide-react';
+import { Navigation, ScanFace } from 'lucide-react';
+import { IconChevronRight } from './icons/ItundaIcons';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { TILES_SOURCE_URL } from './lib/maps';
@@ -91,7 +92,7 @@ export function NearbyMerchantsMap({ merchants, userLocation, onTap }: { merchan
           <Navigation size={15} color="#fff" />
           {merchants.length} itunda merchant{merchants.length === 1 ? '' : 's'} nearby — earn cashback
         </span>
-        <ChevronRight size={16} color="rgba(255,255,255,0.7)" />
+        <IconChevronRight size={16} color="rgba(255,255,255,0.7)" />
       </span>
     </button>
   );

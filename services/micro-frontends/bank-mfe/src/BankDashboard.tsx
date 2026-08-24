@@ -2,7 +2,8 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, ArrowLeft, Bell, Bike, Camera, Car, Check, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, Plus, QrCode, Receipt, Search, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, Bell, Bike, Camera, Car, Check, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -811,13 +812,13 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
         <ProgressStepper activeStepIndex={1} steps={TRANSFER_STEP_LABELS} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button type="button" aria-label={t('transfer.cancel')} onClick={() => setStep('recipient')} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
-            <ChevronLeft size={22} color="var(--itunda-grey-700)" />
+            <IconBack size={22} color="var(--itunda-grey-700)" />
           </button>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('transfer.toLabel')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{recipientName}</span>
           {recipientPreview && <ShieldCheck size={15} color="var(--itunda-indigo)" />}
           <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
-            <X size={20} color="var(--itunda-grey-500)" />
+            <IconClose size={20} color="var(--itunda-grey-500)" />
           </button>
         </div>
 
@@ -888,12 +889,12 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
         <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
-          <X size={20} color="var(--itunda-grey-500)" />
+          <IconClose size={20} color="var(--itunda-grey-500)" />
         </button>
       </div>
       <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <Search size={16} color="var(--itunda-grey-400)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <IconSearch size={16} color="var(--itunda-grey-400)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)}
             placeholder={t('transfer.recipientPlaceholder')} required
@@ -1117,7 +1118,7 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%', marginTop: '4px' }}
         >
           <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{t('coopRail.seeAll')}</span>
-          <ChevronRight size={16} color="var(--itunda-indigo)" />
+          <IconChevronRight size={16} color="var(--itunda-indigo)" />
         </button>
       </div>
     </div>
@@ -1365,7 +1366,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
     <div>
       <ProductPageHeader title="Explore" subtitle="Everything beyond your everyday money tasks, in one searchable place." />
       <div style={{ position: 'relative', marginBottom: '14px' }}>
-        <Search size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+        <IconSearch size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
           ref={searchInputRef}
           type="text"
@@ -1377,7 +1378,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
         />
         {search && (
           <button onClick={() => setSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-grey-500)', display: 'flex' }}>
-            <X size={15} />
+            <IconClose size={15} />
           </button>
         )}
       </div>
@@ -7255,7 +7256,7 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
         >
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>itunda Pay</span>
           <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {animatedBalance.toLocaleString()} RWF <ChevronRight size={16} color="var(--itunda-grey-500)" />
+            {animatedBalance.toLocaleString()} RWF <IconChevronRight size={16} color="var(--itunda-grey-500)" />
           </span>
         </button>
       )}
@@ -7916,7 +7917,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
         <button onClick={onClose} style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }} aria-label="Back">
-          <ArrowLeft size={18} />
+          <IconBack size={18} />
         </button>
         <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--itunda-grey-300)', display: 'flex', padding: '4px' }} aria-label="Toggle watch">
           <Star size={20} fill={watching ? '#FFC107' : 'none'} />
@@ -9636,7 +9637,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to conversations">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <div>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{conversation.otherUserName}</h3>
@@ -10262,7 +10263,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to conversations">
-            <ArrowLeft size={20} />
+            <IconBack size={20} />
           </button>
           <div>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{group.name}</h3>
@@ -10930,7 +10931,7 @@ function GroupSplitBillsView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to group">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Split bills</h3>
       </div>
@@ -11164,7 +11165,7 @@ function DirectSplitBillsView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to conversation">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Split bills with {otherUserName}</h3>
       </div>
@@ -11359,7 +11360,7 @@ function GroupManageMembersView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to group">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Manage members</h3>
       </div>
@@ -16107,7 +16108,7 @@ function MenuView({
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to menu">
-            <ArrowLeft size={20} />
+            <IconBack size={20} />
           </button>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Checkout</h3>
         </div>
@@ -16177,7 +16178,7 @@ function MenuView({
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{menu.businessName}</h3>
       </div>
@@ -19153,7 +19154,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to menu">
-            <ArrowLeft size={20} />
+            <IconBack size={20} />
           </button>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Checkout</h3>
         </div>
@@ -19197,7 +19198,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{menu.businessName}</h3>
       </div>
@@ -20847,7 +20848,7 @@ function ProductDetailView({
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to catalog">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{merchant.businessName}</h3>
       </div>
@@ -21016,7 +21017,7 @@ function ProductCatalogView({
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to merchants">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, flex: 1 }}>{catalog.businessName}</h3>
         <button
@@ -21270,7 +21271,7 @@ function MultiCartView({
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to shop">
-          <ArrowLeft size={20} />
+          <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>Your cart</h3>
       </div>
@@ -22588,7 +22589,7 @@ function CardView() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left' }}
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>Spend limits</span>
-          <ChevronRight size={18} color="var(--itunda-grey-400)" />
+          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
         <button
           onClick={handleReportLost}
@@ -22596,7 +22597,7 @@ function CardView() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.frozen ? 0.5 : 1 }}
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.frozen ? 'Reported lost or stolen' : 'Report lost or stolen'}</span>
-          <ChevronRight size={18} color="var(--itunda-grey-400)" />
+          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
       </div>
 
@@ -22983,7 +22984,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setStep('name')}
       >
-        <Plus size={16} /> New savings goal
+        <IconAdd size={16} /> New savings goal
       </button>
     );
   }
@@ -23011,7 +23012,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What are you saving for?</h3>
             <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <X size={20} color="var(--itunda-grey-500)" />
+              <IconClose size={20} color="var(--itunda-grey-500)" />
             </button>
           </div>
           <input
@@ -23030,7 +23031,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
           <ProgressStepper activeStepIndex={1} steps={GOAL_STEP_LABELS} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-              <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+              <IconBack size={20} color="var(--itunda-grey-700)" />
             </button>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>How much do you want to save for &ldquo;{name.trim()}&rdquo;?</h3>
           </div>
@@ -23048,7 +23049,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
       <ProgressStepper activeStepIndex={2} steps={GOAL_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          <IconBack size={20} color="var(--itunda-grey-700)" />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Add auto-save details (optional)</h3>
       </div>
@@ -23345,7 +23346,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setOpen(true)}
       >
-        <Plus size={16} /> New group account
+        <IconAdd size={16} /> New group account
       </button>
     );
   }
@@ -23525,7 +23526,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setStep('name')}
       >
-        <Plus size={16} /> New ikimina
+        <IconAdd size={16} /> New ikimina
       </button>
     );
   }
@@ -23553,7 +23554,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What's your group called?</h3>
             <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <X size={20} color="var(--itunda-grey-500)" />
+              <IconClose size={20} color="var(--itunda-grey-500)" />
             </button>
           </div>
           <input
@@ -23572,7 +23573,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
           <ProgressStepper activeStepIndex={1} steps={IKIMINA_STEP_LABELS} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-              <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+              <IconBack size={20} color="var(--itunda-grey-700)" />
             </button>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>How much does each member contribute per round?</h3>
           </div>
@@ -23591,7 +23592,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
         <ProgressStepper activeStepIndex={2} steps={IKIMINA_STEP_LABELS} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button type="button" aria-label="Back" onClick={() => setStep('contribution')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+            <IconBack size={20} color="var(--itunda-grey-700)" />
           </button>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>How often does each round happen?</h3>
         </div>
@@ -23617,7 +23618,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
       <ProgressStepper activeStepIndex={3} steps={IKIMINA_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('frequency')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          <IconBack size={20} color="var(--itunda-grey-700)" />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>How many members, at most?</h3>
       </div>
@@ -24123,7 +24124,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setStep('name')}
       >
-        <Plus size={16} /> New 26-week savings plan
+        <IconAdd size={16} /> New 26-week savings plan
       </button>
     );
   }
@@ -24151,7 +24152,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What are you saving toward?</h3>
             <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <X size={20} color="var(--itunda-grey-500)" />
+              <IconClose size={20} color="var(--itunda-grey-500)" />
             </button>
           </div>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
@@ -24174,7 +24175,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
           <ProgressStepper activeStepIndex={1} steps={WEEKLY_SAVINGS_STEP_LABELS} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-              <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+              <IconBack size={20} color="var(--itunda-grey-700)" />
             </button>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>How much per week, to start?</h3>
           </div>
@@ -24192,7 +24193,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       <ProgressStepper activeStepIndex={2} steps={WEEKLY_SAVINGS_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          <IconBack size={20} color="var(--itunda-grey-700)" />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks?</h3>
       </div>
@@ -24489,7 +24490,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setStep('name')}
       >
-        <Plus size={16} /> New 31-day plan
+        <IconAdd size={16} /> New 31-day plan
       </button>
     );
   }
@@ -24517,7 +24518,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Name your 31-day streak</h3>
             <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <X size={20} color="var(--itunda-grey-500)" />
+              <IconClose size={20} color="var(--itunda-grey-500)" />
             </button>
           </div>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
@@ -24538,7 +24539,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       <ProgressStepper activeStepIndex={1} steps={GROW31_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          <IconBack size={20} color="var(--itunda-grey-700)" />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>How much can you save every day?</h3>
       </div>
@@ -24880,7 +24881,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
                 <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>Borrow</div>
                 <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>Personal loans, VUP, student loans, Moto-Taxi Ownership</div>
               </div>
-              <ChevronRight size={18} color="var(--itunda-grey-400)" />
+              <IconChevronRight size={18} color="var(--itunda-grey-400)" />
             </button>
             <button
               onClick={() => onNavigateToTab('STOCKS')}
@@ -24890,7 +24891,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
                 <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>Grow your money</div>
                 <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>RSE stocks, bonds & fixed income, IPOs</div>
               </div>
-              <ChevronRight size={18} color="var(--itunda-grey-400)" />
+              <IconChevronRight size={18} color="var(--itunda-grey-400)" />
             </button>
           </div>
         </>
@@ -25177,7 +25178,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
             style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}
             aria-label="Search all services"
           >
-            <Search size={18} />
+            <IconSearch size={18} />
           </button>
           <select
             value={locale}
