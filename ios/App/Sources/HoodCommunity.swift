@@ -98,7 +98,9 @@ struct CommunityContent: View {
                             Button("Retry") { Task { await load() } }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                        // wrapper -- a lone error state.
+                        .padding(20)
                     } else if posts == nil {
                         HoodFeedSkeleton()
                     } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -311,9 +313,10 @@ struct NewCommunityPostForm: View {
                 .disabled(submitting)
             }
         }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // the identical form conversions in HoodProperty.swift/HoodMarketplace.swift/
+        // HoodJobsForms.swift.
+        .padding(.vertical, 10)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate

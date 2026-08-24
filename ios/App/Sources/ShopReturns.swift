@@ -104,6 +104,9 @@ struct MyReturnRequestsView: View {
             if let requests, !requests.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("My return/exchange requests").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
+                    // -- history log of return requests, kept the per-row Divider
+                    // convention (docs/DESIGN_REFERENCES.md §274).
                     ForEach(requests) { r in
                         HStack {
                             Text(r.type == "RETURN" ? "Return" : "Exchange").font(.subheadline).bold()
@@ -112,7 +115,8 @@ struct MyReturnRequestsView: View {
                                 .font(.caption).bold()
                                 .foregroundColor(r.status == "APPROVED" ? IDS.Colors.brand : r.status == "REJECTED" ? .red : IDS.Colors.textSecondary)
                         }
-                        .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        .padding(.vertical, 10)
+                        Divider().overlay(IDS.Colors.divider)
                     }
                 }
             }

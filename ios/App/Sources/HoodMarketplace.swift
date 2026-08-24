@@ -100,9 +100,9 @@ struct MarketplaceContent: View {
                         Button("Retry") { Task { await load() } }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                    // -- a lone error state.
                     .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
                     HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -353,9 +353,9 @@ struct NewListingForm: View {
                 .disabled(submitting || uploadingPhoto)
             }
         }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // HoodProperty.swift's identical NewPropertyListingForm conversion.
+        .padding(.vertical, 10)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate

@@ -76,9 +76,9 @@ struct NewJobPostForm: View {
                 .disabled(submitting)
             }
         }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // HoodProperty.swift/HoodMarketplace.swift's identical form conversions.
+        .padding(.vertical, 10)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate

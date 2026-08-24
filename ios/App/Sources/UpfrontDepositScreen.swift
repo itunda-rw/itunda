@@ -59,7 +59,9 @@ struct UpfrontDepositScreenView: View {
                                 Text(listError).foregroundColor(.red)
                                 Button("Retry") { Task { await loadDeposits() } }.foregroundColor(IDS.Colors.brand)
                             }
-                            .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                            // wrapper -- a lone error state.
+                            .padding(.vertical, 10)
                         } else if let deposits {
                             if deposits.isEmpty {
                                 Text("No deposits yet. Open one and get the full \(termMonths) months' interest (\(annualRate, specifier: "%.2f")% per year) paid to your main account immediately -- the principal stays locked for the full term.")
@@ -122,7 +124,10 @@ private struct UpfrontDepositRow: View {
                 .padding(.top, 4)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // Android's identical UpfrontDepositRow conversion, a history log of deposits.
+        .padding(.vertical, 10)
+        Divider().overlay(IDS.Colors.divider)
     }
 
     private func withdraw() async {

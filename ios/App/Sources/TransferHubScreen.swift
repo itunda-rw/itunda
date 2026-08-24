@@ -115,9 +115,10 @@ private struct TransferHubRow: View {
                 Spacer()
                 Image(systemName: "chevron.right").foregroundColor(IDS.Colors.textTertiary)
             }
-            .padding(18)
-            .background(IDS.Colors.card)
-            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+            // matches ShellSection/FlatSection's established catalog-list convention
+            // (docs/UI_UX_GUIDELINES.md §10), no divider.
+            .padding(.vertical, 12)
         }
         .buttonStyle(.plain)
     }
@@ -283,10 +284,10 @@ private struct AutoTransferCard: View {
             }
             .padding(.top, 4)
         }
-        .padding(16)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- an
+        // entity/management list (recurring transfers), no divider.
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 

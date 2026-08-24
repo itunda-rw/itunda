@@ -29,14 +29,18 @@ struct TrustScoreScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if let result {
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                        // wrapper around each sibling section -- matches
+                        // CreditScoreScreenView's identical conversion exactly
+                        // (docs/UI_UX_GUIDELINES.md §10).
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Your trust score").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text("\(result.score) / 1000").font(.title).bold()
                             Text("How your neighbors see you on Marketplace, Jobs, and Property.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
+                        Divider().overlay(IDS.Colors.divider)
                         VStack(alignment: .leading, spacing: 6) {
                             Text("What makes up your score").bold()
                             ForEach(result.factors) { f in
@@ -50,7 +54,6 @@ struct TrustScoreScreenView: View {
                                 }
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else { ProgressView() }
                 }
                 .padding(IDS.Layout.screenHorizontal)

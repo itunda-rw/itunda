@@ -292,9 +292,9 @@ struct OrderFoodContent: View {
                             Button("Retry") { Task { await loadRestaurants() } }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                        // wrapper -- a lone error state.
                         .padding(20)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else if restaurants == nil {
                         SkeletonBlock(height: 120)
                     } else if restaurants!.isEmpty {

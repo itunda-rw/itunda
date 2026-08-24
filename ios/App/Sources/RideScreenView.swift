@@ -873,15 +873,18 @@ private struct DriverRatingSection: View {
                             if reviews.isEmpty {
                                 Text("No written reviews yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             } else {
+                                // Real fix (2026-08-24, flat-design sweep): dropped the
+                                // per-row Card -- a history log of reviews, kept the
+                                // per-row Divider convention (docs/DESIGN_REFERENCES.md
+                                // §274).
                                 ForEach(reviews, id: \.id) { review in
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(String(repeating: "⭐", count: review.rating)).font(.caption2).bold()
                                         if let comment = review.comment { Text(comment).font(.caption).foregroundColor(IDS.Colors.textPrimary) }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(8)
-                                    .background(IDS.Colors.card)
-                                    .cornerRadius(8).idsCardBorder(cornerRadius: 8)
+                                    .padding(.vertical, 6)
+                                    Divider().overlay(IDS.Colors.divider)
                                 }
                             }
                         } else {

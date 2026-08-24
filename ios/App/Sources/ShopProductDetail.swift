@@ -176,6 +176,11 @@ struct MultiCartView: View {
                 Spacer()
             } else {
                 ScrollView {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                    // around each merchant group and the Total section -- verified against
+                    // Android's identical MultiCartView, which never used a card here at
+                    // all (docs/UI_UX_GUIDELINES.md §10). Real Divider()s mark each
+                    // merchant-group boundary, matching a real receipt breakdown.
                     VStack(alignment: .leading, spacing: 14) {
                         ForEach(groups, id: \.merchantId) { group in
                             VStack(alignment: .leading, spacing: 6) {
@@ -188,10 +193,8 @@ struct MultiCartView: View {
                                     }
                                 }
                             }
-                            .padding(16)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
@@ -224,10 +227,7 @@ struct MultiCartView: View {
                                 Text(error).font(.caption).foregroundColor(.red)
                             }
                         }
-                        .padding(16)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
                     .padding(.horizontal, IDS.Layout.screenHorizontal)
                     .padding(.top, 12)

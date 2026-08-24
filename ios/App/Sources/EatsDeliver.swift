@@ -55,9 +55,9 @@ struct DeliverContent: View {
             if let error { Text(error).font(.caption).foregroundColor(.red) }
         }
         .frame(maxWidth: .infinity)
-        .padding(28)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- the
+        // whole screen's content when shown (rider not yet onboarded).
+        .padding(.vertical, 10)
     }
 
     private var riderDashboard: some View {
@@ -80,9 +80,11 @@ struct DeliverContent: View {
                         .cornerRadius(14)
                 }
             }
-            .padding(18)
-            .background(IDS.Colors.card)
-            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+            // a sibling section shown together with the deliveries lists below, so a
+            // real Divider marks the boundary instead (docs/UI_UX_GUIDELINES.md §10).
+            .padding(.vertical, 10)
+            Divider().overlay(IDS.Colors.divider)
 
             if let error { Text(error).font(.caption).foregroundColor(.red) }
 
