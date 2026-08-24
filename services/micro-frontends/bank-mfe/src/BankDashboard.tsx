@@ -6261,8 +6261,14 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
             type="text" inputMode="numeric" pattern="[0-9]*" autoFocus placeholder="Enter code" value={code} onChange={(e) => setCode(e.target.value)} required
             style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
+          {/* Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11 --
+              picked up the explicitly-flagged "not audited this pass" recommendation:
+              cross-reference generic Confirm/Submit/OK labels against their real
+              action). A bare "Confirm" doesn't state the outcome; states the specific
+              action instead, matching the fix already applied to TransferFlow's own
+              identical bare-"Confirm" button nearby. */}
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 12px' }}>
-            {busy ? '…' : 'Confirm'}
+            {busy ? '…' : kind === 'email' ? 'Verify email' : 'Verify phone number'}
           </button>
         </form>
       )}
