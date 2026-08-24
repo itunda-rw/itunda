@@ -81,10 +81,18 @@ struct FloatMarketplaceScreenView: View {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if let message { Text(message).font(.caption).foregroundColor(IDS.Colors.brand) }
 
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                    // from each of these 5 sections -- they render together on one
+                    // screen, so a real Divider marks each section boundary instead
+                    // (docs/UI_UX_GUIDELINES.md §10).
                     postListingCard
+                    Divider().overlay(IDS.Colors.divider)
                     nearbyCard
+                    Divider().overlay(IDS.Colors.divider)
                     myListingsCard
+                    Divider().overlay(IDS.Colors.divider)
                     incomingRequestsCard
+                    Divider().overlay(IDS.Colors.divider)
                     myRequestsCard
                 }
                 .padding(IDS.Layout.screenHorizontal)
@@ -114,7 +122,7 @@ struct FloatMarketplaceScreenView: View {
             }
             .disabled(busy)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 
     private var nearbyCard: some View {
@@ -149,7 +157,7 @@ struct FloatMarketplaceScreenView: View {
                 Divider()
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 
     private var myListingsCard: some View {
@@ -169,7 +177,7 @@ struct FloatMarketplaceScreenView: View {
                 .padding(.vertical, 4)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 
     private var incomingRequestsCard: some View {
@@ -190,7 +198,7 @@ struct FloatMarketplaceScreenView: View {
                 .padding(.vertical, 4)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 
     private var myRequestsCard: some View {
@@ -208,7 +216,7 @@ struct FloatMarketplaceScreenView: View {
                 .padding(.vertical, 4)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 
     private func loadMine() async {
