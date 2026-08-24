@@ -81,9 +81,9 @@ struct DirectMessagesList: View {
                     Text(startError).font(.caption).foregroundColor(.red)
                 }
             }
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a
+            // lone form, no sibling section shown at the same time.
             .padding(20)
-            .background(IDS.Colors.card)
-            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, 12)
             .listRowInsets(EdgeInsets())
@@ -116,9 +116,9 @@ struct DirectMessagesList: View {
                     Button("Retry", action: onRetry)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // a lone error state.
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -273,9 +273,10 @@ struct ConversationRow: View {
                     .clipShape(Capsule())
             }
         }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+        // matches Android's identical ConversationRow, already a flat row with no
+        // card (docs/UI_UX_GUIDELINES.md §10).
+        .padding(.vertical, 18)
     }
 }
 

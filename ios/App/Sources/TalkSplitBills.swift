@@ -82,12 +82,16 @@ struct GroupSplitBillsView: View {
                             }
                             .disabled(busyId == "new" || selectedIds.isEmpty || amountText.isEmpty || descriptionText.isEmpty)
                         }
-                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        .padding(.vertical, 10)
+                        Divider().overlay(IDS.Colors.divider)
                     }
                     if let splitBills {
                         if splitBills.isEmpty {
                             Text("No split bills in this group yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
+                        // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
+                        // wrapper -- a history log of split-bill requests, kept the per-row
+                        // Divider convention (docs/DESIGN_REFERENCES.md §274).
                         ForEach(splitBills) { entry in
                             let myShare = entry.participants.first { $0.userId == currentUserId }
                             let isOrganizer = entry.splitBill.organizerId == currentUserId
@@ -144,7 +148,8 @@ struct GroupSplitBillsView: View {
                                     .disabled(busyId != nil)
                                 }
                             }
-                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                     } else {
                         ProgressView()
@@ -269,12 +274,15 @@ struct DirectSplitBillsView: View {
                             }
                             .disabled(busyId == "new" || amountText.isEmpty || descriptionText.isEmpty)
                         }
-                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        .padding(.vertical, 10)
+                        Divider().overlay(IDS.Colors.divider)
                     }
                     if let splitBills {
                         if splitBills.isEmpty {
                             Text("No split bills with \(otherUserName) yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
+                        // Real fix (2026-08-24, flat-design sweep): same history-log
+                        // conversion as GroupSplitBillsView above.
                         ForEach(splitBills) { entry in
                             let myShare = entry.participants.first { $0.userId == currentUserId }
                             let isOrganizer = entry.splitBill.organizerId == currentUserId
@@ -331,7 +339,8 @@ struct DirectSplitBillsView: View {
                                     .disabled(busyId != nil)
                                 }
                             }
-                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                     } else {
                         ProgressView()

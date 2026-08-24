@@ -142,15 +142,18 @@ struct ListingWishlistView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // a lone error state.
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
                 HoodFeedSkeleton()
             } else if favorites!.isEmpty {
                 EmptyStateView("No saved listings yet -- tap ♡ on any listing to save it here.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                // an entity/favorites list, no divider, matching web's identical
+                // ListingWishlistView conversion (docs/UI_UX_GUIDELINES.md §10).
                 ForEach(favorites!) { f in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -166,9 +169,7 @@ struct ListingWishlistView: View {
                         }
                         .disabled(removingId == f.listingId)
                     }
-                    .padding(16)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                 }
             }
         }
@@ -236,6 +237,8 @@ struct KeywordAlertsView: View {
                 EmptyStateView("No keyword alerts yet -- add one to get notified when a matching listing is posted.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
+                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                // an entity/management list (keyword alerts), no divider.
                 ForEach(alerts!) { a in
                     HStack {
                         Text(a.keyword).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -248,12 +251,14 @@ struct KeywordAlertsView: View {
                         }
                         .disabled(removingId == a.id)
                     }
-                    .padding(16)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                 }
             }
             if quietHoursLoaded {
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // a sibling section shown together with the alerts list above, so a real
+                // Divider marks the boundary instead.
+                Divider().overlay(IDS.Colors.divider)
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Quiet hours").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                     Text("Don't send alert notifications during these hours.")
@@ -272,9 +277,6 @@ struct KeywordAlertsView: View {
                     }
                     .disabled(savingQuietHours)
                 }
-                .padding(16)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             }
         }
         .task { await load() }

@@ -24,7 +24,9 @@ struct MerchantOrdersView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // a lone error state.
+                .padding(20)
             } else if let orders, !orders.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Orders for your store").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -99,6 +101,9 @@ struct MerchantReturnQueueView: View {
                 if !open.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Return & exchange requests").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                        // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
+                        // -- history log of return requests, kept the per-row Divider
+                        // convention (docs/DESIGN_REFERENCES.md §274).
                         ForEach(open) { r in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
@@ -122,7 +127,8 @@ struct MerchantReturnQueueView: View {
                                     .disabled(busyId == r.id)
                                 }
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                     }
                 }
@@ -178,9 +184,9 @@ struct MyCommerceOrdersView: View {
                         Button("Retry") { Task { await load() } }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // a lone error state.
                     .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if orders == nil {
                     SkeletonBlock(height: 120)
                 } else if orders!.isEmpty {

@@ -34,22 +34,27 @@ struct RequestMoneyScreenView: View {
             .padding()
 
             ScrollView {
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                // around each of these sibling sections -- real Divider()s mark the
+                // real boundaries instead (docs/UI_UX_GUIDELINES.md §10).
                 VStack(alignment: .leading, spacing: 12) {
                     CreateRequestCard(onCreated: { req in created = req; Task { await load() } })
 
                     if let created {
+                        Divider().overlay(IDS.Colors.divider)
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Share this code -- expires in 15 minutes").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text(created.id).font(.subheadline).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
 
+                    Divider().overlay(IDS.Colors.divider)
                     PayRequestCard(onPaid: { Task { await load() } })
 
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
 
+                    Divider().overlay(IDS.Colors.divider)
                     Text("My requests").font(.headline)
                     if let requests {
                         if requests.isEmpty {
@@ -59,6 +64,9 @@ struct RequestMoneyScreenView: View {
                             // stale claim in docs/COPY_VOICE.md's rule-2 mistake writeup.
                             EmptyStateView("No requests yet — ask someone to pay you above.")
                         } else {
+                            // Real fix (2026-08-24, flat-design sweep): dropped the per-row
+                            // Card -- history log of payment requests, kept the per-row
+                            // Divider convention (docs/DESIGN_REFERENCES.md §274).
                             ForEach(requests) { req in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 2) {
@@ -70,7 +78,8 @@ struct RequestMoneyScreenView: View {
                                         .font(.caption).bold()
                                         .foregroundColor(req.status == "COMPLETED" ? .green : req.status == "EXPIRED" ? IDS.Colors.textSecondary : IDS.Colors.brand)
                                 }
-                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                .padding(.vertical, 10)
+                                Divider().overlay(IDS.Colors.divider)
                             }
                         }
                     } else {
@@ -114,7 +123,6 @@ private struct CreateRequestCard: View {
             }
             .disabled(submitting)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func submit() async {
@@ -161,7 +169,6 @@ private struct PayRequestCard: View {
                 }
                 .disabled(paying || code.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             DeviceStepUpHost(
                 visible: needsDeviceVerification,
                 onDismiss: { needsDeviceVerification = false },

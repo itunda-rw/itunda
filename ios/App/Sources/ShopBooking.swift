@@ -319,6 +319,9 @@ struct MerchantBookingInfoSection: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Reviews" + (rating?.average.map { " · ⭐ \(String(format: "%.1f", $0)) (\(rating?.count ?? 0))" } ?? ""))
                                 .font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            // Real fix (2026-08-24, flat-design sweep): dropped the per-row
+                            // Card -- history log of reviews, kept the per-row Divider
+                            // convention (docs/DESIGN_REFERENCES.md §274).
                             ForEach(reviews.prefix(3), id: \.id) { r in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("\(String(repeating: "⭐", count: r.rating)) · \(r.serviceName)").font(.caption).bold()
@@ -326,9 +329,8 @@ struct MerchantBookingInfoSection: View {
                                     if let reply = r.ownerReply { Text("↳ \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary) }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(12)
-                                .background(IDS.Colors.card)
-                                .cornerRadius(10).idsCardBorder(cornerRadius: 10)
+                                .padding(.vertical, 10)
+                                Divider().overlay(IDS.Colors.divider)
                             }
                         }
                     }
