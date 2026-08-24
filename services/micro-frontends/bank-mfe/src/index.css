@@ -83,7 +83,11 @@ button {
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  transition: transform 0.1s ease-in-out;
+  /* Real fix (2026-08-24): every button's press-feedback timing, itunda's single
+     most-repeated animation touchpoint, used a generic `ease-in-out` -- now the
+     real Toss `out` curve (--itunda-ease-out, see tokens.css's own sourcing
+     comment), matching Android/iOS's identical port of the same real value. */
+  transition: transform 0.1s var(--itunda-ease-out);
 }
 
 button:active {

@@ -139,6 +139,26 @@
   --itunda-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   --itunda-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08);
   --itunda-transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Real Toss motion curves (2026-08-24), fetched directly from their own published
+     npm packages (@toss/tds-easings@0.0.1 -- `npm pack` + read the real bundled
+     dist/esm/index.js, not guessed or approximated): the exact 4 cubic-bezier control
+     points Toss ships under each named curve. --itunda-transition above already
+     happened to match --itunda-ease-out byte-for-byte before this fix (an earlier,
+     unlabeled guess that turned out correct) -- the other 4 named curves never
+     existed as tokens before now. Same real values ported to Android
+     (IdsMotion.kt's CubicBezierEasing) and iOS (IDS.Motion's Animation.timingCurve)
+     in the same pass, so all 3 platforms share identical timing curves, not just
+     identical colors/type. Real spring presets (stiffness/damping/mass, for
+     Framer Motion's `type: 'spring'` -- CSS transitions can't do real spring physics,
+     only bezier) live in lib/motion.ts, sourced from the sibling
+     @toss/tds-spring-easing@0.0.1 package the same way. */
+  --itunda-ease-linear: cubic-bezier(0, 0, 1, 1);
+  --itunda-ease-standard: cubic-bezier(0.6, 0, 0, 0.6);
+  --itunda-ease-out: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --itunda-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --itunda-ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
   --itunda-radius-sm: 8px;
   --itunda-radius-md: 16px;
   --itunda-radius-lg: 24px;

@@ -246,6 +246,36 @@ public struct IDS {
 
         public static let standardPadding: CGFloat = cardPadding
     }
+
+    /// Real Toss motion primitives (2026-08-24), fetched directly from their own
+    /// published npm packages -- `@toss/tds-easings@0.0.1` and
+    /// `@toss/tds-spring-easing@0.0.1`'s real bundled source (`npm pack`, read
+    /// `dist/esm/index.js`), not guessed or approximated. Same 5 bezier curves
+    /// ported to web (`packages/design-tokens/tokens.css`'s `--itunda-ease-*`) and
+    /// Android (`IdsMotion.kt`'s `CubicBezierEasing`); same 8 spring presets ported
+    /// to web (`lib/motion.ts`'s `itundaSpring`, for Framer Motion) and Android
+    /// (`IdsMotion.kt`'s `spring(dampingRatio, stiffness)`, damping ratio derived
+    /// from these same raw values since Compose's spring API takes a ratio, not raw
+    /// damping). `Animation.interpolatingSpring(mass:stiffness:damping:)` takes
+    /// Toss's real raw values directly here -- no conversion needed on iOS, unlike
+    /// Android. All 3 platforms now share identical timing curves and spring feel,
+    /// not just identical colors/type.
+    public struct Motion {
+        public static let easeLinear = Animation.timingCurve(0, 0, 1, 1)
+        public static let easeStandard = Animation.timingCurve(0.6, 0, 0, 0.6)
+        public static let easeOut = Animation.timingCurve(0.25, 0.1, 0.25, 1)
+        public static let easeExpo = Animation.timingCurve(0.16, 1, 0.3, 1)
+        public static let easeBack = Animation.timingCurve(0.34, 1.56, 0.64, 1)
+
+        public static let springBasic = Animation.interpolatingSpring(mass: 1, stiffness: 200, damping: 30)
+        public static let springSmall = Animation.interpolatingSpring(mass: 1, stiffness: 480, damping: 50)
+        public static let springQuick = Animation.interpolatingSpring(mass: 1, stiffness: 800, damping: 55)
+        public static let springMedium = Animation.interpolatingSpring(mass: 1, stiffness: 270, damping: 25)
+        public static let springLarge = Animation.interpolatingSpring(mass: 1, stiffness: 100, damping: 15)
+        public static let springSlow = Animation.interpolatingSpring(mass: 1, stiffness: 70, damping: 20)
+        public static let springRapid = Animation.interpolatingSpring(mass: 1, stiffness: 1000, damping: 55)
+        public static let springBounce = Animation.interpolatingSpring(mass: 1, stiffness: 300, damping: 15)
+    }
 }
 
 /// Real fix (2026-08-24, direct user directive, same pass as Android's IdsCard

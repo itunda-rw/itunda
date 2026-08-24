@@ -22,10 +22,15 @@ public struct PressScaleButtonStyle: ButtonStyle {
         self.enabled = enabled
     }
 
+    // Real fix (2026-08-24, Toss motion-curve sourcing pass): was a hand-picked
+    // .spring(response:dampingFraction:) -- now IDS.Motion.springQuick, the real
+    // Toss "quick" spring preset (see IDS.swift's own Motion struct sourcing
+    // comment), matching web's identical button:active timing and Android's
+    // pressScaleClickable spring.
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed && enabled ? 0.96 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+            .animation(IDS.Motion.springQuick, value: configuration.isPressed)
     }
 }
 

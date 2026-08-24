@@ -1,8 +1,6 @@
 package rw.itunda.core.designsystem.components
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.InteractionSource
@@ -14,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
+import rw.itunda.core.designsystem.theme.IdsMotion
 
 // Extracted 2026-08-11 from IdsButton.kt's own press-scale fix (2026-08-11, "시각적
 // 신호가 탭이 발생하는 정확한 순간에 햅틱/사용자 액션과 동기화되어야 한다") -- that
@@ -23,12 +22,16 @@ import androidx.compose.ui.draw.scale
 // static" inconsistency that fix's own doc comment warned about. Shared here so the
 // same spring spec can't drift between call sites the way the three duplicate button
 // composables (PrimaryAction/SmallBlueButton/TopIconButton) already once did.
+// Real fix (2026-08-24, Toss motion-curve sourcing pass): was Compose's own generic
+// Spring.DampingRatioMediumBouncy/StiffnessHigh presets -- now IdsMotion.springQuick,
+// the real Toss "quick" spring preset (see IdsMotion.kt's own sourcing comment),
+// matching web's identical button:active timing and iOS's press-feedback spring.
 @Composable
 fun rememberPressScale(interactionSource: InteractionSource, enabled: Boolean = true): Float {
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed && enabled) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = IdsMotion.springQuick(),
         label = "pressScale",
     )
     return scale
