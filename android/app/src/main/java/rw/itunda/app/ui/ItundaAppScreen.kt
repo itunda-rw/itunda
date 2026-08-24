@@ -3103,12 +3103,18 @@ private fun AccountDetailScreen(
         // pinned to the bottom of the screen, not scrolling away with the ledger
         // content above it. Moved out of the LazyColumn into a fixed footer here,
         // matching FullScreenFlow's own bottomCTA convention on bank-mfe.
+        //
+        // Real fix (2026-08-24, direct user side-by-side against a real Toss Bank
+        // screenshot: "there is no layer sitting btn button and those contents") --
+        // dropped the .border() that used to draw a visible divider line above this
+        // footer. The real reference has no seam at all between the scrolled ledger
+        // and the fixed button row; same background color on both sides already
+        // gives enough real separation on its own.
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Ids.colors.background)
-                .border(width = 0.5.dp, color = Ids.colors.divider)
                 .padding(horizontal = Ids.layout.screenHorizontal, vertical = 12.dp)
                 .padding(bottom = 8.dp),
         ) {
@@ -3132,23 +3138,29 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
     // reference until now.
     val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     val (rowIcon, rowIconColor) = ledgerRowIcon(transaction)
+    // Real fix (2026-08-24, direct user side-by-side of itunda's own ledger against a
+    // real Toss Bank screenshot: "toss ux is more big clear to see"). Bumped the
+    // title/amount from 15sp SemiBold to IdsTypography's real Subtitle1 step (17sp
+    // Bold, sourced TDS scale -- not an invented size) and the icon circle from 38dp
+    // to 42dp proportionally, matching Toss's real bigger, bolder row weight. The
+    // secondary time/balance lines stay small and subdued, same as the real reference.
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(38.dp).clip(CircleShape).background(rowIconColor),
+            modifier = Modifier.size(42.dp).clip(CircleShape).background(rowIconColor),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(rowIcon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+            Icon(rowIcon, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(transaction.description, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(transaction.description, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             Text(ledgerTimeOfDay(transaction.createdAt), color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(amountText, color = amountColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(amountText, color = amountColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             Text("$currency %,.0f".format(afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
     }
