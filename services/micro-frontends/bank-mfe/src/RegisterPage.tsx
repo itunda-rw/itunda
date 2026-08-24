@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
-import { ApiError, getTerms, register, type TermsDocument } from './lib/api';
+import { IconShieldCheck } from './icons/ItundaIcons';
+import { ChevronDown, ChevronUp } from 'lucide-react';import { ApiError, getTerms, register, type TermsDocument } from './lib/api';
 import { PinPad } from './PinPad';
 
 // Real sign-up page (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8
@@ -106,7 +106,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
       <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
         <div className="itunda-card" style={{ width: '100%', maxWidth: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck size={24} color="var(--itunda-indigo)" />
+            <IconShieldCheck size={24} color="var(--itunda-indigo)" />
             <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
           </div>
           <PinPad
@@ -144,7 +144,7 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
         style={{ width: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <ShieldCheck size={24} color="var(--itunda-indigo)" />
+          <IconShieldCheck size={24} color="var(--itunda-indigo)" />
           <h1 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
         </div>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>

@@ -160,3 +160,67 @@ export function IconAdd(props: ItundaIconProps) {
     </IconBase>
   );
 }
+
+// Phase 3 (2026-08-24, same session, continuing "full commitment, all 3 platforms"):
+// the next 6 highest-value concepts by real combined cross-platform usage frequency
+// -- Star (rating, ~24 combined uses: Android 10 + iOS 4 + web 10), Send (~14:
+// Android 8 + iOS 3 + web 3), Bell (notifications, ~14: Android 7 + iOS 2 + web 5),
+// ShieldCheck (verified/trust badge, ~13, mostly web-heavy), Eye/EyeOff
+// (show/hide password, ~10 combined on web/Android -- iOS doesn't use an icon for
+// this at all, confirmed via a real grep sweep, so no iOS port needed for this pair).
+// Same 24x24/2.4px-stroke construction, verified via rsvg-convert at full size and
+// the real 18px deployed size before shipping.
+export function IconStar(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12,2.5 L14.9,9 L22,9.7 L16.7,14.5 L18.2,21.5 L12,17.8 L5.8,21.5 L7.3,14.5 L2,9.7 L9.1,9 Z" />
+    </IconBase>
+  );
+}
+
+export function IconSend(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M3,11 L21,3 L13,21 L11,13 L3,11 Z" />
+      <path d="M11,13 L21,3" />
+    </IconBase>
+  );
+}
+
+export function IconBell(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6,10.5 C6,6.9 8.7,4 12,4 C15.3,4 18,6.9 18,10.5 V14.5 L20.2,17.5 H3.8 L6,14.5 Z" />
+      <path d="M9.8,19.8 C9.8,21 10.8,22 12,22 C13.2,22 14.2,21 14.2,19.8" />
+    </IconBase>
+  );
+}
+
+export function IconShieldCheck(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12,2.5 L20,5.5 V11 C20,16.2 16.6,20.4 12,21.8 C7.4,20.4 4,16.2 4,11 V5.5 Z" />
+      <path d="M8.5,12 L11,14.5 L15.5,9.5" />
+    </IconBase>
+  );
+}
+
+export function IconEye(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M2,12 C4,7 8,4.5 12,4.5 C16,4.5 20,7 22,12 C20,17 16,19.5 12,19.5 C8,19.5 4,17 2,12 Z" />
+      <circle cx="12" cy="12" r="3" />
+    </IconBase>
+  );
+}
+
+export function IconEyeOff(props: ItundaIconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4.2,4.2 L19.8,19.8" />
+      <path d="M10.3,5.1 C10.9,4.9 11.4,4.8 12,4.8 C16,4.8 20,7.3 22,12.3 C21.4,13.7 20.7,14.9 19.8,15.9" />
+      <path d="M6.4,6.9 C4.4,8.2 2.9,10.1 2,12.3 C4,17.3 8,19.8 12,19.8 C13.3,19.8 14.6,19.5 15.8,19" />
+      <path d="M9.6,10 C9.2,10.5 9,11.1 9,11.8 C9,13.5 10.3,14.8 12,14.8 C12.7,14.8 13.3,14.6 13.8,14.2" />
+    </IconBase>
+  );
+}

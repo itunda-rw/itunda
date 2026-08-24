@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { IconBell, IconEye, IconEyeOff, IconSend, IconShieldCheck, IconStar } from './icons/ItundaIcons';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bell, Bike, Camera, Car, Check, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
-import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
+import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -356,7 +356,7 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
           aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')}
           style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
         >
-          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
         </button>
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -816,7 +816,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
           </button>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('transfer.toLabel')}</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{recipientName}</span>
-          {recipientPreview && <ShieldCheck size={15} color="var(--itunda-indigo)" />}
+          {recipientPreview && <IconShieldCheck size={15} color="var(--itunda-indigo)" />}
           <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
             <IconClose size={20} color="var(--itunda-grey-500)" />
           </button>
@@ -1306,7 +1306,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       )}
       <div style={{ display: 'flex', gap: '8px', margin: '4px 0 16px' }}>
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!account} style={{ flex: 1, minHeight: '48px' }}>
-          <Send size={17} /> Send money
+          <IconSend size={17} /> Send money
         </button>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => onNavigateToTab('BILLS')} style={{ flex: 1, minHeight: '48px' }}>
           <Receipt size={17} /> Bills & airtime
@@ -2411,7 +2411,7 @@ function CertificateView() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-        <ShieldCheck size={22} color={certificate?.status === 'ACTIVE' ? 'var(--itunda-green)' : 'var(--itunda-grey-500)'} />
+        <IconShieldCheck size={22} color={certificate?.status === 'ACTIVE' ? 'var(--itunda-green)' : 'var(--itunda-grey-500)'} />
         <h2 style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>Itunda Certificate</h2>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
@@ -4895,7 +4895,7 @@ function UssdSettingsView() {
               aria-label={pinVisible ? 'Hide PIN' : 'Show PIN'}
               style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
             >
-              {pinVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+              {pinVisible ? <IconEyeOff size={18} /> : <IconEye size={18} />}
             </button>
           </div>
           <input
@@ -5152,7 +5152,7 @@ function RateAlertCard({ accounts }: { accounts: ForeignCurrencyAccount[] }) {
           <div key={w.currency} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
-                <Bell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
+                <IconBell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
                 RWF/{w.currency}: notify when {a.direction === 'ABOVE' ? '≥' : '≤'} {a.targetRate}
               </p>
               {a.alertTriggeredAt && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Already triggered -- set a new target to re-arm it.</p>}
@@ -5194,7 +5194,7 @@ function RateAlertCard({ accounts }: { accounts: ForeignCurrencyAccount[] }) {
         </form>
       ) : (
         <button onClick={() => setExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
-          <Bell size={14} /> Set a rate alert
+          <IconBell size={14} /> Set a rate alert
         </button>
       )}
     </div>
@@ -7680,7 +7680,7 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
 function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult; onDone: () => void }) {
   return (
     <div style={{ textAlign: 'center', padding: '28px 0' }}>
-      <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+      <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
       <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
       <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
       {result.channel === 'FACE_PAY' && (
@@ -7924,7 +7924,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           <IconBack size={18} />
         </button>
         <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--itunda-grey-300)', display: 'flex', padding: '4px' }} aria-label="Toggle watch">
-          <Star size={20} fill={watching ? '#FFC107' : 'none'} />
+          <IconStar size={20} fill={watching ? '#FFC107' : 'none'} />
         </button>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
@@ -7985,7 +7985,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
-                <Bell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
+                <IconBell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
                 Alert set: notify when {alert.targetDirection === 'ABOVE' ? '≥' : '≤'} {alert.targetPrice.toLocaleString()} RWF
               </p>
               {alert.alertTriggeredAt && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Already triggered -- set a new target to re-arm it.</p>}
@@ -8021,7 +8021,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           </form>
         ) : (
           <button onClick={() => setAlertExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
-            <Bell size={14} /> Set a price alert
+            <IconBell size={14} /> Set a price alert
           </button>
         )}
       </div>
@@ -9939,7 +9939,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <button type="submit" aria-label="Send message" className="itunda-btn itunda-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
-          <Send size={16} />
+          <IconSend size={16} />
         </button>
       </form>
     </div>
@@ -10459,7 +10459,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
         />
         <button type="submit" aria-label="Send message" className="itunda-btn itunda-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
-          <Send size={16} />
+          <IconSend size={16} />
         </button>
       </form>
     </div>
@@ -15454,7 +15454,7 @@ function StarRatingInput({ value, onChange }: { value: number; onChange: (rating
     <div style={{ display: 'flex', gap: '4px' }}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" onClick={() => onChange(n)} style={{ display: 'flex', padding: 0 }} aria-label={`${n} star${n === 1 ? '' : 's'}`}>
-          <Star size={22} color={n <= value ? '#F5A623' : 'var(--itunda-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
+          <IconStar size={22} color={n <= value ? '#F5A623' : 'var(--itunda-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
         </button>
       ))}
     </div>
@@ -15509,7 +15509,7 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
         onClick={toggle}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', padding: 0 }}
       >
-        <Star size={14} color="#F5A623" fill="#F5A623" />
+        <IconStar size={14} color="#F5A623" fill="#F5A623" />
         {rating.average?.toFixed(1)} ({rating.count})
       </button>
       {open && (
@@ -16611,7 +16611,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
     // the whole confirmation screen's content (docs/UI_UX_GUIDELINES.md §10).
     return (
       <div style={{ textAlign: 'center', padding: '28px' }}>
-        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
         {confirmed.promotionDiscount > 0 && (
@@ -16810,7 +16810,7 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   {r.category && <span>{r.category}</span>}
                   {r.rating != null && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      <Star size={11} color="#F5A623" fill="#F5A623" /> {r.rating.toFixed(1)} ({r.reviewCount})
+                      <IconStar size={11} color="#F5A623" fill="#F5A623" /> {r.rating.toFixed(1)} ({r.reviewCount})
                     </span>
                   )}
                   {/* Real Baemin 찜 (favorites) count (2026-08-16) -- see
@@ -17627,7 +17627,7 @@ function TrustedContactsSection() {
     <div style={{ marginBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <ShieldCheck size={16} color="var(--itunda-green)" /> Trusted contacts
+          <IconShieldCheck size={16} color="var(--itunda-green)" /> Trusted contacts
         </h3>
         {(contacts?.length ?? 0) < 5 && (
           <button style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }} onClick={() => setShowAdd((v) => !v)}>
@@ -19307,7 +19307,7 @@ function DineInCustomerView() {
     // whole confirmation screen's content (docs/UI_UX_GUIDELINES.md §10).
     return (
       <div style={{ textAlign: 'center', padding: '28px' }}>
-        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>Table {confirmed.tableNumber}</p>
@@ -19908,7 +19908,7 @@ function ProductRatingBadge({ productId }: { productId: string }) {
         onClick={toggle}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)', padding: 0 }}
       >
-        <Star size={13} color="#F5A623" fill="#F5A623" />
+        <IconStar size={13} color="#F5A623" fill="#F5A623" />
         {rating.average?.toFixed(1)} ({rating.count})
       </button>
       {open && (
@@ -21347,7 +21347,7 @@ function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutRe
   return (
     <div style={{ padding: '10px 0' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
+        <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700 }}>
           {successCount} of {results.length} order{results.length === 1 ? '' : 's'} placed
         </h3>
@@ -22250,7 +22250,7 @@ function ShopView() {
                   {m.category && <span>{m.category}</span>}
                   {m.rating != null && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      <Star size={11} color="#F5A623" fill="#F5A623" /> {m.rating.toFixed(1)} ({m.reviewCount})
+                      <IconStar size={11} color="#F5A623" fill="#F5A623" /> {m.rating.toFixed(1)} ({m.reviewCount})
                     </span>
                   )}
                   {!!m.favoriteCount && m.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {m.favoriteCount.toLocaleString()}</span>}
