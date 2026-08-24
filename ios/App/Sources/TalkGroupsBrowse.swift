@@ -23,20 +23,23 @@ struct FriendsList: View {
     var body: some View {
         Group {
             if let error {
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // the whole screen's content at this point (docs/UI_UX_GUIDELINES.md §10).
                 VStack(alignment: .leading, spacing: 10) {
                     Text(error).foregroundColor(.red).font(.subheadline)
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if contacts == nil {
                 SkeletonBlock(height: 120)
             } else if contacts!.isEmpty {
                 EmptyStateView("No friends yet -- save someone's contact and they'll show up here once they're on itunda.")
             } else {
                 ScrollView {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                    // a people list, matching GroupAccountScreen's/FamilyLinkScreen's
+                    // identical entity-list conversion, no divider.
                     VStack(spacing: 10) {
                         ForEach(contacts!) { contact in
                             Button(action: { Task { await startChat(contact) } }) {
@@ -60,9 +63,7 @@ struct FriendsList: View {
                                         Text("…").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
                                     }
                                 }
-                                .padding(16)
-                                .background(IDS.Colors.card)
-                                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                .padding(.vertical, 10)
                             }
                             .disabled(startingId == contact.userId)
                         }
@@ -141,9 +142,11 @@ struct GroupsList: View {
                         Text(createError).font(.caption).foregroundColor(.red)
                     }
                 }
+                // Real fix (2026-08-24, flat-design sweep): dropped this Card and the
+                // error-state Card below -- OpenChatCard (a real, distinct card widget,
+                // confirmed KEEP) already provides visual separation on both sides
+                // (docs/UI_UX_GUIDELINES.md §10).
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                 OpenChatCard(onCreated: onCreated, onJoined: onCreated)
 
@@ -154,13 +157,14 @@ struct GroupsList: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                 } else if groups == nil {
                     SkeletonBlock(height: 120)
                 } else if groups!.isEmpty {
                     EmptyStateView("No groups yet — start one to chat with more than one person at a time.")
                 } else {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                    // a groups list, matching GroupAccountScreen's/FamilyLinkScreen's
+                    // identical entity-list conversion, no divider.
                     ForEach(groups!) { group in
                         Button(action: { onOpen(group) }) {
                             GroupRow(group: group)
@@ -223,9 +227,7 @@ struct GroupRow: View {
                     .clipShape(Capsule())
             }
         }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 }
 
