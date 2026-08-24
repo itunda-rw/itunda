@@ -73,7 +73,7 @@ struct ForeignCurrencyScreenView: View {
                                     Spacer()
                                     CountUpText("\(formatFx(account.balance)) \(account.currency)").bold()
                                 }
-                                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                .padding(.vertical, 10)
                             }
                         }
 
@@ -110,7 +110,7 @@ struct ForeignCurrencyScreenView: View {
                                 Text("Rate \(c.rate) · itunda fee \(formatFx(c.marginAmount)) \(c.toCurrency)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
                         }
                     }
                 }
@@ -183,7 +183,6 @@ private struct ConvertPanel: View {
             }
             .disabled(submitting)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         .task(id: "\(fromCurrency)-\(toCurrency)") {
             rate = try? await NetworkClient.shared.getExchangeRate(from: fromCurrency, to: toCurrency).rate
         }
@@ -276,7 +275,7 @@ private struct RateAlertsPanel: View {
                         Spacer()
                         Button("Remove") { Task { await clear(code) } }.font(.footnote).bold().foregroundColor(.red)
                     }
-                    .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                 }
             }
 
@@ -308,7 +307,6 @@ private struct RateAlertsPanel: View {
                 }
                 .disabled(submitting)
             }
-            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
         }
     }
 }
