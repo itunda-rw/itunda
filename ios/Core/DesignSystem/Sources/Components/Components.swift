@@ -202,9 +202,14 @@ public struct IdsTextField: View {
                     // no automatic minimum tap area on iOS, unlike Android's IconButton --
                     // explicit frame required.
                     Button(action: { passwordVisible.toggle() }) {
-                        Image(systemName: passwordVisible ? "eye.slash" : "eye")
-                            .foregroundColor(IDS.Colors.textTertiary)
-                            .frame(width: 24, height: 24)
+                        Group {
+                            if passwordVisible {
+                                IDS.Icons.eyeOff(size: 20, color: IDS.Colors.textTertiary)
+                            } else {
+                                IDS.Icons.eye(size: 20, color: IDS.Colors.textTertiary)
+                            }
+                        }
+                        .frame(width: 24, height: 24)
                     }
                     .buttonStyle(PressScaleButtonStyle())
                     .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")

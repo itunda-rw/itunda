@@ -591,9 +591,7 @@ struct HeaderTitle: View {
                 .font(scaledFont(size: 28, weight: .bold, relativeTo: .largeTitle))
                 .foregroundColor(.primary)
             Spacer()
-            Image(systemName: "bell.fill")
-                .foregroundColor(.secondary)
-                .font(.title2)
+            IDS.Icons.bell(size: 22, color: .secondary)
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)

@@ -333,7 +333,7 @@ struct OrderFoodContent: View {
                                         ].compactMap { $0 }.joined(separator: " · ")
                                         HStack(spacing: 4) {
                                             if let rating = restaurant.rating {
-                                                Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
+                                                IDS.Icons.star(size: 12, color: .yellow)
                                                 Text(String(format: "%.1f (%d)", rating, restaurant.reviewCount ?? 0))
                                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                                 if !detailLine.isEmpty {

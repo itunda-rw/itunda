@@ -326,8 +326,7 @@ struct ChatThreadScreen: View {
                     }
                 ))
                 Button(action: { Task { await send() } }) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor(.white)
+                    IDS.Icons.send(size: 20, color: .white)
                         .frame(width: 44, height: 44)
                         .background(draft.isEmpty || sending ? IDS.Colors.textTertiary : IDS.Colors.brand)
                         .clipShape(Circle())

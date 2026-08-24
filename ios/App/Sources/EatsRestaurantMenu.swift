@@ -13,8 +13,7 @@ struct StarRatingRow: View {
         HStack(spacing: 4) {
             ForEach(1...5, id: \.self) { n in
                 Button(action: { onChange(n) }) {
-                    Image(systemName: n <= value ? "star.fill" : "star")
-                        .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
+                    IDS.Icons.star(size: 24, color: n <= value ? .yellow : IDS.Colors.textTertiary)
                 }
                 .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
             }
@@ -77,7 +76,7 @@ struct RestaurantRatingBadge: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Button(action: toggle) {
                         HStack(spacing: 4) {
-                            Image(systemName: "star.fill").font(.caption).foregroundColor(.yellow)
+                            IDS.Icons.star(size: 13, color: .yellow)
                             Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }

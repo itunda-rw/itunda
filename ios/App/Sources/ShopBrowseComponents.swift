@@ -71,8 +71,7 @@ struct ShopStarRatingRow: View {
         HStack(spacing: 4) {
             ForEach(1...5, id: \.self) { n in
                 Button(action: { onChange(n) }) {
-                    Image(systemName: n <= value ? "star.fill" : "star")
-                        .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
+                    IDS.Icons.star(size: 24, color: n <= value ? .yellow : IDS.Colors.textTertiary)
                 }
                 .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
             }

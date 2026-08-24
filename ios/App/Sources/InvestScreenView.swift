@@ -159,7 +159,7 @@ private struct StockRow: View {
                 }
                 Spacer()
                 if isWatched {
-                    Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
+                    IDS.Icons.star(size: 12, color: .yellow)
                 }
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(formatMoney(stock.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -380,8 +380,7 @@ private struct StockDetailContent: View {
                     Text("\(stock.symbol) · \(stock.marketCap)").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
                     Spacer()
                     Button(action: toggleWatch) {
-                        Image(systemName: watching ? "star.fill" : "star")
-                            .foregroundColor(watching ? .yellow : IDS.Colors.textSecondary)
+                        IDS.Icons.star(size: 20, color: watching ? .yellow : IDS.Colors.textSecondary)
                     }
                     .accessibilityLabel(watching ? "Remove from watchlist" : "Add to watchlist")
                 }
@@ -442,7 +441,7 @@ private struct StockDetailContent: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 4) {
-                                Image(systemName: "bell.fill").font(.caption)
+                                IDS.Icons.bell(size: 13, color: IDS.Colors.textPrimary)
                                 Text("Alert set: notify when \(alertDirection == "ABOVE" ? "≥" : "≤") \(formatMoney(targetPrice)) RWF")
                                     .font(.caption).bold()
                             }
@@ -485,7 +484,7 @@ private struct StockDetailContent: View {
                 } else {
                     Button(action: { alertExpanded = true }) {
                         HStack(spacing: 6) {
-                            Image(systemName: "bell")
+                            IDS.Icons.bell(size: 15, color: IDS.Colors.brand)
                             Text("Set a price alert").font(.caption).bold()
                         }
                         .foregroundColor(IDS.Colors.brand)

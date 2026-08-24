@@ -235,7 +235,7 @@ struct ConversationRow: View {
             ZStack(alignment: .bottomTrailing) {
                 ZStack {
                     Circle().fill(IDS.Colors.chipBackground)
-                    Image(systemName: "paperplane.fill").foregroundColor(IDS.Colors.brand)
+                    IDS.Icons.send(size: 20, color: IDS.Colors.brand)
                 }
                 .frame(width: 44, height: 44)
                 if online {

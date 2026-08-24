@@ -95,9 +95,14 @@ struct DeviceStepUpView: View {
                 // convention): a bare Image(systemName:) inside a Button has no automatic
                 // minimum tap area on iOS.
                 Button(action: { passwordVisible.toggle() }) {
-                    Image(systemName: passwordVisible ? "eye.slash" : "eye")
-                        .foregroundColor(.secondary)
-                        .frame(width: 24, height: 24)
+                    Group {
+                        if passwordVisible {
+                            IDS.Icons.eyeOff(size: 20, color: .secondary)
+                        } else {
+                            IDS.Icons.eye(size: 20, color: .secondary)
+                        }
+                    }
+                    .frame(width: 24, height: 24)
                 }
                 .accessibilityLabel(passwordVisible ? dsu("hidePassword") : dsu("showPassword"))
             }

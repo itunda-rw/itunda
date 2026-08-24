@@ -22,6 +22,16 @@
 //  coordinate space to whatever rect it's given (`rect.width/24`, `rect.height/24`),
 //  matching how SF Symbols themselves scale to any requested size.
 //
+//  Phase 3 (same session): Star/Send/Bell/ShieldCheck/Eye/EyeOff, matching web's
+//  phase-3 icons/ItundaIcons.tsx and Android's IdsIcons additions -- byte-identical
+//  path data. Real call-site audit found and skipped several icon-name strings fed
+//  into shared generic components (IconGridSection's `(label, symbolName)` tuples,
+//  FlatRow/TopBarActionButton's `symbol:` params) that mix these concepts with many
+//  unrelated SF Symbols in the same config array -- retrofitting those shared
+//  components to accept a custom View instead of a String is a real, separately-
+//  scoped structural change, not part of this slice. Rolled out only to direct,
+//  single-purpose `Image(systemName:)` call sites.
+//
 
 import SwiftUI
 
@@ -88,6 +98,125 @@ public struct IDSAddShape: Shape {
     }
 }
 
+// Phase 3 (2026-08-24, same session, continuing "full commitment, all 3 platforms"):
+// byte-identical geometry to web's IconStar/IconSend/IconBell/IconShieldCheck/
+// IconEye/IconEyeOff (services/micro-frontends/bank-mfe/src/icons/ItundaIcons.tsx)
+// and Android's matching IdsIcons additions. Unlike web/Android these are all
+// stroke-only (`.stroke`, never `.fill`) even for Star -- matching the real
+// convention web already shipped: a "watched"/"rated" state is communicated by
+// color alone (e.g. `.yellow` vs `IDS.Colors.textSecondary`), not by switching to a
+// solid glyph, so replacing SF Symbols' separate "star"/"star.fill" pair with a
+// single stroke shape is a faithful port, not a regression.
+public struct IDSStarShape: Shape {
+    public init() {}
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: p(12, 2.5, in: rect))
+        path.addLine(to: p(14.9, 9, in: rect))
+        path.addLine(to: p(22, 9.7, in: rect))
+        path.addLine(to: p(16.7, 14.5, in: rect))
+        path.addLine(to: p(18.2, 21.5, in: rect))
+        path.addLine(to: p(12, 17.8, in: rect))
+        path.addLine(to: p(5.8, 21.5, in: rect))
+        path.addLine(to: p(7.3, 14.5, in: rect))
+        path.addLine(to: p(2, 9.7, in: rect))
+        path.addLine(to: p(9.1, 9, in: rect))
+        path.closeSubpath()
+        return path
+    }
+}
+
+public struct IDSSendShape: Shape {
+    public init() {}
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: p(3, 11, in: rect))
+        path.addLine(to: p(21, 3, in: rect))
+        path.addLine(to: p(13, 21, in: rect))
+        path.addLine(to: p(11, 13, in: rect))
+        path.closeSubpath()
+        path.move(to: p(11, 13, in: rect))
+        path.addLine(to: p(21, 3, in: rect))
+        return path
+    }
+}
+
+public struct IDSBellShape: Shape {
+    public init() {}
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: p(6, 10.5, in: rect))
+        path.addCurve(to: p(12, 4, in: rect), control1: p(6, 6.9, in: rect), control2: p(8.7, 4, in: rect))
+        path.addCurve(to: p(18, 10.5, in: rect), control1: p(15.3, 4, in: rect), control2: p(18, 6.9, in: rect))
+        path.addLine(to: p(18, 14.5, in: rect))
+        path.addLine(to: p(20.2, 17.5, in: rect))
+        path.addLine(to: p(3.8, 17.5, in: rect))
+        path.addLine(to: p(6, 14.5, in: rect))
+        path.closeSubpath()
+        path.move(to: p(9.8, 19.8, in: rect))
+        path.addCurve(to: p(12, 22, in: rect), control1: p(9.8, 21, in: rect), control2: p(10.8, 22, in: rect))
+        path.addCurve(to: p(14.2, 19.8, in: rect), control1: p(13.2, 22, in: rect), control2: p(14.2, 21, in: rect))
+        return path
+    }
+}
+
+public struct IDSShieldCheckShape: Shape {
+    public init() {}
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: p(12, 2.5, in: rect))
+        path.addLine(to: p(20, 5.5, in: rect))
+        path.addLine(to: p(20, 11, in: rect))
+        path.addCurve(to: p(12, 21.8, in: rect), control1: p(20, 16.2, in: rect), control2: p(16.6, 20.4, in: rect))
+        path.addCurve(to: p(4, 11, in: rect), control1: p(7.4, 20.4, in: rect), control2: p(4, 16.2, in: rect))
+        path.addLine(to: p(4, 5.5, in: rect))
+        path.closeSubpath()
+        path.move(to: p(8.5, 12, in: rect))
+        path.addLine(to: p(11, 14.5, in: rect))
+        path.addLine(to: p(15.5, 9.5, in: rect))
+        return path
+    }
+}
+
+public struct IDSEyeShape: Shape {
+    public init() {}
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: p(2, 12, in: rect))
+        path.addCurve(to: p(12, 4.5, in: rect), control1: p(4, 7, in: rect), control2: p(8, 4.5, in: rect))
+        path.addCurve(to: p(22, 12, in: rect), control1: p(16, 4.5, in: rect), control2: p(20, 7, in: rect))
+        path.addCurve(to: p(12, 19.5, in: rect), control1: p(20, 17, in: rect), control2: p(16, 19.5, in: rect))
+        path.addCurve(to: p(2, 12, in: rect), control1: p(8, 19.5, in: rect), control2: p(4, 17, in: rect))
+        path.closeSubpath()
+        let center = p(12, 12, in: rect)
+        let radius = 3 / 24 * min(rect.width, rect.height)
+        path.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
+        return path
+    }
+}
+
+public struct IDSEyeOffShape: Shape {
+    public init() {}
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: p(4.2, 4.2, in: rect))
+        path.addLine(to: p(19.8, 19.8, in: rect))
+        path.move(to: p(10.3, 5.1, in: rect))
+        path.addCurve(to: p(12, 4.8, in: rect), control1: p(10.9, 4.9, in: rect), control2: p(11.4, 4.8, in: rect))
+        path.addCurve(to: p(22, 12.3, in: rect), control1: p(16, 4.8, in: rect), control2: p(20, 7.3, in: rect))
+        path.addCurve(to: p(19.8, 15.9, in: rect), control1: p(21.4, 13.7, in: rect), control2: p(20.7, 14.9, in: rect))
+        path.move(to: p(6.4, 6.9, in: rect))
+        path.addCurve(to: p(2, 12.3, in: rect), control1: p(4.4, 8.2, in: rect), control2: p(2.9, 10.1, in: rect))
+        path.addCurve(to: p(12, 19.8, in: rect), control1: p(4, 17.3, in: rect), control2: p(8, 19.8, in: rect))
+        path.addCurve(to: p(15.8, 19, in: rect), control1: p(13.3, 19.8, in: rect), control2: p(14.6, 19.5, in: rect))
+        path.move(to: p(9.6, 10, in: rect))
+        path.addCurve(to: p(9, 11.8, in: rect), control1: p(9.2, 10.5, in: rect), control2: p(9, 11.1, in: rect))
+        path.addCurve(to: p(12, 14.8, in: rect), control1: p(9, 13.5, in: rect), control2: p(10.3, 14.8, in: rect))
+        path.addCurve(to: p(13.8, 14.2, in: rect), control1: p(12.7, 14.8, in: rect), control2: p(13.3, 14.6, in: rect))
+        return path
+    }
+}
+
 /// Real drop-in replacement for `Image(systemName: "chevron.left").font(...)
 /// .foregroundColor(...)`-shaped call sites -- `size`/`color` cover the real
 /// variance seen across existing call sites (different `.font(.system(size:))`
@@ -132,6 +261,36 @@ public extension IDS {
         public static func add(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
             let s = scaled(size, relativeTo: style)
             return IDSAddShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func star(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSStarShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func send(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSSendShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func bell(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSBellShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func shieldCheck(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSShieldCheckShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func eye(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSEyeShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func eyeOff(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSEyeOffShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
                 .frame(width: s, height: s)
         }
     }

@@ -97,7 +97,7 @@ struct ProductRatingBadge: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Button(action: toggle) {
                         HStack(spacing: 4) {
-                            Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
+                            IDS.Icons.star(size: 12, color: .yellow)
                             Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
                                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                         }
