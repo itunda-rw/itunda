@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RateReview
-import androidx.compose.material.icons.outlined.Star
+import rw.itunda.core.designsystem.theme.IdsIcons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,7 +170,7 @@ internal fun ProductRatingBadge(productId: String) {
                     }
                 },
             ) {
-                Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(13.dp))
+                Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(13.dp))
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = Ids.colors.textSecondary, fontSize = 12.sp)
             }

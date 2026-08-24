@@ -31,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inbox
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -593,7 +592,7 @@ fun StarRatingRow(value: Int, onChange: (Int) -> Unit) {
             val interactionSource = remember { MutableInteractionSource() }
             val pressScale = rememberPressScale(interactionSource)
             Icon(
-                Icons.Outlined.Star,
+                IdsIcons.Star,
                 contentDescription = "$n star${if (n == 1) "" else "s"}",
                 tint = if (n <= value) StarGold else Ids.colors.textTertiary,
                 modifier = Modifier

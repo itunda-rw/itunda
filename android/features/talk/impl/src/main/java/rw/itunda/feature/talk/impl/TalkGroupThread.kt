@@ -29,7 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Receipt
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -61,6 +60,7 @@ import okhttp3.WebSocket
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.shouldShowChatTimestamp
 import rw.itunda.core.designsystem.itundaface.CameraGlyph
@@ -470,7 +470,7 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(IdsIcons.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
             }
         }
     }

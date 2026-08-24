@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -67,6 +66,7 @@ import retrofit2.HttpException
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.itundaface.CameraGlyph
 import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.itundaface.PackageGlyph
@@ -814,7 +814,7 @@ private fun KeywordAlertsView() {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         when {
             alerts == null -> SkeletonBlock()
-            alerts!!.isEmpty() -> EmptyState("No keyword alerts yet -- add one to get notified when a matching listing is posted.", icon = Icons.Outlined.Notifications)
+            alerts!!.isEmpty() -> EmptyState("No keyword alerts yet -- add one to get notified when a matching listing is posted.", icon = IdsIcons.Bell)
             else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 alerts!!.forEach { a ->
                     Row(

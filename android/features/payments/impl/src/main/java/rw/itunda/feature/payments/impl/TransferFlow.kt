@@ -17,8 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.itundaface.GiftThemeGlyph
@@ -604,7 +602,7 @@ fun DeviceStepUpDialog(
                         modifier = Modifier.padding(end = 4.dp),
                     ) {
                         Icon(
-                            if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            if (passwordVisible) IdsIcons.EyeOff else IdsIcons.Eye,
                             contentDescription = if (passwordVisible) stringResource(R.string.transfer_hide_password) else stringResource(R.string.transfer_show_password),
                             tint = Ids.colors.textTertiary,
                         )

@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -29,6 +26,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTypography
 
 /**
@@ -123,7 +121,7 @@ fun IdsTextField(
                 {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
-                            if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            if (passwordVisible) IdsIcons.EyeOff else IdsIcons.Eye,
                             contentDescription = if (passwordVisible) "Hide password" else "Show password",
                             tint = Ids.colors.textTertiary,
                         )

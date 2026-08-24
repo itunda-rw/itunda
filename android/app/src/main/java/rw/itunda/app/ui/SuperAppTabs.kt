@@ -51,7 +51,6 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.RestaurantMenu
@@ -383,7 +382,7 @@ internal fun HoodSectionScreen(
                 Icon(IdsIcons.Search, contentDescription = "Search", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
                 Spacer(modifier = Modifier.width(16.dp))
                 Icon(
-                    Icons.Outlined.Notifications, contentDescription = "Notifications",
+                    IdsIcons.Bell, contentDescription = "Notifications",
                     modifier = Modifier.size(24.dp).pressScaleClickable(onClick = onOpenSettings), tint = Ids.colors.textPrimary,
                 )
                 Spacer(modifier = Modifier.width(16.dp))

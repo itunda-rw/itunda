@@ -75,7 +75,6 @@ import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MoreHoriz
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.Person
@@ -86,15 +85,11 @@ import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material.icons.outlined.Send
-import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.SportsEsports
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.SwapHoriz
@@ -2472,7 +2467,7 @@ private fun BankHubScreen(
                         // genuinely generic personal/SME loan product).
                         ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentIndigo, onClick = onOpenLoans),
                         ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.Agriculture, AccentTeal, onClick = onOpenHarvestAdvance),
-                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.Shield, AccentIndigo, onClick = onOpenVupLoan),
+                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", IdsIcons.ShieldCheck, AccentIndigo, onClick = onOpenVupLoan),
                         ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
                         ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
                     )
@@ -2840,7 +2835,7 @@ private fun HomeTopBar(
         // NotificationSettingsScreen). The red dot is real (unreadCount > 0), not
         // decorative -- matches the reference's own real unread indicator.
         Box {
-            IdsIconButton(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
+            IdsIconButton(IdsIcons.Bell, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
             if (unreadCount > 0) {
                 Box(
                     modifier = Modifier
@@ -3467,7 +3462,7 @@ private fun PayTab(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = IdsIcons.Add)
-                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
+                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = IdsIcons.Send)
             }
         }
         item {
@@ -4000,7 +3995,7 @@ private fun MenuScreen(
         FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
     )
     val sendPayRows = listOf(
-        FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
+        FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = IdsIcons.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
         FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentIndigo, onClick = onOpenRequestMoney),
         FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentIndigo, onClick = onOpenAutoTopUp),
         FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal, onClick = {
@@ -4181,7 +4176,7 @@ private fun MenuScreen(
                         "Youth" to Icons.Outlined.Savings,
                         "Games" to Icons.Outlined.SportsEsports,
                         "Bank" to Icons.Outlined.AccountBalance,
-                        "Pick" to Icons.Outlined.Star,
+                        "Pick" to IdsIcons.Star,
                     ),
                     onItemClick = { label ->
                         when (label) {
@@ -4197,10 +4192,10 @@ private fun MenuScreen(
                     listOf(
                         "Open account" to Icons.Outlined.AddCircleOutline,
                         "Verify" to Icons.Outlined.VerifiedUser,
-                        "Send" to Icons.Outlined.Send,
+                        "Send" to IdsIcons.Send,
                         "Group" to Icons.Outlined.Group,
                         "Property" to Icons.Outlined.HomeWork,
-                        "Insurance" to Icons.Outlined.Shield,
+                        "Insurance" to IdsIcons.ShieldCheck,
                     ),
                     onItemClick = { label ->
                         when (label) {

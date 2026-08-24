@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Fingerprint
@@ -807,7 +806,7 @@ private fun NotificationRow(notification: NotificationDto, onClick: () -> Unit) 
                 .background(if (notification.isRead) Ids.colors.chip else Ids.colors.pressed),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Outlined.Notifications, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
+            Icon(IdsIcons.Bell, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column {

@@ -30,8 +30,8 @@ import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
+import rw.itunda.core.designsystem.theme.IdsIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -149,7 +149,7 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                 if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                         if (m.rating != null) {
-                            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                            Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(2.dp))
                             Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))

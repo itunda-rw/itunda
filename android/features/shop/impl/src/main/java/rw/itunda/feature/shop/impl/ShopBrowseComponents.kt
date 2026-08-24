@@ -29,8 +29,8 @@ import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
+import rw.itunda.core.designsystem.theme.IdsIcons
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -136,7 +136,7 @@ internal fun ShoppingPointsRow(
                 val icon = when (m.type) {
                     "CHECK_IN" -> Icons.Outlined.Autorenew
                     "SCROLL" -> Icons.Outlined.Swipe
-                    "SPIN" -> Icons.Outlined.Star
+                    "SPIN" -> IdsIcons.Star
                     "CAT_FEED" -> Icons.Outlined.Pets
                     else -> Icons.AutoMirrored.Outlined.ReceiptLong
                 }
@@ -306,7 +306,7 @@ internal fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit) {
                 if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
                         if (m.rating != null) {
-                            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                            Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
                             Spacer(modifier = Modifier.width(2.dp))
                             Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))

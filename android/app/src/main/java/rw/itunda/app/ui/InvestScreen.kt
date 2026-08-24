@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -50,6 +49,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.FundInvestmentRequest
 import rw.itunda.core.network.isDeviceNotVerifiedError
@@ -617,7 +617,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(14.dp))
+                        Icon(IdsIcons.Bell, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "Alert set: notify when ${if (alertDirection == "ABOVE") "≥" else "≤"} ${formatMoney(alertTargetPrice!!)} RWF",
@@ -666,7 +666,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.pressScaleClickable { alertExpanded = true },
             ) {
-                Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(16.dp))
+                Icon(IdsIcons.Bell, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Set a price alert", color = Ids.colors.brand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
