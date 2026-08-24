@@ -2,6 +2,8 @@ package rw.itunda.savings
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Ikimina
 import rw.itunda.core.domain.IkiminaContribution
@@ -9,18 +11,22 @@ import rw.itunda.core.domain.IkiminaMember
 import rw.itunda.core.domain.IkiminaStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.IkiminaContributionRepository
 import rw.itunda.core.repository.IkiminaMemberRepository
 import rw.itunda.core.repository.IkiminaRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class IkiminaNotFoundException(message: String) : RuntimeException(message)
@@ -68,6 +74,8 @@ class IkiminaService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun createIkimina(organizerId: String, name: String, contributionAmount: BigDecimal, cycleFrequencyDays: Int, memberCap: Int): Ikimina {
@@ -252,11 +260,83 @@ class IkiminaService(
         ikiminaMemberRepository.save(recipient)
 
         ikimina.currentRound += 1
-        if (members.all { it.hasReceivedPayout || it.id == recipient.id }) {
+        val justCompleted = members.all { it.hasReceivedPayout || it.id == recipient.id }
+        if (justCompleted) {
             ikimina.status = IkiminaStatus.COMPLETED
         }
         val saved = ikiminaRepository.save(ikimina)
+        notifyPayoutReceived(recipient.userId, ikimina.name, potAmount)
+        if (justCompleted) {
+            notifyCycleCompleted(members, ikimina.name)
+        }
         return IkiminaPayoutResult(ikimina = saved, recipientUserId = recipient.userId, amount = potAmount)
+    }
+
+    // Real gap closed (itunda's own product-feel initiative, per SavingsService's
+    // identical `notifyGoalCompleted` precedent) -- this service had ZERO notification
+    // wiring at all before this, for either the recurring per-round payout (of every
+    // notification type in this backend, "you received real money" is the one closest
+    // to real Toss's own signature "money received" push -- see
+    // PushNotificationService's own doc comment) or the cycle-completion event. Both
+    // fixed in the same pass since they share the exact same after-commit deferral need
+    // and copy tone. Non-critical, matches every other money-moving notify* in this
+    // codebase: the real ledger transaction above already succeeded, a notification
+    // failure must never surface as if it hadn't.
+    private fun notifyPayoutReceived(recipientUserId: String, ikiminaName: String, amount: BigDecimal) {
+        try {
+            val title = "Ikimina payout received"
+            val body = "You received $amount RWF from \"$ikiminaName\"."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = recipientUserId, type = "IKIMINA_PAYOUT_RECEIVED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"amount\":\"$amount\"}",
+                ),
+            )
+            sendAfterCommit { pushNotificationService.sendToUser(recipientUserId, title, body, mapOf("amount" to amount.toString()), type = "IKIMINA_PAYOUT_RECEIVED") }
+        } catch (e: Exception) {
+            // Non-critical -- the real payout already succeeded.
+        }
+    }
+
+    // Celebratory moment, matching `SavingsService.notifyGoalCompleted`'s real Toss-
+    // sourced rationale (toss.tech/article/1st_interaction_designer's "finding the
+    // hidden emotion" behind a completed real-money commitment) -- every member's own
+    // recurring contributions over the full cycle, not just the last recipient's,
+    // deserves the same acknowledgement, so this fans out to all members rather than
+    // only the final payout recipient.
+    private fun notifyCycleCompleted(members: List<IkiminaMember>, ikiminaName: String) {
+        val title = "Ikimina cycle complete! 🎉"
+        val body = "\"$ikiminaName\" has finished a full payout cycle -- every member has now received their turn."
+        members.forEach { member ->
+            try {
+                notificationRepository.save(
+                    Notification(
+                        id = "notif_${UUID.randomUUID()}", userId = member.userId, type = "IKIMINA_CYCLE_COMPLETED",
+                        title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{}",
+                    ),
+                )
+                sendAfterCommit { pushNotificationService.sendToUser(member.userId, title, body, type = "IKIMINA_CYCLE_COMPLETED") }
+            } catch (e: Exception) {
+                // Non-critical, per-member -- one member's notification failure must
+                // never block the others from being notified.
+            }
+        }
+    }
+
+    // Shared after-commit deferral, identical pattern to
+    // `SavingsService.sendGoalCompletedPushAfterCommit`/`P2pService.sendMoneyReceivedPushAfterCommit`:
+    // both callers above fire from inside an already-open `@Transactional` method
+    // (`contributeThisRound`/`checkAndTriggerPayout`), so the push must wait for that
+    // transaction to actually commit rather than potentially misleading the user ahead
+    // of a rollback.
+    private fun sendAfterCommit(send: () -> Unit) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     @Transactional
