@@ -22418,6 +22418,81 @@ function DevicesView() {
   );
 }
 
+// Real, sourced Toss Bank card-marketing-page rebuild (2026-08-24, direct user-supplied
+// reference: 8 real Toss Bank Debit Card screenshots -- hero headline over a card
+// illustration, a real feature-benefit list, "clear UX, clear graphics, smooth
+// animation" explaining a product before the user commits, not a bare form). itunda's
+// own pre-issue state used to be two lines of plain text and a button -- functionally
+// complete, but none of the "explain the product first" craft the reference shows.
+//
+// Deliberately does NOT copy Toss's own screenshot content literally -- their card page
+// features (K-Pass automatic transit refunds, NFC tap-to-pay-as-OTP, a choice of card
+// colors) are all real Korean-market/NFC-hardware features itunda's own CardService.kt
+// genuinely doesn't have. Every claim below is grounded in that file's own real
+// capabilities instead: free issuance (no fee field exists on DebitCard at all),
+// instant issue via one API call (no branch visit), app-controlled daily/monthly spend
+// limits, one-tap freeze/unfreeze. The illustration is a plain flat SVG card in
+// itunda's own real brand indigo (packages/design-tokens/tokens.css) -- not a
+// photorealistic 3D render, matching itundaface's own established flat/geometric
+// illustration language (see project_itunda_own_icons_graphics) rather than inventing a
+// new visual style for one screen.
+function CardExplainer({ busy, onIssue }: { busy: boolean; onIssue: () => void }) {
+  const FEATURES: { glyph: ReactNode; label: string }[] = [
+    { glyph: <MoneyBagGlyph size={22} />, label: 'No annual fee, ever' },
+    { glyph: <IconAdd size={20} color="var(--itunda-indigo)" />, label: 'Issued instantly in the app -- no branch visit' },
+    { glyph: <IconShieldCheck size={20} color="var(--itunda-indigo)" />, label: 'Set your own daily and monthly spend limits' },
+    { glyph: <LockGlyph size={22} />, label: 'One-tap freeze if it’s ever lost' },
+  ];
+
+  return (
+    <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+        style={{
+          width: '220px', height: '138px', margin: '0 auto 20px', borderRadius: '16px', position: 'relative',
+          background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, var(--itunda-indigo-active) 100%)',
+          boxShadow: '0 12px 24px -8px rgba(116, 114, 244, 0.45)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '18px',
+        }}
+      >
+        <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 800, color: 'var(--itunda-white)', textAlign: 'left' }}>itunda</span>
+        <span style={{ width: '34px', height: '26px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.25)', alignSelf: 'flex-start' }} />
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }}>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Your own itunda card, in seconds</h3>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '24px' }}>
+          A real debit card for your itunda balance -- no paperwork, no waiting.
+        </p>
+      </motion.div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', marginBottom: '24px' }}>
+        {FEATURES.map((f, i) => (
+          <motion.div
+            key={f.label}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.16 + i * 0.06, duration: 0.25 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 4px' }}
+          >
+            <span style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {f.glyph}
+            </span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{f.label}</span>
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.25 }}>
+        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy} onClick={onIssue}>
+          {busy ? 'Issuing…' : 'Get your itunda card'}
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 // Real Toss Bank 체크카드 (check/debit card) -- see the backend's DebitCard.kt doc
 // comment for the full sourced account (item 207) and the honest boundary around this
 // not riding a real Visa/Mastercard rail. "Pay with card" below is itunda's own real,
@@ -22566,17 +22641,7 @@ function CardView() {
   if (card === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
   if (card === null) {
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>You don't have an itunda debit card yet</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          App-controlled spend limits and one-tap freeze — no branch visit, no waiting.
-        </p>
-        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleIssue}>
-          {busy ? 'Issuing…' : 'Get your itunda card'}
-        </button>
-      </div>
-    );
+    return <CardExplainer busy={busy} onIssue={handleIssue} />;
   }
 
   // Real Toss Bank reference (2 more screenshots, 2026-08-23, direct user
