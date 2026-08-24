@@ -19685,6 +19685,20 @@ function GroupOrderView() {
       </div>
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Everyone's items -- {detail?.grandTotal.toLocaleString() ?? 0} RWF total</h3>
+        {/* Real, sourced Baemin UX writing finding (2026-08-24,
+            bcut.baemin.com/6287, Baemin's own official UX writing blog on this exact
+            함께주문/group-ordering feature): "함께주문을 쓸 때 대표로 주문하는 사람
+            입장에선 몇 명이 골랐는지보다 몇 명이 아직 안 골랐는지가 더 중요한 정보"
+            (from the lead orderer's perspective, who HASN'T picked yet matters more
+            than who has) -- Baemin rewrote their own completed-count text to a
+            remaining-count for exactly this reason. Only shown to the host: this is
+            the same "matters to the lead orderer specifically" framing the article's
+            own finding names, not a generic status line every participant needs. */}
+        {isHost && detail && detail.participants.some((p) => p.items.length === 0) && (
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
+            {detail.participants.filter((p) => p.items.length === 0).length} of {detail.participants.length} haven't added items yet.
+          </p>
+        )}
         {(detail?.participants ?? []).map((p) => (
           <div key={p.userId} style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--itunda-grey-100)' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
