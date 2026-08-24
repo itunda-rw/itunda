@@ -299,7 +299,8 @@ struct LoansScreenView: View {
                             Text("Refinanced into \(refinanceResult.newLoanName)").font(.subheadline).bold()
                             Text("\(refinanceResult.oldInterestRate, specifier: "%.1f")% → \(refinanceResult.newInterestRate, specifier: "%.1f")%").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                        // a lone info banner (docs/UI_UX_GUIDELINES.md §10).
                     }
                     if mode == .offers {
                         if let lenders {
@@ -319,6 +320,9 @@ struct LoansScreenView: View {
                     } else if mode == .myLoans {
                         if let myLoans {
                             if myLoans.isEmpty { Text("You have no loans yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
+                            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                            // a status/history log of active loans, kept the per-row Divider
+                            // convention (docs/DESIGN_REFERENCES.md §274).
                             ForEach(myLoans) { loan in
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text("\(Int(loan.principal)) RWF loan").bold()
@@ -339,7 +343,8 @@ struct LoansScreenView: View {
                                         .disabled(busyId != nil)
                                     }
                                 }
-                                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                .padding(.vertical, 10)
+                                Divider().overlay(IDS.Colors.divider)
                             }
                         } else { ProgressView() }
                     } else if mode == .overdraft {
@@ -421,6 +426,9 @@ struct LoansScreenView: View {
     }
 }
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a browsable
+// catalog list of loan offers, matching Android's/web's identical no-divider
+// treatment for entity/product lists (docs/UI_UX_GUIDELINES.md §10).
 private struct LoanOfferCard: View {
     let offer: LoanOfferDto
     let busy: Bool
@@ -444,7 +452,7 @@ private struct LoanOfferCard: View {
             }
             .disabled(busy)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 }
 
@@ -485,7 +493,7 @@ private struct OverdraftPanel: View {
                     }
                     .disabled(busy || account.drawnBalance <= 0)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Open an overdraft line").bold()
@@ -498,7 +506,7 @@ private struct OverdraftPanel: View {
                     }
                     .disabled(busy)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             }
         }
         .task {
@@ -590,7 +598,7 @@ private struct PostpaidCreditPanel: View {
                     }
                     .disabled(busy || line.currentBalance <= 0)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Get postpaid credit").bold()
@@ -602,7 +610,7 @@ private struct PostpaidCreditPanel: View {
                     }
                     .disabled(busy)
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             }
         }
         .task {
@@ -707,7 +715,13 @@ struct CertificateScreenView: View {
                                 .disabled(busy)
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        // Real fix (2026-08-24, flat-design sweep): dropped this Card wrapper
+                        // and VerifyCertificateCard's own -- 2 real sections shown together on
+                        // this screen, so a Divider marks the boundary between them instead
+                        // (docs/UI_UX_GUIDELINES.md §10). The orange private-key warning box
+                        // below is deliberately left as-is -- a distinct color treatment, not
+                        // itunda-card, signaling a one-time, high-stakes notice.
+                        .padding(.vertical, 10)
 
                         if let issuedPrivateKey {
                             VStack(alignment: .leading, spacing: 6) {
@@ -718,6 +732,7 @@ struct CertificateScreenView: View {
                         }
                         if let error { Text(error).font(.caption).foregroundColor(.red) }
 
+                        Divider().overlay(IDS.Colors.divider)
                         VerifyCertificateCard()
                     }
                 }
@@ -806,7 +821,7 @@ private struct VerifyCertificateCard: View {
             }
             if let error { Text(error).font(.caption).foregroundColor(.red) }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
     }
 
     private func checkStatus() async {
@@ -868,7 +883,12 @@ struct IdentityScreenView: View {
                             Text("Submission pending review").bold()
                             Text("We'll update your status once it's reviewed.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        // Real fix (2026-08-24, flat-design sweep): dropped both Card wrappers
+                        // in this if/else (mutually exclusive, no divider between them), and
+                        // the per-row Card below (kept the per-row Divider -- a real status log
+                        // of past submissions) (docs/UI_UX_GUIDELINES.md §10 /
+                        // docs/DESIGN_REFERENCES.md §274).
+                        .padding(.vertical, 10)
                     } else {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -886,9 +906,10 @@ struct IdentityScreenView: View {
                             }
                             .disabled(busy || documentNumber.isEmpty || documentReference.isEmpty)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        .padding(.vertical, 10)
                     }
 
+                    Divider().overlay(IDS.Colors.divider)
                     Text("Your submissions").bold()
                     if let submissions {
                         if submissions.isEmpty { Text("You have no submissions yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
@@ -899,7 +920,8 @@ struct IdentityScreenView: View {
                                 if let reason = s.decisionReason { Text(reason).font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                                 Text("Filed: \(s.submittedAt)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                     } else { ProgressView() }
                 }
@@ -988,9 +1010,14 @@ struct SupportScreenView: View {
                             }
                             .disabled(busy || selectedTransactionId == nil || descriptionText.isEmpty)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        // Real fix (2026-08-24, flat-design sweep): dropped this Card and the
+                        // per-row Card below (kept its per-row Divider -- a real status log of
+                        // past tickets), same pattern as IdentityScreenView above
+                        // (docs/UI_UX_GUIDELINES.md §10 / docs/DESIGN_REFERENCES.md §274).
+                        .padding(.vertical, 10)
                     }
 
+                    Divider().overlay(IDS.Colors.divider)
                     Text("Your tickets").bold()
                     if let tickets {
                         if tickets.isEmpty { Text("You have no support tickets.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
@@ -1002,7 +1029,8 @@ struct SupportScreenView: View {
                                 if let resolution = t.resolution { Text("Resolution: \(resolution)").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                                 Text("Filed: \(t.createdAt)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                     } else { ProgressView() }
                 }
