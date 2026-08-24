@@ -46,8 +46,10 @@ import rw.itunda.marketplace.InvalidEscrowStatusException
 import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.InvalidListingPriceException
 import rw.itunda.marketplace.InvalidOfferAmountException
+import rw.itunda.marketplace.HideListingNotFoundException
 import rw.itunda.marketplace.KeywordAlertService
 import rw.itunda.marketplace.ListingFavoriteService
+import rw.itunda.marketplace.ListingHideService
 import rw.itunda.marketplace.ListingBumpCooldownException
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
@@ -94,6 +96,7 @@ class MarketplaceController(
     private val marketplaceService: MarketplaceService,
     private val priceOfferService: PriceOfferService,
     private val listingFavoriteService: ListingFavoriteService,
+    private val listingHideService: ListingHideService,
     private val userRepository: UserRepository,
     private val hoodReviewService: HoodReviewService,
     private val idempotencyService: IdempotencyService,
@@ -126,12 +129,38 @@ class MarketplaceController(
     fun browse(
         @RequestParam(required = false) category: String?,
         @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = marketplaceService.browse(pageable, category)
+        // Real Karrot "이 글 숨기기" (hide this post) -- see ListingHideService's own
+        // doc comment. Every real browse call is already JWT-authenticated (no
+        // permitAll entry for this path), so the caller's real id was always
+        // available here, just never threaded through until now.
+        val page = marketplaceService.browse(pageable, category, currentUser.userId)
         // Real Karrot-Score-style trust badge (2026-07-21) -- see trustScores' own doc
         // comment. One batch findAllById, not one query per listing's seller.
         val scores = trustScores(userRepository, page.content.map { it.sellerId })
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
+    // Real Karrot "이 글 숨기기" (hide this post) -- see ListingHideService's own doc
+    // comment for the full sourced account. Mirrors the favorite endpoints right below
+    // field-for-field (POST to hide, DELETE to unhide -- idempotent both ways).
+    @PostMapping("/listings/{listingId}/hide")
+    fun hideListing(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val hide = listingHideService.hideListing(currentUser.userId, listingId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "hide" to hide))
+    }
+
+    @DeleteMapping("/listings/{listingId}/hide")
+    fun unhideListing(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        listingHideService.unhideListing(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true))
     }
 
     // Real proximity search (2026-07-18) -- see MarketplaceService.nearby's own doc
@@ -490,6 +519,10 @@ class MarketplaceController(
 
     @ExceptionHandler(FavoriteListingNotFoundException::class)
     fun handleFavoriteListingNotFound(ex: FavoriteListingNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HideListingNotFoundException::class)
+    fun handleHideListingNotFound(ex: HideListingNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LISTING_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(BuyerNotFoundException::class)

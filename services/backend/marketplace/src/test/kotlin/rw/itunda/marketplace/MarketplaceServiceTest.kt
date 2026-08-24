@@ -60,6 +60,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         When("creating a listing with valid fields") {
@@ -131,6 +132,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
         // getListing (called directly below, and internally by contactSeller) now also
         // real-increments the view count -- stub it here once for every When in this block.
@@ -479,6 +481,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         When("no category filter is given") {
@@ -489,6 +492,65 @@ class MarketplaceServiceTest : BehaviorSpec({
 
             Then("it queries the unfiltered ACTIVE listing method, not the category one") {
                 io.mockk.verify { listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, any(), any()) }
+            }
+        }
+    }
+
+    // Real Karrot "이 글 숨기기" (hide this post) browse exclusion -- see
+    // ListingHideService's own doc comment for the full sourced account.
+    Given("a real browser with real hidden listings") {
+        val listingRepository = mockk<ListingRepository>()
+        val listingHideRepository = mockk<rw.itunda.core.repository.ListingHideRepository>()
+        val service = MarketplaceService(
+            listingRepository, mockk(relaxed = true), mockk(), mockk(relaxed = true), mockk(relaxed = true), mockk(), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            listingHideRepository,
+        )
+
+        When("browsing with no category filter and at least one real hidden listing") {
+            every { listingHideRepository.findListingIdsByUserId("user_1") } returns listOf("listing_hidden_1", "listing_hidden_2")
+            every { listingRepository.findByStatusAndIdNotInOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, any(), any(), any()) } returns
+                mockk(relaxed = true)
+
+            service.browse(PageRequest.of(0, 20), null, "user_1")
+
+            Then("it queries the NOT IN-filtered method with the real hidden-listing set, not the unfiltered one") {
+                io.mockk.verify {
+                    listingRepository.findByStatusAndIdNotInOrderByBoostedThenCreatedAtDesc(
+                        ListingStatus.ACTIVE, setOf("listing_hidden_1", "listing_hidden_2"), any(), any(),
+                    )
+                }
+                io.mockk.verify(exactly = 0) { listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(any(), any(), any()) }
+            }
+        }
+
+        When("browsing with a real category filter and at least one real hidden listing") {
+            every { listingHideRepository.findListingIdsByUserId("user_2") } returns listOf("listing_hidden_3")
+            every {
+                listingRepository.findByStatusAndCategoryAndIdNotInOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, "electronics", any(), any(), any())
+            } returns mockk(relaxed = true)
+
+            service.browse(PageRequest.of(0, 20), "electronics", "user_2")
+
+            Then("it queries the category+NOT-IN-filtered method") {
+                io.mockk.verify {
+                    listingRepository.findByStatusAndCategoryAndIdNotInOrderByBoostedThenCreatedAtDesc(
+                        ListingStatus.ACTIVE, "electronics", setOf("listing_hidden_3"), any(), any(),
+                    )
+                }
+            }
+        }
+
+        When("browsing with no real hidden listings at all") {
+            every { listingHideRepository.findListingIdsByUserId("user_3") } returns emptyList()
+            every { listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, any(), any()) } returns mockk(relaxed = true)
+
+            service.browse(PageRequest.of(0, 20), null, "user_3")
+
+            Then("it falls back to the plain unfiltered query, never a real NOT IN () with an empty set") {
+                io.mockk.verify { listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, any(), any()) }
+                io.mockk.verify(exactly = 0) { listingRepository.findByStatusAndIdNotInOrderByBoostedThenCreatedAtDesc(any(), any(), any(), any()) }
             }
         }
     }
@@ -514,6 +576,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         When("only one of latitude/longitude is given") {
@@ -572,6 +635,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
@@ -649,6 +713,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         // Both within Rwanda's bounding envelope, both within a real 5km straight-line
@@ -739,6 +804,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         When("the real coordinates reverse-geocode to a real neighborhood") {
@@ -787,6 +853,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         When("the caller has a real neighborhood set, no category filter") {
@@ -856,6 +923,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         val overdue = MarketplaceEscrow(
@@ -900,6 +968,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         val escrow = MarketplaceEscrow(
@@ -949,6 +1018,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         val alreadyReleased = MarketplaceEscrow(
@@ -988,6 +1058,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         val escrow = MarketplaceEscrow(
@@ -1047,6 +1118,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             accountRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
             listingFavoriteRepository, notificationRepository, pushNotificationService,
+            mockk(relaxed = true),
         )
 
         val escrow = MarketplaceEscrow(

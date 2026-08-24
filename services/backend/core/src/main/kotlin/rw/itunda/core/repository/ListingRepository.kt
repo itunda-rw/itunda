@@ -42,6 +42,36 @@ interface ListingRepository : JpaRepository<Listing, String> {
         @Param("now") now: Instant,
         pageable: Pageable,
     ): Page<Listing>
+
+    // Real Karrot "이 글 숨기기" (hide this post) browse-exclusion -- see
+    // ListingHideService's own doc comment. Separate overloads (not an optional param
+    // on the queries above) for the same reason this file's own neighborhood/category
+    // variants already are: an empty `hiddenIds` set is invalid inside a JPQL `NOT IN`
+    // clause, so MarketplaceService.browse only calls these when a caller actually has
+    // at least one real hidden listing, using the plain queries above otherwise.
+    @Query(
+        "SELECT l FROM Listing l WHERE l.status = :status AND l.id NOT IN :hiddenIds " +
+            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, COALESCE(l.bumpedAt, l.createdAt) DESC",
+    )
+    fun findByStatusAndIdNotInOrderByBoostedThenCreatedAtDesc(
+        @Param("status") status: ListingStatus,
+        @Param("hiddenIds") hiddenIds: Collection<String>,
+        @Param("now") now: Instant,
+        pageable: Pageable,
+    ): Page<Listing>
+
+    @Query(
+        "SELECT l FROM Listing l WHERE l.status = :status AND l.category = :category AND l.id NOT IN :hiddenIds " +
+            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, COALESCE(l.bumpedAt, l.createdAt) DESC",
+    )
+    fun findByStatusAndCategoryAndIdNotInOrderByBoostedThenCreatedAtDesc(
+        @Param("status") status: ListingStatus,
+        @Param("category") category: String,
+        @Param("hiddenIds") hiddenIds: Collection<String>,
+        @Param("now") now: Instant,
+        pageable: Pageable,
+    ): Page<Listing>
+
     fun findBySellerIdOrderByCreatedAtDesc(sellerId: String, pageable: Pageable): Page<Listing>
 
     // Real proximity search input (2026-07-18) -- see MarketplaceService.nearby. No real

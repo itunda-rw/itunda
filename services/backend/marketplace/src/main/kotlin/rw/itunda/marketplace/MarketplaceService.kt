@@ -30,6 +30,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.domain.ListingLike
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.ListingFavoriteRepository
+import rw.itunda.core.repository.ListingHideRepository
 import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
@@ -100,6 +101,7 @@ class MarketplaceService(
     private val listingFavoriteRepository: ListingFavoriteRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val listingHideRepository: ListingHideRepository,
 ) {
     private val log = LoggerFactory.getLogger(MarketplaceService::class.java)
 
@@ -330,12 +332,20 @@ class MarketplaceService(
         }
     }
 
-    fun browse(pageable: Pageable, category: String?): Page<Listing> {
+    // Real Karrot "이 글 숨기기" (hide this post) browse exclusion (2026-08-24) -- see
+    // ListingHideService's own doc comment for the full sourced account. `userId` is
+    // optional so every existing caller (this method has no auth requirement itself)
+    // keeps working unchanged; the controller now always passes the real authenticated
+    // caller's id, so in practice this always filters for a real logged-in browser.
+    fun browse(pageable: Pageable, category: String?, userId: String? = null): Page<Listing> {
         val now = Instant.now()
+        val hiddenIds = if (userId != null) listingHideRepository.findListingIdsByUserId(userId).toSet() else emptySet()
         return if (category.isNullOrBlank()) {
-            listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, now, pageable)
+            if (hiddenIds.isEmpty()) listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, now, pageable)
+            else listingRepository.findByStatusAndIdNotInOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, hiddenIds, now, pageable)
         } else {
-            listingRepository.findByStatusAndCategoryOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, category, now, pageable)
+            if (hiddenIds.isEmpty()) listingRepository.findByStatusAndCategoryOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, category, now, pageable)
+            else listingRepository.findByStatusAndCategoryAndIdNotInOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, category, hiddenIds, now, pageable)
         }
     }
 
