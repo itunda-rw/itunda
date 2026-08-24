@@ -104,7 +104,7 @@ private struct AccountLedgerDetailRow: View {
                         .foregroundColor(.white)
                 )
             VStack(alignment: .leading, spacing: 2) {
-                Text(tx.title).font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
+                Text(ledgerRowTitle(tx.title)).font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
                 Text(tx.subtitle).font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
             }
             Spacer()
@@ -137,4 +137,27 @@ private func ledgerRowIcon(for title: String) -> (symbol: String, color: Color) 
     if d.contains("airtime") { return ("simcard.fill", .purple) }
     if d.contains("loan") { return ("wallet.pass.fill", .blue) }
     return ("arrow.left.arrow.right", IDS.Colors.textSecondary)
+}
+
+/// Real fix (2026-08-24, direct user side-by-side of itunda's own ledger against a
+/// real Toss Bank ledger + detail-screen screenshot: "since we are using real logos
+/// and icons no need to mention Eat order, kigali grill house will be enough and
+/// clear anyway when click on each transactions they get to see it's detail
+/// screen"). Matches Android's/bank-mfe's identical ledgerRowTitle fix -- see
+/// Android's own doc comment for why this is scoped to exactly
+/// eats/gift/escrow-marketplace (a real name always follows the dash there) and
+/// NOT Bill payment/Airtime (a raw id/phone number follows the dash there, which
+/// stripping would make less clear).
+private func ledgerRowTitle(_ title: String) -> String {
+    let lower = title.lowercased()
+    guard lower.contains("eats") || lower.contains("gift") || lower.contains("escrow") || lower.contains("marketplace") else { return title }
+    if let range = title.range(of: " -- ") {
+        let tail = title[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        if !tail.isEmpty { return tail }
+    }
+    if let range = title.range(of: " - ") {
+        let tail = title[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        if !tail.isEmpty { return tail }
+    }
+    return title
 }

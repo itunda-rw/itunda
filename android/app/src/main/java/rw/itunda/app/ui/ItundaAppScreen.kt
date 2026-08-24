@@ -3156,7 +3156,7 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(transaction.description, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(ledgerRowTitle(transaction), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             Text(ledgerTimeOfDay(transaction.createdAt), color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
         Column(horizontalAlignment = Alignment.End) {
@@ -3199,6 +3199,37 @@ internal fun ledgerRowIcon(transaction: rw.itunda.core.network.TransactionDto): 
             else -> Icons.Outlined.SwapHoriz to Ids.colors.textSecondary
         }
     }
+}
+
+// Real fix (2026-08-24, direct user side-by-side of itunda's own ledger against a
+// real Toss Bank ledger + detail-screen screenshot: "since we are using real logos
+// and icons no need to mention Eat order, kigali grill house will be enough and
+// clear anyway when click on each transactions they get to see it's detail
+// screen"). Toss's own real ledger rows show the bare counterparty/merchant name
+// only -- the category is already carried by the row's icon, and the full
+// "Eats order - Kigali Grill House" phrasing is preserved untouched on the tap-in
+// detail screen. Scoped to exactly the keyword categories above whose icon is a
+// real, distinctive per-category one (eats/gift/escrow-marketplace) AND whose
+// description is always "{category} - {a real name}" (restaurant/merchant
+// businessName) -- deliberately NOT applied to Bill payment ("Bill payment -
+// $billId") or Airtime ("MTN Airtime - $phoneNumber"), where the text after the
+// dash is a raw id/phone number, not a name, and stripping it would make the row
+// less clear, not more.
+internal fun ledgerRowTitle(transaction: rw.itunda.core.network.TransactionDto): String {
+    val d = transaction.description
+    val lower = d.lowercase()
+    if (!(lower.contains("eats") || lower.contains("gift") || lower.contains("escrow") || lower.contains("marketplace"))) return d
+    val doubleDash = d.indexOf(" -- ")
+    if (doubleDash >= 0) {
+        val tail = d.substring(doubleDash + 4).trim()
+        if (tail.isNotBlank()) return tail
+    }
+    val singleDash = d.indexOf(" - ")
+    if (singleDash >= 0) {
+        val tail = d.substring(singleDash + 3).trim()
+        if (tail.isNotBlank()) return tail
+    }
+    return d
 }
 
 // Real bug, caught live (2026-08-13): with no explicit Locale, DateTimeFormatter

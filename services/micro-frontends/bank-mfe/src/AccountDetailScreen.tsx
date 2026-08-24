@@ -121,7 +121,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
                           <RowIcon.Icon size={18} color="#fff" />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{tx.description}</p>
+                          <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{ledgerRowTitle(tx)}</p>
                           <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
@@ -162,4 +162,29 @@ function ledgerRowIcon(tx: Transaction): { Icon: LucideIcon; color: string } {
     case 'INTEREST': return { Icon: Landmark, color: 'var(--itunda-indigo)' };
     default: return { Icon: ArrowLeftRight, color: 'var(--itunda-grey-500)' };
   }
+}
+
+// Real fix (2026-08-24, direct user side-by-side of itunda's own ledger against a
+// real Toss Bank ledger + detail-screen screenshot: "since we are using real logos
+// and icons no need to mention Eat order, kigali grill house will be enough and
+// clear anyway when click on each transactions they get to see it's detail
+// screen"). Matches Android's identical ledgerRowTitle fix -- see its own doc
+// comment for why this is scoped to exactly eats/gift/escrow-marketplace (a real
+// name always follows the dash there) and NOT Bill payment/Airtime (a raw id/phone
+// number follows the dash there, which stripping would make less clear).
+function ledgerRowTitle(tx: Transaction): string {
+  const d = tx.description;
+  const lower = d.toLowerCase();
+  if (!(lower.includes('eats') || lower.includes('gift') || lower.includes('escrow') || lower.includes('marketplace'))) return d;
+  const doubleDash = d.indexOf(' -- ');
+  if (doubleDash >= 0) {
+    const tail = d.slice(doubleDash + 4).trim();
+    if (tail) return tail;
+  }
+  const singleDash = d.indexOf(' - ');
+  if (singleDash >= 0) {
+    const tail = d.slice(singleDash + 3).trim();
+    if (tail) return tail;
+  }
+  return d;
 }
