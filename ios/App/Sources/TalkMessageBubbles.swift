@@ -49,6 +49,7 @@ struct MessageReactionsRow: View {
                 Button(action: { pickerOpen.toggle() }) {
                     Image(systemName: "face.smiling").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
+                .accessibilityLabel("Add reaction")
                 if pickerOpen {
                     HStack(spacing: 6) {
                         ForEach(quickReactions, id: \.self) { emoji in
