@@ -198,7 +198,10 @@ struct JobPostCard: View {
                 IdsTextField("Worker's phone (optional)", text: $workerPhone, keyboardType: .phonePad)
                 HStack(spacing: 10) {
                     actionButton("Skip", filled: false) { await markFilled(workerPhoneNumber: nil) }
-                    actionButton("Confirm", filled: true) { await markFilled(workerPhoneNumber: workerPhone.trimmingCharacters(in: .whitespaces)) }
+                    // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11) --
+                    // see the identical Marketplace/Property fix + BankDashboard.tsx's
+                    // VerificationRow (commit 58d58259) for the full sourced account.
+                    actionButton("Mark as filled", filled: true) { await markFilled(workerPhoneNumber: workerPhone.trimmingCharacters(in: .whitespaces)) }
                 }
             }
             if isMine, post.status == "FILLED", post.workerId != nil, reviewSubmitted, let hoodReviews {

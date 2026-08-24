@@ -179,7 +179,10 @@ struct ListingCard: View {
                 IdsTextField("Buyer's phone (optional)", text: $buyerPhone, keyboardType: .phonePad)
                 HStack(spacing: 10) {
                     actionButton("Skip", filled: false) { await markSold(buyerPhoneNumber: nil) }
-                    actionButton("Confirm", filled: true) { await markSold(buyerPhoneNumber: buyerPhone.trimmingCharacters(in: .whitespaces)) }
+                    // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11) --
+                    // see the identical Jobs/Property fix + BankDashboard.tsx's
+                    // VerificationRow (commit 58d58259) for the full sourced account.
+                    actionButton("Mark as sold", filled: true) { await markSold(buyerPhoneNumber: buyerPhone.trimmingCharacters(in: .whitespaces)) }
                 }
             }
             if isMine, listing.status == "SOLD", listing.buyerId != nil, reviewSubmitted, let hoodReviews {

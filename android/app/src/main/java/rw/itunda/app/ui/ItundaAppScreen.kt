@@ -4772,11 +4772,15 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 // research as this screen's own auto-confirm fix), matching web's already-
                 // shipped autoFocus on this exact field.
                 IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, autoFocus = true, modifier = Modifier.weight(1f))
+                // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11 --
+                // same web fix as BankDashboard.tsx's VerificationRow, commit 58d58259): a
+                // bare "Confirm" doesn't state the outcome, per Toss's own dark-pattern-
+                // prevention CTA rule.
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
                         .pressScaleClickable(enabled = !busy && code.isNotBlank()) { confirm() }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
-                ) { Text(if (busy) "…" else "Confirm", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                ) { Text(if (busy) "…" else if (kind == "email") "Verify email" else "Verify phone number", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
             }
         }
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }

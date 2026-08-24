@@ -1463,7 +1463,12 @@ private fun ListingDetailScreen(
                             }
                         }
                     }
-                    ListingActionButton("Confirm", busy, filled = true) {
+                    // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11):
+                    // a bare "Confirm" doesn't state the outcome, per Toss's own
+                    // dark-pattern-prevention CTA rule -- same fix as the identical
+                    // Jobs/Property "mark complete" flows and BankDashboard.tsx's
+                    // VerificationRow (commit 58d58259).
+                    ListingActionButton("Mark as sold", busy, filled = true) {
                         busy = true
                         coroutineScope.launch {
                             try {

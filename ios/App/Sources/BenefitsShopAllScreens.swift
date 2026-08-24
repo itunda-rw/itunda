@@ -1112,8 +1112,12 @@ private struct VerificationRow: View {
                                     Task { await confirm() }
                                 }
                             }
+                        // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11)
+                        // -- same fix as Android/web's identical VerificationRow (commit
+                        // 58d58259): a bare "Confirm" doesn't state the outcome, per Toss's own
+                        // dark-pattern-prevention CTA rule.
                         Button(action: { Task { await confirm() } }) {
-                            Text(busy ? "…" : "Confirm").font(.caption).bold().foregroundColor(.white)
+                            Text(busy ? "…" : (kind == "email" ? "Verify email" : "Verify phone number")).font(.caption).bold().foregroundColor(.white)
                                 .padding(.horizontal, 12).padding(.vertical, 10)
                                 .background((busy || code.trimmingCharacters(in: .whitespaces).isEmpty) ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(8)
                         }

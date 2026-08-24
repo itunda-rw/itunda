@@ -852,7 +852,10 @@ private fun PropertyListingCard(
                             finally { busy = false }
                         }
                     }
-                    ListingActionButton("Confirm", busy, filled = true) {
+                    // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11) --
+                    // see Marketplace/JobsScreen's identical fix + BankDashboard.tsx's
+                    // VerificationRow (commit 58d58259) for the full sourced account.
+                    ListingActionButton("Mark as taken", busy, filled = true) {
                         busy = true
                         coroutineScope.launch {
                             try {

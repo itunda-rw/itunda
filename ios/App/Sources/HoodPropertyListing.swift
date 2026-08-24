@@ -189,7 +189,10 @@ struct PropertyListingCard: View {
                 IdsTextField("Their phone (optional)", text: $counterpartyPhone, keyboardType: .phonePad)
                 HStack(spacing: 10) {
                     actionButton("Skip", filled: false) { await markTaken(counterpartyPhoneNumber: nil) }
-                    actionButton("Confirm", filled: true) { await markTaken(counterpartyPhoneNumber: counterpartyPhone.trimmingCharacters(in: .whitespaces)) }
+                    // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11) --
+                    // see the identical Jobs/Marketplace fix + BankDashboard.tsx's
+                    // VerificationRow (commit 58d58259) for the full sourced account.
+                    actionButton("Mark as taken", filled: true) { await markTaken(counterpartyPhoneNumber: counterpartyPhone.trimmingCharacters(in: .whitespaces)) }
                 }
             }
             // Real post-transaction review, preset checklist with asymmetric public/
