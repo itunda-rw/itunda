@@ -147,7 +147,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
 function ledgerRowIcon(tx: Transaction): { Icon: LucideIcon; color: string } {
   const d = tx.description.toLowerCase();
   if (d.includes('ride')) return { Icon: Car, color: 'var(--itunda-indigo)' };
-  if (d.includes('eats') || d.includes('booking')) return { Icon: Utensils, color: '#F2A93B' };
+  if (d.includes('eats') || d.includes('booking') || d.includes('dine-in')) return { Icon: Utensils, color: '#F2A93B' };
   if (d.includes('gift')) return { Icon: Gift, color: '#7C5CFC' };
   if (d.includes('escrow') || d.includes('marketplace')) return { Icon: ShoppingBag, color: '#14AE85' };
   if (d.includes('cashback')) return { Icon: Percent, color: '#F2A93B' };
@@ -168,14 +168,26 @@ function ledgerRowIcon(tx: Transaction): { Icon: LucideIcon; color: string } {
 // real Toss Bank ledger + detail-screen screenshot: "since we are using real logos
 // and icons no need to mention Eat order, kigali grill house will be enough and
 // clear anyway when click on each transactions they get to see it's detail
-// screen"). Matches Android's identical ledgerRowTitle fix -- see its own doc
-// comment for why this is scoped to exactly eats/gift/escrow-marketplace (a real
-// name always follows the dash there) and NOT Bill payment/Airtime (a raw id/phone
-// number follows the dash there, which stripping would make less clear).
+// screen"). Toss's own real ledger rows show the bare counterparty/merchant name
+// only -- the category is already carried by the row's icon.
+//
+// Follow-up fix (same day, "they are still some transactions that don't follow
+// the same pattern"): the first pass only allowlisted eats/gift/escrow-marketplace,
+// but a full sweep of every Transaction.description call site across the backend
+// (Order/Card payment/Payment/QR payment/Salary payment/Booking deposit/
+// Subscription charge/Dine-in order/Split bill share/Transfer/Delayed transfer)
+// shows the exact same "{category} - {a real name}" shape almost everywhere; the
+// allowlist was just incomplete, not the right model. Flipped to strip-by-default
+// with an EXCLUDE list for the only two real exceptions found -- "Bill payment -
+// $billId" and "$provider Airtime - $phoneNumber" -- where the text after the dash
+// is a raw id/phone number, not a name, and stripping it would make the row less
+// clear. Matches Android's identical ledgerRowTitle fix.
+const LEDGER_TITLE_KEEP_PREFIX = ['bill payment', 'airtime'];
+
 function ledgerRowTitle(tx: Transaction): string {
   const d = tx.description;
   const lower = d.toLowerCase();
-  if (!(lower.includes('eats') || lower.includes('gift') || lower.includes('escrow') || lower.includes('marketplace'))) return d;
+  if (LEDGER_TITLE_KEEP_PREFIX.some((p) => lower.includes(p))) return d;
   const doubleDash = d.indexOf(' -- ');
   if (doubleDash >= 0) {
     const tail = d.slice(doubleDash + 4).trim();

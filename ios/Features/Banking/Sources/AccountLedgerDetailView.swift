@@ -104,7 +104,12 @@ private struct AccountLedgerDetailRow: View {
                         .foregroundColor(.white)
                 )
             VStack(alignment: .leading, spacing: 2) {
-                Text(ledgerRowTitle(tx.title)).font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
+                // Matches Android's identical fix (2026-08-24, direct on-device
+                // screenshot: a long free-text title ran straight into the amount
+                // column with no gap) -- lineLimit(1) keeps a long transfer title from
+                // pushing into or wrapping under the amountText that follows the
+                // Spacer() below.
+                Text(ledgerRowTitle(tx.title)).font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary).lineLimit(1)
                 Text(tx.subtitle).font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
             }
             Spacer()
@@ -127,7 +132,7 @@ private struct AccountLedgerDetailRow: View {
 private func ledgerRowIcon(for title: String) -> (symbol: String, color: Color) {
     let d = title.lowercased()
     if d.contains("ride") { return ("car.fill", .blue) }
-    if d.contains("eats") || d.contains("booking") { return ("fork.knife", .orange) }
+    if d.contains("eats") || d.contains("booking") || d.contains("dine-in") { return ("fork.knife", .orange) }
     if d.contains("gift") { return ("gift.fill", .purple) }
     if d.contains("escrow") || d.contains("marketplace") { return ("bag.fill", .teal) }
     if d.contains("cashback") { return ("percent", .orange) }
@@ -143,14 +148,25 @@ private func ledgerRowIcon(for title: String) -> (symbol: String, color: Color) 
 /// real Toss Bank ledger + detail-screen screenshot: "since we are using real logos
 /// and icons no need to mention Eat order, kigali grill house will be enough and
 /// clear anyway when click on each transactions they get to see it's detail
-/// screen"). Matches Android's/bank-mfe's identical ledgerRowTitle fix -- see
-/// Android's own doc comment for why this is scoped to exactly
-/// eats/gift/escrow-marketplace (a real name always follows the dash there) and
-/// NOT Bill payment/Airtime (a raw id/phone number follows the dash there, which
-/// stripping would make less clear).
+/// screen"). Toss's own real ledger rows show the bare counterparty/merchant name
+/// only -- the category is already carried by the row's icon.
+///
+/// Follow-up fix (same day, "they are still some transactions that don't follow
+/// the same pattern"): the first pass only allowlisted eats/gift/escrow-marketplace,
+/// but a full sweep of every Transaction.description call site across the backend
+/// (Order/Card payment/Payment/QR payment/Salary payment/Booking deposit/
+/// Subscription charge/Dine-in order/Split bill share/Transfer/Delayed transfer)
+/// shows the exact same "{category} - {a real name}" shape almost everywhere; the
+/// allowlist was just incomplete, not the right model. Flipped to strip-by-default
+/// with an EXCLUDE list for the only two real exceptions found -- "Bill payment -
+/// $billId" and "$provider Airtime - $phoneNumber" -- where the text after the
+/// dash is a raw id/phone number, not a name, and stripping it would make the row
+/// less clear. Matches Android's/bank-mfe's identical ledgerRowTitle fix.
+private let ledgerTitleKeepPrefix = ["bill payment", "airtime"]
+
 private func ledgerRowTitle(_ title: String) -> String {
     let lower = title.lowercased()
-    guard lower.contains("eats") || lower.contains("gift") || lower.contains("escrow") || lower.contains("marketplace") else { return title }
+    guard !ledgerTitleKeepPrefix.contains(where: { lower.contains($0) }) else { return title }
     if let range = title.range(of: " -- ") {
         let tail = title[range.upperBound...].trimmingCharacters(in: .whitespaces)
         if !tail.isEmpty { return tail }

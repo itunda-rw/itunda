@@ -3156,9 +3156,22 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(ledgerRowTitle(transaction), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            // Real bug, caught live (2026-08-24, direct on-device screenshot): a long
+            // free-text transfer title ("post-deploy regression check") rendered
+            // touching the amount column with zero gap ("check-RWF 500"), reading as
+            // one word -- NOT a wrap/overflow issue (the title Column's weight(1f)
+            // width was never exceeded), but a missing minimum gap: this title
+            // Column and the amount Column below had no Spacer between them, only
+            // relying on leftover weighted width once the title text's own natural
+            // width was subtracted -- which shrinks to zero once the title is long
+            // enough, and for an outgoing (debit) row the amount is the exact same
+            // white textPrimary color as the title, so the two ran together
+            // invisibly instead of just looking cramped. maxLines/ellipsis here is a
+            // second, independent guard for titles too long to fit at all.
+            Text(ledgerRowTitle(transaction), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text(ledgerTimeOfDay(transaction.createdAt), color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
+        Spacer(modifier = Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
             Text(amountText, color = amountColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             Text("$currency %,.0f".format(afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
@@ -3181,7 +3194,7 @@ internal fun ledgerRowIcon(transaction: rw.itunda.core.network.TransactionDto): 
     val d = transaction.description.lowercase()
     return when {
         d.contains("ride") -> Icons.Outlined.DirectionsCar to AccentIndigo
-        d.contains("eats") || d.contains("booking") -> Icons.Outlined.Fastfood to AccentOrange
+        d.contains("eats") || d.contains("booking") || d.contains("dine-in") -> Icons.Outlined.Fastfood to AccentOrange
         d.contains("gift") -> Icons.Outlined.CardGiftcard to AccentPurple
         d.contains("escrow") || d.contains("marketplace") -> Icons.Outlined.ShoppingBag to AccentTeal
         d.contains("cashback") -> Icons.Outlined.LocalOffer to AccentOrange
@@ -3208,17 +3221,26 @@ internal fun ledgerRowIcon(transaction: rw.itunda.core.network.TransactionDto): 
 // screen"). Toss's own real ledger rows show the bare counterparty/merchant name
 // only -- the category is already carried by the row's icon, and the full
 // "Eats order - Kigali Grill House" phrasing is preserved untouched on the tap-in
-// detail screen. Scoped to exactly the keyword categories above whose icon is a
-// real, distinctive per-category one (eats/gift/escrow-marketplace) AND whose
-// description is always "{category} - {a real name}" (restaurant/merchant
-// businessName) -- deliberately NOT applied to Bill payment ("Bill payment -
-// $billId") or Airtime ("MTN Airtime - $phoneNumber"), where the text after the
-// dash is a raw id/phone number, not a name, and stripping it would make the row
-// less clear, not more.
+// detail screen.
+//
+// Follow-up fix (same day, "they are still some transactions that don't follow
+// the same pattern"): the first pass only allowlisted eats/gift/escrow-marketplace,
+// but a full sweep of every Transaction.description call site across the backend
+// (Order/Card payment/Payment/QR payment/Salary payment/Booking deposit/
+// Subscription charge/Dine-in order/Split bill share/Transfer/Delayed transfer --
+// MerchantService.kt, OrderService.kt, DineInOrderService.kt, SplitBillService.kt,
+// P2pService.kt, PayrollService.kt, MerchantBookingService.kt) shows the exact same
+// "{category} - {a real name}" shape almost everywhere; the allowlist was just
+// incomplete, not the right model. Flipped to strip-by-default with an EXCLUDE list
+// for the only two real exceptions found -- "Bill payment - $billId" and
+// "$provider Airtime - $phoneNumber" -- where the text after the dash is a raw
+// id/phone number, not a name, and stripping it would make the row less clear.
+private val LEDGER_TITLE_KEEP_PREFIX = listOf("bill payment", "airtime")
+
 internal fun ledgerRowTitle(transaction: rw.itunda.core.network.TransactionDto): String {
     val d = transaction.description
     val lower = d.lowercase()
-    if (!(lower.contains("eats") || lower.contains("gift") || lower.contains("escrow") || lower.contains("marketplace"))) return d
+    if (LEDGER_TITLE_KEEP_PREFIX.any { lower.contains(it) }) return d
     val doubleDash = d.indexOf(" -- ")
     if (doubleDash >= 0) {
         val tail = d.substring(doubleDash + 4).trim()
