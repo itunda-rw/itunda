@@ -67,9 +67,11 @@ struct AutoTopUpScreenView: View {
                     if accountId == nil || linkedAccounts == nil || !settingLoaded {
                         SkeletonBlock(height: 120)
                     } else if let accounts = linkedAccounts, !accounts.contains(where: { $0.status == "LINKED" }) {
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                        // wrapper -- a lone message.
                         Text("Link an external account first -- see My > Linked accounts.")
                             .font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
                     } else if let accountId, let accounts = linkedAccounts {
                         AutoTopUpConfigCard(
                             accountId: accountId,
@@ -175,7 +177,9 @@ private struct AutoTopUpConfigCard: View {
             }
             .disabled(saving)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // Android's identical AutoTopUpConfigCard conversion (docs/UI_UX_GUIDELINES.md
+        // §10), a lone form section on this screen.
     }
 
     private func save() async {

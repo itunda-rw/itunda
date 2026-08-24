@@ -97,7 +97,8 @@ struct MerchantDetailView: View {
                             )
                         }
                     }
-                    .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                    // -- a lone conditional section.
                     .padding(.bottom, 10)
                 }
                 if let products {
@@ -237,6 +238,9 @@ struct MyBookingsView: View {
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
+                    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
+                    // -- history log of bookings, kept the per-row Divider convention
+                    // (docs/DESIGN_REFERENCES.md §274).
                     ForEach(bookings) { b in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
@@ -258,8 +262,8 @@ struct MyBookingsView: View {
                                 BookingReviewButton(bookingId: b.id)
                             }
                         }
-                        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+                        Divider().overlay(IDS.Colors.divider)
                     }
                 }
                 .padding(.top, 16)

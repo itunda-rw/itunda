@@ -112,7 +112,9 @@ struct PropertyContent: View {
                         Button("Retry") { Task { await load() } }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                    // -- a lone error state.
+                    .padding(20)
                 } else if listings == nil {
                     HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -332,9 +334,10 @@ struct NewPropertyListingForm: View {
                 .disabled(submitting)
             }
         }
-        .padding(20)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a lone
+        // form shown inline in place of the "+ List a property" button
+        // (docs/UI_UX_GUIDELINES.md §10).
+        .padding(.vertical, 10)
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate
@@ -439,7 +442,9 @@ struct PropertyValuationCard: View {
                 .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- this
+        // screen's own main content (the whole "Valuation" tab).
+        .padding(.vertical, 10)
     }
 
     private func estimateValue() async {

@@ -34,14 +34,17 @@ public struct CreditScoreScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if let result {
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                        // wrapper around each of these sibling sections -- real Divider()s
+                        // mark the real boundaries instead (docs/UI_UX_GUIDELINES.md §10).
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Your score").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text("\(result.score) / 850").font(.title).bold()
                             Text("Based on your own account activity, not a bureau report.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
+                        Divider().overlay(IDS.Colors.divider)
                         VStack(alignment: .leading, spacing: 6) {
                             Text("What makes up your score").bold()
                             ForEach(result.factors) { f in
@@ -55,9 +58,9 @@ public struct CreditScoreScreenView: View {
                                 }
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
 
                         if !suggestions.isEmpty {
+                            Divider().overlay(IDS.Colors.divider)
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Ways to raise your score").bold()
                                 ForEach(suggestions) { s in
@@ -71,7 +74,6 @@ public struct CreditScoreScreenView: View {
                                     }
                                 }
                             }
-                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                         }
                     } else { ProgressView() }
                 }

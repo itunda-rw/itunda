@@ -43,12 +43,19 @@ struct PayAMerchantSection: View {
                         .background(IDS.Colors.brand).cornerRadius(10)
                 }
             }
-            .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a
+            // lone result state (docs/UI_UX_GUIDELINES.md §10).
+            .padding(.vertical, 10)
         } else {
             VStack(alignment: .leading, spacing: 10) {
+                // MyPaymentCodeCard deliberately keeps its own card visual -- a real,
+                // literal payment-card metaphor, not reflexive section wrapping.
                 MyPaymentCodeCard()
+                Divider().overlay(IDS.Colors.divider)
                 FacePaySettingsCard(enrolled: facePayEnrolled, cashbackRatePercent: cashbackRatePercent, onChanged: { Task { await loadFacePayStatus() } })
+                Divider().overlay(IDS.Colors.divider)
                 PayByCodeCard(facePayEnrolled: facePayEnrolled ?? false, onPaid: { paymentResult = $0 })
+                Divider().overlay(IDS.Colors.divider)
                 PayByStaticQrCard(onPaid: { paymentResult = $0 })
             }
             .task { await loadFacePayStatus() }
@@ -262,7 +269,9 @@ struct PayByCodeCard: View {
                 }
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // web's identical PayByCodeCard, which never had one (docs/UI_UX_GUIDELINES.md
+        // §10).
         // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
         // full account. payDirect resets needsDeviceVerification itself.
         DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { await payDirect(couponId: selectedCouponId) })
@@ -385,7 +394,8 @@ struct PayByStaticQrCard: View {
                 Text(error).font(.caption).foregroundColor(.red)
             }
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- matches
+        // web's identical PayByStaticQrCard, which never had one.
     }
 
     private func handleScan(_ raw: String) {
