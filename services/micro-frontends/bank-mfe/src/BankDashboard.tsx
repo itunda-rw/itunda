@@ -231,7 +231,7 @@ import {
   type AutoTransfer, type AutoTransferFrequency,
 } from './lib/autoTransfers';
 import {
-  acceptRideTrip, addTrustedContact, arriveAtRideStop, cancelRideTrip, clearDriverDestination, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
+  acceptRideTrip, addTrustedContact, arriveAtRideStop, cancelRideTrip, clearDriverDestination, completeRideTrip, declineRideTrip, estimateRideFare, fetchAvailableTrips, fetchDriverRating,
   fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyEarnings, fetchMyTrips, fetchRideTripPin, fetchTripStops, fetchTrustedContacts, registerAsDriver, removeTrustedContact, requestRideTrip, sendStatusToTrustedContacts, setDriverAvailability, setDriverDestination,
   shareRideTripStatus, startRideTrip, submitRideReview, tipDriver, updateDriverLocation,
   type DriverDailyEarnings, type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop, type RideTrustedContact,
@@ -17711,6 +17711,20 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   // response includes the updated trip with tipAmount now set, but pastTrips itself
   // isn't refetched on every tip, so this tracks which trips were tipped THIS session.
   const [tippedTripIds, setTippedTripIds] = useState<Set<string>>(new Set());
+  // Real Uber "Upfront Fare" simplification (2026-08-24) -- see lib/rideshare.ts's own
+  // estimateRideFare doc comment for the full sourced account. Debounced the same
+  // 350ms PlaceSearchInput's own place-search request already uses, since both pickup
+  // and dropoff selecting in quick succession would otherwise fire a fetch per step.
+  const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
+  useEffect(() => {
+    if (!pickup || !dropoff) { setEstimatedFare(null); return; }
+    const handle = setTimeout(() => {
+      estimateRideFare(pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude)
+        .then(setEstimatedFare)
+        .catch(() => setEstimatedFare(null));
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [pickup, dropoff]);
 
   const loadMyTrips = () => {
     fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : t('common.loadError')));
@@ -18077,6 +18091,13 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                 />
               )}
 
+              {pickup && dropoff && (
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
+                  {estimatedFare != null
+                    ? `Estimated fare: ${estimatedFare.toLocaleString()} RWF`
+                    : 'Estimating fare…'}
+                </p>
+              )}
               <button
                 className="itunda-btn itunda-btn-primary"
                 disabled={!pickup || !dropoff || requesting || (rideTiming === 'later' && !scheduledAt) || stops.some((s) => s === null)}

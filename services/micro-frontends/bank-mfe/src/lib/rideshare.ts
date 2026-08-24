@@ -124,6 +124,15 @@ export const fetchMyEarnings = (from?: string, to?: string) => {
   );
 };
 
+// Real Uber "Upfront Fare" simplification (2026-08-24) -- see backend
+// RideTripService.estimateFare's own doc comment for the full sourced account.
+// Doesn't cover multi-stop trips -- a pickup/dropoff-only estimate, matching the
+// backend endpoint's own same real, disclosed scope choice.
+export const estimateRideFare = (pickupLatitude: number, pickupLongitude: number, dropoffLatitude: number, dropoffLongitude: number) =>
+  apiFetch<{ success: boolean; estimatedFare: number }>(
+    `/api/v1/rides/trips/estimate?pickupLatitude=${pickupLatitude}&pickupLongitude=${pickupLongitude}&dropoffLatitude=${dropoffLatitude}&dropoffLongitude=${dropoffLongitude}`,
+  ).then((r) => r.estimatedFare);
+
 export const requestRideTrip = (
   pickupAddress: string, pickupLatitude: number, pickupLongitude: number,
   dropoffAddress: string, dropoffLatitude: number, dropoffLongitude: number,
