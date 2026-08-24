@@ -166,6 +166,7 @@ import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
+import rw.itunda.core.designsystem.components.rememberSpringOverscrollModifier
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.feature.shop.impl.CommerceShopContent
@@ -3041,7 +3042,12 @@ private fun AccountDetailScreen(
             }
         }
         LazyColumn(
-            modifier = Modifier.fillMaxSize().weight(1f),
+            // Real fix (2026-08-24, direct user follow-up: "toss uses spring effect
+            // which users feel not only when they pressing a button but also when
+            // they are scrolling through the lists like those transactions" --
+            // watching this exact ledger scroll live on-device). See
+            // SpringOverscroll.kt's own doc comment for the full sourced account.
+            modifier = Modifier.fillMaxSize().weight(1f).then(rememberSpringOverscrollModifier()),
             contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, bottom = 16.dp),
         ) {
             item {
