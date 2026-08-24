@@ -285,13 +285,29 @@ public struct RecentTransactionRowData: Identifiable {
     public let subtitle: String
     public let amountText: String
     public let isOutgoing: Bool
+    // Real fields added 2026-08-24 for TransactionDetailScreen (see
+    // AccountLedgerDetailView's own doc comment) -- `title` above is already the
+    // FULL, untouched original description (matching Android/bank-mfe: the list row
+    // strips the redundant category prefix locally via ledgerRowTitle, the detail
+    // screen shows this raw field), and `subtitle` is already the capitalized
+    // status. Everything the detail screen needs beyond those two.
+    public let type: String
+    public let createdAt: String
+    public let fee: Double
+    public let currency: String
+    public let afterBalance: Double
 
-    public init(id: String, title: String, subtitle: String, amountText: String, isOutgoing: Bool) {
+    public init(id: String, title: String, subtitle: String, amountText: String, isOutgoing: Bool, type: String, createdAt: String, fee: Double, currency: String, afterBalance: Double) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
         self.amountText = amountText
         self.isOutgoing = isOutgoing
+        self.type = type
+        self.createdAt = createdAt
+        self.fee = fee
+        self.currency = currency
+        self.afterBalance = afterBalance
     }
 }
 

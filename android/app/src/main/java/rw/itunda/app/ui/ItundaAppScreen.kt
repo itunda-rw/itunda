@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -167,6 +168,7 @@ import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
 import rw.itunda.core.designsystem.components.rememberSpringOverscrollModifier
+import rw.itunda.core.designsystem.components.trackScrollPressedKey
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.feature.shop.impl.CommerceShopContent
@@ -3011,6 +3013,21 @@ private fun AccountDetailScreen(
     val grouped = remember(withBalance) {
         withBalance.groupBy { (tx, _) -> ledgerDateHeader(tx.createdAt) }
     }
+    var selectedTransaction by remember { mutableStateOf<Pair<rw.itunda.core.network.TransactionDto, Double>?>(null) }
+    val ledgerListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val touchedTransactionKey = remember { mutableStateOf<Any?>(null) }
+
+    if (selectedTransaction != null) {
+        val (tx, afterBalance) = selectedTransaction!!
+        TransactionDetailScreen(
+            transaction = tx,
+            isOutgoing = tx.senderId == currentUserId,
+            afterBalance = afterBalance,
+            currency = currency,
+            onBack = { selectedTransaction = null },
+        )
+        return
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         Row(
@@ -3047,7 +3064,16 @@ private fun AccountDetailScreen(
             // they are scrolling through the lists like those transactions" --
             // watching this exact ledger scroll live on-device). See
             // SpringOverscroll.kt's own doc comment for the full sourced account.
-            modifier = Modifier.fillMaxSize().weight(1f).then(rememberSpringOverscrollModifier()),
+            //
+            // Follow-up fix (same day, "not as smooth as toss spring effect ...
+            // user finger touch presable components while scroll user can feel
+            // that spring effect"): trackScrollPressedKey adds the live
+            // touch-follows-finger-during-scroll half of this -- see
+            // ScrollPressTracker.kt's own doc comment.
+            state = ledgerListState,
+            modifier = Modifier.fillMaxSize().weight(1f)
+                .then(rememberSpringOverscrollModifier())
+                .trackScrollPressedKey(ledgerListState, touchedTransactionKey),
             contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, bottom = 16.dp),
         ) {
             item {
@@ -3099,7 +3125,11 @@ private fun AccountDetailScreen(
                         )
                     }
                     items(rows, key = { it.first.id }) { (tx, afterBalance) ->
-                        AccountLedgerRow(transaction = tx, isOutgoing = tx.senderId == currentUserId, afterBalance = afterBalance, currency = currency)
+                        AccountLedgerRow(
+                            transaction = tx, isOutgoing = tx.senderId == currentUserId, afterBalance = afterBalance, currency = currency,
+                            isScrollTouched = touchedTransactionKey.value == tx.id,
+                            onClick = { selectedTransaction = tx to afterBalance },
+                        )
                     }
                 }
             }
@@ -3135,7 +3165,7 @@ private fun AccountDetailScreen(
 // alone -- reuses AccountMiniRow's own signed-amount/icon convention (see its doc
 // comment) and adds that second line.
 @Composable
-internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String) {
+internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String, isScrollTouched: Boolean = false, onClick: () -> Unit = {}) {
     val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
     // Real fix (2026-08-14, direct user screenshots of their own real Toss Bank
     // ledger): incoming amounts are tinted the real brand blue there, not a generic
@@ -3150,8 +3180,28 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
     // Bold, sourced TDS scale -- not an invented size) and the icon circle from 38dp
     // to 42dp proportionally, matching Toss's real bigger, bolder row weight. The
     // secondary time/balance lines stay small and subdued, same as the real reference.
+    // Real fix (2026-08-24, direct user follow-up: "no I mean presable effect" --
+    // clarifying the earlier scroll-bounce fix missed the actual ask). This row had
+    // no onClick and no press feedback at all -- Toss's own real spring press-scale
+    // is exactly what tells a user a row is tappable in the first place, and this
+    // row had nothing behind it to tap INTO either: itunda's ledger never had a
+    // transaction-detail screen, despite this whole thread's own first message
+    // already assuming one existed ("clear anyway when click on each transactions
+    // they get to see it's detail screen"). pressScaleClickable is the same shared
+    // spring used by every other real tappable row in this app (IdsListRow etc.),
+    // not a new one-off animation.
+    //
+    // Follow-up fix (same day, "not as smooth as toss spring effect ... user
+    // finger touch presable components while scroll user can feel that spring
+    // effect", then "implant that into our designs and apply it across our
+    // ecosystems"): isScrollTouched is now a real parameter of the SHARED
+    // pressScaleClickable (IdsInteractions.kt), not one-off inline code -- see its
+    // own doc comment for why plain Modifier.clickable alone can't do this (its
+    // press state is cancelled the instant a touch is recognized as a scroll drag).
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth()
+            .pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onClick)
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -3280,6 +3330,110 @@ private fun ledgerTimeOfDay(iso: String): String =
     } catch (_: Exception) {
         ""
     }
+
+private fun ledgerFullDateTime(iso: String): String =
+    try {
+        java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm", java.util.Locale.ENGLISH))
+    } catch (_: Exception) {
+        iso
+    }
+
+// Real, sourced backend enum (rw.itunda.core.domain.Transaction.TransactionType) --
+// same set ledgerRowIcon's own fallback switch already reads, just given a real
+// display label here instead of the raw enum constant.
+private fun transactionTypeLabel(type: String): String = when (type) {
+    "TRANSFER" -> "Transfer"
+    "PAYMENT" -> "Payment"
+    "DEPOSIT" -> "Deposit"
+    "WITHDRAWAL" -> "Withdrawal"
+    "BILL" -> "Bill payment"
+    "AIRTIME" -> "Airtime"
+    "LOAN" -> "Loan"
+    "INTEREST" -> "Interest"
+    else -> type.lowercase().replaceFirstChar { it.uppercase() }
+}
+
+// Real transaction-detail drill-in (2026-08-24, direct user follow-up: "no I mean
+// presable effect" -- clarifying that the ledger row's missing press feedback was
+// really pointing at a bigger gap, that tapping a row didn't go anywhere at all).
+// Real Toss Bank reference (직접 3rd screenshot from this same thread's very first
+// message: 상세내역 screen -- merchant name, amount with a copy action, 적요/거래
+// 유형/일시/거래 후 잔액 as a clean label:value list). Honestly scoped to only the
+// fields itunda's own TransactionDto (core/network/ApiService.kt) actually has --
+// no invented "입금처/출금처" account-name row (senderId/recipientId are opaque
+// user ids, not resolvable to a display name from this endpoint) and no
+// "증명서 발급하기" certificate action (a real Korean bank-specific feature itunda
+// has no backend for). The description shown here is the FULL, untouched original
+// text (transaction.description, not ledgerRowTitle's stripped version) -- the list
+// row strips the redundant category prefix precisely because this detail screen is
+// where the complete text lives.
+@Composable
+private fun TransactionDetailScreen(
+    transaction: rw.itunda.core.network.TransactionDto,
+    isOutgoing: Boolean,
+    afterBalance: Double,
+    currency: String,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
+    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
+    val (rowIcon, rowIconColor) = ledgerRowIcon(transaction)
+
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        Box(
+            modifier = Modifier.padding(8.dp).size(Ids.layout.minTouchTarget).clip(CircleShape).pressScaleClickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(IdsIcons.Back, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal).padding(top = 12.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(56.dp).clip(CircleShape).background(rowIconColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(rowIcon, contentDescription = null, modifier = Modifier.size(26.dp), tint = Color.White)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(ledgerRowTitle(transaction), color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(amountText, color = amountColor, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(32.dp))
+            TransactionDetailRow("Description", transaction.description)
+            TransactionDetailRow("Type", transactionTypeLabel(transaction.type))
+            TransactionDetailRow("Status", transaction.status.lowercase().replaceFirstChar { it.uppercase() })
+            TransactionDetailRow("Date & time", ledgerFullDateTime(transaction.createdAt))
+            TransactionDetailRow("Balance after", "$currency %,.0f".format(afterBalance))
+            if (transaction.fee > 0.0) {
+                TransactionDetailRow("Fee", "$currency %,.0f".format(transaction.fee))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransactionDetailRow(label: String, value: String) {
+    // Real fix, applied proactively (this exact "two unweighted Texts in a Row can
+    // overflow into each other" bug was just caught live in AccountLedgerRow above
+    // this same session -- see that fix's own doc comment): the value gets
+    // weight(1f) so a long description wraps within its own bounded space instead
+    // of running past the label.
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, color = Ids.colors.textSecondary, fontSize = 14.sp)
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            value, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
 
 private data class ShellRow(
     val title: String,

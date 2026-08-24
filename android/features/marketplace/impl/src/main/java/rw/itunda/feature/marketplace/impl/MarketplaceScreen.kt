@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.trackScrollPressedKey
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -478,9 +480,16 @@ fun MarketplaceContent(
         return
     }
 
+    // Real fix (2026-08-25, direct user directive: "implant that into our designs
+    // and apply it across our ecosystems", following the account ledger's own
+    // shipped version) -- see ScrollPressTracker.kt's own doc comment.
+    val marketplaceListState = rememberLazyListState()
+    val marketplaceTouchedKey = remember { mutableStateOf<Any?>(null) }
     Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
+        state = marketplaceListState,
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)
+            .trackScrollPressedKey(marketplaceListState, marketplaceTouchedKey),
         // Real fix, 2026-08-03: a real device screenshot showed the last-visible
         // listing's own action row (Message seller/Make an offer) sitting directly
         // under HoodTab's floating Write FAB, genuinely overlapping and unreadable.
@@ -553,6 +562,7 @@ fun MarketplaceContent(
                         liked = listing.id in likedListingIds,
                         onToggleLike = { toggleLike(listing.id) },
                         onOpen = { selectedListing = listing },
+                        isScrollTouched = marketplaceTouchedKey.value == listing.id,
                     )
                 }
             }
@@ -626,6 +636,7 @@ fun MarketplaceContent(
                     liked = listing.id in likedListingIds,
                     onToggleLike = { toggleLike(listing.id) },
                     onOpen = { selectedListing = listing },
+                    isScrollTouched = marketplaceTouchedKey.value == listing.id,
                 )
             }
         }
@@ -1071,6 +1082,7 @@ private fun ListingRow(
     viewerLocation: Pair<Double, Double>? = null,
     liked: Boolean = false, onToggleLike: () -> Unit = {},
     onOpen: () -> Unit,
+    isScrollTouched: Boolean = false,
 ) {
     // Real like count (2026-08-03) -- local optimistic display, reset whenever this
     // exact listing's own server-sourced count changes (a real refetch, e.g. after
@@ -1087,8 +1099,12 @@ private fun ListingRow(
             // and the real order is title (bold) -> location/time (muted) -> price
             // (bold, largest). The full-width hero-image version wasn't sourced from a
             // real screenshot at the time it was written.
+            // Real fix (2026-08-25, direct user directive: "implant that into our
+            // designs and apply it across our ecosystems") -- matches Shop/Eats'
+            // own identical fix; see IdsInteractions.kt's pressScaleClickable doc
+            // comment for the full sourced account.
             Row(
-                modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen).padding(vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen).padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot

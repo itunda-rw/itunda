@@ -322,6 +322,30 @@ struct ContentView: View {
                     // real destination instead, so it needs one, matching every other
                     // fullScreenCover destination in this file (SaccoScreenView etc.
                     // each take their own onBack).
+                    // Real fix (2026-08-24, TransactionDetailScreen's "Balance
+                    // after" -- matches Android's/bank-mfe's identical running-
+                    // balance computation): explicitly re-sorted newest-first
+                    // (matching those two platforms' own defensive re-sort) since a
+                    // running balance is only correct walked in that order.
+                    let sortedTransactions = bankViewModel.transactions.sorted { $0.createdAt > $1.createdAt }
+                    var runningBalance = bankViewModel.balance
+                    let recentTransactionRows: [RecentTransactionRowData] = sortedTransactions.map { tx in
+                        let isOutgoing = tx.senderId == bankViewModel.currentUserId
+                        let afterBalance = runningBalance
+                        runningBalance -= isOutgoing ? tx.amount : -tx.amount
+                        return RecentTransactionRowData(
+                            id: tx.id,
+                            title: tx.description,
+                            subtitle: tx.status.capitalized,
+                            amountText: "\(isOutgoing ? "-" : "+")\(Int(tx.amount)) \(tx.currency)",
+                            isOutgoing: isOutgoing,
+                            type: tx.type,
+                            createdAt: tx.createdAt,
+                            fee: tx.fee,
+                            currency: tx.currency,
+                            afterBalance: afterBalance
+                        )
+                    }
                     NavigationStack {
                         BankView(
                             balanceText: bankViewModel.balanceText,
@@ -329,16 +353,7 @@ struct ContentView: View {
                             savingsRows: savingsRows,
                             discoverRows: bankViewModel.discoverRows,
                             coopRows: coopRows,
-                            recentTransactions: bankViewModel.transactions.map { tx in
-                                let isOutgoing = tx.senderId == bankViewModel.currentUserId
-                                return RecentTransactionRowData(
-                                    id: tx.id,
-                                    title: tx.description,
-                                    subtitle: tx.status.capitalized,
-                                    amountText: "\(isOutgoing ? "-" : "+")\(Int(tx.amount)) \(tx.currency)",
-                                    isOutgoing: isOutgoing
-                                )
-                            },
+                            recentTransactions: recentTransactionRows,
                             onSend: { showTransferFlow = true },
                             onOpenTransactionHistory: { showTransactionHistory = true },
                             onOpenNotifications: { showBankSettings = true },

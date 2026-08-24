@@ -266,11 +266,16 @@ internal fun CartFab(totalItems: Int, onClick: () -> Unit) {
 // same ShoppingMerchantDto.photoUrl field Eats already uses (this endpoint and Eats'
 // share the same DTO), so no backend change was needed here.
 @Composable
-internal fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit) {
+internal fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit, isScrollTouched: Boolean = false) {
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
+        // Real fix (2026-08-25, direct user directive after the account ledger's
+        // own version shipped: "implant that into our designs and apply it across
+        // our ecosystems") -- same live, finger-follows-through-a-scroll-drag
+        // spring feedback, now a real parameter of the shared pressScaleClickable
+        // (IdsInteractions.kt), not duplicated logic.
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen),
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {

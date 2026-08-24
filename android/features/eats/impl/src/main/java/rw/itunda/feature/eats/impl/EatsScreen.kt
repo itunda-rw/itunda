@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.trackScrollPressedKey
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -409,7 +411,16 @@ internal fun OrderFoodContent(
         return
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
+    // Real fix (2026-08-25, direct user directive: "implant that into our designs
+    // and apply it across our ecosystems", following the account ledger's own
+    // shipped version) -- see ScrollPressTracker.kt's own doc comment.
+    val eatsListState = rememberLazyListState()
+    val eatsTouchedKey = remember { mutableStateOf<Any?>(null) }
+    LazyColumn(
+        state = eatsListState,
+        modifier = Modifier.fillMaxSize().trackScrollPressedKey(eatsListState, eatsTouchedKey),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+    ) {
         item { PlatformMembershipCard() }
         item { EatsMembershipCard() }
         item {
@@ -537,7 +548,13 @@ internal fun OrderFoodContent(
                     )
                 }
             } else {
-                items(restaurants!!, key = { it.merchantId }) { m -> RestaurantCard(m, isFavorite = m.merchantId in favoriteIds, favoriteBusy = favoritingId == m.merchantId, onOpen = { openRestaurant(m) }, onToggleFavorite = { toggleFavorite(m.merchantId) }) }
+                items(restaurants!!, key = { it.merchantId }) { m ->
+                    RestaurantCard(
+                        m, isFavorite = m.merchantId in favoriteIds, favoriteBusy = favoritingId == m.merchantId,
+                        onOpen = { openRestaurant(m) }, onToggleFavorite = { toggleFavorite(m.merchantId) },
+                        isScrollTouched = eatsTouchedKey.value == m.merchantId,
+                    )
+                }
             }
         }
     }

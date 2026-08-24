@@ -105,11 +105,15 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
 }
 
 @Composable
-internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favoriteBusy: Boolean, onOpen: () -> Unit, onToggleFavorite: () -> Unit) {
+internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favoriteBusy: Boolean, onOpen: () -> Unit, onToggleFavorite: () -> Unit, isScrollTouched: Boolean = false) {
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpen),
+        // Real fix (2026-08-25, direct user directive: "implant that into our
+        // designs and apply it across our ecosystems") -- matches Shop's own
+        // StoreCard identical fix; see IdsInteractions.kt's pressScaleClickable
+        // doc comment for the full sourced account.
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(isScrollTouched = isScrollTouched, onClick = onOpen),
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {

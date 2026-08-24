@@ -19,6 +19,12 @@ public struct AccountLedgerDetailView: View {
     let onBack: () -> Void
     let onSend: () -> Void
 
+    // Real fix (2026-08-24, direct user follow-up: "no I mean presable effect" --
+    // clarifying that the ledger row's missing press feedback was really pointing
+    // at a bigger gap, that tapping a row didn't go anywhere at all). Matches
+    // Android's/bank-mfe's identical selectedTransaction + TransactionDetailScreen.
+    @State private var selectedTransaction: RecentTransactionRowData?
+
     public init(balanceText: String, accountNumber: String?, transactions: [RecentTransactionRowData], onBack: @escaping () -> Void, onSend: @escaping () -> Void) {
         self.balanceText = balanceText
         self.accountNumber = accountNumber
@@ -63,7 +69,10 @@ public struct AccountLedgerDetailView: View {
                 } else {
                     VStack(spacing: 0) {
                         ForEach(transactions) { tx in
-                            AccountLedgerDetailRow(tx: tx)
+                            Button(action: { selectedTransaction = tx }) {
+                                AccountLedgerDetailRow(tx: tx)
+                            }
+                            .buttonStyle(PressScaleButtonStyle())
                             Divider()
                         }
                     }
@@ -86,7 +95,124 @@ public struct AccountLedgerDetailView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .navigationBarHidden(true)
+        .fullScreenCover(item: $selectedTransaction) { tx in
+            TransactionDetailScreen(tx: tx, onBack: { selectedTransaction = nil })
+        }
     }
+}
+
+/// Real transaction-detail drill-in (2026-08-24, direct user follow-up: "no I mean
+/// presable effect" -- clarifying that the ledger row's missing press feedback was
+/// really pointing at a bigger gap, that tapping a row didn't go anywhere at all).
+/// Real Toss Bank reference (직접 3rd screenshot from this same thread's very first
+/// message: 상세내역 screen -- merchant name, amount, 적요/거래유형/일시/거래 후
+/// 잔액 as a clean label:value list). Honestly scoped to only the fields
+/// RecentTransactionRowData actually carries -- no invented "입금처/출금처"
+/// account-name row (this display model has no sender/recipient display name to
+/// show) and no "증명서 발급하기" certificate action (a real Korean bank-specific
+/// feature itunda has no backend for). `tx.title` is shown here UNSTRIPPED (the
+/// list row's own ledgerRowTitle only strips the redundant category prefix for
+/// that row -- this screen is where the complete text lives). Matches Android's/
+/// bank-mfe's identical TransactionDetailScreen.
+private struct TransactionDetailScreen: View {
+    let tx: RecentTransactionRowData
+    let onBack: () -> Void
+
+    private var rows: [(String, String)] {
+        var r = [
+            ("Description", tx.title),
+            ("Type", transactionTypeLabel(tx.type)),
+            ("Status", tx.subtitle),
+            ("Date & time", ledgerFullDateTime(tx.createdAt)),
+            ("Balance after", "\(tx.currency) \(Int(tx.afterBalance))"),
+        ]
+        if tx.fee > 0 { r.append(("Fee", "\(tx.currency) \(Int(tx.fee))")) }
+        return r
+    }
+
+    var body: some View {
+        let category = ledgerRowIcon(for: tx.title)
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: onBack) {
+                    IDS.Icons.back(size: 18, color: IDS.Colors.textPrimary, relativeTo: .body).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Back")
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    Circle()
+                        .fill(category.color)
+                        .frame(width: 56, height: 56)
+                        .overlay(
+                            Image(systemName: category.symbol)
+                                .font(IDS.scaledFont(size: 22, weight: .regular, relativeTo: .title2))
+                                .foregroundColor(.white)
+                        )
+                    Spacer().frame(height: 16)
+                    Text(ledgerRowTitle(tx.title))
+                        .font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title3))
+                        .foregroundColor(IDS.Colors.textPrimary)
+                    Spacer().frame(height: 6)
+                    Text(tx.amountText)
+                        .font(IDS.scaledFont(size: 32, weight: .bold, relativeTo: .largeTitle))
+                        .foregroundColor(tx.isOutgoing ? IDS.Colors.textPrimary : .blue)
+                    Spacer().frame(height: 32)
+                    VStack(spacing: 0) {
+                        ForEach(rows, id: \.0) { label, value in
+                            HStack(alignment: .top, spacing: 16) {
+                                Text(label)
+                                    .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .callout))
+                                    .foregroundColor(IDS.Colors.textTertiary)
+                                Spacer()
+                                Text(value)
+                                    .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .callout))
+                                    .foregroundColor(IDS.Colors.textPrimary)
+                                    .multilineTextAlignment(.trailing)
+                            }
+                            .padding(.vertical, 12)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 4)
+            }
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .navigationBarHidden(true)
+    }
+}
+
+private func transactionTypeLabel(_ type: String) -> String {
+    switch type {
+    case "TRANSFER": return "Transfer"
+    case "PAYMENT": return "Payment"
+    case "DEPOSIT": return "Deposit"
+    case "WITHDRAWAL": return "Withdrawal"
+    case "BILL": return "Bill payment"
+    case "AIRTIME": return "Airtime"
+    case "LOAN": return "Loan"
+    case "INTEREST": return "Interest"
+    default: return type.capitalized
+    }
+}
+
+private func ledgerFullDateTime(_ iso: String) -> String {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let date = formatter.date(from: iso) ?? {
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: iso)
+    }()
+    guard let date else { return iso }
+    let display = DateFormatter()
+    display.dateFormat = "MMM d, yyyy HH:mm"
+    display.locale = Locale(identifier: "en_US")
+    return display.string(from: date)
 }
 
 private struct AccountLedgerDetailRow: View {

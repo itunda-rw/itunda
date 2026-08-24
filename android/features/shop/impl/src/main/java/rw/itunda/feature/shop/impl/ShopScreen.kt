@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.trackScrollPressedKey
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -580,8 +582,17 @@ fun CommerceShopContent(
     }
 
     val totalItems = cart.values.sumOf { it.quantity }
+    // Real fix (2026-08-25, direct user directive: "implant that into our designs
+    // and apply it across our ecosystems", following the account ledger's own
+    // shipped version) -- see trackScrollPressedKey's own doc comment
+    // (ScrollPressTracker.kt) for why plain Modifier.clickable can't show a
+    // pressed state for a row a finger is dragging over, only a stationary tap.
+    val shopListState = rememberLazyListState()
+    val shopTouchedKey = remember { mutableStateOf<Any?>(null) }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        state = shopListState,
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)
+            .trackScrollPressedKey(shopListState, shopTouchedKey),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
@@ -737,7 +748,7 @@ fun CommerceShopContent(
                     items(searchResults, key = { it.id }) { r ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-                                .pressScaleClickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
+                                .pressScaleClickable(isScrollTouched = shopTouchedKey.value == r.id) { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -921,7 +932,9 @@ fun CommerceShopContent(
                     )
                 }
             } else {
-                items(merchants!!, key = { it.merchantId }) { m -> StoreCard(m, onOpen = { openMerchant(m) }) }
+                items(merchants!!, key = { it.merchantId }) { m ->
+                    StoreCard(m, onOpen = { openMerchant(m) }, isScrollTouched = shopTouchedKey.value == m.merchantId)
+                }
             }
         }
         if (view == CommerceView.BROWSE && totalItems > 0) {

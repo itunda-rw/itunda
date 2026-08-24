@@ -21,6 +21,10 @@ final class BankViewModel: ObservableObject {
     // flows), not just display them -- balanceText/savingsRows are formatted display
     // strings only.
     @Published private(set) var availableBalance: Double = 0
+    // Real raw ledger balance (2026-08-24, for TransactionDetailScreen's "Balance
+    // after" -- distinct from availableBalance above, which nets out holds and
+    // isn't the right basis for a historical per-transaction running balance).
+    @Published private(set) var balance: Double = 0
     @Published private(set) var savingsGoals: [SavingsGoal] = []
     @Published private(set) var interestJar: InterestJar?
     @Published private(set) var transactions: [TransactionDto] = []
@@ -124,6 +128,7 @@ final class BankViewModel: ObservableObject {
                 balanceText = formatAmount(account.balance, currency: account.currency)
                 accountNumber = account.accountNumber
                 availableBalance = account.availableBalance
+                balance = account.balance
                 currentUserId = account.userId
             }
 

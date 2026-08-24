@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { ArrowLeftRight, Car, Utensils, Gift, ShoppingBag, Percent, Landmark, Phone, Receipt, Smartphone, Wallet,  } from 'lucide-react';
 import { IconBack } from './icons/ItundaIcons';
 import { IdsButton } from './IdsButton';
@@ -31,17 +32,32 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManage, setShowManage] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<{ tx: Transaction; afterBalance: number; isCredit: boolean } | null>(null);
 
   useEffect(() => {
     fetchAccountTransactions(account.id).then(setTransactions).catch(() => setError('Could not load your transaction history.'));
   }, [account.id]);
 
   const sorted = [...(transactions ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const groups = sorted.reduce<{ label: string; items: Transaction[] }[]>((acc, tx) => {
-    const label = new Date(tx.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  // Real fix (2026-08-24, matching Android's identical AccountDetailScreen
+  // `withBalance` computation): this row never showed the running balance after
+  // each transaction the way Android's own ledger row does -- computed here now so
+  // the new TransactionDetailScreen below has a real "Balance after" to show, not
+  // an invented one. isCredit uses the same per-account toAccountId/fromAccountId
+  // check the row itself already uses (not senderId===currentUser like Android --
+  // more correct for an account that can be either side of a transfer).
+  let runningBalance = account.balance;
+  const withBalance = sorted.map((tx) => {
+    const isCredit = tx.toAccountId === account.id && tx.fromAccountId !== account.id;
+    const afterBalance = runningBalance;
+    runningBalance -= isCredit ? tx.amount : -tx.amount;
+    return { tx, afterBalance, isCredit };
+  });
+  const groups = withBalance.reduce<{ label: string; items: typeof withBalance }[]>((acc, entry) => {
+    const label = new Date(entry.tx.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const last = acc[acc.length - 1];
-    if (last && last.label === label) last.items.push(tx);
-    else acc.push({ label, items: [tx] });
+    if (last && last.label === label) last.items.push(entry);
+    else acc.push({ label, items: [entry] });
     return acc;
   }, []);
 
@@ -74,6 +90,9 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
         </div>
         {showManage && onNavigateToTab && (
           <AccountManageScreen account={account} onBack={() => setShowManage(false)} onNavigateToTab={onNavigateToTab} />
+        )}
+        {selectedTransaction && (
+          <TransactionDetailScreen entry={selectedTransaction} onBack={() => setSelectedTransaction(null)} />
         )}
 
         <div style={{ padding: '4px 20px 24px' }}>
@@ -112,11 +131,25 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
               {groups.map((group) => (
                 <div key={group.label}>
                   <p style={{ margin: 0, padding: '14px 0 6px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{group.label}</p>
-                  {group.items.map((tx) => {
-                    const isCredit = tx.toAccountId === account.id && tx.fromAccountId !== account.id;
+                  {group.items.map((entry) => {
+                    const { tx, isCredit } = entry;
                     const RowIcon = ledgerRowIcon(tx);
                     return (
-                      <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
+                      // Real fix (2026-08-24, direct user follow-up: "no I mean
+                      // presable effect"): this row had no onClick and no press
+                      // feedback at all -- Toss's own real spring press-scale is
+                      // exactly what tells a user a row is tappable in the first
+                      // place, and this row had nothing behind it to tap INTO
+                      // either (see TransactionDetailScreen's own doc comment).
+                      // whileTap matches this app's own global button:active scale
+                      // (0.96-0.98 range already used elsewhere in this file), not a
+                      // new one-off value.
+                      <motion.div
+                        key={tx.id}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setSelectedTransaction(entry)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: '1px solid var(--itunda-grey-100)', cursor: 'pointer' }}
+                      >
                         <div style={{ width: '38px', height: '38px', borderRadius: '999px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: RowIcon.color }}>
                           <RowIcon.Icon size={18} color="#fff" />
                         </div>
@@ -127,7 +160,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
                         <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
                           {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} {tx.currency}
                         </span>
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -199,4 +232,79 @@ function ledgerRowTitle(tx: Transaction): string {
     if (tail) return tail;
   }
   return d;
+}
+
+// Real, sourced backend enum (rw.itunda.core.domain.Transaction.TransactionType) --
+// same set ledgerRowIcon's own fallback switch already reads, just given a real
+// display label here instead of the raw enum constant. Matches Android's identical
+// transactionTypeLabel.
+function transactionTypeLabel(type: string): string {
+  switch (type) {
+    case 'TRANSFER': return 'Transfer';
+    case 'PAYMENT': return 'Payment';
+    case 'DEPOSIT': return 'Deposit';
+    case 'WITHDRAWAL': return 'Withdrawal';
+    case 'BILL': return 'Bill payment';
+    case 'AIRTIME': return 'Airtime';
+    case 'LOAN': return 'Loan';
+    case 'INTEREST': return 'Interest';
+    default: return type.charAt(0) + type.slice(1).toLowerCase();
+  }
+}
+
+// Real transaction-detail drill-in (2026-08-24, direct user follow-up: "no I mean
+// presable effect" -- clarifying that the ledger row's missing press feedback was
+// really pointing at a bigger gap, that tapping a row didn't go anywhere at all).
+// Real Toss Bank reference (직접 3rd screenshot from this same thread's very first
+// message: 상세내역 screen -- merchant name, amount, 적요/거래유형/일시/거래 후
+// 잔액 as a clean label:value list). Honestly scoped to only the fields itunda's own
+// Transaction type actually has -- no invented "입금처/출금처" account-name row
+// (senderId/recipientId are opaque user ids, not resolvable to a display name from
+// this endpoint) and no "증명서 발급하기" certificate action (a real Korean
+// bank-specific feature itunda has no backend for). The description shown here is
+// the FULL, untouched original text (tx.description, not ledgerRowTitle's stripped
+// version) -- the list row strips the redundant category prefix precisely because
+// this detail screen is where the complete text lives. Matches Android's identical
+// TransactionDetailScreen.
+function TransactionDetailScreen({ entry, onBack }: { entry: { tx: Transaction; afterBalance: number; isCredit: boolean }; onBack: () => void }) {
+  const { tx, afterBalance, isCredit } = entry;
+  const amountColor = isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)';
+  const RowIcon = ledgerRowIcon(tx);
+  const rows: [string, string][] = [
+    ['Description', tx.description],
+    ['Type', transactionTypeLabel(tx.type)],
+    ['Status', tx.status.charAt(0) + tx.status.slice(1).toLowerCase()],
+    ['Date & time', new Date(tx.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })],
+    ['Balance after', `${tx.currency} ${afterBalance.toLocaleString()}`],
+  ];
+  if (tx.fee > 0) rows.push(['Fee', `${tx.currency} ${tx.fee.toLocaleString()}`]);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '14px 16px' }}>
+          <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px' }}>
+            <IconBack size={24} color="var(--itunda-grey-900)" />
+          </button>
+        </div>
+        <div style={{ padding: '4px 20px 24px' }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: RowIcon.color }}>
+            <RowIcon.Icon size={26} color="#fff" />
+          </div>
+          <p style={{ margin: '16px 0 0', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{ledgerRowTitle(tx)}</p>
+          <p style={{ margin: '6px 0 0', fontSize: '32px', fontWeight: 700, color: amountColor, letterSpacing: '-0.5px' }}>
+            {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} {tx.currency}
+          </p>
+          <div style={{ marginTop: '32px' }}>
+            {rows.map(([label, value]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '12px 0' }}>
+                <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-500)', flexShrink: 0 }}>{label}</span>
+                <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-900)', textAlign: 'right' }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
