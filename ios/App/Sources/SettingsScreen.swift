@@ -135,9 +135,7 @@ struct SettingsScreen: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onDone) {
-                    Image(systemName: "chevron.left")
-                        .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3))
-                        .frame(width: 44, height: 44)
+                    IDS.Icons.back(size: 18, relativeTo: .title3).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel(t("back"))
                 Text(t("title")).font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2))

@@ -22,7 +22,7 @@ public struct CreditScoreScreenView: View {
     public var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
+                Button(action: onBack) { IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body) }.accessibilityLabel("Back")
                 Spacer()
                 Text("Credit score").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()

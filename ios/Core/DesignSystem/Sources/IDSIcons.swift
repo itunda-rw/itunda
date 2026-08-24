@@ -93,27 +93,46 @@ public struct IDSAddShape: Shape {
 /// variance seen across existing call sites (different `.font(.system(size:))`
 /// values, different `.foregroundColor`s), stroke width scales proportionally with
 /// size to keep the same real 2.4/24 ratio web/Android use at any requested size.
+/// `relativeTo`, when given, makes the icon respond to the user's real OS Dynamic
+/// Type setting via `UIFontMetrics.scaledValue(for:)` -- the same real mechanism
+/// `IDS.scaledFont` already uses for text, mirrored here so replacing an SF Symbol
+/// (which auto-scales with Dynamic Type by default) doesn't silently regress the
+/// accessibility work an earlier pass this session did (90+ sites converted from
+/// raw `Font.system(size:)` to `IDS.scaledFont` specifically so text/icons respond
+/// to a user's real accessibility text-size setting). `nil` (the default) keeps a
+/// fixed size, for call sites that genuinely want one (e.g. a small inline glyph
+/// where scaling would break a tight layout).
 public extension IDS {
     struct Icons {
-        public static func back(size: CGFloat = 24, color: Color = .primary) -> some View {
-            IDSBackShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * size, lineCap: .round, lineJoin: .round))
-                .frame(width: size, height: size)
+        private static func scaled(_ size: CGFloat, relativeTo style: UIFont.TextStyle?) -> CGFloat {
+            guard let style else { return size }
+            return UIFontMetrics(forTextStyle: style).scaledValue(for: size)
         }
-        public static func chevronRight(size: CGFloat = 24, color: Color = .primary) -> some View {
-            IDSChevronRightShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * size, lineCap: .round, lineJoin: .round))
-                .frame(width: size, height: size)
+
+        public static func back(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSBackShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
         }
-        public static func close(size: CGFloat = 24, color: Color = .primary) -> some View {
-            IDSCloseShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * size, lineCap: .round, lineJoin: .round))
-                .frame(width: size, height: size)
+        public static func chevronRight(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSChevronRightShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
         }
-        public static func search(size: CGFloat = 24, color: Color = .primary) -> some View {
-            IDSSearchShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * size, lineCap: .round, lineJoin: .round))
-                .frame(width: size, height: size)
+        public static func close(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSCloseShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
         }
-        public static func add(size: CGFloat = 24, color: Color = .primary) -> some View {
-            IDSAddShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * size, lineCap: .round, lineJoin: .round))
-                .frame(width: size, height: size)
+        public static func search(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSSearchShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
+        }
+        public static func add(size: CGFloat = 24, color: Color = .primary, relativeTo style: UIFont.TextStyle? = nil) -> some View {
+            let s = scaled(size, relativeTo: style)
+            return IDSAddShape().stroke(color, style: StrokeStyle(lineWidth: 2.4 / 24 * s, lineCap: .round, lineJoin: .round))
+                .frame(width: s, height: s)
         }
     }
 }

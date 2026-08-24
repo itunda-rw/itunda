@@ -16,10 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -35,6 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.network.PlaceSearchResultDto
@@ -85,7 +82,7 @@ internal fun MapTopChrome(
                 .pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
+            Icon(IdsIcons.Back, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
         }
 
         Row(
@@ -97,7 +94,7 @@ internal fun MapTopChrome(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Outlined.Search,
+                IdsIcons.Search,
                 contentDescription = "Search",
                 tint = if (searching) Ids.colors.textSecondary else Ids.colors.brand,
                 modifier = Modifier.size(18.dp).pressScaleClickable(enabled = !searching && query.isNotBlank()) { onRunSearch() },
@@ -120,7 +117,7 @@ internal fun MapTopChrome(
             )
             if (query.isNotBlank()) {
                 Icon(
-                    Icons.Outlined.Close,
+                    IdsIcons.Close,
                     contentDescription = "Clear search",
                     tint = Ids.colors.textSecondary,
                     modifier = Modifier.size(16.dp).pressScaleClickable { onClearQuery() },

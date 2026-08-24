@@ -33,7 +33,7 @@ struct UpfrontDepositScreenView: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: { mode == .new ? (mode = .list) : onBack() }) {
-                    Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
+                    IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body)
                 }.accessibilityLabel("Back")
                 Spacer()
                 Text(mode == .new ? "New 12-month deposit" : "12-Month Deposit").font(.headline).foregroundColor(IDS.Colors.textPrimary)

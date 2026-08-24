@@ -70,9 +70,7 @@ struct ChatThreadScreen: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .title3))
-                        .frame(width: 44, height: 44)
+                    IDS.Icons.back(size: 18, relativeTo: .title3).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Back")
                 VStack(alignment: .leading, spacing: 0) {

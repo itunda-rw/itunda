@@ -51,10 +51,7 @@ public struct TransactionHistoryScreen: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) {
-                    Image(systemName: "chevron.left")
-                        .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .body))
-                        .foregroundColor(IDS.Colors.textPrimary)
-                        .frame(width: 44, height: 44)
+                    IDS.Icons.back(size: 18, color: IDS.Colors.textPrimary, relativeTo: .body).frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Back")
                 Spacer()

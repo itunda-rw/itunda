@@ -29,7 +29,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Star
@@ -66,6 +65,7 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.CreateHoodReportRequest
 import rw.itunda.core.network.HoodReviewDto
 import rw.itunda.core.network.NetworkClient
@@ -575,7 +575,7 @@ fun BackTopBar(title: String, onBack: () -> Unit) {
                 .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+            Icon(IdsIcons.Back, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
         }
         Text(title, color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }

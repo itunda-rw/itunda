@@ -44,7 +44,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
@@ -133,6 +132,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.itundaface.LinkGlyph
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetMapFolderVisibilityRequest
@@ -1434,7 +1434,7 @@ fun MapScreen(
                             mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomIn()) }
                         },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Outlined.Add, contentDescription = "Zoom in", tint = Ids.colors.textPrimary, modifier = Modifier.size(18.dp)) }
+                    ) { Icon(IdsIcons.Add, contentDescription = "Zoom in", tint = Ids.colors.textPrimary, modifier = Modifier.size(18.dp)) }
                     Box(modifier = Modifier.width(44.dp).height(1.dp).background(Ids.colors.divider))
                     Box(
                         modifier = Modifier.size(44.dp).pressScaleClickable {

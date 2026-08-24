@@ -22,7 +22,7 @@ struct IkiminaScreenView: View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: { selectedId != nil ? (selectedId = nil) : onBack() }) {
-                    Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
+                    IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body)
                 }.accessibilityLabel("Back")
                 Spacer()
                 Text("Ikimina").font(.headline).foregroundColor(IDS.Colors.textPrimary)
