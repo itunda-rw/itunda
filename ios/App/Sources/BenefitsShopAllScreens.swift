@@ -863,8 +863,10 @@ struct MyTabView: View {
                             Text("\(Int(affiliateCommissions.reduce(0) { $0 + $1.commissionAmount })) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                         }
                     }
-                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                    // matches "My orders" below (already flat) and the identical Android/
+                    // web Partner-earnings conversion (docs/UI_UX_GUIDELINES.md §10).
+                    .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
                 // recent orders across every product, not a settings list. Tapping
@@ -1034,7 +1036,10 @@ private struct VerificationCard: View {
                     if !phoneVerified { VerificationRow(kind: "phone", hasEmail: true, onVerified: { Task { await load() } }) }
                     if !emailVerified { VerificationRow(kind: "email", hasEmail: email != nil, onVerified: { Task { await load() } }) }
                 }
-                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                // matches Android's identical VerificationCard conversion, a lone
+                // conditional section (docs/UI_UX_GUIDELINES.md §10).
+                .padding(.vertical, 10)
             }
         }
         .task { await load() }

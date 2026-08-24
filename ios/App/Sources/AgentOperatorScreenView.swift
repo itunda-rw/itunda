@@ -38,21 +38,33 @@ struct AgentOperatorScreenView: View {
                         if let error { Text(error).font(.caption).foregroundColor(.red) }
                         if let message { Text(message).font(.caption).foregroundColor(IDS.Colors.brand) }
                         if let till {
+                            // Real fix (2026-08-24, flat-design sweep): dropped the Card
+                            // wrapper around each of these 4 sibling sections -- real
+                            // Divider()s mark the real boundaries instead
+                            // (docs/UI_UX_GUIDELINES.md §10).
                             TillSummaryCard(till: till)
+                            Divider().overlay(IDS.Colors.divider)
                             CashInCard(onSubmitted: { balance in message = "Cash in accepted — new customer balance \(Int(balance)) RWF"; Task { await load() } }, onError: { error = $0 })
+                            Divider().overlay(IDS.Colors.divider)
                             CashOutCard(onSubmitted: { balance in message = "Cash out paid — new customer balance \(Int(balance)) RWF"; Task { await load() } }, onError: { error = $0 })
+                            Divider().overlay(IDS.Colors.divider)
                             TillCountCard(onSubmitted: { variance, status in message = "Till count submitted — variance \(Int(variance)) RWF (\(status))"; Task { await load() } }, onError: { error = $0 })
+                            Divider().overlay(IDS.Colors.divider)
 
                             Text("Recent activity").bold()
                             if activity.isEmpty {
                                 EmptyStateView("No cash movements yet today — your cash-in/cash-out activity will show up here.")
                             } else {
+                                // History log of cash movements -- kept the per-row Divider
+                                // convention (docs/DESIGN_REFERENCES.md §274).
                                 ForEach(activity) { a in
                                     HStack {
                                         Text(a.type == "CASH_IN" ? "↓ Cash in · \(a.receiptNumber)" : "↑ Cash out · \(a.receiptNumber)").font(.footnote)
                                         Spacer()
                                         Text("\(Int(a.amount)) RWF").bold().font(.footnote)
                                     }
+                                    .padding(.vertical, 6)
+                                    Divider().overlay(IDS.Colors.divider)
                                 }
                             }
                         } else {
@@ -94,7 +106,6 @@ private struct TillSummaryCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 }
 
@@ -120,7 +131,6 @@ private struct CashInCard: View {
             }
             .disabled(busy)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func submit() async {
@@ -164,7 +174,6 @@ private struct CashOutCard: View {
             }
             .disabled(busy)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func submit() async {
@@ -205,7 +214,6 @@ private struct TillCountCard: View {
             }
             .disabled(busy)
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
     }
 
     private func submit() async {
