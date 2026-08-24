@@ -192,6 +192,48 @@ class RideTripServiceTest : BehaviorSpec({
         }
     }
 
+    // Real Uber "Upfront Fare" simplification -- see RideTripService.estimateFare's own
+    // doc comment. Proves the actual invariant that matters: estimateFare and
+    // requestTrip must return the IDENTICAL fare for the identical route (both reuse
+    // the same real calculateFare helper), and estimateFare must never touch the
+    // ledger/wallet/rate-limiter at all -- a passenger previewing a price before
+    // committing must never hold real money or count against their real request quota.
+    Given("a real passenger previewing a fare before requesting the real trip") {
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val service = newService(accountRepository = accountRepository, ledgerService = ledgerService, rateLimiter = rateLimiter, osrmRoutingClient = osrmRoutingClient)
+
+        val realRoadRoute = RouteResult(distanceKm = 6.5, durationMinutes = 14.0, geometry = emptyList())
+        every { osrmRoutingClient.routeThrough(listOf(-1.9536 to 30.0605, -1.9506 to 30.0925), TravelMode.DRIVING) } returns realRoadRoute
+
+        When("the fare is estimated for the same real route requestTrip charges above") {
+            val estimatedFare = service.estimateFare(-1.9536, 30.0605, -1.9506, 30.0925)
+
+            Then("it exactly matches the real fare requestTrip would charge for the identical route") {
+                estimatedFare shouldBe BigDecimal("1000").add(BigDecimal("250").multiply(BigDecimal("6.500"))).setScale(2, java.math.RoundingMode.HALF_UP)
+            }
+
+            Then("no real money, wallet, or rate limit is ever touched by a preview") {
+                verify(exactly = 0) { accountRepository.findByUserIdAndType(any(), any()) }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+            }
+        }
+
+        When("an invalid coordinate is given") {
+            Then("it throws InvalidRideLocationException before ever calling OSRM") {
+                try {
+                    service.estimateFare(999.0, 30.0605, -1.9506, 30.0925)
+                    error("expected InvalidRideLocationException")
+                } catch (e: InvalidRideLocationException) {
+                    verify(exactly = 0) { osrmRoutingClient.routeThrough(any(), any()) }
+                }
+            }
+        }
+    }
+
     Given("a real driver with an active Uber-style Destination Filter") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()

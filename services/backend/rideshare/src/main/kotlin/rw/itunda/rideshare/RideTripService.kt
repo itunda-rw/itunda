@@ -201,6 +201,55 @@ class RideTripService(
         rideDriverRepository.findByUserId(userId)
             ?: throw RideDriverNotRegisteredException("This account is not registered as a driver")
 
+    /**
+     * Real distance+fare calculation, extracted from `requestTrip` (2026-08-24) so a
+     * real fare preview (`estimateFare`) can never drift from what a real request
+     * actually charges -- same OSRM `routeThrough` call with the identical never-fail
+     * haversine fallback, same formula. Pure computation, no DB/ledger access, so it's
+     * safe to call from a read-only preview path with no side effects at all.
+     */
+    private fun calculateFare(routePoints: List<Pair<Double, Double>>): Pair<BigDecimal, BigDecimal> {
+        val totalDistanceKm = osrmRoutingClient.routeThrough(routePoints, TravelMode.DRIVING)?.distanceKm
+            ?: routePoints.zipWithNext().sumOf { (a, b) -> GeoUtils.haversineKm(a.first, a.second, b.first, b.second) }
+        val distanceKm = BigDecimal(totalDistanceKm).setScale(3, RoundingMode.HALF_UP)
+        val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
+        return distanceKm to fare
+    }
+
+    // Real Uber "Upfront Fare" simplification (2026-08-24, uber.com/gb/en/blog/
+    // understanding-your-upfront-fare-when-it-can-change-and-what-extra-fees-may-apply --
+    // "you know what you're paying before you ride"). Found a real, confirmed gap: this
+    // controller had no fare-preview endpoint at all -- `requestTrip` was the ONLY entry
+    // point that computed a fare, meaning a passenger only learned the price at the exact
+    // moment real money was already held in escrow. Every real client (bank-mfe's own
+    // "Request a ride" form) showed pickup/dropoff/timing with a bare "Request ride"
+    // button and zero fare anywhere on screen. This is a pure, side-effect-free
+    // read -- no rate limit, no auth-scoped state touched, matches every other
+    // real *estimate/*preview-shaped endpoint in this codebase (e.g.
+    // WeatherIndexInsuranceController's own quote endpoint).
+    fun estimateFare(
+        pickupLatitude: Double,
+        pickupLongitude: Double,
+        dropoffLatitude: Double,
+        dropoffLongitude: Double,
+        stops: List<RideStopInput> = emptyList(),
+    ): BigDecimal {
+        if (!GeoUtils.isValidCoordinate(pickupLatitude, pickupLongitude) || !GeoUtils.isValidCoordinate(dropoffLatitude, dropoffLongitude)) {
+            throw InvalidRideLocationException("Invalid pickup or dropoff coordinate")
+        }
+        if (stops.size > MAX_STOPS) {
+            throw RideTooManyStopsException("A trip can have at most $MAX_STOPS extra stops")
+        }
+        stops.forEach {
+            if (!GeoUtils.isValidCoordinate(it.latitude, it.longitude)) {
+                throw InvalidRideLocationException("Invalid stop coordinate")
+            }
+        }
+        val routePoints = listOf(pickupLatitude to pickupLongitude) + stops.map { it.latitude to it.longitude } + listOf(dropoffLatitude to dropoffLongitude)
+        val (_, fare) = calculateFare(routePoints)
+        return fare
+    }
+
     @Transactional
     fun requestTrip(
         passengerId: String,
@@ -257,10 +306,7 @@ class RideTripService(
         // honesty GeoUtils.kt's own doc comment already names) when OSRM is unconfigured,
         // unreachable, or finds no route -- never blocks a real trip request either way.
         val routePoints = listOf(pickupLatitude to pickupLongitude) + stops.map { it.latitude to it.longitude } + listOf(dropoffLatitude to dropoffLongitude)
-        val totalDistanceKm = osrmRoutingClient.routeThrough(routePoints, TravelMode.DRIVING)?.distanceKm
-            ?: routePoints.zipWithNext().sumOf { (a, b) -> GeoUtils.haversineKm(a.first, a.second, b.first, b.second) }
-        val distanceKm = BigDecimal(totalDistanceKm).setScale(3, RoundingMode.HALF_UP)
-        val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
+        val (distanceKm, fare) = calculateFare(routePoints)
         val platformFee = fare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
 
         if (passengerAccount.availableBalance < fare) {

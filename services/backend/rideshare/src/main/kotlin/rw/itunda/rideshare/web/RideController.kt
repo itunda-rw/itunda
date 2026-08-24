@@ -139,6 +139,22 @@ class RideController(
     fun clearDestination(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "driver" to rideDriverService.clearDestination(currentUser.userId)))
 
+    // Real Uber "Upfront Fare" simplification -- see RideTripService.estimateFare's own
+    // doc comment. A GET, not a POST: pure computation, no side effects, no
+    // Idempotency-Key needed (unlike requestTrip right below it, which actually holds
+    // real money). Doesn't cover multi-stop trips (the real, rarer case, gated behind
+    // "+ Add a stop" client-side) -- a pickup/dropoff-only estimate is still an honest,
+    // directionally-correct preview for the overwhelming majority of trips; the ACTUAL
+    // charged fare always comes from requestTrip with full stop data regardless.
+    @GetMapping("/trips/estimate")
+    fun estimateFare(
+        @RequestParam pickupLatitude: Double,
+        @RequestParam pickupLongitude: Double,
+        @RequestParam dropoffLatitude: Double,
+        @RequestParam dropoffLongitude: Double,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "estimatedFare" to rideTripService.estimateFare(pickupLatitude, pickupLongitude, dropoffLatitude, dropoffLongitude)))
+
     @PostMapping("/trips")
     fun requestTrip(
         @RequestBody request: RequestTripRequest,
