@@ -156,7 +156,7 @@ struct JobsContent: View {
                         Button("Retry") { Task { await load() } }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                 } else if posts == nil {
                     HoodFeedSkeleton()
                 } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
@@ -330,7 +330,7 @@ struct JobPostWishlistView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             } else if favorites == nil {
                 HoodFeedSkeleton()
             } else if favorites!.isEmpty {
@@ -353,7 +353,7 @@ struct JobPostWishlistView: View {
                         }
                         .disabled(removingId != nil)
                     }
-                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                 }
             }
         }
@@ -399,7 +399,7 @@ struct MyJobApplicationsView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             } else if applications == nil {
                 HoodFeedSkeleton()
             } else if applications!.isEmpty {
@@ -415,7 +415,8 @@ struct MyJobApplicationsView: View {
                             .padding(.horizontal, 8).padding(.vertical, 2)
                             .background(IDS.Colors.chipBackground).cornerRadius(8)
                     }
-                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
+                    Divider().overlay(IDS.Colors.divider)
                 }
             }
         }
