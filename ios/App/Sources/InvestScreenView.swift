@@ -200,12 +200,11 @@ private struct PortfolioContent: View {
                             .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                     }
                 }
-                .padding()
+                .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(IDS.Colors.card)
-                .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                 AddFundsCard(onFunded: load)
+                Divider().overlay(IDS.Colors.divider)
 
                 if portfolio.holdings.isEmpty {
                     Text("You don't hold any real shares yet. Browse the Market tab to buy some.")
@@ -254,9 +253,7 @@ private struct HoldingRow: View {
                 Text("\(positive ? "+" : "")\(String(format: "%.2f", holding.returnPercent))%").font(.caption).bold().foregroundColor(positive ? .green : .red)
             }
         }
-        .padding()
-        .background(IDS.Colors.card)
-        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
+        .padding(.vertical, 10)
     }
 }
 
@@ -303,10 +300,8 @@ private struct AddFundsCard: View {
                 }
             }
         }
-        .padding()
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IDS.Colors.card)
-        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
         DeviceStepUpHost(
             visible: needsDeviceVerification,
             onDismiss: { needsDeviceVerification = false },
@@ -639,10 +634,8 @@ private struct InvestErrorCard: View {
             Text(message).font(.caption).foregroundColor(.red)
             Button("Retry", action: onRetry).font(.caption).bold().foregroundColor(IDS.Colors.brand)
         }
-        .padding()
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(IDS.Colors.card)
-        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
     }
 }
 
