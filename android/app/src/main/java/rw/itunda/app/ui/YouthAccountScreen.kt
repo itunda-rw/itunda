@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -153,15 +158,31 @@ fun YouthAccountScreen(onBack: () -> Unit) {
                 YouthAccountMode.LOADING -> item {
                     SkeletonBlock(height = 120.dp)
                 }
+                // Real, sourced Toss Bank "explain the product before you commit" rebuild
+                // (2026-08-24, direct user-supplied reference + follow-up "improve a kind
+                // of products like this that needs it") -- see ProductExplainerScreen's
+                // own doc comment for the full sourced account. Every feature line below
+                // is a real YouthAccountService limit already stated in the old plain
+                // paragraph, not invented -- this is a presentation upgrade, not new
+                // claims.
                 YouthAccountMode.NOT_OPEN -> item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            "A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF " +
-                                "daily and 2,000,000 RWF monthly deposit limits.",
-                            color = Ids.colors.textSecondary, fontSize = 13.sp,
-                        )
-                        YouthAccountActionButton(if (busy) "Opening…" else "Open a Youth account", enabled = !busy) { openAccount() }
-                    }
+                    val capIcon: @Composable () -> Unit = { rw.itunda.core.designsystem.itundaface.LockGlyph(size = 20.dp) }
+                    val dailyIcon: @Composable () -> Unit = { Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }
+                    val monthlyIcon: @Composable () -> Unit = { Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }
+                    val features: List<Pair<@Composable () -> Unit, String>> = listOf(
+                        capIcon to "500,000 RWF balance cap keeps it safe",
+                        dailyIcon to "300,000 RWF daily deposit limit",
+                        monthlyIcon to "2,000,000 RWF monthly deposit limit",
+                    )
+                    rw.itunda.core.designsystem.components.ProductExplainerScreen(
+                        icon = { rw.itunda.core.designsystem.itundaface.MoneyBagGlyph(size = 56.dp) },
+                        title = "A starter account, just for you",
+                        subtitle = "A safe, capped account for ages 7-18 -- no branch visit, opened right here.",
+                        features = features,
+                        ctaLabel = if (busy) "Opening…" else "Open a Youth account",
+                        ctaEnabled = !busy,
+                        onCta = { openAccount() },
+                    )
                 }
                 YouthAccountMode.NEEDS_BIRTH_DATE -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

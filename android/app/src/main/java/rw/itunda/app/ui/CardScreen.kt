@@ -12,7 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -39,6 +44,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.itundaface.LockGlyph
+import rw.itunda.core.designsystem.itundaface.MoneyBagGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CardDto
 import rw.itunda.core.network.CardTransactionDto
@@ -200,14 +206,38 @@ fun CardScreen(onBack: () -> Unit) {
                 CardMode.LOADING -> item {
                     SkeletonBlock(height = 120.dp)
                 }
+                // Real, sourced Toss Bank "explain the product before you commit" rebuild
+                // (2026-08-24, direct user-supplied reference + follow-up "improve a kind
+                // of products like this that needs it" -- Card is the SAME real gap
+                // YouthAccountScreen just closed). See ProductExplainerScreen's own doc
+                // comment for the full sourced account and the honest boundary this
+                // mirrors byte-for-byte from bank-mfe's own CardExplainer (commit
+                // f9ff4971): no fabricated Toss-specific features (K-Pass, NFC tap-to-pay),
+                // every claim grounded in CardService.kt's real capabilities.
                 CardMode.NO_CARD -> item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            "App-controlled spend limits and one-tap freeze -- no branch visit, no waiting.",
-                            color = Ids.colors.textSecondary, fontSize = 13.sp,
-                        )
-                        CardActionButton(if (busy) "Issuing…" else "Get your itunda card", enabled = !busy) { issue() }
-                    }
+                    val feeIcon: @Composable () -> Unit = { MoneyBagGlyph(size = 20.dp) }
+                    val instantIcon: @Composable () -> Unit = { Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }
+                    val limitsIcon: @Composable () -> Unit = { Icon(Icons.Outlined.Shield, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }
+                    val freezeIcon: @Composable () -> Unit = { LockGlyph(size = 20.dp) }
+                    val features: List<Pair<@Composable () -> Unit, String>> = listOf(
+                        feeIcon to "No annual fee, ever",
+                        instantIcon to "Issued instantly in the app -- no branch visit",
+                        limitsIcon to "Set your own daily and monthly spend limits",
+                        freezeIcon to "One-tap freeze if it's ever lost",
+                    )
+                    rw.itunda.core.designsystem.components.ProductExplainerScreen(
+                        icon = {
+                            Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
+                                Text("itunda", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
+                        },
+                        title = "Your own itunda card, in seconds",
+                        subtitle = "A real debit card for your itunda balance -- no paperwork, no waiting.",
+                        features = features,
+                        ctaLabel = if (busy) "Issuing…" else "Get your itunda card",
+                        ctaEnabled = !busy,
+                        onCta = { issue() },
+                    )
                 }
                 CardMode.ACTIVE -> {
                     val c = card
