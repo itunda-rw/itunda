@@ -53,6 +53,25 @@ fun IdentityScreen(onBack: () -> Unit) {
     var documentReference by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
+    // Real, sourced Toss simplification (2026-08-24, toss.tech/article/signup: adding
+    // WHY a personal-info request exists, not removing fields, is what measurably cut
+    // Toss's own signup drop-off). bank-mfe's BankDashboard.tsx IdentityView already
+    // got this exact fix (2026-08-19, a different sourced Toss article) -- Android
+    // never did. Reuses the same real live number web does (grounded, not invented):
+    // CreditScoreService.KYC_VERIFIED_POINTS via the already-shipped
+    // getCreditScoreSuggestions endpoint, not a hardcoded points value that could
+    // drift from the backend truth.
+    var kycPointsGain by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            kycPointsGain = NetworkClient.apiService.getCreditScoreSuggestions().suggestions
+                .find { it.action == "Verify your identity" }?.pointsGain
+        } catch (_: Exception) {
+            // Non-critical -- the explanatory line just falls back to the generic
+            // wording below when this call fails.
+        }
+    }
+
     suspend fun refresh() {
         try {
             submissions = NetworkClient.apiService.getIdentityStatus().submissions
@@ -81,6 +100,15 @@ fun IdentityScreen(onBack: () -> Unit) {
                     }
                 } else {
                     Column {
+                        Text(
+                            if (kycPointsGain != null) {
+                                "A quick, one-time check that confirms it's really you -- it protects your account from takeover, and raises your Credit Score by $kycPointsGain points once approved."
+                            } else {
+                                "A quick, one-time check that confirms it's really you -- it protects your account from takeover."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.height(8.dp))
                         Text("Document type", style = MaterialTheme.typography.labelMedium)
                         IdsSegmentedControl(
                             options = DOCUMENT_TYPES.map { it to it },

@@ -861,6 +861,14 @@ struct IdentityScreenView: View {
     @State private var documentType = identityDocumentTypes[0]
     @State private var documentNumber = ""
     @State private var documentReference = ""
+    // Real, sourced Toss simplification (2026-08-24, toss.tech/article/signup: adding
+    // WHY a personal-info request exists, not removing fields, is what measurably cut
+    // Toss's own signup drop-off). bank-mfe's BankDashboard.tsx IdentityView already
+    // got this exact fix (2026-08-19, a different sourced Toss article), Android got
+    // it the same pass as this iOS fix -- reuses the same real live number both do
+    // (CreditScoreService.KYC_VERIFIED_POINTS via the already-shipped
+    // getCreditScoreSuggestions endpoint), not a hardcoded points value.
+    @State private var kycPointsGain: Int?
 
     private var hasPending: Bool { submissions?.contains { $0.status == "PENDING" } ?? false }
 
@@ -891,6 +899,10 @@ struct IdentityScreenView: View {
                         .padding(.vertical, 10)
                     } else {
                         VStack(alignment: .leading, spacing: 8) {
+                            Text(kycPointsGain.map { "A quick, one-time check that confirms it's really you -- it protects your account from takeover, and raises your Credit Score by \($0) points once approved." }
+                                ?? "A quick, one-time check that confirms it's really you -- it protects your account from takeover.")
+                                .font(.caption)
+                                .foregroundColor(IDS.Colors.textSecondary)
                             HStack {
                                 ForEach(identityDocumentTypes, id: \.self) { t in
                                     Button(t) { documentType = t }.font(.caption).bold()
@@ -930,11 +942,19 @@ struct IdentityScreenView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
+        .task { await loadKycPointsGain() }
     }
 
     private func refresh() async {
         do { submissions = try await NetworkClient.shared.getIdentityStatus().submissions; error = nil }
         catch { self.error = "Could not load your identity status." }
+    }
+
+    private func loadKycPointsGain() async {
+        // Non-critical -- the explanatory line just falls back to the generic wording
+        // above when this call fails.
+        kycPointsGain = try? await NetworkClient.shared.getCreditScoreSuggestions().suggestions
+            .first { $0.action == "Verify your identity" }?.pointsGain
     }
 
     private func submit() async {
