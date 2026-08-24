@@ -44,7 +44,9 @@ struct KnowledgeScreenView: View {
                             Text(reputation.map { "\($0) adopted answer\($0 == 1 ? "" : "s")" } ?? "…")
                                 .font(.subheadline).bold()
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper --
+                        // a stat row on an otherwise-flat screen, matching Android's identical
+                        // KnowledgeScreen.kt conversion (commit 130a23b8).
 
                         Picker("", selection: $tab) {
                             Text("Browse").tag(Tab.browse)
@@ -73,6 +75,9 @@ struct KnowledgeScreenView: View {
                             if list.isEmpty {
                                 EmptyStateView("No questions yet — be the first to ask.")
                             } else {
+                                // Real fix (2026-08-24, flat-design sweep): dropped the per-row
+                                // Card -- a question list separates entries with spacing alone,
+                                // matching Android's identical conversion (130a23b8).
                                 ForEach(list) { q in
                                     Button(action: { openQuestionId = q.id }) {
                                         VStack(alignment: .leading, spacing: 2) {
@@ -82,7 +87,7 @@ struct KnowledgeScreenView: View {
                                         }
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                     }
-                                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                    .padding(.vertical, 10)
                                 }
                             }
                         } else {
@@ -91,13 +96,14 @@ struct KnowledgeScreenView: View {
 
                         if tab == .mine, let answers = myAnswers, !answers.isEmpty {
                             Text("Your answers").bold()
+                            // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card.
                             ForEach(answers) { a in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(a.isAdopted ? "✅ Adopted" : "Pending").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     Text(a.body).font(.subheadline)
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                .padding(.vertical, 10)
                             }
                         }
                     }
@@ -187,7 +193,9 @@ private struct KnowledgeAskCard: View {
                 }
                 .disabled(submitting || category.isEmpty || title.trimmingCharacters(in: .whitespaces).isEmpty || questionBody.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+            // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- an
+            // inline form section, matching Android's identical KnowledgeAskCard
+            // conversion (130a23b8).
         }
     }
 
@@ -234,13 +242,16 @@ private struct KnowledgeQuestionDetailScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    // Real fix (2026-08-24, flat-design sweep): dropped this Card and the
+                    // per-row Card below -- this screen's own main content, matching
+                    // Android's identical KnowledgeQuestionDetailScreen conversion
+                    // (130a23b8).
                     if let q = question {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(q.title).font(.title3).bold()
                             Text(q.body).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     }
 
                     Text("Answers").bold()
@@ -262,7 +273,7 @@ private struct KnowledgeQuestionDetailScreen: View {
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                .padding(.vertical, 10)
                             }
                         }
                     } else {

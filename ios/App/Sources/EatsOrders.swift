@@ -3,6 +3,9 @@ import CoreDesignSystem
 import CoreNetwork
 
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a real
+// order-history log, kept the per-row Divider convention
+// (docs/DESIGN_REFERENCES.md §274).
 struct EatsOrderRow<Action: View>: View {
     let order: EatsOrderDto
     var restaurant: ShoppingMerchantDto? = nil
@@ -69,9 +72,8 @@ struct EatsOrderRow<Action: View>: View {
             }
             action()
         }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
+        Divider().overlay(IDS.Colors.divider)
     }
 }
 
@@ -94,6 +96,8 @@ struct MyEatsOrdersView: View {
 
     var body: some View {
         Group {
+            // Real fix (2026-08-24, flat-design sweep): dropped this error-state Card --
+            // the whole screen's content at this point (docs/UI_UX_GUIDELINES.md §10).
             if let error {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(error).foregroundColor(.red).font(.subheadline)
@@ -101,8 +105,6 @@ struct MyEatsOrdersView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if orders == nil {
                 SkeletonBlock(height: 120)
             } else if orders!.isEmpty {
@@ -179,6 +181,7 @@ struct MyDineInOrdersView: View {
 
     var body: some View {
         Group {
+            // Real fix (2026-08-24, flat-design sweep): dropped this error-state Card.
             if let error {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(error).foregroundColor(.red).font(.subheadline)
@@ -186,8 +189,6 @@ struct MyDineInOrdersView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if orders == nil {
                 SkeletonBlock(height: 80)
             } else if orders!.isEmpty {
@@ -195,7 +196,9 @@ struct MyDineInOrdersView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Table orders").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    VStack(spacing: 10) {
+                    // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
+                    // a real order-history log, kept the per-row Divider convention.
+                    VStack(spacing: 0) {
                         ForEach(orders!) { order in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
@@ -214,9 +217,8 @@ struct MyDineInOrdersView: View {
                                     .disabled(cancellingId == order.id)
                                 }
                             }
-                            .padding(16)
-                            .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
+                            Divider().overlay(IDS.Colors.divider)
                         }
                     }
                 }
@@ -283,6 +285,10 @@ struct FavoriteRestaurantsView: View {
 
     var body: some View {
         Group {
+            // Real fix (2026-08-24, flat-design sweep): dropped this error-state Card and
+            // the per-row Card below -- a favorites list, matching GroupAccountScreen's/
+            // FamilyLinkScreen's identical entity-list conversion, no divider
+            // (docs/UI_UX_GUIDELINES.md §10).
             if let error {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(error).foregroundColor(.red).font(.subheadline)
@@ -290,8 +296,6 @@ struct FavoriteRestaurantsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
                 SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
@@ -315,9 +319,7 @@ struct FavoriteRestaurantsView: View {
                         .buttonStyle(.plain)
                         .disabled(removingId == favorite.restaurantId)
                     }
-                    .padding(18)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                     .contentShape(Rectangle())
                     .onTapGesture { onOpen(favorite) }
                 }
