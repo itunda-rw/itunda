@@ -5,6 +5,11 @@ import CoreNetwork
 import CoreLocation
 
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper here and at every
+// other IDS.Colors.card site in this file (docs/UI_UX_GUIDELINES.md §10), matching
+// Android's identical ShopOrders.kt conversion -- order-history log (this row) kept its
+// per-row Divider (docs/DESIGN_REFERENCES.md §274); entity lists (favorites) below did
+// not.
 let commerceStatusLabel: [String: String] = [
     "PLACED": "Placed",
     "PACKED": "Packed",
@@ -29,9 +34,8 @@ struct CommerceOrderRow<Action: View>: View {
             }
             action()
         }
-        .padding(18)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+        .padding(.vertical, 10)
+        Divider().overlay(IDS.Colors.divider)
     }
 }
 
@@ -60,9 +64,7 @@ struct ProductWishlistView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             } else if favorites == nil {
                 SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
@@ -94,9 +96,7 @@ struct ProductWishlistView: View {
                         }
                         .disabled(removingId == f.productId)
                     }
-                    .padding(16)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
                 }
             }
         }
@@ -142,9 +142,7 @@ struct MyProductSubscriptionsView: View {
                     Button("Retry") { Task { await load() } }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(IDS.Colors.card)
-                .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                .padding(.vertical, 10)
             } else if subscriptions == nil {
                 SkeletonBlock(height: 120)
             } else if subscriptions!.isEmpty {
@@ -182,9 +180,8 @@ struct MyProductSubscriptionsView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .padding(.vertical, 10)
+                    Divider().overlay(IDS.Colors.divider)
                 }
             }
         }

@@ -374,8 +374,7 @@ struct CommerceShopContent: View {
                                 Text("Every purchase you make today earns \(Int(membershipDay.multiplier))x the usual cashback.")
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
-                            .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
                         }
                         HStack(spacing: 8) {
                             TextField("Search products across every merchant", text: $productSearchInput)
@@ -417,7 +416,7 @@ struct CommerceShopContent: View {
                                             Spacer()
                                             Text("\(Int(r.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                         }
-                                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                                        .padding(.vertical, 10)
                                     }
                                 }
                             }
@@ -569,9 +568,7 @@ struct CommerceShopContent: View {
                                 Button("Retry") { Task { await loadMerchants() } }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(20)
-                            .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                            .padding(.vertical, 10)
                         } else if merchants == nil {
                             SkeletonBlock(height: 120)
                         } else if merchants!.isEmpty {
