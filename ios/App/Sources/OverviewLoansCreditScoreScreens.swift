@@ -125,12 +125,17 @@ struct OverviewScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if let overview {
+                        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
+                        // around each of these 4 sections -- real Toss doesn't box every
+                        // section of a linear overview screen (docs/UI_UX_GUIDELINES.md §10).
+                        // They render together on one screen, so a Divider marks each real
+                        // section boundary instead.
                         VStack(alignment: .leading, spacing: 4) {
                             Text(t("netWorth")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text("\(Int(overview.netWorth)) RWF").font(.title).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        Divider().overlay(IDS.Colors.divider)
 
                         VStack(alignment: .leading, spacing: 6) {
                             Text(t("accounts")).bold()
@@ -138,7 +143,7 @@ struct OverviewScreenView: View {
                                 HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(Int(a.balance))") }.font(.subheadline)
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        Divider().overlay(IDS.Colors.divider)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(String(format: t("savings"), Int(overview.savings.totalSaved), overview.savings.goalCount)).font(.subheadline)
@@ -146,7 +151,7 @@ struct OverviewScreenView: View {
                             Text(String(format: t("investments"), Int(overview.investments.totalCostBasis), overview.investments.holdingCount)).font(.subheadline)
                             Text(String(format: t("insurance"), overview.insurance.activePolicyCount, Int(overview.insurance.totalMonthlyPremium))).font(.subheadline)
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
+                        Divider().overlay(IDS.Colors.divider)
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text(t("linkedAccounts")).bold()
@@ -196,7 +201,6 @@ struct OverviewScreenView: View {
                                 }
                             }
                         }
-                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
                     } else {
                         ProgressView()
                     }
