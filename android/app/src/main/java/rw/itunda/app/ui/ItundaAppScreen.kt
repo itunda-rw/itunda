@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.ChildCare
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.CardGiftcard
@@ -4002,19 +4003,32 @@ private fun MenuScreen(
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
     )
+    // Real icon differentiation (2026-08-24) -- these 6 rows all shared the identical
+    // Savings icon, the exact "parallel icon-clash instance" DESIGN_REFERENCES.md
+    // Section 65 named as a ready-made next pass but never fixed. Reuses
+    // BankHubScreen's own already-shipped, real per-product mapping (Section 193)
+    // byte-for-byte where the same product appears there, rather than inventing a
+    // second, divergent icon choice for the identical concept on a different screen.
+    // Youth account has no BankHubScreen counterpart to mirror -- ChildCare is new,
+    // picked for the real "ages 7-18 starter account" concept, not already used
+    // elsewhere in this row set.
     val saveGrowRows = listOf(
-        FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentIndigo, onClick = onOpenWeeklySavings),
-        FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
-        FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
-        FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenYouthAccount),
-        FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
-        FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
+        FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo, onClick = onOpenWeeklySavings),
+        FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Bolt, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
+        FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Lock, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
+        FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.ChildCare, iconColor = AccentTeal, onClick = onOpenYouthAccount),
+        FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Groups, iconColor = AccentTeal, onClick = onOpenIkimina),
+        FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.AccountBalance, iconColor = AccentPurple, onClick = onOpenSacco),
     )
+    // Same real gap, same fix shape, same BankHubScreen (Section 193) mapping reused
+    // for Harvest advance/VUP/Student loan/Moto-Taxi -- 3 of these 6 rows shared the
+    // identical AccountBalanceWallet icon before this. "Get a loan" and "Credit score"
+    // already had their own distinct icons and are unchanged.
     val borrowRows = listOf(
         FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenLoans),
         FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
-        FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
-        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenVupLoan),
+        FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.Agriculture, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
+        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = IdsIcons.ShieldCheck, iconColor = AccentIndigo, onClick = onOpenVupLoan),
         FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", icon = Icons.Outlined.School, iconColor = AccentPurple, onClick = onOpenStudentLoan),
         FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
     )
