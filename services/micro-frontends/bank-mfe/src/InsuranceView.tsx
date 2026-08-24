@@ -13,6 +13,32 @@ import {
 // Real insurance browse/enroll/my-policies/claims client -- see lib/insurance.ts's
 // own doc comment. Previously bank-mfe only rendered a read-only "Insurance: N active
 // plan(s)" summary line inside OverviewView; this is the actual self-service flow.
+
+// Real, sourced Toss simplification (2026-08-24, toss.tech/article/insurance-claim-process,
+// Toss's own "Easy to Answer" product principle -- "make questions answerable in 3
+// seconds or less"). Toss's own real, measured example: a hospital-refund claim's
+// opening question was "전문가 도움받을까요, 직접 할래요?" (Get expert help, or do it
+// yourself?) -- users hesitated because they couldn't predict what happened next after
+// either choice. Replaced with "서류 있나요?" (Do you have the documents?), a question
+// users could answer immediately -- drop-off at that step fell 50%, overall abandonment
+// 70% -> 60%.
+//
+// itunda's own claim form had the same shape of problem: a bare "What happened?" free-
+// text field with zero guidance, the exact kind of open-ended, hard-to-answer prompt the
+// article's principle warns against. Can't honestly replicate Toss's specific
+// documents-vs-no-documents ROUTING (itunda's backend `submitClaim` takes only a
+// description + amount, no branching claim-intake flow to route into) -- that would be
+// fabricated backend behavior, not a real port. What IS real and honest: every policy
+// already carries its own real `category` (health/life/travel/motor), so a set of
+// category-grounded quick-reason chips makes the SAME open question concretely
+// answerable with a tap, using only data already on the policy object, not invented
+// claim taxonomy.
+const CLAIM_REASON_CHIPS: Record<string, string[]> = {
+  health: ['Hospital admission', 'Outpatient visit', 'Prescription cost', 'Dental/vision care'],
+  life: ['Critical illness diagnosis', 'Disability', 'Death benefit'],
+  travel: ['Trip cancellation', 'Medical emergency abroad', 'Lost/delayed baggage'],
+  motor: ['Accident damage', 'Theft', 'Fire damage', 'Third-party claim'],
+};
 //
 // Extracted into its own file (2026-08-10) as the first of BankDashboard.tsx's ~35
 // inline view components to be split out -- that 21k-line single file meant every
@@ -176,6 +202,25 @@ export default function InsuranceView() {
               </div>
               {claimPolicyId === p.id && (
                 <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {/* Real "Easy to Answer" fix -- see this file's own CLAIM_REASON_CHIPS
+                      doc comment. Tapping a chip fills the field with a concrete starting
+                      point instead of leaving the user facing a blank, open-ended prompt;
+                      still freely editable afterward, nothing is locked in by the tap. */}
+                  {(CLAIM_REASON_CHIPS[p.category] ?? []).length > 0 && (
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {CLAIM_REASON_CHIPS[p.category].map((reason) => (
+                        <button
+                          key={reason}
+                          type="button"
+                          className="itunda-btn itunda-btn-secondary"
+                          style={{ padding: '6px 10px', fontSize: 'var(--itunda-type-scale-12-size)' }}
+                          onClick={() => setClaimDescription(reason)}
+                        >
+                          {reason}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <input
                     placeholder="What happened?"
                     value={claimDescription}
