@@ -102,6 +102,10 @@ private struct WeeklySavingsListContent: View {
     }
 }
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a history/
+// progress log of savings plans, kept the per-row Divider convention
+// (docs/DESIGN_REFERENCES.md §274), matching Android's WeeklySavingsPlanRow
+// (commit bdc1c5b0) and web's identical conversion (commit b1926c2a).
 private struct WeeklySavingsPlanRow: View {
     let plan: WeeklySavingsPlanDto
     let onTap: () -> Void
@@ -131,11 +135,10 @@ private struct WeeklySavingsPlanRow: View {
                         .foregroundColor(plan.status == "ACTIVE" && plan.streakBroken ? .red : (plan.status == "ACTIVE" ? .green : IDS.Colors.textTertiary))
                 }
             }
-            .padding()
-            .background(IDS.Colors.card)
-            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
+            .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
+        Divider().overlay(IDS.Colors.divider)
     }
 
     private func statusLabel(_ plan: WeeklySavingsPlanDto) -> String {
@@ -331,6 +334,12 @@ private struct WeeklySavingsDetailContent: View {
                 WeeklySavingsErrorCard(message: loadError, onRetry: load)
                     .padding(.horizontal)
             } else if let plan {
+                // Real fix (2026-08-24, flat-design sweep): dropped every Card wrapper in
+                // this detail screen -- 3-4 real sections render together, so Dividers mark
+                // each boundary instead of individually boxing every section
+                // (docs/UI_UX_GUIDELINES.md §10). Matches Android's WeeklySavingsScreen.kt
+                // (commit bdc1c5b0) and web's WeeklySavingsPlanDetailView (commit b1926c2a)
+                // conversion of this exact same real screen.
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(plan.name).font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -341,10 +350,8 @@ private struct WeeklySavingsDetailContent: View {
                         Text("Week \(plan.weeksElapsed)/\(WeeklySavingsConstants.termWeeks) -- \(plan.installmentsCollected) installments collected")
                             .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
                     }
-                    .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
+                    Divider().overlay(IDS.Colors.divider)
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -379,12 +386,10 @@ private struct WeeklySavingsDetailContent: View {
                             }
                         }
                     }
-                    .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                     if !installments.isEmpty {
+                        Divider().overlay(IDS.Colors.divider)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Installments").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
                             ForEach(installments) { installment in
@@ -394,12 +399,10 @@ private struct WeeklySavingsDetailContent: View {
                                     Text("\(formatMoney(installment.amount)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                 }
                                 .padding(.vertical, 4)
+                                Divider().overlay(IDS.Colors.divider)
                             }
                         }
-                        .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                     }
 
                     if let actionError {
@@ -420,9 +423,6 @@ private struct WeeklySavingsDetailContent: View {
                                         .disabled(submitting)
                                 }
                             }
-                            .padding()
-                            .background(IDS.Colors.card)
-                            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                         } else {
                             Button(action: { confirmingCancel = true }) {
                                 Text("Cancel plan (early withdrawal)")

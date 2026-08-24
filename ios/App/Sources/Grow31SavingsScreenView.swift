@@ -103,6 +103,10 @@ private struct Grow31SavingsListContent: View {
     }
 }
 
+// Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper -- a history/
+// progress log of savings plans, kept the per-row Divider convention
+// (docs/DESIGN_REFERENCES.md §274), matching Android's Grow31PlanRow (commit
+// bdc1c5b0) and web's identical conversion (commit b1926c2a).
 private struct Grow31SavingsPlanRow: View {
     let plan: Grow31SavingsPlanDto
     let onTap: () -> Void
@@ -133,11 +137,10 @@ private struct Grow31SavingsPlanRow: View {
                         .foregroundColor(bonus > 0 ? .green : IDS.Colors.textTertiary)
                 }
             }
-            .padding()
-            .background(IDS.Colors.card)
-            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
+            .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
+        Divider().overlay(IDS.Colors.divider)
     }
 
     private func statusLabel(_ plan: Grow31SavingsPlanDto) -> String {
@@ -303,6 +306,12 @@ private struct Grow31SavingsDetailContent: View {
                 Grow31SavingsErrorCard(message: loadError, onRetry: load)
                     .padding(.horizontal)
             } else if let plan {
+                // Real fix (2026-08-24, flat-design sweep): dropped every Card wrapper in
+                // this detail screen -- 3-4 real sections render together, so Dividers mark
+                // each boundary instead (docs/UI_UX_GUIDELINES.md §10). Matches Android's
+                // Grow31SavingsScreen.kt (commit bdc1c5b0) and web's
+                // Grow31SavingsPlanDetailView (commit b1926c2a) conversion of this exact
+                // same real screen.
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(plan.name).font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -313,10 +322,8 @@ private struct Grow31SavingsDetailContent: View {
                         Text("Day \(min(plan.daysElapsed, Grow31SavingsConstants.termDays)) of \(Grow31SavingsConstants.termDays)")
                             .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
                     }
-                    .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
+                    Divider().overlay(IDS.Colors.divider)
 
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -343,12 +350,10 @@ private struct Grow31SavingsDetailContent: View {
                             }
                         }
                     }
-                    .padding()
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(14).idsCardBorder(cornerRadius: 14)
 
                     if !deposits.isEmpty {
+                        Divider().overlay(IDS.Colors.divider)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Deposits").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
                             ForEach(deposits.sorted { $0.dayNumber > $1.dayNumber }) { deposit in
@@ -358,12 +363,10 @@ private struct Grow31SavingsDetailContent: View {
                                     Text("\(formatMoney(deposit.amount)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                 }
                                 .padding(.vertical, 4)
+                                Divider().overlay(IDS.Colors.divider)
                             }
                         }
-                        .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                     }
 
                     if let actionError {
@@ -384,9 +387,6 @@ private struct Grow31SavingsDetailContent: View {
                                         .disabled(submitting)
                                 }
                             }
-                            .padding()
-                            .background(IDS.Colors.card)
-                            .cornerRadius(14).idsCardBorder(cornerRadius: 14)
                         } else {
                             VStack(spacing: 8) {
                                 if !alreadyDepositedToday {
