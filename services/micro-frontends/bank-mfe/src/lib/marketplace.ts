@@ -272,6 +272,14 @@ export const removeListingFavorite = (listingId: string) =>
 export const fetchMyFavoriteListings = () =>
   apiFetch<{ success: boolean; favorites: FavoriteListing[] }>('/api/v1/marketplace/listings/favorites').then((r) => r.favorites);
 
+// Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's own
+// doc comment for the full sourced account.
+export const hideListing = (listingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/hide`, { method: 'POST' });
+
+export const unhideListing = (listingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/hide`, { method: 'DELETE' });
+
 // Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
 // since before this session) -- first client UI for this feature on any platform
 // (item 114, found via a content-grep sweep confirming zero client anywhere).

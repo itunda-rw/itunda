@@ -137,7 +137,7 @@ import {
 } from './lib/splitBill';
 import {
   addKeywordAlert, addListingFavorite, confirmEscrowReceipt, contactSeller, createListing, disputeEscrow, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingDetail, fetchListingReviews, fetchListings,
-  fetchListingsMyNeighborhood, fetchMarketplaceCategories, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, makeOffer,
+  fetchListingsMyNeighborhood, fetchMarketplaceCategories, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, hideListing, makeOffer,
   markListingSold, payEscrow, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours, updateListingPrice,
   submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type MarketplaceEscrow, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
@@ -11857,6 +11857,24 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Real Karrot "이 글 숨기기" (hide this post) -- see lib/marketplace.ts's own doc
+  // comment. onChanged() reuses the same real refetch every other terminal card
+  // action here already calls (markSold, etc.) -- the backend now excludes this
+  // listing from browse, so a plain refresh is what actually makes it disappear,
+  // no separate local optimistic-removal state needed.
+  const [hiding, setHiding] = useState(false);
+  const handleHide = async () => {
+    setHiding(true);
+    try {
+      await hideListing(listing.id);
+      onChanged();
+    } catch {
+      // Real, non-critical -- a failed hide just means the listing is still visible,
+      // same "silent, non-blocking" discipline the favorite toggle above uses.
+    } finally {
+      setHiding(false);
+    }
+  };
   const [offering, setOffering] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
   const [myLocation, setMyLocation] = useState<[number, number] | null>(null); // [lat, lng]
@@ -12107,6 +12125,17 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {!isMine && (
+            <button
+              type="button"
+              onClick={handleHide}
+              disabled={hiding}
+              title="Hide this listing -- you won't see it again"
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', cursor: 'pointer' }}
+            >
+              {hiding ? '…' : 'Hide'}
+            </button>
+          )}
           {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
           <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
         </div>
