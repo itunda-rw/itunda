@@ -17167,3 +17167,73 @@ design decision, not assumed.
 
 *Shipped: Android `ItundaAppScreen.kt` (`40b3ead3`), bank-mfe `BankDashboard.tsx`
 (`593c62b6`), iOS `BankViewComponents.swift` (`bc62444a`).*
+
+## 275. Full ecosystem flat-design retroactive sweep, all 3 platforms
+
+Direct user follow-up (2026-08-24) after §273/§274's targeted fixes: "let's
+recheck a whole ecosystem to make sure that we adopted flat designs entirely."
+An audit (see [[feedback_flat_design_over_cards]] memory for the full account)
+found the §10 flat-design rule had only actually been applied to the handful of
+screens touched in earlier sessions -- roughly 82% of the ecosystem's ~624 real
+card-wrapping instances (web 287, Android 150, iOS 187) were still the old
+reflexive pattern: a single card wrapping a whole linear screen's content, or a
+card wrapped around every row of a repeated list. User's explicit scope call:
+full sweep across all 3 platforms, not just an audit-and-report and not just the
+highest-traffic screens.
+
+**Android (26 commits)** -- every screen in `:app` plus all 7 feature modules
+(marketplace, talk, shop, property, jobs, eats, payments) converted. Real KEEPs
+confirmed by reading context, not assumed: `DiscoverSection` (a real feed of
+distinct discover-item cards), the identity-verification-request screen (a full
+third-party consent flow), `CommunityPostCard`/`StoreCard`/`PropertyListingCard`/
+`JobPostCard`/`RestaurantCard` (photo-forward browse tiles matching real Karrot/
+Coupang-family references), and real dialogs/carousels throughout.
+
+**bank-mfe (22 commits)** -- `BankDashboard.tsx` (the single largest file in the
+repo) plus `InsuranceView.tsx`/`RegisterPage.tsx`/`LoginPage.tsx`. Final state: 34
+`itunda-card` occurrences remain, every one confirmed KEEP -- `MyPaymentCodeCard`
+(real payment-barcode display), 4 real modals, `TodaysBirthdaySection` (a
+promotional banner), `ListingCard`/`CommunityPostCard`/`JobPostCard`/
+`PropertyListingCard` (feed tiles), 4 `PlaceSearchInput` autocomplete dropdowns, a
+floating cart tray, 5 horizontal-scroll carousels, `ProductCatalogView`'s sourced
+Coupang-style product grid, `PlatformMembershipCard`/`EatsMembershipCard`, 2
+gradient hero cards, the real Toss-matching login/register auth-cards (confirmed
+via this session's own earlier CDP screenshot verification), and `EmptyState.tsx`'s
+own shared widget.
+
+**iOS (16 commits)** -- ~145 real `IDS.Colors.card` sites across ~49 files.
+Notable real finding: `TalkEmoticons.swift`'s 11 flagged sites were ALL confirmed
+KEEP on inspection -- they're small button/chip/pill background colors (Search/
+Browse/Buy/Gift/pack-selector), not screen-section card-wrapping at all, a false
+positive from grepping the `IDS.Colors.card` token name alone. Cross-referenced
+Android's and bank-mfe's already-committed diffs for the same real screen wherever
+one existed (`WeeklySavingsScreenView.swift`/`Grow31SavingsScreenView.swift` ↔
+Android's `WeeklySavingsScreen.kt`/`Grow31SavingsScreen.kt` + web's
+`WeeklySavingsPlanDetailView`/`Grow31SavingsPlanDetailView`) to guarantee the same
+divider judgment landed identically on all 3 platforms for the same real feature.
+
+**The per-row-divider convention** (first drawn in §274, applied ~90 more times
+this pass across all 3 platforms): entity/management lists (accounts, vehicles,
+people, favorites -- things a user picks from or manages) get NO divider between
+rows; history/ledger/status logs (past transactions, orders, applications,
+reviews, progress-tracked plans) KEEP a per-row divider, matching real Toss's own
+distinct convention for a receipt/statement-style list vs. a picker list.
+
+**Process note**: this sweep was executed via a long chain of forked subagents,
+each doing one real batch (read context, convert, real build + lint, commit,
+push) then reporting back so the next fork could continue without re-auditing --
+the same pattern §273/§274 used at smaller scale. Two forks hit account-level
+session-limit errors mid-task; per `feedback_fork_rate_limit_recovery` memory,
+their uncommitted `git diff`s were reviewed directly rather than blindly
+relaunched into the same limit -- both times the interrupted work was real and
+salvageable, finished by hand and shipped. A third fork's final message claimed
+it was "committing this final batch" but no commit had actually landed; the same
+review-before-trusting discipline caught real, correct, uncommitted work sitting
+there and finished it.
+
+This closes the retroactive sweep -- §10 is no longer just a direction for new
+screens, it's now actually true of the shipped app across all 3 platforms.
+Remaining Android architectural debt (~46 files using a duplicate inline `Card()`
+instead of the shared `IdsCard` component, noted in
+[[project_itunda_light_theme_white_canvas]]) is a separate concern from this
+flat-vs-card design question and was not re-litigated here.
