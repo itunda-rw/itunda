@@ -8,7 +8,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -30,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTypography
 
 private const val PIN_LENGTH = 6
@@ -143,7 +143,7 @@ fun PinSetupScreen(onBack: () -> Unit, onPinSet: (String) -> Unit) {
         Column(modifier = Modifier.fillMaxSize()) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = IdsIcons.Back,
                     contentDescription = "Back",
                     tint = Ids.colors.textPrimary,
                     modifier = Modifier.size(40.dp).clip(CircleShape).pressScaleClickable(onClick = onBack).padding(8.dp),
@@ -212,7 +212,7 @@ private fun PinKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit) {
                 val interactionSource = remember { MutableInteractionSource() }
                 val pressScale = rememberPressScale(interactionSource)
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = IdsIcons.Back,
                     contentDescription = "Delete last digit",
                     tint = Ids.colors.textSecondary,
                     modifier = Modifier

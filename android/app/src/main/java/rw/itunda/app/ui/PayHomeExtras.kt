@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.HorizontalDivider
@@ -35,6 +34,7 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.RewardTaskDto
 import rw.itunda.core.network.TransactionDto
 import kotlinx.coroutines.launch
@@ -100,7 +100,7 @@ fun NearbyMerchantsBanner(merchants: List<rw.itunda.core.network.NearbyMerchantD
             Spacer(modifier = Modifier.width(8.dp))
             Text("${merchants.size} itunda merchant${if (merchants.size == 1) "" else "s"} nearby — earn cashback", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
         }
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textTertiary)
+        Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textTertiary)
     }
     if (showDialog) {
         NearbyMerchantsDialog(merchants = merchants, onDismiss = { showDialog = false })

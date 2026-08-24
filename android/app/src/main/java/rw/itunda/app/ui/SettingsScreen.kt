@@ -7,8 +7,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Logout
@@ -50,6 +48,7 @@ import rw.itunda.core.network.TextScalePreference
 import rw.itunda.core.network.ThemeMode
 import rw.itunda.core.network.ThemePreference
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.identity.DeviceKeyManager
 import rw.itunda.core.identity.NIDABiometricAuth
 
@@ -182,7 +181,7 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
-                            if (selected) Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
+                            if (selected) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
                         }
                     }
                 }
@@ -215,7 +214,7 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(option.label, color = Ids.colors.textPrimary, fontSize = (15 * option.multiplier).sp)
-                            if (selected) Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
+                            if (selected) Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
                         }
                     }
                 }
@@ -240,7 +239,7 @@ fun SettingsScreen(
                 modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+                Icon(IdsIcons.Back, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
             }
             Text(
                 stringResource(R.string.settings_title),
@@ -318,7 +317,7 @@ fun SettingsScreen(
                                 else -> "English"
                             }
                             Text(languageName, color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                            Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                         }
                     }
                     // Real Toss position (2026-08-12) -- both rows live in this same
@@ -336,7 +335,7 @@ fun SettingsScreen(
                                 Text(unreadCount.toString(), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                 Spacer(modifier = Modifier.width(6.dp))
                             }
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                            Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                         }
                     }
                     SettingsChevronRow(stringResource(R.string.settings_theme_vibration)) { showThemeDialog = true }
@@ -715,7 +714,7 @@ private fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing:
             modifier = Modifier.size(44.dp).clip(CircleShape).pressScaleClickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+            Icon(IdsIcons.Back, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
         }
         Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
         trailing()
@@ -749,7 +748,7 @@ private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
-        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
     }
 }
 

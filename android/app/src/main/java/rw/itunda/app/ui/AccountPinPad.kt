@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -36,6 +35,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTypography
 
 private const val ACCOUNT_PIN_LENGTH = 6
@@ -132,7 +132,7 @@ private fun AccountPinKeypad(enabled: Boolean, onDigit: (String) -> Unit, onBack
                 val interactionSource = remember { MutableInteractionSource() }
                 val pressScale = rememberPressScale(interactionSource)
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = IdsIcons.Back,
                     contentDescription = "Delete last digit",
                     tint = Ids.colors.textSecondary,
                     modifier = Modifier

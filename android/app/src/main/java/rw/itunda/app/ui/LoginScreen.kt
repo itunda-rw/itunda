@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -63,6 +61,7 @@ import rw.itunda.core.network.SessionManager
 import rw.itunda.core.designsystem.components.IdsKeyboardDockedButton
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
 import java.util.Base64
@@ -303,7 +302,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     Box(modifier = Modifier.size(40.dp)) {
                         if (stage != AuthStage.PHONE) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = IdsIcons.Back,
                                 contentDescription = stringResource(R.string.login_back),
                                 tint = Ids.colors.textPrimary,
                                 modifier = Modifier
@@ -558,7 +557,7 @@ private fun CompletedFieldRow(label: String, value: String, onClick: () -> Unit)
             Text(text = value, style = IdsTypography.Body1, color = Ids.colors.textPrimary)
         }
         Icon(
-            imageVector = Icons.Outlined.ChevronRight,
+            imageVector = IdsIcons.ChevronRight,
             contentDescription = null,
             tint = Ids.colors.textTertiary,
         )

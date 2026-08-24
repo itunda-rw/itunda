@@ -30,10 +30,8 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Agriculture
 import androidx.compose.material.icons.outlined.School
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.AttachMoney
@@ -48,8 +46,6 @@ import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
@@ -90,7 +86,6 @@ import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Savings
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
@@ -187,6 +182,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.core.designsystem.theme.IdsColors
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.Ids
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
@@ -1939,7 +1935,7 @@ private fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onClea
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(10.dp))
         BasicTextField(
             value = query,
@@ -1952,7 +1948,7 @@ private fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onClea
         )
         if (query.isNotEmpty()) {
             Icon(
-                Icons.Outlined.Close, contentDescription = stringResource(R.string.home_search_clear),
+                IdsIcons.Close, contentDescription = stringResource(R.string.home_search_clear),
                 tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp).pressScaleClickable(onClick = onClear),
             )
         }
@@ -2299,7 +2295,7 @@ private fun BankHubScreen(
                                 fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                             )
                         }
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                     }
                 }
             }
@@ -2325,7 +2321,7 @@ private fun BankHubScreen(
                             color = Ids.colors.textSecondary,
                             fontSize = 13.sp,
                         )
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+                        Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
                     }
                 }
                 androidx.compose.material3.HorizontalDivider(color = Ids.colors.divider, thickness = 0.5.dp)
@@ -2728,7 +2724,7 @@ private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem
             )
         }
         IdsIconButton(
-            Icons.Outlined.Close,
+            IdsIcons.Close,
             contentDescription = stringResource(R.string.home_dismiss_recommendation),
             onClick = { dismissed = true },
             modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(32.dp),
@@ -3028,7 +3024,7 @@ private fun AccountDetailScreen(
                 modifier = Modifier.size(Ids.layout.minTouchTarget).clip(CircleShape).pressScaleClickable(onClick = onBack),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+                Icon(IdsIcons.Back, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
             }
             Spacer(modifier = Modifier.weight(1f))
             // Real Toss reference (2026-08-13, direct user follow-up "still not the
@@ -3283,7 +3279,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     }
                 }
                 if (row.action == ">") {
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                    Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                 } else if (row.action.isNotBlank()) {
                     // Real fix (2026-08-13, direct user report: "entire app is
                     // still messy"): this button's onClick was hardcoded to a
@@ -3470,7 +3466,7 @@ private fun PayTab(
         // was always their true home per that screen's own doc comment.
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
+                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = IdsIcons.Add)
                 IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
             }
         }
@@ -3726,7 +3722,7 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, 
                         }",
                         color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                     )
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = IdsColors.Gray500)
+                    Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = IdsColors.Gray500)
                 }
             }
             val account = linkedAccount
@@ -4867,7 +4863,7 @@ private fun FlatSectionRow(row: FlatRow) {
                 fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
             )
         } else if (row.showChevron && onClick != null) {
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+            Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
         }
     }
 }
@@ -4889,7 +4885,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholde
             .background(Ids.colors.surfaceSoft)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Icon(Icons.Outlined.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+        Icon(IdsIcons.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(10.dp))
         Box(modifier = Modifier.weight(1f)) {
             if (query.isEmpty()) {
@@ -4906,7 +4902,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholde
         }
         if (query.isNotEmpty()) {
             IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(22.dp)) {
-                Icon(Icons.Outlined.Close, contentDescription = "Clear search", tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp))
+                Icon(IdsIcons.Close, contentDescription = "Clear search", tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp))
             }
         }
     }

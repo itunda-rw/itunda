@@ -43,9 +43,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddReaction
-import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -57,7 +55,6 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.RestaurantMenu
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -173,6 +170,7 @@ import rw.itunda.core.network.ToggleReactionRequest
 import rw.itunda.core.network.TalkContactDto
 import rw.itunda.core.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
@@ -382,7 +380,7 @@ internal fun HoodSectionScreen(
                 // consolidated Settings + (in Market mode) My listings/Purchases/
                 // Wishlist/Alerts, the personal-management views this same-day fix
                 // moved off the second chip row.
-                Icon(Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
+                Icon(IdsIcons.Search, contentDescription = "Search", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
                 Spacer(modifier = Modifier.width(16.dp))
                 Icon(
                     Icons.Outlined.Notifications, contentDescription = "Notifications",
@@ -448,7 +446,7 @@ internal fun HoodSectionScreen(
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+                Icon(IdsIcons.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Write", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
