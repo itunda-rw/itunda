@@ -255,7 +255,15 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
                 FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
                 FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", symbol: "leaf.fill", tint: .accentTeal, action: { showHarvestAdvance = true }),
-                FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "banknote.fill", tint: .accentIndigo, action: { showVupLoan = true }),
+                // Real icon-clash fix (2026-08-24), same bug class as the Android
+                // MenuScreen fix this session (DESIGN_REFERENCES.md Section 65/193's
+                // "richer, distinct per-product iconography" principle) -- this row
+                // shared the identical banknote.fill symbol with "Youth account" above.
+                // "checkmark.shield.fill" mirrors Android's own real choice for this
+                // exact row (IdsIcons.ShieldCheck) semantically (a government-backed,
+                // verified program), without widening FlatRow's `symbol: String?` API
+                // to accept a custom Shape -- a bigger, separately-scoped change.
+                FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "checkmark.shield.fill", tint: .accentIndigo, action: { showVupLoan = true }),
                 FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
             ]),
             ("Mini apps", [
@@ -417,7 +425,9 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
                         FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
                         FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", symbol: "leaf.fill", tint: .accentTeal, action: { showHarvestAdvance = true }),
-                        FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "banknote.fill", tint: .accentIndigo, action: { showVupLoan = true }),
+                        // Same icon-clash fix as this file's first FlatRow list above --
+                        // shared banknote.fill with "Youth account", now differentiated.
+                        FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "checkmark.shield.fill", tint: .accentIndigo, action: { showVupLoan = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
