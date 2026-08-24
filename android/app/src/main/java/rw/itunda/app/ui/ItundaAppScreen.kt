@@ -3636,7 +3636,10 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, 
                         modifier = Modifier.size(56.dp).clip(CircleShape).background(IdsColors.White),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(24.dp), tint = IdsColors.Gray700)
+                        // Real fix (2026-08-24): was a raw Material Lock icon, itunda
+                        // already has its own real LockGlyph (itundaface) for this
+                        // exact security concept, matching web/iOS's identical fix.
+                        rw.itunda.core.designsystem.itundaface.LockGlyph(size = 24.dp)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text("Your payment code is hidden", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 14.sp)

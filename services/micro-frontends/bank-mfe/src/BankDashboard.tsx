@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, 
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bell, Bike, Camera, Car, Check, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, Lock, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, Bell, Bike, Camera, Car, Check, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Send, Settings, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
 import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
@@ -7221,7 +7221,11 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '20px', width: '100%' }}
           >
             <div style={{ width: '56px', height: '56px', borderRadius: '999px', backgroundColor: 'var(--itunda-white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Lock size={24} color="var(--itunda-grey-700)" />
+              {/* Real fix (2026-08-24): was a raw Lucide Lock icon, itunda already
+                  has its own real LockGlyph (itundaface) for this exact security
+                  concept -- routes to it instead of a second, visually different
+                  lock icon existing side by side. */}
+              <LockGlyph size={24} />
             </div>
             <div>
               <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Your payment code is hidden</p>

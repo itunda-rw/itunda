@@ -161,8 +161,11 @@ struct MyPaymentCodeCard: View {
                     // someone else picks up.
                     Button(action: { revealed = true; startRefreshLoop() }) {
                         VStack(spacing: 14) {
+                            // Real fix (2026-08-24): was a raw SF Symbol lock.fill,
+                            // itunda already has its own real LockGlyph (itundaface)
+                            // for this exact security concept.
                             Circle().fill(Color.white).frame(width: 56, height: 56)
-                                .overlay(Image(systemName: "lock.fill").foregroundColor(IDS.Colors.textSecondary))
+                                .overlay(LockGlyph(size: 24))
                             VStack(spacing: 2) {
                                 Text("Your payment code is hidden").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                 Text("Protects you if someone else has your phone").font(.caption).foregroundColor(IDS.Colors.textSecondary)
