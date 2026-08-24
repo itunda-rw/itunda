@@ -377,13 +377,22 @@ fun CommerceShopContent(
     fun loadMerchants() {
         coroutineScope.launch {
             try {
-                // Real fix (2026-08-13): getShoppingMerchants gained a businessType
-                // param between category and q -- named args here so Shop's own
-                // search text can never silently bind to the wrong parameter.
-                // businessType intentionally omitted (null): Shop's browse stays
-                // unfiltered by vertical, same as before this param existed.
+                // Real fix (2026-08-25, direct user directive: "we need everything
+                // separated to avoid confusion, that's toss style, clear isolation").
+                // The 2026-08-13 fix that added businessType filtered Eats' own
+                // restaurant list down to real restaurants (a live user report caught
+                // Electronics/Fashion merchants leaking into it) but deliberately left
+                // Shop's own browse unfiltered "same as before this param existed" --
+                // meaning the exact same leak ran the other direction, unnoticed,
+                // ever since: real restaurants (e.g. "Review Reply Diner") showing up
+                // in what's supposed to be itunda's pure online-shopping catalog, a
+                // live device screenshot just confirmed. Shop is a real online
+                // catalog (browse/cart/rider-delivery) -- Eats is a separate real
+                // surface for restaurants; they share one Merchant directory on the
+                // backend but should never share a screen. Mirrors EatsScreen.kt's
+                // own identical businessType = "RESTAURANT" fix, one line different.
                 val res = NetworkClient.apiService.getShoppingMerchants(
-                    category = selectedCategory, q = searchInput.trim().ifBlank { null },
+                    category = selectedCategory, businessType = "SHOP", q = searchInput.trim().ifBlank { null },
                     buyerLat = storeBrowseLocation?.first, buyerLng = storeBrowseLocation?.second,
                 )
                 if (res.success) merchants = res.merchants
@@ -398,7 +407,7 @@ fun CommerceShopContent(
     LaunchedEffect(Unit) {
         loadMerchants()
         try {
-            val catRes = NetworkClient.apiService.getMerchantCategories()
+            val catRes = NetworkClient.apiService.getMerchantCategories(businessType = "SHOP")
             if (catRes.success) categories = catRes.categories
         } catch (e: Exception) { /* non-critical, only backs the category chip row */ }
     }

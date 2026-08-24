@@ -351,14 +351,19 @@ class ShoppingController(
     @GetMapping("/products/search")
     fun searchProducts(
         @RequestParam q: String,
+        // businessType added 2026-08-25 (direct user directive: "we need everything
+        // separated to avoid confusion, that's toss style, clear isolation") --
+        // same real fix as getEligibleMerchants below: Shop's own product search
+        // had no vertical filter, so a restaurant's menu item could surface here.
+        @RequestParam(required = false) businessType: MerchantBusinessType?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val trimmed = q.trim()
         val booleanQuery = FullTextSearchUtil.toBooleanModeQuery(trimmed)
         val page = if (booleanQuery != null) {
-            merchantProductRepository.searchFullText(MerchantStatus.ACTIVE, booleanQuery, pageable)
+            merchantProductRepository.searchFullText(MerchantStatus.ACTIVE, businessType?.name, booleanQuery, pageable)
         } else {
-            merchantProductRepository.search(MerchantStatus.ACTIVE, trimmed, pageable)
+            merchantProductRepository.search(MerchantStatus.ACTIVE, businessType, trimmed, pageable)
         }
         // Batch-resolved, same no-N+1 discipline as ProductFavoriteService.getMyFavorites.
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
@@ -384,9 +389,11 @@ class ShoppingController(
     // a name match).
     @GetMapping("/products/deals")
     fun getDeals(
+        // businessType added 2026-08-25, same real isolation fix as searchProducts above.
+        @RequestParam(required = false) businessType: MerchantBusinessType?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = merchantProductRepository.findDeals(MerchantStatus.ACTIVE, pageable)
+        val page = merchantProductRepository.findDeals(MerchantStatus.ACTIVE, businessType, pageable)
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
         val products = page.content.map { p ->
             mapOf(

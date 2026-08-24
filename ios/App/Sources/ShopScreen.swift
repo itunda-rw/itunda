@@ -170,7 +170,7 @@ struct CommerceShopContent: View {
         guard !q.isEmpty else { return }
         productSearching = true
         do {
-            productSearchResults = try await NetworkClient.shared.searchProducts(q).products
+            productSearchResults = try await NetworkClient.shared.searchProducts(q, businessType: "SHOP").products
         } catch {
             productSearchResults = []
         }
@@ -239,12 +239,15 @@ struct CommerceShopContent: View {
         .task {
             if merchants == nil { await loadMerchants() }
             if categories.isEmpty {
-                do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
+                // businessType added 2026-08-25 (direct user directive: "we need
+                // everything separated to avoid confusion, that's toss style, clear
+                // isolation") -- matches Android's identical ShopScreen.kt fix.
+                do { categories = try await NetworkClient.shared.getMerchantCategories(businessType: "SHOP").categories } catch {}
             }
             await loadFavoriteProductIds()
             await loadFollowedMerchantIds()
             if deals == nil {
-                do { deals = try await NetworkClient.shared.getShopDeals().products } catch {}
+                do { deals = try await NetworkClient.shared.getShopDeals(businessType: "SHOP").products } catch {}
             }
             if membershipDay == nil {
                 do { membershipDay = try await NetworkClient.shared.getMembershipDayStatus() } catch {}
@@ -617,10 +620,14 @@ struct CommerceShopContent: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
 
+    // businessType added 2026-08-25 (direct user directive: "we need everything
+    // separated to avoid confusion, that's toss style, clear isolation") -- matches
+    // Android's identical ShopScreen.kt fix and EatsScreen.swift's own existing
+    // businessType: "RESTAURANT" call, which this mirrors.
     private func loadMerchants() async {
         do {
             let q = searchInput.trimmingCharacters(in: .whitespaces)
-            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, q: q.isEmpty ? nil : q)
+            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, businessType: "SHOP", q: q.isEmpty ? nil : q)
             merchants = res.merchants
             error = nil
         } catch {

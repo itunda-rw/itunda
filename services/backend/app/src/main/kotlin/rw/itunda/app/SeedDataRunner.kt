@@ -66,6 +66,7 @@ class SeedDataRunner(
     private val listingRepository: ListingRepository,
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
+    private val timeDealRepository: rw.itunda.core.repository.TimeDealRepository,
     private val emoticonPackRepository: EmoticonPackRepository,
     private val emoticonRepository: EmoticonRepository,
 ) : CommandLineRunner {
@@ -480,6 +481,43 @@ class SeedDataRunner(
                 listOf(
                     MerchantProduct(id = "product_seed_11", merchantId = "merchant_seed_5", name = "Cotton T-shirt", price = BigDecimal("8000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/T-shirt.jpg"),
                     MerchantProduct(id = "product_seed_12", merchantId = "merchant_seed_5", name = "Sneakers", price = BigDecimal("35000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Sneakers.jpg"),
+                ),
+            )
+        }
+
+        // Real Coupang 타임특가 (Time Deal) seed (2026-08-25, direct user follow-up: "our
+        // shopping doesn't look like online shopping at all"). TimeDealService's own real
+        // banner carousel/"Recommended for you" grid on the Shop home screen was already
+        // built (2026-08-12) but derives every banner/deal card directly from real,
+        // currently-active TimeDeal rows -- deliberately never fabricated placeholder
+        // content (see TimeDealService.getBanners's own doc comment). TimeDeals are a
+        // real merchant-created, self-service row (TimeDealService.createTimeDeal), not
+        // something auto-generated for any product, so a fresh environment with no
+        // merchant having ever run one shows an honest empty Shop home -- exactly what
+        // the live device showed here. Seeding a handful of real, valid deals (dealPrice
+        // genuinely under the seeded product's own price, matching createTimeDeal's own
+        // validation) on already-seeded real products gives that already-built UI
+        // something real to render, instead of rebuilding it. endsAt 30 days out so
+        // this stays active through a normal test/demo session without needing to be
+        // re-seeded.
+        //
+        // Real fix, same pass (direct user follow-up: "we need everything separated to
+        // avoid confusion, that's toss style, clear isolation"): the first version of
+        // this seed put deals on merchant_seed_1/merchant_seed_3 -- both real
+        // RESTAURANT-type merchants -- which would have shown up in Shop's now-isolated
+        // SHOP-only banner rail as a genuine data-level isolation leak, not just a UI
+        // one. Scoped to only the two real SHOP-type merchants that exist in this seed
+        // file (merchant_seed_4/5) -- itunda's only 3 seeded SHOP products, so this
+        // deliberately leaves nothing left over for a separate non-deal "browse" grid;
+        // a real gap to close before Shop's own visual redesign, not solved here.
+        if (timeDealRepository.count() == 0L) {
+            val dealStart = Instant.now()
+            val dealEnd = dealStart.plusSeconds(60L * 60 * 24 * 30)
+            timeDealRepository.saveAll(
+                listOf(
+                    rw.itunda.core.domain.TimeDeal(id = "timedeal_seed_3", merchantId = "merchant_seed_4", productId = "product_seed_10", dealPrice = BigDecimal("149000"), originalPrice = BigDecimal("180000"), totalQuantity = 20, remainingQuantity = 12, startsAt = dealStart, endsAt = dealEnd),
+                    rw.itunda.core.domain.TimeDeal(id = "timedeal_seed_4", merchantId = "merchant_seed_5", productId = "product_seed_11", dealPrice = BigDecimal("5600"), originalPrice = BigDecimal("8000"), totalQuantity = 80, remainingQuantity = 51, startsAt = dealStart, endsAt = dealEnd),
+                    rw.itunda.core.domain.TimeDeal(id = "timedeal_seed_5", merchantId = "merchant_seed_5", productId = "product_seed_12", dealPrice = BigDecimal("27000"), originalPrice = BigDecimal("35000"), totalQuantity = 30, remainingQuantity = 9, startsAt = dealStart, endsAt = dealEnd),
                 ),
             )
         }

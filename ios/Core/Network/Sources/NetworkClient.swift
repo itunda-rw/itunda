@@ -5028,7 +5028,12 @@ extension NetworkClient {
 
     // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
     // own doc comment.
-    public func getShopDeals() async throws -> DealsResponse { try await get("api/v1/shopping/products/deals") }
+    // businessType added 2026-08-25 (direct user directive: "we need everything
+    // separated to avoid confusion, that's toss style, clear isolation") -- matches
+    // getMerchantCategories above.
+    public func getShopDeals(businessType: String? = nil) async throws -> DealsResponse {
+        try await get("api/v1/shopping/products/deals", query: [URLQueryItem(name: "businessType", value: businessType)])
+    }
 
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
     public func getActiveTimeDeals() async throws -> TimeDealsResponse { try await get("api/v1/time-deals") }
@@ -5252,8 +5257,11 @@ extension NetworkClient {
 
     // Real cross-merchant product search (item 138) -- see ProductSearchResultDto's
     // own doc comment.
-    public func searchProducts(_ query: String) async throws -> ProductSearchResponse {
-        try await get("api/v1/shopping/products/search?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)")
+    // businessType added 2026-08-25, same real isolation fix as getShopDeals above.
+    public func searchProducts(_ query: String, businessType: String? = nil) async throws -> ProductSearchResponse {
+        var path = "api/v1/shopping/products/search?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)"
+        if let businessType { path += "&businessType=\(businessType)" }
+        return try await get(path)
     }
 
     // Real KakaoTalk-style 기프티콘 gift voucher (item 138) -- see GiftVoucherDto's own

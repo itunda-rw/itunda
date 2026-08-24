@@ -61,9 +61,17 @@ export const fetchMembershipDayStatus = () =>
 // Real category/search filter (2026-07-21) -- both optional and combinable, mirroring
 // Eats' fetchRestaurants (lib/eats.ts) exactly, since both hit the same
 // ShoppingController.getEligibleMerchants endpoint on the backend.
+// businessType added 2026-08-25 (direct user directive: "we need everything
+// separated to avoid confusion, that's toss style, clear isolation") -- always
+// "SHOP", same real fix lib/eats.ts's own fetchRestaurants already applies as
+// businessType=RESTAURANT. Before this, Shop's own catalog had no vertical filter
+// at all and could surface real restaurants (e.g. a live device screenshot showing
+// "Review Reply Diner" in what's supposed to be itunda's pure online-shopping
+// catalog).
 export const fetchShoppingCatalog = (category?: string, q?: string, buyerLat?: number, buyerLng?: number) => {
   const params = new URLSearchParams();
   if (category) params.set('category', category);
+  params.set('businessType', 'SHOP');
   if (q) params.set('q', q);
   if (buyerLat != null && buyerLng != null) {
     params.set('buyerLat', String(buyerLat));
@@ -78,9 +86,10 @@ export const fetchShoppingCatalog = (category?: string, q?: string, buyerLat?: n
 
 // Real distinct category list, derived from real merchant data -- see
 // MerchantRepository.findDistinctCategories's own doc comment. Same endpoint Eats'
-// fetchRestaurantCategories (lib/eats.ts) already uses.
+// fetchRestaurantCategories (lib/eats.ts) already uses. businessType=SHOP added
+// 2026-08-25, same isolation fix as fetchShoppingCatalog above.
 export const fetchMerchantCategories = () =>
-  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories').then((r) => r.categories);
+  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories?businessType=SHOP').then((r) => r.categories);
 
 // imageUrl/originalPrice/discountPercent added 2026-07-21 -- see commerce.ts's
 // CommerceProduct comment for the full account; search results carry the same real
@@ -103,16 +112,18 @@ export interface ProductSearchResult {
 // to search for a product across every real seller at once, the most basic real
 // feature Coupang/Naver/Toss Shopping all have. See MerchantProductRepository.search's
 // own doc comment on the backend for the real query this hits.
+// businessType=SHOP added 2026-08-25, same isolation fix as fetchShoppingCatalog above.
 export const searchProducts = (q: string) =>
-  apiFetch<{ success: boolean; products: ProductSearchResult[] }>(`/api/v1/shopping/products/search?q=${encodeURIComponent(q)}`).then((r) => r.products);
+  apiFetch<{ success: boolean; products: ProductSearchResult[] }>(`/api/v1/shopping/products/search?q=${encodeURIComponent(q)}&businessType=SHOP`).then((r) => r.products);
 
 // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #8: a curated deal rail on the Shop landing surface. Every entry is a
 // real merchant-set discount, never a fabricated promo -- see backend
 // MerchantProductRepository.findDeals's own doc comment. Reuses ProductSearchResult's
 // exact shape (same fields, same source table) rather than a duplicate type.
+// businessType=SHOP added 2026-08-25, same isolation fix as fetchShoppingCatalog above.
 export const fetchShopDeals = () =>
-  apiFetch<{ success: boolean; products: ProductSearchResult[] }>('/api/v1/shopping/products/deals').then((r) => r.products);
+  apiFetch<{ success: boolean; products: ProductSearchResult[] }>('/api/v1/shopping/products/deals?businessType=SHOP').then((r) => r.products);
 
 // Real 마감할인 (closing/surplus discount) rail (2026-08-15) -- a real,
 // government-partnered (기후부/환경부 + Baemin/Yogiyo/Coupang Eats) food-waste-reduction

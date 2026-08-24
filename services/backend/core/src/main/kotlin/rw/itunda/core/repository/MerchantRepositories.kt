@@ -90,12 +90,19 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     // same convention as GroupAccount.accountId/GroupAccountMember.groupAccountId), so
     // this is the same theta-style `JOIN ... ON` GroupMessagingRepositories already
     // established for exactly that situation, not a broken relationship mapping.
+    // businessType added 2026-08-25 (direct user directive: "we need everything
+    // separated to avoid confusion, that's toss style, clear isolation") -- this
+    // cross-merchant search had no vertical filter at all, meaning Shop's own
+    // "search products across every merchant" bar could surface a restaurant's menu
+    // item. Same null-safe optional pattern MerchantRepository.search already
+    // established for the merchant-list version of this exact fix.
     @Query(
         "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
             "WHERE p.active = true AND m.status = :status " +
+            "AND (:businessType IS NULL OR m.businessType = :businessType) " +
             "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%'))",
     )
-    fun search(@Param("status") status: MerchantStatus, @Param("q") q: String, pageable: Pageable): Page<MerchantProduct>
+    fun search(@Param("status") status: MerchantStatus, @Param("businessType") businessType: MerchantBusinessType?, @Param("q") q: String, pageable: Pageable): Page<MerchantProduct>
 
     // Real relevance-ranked full-text search (2026-08-14) -- see V242's own migration
     // comment for the "why" (the LIKE search above never ranked results and only ever
@@ -110,17 +117,24 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     // syntax, e.g. "+phone* +case*") and falls back to the plain `search` above for
     // queries shorter than MySQL's minimum indexed token length, where FULLTEXT
     // structurally can't match anything.
+    // businessType added 2026-08-25, same real isolation fix as `search` above --
+    // takes the raw enum name as a nullable String (not MerchantBusinessType?)
+    // since this is a native query with no entity-mapping context to convert an
+    // enum the way the JPQL version above can; ShoppingController passes
+    // `businessType?.name` when calling this.
     @Query(
         value = "SELECT p.* FROM merchant_products p JOIN merchants m ON m.id = p.merchant_id " +
             "WHERE p.active = true AND m.status = :#{#status.name()} " +
+            "AND (:businessType IS NULL OR m.business_type = :businessType) " +
             "AND MATCH(p.name, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) " +
             "ORDER BY MATCH(p.name, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) DESC",
         countQuery = "SELECT COUNT(*) FROM merchant_products p JOIN merchants m ON m.id = p.merchant_id " +
             "WHERE p.active = true AND m.status = :#{#status.name()} " +
+            "AND (:businessType IS NULL OR m.business_type = :businessType) " +
             "AND MATCH(p.name, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE)",
         nativeQuery = true,
     )
-    fun searchFullText(@Param("status") status: MerchantStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<MerchantProduct>
+    fun searchFullText(@Param("status") status: MerchantStatus, @Param("businessType") businessType: String?, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<MerchantProduct>
 
     // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
     // recommendation #8: a curated deal rail on the Shop landing surface, above the
@@ -128,12 +142,17 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     // real merchant-set discount (discountPercent is always server-computed at write
     // time from price/originalPrice, see MerchantProduct.kt's own doc comment, so this
     // can never surface a fake or manipulated "deal").
+    // businessType added 2026-08-25, same real isolation fix as `search` above --
+    // this deals rail is Shop's own landing-page section (see this method's own
+    // doc comment above) and had no vertical filter, meaning a restaurant's
+    // discounted menu item could show up in Shop's "Deals" rail.
     @Query(
         "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
             "WHERE p.active = true AND m.status = :status AND p.discountPercent IS NOT NULL AND p.discountPercent > 0 " +
+            "AND (:businessType IS NULL OR m.businessType = :businessType) " +
             "ORDER BY p.discountPercent DESC",
     )
-    fun findDeals(@Param("status") status: MerchantStatus, pageable: Pageable): Page<MerchantProduct>
+    fun findDeals(@Param("status") status: MerchantStatus, @Param("businessType") businessType: MerchantBusinessType?, pageable: Pageable): Page<MerchantProduct>
 
     // Real 마감할인 (closing/surplus discount) browse query (2026-08-15) -- distinct
     // from findDeals above: only real, merchant-flagged, still-genuinely-in-stock,
