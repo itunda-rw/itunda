@@ -211,6 +211,7 @@ import rw.itunda.feature.talk.impl.ObjectMobilePhone
 import rw.itunda.feature.talk.impl.ObjectLightBulb
 import rw.itunda.feature.talk.impl.TravelHouse
 import rw.itunda.feature.talk.impl.TravelCar
+import rw.itunda.feature.talk.impl.NatureStar
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
 // theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
@@ -4326,7 +4327,7 @@ private fun MenuScreen(
         FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenVehicleValuation),
     )
     val communityTrustRows = listOf(
-        FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
+        FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", glyph = { NatureStar(size = 28.dp) }, onClick = onOpenTrustScore),
         FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", glyph = { SpeechBubbleGlyph(size = 28.dp) }, onClick = onOpenKnowledge),
     )
     val cashAgentRows = listOf(
