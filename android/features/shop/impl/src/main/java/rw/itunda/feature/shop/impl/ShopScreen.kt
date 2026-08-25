@@ -700,9 +700,18 @@ fun CommerceShopContent(
                     )
                 }
             }
-            item {
-                PayAMerchantSection(deviceStepUpHost = deviceStepUpHost)
-            }
+            // Real fix (2026-08-25, direct user follow-up: "why do we have pay in
+            // there?" -- the same "everything separated ... clear isolation"
+            // directive this whole thread has been applying to Shop, just caught in
+            // a different spot). PayAMerchantSection (Face Pay/Scan QR/Pay by code)
+            // is real, in-person merchant payment -- it already has its own real
+            // home, the Pay tab (ItundaAppScreen.kt, PayTab -- see
+            // PayAMerchantSection's own doc comment in ShopPay.kt for why it lives
+            // in :features:shop:impl rather than being duplicated there, a reuse
+            // decision, not a rendering decision). This call rendered the exact
+            // same section a SECOND time, unconditionally, at the top of Shop's own
+            // online-catalog browse screen -- online shopping and in-person QR
+            // payment are two different real Toss/Coupang products, not one screen.
             if (membershipDay?.isMembershipDay == true) {
                 item {
                     Column(

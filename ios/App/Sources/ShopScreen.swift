@@ -146,11 +146,6 @@ struct CommerceShopContent: View {
     // eligibility rule.
     @State private var membershipDay: MembershipDayStatusResponse?
 
-    // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
-    // (this app has no scanner), mirrors bank-mfe's PayByCodeCard/PayByStaticQrCard and
-    // Android's PayAMerchantSection exactly. This is the first iOS client for either.
-    @State private var paymentResult: CollectPaymentResultDto?
-
     // Real cross-merchant product search (item 191) -- closes
     // docs/DESIGN_REFERENCES.md Section 5 recommendation #1: bank-mfe has had "search
     // across every merchant" since 2026-07-20 (lib/shopping.ts's own doc comment), and
@@ -369,7 +364,14 @@ struct CommerceShopContent: View {
                     } else if view == .subscriptions {
                         MyProductSubscriptionsView()
                     } else {
-                        PayAMerchantSection(paymentResult: $paymentResult)
+                        // Real fix (2026-08-25, direct user follow-up: "why do we
+                        // have pay in there?" -- matches Android's identical
+                        // ShopScreen.kt fix). PayAMerchantSection is real, in-person
+                        // merchant payment -- it already has its own real home, the
+                        // Pay tab (PayHomeExtras.swift's own PayScreen). This call
+                        // rendered the exact same section a second time,
+                        // unconditionally, at the top of Shop's own online-catalog
+                        // browse screen.
                         if let membershipDay, membershipDay.isMembershipDay {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("🎉 Membership Day — \(Int(membershipDay.multiplier))x cashback today")

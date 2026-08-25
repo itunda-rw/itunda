@@ -6892,53 +6892,11 @@ function AffiliateEarningsCard() {
 }
 
 // Real Face Pay enroll/revoke toggle -- see lib/facepay.ts's doc comment for the full
-// account of the gap this closes (backend fully real since 2026-07-13, zero UI until now).
-// `enrolled`/`onChanged` are lifted to ShoppingView -- found live that this card and
-// PayByCodeCard each fetching their own status independently meant PayByCodeCard never
-// learned about an enrollment that happened in the same session until a full reload.
-function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null; onChanged: () => void }) {
-  const { t } = useI18n();
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const handleToggle = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      if (enrolled) await revokeFacePay();
-      else await enrollFacePay();
-      onChanged();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('common.actionError'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (enrolled === null) return <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />;
-
-  return (
-    <div className="itunda-flat-section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>😊 Face Pay</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-            {enrolled ? 'Enabled — authorize payment codes with your face, no code re-entry needed' : 'Not enabled on this account'}
-          </p>
-        </div>
-        <button
-          className={`itunda-btn ${enrolled ? 'itunda-btn-danger' : 'itunda-btn-primary'}`}
-          onClick={handleToggle}
-          disabled={busy}
-          style={{ padding: '8px 14px', fontSize: 'var(--itunda-type-scale-12-size)' }}
-        >
-          {busy ? '…' : enrolled ? 'Disable' : 'Enable'}
-        </button>
-      </div>
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
-    </div>
-  );
-}
+// Real fix (2026-08-25, direct user follow-up: "why do we have pay in there?"):
+// this card was only ever rendered from ShoppingView (the Shop tab), which just
+// got its whole Pay-a-merchant block removed for the same reason. It's now a true
+// dead duplicate, not a real gap -- the Pay tab's own real Face Pay toggle is
+// FacePayStatusRow (PayHomeExtras.tsx), already wired into PayHub above.
 
 function couponDiscountLabel(c: MerchantCouponView['coupon']) {
   return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
@@ -7706,8 +7664,6 @@ function ShoppingView() {
   const { t } = useI18n();
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
-  const [facePayEnrolled, setFacePayEnrolled] = useState<boolean | null>(null);
   // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see lib/shopping.ts's own
   // fetchMembershipDayStatus doc comment.
   const [membershipDay, setMembershipDay] = useState<{ isMembershipDay: boolean; multiplier: number } | null>(null);
@@ -7718,20 +7674,12 @@ function ShoppingView() {
       .then(setMerchants)
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
-  const loadFacePayStatus = () => {
-    fetchFacePayStatus().then((r) => setFacePayEnrolled(r.enrolled)).catch(() => setFacePayEnrolled(false));
-  };
   const loadMembershipDayStatus = () => {
     fetchMembershipDayStatus().then(setMembershipDay).catch(() => {});
   };
 
   useEffect(load, []);
-  useEffect(loadFacePayStatus, []);
   useEffect(loadMembershipDayStatus, []);
-
-  if (paymentResult) {
-    return <PaymentConfirmation result={paymentResult} onDone={() => setPaymentResult(null)} />;
-  }
 
   if (error) {
     return (
@@ -7751,9 +7699,12 @@ function ShoppingView() {
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
         </div>
       )}
-      <FacePaySettingsCard enrolled={facePayEnrolled} onChanged={loadFacePayStatus} />
-      <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled ?? false} />
-      <PayByStaticQrCard onPaid={setPaymentResult} />
+      {/* Real fix (2026-08-25, direct user follow-up: "why do we have pay in
+          there?" -- matches Android's/iOS's identical ShopScreen fix). FacePay/
+          Pay-by-code/Pay-by-static-QR are real, in-person merchant payment -- they
+          already have a real home, PayHub above (~line 1320). This rendered the
+          exact same cards a second time, unconditionally, at the top of Shop's own
+          online-catalog browse screen. */}
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
         Earn cashback every time you shop with Itunda merchants.
       </p>
