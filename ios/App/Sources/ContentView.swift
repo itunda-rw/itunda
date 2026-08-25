@@ -200,7 +200,7 @@ struct ContentView: View {
             rows.append(SavingsRowData(
                 title: "Interest jar",
                 subtitle: String(format: "%.1f%% annual, accrued daily", jar.rate),
-                trailing: "RWF \(Int(jar.earnedThisMonth))",
+                trailing: "\(Int(jar.earnedThisMonth)) RWF",
                 onTap: { savingsFlowStep = .claimInterest }
             ))
         }
@@ -213,7 +213,7 @@ struct ContentView: View {
             let completedSuffix = goal.status == "completed" ? " · Completed 🎉" : ""
             rows.append(SavingsRowData(
                 title: goal.name,
-                subtitle: "RWF \(Int(goal.currentAmount)) of \(Int(goal.targetAmount))\(completedSuffix)",
+                subtitle: "\(Int(goal.currentAmount)) of \(Int(goal.targetAmount)) RWF\(completedSuffix)",
                 trailing: "\(percent)%",
                 onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) }
             ))

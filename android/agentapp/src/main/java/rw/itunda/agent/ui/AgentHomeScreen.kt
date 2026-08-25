@@ -94,7 +94,7 @@ private fun ActivityCard(entry: ActivityDto) = Card(Modifier.fillMaxWidth()) {
     val cashIn = entry.type == "CASH_IN"
     Column(Modifier.padding(12.dp)) {
         Text(if (cashIn) "Cash in completed" else "Cash out completed", style = MaterialTheme.typography.titleSmall)
-        Text((if (cashIn) "+" else "−") + " RWF ${entry.amount} · Receipt ${entry.receiptNumber}")
+        Text((if (cashIn) "+" else "−") + " ${"%,.0f".format(entry.amount)} RWF · Receipt ${entry.receiptNumber}")
         Text(entry.createdAt, style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -103,8 +103,8 @@ private fun ActivityCard(entry: ActivityDto) = Card(Modifier.fillMaxWidth()) {
 private fun TillSummary(till: TillDto) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
         Text("Cash expected in till", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
-        Text("RWF ${till.expectedCash}", style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
-        Text("Today: RWF ${till.todayCashIn} in · RWF ${till.todayCashOut} out", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
+        Text("${"%,.0f".format(till.expectedCash)} RWF", style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+        Text("Today: ${"%,.0f".format(till.todayCashIn)} RWF in · ${"%,.0f".format(till.todayCashOut)} RWF out", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
     }
 }
 

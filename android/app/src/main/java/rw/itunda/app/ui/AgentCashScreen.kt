@@ -126,7 +126,7 @@ private fun AuthorizationCard(
     onCancel: () -> Unit,
 ) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text("RWF ${authorization.amount}", style = MaterialTheme.typography.titleLarge)
+        Text("${"%,.0f".format(authorization.amount)} RWF", style = MaterialTheme.typography.titleLarge)
         if (authorization.status == "ACTIVE") {
             Text("Withdrawal code", style = MaterialTheme.typography.labelMedium)
             Text(authorization.code, style = MaterialTheme.typography.headlineSmall)

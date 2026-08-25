@@ -62,7 +62,7 @@ public struct TransactionHistoryScreen: View {
                 Text("Spent this month")
                     .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
                     .foregroundColor(IDS.Colors.textSecondary)
-                Text("RWF \(formatAmount(Int(spentThisMonth)))")
+                Text("\(formatAmount(Int(spentThisMonth))) RWF")
                     .font(IDS.scaledFont(size: 32, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(IDS.Colors.textPrimary)
             }

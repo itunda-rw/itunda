@@ -325,13 +325,13 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, onDon
     // own affiliate-link share), not something invented for this screen.
     val shareContext = androidx.compose.ui.platform.LocalContext.current
     rw.itunda.core.designsystem.components.IdsCelebrationScreen(
-        headline = "RWF %,d sent".format(amountRwf),
+        headline = "%,d RWF sent".format(amountRwf),
         message = "",
         recipientLabel = recipientLabel,
         onShare = {
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TEXT, "Sent RWF %,d to %s via itunda".format(amountRwf, recipientLabel))
+                putExtra(android.content.Intent.EXTRA_TEXT, "Sent %,d RWF to %s via itunda".format(amountRwf, recipientLabel))
             }
             shareContext.startActivity(android.content.Intent.createChooser(intent, "Share"))
         },
@@ -835,7 +835,7 @@ fun ItundaAppScreen(
                             when (val result = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)) {
                                 is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
-                                    savingsFlowStep = SavingsFlowStep.Success("RWF %,d saved".format(amountRwf), result.message, celebratory = false)
+                                    savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), result.message, celebratory = false)
                                 }
                                 // Real offline queueing (2026-07-13, see
                                 // MainViewModel.depositToSavingsGoal): the deposit was
@@ -861,7 +861,7 @@ fun ItundaAppScreen(
                                         val retryResult = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
                                         when (retryResult) {
-                                            is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("RWF %,d saved".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), retryResult.message, celebratory = false)
                                             is rw.itunda.app.ui.MoneyActionResult.Queued -> {
                                                 savingsFlowStep = null
                                                 rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, retryResult.message)
@@ -1735,11 +1735,11 @@ private fun HomeTab(
         val trendingIds = trendingListings.map { it.id }.toSet()
         feedEntries = (
             (listings.filter { it.id !in trendingIds }).map {
-                HomeFeedEntry(it.id, "marketplace", it.title, "RWF %,.0f".format(it.price), it.createdAt, it.photoUrl)
+                HomeFeedEntry(it.id, "marketplace", it.title, "%,.0f RWF".format(it.price), it.createdAt, it.photoUrl)
             } +
             posts.map { HomeFeedEntry(it.id, "community", it.title, it.body.take(80), it.createdAt) } +
-            jobs.map { HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · RWF %,.0f".format(it.payAmount), it.createdAt) } +
-            properties.map { HomeFeedEntry(it.id, "property", it.title, "RWF %,.0f".format(it.price), it.createdAt) }
+            jobs.map { HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · %,.0f RWF".format(it.payAmount), it.createdAt) } +
+            properties.map { HomeFeedEntry(it.id, "property", it.title, "%,.0f RWF".format(it.price), it.createdAt) }
         ).sortedByDescending { it.createdAt }.take(30)
     }
     // Real blended "universal search" (2026-08-14, direct user reference: real Naver
@@ -1764,7 +1764,7 @@ private fun HomeTab(
         searchScope.launch {
             marketplaceResults = try {
                 rw.itunda.core.network.NetworkClient.apiService.searchListings(query).listings.map {
-                    HomeFeedEntry(it.id, "marketplace", it.title, "RWF %,.0f".format(it.price), it.createdAt, it.photoUrl)
+                    HomeFeedEntry(it.id, "marketplace", it.title, "%,.0f RWF".format(it.price), it.createdAt, it.photoUrl)
                 }
             } catch (_: Exception) { emptyList() }
         }
@@ -1778,14 +1778,14 @@ private fun HomeTab(
         searchScope.launch {
             jobResults = try {
                 rw.itunda.core.network.NetworkClient.apiService.searchJobPosts(query).posts.map {
-                    HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · RWF %,.0f".format(it.payAmount), it.createdAt)
+                    HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · %,.0f RWF".format(it.payAmount), it.createdAt)
                 }
             } catch (_: Exception) { emptyList() }
         }
         searchScope.launch {
             propertyResults = try {
                 rw.itunda.core.network.NetworkClient.apiService.searchPropertyListings(query).listings.map {
-                    HomeFeedEntry(it.id, "property", it.title, "RWF %,.0f".format(it.price), it.createdAt)
+                    HomeFeedEntry(it.id, "property", it.title, "%,.0f RWF".format(it.price), it.createdAt)
                 }
             } catch (_: Exception) { emptyList() }
         }
@@ -2063,7 +2063,7 @@ private fun HomeSearchResultRow(result: rw.itunda.core.network.ProductSearchResu
             Text(result.name, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(result.merchantName, color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
-        Text("RWF %,.0f".format(result.price), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text("%,.0f RWF".format(result.price), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -2091,7 +2091,7 @@ private fun HomeMarketWidgetRow(
             ) {
                 Text(stringResource(R.string.bank_account_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
                 val animatedBalance = rememberCountUp(primaryAccount.balance)
-                Text("${primaryAccount.currency} %,.0f".format(animatedBalance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("%,.0f ${primaryAccount.currency}".format(animatedBalance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         stocks.forEach { stock ->
@@ -2139,7 +2139,7 @@ private fun HomeTrendingGrid(listings: List<rw.itunda.core.network.ListingDto>, 
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(listing.title, color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text("RWF %,.0f".format(listing.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        Text("%,.0f RWF".format(listing.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
@@ -2218,7 +2218,7 @@ private fun RoundUpSettingsDialog(
                                 modifier = Modifier.pressScaleClickable { increment = option }.padding(end = 8.dp)
                             ) {
                                 androidx.compose.material3.RadioButton(selected = increment == option, onClick = { increment = option })
-                                Text("RWF $option")
+                                Text("$option RWF")
                             }
                         }
                     }
@@ -2376,7 +2376,7 @@ private fun BankHubScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             val animatedBalance = rememberCountUp(primaryAccount!!.balance)
                             Text(
-                                "${primaryAccount!!.currency} %,.0f".format(animatedBalance),
+                                "%,.0f ${primaryAccount!!.currency}".format(animatedBalance),
                                 fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
                             )
                         }
@@ -2448,7 +2448,7 @@ private fun BankHubScreen(
                                     } else {
                                         stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate))
                                     },
-                                    "RWF %,.0f".format(jar.earnedThisMonth),
+                                    "%,.0f RWF".format(jar.earnedThisMonth),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
                                     onClick = onClaimInterest,
@@ -2576,7 +2576,7 @@ private fun BankHubScreen(
                         if ((spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
                             add(
                                 ShellRow(
-                                    "RWF %,.0f".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
+                                    "%,.0f RWF".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
                                     if (spendingTopCategory != null) stringResource(R.string.home_spent_period_category, spendingTopCategory.name) else stringResource(R.string.home_spent_period),
                                     ">",
                                     Icons.Outlined.PieChart,
@@ -2621,7 +2621,7 @@ private fun BankHubScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.bank_deposit_protection_covered), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                            Text("RWF %,.0f".format(dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text("%,.0f RWF".format(dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(stringResource(R.string.bank_deposit_protection_cap, "%,.0f".format(dp.coverageCapPerUser)), color = Ids.colors.textTertiary, fontSize = 11.sp)
@@ -3171,7 +3171,7 @@ private fun AccountDetailScreen(
                         )
                     }
                     val animatedBalance = rememberCountUp(balance)
-                    Text("$currency %,.0f".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    Text("%,.0f $currency".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
                 }
             }
             val earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0
@@ -3191,7 +3191,7 @@ private fun AccountDetailScreen(
                         // ("Interest ₩7") -- a label plus the amount together, not
                         // the bare number this rendered as before.
                         Text(
-                            "${stringResource(R.string.account_detail_interest_prefix)} $currency %,.0f".format(earnedThisMonth),
+                            "${stringResource(R.string.account_detail_interest_prefix)} %,.0f $currency".format(earnedThisMonth),
                             color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f),
                         )
@@ -3252,7 +3252,7 @@ private fun AccountDetailScreen(
 // comment) and adds that second line.
 @Composable
 internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String, isScrollTouched: Boolean = false, onClick: () -> Unit = {}) {
-    val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
+    val amountText = "${if (isOutgoing) "-" else "+"}%,.0f $currency".format(transaction.amount)
     // Real fix (2026-08-14, direct user screenshots of their own real Toss Bank
     // ledger): incoming amounts are tinted the real brand blue there, not a generic
     // green success color -- this file's own earlier claim otherwise (see
@@ -3316,7 +3316,7 @@ internal fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto
         Spacer(modifier = Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.End) {
             Text(amountText, color = amountColor, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text("$currency %,.0f".format(afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
+            Text("%,.0f $currency".format(afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
         }
     }
 }
@@ -3463,7 +3463,7 @@ private fun TransactionDetailScreen(
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
+    val amountText = "${if (isOutgoing) "-" else "+"}%,.0f $currency".format(transaction.amount)
     val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     val (rowIcon, rowIconColor) = ledgerRowIcon(transaction)
 
@@ -3492,9 +3492,9 @@ private fun TransactionDetailScreen(
             TransactionDetailRow("Type", transactionTypeLabel(transaction.type))
             TransactionDetailRow("Status", transaction.status.lowercase().replaceFirstChar { it.uppercase() })
             TransactionDetailRow("Date & time", ledgerFullDateTime(transaction.createdAt))
-            TransactionDetailRow("Balance after", "$currency %,.0f".format(afterBalance))
+            TransactionDetailRow("Balance after", "%,.0f $currency".format(afterBalance))
             if (transaction.fee > 0.0) {
-                TransactionDetailRow("Fee", "$currency %,.0f".format(transaction.fee))
+                TransactionDetailRow("Fee", "%,.0f $currency".format(transaction.fee))
             }
         }
     }
@@ -4790,7 +4790,7 @@ private fun MyTab(
                         Text("Shop order", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text(order.status, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
-                    Text("RWF %,.0f".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                    Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
             items(eatsOrders.take(3), key = { it.id }) { order ->
@@ -4802,7 +4802,7 @@ private fun MyTab(
                         Text("Eats order", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         Text(order.status, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
-                    Text("RWF %,.0f".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                    Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
         }

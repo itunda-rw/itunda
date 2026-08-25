@@ -209,6 +209,6 @@ final class BankViewModel: ObservableObject {
         formatter.maximumFractionDigits = 0
         formatter.groupingSeparator = ","
         let number = formatter.string(from: NSNumber(value: value)) ?? "0"
-        return "\(currency) \(number)"
+        return "\(number) \(currency)"
     }
 }

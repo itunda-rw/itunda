@@ -164,7 +164,7 @@ struct TransferFlowContainer: View {
                 }
             case .success(let amountRwf, let recipientLabel):
                 IdsCelebrationScreen(
-                    headline: "RWF \(amountRwf.formatted()) sent",
+                    headline: "\(amountRwf.formatted()) RWF sent",
                     message: "",
                     onDone: onDone,
                     recipientLabel: recipientLabel,

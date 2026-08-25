@@ -56,7 +56,7 @@ fun SavingsAmountScreen(
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(
                 label = "From Itunda Account",
-                sublabel = "Available RWF ${rwfFormatter.format(availableBalanceLong)}",
+                sublabel = "Available ${rwfFormatter.format(availableBalanceLong)} RWF",
                 icon = Icons.Outlined.AccountBalanceWallet
             )
             Spacer(modifier = Modifier.height(2.dp))

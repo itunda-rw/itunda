@@ -103,7 +103,7 @@ private struct ActivityCard: View {
         let cashIn = entry.type == "CASH_IN"
         VStack(alignment: .leading, spacing: 4) {
             Text(cashIn ? "Cash in completed" : "Cash out completed").font(.subheadline).bold()
-            Text("\(cashIn ? "+" : "−") RWF \(formattedRWF(entry.amount)) · Receipt \(entry.receiptNumber)")
+            Text("\(cashIn ? "+" : "−") \(formattedRWF(entry.amount)) RWF · Receipt \(entry.receiptNumber)")
             Text(entry.createdAt).font(.caption).foregroundColor(.secondary)
         }
         .padding(12)
@@ -119,8 +119,8 @@ private struct TillSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Cash expected in till").font(.subheadline).foregroundColor(.secondary)
-            Text("RWF \(formattedRWF(till.expectedCash))").font(.largeTitle).bold()
-            Text("Today: RWF \(formattedRWF(till.todayCashIn)) in · RWF \(formattedRWF(till.todayCashOut)) out")
+            Text("\(formattedRWF(till.expectedCash)) RWF").font(.largeTitle).bold()
+            Text("Today: \(formattedRWF(till.todayCashIn)) RWF in · \(formattedRWF(till.todayCashOut)) RWF out")
                 .font(.subheadline).foregroundColor(.secondary)
         }
         .padding(16)

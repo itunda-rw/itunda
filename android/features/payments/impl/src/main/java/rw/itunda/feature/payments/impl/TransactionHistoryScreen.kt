@@ -97,7 +97,7 @@ fun TransactionHistoryScreen(
                 Text("Spent this month", color = Ids.colors.textSecondary, fontSize = 15.sp)
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "RWF ${rwfFormatter.format(spentThisMonth.toLong())}",
+                    "${rwfFormatter.format(spentThisMonth.toLong())} RWF",
                     color = Ids.colors.textPrimary,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold

@@ -234,11 +234,11 @@ internal fun PlaceDetailAndRouteView(
                             val original = product.originalPrice
                             if (original != null && original > product.price) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("RWF ${original.toInt()}", fontSize = 11.sp, color = Ids.colors.textTertiary, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
-                                    Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger)
+                                    Text("${"%,.0f".format(original)} RWF", fontSize = 11.sp, color = Ids.colors.textTertiary, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                                    Text("${"%,.0f".format(product.price)} RWF", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger)
                                 }
                             } else {
-                                Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                                Text("${"%,.0f".format(product.price)} RWF", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                             }
                         }
                         // Real bookable-service entry point (moved here 2026-08-25 from
@@ -322,7 +322,7 @@ internal fun PlaceDetailAndRouteView(
                     }
                     val valueLine = listOfNotNull(
                         "${matchedMerchant.cashbackRate} cashback",
-                        matchedMerchant.minOrderAmount?.let { "Min. RWF ${it.toInt()}" },
+                        matchedMerchant.minOrderAmount?.let { "Min. ${"%,.0f".format(it)} RWF" },
                     ).joinToString(" · ")
                     Text(valueLine, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
                     val openingHours = matchedMerchant.openingHours

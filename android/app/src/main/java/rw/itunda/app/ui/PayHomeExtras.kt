@@ -195,15 +195,17 @@ fun RewardsSummaryRow(rewardsTotal: Double, payBalance: Double?) {
         Column {
             Text("Rewards earned", fontSize = 13.sp, color = Ids.colors.textSecondary)
             // Real fix (2026-08-26, live-caught: "1300 RWF" next to "RWF 7,510" on the
-            // exact same screen) -- was raw Int-to-string interpolation with no
-            // thousands separator and currency-suffix ordering, inconsistent with
-            // every other amount on this screen's own "RWF %,.0f" convention.
-            Text("RWF %,.0f".format(rewardsTotal), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            // exact same screen -- direct user correction: amount-first, currency-suffix
+            // is the real correct convention, e.g. "10,346 RWF" not "RWF 10,346") -- was
+            // raw Int-to-string interpolation with no thousands separator; this session's
+            // own first pass at this fix wrongly flipped it TO currency-prefix instead,
+            // corrected here alongside the same app-wide currency-prefix sweep.
+            Text("%,.0f RWF".format(rewardsTotal), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
         }
         if (payBalance != null) {
             Column(horizontalAlignment = Alignment.End) {
                 Text("itunda Pay balance", fontSize = 13.sp, color = Ids.colors.textSecondary)
-                Text("RWF %,.0f".format(payBalance), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                Text("%,.0f RWF".format(payBalance), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
             }
         }
     }
@@ -236,9 +238,9 @@ fun PaymentHistorySection(transactions: List<TransactionDto>) {
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(tx.description, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                     }
-                    // Real fix (2026-08-26) -- same comma-formatting gap as
-                    // RewardsSummaryRow's own doc comment above.
-                    Text("RWF %,.0f".format(tx.amount), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                    // Real fix (2026-08-26) -- same comma-formatting + currency-order
+                    // correction as RewardsSummaryRow's own doc comment above.
+                    Text("%,.0f RWF".format(tx.amount), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                 }
                 if (index != transactions.take(5).lastIndex) {
                     HorizontalDivider(color = Ids.colors.divider)
@@ -270,7 +272,7 @@ fun RewardsPreviewSection(tasks: List<RewardTaskDto>, claimingId: String?, onCla
                     Text(task.subtitle, fontSize = 12.sp, color = Ids.colors.textSecondary)
                 }
                 IdsButton(
-                    if (claimingId == task.id) "…" else "+RWF %,.0f".format(task.rewardAmount),
+                    if (claimingId == task.id) "…" else "+%,.0f RWF".format(task.rewardAmount),
                     onClick = { onClaim(task.id) },
                     enabled = claimingId == null,
                     variant = IdsButtonVariant.Tinted,

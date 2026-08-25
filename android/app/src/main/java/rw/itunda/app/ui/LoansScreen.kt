@@ -59,6 +59,15 @@ import java.util.UUID
 // This screen replaces that decoration with the real offers/apply/repay flow.
 private enum class LoansMode { OFFERS, MY_LOANS, OVERDRAFT, POSTPAID_CREDIT }
 
+// Real fix (2026-08-26): this whole file interpolated raw BigDecimal amounts with zero
+// thousands-separator grouping and currency-prefix ordering ("RWF 500000"), missed by
+// the earlier app-wide formatMoneyX() comma-grouping sweep because it never called a
+// formatter at all -- see [[project_itunda_money_formatting_sweep]].
+private fun formatMoneyLoans(value: BigDecimal): String {
+    val rounded = value.stripTrailingZeros()
+    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
+}
+
 @Composable
 fun LoansScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
@@ -225,7 +234,7 @@ private fun OfferCard(offer: LoanOfferDto, busy: Boolean, onApply: (BigDecimal) 
         Column(Modifier.padding(16.dp)) {
             Text(offer.name, style = MaterialTheme.typography.titleMedium)
             Text(offer.lenderName, style = MaterialTheme.typography.bodySmall)
-            Text("Up to RWF ${offer.maxAmount} · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
+            Text("Up to ${formatMoneyLoans(offer.maxAmount)} RWF · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
             Text(offer.requirements, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
@@ -252,8 +261,8 @@ private fun MyLoanCard(
     onRefinance: () -> Unit,
 ) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text("RWF ${loan.principal} loan", style = MaterialTheme.typography.titleMedium)
-        Text("Outstanding: RWF ${loan.outstanding}", style = MaterialTheme.typography.bodyMedium)
+        Text("${formatMoneyLoans(loan.principal)} RWF loan", style = MaterialTheme.typography.titleMedium)
+        Text("Outstanding: ${formatMoneyLoans(loan.outstanding)} RWF", style = MaterialTheme.typography.bodyMedium)
         Text("Status: ${loan.status} · ${loan.interestRate}%", style = MaterialTheme.typography.bodySmall)
         if (loan.status == "ACTIVE") {
             Spacer(Modifier.height(8.dp))
@@ -360,8 +369,8 @@ private fun OverdraftPanel() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Overdraft line", style = MaterialTheme.typography.titleMedium)
-            Text("Drawn: RWF ${current.drawnBalance} of RWF ${current.creditLimit}", style = MaterialTheme.typography.bodyMedium)
-            Text("Available to draw: RWF $availableCredit · ${current.interestRate}% annual, interest only on what's drawn", style = MaterialTheme.typography.bodySmall)
+            Text("Drawn: ${formatMoneyLoans(current.drawnBalance)} of ${formatMoneyLoans(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
+            Text("Available to draw: ${formatMoneyLoans(availableCredit)} RWF · ${current.interestRate}% annual, interest only on what's drawn", style = MaterialTheme.typography.bodySmall)
             notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(8.dp))
@@ -381,7 +390,7 @@ private fun OverdraftPanel() {
                             val res = NetworkClient.apiService.drawOverdraft(UUID.randomUUID().toString(), OverdraftAmountRequest(amount))
                             account = current.copy(drawnBalance = res.drawnBalance)
                             drawAmount = ""
-                            notice = "Drew RWF ${res.amount} -- RWF ${res.availableCredit} still available."
+                            notice = "Drew ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF still available."
                         } catch (_: Exception) {
                             error = "Could not draw from your overdraft."
                         } finally { busy = false }
@@ -406,7 +415,7 @@ private fun OverdraftPanel() {
                             val res = NetworkClient.apiService.repayOverdraft(UUID.randomUUID().toString(), OverdraftAmountRequest(amount))
                             account = current.copy(drawnBalance = res.drawnBalance)
                             repayAmount = ""
-                            notice = "Repaid RWF ${res.amount} -- RWF ${res.availableCredit} now available."
+                            notice = "Repaid ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF now available."
                         } catch (_: Exception) {
                             error = "Could not repay your overdraft."
                         } finally { busy = false }
@@ -482,8 +491,8 @@ private fun PostpaidCreditPanel() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("Postpaid credit", style = MaterialTheme.typography.titleMedium)
-            Text("Owed: RWF ${current.currentBalance} of RWF ${current.creditLimit}", style = MaterialTheme.typography.bodyMedium)
-            Text("Available: RWF $availableCredit · interest-free if repaid within 30 days", style = MaterialTheme.typography.bodySmall)
+            Text("Owed: ${formatMoneyLoans(current.currentBalance)} of ${formatMoneyLoans(current.creditLimit)} RWF", style = MaterialTheme.typography.bodyMedium)
+            Text("Available: ${formatMoneyLoans(availableCredit)} RWF · interest-free if repaid within 30 days", style = MaterialTheme.typography.bodySmall)
             if (suspended) {
                 Text("Suspended -- repay your overdue balance to keep spending.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
@@ -506,7 +515,7 @@ private fun PostpaidCreditPanel() {
                             val res = NetworkClient.apiService.spendPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
                             line = current.copy(currentBalance = res.currentBalance)
                             spendAmount = ""
-                            notice = "Added RWF ${res.amount} to your account -- RWF ${res.availableCredit} still available."
+                            notice = "Added ${formatMoneyLoans(res.amount)} RWF to your account -- ${formatMoneyLoans(res.availableCredit)} RWF still available."
                         } catch (_: Exception) {
                             error = "Could not spend from your postpaid credit line."
                         } finally { busy = false }
@@ -531,7 +540,7 @@ private fun PostpaidCreditPanel() {
                             val res = NetworkClient.apiService.repayPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
                             line = current.copy(currentBalance = res.currentBalance, status = if (res.currentBalance <= BigDecimal.ZERO) "ACTIVE" else current.status)
                             repayAmount = ""
-                            notice = "Repaid RWF ${res.amount} -- RWF ${res.availableCredit} now available."
+                            notice = "Repaid ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF now available."
                         } catch (_: Exception) {
                             error = "Could not repay your postpaid credit line."
                         } finally { busy = false }

@@ -111,7 +111,7 @@ internal fun PayMoneyDetailScreen(
                 Column(modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
                     Text(stringResource(R.string.pay_money_detail_title), fontSize = 13.sp, color = Ids.colors.textSecondary)
                     val animatedBalance = rememberCountUp(account.balance)
-                    Text("${account.currency} %,.0f".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    Text("%,.0f ${account.currency}".format(animatedBalance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
                 }
             }
             item {

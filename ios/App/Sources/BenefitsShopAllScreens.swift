@@ -948,7 +948,7 @@ struct MyTabView: View {
                 Text(status).font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             Spacer()
-            Text("RWF \(Int(amount))").foregroundColor(IDS.Colors.textPrimary)
+            Text("\(Int(amount)) RWF").foregroundColor(IDS.Colors.textPrimary)
         }
         .contentShape(Rectangle())
         .onTapGesture(perform: action)
