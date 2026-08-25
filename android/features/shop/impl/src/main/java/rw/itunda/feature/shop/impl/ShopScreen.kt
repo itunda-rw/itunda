@@ -196,35 +196,21 @@ fun CommerceShopContent(
     var missionBusyType by remember { mutableStateOf<String?>(null) }
 
     fun loadMissions() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getShoppingMissions()
-                if (res.success) {
-                    missions = res.missions
-                    spinOutcomes = res.spinOutcomes
-                }
-            } catch (e: Exception) {
-                // Real, non-critical -- the mission row just won't render if this fails.
-            }
+        loadShopMissions(coroutineScope) { loadedMissions, loadedSpinOutcomes ->
+            missions = loadedMissions
+            spinOutcomes = loadedSpinOutcomes
         }
     }
     LaunchedEffect(Unit) { loadMissions() }
 
     fun completeMission(type: String) {
-        missionBusyType = type
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.completeShoppingMission(type)
-                missionFeedback = "+%,.0f RWF".format(res.amountEarned)
-                loadMissions()
-            } catch (e: HttpException) {
-                missionFeedback = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                missionFeedback = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                missionBusyType = null
-            }
-        }
+        completeShopMission(
+            type = type,
+            coroutineScope = coroutineScope,
+            onBusyTypeChanged = { missionBusyType = it },
+            onFeedback = { missionFeedback = it },
+            onCompleted = ::loadMissions,
+        )
     }
 
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment
@@ -305,69 +291,35 @@ fun CommerceShopContent(
     }
 
     fun loadFavoriteProductIds() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyFavoriteProducts()
-                if (res.success) favoriteProductIds = res.favorites.map { it.productId }.toSet()
-            } catch (e: Exception) {
-                // Best-effort -- hearts just won't render as filled if this fails.
-            }
-        }
+        loadShopFavoriteProductIds(coroutineScope) { favoriteProductIds = it }
     }
     LaunchedEffect(Unit) { loadFavoriteProductIds() }
 
     fun toggleProductFavorite(productId: String) {
-        favoritingProductId = productId
-        coroutineScope.launch {
-            try {
-                if (productId in favoriteProductIds) {
-                    NetworkClient.apiService.removeProductFavorite(productId)
-                    favoriteProductIds = favoriteProductIds - productId
-                } else {
-                    NetworkClient.apiService.addProductFavorite(productId)
-                    favoriteProductIds = favoriteProductIds + productId
-                }
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                favoritingProductId = null
-            }
-        }
+        toggleShopProductFavorite(
+            productId = productId,
+            favoriteProductIds = favoriteProductIds,
+            coroutineScope = coroutineScope,
+            onBusyIdChanged = { favoritingProductId = it },
+            onFavoriteIdsChanged = { favoriteProductIds = it },
+            onError = { error = it },
+        )
     }
 
     fun loadFollowedMerchantIds() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyFollowedMerchants()
-                if (res.success) followedMerchantIds = res.follows.map { it.merchantId }.toSet()
-            } catch (e: Exception) {
-                // Best-effort -- see loadFavoriteProductIds's own doc comment above.
-            }
-        }
+        loadShopFollowedMerchantIds(coroutineScope) { followedMerchantIds = it }
     }
     LaunchedEffect(Unit) { loadFollowedMerchantIds() }
 
     fun toggleFollow(merchantId: String) {
-        followBusyMerchantId = merchantId
-        coroutineScope.launch {
-            try {
-                if (merchantId in followedMerchantIds) {
-                    NetworkClient.apiService.unfollowMerchant(merchantId)
-                    followedMerchantIds = followedMerchantIds - merchantId
-                } else {
-                    NetworkClient.apiService.followMerchant(merchantId)
-                    followedMerchantIds = followedMerchantIds + merchantId
-                }
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                followBusyMerchantId = null
-            }
-        }
+        toggleShopMerchantFollow(
+            merchantId = merchantId,
+            followedMerchantIds = followedMerchantIds,
+            coroutineScope = coroutineScope,
+            onBusyIdChanged = { followBusyMerchantId = it },
+            onFollowedIdsChanged = { followedMerchantIds = it },
+            onError = { error = it },
+        )
     }
 
     // Real rating/distance/ETA enrichment (2026-08-14) -- see StoreCard's own doc
@@ -442,20 +394,12 @@ fun CommerceShopContent(
     var mySubscriptions by remember { mutableStateOf<List<MerchantBillingSubscriptionDto>>(emptyList()) }
 
     fun loadBillingForMerchant(merchantId: String) {
-        coroutineScope.launch {
-            try {
-                billingPlans = NetworkClient.apiService.getMerchantBillingPlans(merchantId).plans
-            } catch (e: Exception) {
-                // Real, non-critical -- same discipline as follow/wishlist status.
-            }
-        }
-        coroutineScope.launch {
-            try {
-                mySubscriptions = NetworkClient.apiService.getMyBillingSubscriptions().subscriptions.filter { it.merchantId == merchantId }
-            } catch (e: Exception) {
-                // Real, non-critical -- same discipline as follow/wishlist status.
-            }
-        }
+        loadShopMerchantBilling(
+            merchantId = merchantId,
+            coroutineScope = coroutineScope,
+            onBillingPlansLoaded = { billingPlans = it },
+            onSubscriptionsLoaded = { mySubscriptions = it },
+        )
     }
 
     // Real Coupang/Amazon-style "Buy it again" (2026-08-23) -- direct port of Eats'
@@ -472,38 +416,14 @@ fun CommerceShopContent(
     var reorderError by remember { mutableStateOf<String?>(null) }
 
     fun handleReorder(order: OrderDto) {
-        reorderingOrderId = order.id
-        reorderError = null
-        coroutineScope.launch {
-            try {
-                val orderDetail = NetworkClient.apiService.getOrder(order.id)
-                val menuRes = NetworkClient.apiService.getMerchantProducts(order.merchantId)
-                if (!orderDetail.success || !menuRes.success) {
-                    reorderError = "Could not reorder."
-                    return@launch
-                }
-                val activeProducts = menuRes.products.filter { it.active }.associateBy { it.id }
-                var addedAny = false
-                orderDetail.items.forEach { item ->
-                    val product = activeProducts[item.productId] ?: return@forEach
-                    val key = "${order.merchantId}:${product.id}"
-                    val existing = cart[key]
-                    cart[key] = CommerceCartLine(order.merchantId, menuRes.merchant.businessName, product, (existing?.quantity ?: 0) + item.quantity)
-                    addedAny = true
-                }
-                if (!addedAny) {
-                    reorderError = "None of the items from that order are available anymore."
-                    return@launch
-                }
-                showCart = true
-            } catch (e: HttpException) {
-                reorderError = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                reorderError = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                reorderingOrderId = null
-            }
-        }
+        performShopReorder(
+            order = order,
+            cart = cart,
+            coroutineScope = coroutineScope,
+            onReorderingIdChanged = { reorderingOrderId = it },
+            onError = { reorderError = it },
+            onCartOpened = { showCart = true },
+        )
     }
 
     fun openMerchant(m: ShoppingMerchantDto) {
@@ -531,73 +451,42 @@ fun CommerceShopContent(
         }
     }
 
-    val currentResults = results
-    if (currentResults != null) {
-        MultiCartResultsView(currentResults, onDone = {
-            results = null
-            selectedMerchant = null
-            products = null
-            showCart = false
-            view = CommerceView.ORDERS
-        })
-        return
-    }
-
-    if (showCart) {
-        MultiCartView(
+    if (ShopDetailDispatch(
+            results = results,
+            showCart = showCart,
             cart = cart,
-            onBack = { showCart = false },
-            onOrderPlaced = { checkoutResults ->
+            selectedMerchant = selectedMerchant,
+            selectedProduct = selectedProduct,
+            products = products,
+            favoriteProductIds = favoriteProductIds,
+            favoritingProductId = favoritingProductId,
+            followedMerchantIds = followedMerchantIds,
+            followBusyMerchantId = followBusyMerchantId,
+            billingPlans = billingPlans,
+            mySubscriptions = mySubscriptions,
+            deviceStepUpHost = deviceStepUpHost,
+            onResultsDone = {
+                results = null; selectedMerchant = null; products = null
+                showCart = false; view = CommerceView.ORDERS
+            },
+            onCartBack = { showCart = false },
+            onCartOrderPlaced = { checkoutResults ->
                 checkoutResults.filter { it.order != null }.forEach { r ->
                     cart.keys.filter { it.startsWith("${r.merchantId}:") }.forEach(cart::remove)
                 }
                 results = checkoutResults
             },
-            deviceStepUpHost = deviceStepUpHost,
-        )
-        return
-    }
-
-    val merchant = selectedMerchant
-    val product = selectedProduct
-    if (merchant != null && product != null) {
-        LaunchedEffect(product.id) {
-            recentlyViewed = recentlyViewedStore.add(
-                RecentlyViewedProductDto(product.id, merchant.merchantId, merchant.businessName, product.name, product.price, product.imageUrl, product.discountPercent),
-            )
-        }
-        ProductDetailScreen(
-            merchant = merchant,
-            product = product,
-            cart = cart,
-            onBack = { selectedProduct = null },
-            onViewCart = { selectedProduct = null; showCart = true },
-            favorited = product.id in favoriteProductIds,
-            favoriteBusy = favoritingProductId == product.id,
-            onToggleFavorite = { toggleProductFavorite(product.id) },
-        )
-        return
-    }
-    if (merchant != null) {
-        MerchantDetailView(
-            merchant = merchant,
-            products = products,
-            cart = cart,
-            onBack = { selectedMerchant = null },
+            onRecentlyViewedAdded = { entry -> recentlyViewed = recentlyViewedStore.add(entry) },
+            onProductBack = { selectedProduct = null },
+            onViewCartFromProduct = { selectedProduct = null; showCart = true },
+            onToggleProductFavorite = ::toggleProductFavorite,
+            onMerchantBack = { selectedMerchant = null },
             onViewCart = { showCart = true },
             onOpenProduct = { selectedProduct = it },
-            favoriteProductIds = favoriteProductIds,
-            favoritingProductId = favoritingProductId,
-            onToggleFavorite = ::toggleProductFavorite,
-            following = merchant.merchantId in followedMerchantIds,
-            followBusy = followBusyMerchantId == merchant.merchantId,
-            onToggleFollow = { toggleFollow(merchant.merchantId) },
-            billingPlans = billingPlans,
-            mySubscriptions = mySubscriptions,
-            onBillingChanged = { loadBillingForMerchant(merchant.merchantId) },
+            onToggleFollow = ::toggleFollow,
+            onBillingChanged = ::loadBillingForMerchant,
         )
-        return
-    }
+    ) return
 
     val totalItems = cart.values.sumOf { it.quantity }
     // Real fix (2026-08-25, direct user directive: "implant that into our designs
