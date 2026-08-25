@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { IconBell, IconEye, IconEyeOff, IconSend, IconShieldCheck, IconStar } from './icons/ItundaIcons';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-motion';
+import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
@@ -21237,6 +21238,67 @@ interface CommerceCheckoutResult {
   error?: string;
 }
 
+// Real Toss "밀어서 결제하기" (swipe to pay) primitive (2026-08-25, direct user
+// screenshot of Toss Shopping's real checkout sheet) -- Toss's own signature payment
+// gesture, mirrors Android's SwipeToConfirmButton exactly (see that file's own doc
+// comment for the full account: enabled gates dragging, busy freezes mid-swipe with a
+// label swap, and a real failed attempt (busy clears without the caller navigating
+// away) springs the handle back to the start so the buyer can retry).
+function SwipeToConfirmButton({ label, busyLabel, enabled, busy, onConfirm }: { label: string; busyLabel: string; enabled: boolean; busy: boolean; onConfirm: () => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [trackWidth, setTrackWidth] = useState(0);
+  const x = useMotionValue(0);
+  const controls = useAnimation();
+  const handleSize = 48;
+
+  useEffect(() => {
+    if (trackRef.current) setTrackWidth(trackRef.current.offsetWidth);
+  }, []);
+
+  const maxOffset = Math.max(0, trackWidth - handleSize - 8);
+
+  useEffect(() => {
+    if (!busy && enabled && x.get() > 0) {
+      controls.start({ x: 0, transition: { type: 'spring', ...itundaSpring.bounce } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy, enabled]);
+
+  return (
+    <div
+      ref={trackRef}
+      style={{
+        position: 'relative', width: '100%', height: '56px', borderRadius: '28px',
+        background: enabled || busy ? 'var(--itunda-indigo)' : 'var(--itunda-grey-300)', overflow: 'hidden',
+      }}
+    >
+      <p style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', paddingLeft: `${handleSize}px`, margin: 0, pointerEvents: 'none' }}>
+        {busy ? busyLabel : label}
+      </p>
+      <motion.div
+        drag={enabled && !busy ? 'x' : false}
+        dragConstraints={{ left: 0, right: maxOffset }}
+        dragElastic={0}
+        dragMomentum={false}
+        animate={controls}
+        style={{
+          x, position: 'absolute', top: '4px', left: '4px', width: `${handleSize}px`, height: `${handleSize}px`,
+          borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'none',
+        }}
+        onDragEnd={() => {
+          if (maxOffset > 0 && x.get() >= maxOffset * 0.8) {
+            controls.start({ x: maxOffset, transition: { type: 'spring', ...itundaSpring.quick } }).then(() => onConfirm());
+          } else {
+            controls.start({ x: 0, transition: { type: 'spring', ...itundaSpring.bounce } });
+          }
+        }}
+      >
+        <IconChevronRight size={20} color="var(--itunda-indigo)" />
+      </motion.div>
+    </div>
+  );
+}
+
 function MultiCartView({
   cart, onBack, onSetQty, onCheckedOut,
 }: {
@@ -21374,9 +21436,17 @@ function MultiCartView({
             ) : (
               <>
                 {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-                <button type="submit" className="itunda-btn itunda-btn-primary" disabled={placing || !address.trim()}>
-                  {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
-                </button>
+                {/* Real Toss "밀어서 결제하기" (swipe to pay) (2026-08-25, direct user
+                    screenshot) -- replaces the plain submit button with Toss's own
+                    signature deliberate-drag payment gesture. See
+                    SwipeToConfirmButton's own doc comment. */}
+                <SwipeToConfirmButton
+                  label={`Swipe to place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
+                  busyLabel="Placing orders…"
+                  enabled={!placing && !!address.trim()}
+                  busy={placing}
+                  onConfirm={() => handlePlaceOrders()}
+                />
               </>
             )}
           </div>

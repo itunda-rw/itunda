@@ -233,16 +233,17 @@ struct MultiCartView: View {
                     .padding(.top, 12)
                 }
 
-                Button(action: { Task { await placeOrders() } }) {
-                    Text(submitting ? "Placing orders…" : "Place \(groups.count) order\(groups.count == 1 ? "" : "s")")
-                        .font(IDS.Typography.bodyBold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(submitting || address.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                        .cornerRadius(16)
-                }
-                .disabled(submitting || address.isEmpty)
+                // Real Toss "밀어서 결제하기" (swipe to pay) (2026-08-25, direct user
+                // screenshot) -- replaces the plain tap-to-confirm button with Toss's
+                // own signature deliberate-drag payment gesture. See
+                // SwipeToConfirmButton's own doc comment.
+                SwipeToConfirmButton(
+                    label: "Swipe to place \(groups.count) order\(groups.count == 1 ? "" : "s")",
+                    busyLabel: "Placing orders…",
+                    enabled: !submitting && !address.isEmpty,
+                    busy: submitting,
+                    onConfirm: { Task { await placeOrders() } }
+                )
                 .padding(IDS.Layout.screenHorizontal)
             }
             DeviceStepUpHost(

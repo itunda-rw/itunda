@@ -49,6 +49,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.QtyButton
+import rw.itunda.core.designsystem.components.SwipeToConfirmButton
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
@@ -307,17 +308,16 @@ internal fun MultiCartView(
                 }
             }
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(if (submitting || address.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                .pressScaleClickable(enabled = !submitting && address.isNotBlank()) {
-                    coroutineScope.launch { placeOrders() }
-                }
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) { Text(if (submitting) "Placing orders…" else "Place ${groups.size} order${if (groups.size == 1) "" else "s"}", color = Color.White, fontWeight = FontWeight.Bold) }
+        // Real Toss "밀어서 결제하기" (swipe to pay) (2026-08-25, direct user screenshot)
+        // -- replaces the plain tap-to-confirm button with Toss's own signature
+        // deliberate-drag payment gesture. See SwipeToConfirmButton's own doc comment.
+        SwipeToConfirmButton(
+            label = "Swipe to place ${groups.size} order${if (groups.size == 1) "" else "s"}",
+            busyLabel = "Placing orders…",
+            enabled = !submitting && address.isNotBlank(),
+            busy = submitting,
+            onConfirm = { coroutineScope.launch { placeOrders() } },
+        )
         deviceStepUpHost(
             needsDeviceVerification,
             { needsDeviceVerification = false },
