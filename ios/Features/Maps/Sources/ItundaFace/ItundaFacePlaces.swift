@@ -126,9 +126,19 @@ private let itundaFacePlaces: [String: [ItundaFaceShape]] = [
 /// Renders itundaface's own glyph for a known place-category id, falling back to a
 /// plain indigo pin dot for anything outside the 13 known categories -- matches
 /// mapCategoryIcons' own existing `?? "📍"` fallback.
-struct PlaceGlyph: View {
+public struct PlaceGlyph: View {
     let category: String
     var size: CGFloat = 24
+
+    // Real 2026-08-26 addition -- exposed public (was module-internal) so
+    // App-target screens (e.g. BenefitsShopAllScreens.swift's EntireMenuScreen,
+    // matching Android's own direct `PlaceRestaurant`/`PlaceMarket`/etc.
+    // imports into ItundaAppScreen.kt) can render a place-category glyph
+    // directly instead of only MapScreenView.swift's own category-pin usage.
+    public init(category: String, size: CGFloat = 24) {
+        self.category = category
+        self.size = size
+    }
 
     private static let fallbackShapes: [ItundaFaceShape] = [
         placeBadge(0xC0C6FF),
@@ -142,7 +152,7 @@ struct PlaceGlyph: View {
         return Self.fallbackShapes
     }
 
-    var body: some View {
+    public var body: some View {
         ItundaFaceGlyphCanvas(size: size, viewBoxSize: 60, shapes: shapes)
     }
 }

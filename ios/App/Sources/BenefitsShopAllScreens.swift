@@ -230,12 +230,12 @@ struct EntireMenuScreen: View {
     private var searchableMenuSections: [(title: String, rows: [FlatRow])] {
         [
             ("Quick links", [
-                FlatRow(title: "Shop", subtitle: "Coupang-style commerce", symbol: "bag.fill", tint: .accentIndigo, action: { showShop = true }),
-                FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", symbol: "fork.knife", tint: .accentOrange, action: { showEats = true }),
-                FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", symbol: "storefront.fill", tint: .accentTeal, action: onOpenMarketplace),
-                FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", symbol: "person.3.fill", tint: .accentTeal, action: onOpenCommunity),
-                FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", symbol: "briefcase.fill", tint: .accentTeal, action: onOpenJobs),
-                FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", symbol: "house.fill", tint: .accentTeal, action: onOpenProperty),
+                FlatRow(title: "Shop", subtitle: "Coupang-style commerce", glyph: { AnyView(ShoppingBagGlyph(size: 28)) }, action: { showShop = true }),
+                FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", glyph: { AnyView(PlaceGlyph(category: "RESTAURANT", size: 28)) }, action: { showEats = true }),
+                FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: onOpenMarketplace),
+                FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }, action: onOpenCommunity),
+                FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", glyph: { AnyView(BriefcaseGlyph(size: 28)) }, action: onOpenJobs),
+                FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", glyph: { AnyView(TravelHouse(size: 28)) }, action: onOpenProperty),
                 // Real fix (2026-08-13, matching the identical Android fix same day, direct
                 // user report: "entire app is still messy... give me something
                 // real"): used to open BenefitsShopAllScreens' own BenefitsView, a
@@ -245,16 +245,16 @@ struct EntireMenuScreen: View {
                 // TUYIZERE Eric" card. This row's own subtitle ("Points, coupons,
                 // rewards") already describes exactly what the real "Reward tasks"
                 // mini-app does -- points there instead of a second, fake destination.
-                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showRewardTasksMiniApp = true }),
-                FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
-                FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
-                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
-                FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showYouthAccount = true }),
-                FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentIndigo, action: { showCard = true }),
+                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
+                FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
+                FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
+                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
+                FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
+                FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                 FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
-                FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
-                FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", symbol: "leaf.fill", tint: .accentTeal, action: { showHarvestAdvance = true }),
+                FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
+                FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", glyph: { AnyView(SeedlingGlyph(size: 28)) }, action: { showHarvestAdvance = true }),
                 // Real icon-clash fix (2026-08-24), same bug class as the Android
                 // MenuScreen fix this session (DESIGN_REFERENCES.md Section 65/193's
                 // "richer, distinct per-product iconography" principle) -- this row
@@ -263,8 +263,8 @@ struct EntireMenuScreen: View {
                 // exact row (IdsIcons.ShieldCheck) semantically (a government-backed,
                 // verified program), without widening FlatRow's `symbol: String?` API
                 // to accept a custom Shape -- a bigger, separately-scoped change.
-                FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "checkmark.shield.fill", tint: .accentIndigo, action: { showVupLoan = true }),
-                FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
+                FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", glyph: { AnyView(ShieldEmojiGlyph(size: 28)) }, action: { showVupLoan = true }),
+                FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", glyph: { AnyView(PinGlyph(size: 28)) }, action: { showMap = true }),
             ]),
             ("Mini apps", [
                 FlatRow(title: "Account balance", showChevron: true, action: { showAccountBalanceMiniApp = true }),
@@ -273,82 +273,82 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
             ]),
             ("Accounts & cards", [
-                FlatRow(title: "Open account", subtitle: "Itunda Account, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentIndigo, action: { showOverview = true }),
-                FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
-                FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentIndigo, action: { showSpending = true }),
-                FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
-                FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentIndigo, action: { showSubscriptions = true }),
-                FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
+                FlatRow(title: "Open account", subtitle: "Itunda Account, other banks, RSE brokerage", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showOverview = true }),
+                FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showOverview = true }),
+                FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", glyph: { AnyView(BarChartGlyph(size: 28)) }, action: { showSpending = true }),
+                FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", glyph: { AnyView(FamilyGlyph(size: 28)) }, action: { showFamilyLink = true }),
+                FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", glyph: { AnyView(CalendarGlyph(size: 28)) }, action: { showSubscriptions = true }),
+                FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", glyph: { AnyView(ObjectPen(size: 28)) }, action: { showCertificate = true }),
             ]),
             ("Send & pay", [
                 FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentIndigo, action: onOpenTransferHub),
-                FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentIndigo, action: { showRequestMoney = true }),
-                FlatRow(title: "Auto top-up", subtitle: "Refill your account automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentIndigo, action: { showAutoTopUp = true }),
-                FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal, action: { showPayBillsMiniApp = true }),
+                FlatRow(title: "Request money", subtitle: "Generate a real payment request code", glyph: { AnyView(ReceiptGlyph(size: 28)) }, action: { showRequestMoney = true }),
+                FlatRow(title: "Auto top-up", subtitle: "Refill your account automatically from a linked account", glyph: { AnyView(RefreshCardGlyph(size: 28)) }, action: { showAutoTopUp = true }),
+                FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", glyph: { AnyView(ObjectMobilePhone(size: 28)) }, action: { showPayBillsMiniApp = true }),
             ]),
             ("Save & grow", [
                 FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
-                FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
+                FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", glyph: { AnyView(LockGlyph(size: 28)) }, action: { showUpfrontDeposit = true }),
             ]),
             ("Borrow", [
-                FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: .accentIndigo, action: { showLoans = true }),
-                FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
+                FlatRow(title: "Credit score", subtitle: "Free check, alternative data", glyph: { AnyView(NatureGlowingStar(size: 28)) }, action: { showCreditScore = true }),
                 FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
             ]),
             ("Transport", [
-                FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentIndigo, action: { showRides = true }),
-                FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
-                FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", symbol: "bicycle", tint: .accentIndigo, action: { showBikeRental = true }),
-                FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", symbol: "parkingsign.circle.fill", tint: .accentPurple, action: { showParking = true }),
-                FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", symbol: "bus.fill", tint: .accentTeal, action: { showBus = true }),
-                FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
-                FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
+                FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", glyph: { AnyView(TravelCar(size: 28)) }, action: { showRides = true }),
+                FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", glyph: { AnyView(ObjectKey(size: 28)) }, action: { showDesignatedDriver = true }),
+                FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", glyph: { AnyView(BikeGlyph(size: 28)) }, action: { showBikeRental = true }),
+                FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", glyph: { AnyView(ParkingGlyph(size: 28)) }, action: { showParking = true }),
+                FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", glyph: { AnyView(PlaceGlyph(category: "BUS_STOP", size: 28)) }, action: { showBus = true }),
+                FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", glyph: { AnyView(WrenchGlyph(size: 28)) }, action: { showVehicleInspection = true }),
+                FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", glyph: { AnyView(TravelCar(size: 28)) }, action: { showVehicleValuation = true }),
             ]),
             ("Community & trust", [
-                FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
-                FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", symbol: "questionmark.circle.fill", tint: .accentPurple, action: { showKnowledge = true }),
+                FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", glyph: { AnyView(NatureStar(size: 28)) }, action: { showTrustScore = true }),
+                FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }, action: { showKnowledge = true }),
             ]),
             ("Cash agent tools", [
-                FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentIndigo, action: { showAgentOperator = true }),
-                FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
+                FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", glyph: { AnyView(PlaceGlyph(category: "ITUNDA_AGENT", size: 28)) }, action: { showAgentOperator = true }),
+                FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: { showFloatMarketplace = true }),
             ]),
             ("Switch & save", [
-                FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentIndigo, action: { showLoans = true }),
-                FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
-                FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
+                FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
+                FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, glyph: { AnyView(TravelHouse(size: 28)) }, action: { showLoans = true }),
+                FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: { showLoans = true }),
             ]),
             ("Cards", [
-                FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed, action: { showCard = true }),
-                FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray, action: { showCard = true }),
+                FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
+                FlatRow(title: "Virtual card", trailing: "Instant issue", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
             ]),
             ("Services", [
-                FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentIndigo),
-                FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentIndigo),
+                FlatRow(title: "Rent deposit protection", glyph: { AnyView(TravelHouse(size: 28)) }),
+                FlatRow(title: "Recurring payments", glyph: { AnyView(CalendarGlyph(size: 28)) }),
                 FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
-                FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentIndigo, action: { showPayBillsMiniApp = true }),
-                FlatRow(title: "Interest earned this month", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
-                FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
-                FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentIndigo, action: onSwitchToTalk),
-                FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentIndigo),
-                FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
+                FlatRow(title: "REG & WASAC bills", glyph: { AnyView(ObjectLightBulb(size: 28)) }, action: { showPayBillsMiniApp = true }),
+                FlatRow(title: "Interest earned this month", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: onClaimInterest),
+                FlatRow(title: "SME income tax estimate", glyph: { AnyView(ReceiptGlyph(size: 28)) }),
+                FlatRow(title: "Split a bill with friends", glyph: { AnyView(SplitBillDice(size: 28)) }, action: onSwitchToTalk),
+                FlatRow(title: "Shared calendar", glyph: { AnyView(CalendarGlyph(size: 28)) }),
+                FlatRow(title: "Kids' allowance tasks", glyph: { AnyView(ChildGlyph(size: 28)) }),
             ]),
             ("Foreign currency", [
-                FlatRow(title: "Foreign currency account", trailing: "100% rate preference", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
-                FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentIndigo, action: { showForeignCurrency = true }),
+                FlatRow(title: "Foreign currency account", trailing: "100% rate preference", trailingIsLink: true, glyph: { AnyView(GlobeGlyph(size: 28)) }, action: { showForeignCurrency = true }),
+                FlatRow(title: "International transfer", glyph: { AnyView(GlobeGlyph(size: 28)) }, action: { showForeignCurrency = true }),
             ]),
             ("Grow your money", [
-                FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal, action: { showInvest = true }),
-                FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentIndigo, action: { showInvest = true }),
-                FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed, action: { showInvest = true }),
-                FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal, action: { showInvest = true }),
+                FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
+                FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showInvest = true }),
+                FlatRow(title: "IPO schedule", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
+                FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showInvest = true }),
             ]),
             ("Pension", [
-                FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentIndigo),
-                FlatRow(title: "Pension products", symbol: "percent", tint: .accentIndigo),
+                FlatRow(title: "Check my RSSB pension", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }),
+                FlatRow(title: "Pension products", glyph: { AnyView(MoneyBagGlyph(size: 28)) }),
             ]),
             ("Loans", [
-                FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
-                FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentIndigo, action: { showLoans = true }),
+                FlatRow(title: "Check my max limit", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showLoans = true }),
+                FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
             ]),
             ("Notifications & consent", [
                 FlatRow(title: "Notifications", showChevron: true, action: onOpenSettings),
@@ -357,10 +357,10 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Terms & consent"),
             ]),
             ("Support", [
-                FlatRow(title: "FAQ"),
-                FlatRow(title: "Live chat"),
-                FlatRow(title: "Call support"),
-                FlatRow(title: "Report an issue with a transaction", showChevron: true, action: { showSupport = true }),
+                FlatRow(title: "FAQ", glyph: { AnyView(QuestionGlyph(size: 28)) }),
+                FlatRow(title: "Live chat", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }),
+                FlatRow(title: "Call support", glyph: { AnyView(ObjectMobilePhone(size: 28)) }),
+                FlatRow(title: "Report an issue with a transaction", glyph: { AnyView(WarningGlyph(size: 28)) }, showChevron: true, action: { showSupport = true }),
                 FlatRow(title: "My support tickets", showChevron: true, action: { showSupport = true }),
                 FlatRow(title: "Announcements"),
             ]),
@@ -400,12 +400,12 @@ struct EntireMenuScreen: View {
                     // primary tab now (ItundaTab.You), not reached from here.
                     IdsAllTopBar(onOpenSettings: onOpenSettings)
                     FlatSection(title: "Quick links", rows: [
-                        FlatRow(title: "Shop", subtitle: "Coupang-style commerce", symbol: "bag.fill", tint: .accentIndigo, action: { showShop = true }),
-                        FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", symbol: "fork.knife", tint: .accentOrange, action: { showEats = true }),
-                        FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", symbol: "storefront.fill", tint: .accentTeal, action: onOpenMarketplace),
-                        FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", symbol: "person.3.fill", tint: .accentTeal, action: onOpenCommunity),
-                        FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", symbol: "briefcase.fill", tint: .accentTeal, action: onOpenJobs),
-                        FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", symbol: "house.fill", tint: .accentTeal, action: onOpenProperty),
+                        FlatRow(title: "Shop", subtitle: "Coupang-style commerce", glyph: { AnyView(ShoppingBagGlyph(size: 28)) }, action: { showShop = true }),
+                        FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", glyph: { AnyView(PlaceGlyph(category: "RESTAURANT", size: 28)) }, action: { showEats = true }),
+                        FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: onOpenMarketplace),
+                        FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }, action: onOpenCommunity),
+                        FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", glyph: { AnyView(BriefcaseGlyph(size: 28)) }, action: onOpenJobs),
+                        FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", glyph: { AnyView(TravelHouse(size: 28)) }, action: onOpenProperty),
                         // Real fix (2026-08-13, matching the identical Android fix same day, direct
                 // user report: "entire app is still messy... give me something
                 // real"): used to open BenefitsShopAllScreens' own BenefitsView, a
@@ -415,20 +415,20 @@ struct EntireMenuScreen: View {
                 // TUYIZERE Eric" card. This row's own subtitle ("Points, coupons,
                 // rewards") already describes exactly what the real "Reward tasks"
                 // mini-app does -- points there instead of a second, fake destination.
-                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showRewardTasksMiniApp = true }),
-                        FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
-                        FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
-                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
-                        FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showYouthAccount = true }),
-                        FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentIndigo, action: { showCard = true }),
+                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
+                        FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
+                        FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
+                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
+                        FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
+                        FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
-                        FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
-                        FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", symbol: "leaf.fill", tint: .accentTeal, action: { showHarvestAdvance = true }),
+                        FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
+                        FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", glyph: { AnyView(SeedlingGlyph(size: 28)) }, action: { showHarvestAdvance = true }),
                         // Same icon-clash fix as this file's first FlatRow list above --
                         // shared banknote.fill with "Youth account", now differentiated.
-                        FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "checkmark.shield.fill", tint: .accentIndigo, action: { showVupLoan = true }),
-                        FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
+                        FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", glyph: { AnyView(ShieldEmojiGlyph(size: 28)) }, action: { showVupLoan = true }),
+                        FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", glyph: { AnyView(PinGlyph(size: 28)) }, action: { showMap = true }),
                     ])
                     IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
                     IconGridSection(
@@ -503,12 +503,12 @@ struct EntireMenuScreen: View {
                     // fixes 2 dead taps found the same way Android's were: "Open account"
                     // and "Mobile plan" had no `action:` at all.
                     CollapsibleFlatSection(title: "Accounts & cards", rows: [
-                        FlatRow(title: "Open account", subtitle: "Itunda Account, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentIndigo, action: { showOverview = true }),
-                        FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
-                        FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentIndigo, action: { showSpending = true }),
-                        FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
-                        FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentIndigo, action: { showSubscriptions = true }),
-                        FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
+                        FlatRow(title: "Open account", subtitle: "Itunda Account, other banks, RSE brokerage", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showOverview = true }),
+                        FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showOverview = true }),
+                        FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", glyph: { AnyView(BarChartGlyph(size: 28)) }, action: { showSpending = true }),
+                        FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", glyph: { AnyView(FamilyGlyph(size: 28)) }, action: { showFamilyLink = true }),
+                        FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", glyph: { AnyView(CalendarGlyph(size: 28)) }, action: { showSubscriptions = true }),
+                        FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", glyph: { AnyView(ObjectPen(size: 28)) }, action: { showCertificate = true }),
                     ], isExpanded: expandedMenuSection == "Accounts & cards", onToggle: { expandedMenuSection = (expandedMenuSection == "Accounts & cards") ? nil : "Accounts & cards" })
                     CollapsibleFlatSection(title: "Send & pay", rows: [
                         // Real Transfer full page (2026-07-24 port), matching real Toss's
@@ -517,41 +517,41 @@ struct EntireMenuScreen: View {
                         // button (which stays a quick recipient-picker, unchanged) being the
                         // only entry point. See TransferHubScreen.swift's own doc comment.
                         FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentIndigo, action: onOpenTransferHub),
-                        FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentIndigo, action: { showRequestMoney = true }),
-                        FlatRow(title: "Auto top-up", subtitle: "Refill your account automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentIndigo, action: { showAutoTopUp = true }),
+                        FlatRow(title: "Request money", subtitle: "Generate a real payment request code", glyph: { AnyView(ReceiptGlyph(size: 28)) }, action: { showRequestMoney = true }),
+                        FlatRow(title: "Auto top-up", subtitle: "Refill your account automatically from a linked account", glyph: { AnyView(RefreshCardGlyph(size: 28)) }, action: { showAutoTopUp = true }),
                         // MTN/Airtel airtime and broadband are real billers inside the Pay
                         // Bills mini-app -- same real destination "REG & WASAC bills" below
                         // already uses, same fix as Android's identical dead tap.
-                        FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal, action: { showPayBillsMiniApp = true }),
+                        FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", glyph: { AnyView(ObjectMobilePhone(size: 28)) }, action: { showPayBillsMiniApp = true }),
                     ], isExpanded: expandedMenuSection == "Send & pay", onToggle: { expandedMenuSection = (expandedMenuSection == "Send & pay") ? nil : "Send & pay" })
                     CollapsibleFlatSection(title: "Save & grow", rows: [
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
-                        FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
+                        FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", glyph: { AnyView(LockGlyph(size: 28)) }, action: { showUpfrontDeposit = true }),
                     ], isExpanded: expandedMenuSection == "Save & grow", onToggle: { expandedMenuSection = (expandedMenuSection == "Save & grow") ? nil : "Save & grow" })
                     CollapsibleFlatSection(title: "Borrow", rows: [
-                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "account.pass.fill", tint: .accentIndigo, action: { showLoans = true }),
-                        FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
+                        FlatRow(title: "Credit score", subtitle: "Free check, alternative data", glyph: { AnyView(NatureGlowingStar(size: 28)) }, action: { showCreditScore = true }),
                         FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
                     ], isExpanded: expandedMenuSection == "Borrow", onToggle: { expandedMenuSection = (expandedMenuSection == "Borrow") ? nil : "Borrow" })
                     CollapsibleFlatSection(title: "Transport", rows: [
-                        FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentIndigo, action: { showRides = true }),
-                        FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
-                        FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", symbol: "bicycle", tint: .accentIndigo, action: { showBikeRental = true }),
-                        FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", symbol: "parkingsign.circle.fill", tint: .accentPurple, action: { showParking = true }),
-                        FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", symbol: "bus.fill", tint: .accentTeal, action: { showBus = true }),
-                        FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
-                        FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
+                        FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", glyph: { AnyView(TravelCar(size: 28)) }, action: { showRides = true }),
+                        FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", glyph: { AnyView(ObjectKey(size: 28)) }, action: { showDesignatedDriver = true }),
+                        FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", glyph: { AnyView(BikeGlyph(size: 28)) }, action: { showBikeRental = true }),
+                        FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", glyph: { AnyView(ParkingGlyph(size: 28)) }, action: { showParking = true }),
+                        FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", glyph: { AnyView(PlaceGlyph(category: "BUS_STOP", size: 28)) }, action: { showBus = true }),
+                        FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", glyph: { AnyView(WrenchGlyph(size: 28)) }, action: { showVehicleInspection = true }),
+                        FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", glyph: { AnyView(TravelCar(size: 28)) }, action: { showVehicleValuation = true }),
                     ], isExpanded: expandedMenuSection == "Transport", onToggle: { expandedMenuSection = (expandedMenuSection == "Transport") ? nil : "Transport" })
                     CollapsibleFlatSection(title: "Community & trust", rows: [
-                        FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
-                        FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", symbol: "questionmark.circle.fill", tint: .accentPurple, action: { showKnowledge = true }),
+                        FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", glyph: { AnyView(NatureStar(size: 28)) }, action: { showTrustScore = true }),
+                        FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }, action: { showKnowledge = true }),
                     ], isExpanded: expandedMenuSection == "Community & trust", onToggle: { expandedMenuSection = (expandedMenuSection == "Community & trust") ? nil : "Community & trust" })
                     // Kept last and separately labeled, not blended into the rows above:
                     // these two are role-gated (only assigned cash-agent operators can use
                     // them), same reasoning as Android's identical split.
                     CollapsibleFlatSection(title: "Cash agent tools", rows: [
-                        FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentIndigo, action: { showAgentOperator = true }),
-                        FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
+                        FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", glyph: { AnyView(PlaceGlyph(category: "ITUNDA_AGENT", size: 28)) }, action: { showAgentOperator = true }),
+                        FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: { showFloatMarketplace = true }),
                     ], isExpanded: expandedMenuSection == "Cash agent tools", onToggle: { expandedMenuSection = (expandedMenuSection == "Cash agent tools") ? nil : "Cash agent tools" })
                     // Everything below is modeled directly on the real Toss Bank
                     // reference screens (see ItundaAppScreen.kt's own identical note),
@@ -564,9 +564,9 @@ struct EntireMenuScreen: View {
                     // button), not a separate feature, so they route to the same real
                     // Loans screen every other loan row on this screen already uses.
                     CollapsibleFlatSection(title: "Switch & save", rows: [
-                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentIndigo, action: { showLoans = true }),
-                        FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
-                        FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
+                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
+                        FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, glyph: { AnyView(TravelHouse(size: 28)) }, action: { showLoans = true }),
+                        FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: { showLoans = true }),
                     ], isExpanded: expandedMenuSection == "Switch & save", onToggle: { expandedMenuSection = (expandedMenuSection == "Switch & save") ? nil : "Switch & save" })
                 }
                 Group {
@@ -575,47 +575,47 @@ struct EntireMenuScreen: View {
                     // this screen -- a second, previously-dead entry point into it, not a
                     // separate feature.
                     CollapsibleFlatSection(title: "Cards", rows: [
-                        FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed, action: { showCard = true }),
-                        FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray, action: { showCard = true }),
+                        FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
+                        FlatRow(title: "Virtual card", trailing: "Instant issue", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
                     ], isExpanded: expandedMenuSection == "Cards", onToggle: { expandedMenuSection = (expandedMenuSection == "Cards") ? nil : "Cards" })
                     CollapsibleFlatSection(title: "Services", rows: [
-                        FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentIndigo),
-                        FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentIndigo),
+                        FlatRow(title: "Rent deposit protection", glyph: { AnyView(TravelHouse(size: 28)) }),
+                        FlatRow(title: "Recurring payments", glyph: { AnyView(CalendarGlyph(size: 28)) }),
                         FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
-                        FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentIndigo, action: { showPayBillsMiniApp = true }),
-                        FlatRow(title: "Interest earned this month", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
-                        FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
+                        FlatRow(title: "REG & WASAC bills", glyph: { AnyView(ObjectLightBulb(size: 28)) }, action: { showPayBillsMiniApp = true }),
+                        FlatRow(title: "Interest earned this month", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: onClaimInterest),
+                        FlatRow(title: "SME income tax estimate", glyph: { AnyView(ReceiptGlyph(size: 28)) }),
                         // Real split-bill (found 2026-07-22 fully built with zero UI
                         // anywhere) lives inside a specific group's own thread (Talk
                         // tab), not a standalone flow -- hand off there instead of
                         // duplicating a group picker.
-                        FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentIndigo, action: onSwitchToTalk),
-                        FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentIndigo),
-                        FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
+                        FlatRow(title: "Split a bill with friends", glyph: { AnyView(SplitBillDice(size: 28)) }, action: onSwitchToTalk),
+                        FlatRow(title: "Shared calendar", glyph: { AnyView(CalendarGlyph(size: 28)) }),
+                        FlatRow(title: "Kids' allowance tasks", glyph: { AnyView(ChildGlyph(size: 28)) }),
                     ], isExpanded: expandedMenuSection == "Services", onToggle: { expandedMenuSection = (expandedMenuSection == "Services") ? nil : "Services" })
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): both rows
                     // are the same real foreign-currency account "Mobile plan"/Send & pay's
                     // own routing doesn't cover -- this is its own real screen.
                     CollapsibleFlatSection(title: "Foreign currency", rows: [
-                        FlatRow(title: "Foreign currency account", trailing: "100% rate preference", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
-                        FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentIndigo, action: { showForeignCurrency = true }),
+                        FlatRow(title: "Foreign currency account", trailing: "100% rate preference", trailingIsLink: true, glyph: { AnyView(GlobeGlyph(size: 28)) }, action: { showForeignCurrency = true }),
+                        FlatRow(title: "International transfer", glyph: { AnyView(GlobeGlyph(size: 28)) }, action: { showForeignCurrency = true }),
                     ], isExpanded: expandedMenuSection == "Foreign currency", onToggle: { expandedMenuSection = (expandedMenuSection == "Foreign currency") ? nil : "Foreign currency" })
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): all 4 rows
                     // are the same real RSE investing screen ("Invest" quick link already
                     // opens) -- routed there instead of sitting dead.
                     CollapsibleFlatSection(title: "Grow your money", rows: [
-                        FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal, action: { showInvest = true }),
-                        FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentIndigo, action: { showInvest = true }),
-                        FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed, action: { showInvest = true }),
-                        FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal, action: { showInvest = true }),
+                        FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
+                        FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showInvest = true }),
+                        FlatRow(title: "IPO schedule", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
+                        FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showInvest = true }),
                     ], isExpanded: expandedMenuSection == "Grow your money", onToggle: { expandedMenuSection = (expandedMenuSection == "Grow your money") ? nil : "Grow your money" })
                     CollapsibleFlatSection(title: "Pension", rows: [
-                        FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentIndigo),
-                        FlatRow(title: "Pension products", symbol: "percent", tint: .accentIndigo),
+                        FlatRow(title: "Check my RSSB pension", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }),
+                        FlatRow(title: "Pension products", glyph: { AnyView(MoneyBagGlyph(size: 28)) }),
                     ], isExpanded: expandedMenuSection == "Pension", onToggle: { expandedMenuSection = (expandedMenuSection == "Pension") ? nil : "Pension" })
                     CollapsibleFlatSection(title: "Loans", rows: [
-                        FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
-                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "account.pass.fill", tint: .accentIndigo, action: { showLoans = true }),
+                        FlatRow(title: "Check my max limit", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showLoans = true }),
+                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
                     ], isExpanded: expandedMenuSection == "Loans", onToggle: { expandedMenuSection = (expandedMenuSection == "Loans") ? nil : "Loans" })
                     // Real fix: "Notifications" now opens Settings, which already has a
                     // real notifications list + mark-as-read (SettingsScreen.swift) --
@@ -637,10 +637,10 @@ struct EntireMenuScreen: View {
                     // destination (transaction-ticket support, already shipped
                     // 2026-07-22) keep theirs.
                     CollapsibleFlatSection(title: "Support", rows: [
-                        FlatRow(title: "FAQ"),
-                        FlatRow(title: "Live chat"),
-                        FlatRow(title: "Call support"),
-                        FlatRow(title: "Report an issue with a transaction", showChevron: true, action: { showSupport = true }),
+                        FlatRow(title: "FAQ", glyph: { AnyView(QuestionGlyph(size: 28)) }),
+                        FlatRow(title: "Live chat", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }),
+                        FlatRow(title: "Call support", glyph: { AnyView(ObjectMobilePhone(size: 28)) }),
+                        FlatRow(title: "Report an issue with a transaction", glyph: { AnyView(WarningGlyph(size: 28)) }, showChevron: true, action: { showSupport = true }),
                         FlatRow(title: "My support tickets", showChevron: true, action: { showSupport = true }),
                         FlatRow(title: "Announcements"),
                     ], isExpanded: expandedMenuSection == "Support", onToggle: { expandedMenuSection = (expandedMenuSection == "Support") ? nil : "Support" })
@@ -908,9 +908,9 @@ struct MyTabView: View {
                 // Real "my own posts" tracking (Marketplace/Jobs/Property listings I
                 // created) -- same Naver-style "track your own activity" pattern.
                 FlatSection(title: "My listings", rows: [
-                    FlatRow(title: "Marketplace", trailing: "\(myListingsCount)", symbol: "storefront.fill", tint: .accentIndigo, action: onSwitchToMarketplace),
-                    FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", symbol: "briefcase.fill", tint: .accentIndigo, action: onSwitchToJobs),
-                    FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", symbol: "house.fill", tint: .accentTeal, action: onSwitchToProperty),
+                    FlatRow(title: "Marketplace", trailing: "\(myListingsCount)", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: onSwitchToMarketplace),
+                    FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", glyph: { AnyView(BriefcaseGlyph(size: 28)) }, action: onSwitchToJobs),
+                    FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", glyph: { AnyView(TravelHouse(size: 28)) }, action: onSwitchToProperty),
                 ])
                 // "My account" (My assets/Get a loan/Credit score/etc) deliberately
                 // dropped here (2026-07-24) -- every one of those rows already lives in
@@ -1315,6 +1315,17 @@ struct FlatRow {
     var trailingIsLink: Bool = false
     var symbol: String? = nil
     var tint: Color = .accentIndigo
+    // Real Toss icon-language fix (2026-08-26, matching Android's own FlatRow
+    // doc comment/live-verified pass) -- Toss never wraps its category icons
+    // in a colored background square; every glyph in TossFace is itself a
+    // distinct, full-color illustration. Takes priority over symbol/tint
+    // below when set; itundaface only covers a real subset of this screen's
+    // rows today, so rows without a real glyph yet keep the SF Symbol
+    // fallback rather than getting a fabricated one. Type-erased (`AnyView`)
+    // since Swift has no direct equivalent of Android's `@Composable () ->
+    // Unit` -- each call site wraps its itundaface View literally, e.g.
+    // `glyph: { AnyView(BriefcaseGlyph(size: 28)) }`.
+    var glyph: (() -> AnyView)? = nil
     var showChevron: Bool = false
     // Real granite mini-app launch (2026-07-16) -- see this file's own header for the
     // "MiniAppsSection...plain, non-functional list rows" note this closes for "Pay
@@ -1348,7 +1359,10 @@ private struct PressableFlatRow: View {
 
     var body: some View {
         HStack {
-            if let symbol = row.symbol {
+            if let glyph = row.glyph {
+                glyph()
+                    .frame(width: 34, height: 34)
+            } else if let symbol = row.symbol {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10).fill(row.tint)
                     Image(systemName: symbol)
