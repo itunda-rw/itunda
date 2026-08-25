@@ -18,4 +18,11 @@
 -- row's stored 'MINI' string unrecognized by newly-deployed code. A real type-value
 -- migration, if ever done, needs its own separately reviewed pass coordinated with a
 -- Kotlin enum rename across all 4 codebases at once -- out of scope here.
-UPDATE accounts SET account_name = 'Youth Account' WHERE account_name = 'Mini Account' AND type = 'MINI';
+-- Real fix (2026-08-25, found live during a deploy): this originally referenced a
+-- table named `accounts`, which does not exist -- the Wallet->Account rename
+-- (V290/V291, see this file's own header comment) was a code/API/copy-level rename
+-- only; the underlying table is still physically named `wallets`. The migration
+-- failed validation the moment it actually ran (a real "table doesn't exist" SQL
+-- error, not a resource-pressure interruption), so it never touched any data --
+-- safe to correct in place rather than add a new migration on top of a no-op one.
+UPDATE wallets SET account_name = 'Youth Account' WHERE account_name = 'Mini Account' AND type = 'MINI';
