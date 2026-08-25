@@ -170,23 +170,38 @@ class DiscoverService(
         )
 
         val rankedItems = (personalized + staticFallback).sortedByDescending { it.priority }
-        // Real impression recording (2026-08-11) -- every item DiscoverController
-        // returns renders immediately in every client's DiscoverSection/hero card
-        // today (no lazy virtualization that could skip an off-screen one), so
-        // recording here at fetch time is an honest proxy for "was shown," not an
-        // approximation of something more precise the clients don't actually do.
-        // Feeds MAX_IMPRESSIONS above on the next call -- without this, frequency
-        // capping would never trigger since nothing would ever increment the count.
+        // Real impression recording (2026-08-11, real bug found+fixed live 2026-08-26):
+        // every item DiscoverController returns renders immediately in every client's
+        // DiscoverSection/hero card today (no lazy virtualization that could skip an
+        // off-screen one), so recording here at fetch time is an honest proxy for "was
+        // shown." Feeds MAX_IMPRESSIONS above on the next call -- without this,
+        // frequency capping would never trigger since nothing would ever increment the
+        // count.
+        //
+        // Real bug this pass fixed: recording was unconditional on every single fetch,
+        // so `impressions()` counted raw API calls, not genuine sightings -- Home fetches
+        // discover data on every cold launch, so a handful of real app relaunches in one
+        // day (caught live via this session's own repeated test relaunches) permanently
+        // exhausted MAX_IMPRESSIONS=4 for every item, forever, with no reset. Now gated
+        // to at most one recorded impression per item per rolling 24h window, so the cap
+        // means "shown across 4 distinct days," matching this method's own stated intent
+        // ("if 4 impressions haven't converted...") instead of "4 raw polls."
+        val impressionWindowStart = Instant.now().minus(1, ChronoUnit.DAYS)
         rankedItems.forEach { item ->
-            analyticsEventRepository.save(
-                AnalyticsEvent(
-                    id = "analytics_event_${UUID.randomUUID()}",
-                    userId = userId,
-                    eventName = "discover_banner_impression",
-                    platform = "server",
-                    metadataJson = item.id,
-                ),
+            val alreadyRecordedToday = analyticsEventRepository.existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter(
+                userId, "discover_banner_impression", item.id, impressionWindowStart,
             )
+            if (!alreadyRecordedToday) {
+                analyticsEventRepository.save(
+                    AnalyticsEvent(
+                        id = "analytics_event_${UUID.randomUUID()}",
+                        userId = userId,
+                        eventName = "discover_banner_impression",
+                        platform = "server",
+                        metadataJson = item.id,
+                    ),
+                )
+            }
         }
 
         return DiscoverResult(items = rankedItems, banners = banners)

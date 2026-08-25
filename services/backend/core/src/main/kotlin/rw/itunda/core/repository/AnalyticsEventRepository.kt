@@ -35,4 +35,11 @@ interface AnalyticsEventRepository : JpaRepository<AnalyticsEvent, String> {
     // single event name ("discover_banner_impression") can frequency-cap many
     // distinct banners without a new column or event name per banner.
     fun countByUserIdAndEventNameAndMetadataJson(userId: String, eventName: String, metadataJson: String): Long
+
+    // Real dedup guard (2026-08-26, live-caught) -- see DiscoverService's own doc
+    // comment on why insertion is now gated by this instead of unconditional on every
+    // fetch: without it, `countByUserIdAndEventNameAndMetadataJson` above counts raw
+    // API calls, not genuine sightings, and a handful of app relaunches in one day
+    // permanently exhausts MAX_IMPRESSIONS for every item.
+    fun existsByUserIdAndEventNameAndMetadataJsonAndCreatedAtAfter(userId: String, eventName: String, metadataJson: String, after: Instant): Boolean
 }
