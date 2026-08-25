@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import rw.itunda.core.domain.OrderReturnType
-import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
@@ -41,7 +39,6 @@ import rw.itunda.commerce.MerchantNotAcceptingOrdersException
 import rw.itunda.commerce.MerchantNotFoundException
 import rw.itunda.commerce.MinOrderAmountNotMetException
 import rw.itunda.commerce.OrderItemNotFoundException
-import rw.itunda.commerce.OrderItemRequest
 import rw.itunda.commerce.OrderNotFoundException
 import rw.itunda.commerce.OrderProductNotFoundException
 import rw.itunda.commerce.OrderReturnService
@@ -67,21 +64,6 @@ import rw.itunda.commerce.RiderAlreadyOnDeliveryException
 import rw.itunda.commerce.RiderNotAvailableException
 import rw.itunda.commerce.RiderNotRegisteredException
 import rw.itunda.commerce.SelfOrderException
-
-data class PlaceOrderRequest(
-    val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String,
-    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link code (item 229) -- see
-    // AffiliateService's own doc comment. Optional; omitted/unknown/self-referral all
-    // fall through to a normal order with no commission paid.
-    val referralCode: String? = null,
-)
-data class UpdateOrderStatusRequest(val status: OrderStatus)
-data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
-data class ReplyToProductReviewRequest(val reply: String)
-data class AskProductInquiryRequest(val question: String)
-data class AnswerProductInquiryRequest(val answer: String)
-data class RequestReturnRequest(val type: OrderReturnType, val reasonCode: String, val reasonNote: String? = null)
-data class DecideReturnRequest(val approve: Boolean)
 
 // Real Coupang-style checkout -- see OrderService's own doc comment for the full
 // account, including the two real fulfillment paths (merchant self-declared, or

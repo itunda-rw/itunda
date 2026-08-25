@@ -41,25 +41,6 @@ import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
 
-class MerchantNotFoundException(message: String) : RuntimeException(message)
-class MerchantNoAccountException(message: String) : RuntimeException(message)
-class BuyerNoAccountException(message: String) : RuntimeException(message)
-class EmptyOrderException(message: String) : RuntimeException(message)
-class InvalidDeliveryAddressException(message: String) : RuntimeException(message)
-class InvalidQuantityException(message: String) : RuntimeException(message)
-class OrderProductNotFoundException(message: String) : RuntimeException(message)
-class SelfOrderException(message: String) : RuntimeException(message)
-class OrderNotFoundException(message: String) : RuntimeException(message)
-class InvalidOrderStatusTransitionException(message: String) : RuntimeException(message)
-class RiderNotRegisteredException(message: String) : RuntimeException(message)
-class RiderNotAvailableException(message: String) : RuntimeException(message)
-class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
-class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
-class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
-class InsufficientProductStockException(message: String) : RuntimeException(message)
-class ProductSoldOutException(message: String) : RuntimeException(message)
-class SurplusDealExpiredException(message: String) : RuntimeException(message)
-class MerchantNotAcceptingOrdersException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
