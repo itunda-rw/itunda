@@ -63,22 +63,6 @@ struct CartFab: View {
 // comment for the full backend account. One real review per real delivered line item.
 // ShopStarRatingRow is duplicated here rather than shared, matching EatsScreen.swift's own
 // `private` (file-scoped) declaration -- each screen file in this codebase is self-contained.
-struct ShopStarRatingRow: View {
-    let value: Int
-    let onChange: (Int) -> Void
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(1...5, id: \.self) { n in
-                Button(action: { onChange(n) }) {
-                    IDS.Icons.star(size: 24, color: n <= value ? .yellow : IDS.Colors.textTertiary)
-                }
-                .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
-            }
-        }
-    }
-}
-
 // Real product-image thumbnail (2026-07-21) -- imageUrl is a merchant-supplied external
 // URL (see backend MerchantProduct.kt's own doc comment: no upload/storage layer exists
 // in this backend, so this is a real "bring your own URL" v1, not a fake pipeline).

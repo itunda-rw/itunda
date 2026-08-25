@@ -25,11 +25,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ShoppingBag
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,25 +44,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
-import rw.itunda.core.designsystem.components.ErrorCard
-import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.SkeletonBlock
-import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
-import rw.itunda.core.network.MerchantBookingDto
-import rw.itunda.core.network.SubmitBookingReviewRequest
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.CreateAffiliateLinkRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.MerchantBillingPlanDto
 import rw.itunda.core.network.MerchantBillingSubscriptionDto
 import rw.itunda.core.network.ShoppingMerchantDto
-import rw.itunda.core.network.superAppErrorMessage
-import java.io.IOException
 
 
 
@@ -77,7 +67,6 @@ internal fun MerchantDetailView(
     onBack: () -> Unit,
     onViewCart: () -> Unit,
     onOpenProduct: (MerchantProductDto) -> Unit,
-    onBookService: (MerchantProductDto) -> Unit = {},
     favoriteProductIds: Set<String> = emptySet(),
     favoritingProductId: String? = null,
     onToggleFavorite: (String) -> Unit = {},
@@ -219,26 +208,14 @@ internal fun MerchantDetailView(
                         )
                         ProductRatingBadge(p.id)
                         Spacer(modifier = Modifier.height(8.dp))
-                        // Real bookable-service entry point (2026-07-25) -- a product
-                        // with a real durationMinutes set is an appointment, not a
-                        // cart-able good, so it gets a "Book" action instead of the
-                        // qty stepper. See MerchantBookingFlowView's own doc comment.
-                        if (p.durationMinutes != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Ids.colors.brand)
-                                    .pressScaleClickable { onBookService(p) }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center,
-                            ) { Text("Book", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                        } else {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                                QtyButton("-") { setQty(p, qty - 1) }
-                                Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                                QtyButton("+") { val stock = p.stockQuantity; if (stock == null || qty < stock) setQty(p, qty + 1) }
-                            }
+                        // Bookable-service products (a real durationMinutes set) are
+                        // filtered out before reaching this grid -- see ShopScreen.kt's
+                        // openMerchant's own doc comment. Every product here is a real
+                        // cart-able good, so the qty stepper is unconditional now.
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            QtyButton("-") { setQty(p, qty - 1) }
+                            Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                            QtyButton("+") { val stock = p.stockQuantity; if (stock == null || qty < stock) setQty(p, qty + 1) }
                         }
                     }
                 }
@@ -249,175 +226,3 @@ internal fun MerchantDetailView(
         }
     }
 }
-
-internal val BOOKING_STATUS_LABEL = mapOf(
-    "REQUESTED" to "Requested",
-    "CONFIRMED" to "Confirmed",
-    "DECLINED" to "Declined",
-    "CANCELLED" to "Cancelled",
-    "COMPLETED" to "Completed",
-)
-
-@Composable
-internal fun MyBookingsView() {
-    var bookings by remember { mutableStateOf<List<MerchantBookingDto>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var cancellingId by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    fun load() {
-        coroutineScope.launch {
-            try {
-                val res = NetworkClient.apiService.getMyBookings()
-                if (res.success) bookings = res.bookings
-                error = null
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            }
-        }
-    }
-    LaunchedEffect(Unit) { load() }
-
-    fun cancel(bookingId: String) {
-        cancellingId = bookingId
-        error = null
-        coroutineScope.launch {
-            try {
-                NetworkClient.apiService.cancelBooking(bookingId)
-                load()
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                cancellingId = null
-            }
-        }
-    }
-
-    val list = bookings
-    if (list.isNullOrEmpty() && error == null) return
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Text("Bookings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 10.dp))
-        if (error != null) {
-            ErrorCard(error!!, onRetry = ::load)
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card
-                // -- a history log of bookings, kept the per-row Divider convention
-                // (docs/DESIGN_REFERENCES.md §274).
-                list!!.forEach { b ->
-                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(b.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(BOOKING_STATUS_LABEL[b.status] ?: b.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                        Text("${b.bookingDate} at ${b.startTime.take(5)}", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                        if (b.status == "REQUESTED" || b.status == "CONFIRMED") {
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 10.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Ids.colors.danger)
-                                    .pressScaleClickable(enabled = cancellingId != b.id) { cancel(b.id) }
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                            ) {
-                                Text(
-                                    if (cancellingId == b.id) "Cancelling…" else "Cancel booking",
-                                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                                )
-                            }
-                        }
-                        if (b.status == "COMPLETED") {
-                            BookingReviewButton(bookingId = b.id)
-                        }
-                    }
-                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
-                }
-            }
-        }
-    }
-}
-
-// Real customer-side post-appointment review (item 143) -- see lib/booking.ts's own
-// doc comment on bank-mfe. Mirrors ProductReviewRow's exact shape (star rating +
-// optional comment, a real BOOKING_ALREADY_REVIEWED 409 is treated as already-done).
-@Composable
-internal fun BookingReviewButton(bookingId: String) {
-    var open by remember { mutableStateOf(false) }
-    var done by remember { mutableStateOf(false) }
-    var rating by remember { mutableStateOf(0) }
-    var comment by remember { mutableStateOf("") }
-    var submitting by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
-
-    if (done) {
-        Text("Thanks for your review!", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
-        return
-    }
-    if (!open) {
-        Box(
-            modifier = Modifier
-                .padding(top = 10.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Ids.colors.textTertiary)
-                .pressScaleClickable { open = true }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        ) {
-            Text("Rate this visit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        }
-        return
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
-        StarRatingRow(rating) { rating = it }
-        IdsTextField(
-            value = comment,
-            onValueChange = { comment = it },
-            label = "How was it? (optional)",
-            modifier = Modifier.fillMaxWidth(),
-        )
-        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = false }.padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
-                    .pressScaleClickable(enabled = !submitting) {
-                        if (rating == 0) {
-                            error = "Pick a star rating."
-                            return@pressScaleClickable
-                        }
-                        submitting = true
-                        error = null
-                        coroutineScope.launch {
-                            try {
-                                NetworkClient.apiService.submitBookingReview(bookingId, SubmitBookingReviewRequest(rating, comment.trim().ifBlank { null }))
-                                done = true
-                            } catch (e: HttpException) {
-                                if (e.code() == 409) {
-                                    done = true
-                                } else {
-                                    error = superAppErrorMessage(e)
-                                }
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            } finally {
-                                submitting = false
-                            }
-                        }
-                    }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center,
-            ) { Text(if (submitting) "Submitting…" else "Submit review", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-        }
-    }
-}
-

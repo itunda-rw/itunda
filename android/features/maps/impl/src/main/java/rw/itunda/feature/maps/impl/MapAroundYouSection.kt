@@ -232,4 +232,9 @@ internal fun AroundYouSection(
             }
         }
     }
+    // Real local-business appointment booking (moved here 2026-08-25, direct user
+    // feedback: "booking... supposed to be in itunda place not in itunda shopping" --
+    // see MapsBooking.kt's own doc comment for the full sourced account). Self-
+    // sufficient, fetches its own data, same pattern this section's other rows follow.
+    MyBookingsView()
 }

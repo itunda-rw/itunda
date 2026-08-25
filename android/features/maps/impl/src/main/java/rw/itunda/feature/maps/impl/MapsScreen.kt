@@ -218,6 +218,7 @@ fun MapScreen(
     var recentSearches by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
     var searchFocused by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
+    var bookingService by remember { mutableStateOf<MerchantProductDto?>(null) } // moved from Shop, see MapsBooking.kt
     // Real "Itunda Places" (2026-08-09), directly requested after 16 real Naver Places
     // screenshots: "like naver places we should have itunda places." itunda already has
     // real underlying data for a genuine tabbed business-profile page -- not fabricated for
@@ -253,6 +254,7 @@ fun MapScreen(
             // genuinely zero reviews yet) leaves the Reviews tab silently absent.
         }
     }
+    if (MerchantBookingGate(selectedMerchant, bookingService) { bookingService = null }) return
     var route by remember { mutableStateOf<MapsDirectionsResponse?>(null) }
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
     // own doc comment on the network client. Often just a single-element list -- OSRM
@@ -1596,6 +1598,7 @@ fun MapScreen(
                                 voiceEnabled = voiceEnabled,
                                 onBack = onBack,
                                 onOrderDelivery = onOrderDelivery,
+                                onBookService = { bookingService = it },
                                 onFetchDirections = { mode -> fetchDirections(mode) },
                                 onClearRoute = { clearRoute() },
                                 onToggleBookmark = { toggleBookmark(place) },

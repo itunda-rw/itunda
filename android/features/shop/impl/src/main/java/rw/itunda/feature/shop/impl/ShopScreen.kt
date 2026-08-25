@@ -135,7 +135,6 @@ fun CommerceShopContent(
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProductDto?>(null) }
-    var bookingService by remember { mutableStateOf<MerchantProductDto?>(null) }
     val cart = remember { mutableStateMapOf<String, CommerceCartLine>() }
     var showCart by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<CommerceCheckoutResult>?>(null) }
@@ -516,7 +515,14 @@ fun CommerceShopContent(
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.getMerchantProducts(m.merchantId)
-                if (res.success) products = res.products
+                // Real filter (2026-08-25, direct user feedback: "booking... supposed
+                // to be in itunda place not in itunda shopping") -- a product with a
+                // real durationMinutes set is a real-time appointment at this
+                // merchant's physical location, not a cart-able online good, so it no
+                // longer shows in Shop's own catalog at all. Booking now lives in
+                // itunda Place (MapsBooking.kt), reachable from the same real merchant
+                // pinned on the map.
+                if (res.success) products = res.products.filter { it.durationMinutes == null }
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
@@ -553,16 +559,6 @@ fun CommerceShopContent(
     }
 
     val merchant = selectedMerchant
-    val bookableService = bookingService
-    if (merchant != null && bookableService != null) {
-        MerchantBookingFlowView(
-            merchant = merchant,
-            service = bookableService,
-            onBack = { bookingService = null },
-            onBooked = { bookingService = null },
-        )
-        return
-    }
     val product = selectedProduct
     if (merchant != null && product != null) {
         LaunchedEffect(product.id) {
@@ -590,7 +586,6 @@ fun CommerceShopContent(
             onBack = { selectedMerchant = null },
             onViewCart = { showCart = true },
             onOpenProduct = { selectedProduct = it },
-            onBookService = { bookingService = it },
             favoriteProductIds = favoriteProductIds,
             favoritingProductId = favoritingProductId,
             onToggleFavorite = ::toggleProductFavorite,
@@ -663,7 +658,8 @@ fun CommerceShopContent(
                     Text(reorderErr, color = Ids.colors.danger, fontSize = 13.sp)
                 }
             }
-            item { MyBookingsView() }
+            // MyBookingsView moved to itunda Place (2026-08-25) -- see MapsBooking.kt's
+            // own doc comment. "My orders" only shows real cart-able orders now.
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else if (view == CommerceView.SUBSCRIPTIONS) {

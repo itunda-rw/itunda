@@ -195,7 +195,7 @@ struct ProductReviewRow: View {
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.productName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                ShopStarRatingRow(value: rating) { rating = $0 }
+                StarRatingRow(value: rating) { rating = $0 }
                 TextField("How was it? (optional)", text: $comment)
                     .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
                 if let error {

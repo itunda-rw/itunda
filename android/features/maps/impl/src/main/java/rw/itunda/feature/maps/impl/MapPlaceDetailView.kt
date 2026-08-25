@@ -76,6 +76,7 @@ internal fun PlaceDetailAndRouteView(
     voiceEnabled: Boolean,
     onBack: () -> Unit,
     onOrderDelivery: (merchantId: String, businessName: String) -> Unit,
+    onBookService: (MerchantProductDto) -> Unit,
     onFetchDirections: (String) -> Unit,
     onClearRoute: () -> Unit,
     onToggleBookmark: () -> Unit,
@@ -239,6 +240,19 @@ internal fun PlaceDetailAndRouteView(
                             } else {
                                 Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                             }
+                        }
+                        // Real bookable-service entry point (moved here 2026-08-25 from
+                        // :features:shop:impl -- see MapsBooking.kt's own doc comment).
+                        // A product with a real durationMinutes set is a real-time
+                        // appointment at this physical place, not a cart-able good.
+                        if (product.durationMinutes != null && matchedMerchant != null) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Ids.colors.brand)
+                                    .pressScaleClickable { onBookService(product) }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                            ) { Text("Book", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
                 }

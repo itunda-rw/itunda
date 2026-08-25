@@ -217,6 +217,10 @@ public struct MapScreenView: View {
     @State private var recentSearches: [PlaceSearchResultDto] = RecentMapSearchesStore.shared.getAll()
     @FocusState private var searchFocused: Bool
     @State private var selectedPlace: PlaceSearchResultDto?
+    @State private var bookingService: MerchantProductDto? // real booking, see MapsBooking.swift
+    private var selectedMerchant: ShoppingMerchantDto? { // matches selectedPlace to a real pinned merchant
+        selectedPlace.flatMap { p in merchants.first { $0.latitude == p.latitude && $0.longitude == p.longitude } }
+    }
     @State private var itineraryStops: [PlaceSearchResultDto] = []
     @State private var route: RouteResultDto?
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
@@ -591,6 +595,9 @@ public struct MapScreenView: View {
                                             Button(action: { Task { await getItineraryDirections() } }) { Text(routing ? "Routing itinerary…" : "Route \(itineraryStops.count) stops").font(.caption).bold().foregroundColor(.white).padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.brand).cornerRadius(10) }.disabled(routing)
                                         }
                                     }
+                                    if let selectedMerchant { // real booking, moved from App/Sources, see MapsBooking.swift
+                                        MerchantBookableServicesSection(merchantId: selectedMerchant.merchantId) { bookingService = $0 }
+                                    }
                                     // Real driving/walking mode toggle (2026-07-22) --
                                     // same real Naver/Kakao Maps convention of picking a
                                     // travel mode before/after a route is drawn. Extracted
@@ -737,6 +744,7 @@ public struct MapScreenView: View {
                                             }
                                         }
                                     }
+                                    MyBookingsView() // real booking, moved from App/Sources, see MapsBooking.swift
                                 }
                             }
                             .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -850,6 +858,9 @@ public struct MapScreenView: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
             }
+        }
+        .fullScreenCover(item: $bookingService) { service in // real booking, see MapsBooking.swift
+            MerchantBookingGate(merchant: selectedMerchant, service: service) { bookingService = nil }
         }
     }
 

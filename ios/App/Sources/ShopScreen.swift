@@ -94,10 +94,6 @@ struct CommerceShopContent: View {
     @State private var selectedMerchant: ShoppingMerchantDto?
     @State private var products: [MerchantProductDto]?
     @State private var selectedProduct: MerchantProductDto?
-    // Real local-business appointment booking, customer side -- merchant-mfe/Android
-    // already have this; this is the first iOS client. See BookingFlowView's own doc
-    // comment.
-    @State private var bookingService: MerchantProductDto?
     @State private var cart: [String: CommerceCartLine] = [:]
     @State private var showCart = false
     @State private var results: [CommerceCheckoutResult]?
@@ -193,13 +189,6 @@ struct CommerceShopContent: View {
                         results = checkoutResults
                     }
                 )
-            } else if let merchant = selectedMerchant, let service = bookingService {
-                BookingFlowView(
-                    merchant: merchant,
-                    service: service,
-                    onBack: { bookingService = nil },
-                    onBooked: { bookingService = nil }
-                )
             } else if let merchant = selectedMerchant, let product = selectedProduct {
                 ProductDetailView(
                     merchant: merchant,
@@ -219,7 +208,6 @@ struct CommerceShopContent: View {
                     onBack: { selectedMerchant = nil },
                     onViewCart: { showCart = true },
                     onOpenProduct: { openProduct($0, businessName: merchant.businessName) },
-                    onBookService: { bookingService = $0 },
                     favoriteProductIds: favoriteProductIds,
                     favoritingProductId: favoritingProductId,
                     onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } },
@@ -358,7 +346,8 @@ struct CommerceShopContent: View {
                         if let reorderError {
                             Text(reorderError).foregroundColor(.red).font(.caption)
                         }
-                        MyBookingsView()
+                        // MyBookingsView moved to itunda Place (2026-08-25) -- see
+                        // MapsBooking.swift's own doc comment.
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else if view == .subscriptions {
@@ -664,7 +653,14 @@ struct CommerceShopContent: View {
         products = nil
         do {
             let res = try await NetworkClient.shared.getMerchantProducts(merchantId: merchant.merchantId)
-            products = res.products
+            // Real filter (2026-08-25, direct user feedback: "booking... supposed to be
+            // in itunda place not in itunda shopping") -- a product with a real
+            // durationMinutes set is a real-time appointment at this merchant's
+            // physical location, not a cart-able online good, so it no longer shows in
+            // Shop's own catalog at all. Booking now lives in itunda Place
+            // (Features/Maps/Sources/MapsBooking.swift), reachable from the same real
+            // merchant pinned on the map.
+            products = res.products.filter { $0.durationMinutes == nil }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

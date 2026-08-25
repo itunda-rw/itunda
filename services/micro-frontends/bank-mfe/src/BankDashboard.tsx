@@ -189,7 +189,6 @@ import {
   captureReferralCodeFromUrl, createAffiliateLink, fetchMyAffiliateCommissions, fetchMyAffiliateLinks, getStoredReferralCode,
   type AffiliateCommission, type AffiliateLink,
 } from './lib/affiliate';
-import { cancelBooking, createBooking, fetchAvailableSlots, fetchBookingDeposit, fetchCouponsForCustomer, fetchMerchantAvailability, fetchMerchantReviews, fetchMyBookings, submitBookingReview, type BookingDeposit, type BookingDepositStatus, type BookingSlot, type MerchantAvailabilityWindow, type MerchantBooking, type MerchantBookingReview, type MerchantCoupon } from './lib/booking';
 // Real fix (2026-08-10): MapView pulls in the full maplibre-gl WebGL engine (+CSS)
 // at module scope -- a static import here meant every user downloaded and parsed
 // that whole library on first load, whether or not they ever open the Map tab. Real
@@ -5759,146 +5758,6 @@ function SupportView({ initialTransactionId, initialCategory, onConsumedInitial 
   );
 }
 
-// Real customer-side view of merchant bookings requested via BookingWidget above --
-// see lib/booking.ts's own doc comment. Cancel is the only customer action here
-// (confirm/decline/complete are owner-side, already real on merchant-mfe).
-function MyBookingsCard() {
-  const [bookings, setBookings] = useState<MerchantBooking[] | null>(null);
-  const [cancelling, setCancelling] = useState<string | null>(null);
-
-  const load = () => {
-    fetchMyBookings().then(setBookings).catch(() => setBookings([]));
-  };
-  useEffect(load, []);
-
-  if (!bookings || bookings.length === 0) return null;
-
-  const cancel = async (id: string) => {
-    setCancelling(id);
-    try {
-      await cancelBooking(id);
-      load();
-    } catch {
-      // Real, non-critical -- a failed cancel just leaves the booking as-is; the user
-      // can retry.
-    } finally {
-      setCancelling(null);
-    }
-  };
-
-  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- one of many
-  // stacked sections on MyView's linear screen (docs/UI_UX_GUIDELINES.md §10).
-  return (
-    <div className="itunda-flat-section">
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My bookings</h3>
-      {bookings.slice(0, 5).map((b) => (
-        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 'var(--itunda-type-scale-13-size)', borderTop: '1px solid var(--itunda-grey-100)' }}>
-          <div>
-            <p style={{ fontWeight: 600 }}>{b.serviceName}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.bookingDate} · {b.startTime.slice(0, 5)} · {b.status}</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <BookingDepositBadge bookingId={b.id} />
-            {(b.status === 'REQUESTED' || b.status === 'CONFIRMED') && (
-              <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: 'var(--itunda-type-scale-12-size)' }} onClick={() => cancel(b.id)} disabled={cancelling === b.id}>
-                {cancelling === b.id ? '…' : 'Cancel'}
-              </button>
-            )}
-            {b.status === 'COMPLETED' && <BookingReviewButton booking={b} />}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Real, previously-uncalled-anywhere endpoint (found via a fresh uncalled-endpoint
-// sweep, 2026-08-16) -- see lib/booking.ts's own fetchBookingDeposit doc comment. Most
-// bookings have no deposit at all (their service never required prepay), which the
-// backend correctly reports as a 404 -- that's the expected, silent, no-badge case
-// here, not an error to surface.
-const DEPOSIT_STATUS_LABEL: Record<BookingDepositStatus, string> = {
-  HELD: 'Deposit held', RELEASED: 'Deposit released', REFUNDED: 'Deposit refunded', FORFEITED: 'Deposit forfeited',
-};
-function BookingDepositBadge({ bookingId }: { bookingId: string }) {
-  const [deposit, setDeposit] = useState<BookingDeposit | null>(null);
-  useEffect(() => {
-    fetchBookingDeposit(bookingId).then(setDeposit).catch(() => setDeposit(null));
-  }, [bookingId]);
-  if (!deposit) return null;
-  return (
-    <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 6px', borderRadius: '999px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
-      {DEPOSIT_STATUS_LABEL[deposit.status]} · {deposit.amount.toLocaleString()} RWF
-    </span>
-  );
-}
-
-// Real customer-side post-appointment review (item 143) -- see lib/booking.ts's own
-// doc comment. Mirrors ProductReviewRow's exact shape (star rating + optional comment,
-// a real BOOKING_ALREADY_REVIEWED 409 is treated as already-done, not an error).
-function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rating === 0) {
-      setError('Pick a star rating.');
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await submitBookingReview(booking.id, rating, comment);
-      setDone(true);
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'BOOKING_ALREADY_REVIEWED') {
-        setDone(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : t('common.actionError'));
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (done) {
-    return <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Thanks for your review!</span>;
-  }
-
-  if (!open) {
-    return (
-      <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: 'var(--itunda-type-scale-12-size)' }} onClick={() => setOpen(true)}>
-        Rate this visit
-      </button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-      <StarRatingInput value={rating} onChange={setRating} />
-      <input
-        type="text"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="How was it? (optional)"
-        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-      />
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
-          {submitting ? 'Submitting…' : 'Submit review'}
-        </button>
-      </div>
-    </form>
-  );
-}
 
 // Real Naver-style "My" personal hub (2026-07-22), at the user's direct request:
 // "My should be like Naver style My since we have shopping and eats and other
@@ -5944,7 +5803,8 @@ function MyView() {
       <PinSetupCard />
       <VerificationCard />
       <NotificationsCard />
-      <MyBookingsCard />
+      {/* MyBookingsCard moved to itunda Place (2026-08-25) -- see maps-mfe's own
+          MapsBooking.tsx doc comment. */}
       {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping --
           My orders/My favorites/My listings/Mini apps are real sections in this
           screen's own stack of widgets, now flat matching itunda-flat-section's
@@ -20017,176 +19877,6 @@ function PriceTiersDisplay({ productId, regularPrice }: { productId: string; reg
   );
 }
 
-// Real Naver Smart Place/Kakao Hair Shop/Karrot Business-Profile-style local business
-// appointment booking (item 220) -- see lib/booking.ts's own doc comment. A product
-// with durationMinutes set is bookable; requiresPrepay means the customer's deposit is
-// held automatically the moment they request the slot (no separate payment step).
-const JS_DAY_TO_AVAILABILITY_DAY: MerchantAvailabilityWindow['dayOfWeek'][] = [
-  'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
-];
-
-function BookingWidget({ merchantId, product }: { merchantId: string; product: CommerceProduct }) {
-  const { t } = useI18n();
-  const [date, setDate] = useState('');
-  const [slots, setSlots] = useState<BookingSlot[] | null>(null);
-  const [slotsError, setSlotsError] = useState<string | null>(null);
-  const [requesting, setRequesting] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [requested, setRequested] = useState(false);
-  const [openDays, setOpenDays] = useState<Set<MerchantAvailabilityWindow['dayOfWeek']> | null>(null);
-
-  useEffect(() => {
-    fetchMerchantAvailability(merchantId)
-      .then((windows) => setOpenDays(new Set(windows.map((w) => w.dayOfWeek))))
-      .catch(() => setOpenDays(null));
-  }, [merchantId]);
-
-  if (!product.durationMinutes) return null;
-
-  const isClosedOn = (d: string) => {
-    if (!openDays || openDays.size === 0) return false;
-    const day = JS_DAY_TO_AVAILABILITY_DAY[new Date(`${d}T00:00:00`).getDay()];
-    return !openDays.has(day);
-  };
-
-  const loadSlots = (d: string) => {
-    setDate(d);
-    setSlots(null);
-    setSlotsError(null);
-    if (!d) return;
-    if (isClosedOn(d)) {
-      setSlots([]);
-      return;
-    }
-    fetchAvailableSlots(merchantId, product.id, d)
-      .then(setSlots)
-      .catch((err) => setSlotsError(err instanceof ApiError ? err.message : t('common.loadError')));
-  };
-
-  const book = async (slot: BookingSlot) => {
-    setRequesting(slot.startTime);
-    setError(null);
-    try {
-      await createBooking(merchantId, product.id, date, slot.startTime);
-      setRequested(true);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('common.actionError'));
-    } finally {
-      setRequesting(null);
-    }
-  };
-
-  if (requested) {
-    return (
-      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--itunda-grey-100)' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Booking requested</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>The business will confirm or decline your appointment. See it under My &gt; My bookings.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--itunda-grey-100)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Book an appointment ({product.durationMinutes} min)</p>
-      {product.requiresPrepay && (
-        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-          Requesting this slot holds a {product.price.toLocaleString()} RWF deposit from your account.
-        </p>
-      )}
-      <input
-        type="date"
-        value={date}
-        min={new Date().toISOString().slice(0, 10)}
-        onChange={(e) => loadSlots(e.target.value)}
-        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-      />
-      {slotsError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }}>{slotsError}</p>}
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }}>{error}</p>}
-      {date && slots !== null && (
-        slots.length === 0 ? (
-          <EmptyState message={isClosedOn(date) ? 'Closed on this day — try another date.' : 'No open times on this date — try another day.'} />
-        ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {slots.map((slot) => (
-              <button
-                key={slot.startTime}
-                className="itunda-btn itunda-btn-secondary"
-                style={{ padding: '8px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
-                onClick={() => book(slot)}
-                disabled={requesting !== null}
-              >
-                {requesting === slot.startTime ? '…' : slot.startTime.slice(0, 5)}
-              </button>
-            ))}
-          </div>
-        )
-      )}
-    </div>
-  );
-}
-
-// Real pre-booking browsing (item 231) -- see lib/booking.ts's own doc comment for the
-// full sourced account. Two genuinely distinct real backend endpoints combined into one
-// section since both only matter at the moment a buyer is deciding whether to book:
-// this merchant's real review history/rating, and which of this merchant's real
-// coupons the buyer is eligible for (regularsOnly-gated ones are already filtered out
-// server-side by getCouponsForCustomer, not client-side).
-function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
-  const [reviews, setReviews] = useState<MerchantBookingReview[] | null>(null);
-  const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
-  const [coupons, setCoupons] = useState<MerchantCoupon[] | null>(null);
-
-  useEffect(() => {
-    fetchMerchantReviews(merchantId)
-      .then((r) => {
-        setReviews(r.reviews);
-        setRating(r.rating);
-      })
-      .catch(() => {
-        setReviews([]);
-        setRating(null);
-      });
-    fetchCouponsForCustomer(merchantId).then(setCoupons).catch(() => setCoupons([]));
-  }, [merchantId]);
-
-  if ((reviews === null || reviews.length === 0) && (coupons === null || coupons.length === 0)) return null;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {coupons !== null && coupons.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Coupons for you</p>
-          {coupons.map((c) => (
-            <div key={c.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--itunda-indigo-50, #EAF2FF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{c.title}</p>
-                {c.description && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{c.description}</p>}
-              </div>
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
-                {c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-      {reviews !== null && reviews.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
-            Reviews{rating?.average != null && ` · ⭐ ${rating.average.toFixed(1)} (${rating.count})`}
-          </p>
-          {reviews.slice(0, 3).map((r) => (
-            <div key={r.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--itunda-grey-100)' }}>
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{'⭐'.repeat(r.rating)} · {r.serviceName}</p>
-              {r.comment && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>{r.comment}</p>}
-              {r.ownerReply && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>↳ {r.ownerReply}</p>}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see
 // ProductInquiryService's own doc comment on the backend. Genuinely distinct from
 // ProductRatingBadge's reviews above: no order/purchase required at all, so this is
@@ -20920,8 +20610,10 @@ function ProductDetailView({
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
         )}
         <PriceTiersDisplay productId={product.id} regularPrice={product.price} />
-        <BookingWidget merchantId={merchant.merchantId} product={product} />
-        {product.durationMinutes != null && <MerchantBookingInfoSection merchantId={merchant.merchantId} />}
+        {/* BookingWidget/MerchantBookingInfoSection moved to itunda Place (2026-08-25)
+            -- see maps-mfe's own MapsBooking.tsx doc comment. This product-detail page
+            no longer reaches a bookable-service product at all (see the catalog fetch
+            above's own filter), so there's nothing left to render here for booking. */}
         <ProductInquirySection productId={product.id} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
@@ -20969,7 +20661,13 @@ function ProductCatalogView({
   const load = () => {
     setError(null);
     fetchMerchantProducts(merchant.merchantId)
-      .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products }))
+      // Real filter (2026-08-25, direct user feedback: "booking... supposed to be in
+      // itunda place not in itunda shopping") -- a product with a real durationMinutes
+      // set is a real-time appointment at this merchant's physical location, not a
+      // cart-able online good, so it no longer shows in Shop's own catalog at all.
+      // Booking now lives in itunda Place (maps-mfe's own MapsBooking.tsx), reachable
+      // from the same real merchant pinned on the map.
+      .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products.filter((p) => p.durationMinutes == null) }))
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
     fetchMyFavoriteProducts()
       .then((favorites) => setFavoritedIds(new Set(favorites.map((f) => f.productId))))

@@ -345,3 +345,30 @@ public struct IdsListRow: View {
         .buttonStyle(PressScaleButtonStyle())
     }
 }
+
+// Real shared 5-star input row -- moved here from App/Sources/ShopBrowseComponents.swift
+// (2026-08-25, real reviews needed this from a Features/ module too, see
+// MapsBooking.swift's BookingReviewButton, but Features/ can't depend back on App/ --
+// same shared home Android's identical StarRatingRow already has in
+// core.designsystem.components). Any real review-writing flow can reuse this now,
+// not just Shop's own.
+public struct StarRatingRow: View {
+    let value: Int
+    let onChange: (Int) -> Void
+
+    public init(value: Int, onChange: @escaping (Int) -> Void) {
+        self.value = value
+        self.onChange = onChange
+    }
+
+    public var body: some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { n in
+                Button(action: { onChange(n) }) {
+                    IDS.Icons.star(size: 24, color: n <= value ? .yellow : IDS.Colors.textTertiary)
+                }
+                .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
+            }
+        }
+    }
+}

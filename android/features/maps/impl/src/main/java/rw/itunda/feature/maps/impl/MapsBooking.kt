@@ -1,4 +1,4 @@
-package rw.itunda.feature.shop.impl
+package rw.itunda.feature.maps.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,26 +44,23 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsTextField
-import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BookingSlotDto
 import rw.itunda.core.network.CreateBookingRequest
-import rw.itunda.core.network.CreateProductSubscriptionRequest
-import rw.itunda.core.network.ProductSubscriptionDto
+import rw.itunda.core.network.MerchantBookingDto
 import rw.itunda.core.network.MerchantBookingRatingDto
 import rw.itunda.core.network.MerchantBookingReviewDto
+import rw.itunda.core.network.MerchantCouponPreviewDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
-import rw.itunda.core.network.MerchantCouponPreviewDto
 import rw.itunda.core.network.ShoppingMerchantDto
+import rw.itunda.core.network.SubmitBookingReviewRequest
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
-import java.util.UUID
-
-
-
 
 /**
  * Real local-business appointment booking (2026-07-25) -- closes the "business profile
@@ -71,7 +69,28 @@ import java.util.UUID
  * plain next-14-days strip (no calendar widget -- itunda has no calendar-sync/external
  * scheduling to justify one); slots come straight from the real backend-computed
  * availability (see MerchantBookingService.getAvailableSlots), never client-guessed.
+ *
+ * Moved here from :features:shop:impl (2026-08-25, direct user feedback: "booking...
+ * that's features that supposed to be in itunda place not in itunda shopping") -- this
+ * file's own original doc comment already named the real sourcing (Naver Smart Place/
+ * Karrot Business Profile, both real *local-place* products, never a nationwide online
+ * catalog), so a real-time appointment at a physical location belongs in itunda Place,
+ * not Shop's "completely online" catalog. The backend (MerchantBookingController/
+ * MerchantBookingService, :merchant module) was already vertical-neutral -- only this
+ * client-side UI ownership needed to move, not the API.
  */
+// Thin full-screen gate (2026-08-25) -- keeps MapScreen.kt's own call site to one
+// line, same "extract instead of grow a baselined file" discipline
+// docs/ARCHITECTURE_GUIDELINES.md §2 requires. Returns whether it rendered (and thus
+// whether the caller should `return` early), same shape as MapScreen's other
+// early-return checks.
+@Composable
+internal fun MerchantBookingGate(merchant: ShoppingMerchantDto?, service: MerchantProductDto?, onDismiss: () -> Unit): Boolean {
+    if (merchant == null || service == null) return false
+    MerchantBookingFlowView(merchant, service, onDismiss, onDismiss)
+    return true
+}
+
 @Composable
 internal fun MerchantBookingFlowView(
     merchant: ShoppingMerchantDto,
@@ -278,70 +297,170 @@ internal fun MerchantBookingInfoSection(merchantId: String) {
     }
 }
 
-// Real dedicated product-detail screen (2026-07-21), closing
-// docs/DESIGN_REFERENCES.md Section 5 recommendation #6 -- until now tapping a product
-// anywhere in Commerce only ever revealed the flat catalog grid's inline qty stepper;
-// there was no tap-through view showing the full-size image, discount breakdown, a
-// description, and written reviews together. Reuses already-proven pieces
-// (ProductImageThumb larger, ProductPriceRow, ProductRatingBadge which already lazily
-// expands into the written-review list, QtyButton) rather than inventing new ones --
-// this is a real second surface for the same real data, not new business logic.
-// Real Coupang 정기배송 (subscribe & save) -- see core/network's ProductSubscriptionDto
-// doc comment. A minimal delivery-address prompt via AlertDialog rather than a full
-// address form, matching bank-mfe's own compact-card scope (fixed qty=1, every 30d).
+internal val BOOKING_STATUS_LABEL = mapOf(
+    "REQUESTED" to "Requested",
+    "CONFIRMED" to "Confirmed",
+    "DECLINED" to "Declined",
+    "CANCELLED" to "Cancelled",
+    "COMPLETED" to "Completed",
+)
+
 @Composable
-internal fun SubscribeAndSaveButton(merchantId: String, productId: String) {
-    var showDialog by remember { mutableStateOf(false) }
-    var address by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
+internal fun MyBookingsView() {
+    var bookings by remember { mutableStateOf<List<MerchantBookingDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var cancellingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyBookings()
+                if (res.success) bookings = res.bookings
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    fun cancel(bookingId: String) {
+        cancellingId = bookingId
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.cancelBooking(bookingId)
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                cancellingId = null
+            }
+        }
+    }
+
+    val list = bookings
+    if (list.isNullOrEmpty() && error == null) return
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        Text("Bookings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 10.dp))
+        if (error != null) {
+            ErrorCard(error!!, onRetry = ::load)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                list!!.forEach { b ->
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(b.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(BOOKING_STATUS_LABEL[b.status] ?: b.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Text("${b.bookingDate} at ${b.startTime.take(5)}", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                        if (b.status == "REQUESTED" || b.status == "CONFIRMED") {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 10.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Ids.colors.danger)
+                                    .pressScaleClickable(enabled = cancellingId != b.id) { cancel(b.id) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    if (cancellingId == b.id) "Cancelling…" else "Cancel booking",
+                                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                )
+                            }
+                        }
+                        if (b.status == "COMPLETED") {
+                            BookingReviewButton(bookingId = b.id)
+                        }
+                    }
+                    Divider(color = Ids.colors.divider, thickness = 0.5.dp)
+                }
+            }
+        }
+    }
+}
+
+// Real customer-side post-appointment review (item 143) -- see lib/booking.ts's own
+// doc comment on bank-mfe. Mirrors ProductReviewRow's exact shape (star rating +
+// optional comment, a real BOOKING_ALREADY_REVIEWED 409 is treated as already-done).
+@Composable
+internal fun BookingReviewButton(bookingId: String) {
+    var open by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf(false) }
+    var rating by remember { mutableStateOf(0) }
+    var comment by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     if (done) {
-        Text("✓ Subscribed -- delivered every 30 days", color = Ids.colors.success, fontSize = 13.sp)
+        Text("Thanks for your review!", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
         return
     }
-
-    TextButton(onClick = { showDialog = true }) {
-        Text("Subscribe & save (every 30 days)", fontSize = 13.sp)
+    if (!open) {
+        Box(
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Ids.colors.textTertiary)
+                .pressScaleClickable { open = true }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text("Rate this visit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        return
     }
-
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Subscribe & save") },
-            text = {
-                Column {
-                    Text("Delivered every 30 days. Cancel anytime.", color = Ids.colors.textSecondary, fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    IdsTextField(value = address, onValueChange = { address = it }, label = "Delivery address")
-                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
-                }
-            },
-            confirmButton = {
-                TextButton(enabled = address.isNotBlank() && !busy, onClick = {
-                    busy = true
-                    coroutineScope.launch {
-                        try {
-                            NetworkClient.apiService.subscribeToProduct(
-                                CreateProductSubscriptionRequest(merchantId, productId, 1, 30, address.trim()),
-                                UUID.randomUUID().toString(),
-                            )
-                            done = true
-                            showDialog = false
-                        } catch (e: HttpException) {
-                            error = superAppErrorMessage(e)
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            busy = false
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
+        StarRatingRow(rating) { rating = it }
+        IdsTextField(
+            value = comment,
+            onValueChange = { comment = it },
+            label = "How was it? (optional)",
+            modifier = Modifier.fillMaxWidth(),
+        )
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).pressScaleClickable { open = false }.padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
+                    .pressScaleClickable(enabled = !submitting) {
+                        if (rating == 0) {
+                            error = "Pick a star rating."
+                            return@pressScaleClickable
+                        }
+                        submitting = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.submitBookingReview(bookingId, SubmitBookingReviewRequest(rating, comment.trim().ifBlank { null }))
+                                done = true
+                            } catch (e: HttpException) {
+                                if (e.code() == 409) {
+                                    done = true
+                                } else {
+                                    error = superAppErrorMessage(e)
+                                }
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                submitting = false
+                            }
                         }
                     }
-                }) { Text(if (busy) "…" else "Subscribe") }
-            },
-            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
-        )
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(if (submitting) "Submitting…" else "Submit review", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        }
     }
 }
-

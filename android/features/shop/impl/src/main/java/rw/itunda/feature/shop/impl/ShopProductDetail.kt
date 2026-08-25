@@ -56,6 +56,7 @@ import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MapBookmarkDto
 import rw.itunda.core.network.MerchantProductDto
+import rw.itunda.core.network.CreateProductSubscriptionRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OrderItemRequest
 import rw.itunda.core.network.PlaceOrderRequest
@@ -348,5 +349,68 @@ internal fun MultiCartResultsView(results: List<CommerceCheckoutResult>, onDone:
         },
         confirmButton = { TextButton(onClick = onDone) { Text(if (results.any { it.order == null }) "Back to cart" else "Done") } },
     )
+}
+
+// Real Coupang 정기배송 (subscribe & save) -- see core/network's ProductSubscriptionDto
+// doc comment. A minimal delivery-address prompt via AlertDialog rather than a full
+// address form, matching bank-mfe's own compact-card scope (fixed qty=1, every 30d).
+// Moved here from ShopBooking.kt (2026-08-25) when that file's real booking-appointment
+// half moved to :features:maps:impl (see MapsBooking.kt's own doc comment) -- recurring
+// *product* delivery is real online-shopping, unlike a real-time physical appointment,
+// so this half stays in Shop.
+@Composable
+internal fun SubscribeAndSaveButton(merchantId: String, productId: String) {
+    var showDialog by remember { mutableStateOf(false) }
+    var address by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (done) {
+        Text("✓ Subscribed -- delivered every 30 days", color = Ids.colors.success, fontSize = 13.sp)
+        return
+    }
+
+    TextButton(onClick = { showDialog = true }) {
+        Text("Subscribe & save (every 30 days)", fontSize = 13.sp)
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Subscribe & save") },
+            text = {
+                Column {
+                    Text("Delivered every 30 days. Cancel anytime.", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    IdsTextField(value = address, onValueChange = { address = it }, label = "Delivery address")
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = address.isNotBlank() && !busy, onClick = {
+                    busy = true
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.subscribeToProduct(
+                                CreateProductSubscriptionRequest(merchantId, productId, 1, 30, address.trim()),
+                                UUID.randomUUID().toString(),
+                            )
+                            done = true
+                            showDialog = false
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }) { Text(if (busy) "…" else "Subscribe") }
+            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
+        )
+    }
 }
 

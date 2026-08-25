@@ -37,6 +37,7 @@ import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
 import { ApiError, getStoredUser } from './lib/api';
 import { PlaceGlyph } from './icons/ItundaFacePlaces';
+import { MerchantBookableServicesSection, MyBookingsCard } from './MapsBooking';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
 // OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
@@ -1583,6 +1584,9 @@ export default function MapView() {
                   </div>
                 </div>
               )}
+              {/* Real bookable-service entry point (moved here 2026-08-25 from
+                  bank-mfe's Shop -- see MapsBooking.tsx's own doc comment). */}
+              {selectedMerchant && <MerchantBookableServicesSection merchantId={selectedMerchant.merchantId} />}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT, flex: 1 }}>{selectedPlace.displayName}</p>
                 <button
@@ -2027,6 +2031,9 @@ export default function MapView() {
                   </div>
                 )}
               </div>
+              {/* Real local-business appointment booking (moved here 2026-08-25 --
+                  see MapsBooking.tsx's own doc comment). */}
+              <MyBookingsCard />
             </>
           )}
         </div>
