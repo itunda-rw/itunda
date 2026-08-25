@@ -40,67 +40,6 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
 
-class MerchantAlreadyRegisteredException(message: String) : RuntimeException(message)
-class MerchantNotFoundException(message: String) : RuntimeException(message)
-class MerchantNoAccountException(message: String) : RuntimeException(message)
-class InvalidCoordinatesException(message: String) : RuntimeException(message)
-class InvalidCategoryException(message: String) : RuntimeException(message)
-class InvalidClosedWeekdaysException(message: String) : RuntimeException(message)
-class InvalidCashbackRateException(message: String) : RuntimeException(message)
-class InvalidPhotoUrlException(message: String) : RuntimeException(message)
-class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
-class InvalidPhoneNumberException(message: String) : RuntimeException(message)
-class InvalidOpeningHoursException(message: String) : RuntimeException(message)
-class InvalidAvgPrepTimeException(message: String) : RuntimeException(message)
-class InvalidPickupDiscountException(message: String) : RuntimeException(message)
-class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
-class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
-class SelfPaymentException(message: String) : RuntimeException(message)
-// Real customer-presented payment code (2026-08-11) -- see CustomerPaymentCode.kt's
-// own doc comment for the real KakaoPay/Toss Pay flow this closes: customer shows a
-// code, merchant scans it, no typing on either side.
-class CustomerPaymentCodeNotFoundException(message: String) : RuntimeException(message)
-class CustomerPaymentCodeNotPayableException(message: String) : RuntimeException(message)
-class PaymentCodeAccountNotOwnedException(message: String) : RuntimeException(message)
-class PaymentCodeAccountNotEligibleException(message: String) : RuntimeException(message)
-class CardDeclinedException(message: String) : RuntimeException(message)
-class InvalidWebhookUrlException(message: String) : RuntimeException(message)
-class InvalidApiKeyException(message: String) : RuntimeException(message)
-class InvalidCheckoutRequestException(message: String) : RuntimeException(message)
-class PaymentIntentNotRefundableException(message: String) : RuntimeException(message)
-class InvalidCancelRequestException(message: String) : RuntimeException(message)
-class InvalidReportRangeException(message: String) : RuntimeException(message)
-
-// Real external-checkout DTOs (2026-07-21) -- see PaymentsApiController's own doc
-// comment for the full account of the real Toss Payments feature this mirrors.
-data class CheckoutInfo(
-    val paymentKey: String,
-    val merchantName: String,
-    val amount: BigDecimal,
-    val description: String,
-    val status: PaymentIntentStatus,
-    val successUrl: String?,
-    val failUrl: String?,
-)
-
-data class MerchantReportDay(
-    val date: LocalDate,
-    val collectionCount: Int,
-    val grossAmount: BigDecimal,
-    val fees: BigDecimal,
-    val netAmount: BigDecimal,
-    val byChannel: Map<String, Int>,
-)
-
-// Real Coupang WING-style 베스트 상품 (best-selling products) report -- see
-// MerchantService.getTopSellingProducts's own doc comment.
-data class TopSellingProduct(
-    val productId: String,
-    val productName: String,
-    val unitsSold: Int,
-    val revenue: BigDecimal,
-)
-
 /**
  * A real, minimal subset of docs/MERCHANT_SERVICES.md's product surface --
  * registration + QR-style fixed-amount payment collection into the merchant's
