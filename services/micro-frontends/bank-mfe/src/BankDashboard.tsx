@@ -181,7 +181,7 @@ import {
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
   fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchOrderRiderLocation, fetchPriceTiers, fetchProduct,
-  fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
+  fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview, toggleProductReviewHelpful,
   type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
 import {
@@ -19906,6 +19906,23 @@ function ProductRatingBadge({ productId }: { productId: string }) {
   const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
   const [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[] | null>(null);
+  // Real "도움돼요" (helpful) toggle (2026-08-25) -- see lib/commerce.ts's own doc
+  // comment, mirrors RestaurantRatingBadge's own identical treatment exactly.
+  const [helpfulVoted, setHelpfulVoted] = useState<Set<string>>(new Set());
+
+  const handleToggleHelpful = async (reviewId: string) => {
+    try {
+      const helpful = await toggleProductReviewHelpful(reviewId);
+      setHelpfulVoted((prev) => {
+        const next = new Set(prev);
+        if (helpful) next.add(reviewId); else next.delete(reviewId);
+        return next;
+      });
+      setReviews((prev) => prev?.map((r) => (r.id === reviewId ? { ...r, helpfulCount: (r.helpfulCount ?? 0) + (helpful ? 1 : -1) } : r)) ?? null);
+    } catch {
+      // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+    }
+  };
 
   useEffect(() => {
     fetchProductRating(productId).then(setRating).catch(() => {
@@ -19948,6 +19965,12 @@ function ProductRatingBadge({ productId }: { productId: string }) {
                     ↳ Seller: {r.ownerReply}
                   </div>
                 )}
+                <button
+                  type="button" onClick={() => handleToggleHelpful(r.id)}
+                  style={{ display: 'block', marginTop: '2px', fontSize: 'var(--itunda-type-scale-11-size)', color: helpfulVoted.has(r.id) ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }}
+                >
+                  👍 Helpful{r.helpfulCount ? ` (${r.helpfulCount})` : ''}
+                </button>
               </div>
             ))
           )}

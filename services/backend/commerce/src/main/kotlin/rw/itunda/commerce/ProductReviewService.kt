@@ -4,16 +4,20 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.ProductReview
+import rw.itunda.core.domain.ProductReviewHelpfulVote
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
+import rw.itunda.core.repository.ProductReviewHelpfulVoteRepository
 import rw.itunda.core.repository.ProductReviewRepository
 import rw.itunda.core.repository.RatingSummaryProjection
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -49,6 +53,8 @@ class ProductReviewService(
     private val merchantRepository: MerchantRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val productReviewHelpfulVoteRepository: ProductReviewHelpfulVoteRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun submitReview(buyerId: String, orderItemId: String, rating: Int, comment: String?): ProductReview {
@@ -128,5 +134,35 @@ class ProductReviewService(
         // MerchantBookingReviewService's owner-reply notify.
         pushNotificationService.sendToUser(review.buyerId, title, trimmedReply)
         return saved
+    }
+
+    // Real Coupang/Naver-style "helpful" vote (2026-08-25) -- mirrors
+    // EatsReviewService.toggleHelpful exactly, same no-self-vote-check precedent
+    // (ListingLike/EatsReviewHelpfulVote both skip it too), same real DB-unique
+    // concurrency guard as the actual safety net, not the app-level check.
+    @Transactional
+    fun toggleHelpful(userId: String, reviewId: String): Boolean {
+        val review = productReviewRepository.findById(reviewId).orElseThrow { ProductReviewNotFoundException("Review not found") }
+        rateLimiter.checkLimit("product:review:helpful:$userId", limit = 60, window = Duration.ofMinutes(1))
+
+        val existing = productReviewHelpfulVoteRepository.findByReviewIdAndUserId(reviewId, userId)
+        return if (existing != null) {
+            productReviewHelpfulVoteRepository.delete(existing)
+            review.helpfulCount = (review.helpfulCount - 1).coerceAtLeast(0)
+            productReviewRepository.save(review)
+            false
+        } else {
+            productReviewHelpfulVoteRepository.save(ProductReviewHelpfulVote(id = "product_review_helpful_${UUID.randomUUID()}", reviewId = reviewId, userId = userId))
+            review.helpfulCount += 1
+            productReviewRepository.save(review)
+            true
+        }
+    }
+
+    // Real batch "which of these reviews has this viewer already marked helpful" --
+    // mirrors EatsReviewService.helpfulVotedReviewIds exactly.
+    fun helpfulVotedReviewIds(reviews: Collection<ProductReview>, userId: String?): Set<String> {
+        if (userId == null || reviews.isEmpty()) return emptySet()
+        return productReviewHelpfulVoteRepository.findVotedReviewIds(reviews.map { it.id }, userId).toSet()
     }
 }

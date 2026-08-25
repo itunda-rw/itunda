@@ -292,6 +292,18 @@ class OrderController(
         return ResponseEntity.ok(mapOf("success" to true, "average" to summary.average, "count" to summary.count))
     }
 
+    // Real Coupang/Naver-style "helpful" idempotent toggle (2026-08-25) -- see
+    // ProductReviewService.toggleHelpful's own doc comment. Mirrors
+    // EatsController.toggleReviewHelpful's exact shape.
+    @PostMapping("/reviews/{reviewId}/helpful")
+    fun toggleProductReviewHelpful(
+        @PathVariable reviewId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val helpful = productReviewService.toggleHelpful(currentUser.userId, reviewId)
+        return ResponseEntity.ok(mapOf("success" to true, "helpful" to helpful))
+    }
+
     // Real Coupang-style pre-purchase product Q&A (2026-07-26) -- see
     // ProductInquiryService's own doc comment for the full account, including why this
     // needs no real order/purchase at all, unlike the review endpoints above.

@@ -1656,8 +1656,12 @@ data class ProductReviewDto(
     // here (the reply-writing side lives on merchantapp, the merchant-owner app).
     val ownerReply: String? = null,
     val ownerRepliedAt: String? = null,
+    // helpfulCount added 2026-08-25 -- real Coupang/Naver-style "도움돼요" counter, see
+    // ProductReview.kt's own doc comment on the backend.
+    val helpfulCount: Long = 0,
     val createdAt: String,
 )
+data class ToggleHelpfulReviewResponse(val success: Boolean, val helpful: Boolean)
 data class ProductReviewResponse(val success: Boolean, val review: ProductReviewDto)
 data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
 data class ProductRatingResponse(val success: Boolean, val average: Double?, val count: Long)
@@ -3617,6 +3621,11 @@ interface ApiService {
 
     @GET("api/v1/orders/products/{id}/reviews")
     suspend fun getProductReviews(@Path("id") productId: String): ProductReviewsResponse
+
+    // Real Coupang/Naver-style "helpful" idempotent toggle (2026-08-25) -- see
+    // ProductReviewService.toggleHelpful's own doc comment on the backend.
+    @POST("api/v1/orders/reviews/{id}/helpful")
+    suspend fun toggleProductReviewHelpful(@Path("id") reviewId: String): ToggleHelpfulReviewResponse
 
     // Real Coupang-style pre-purchase product Q&A (상품문의) -- see
     // rw.itunda.commerce.ProductInquiryService's own doc comment. Genuinely distinct

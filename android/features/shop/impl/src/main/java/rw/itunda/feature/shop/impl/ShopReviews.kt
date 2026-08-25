@@ -142,7 +142,24 @@ internal fun ProductRatingBadge(productId: String) {
     var rating by remember { mutableStateOf<ProductRatingResponse?>(null) }
     var open by remember { mutableStateOf(false) }
     var reviews by remember { mutableStateOf<List<ProductReviewDto>?>(null) }
+    // Real "도움돼요" (helpful) toggle (2026-08-25) -- see
+    // ProductReviewService.toggleHelpful's own doc comment on the backend.
+    var helpfulVoted by remember { mutableStateOf<Set<String>>(emptySet()) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun toggleHelpful(reviewId: String) {
+        coroutineScope.launch {
+            try {
+                val helpful = NetworkClient.apiService.toggleProductReviewHelpful(reviewId).helpful
+                helpfulVoted = if (helpful) helpfulVoted + reviewId else helpfulVoted - reviewId
+                reviews = reviews?.map { rv ->
+                    if (rv.id == reviewId) rv.copy(helpfulCount = (rv.helpfulCount + if (helpful) 1 else -1).coerceAtLeast(0)) else rv
+                }
+            } catch (e: Exception) {
+                // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+            }
+        }
+    }
 
     LaunchedEffect(productId) {
         try {
@@ -197,6 +214,12 @@ internal fun ProductRatingBadge(productId: String) {
                                     modifier = Modifier.padding(start = 12.dp),
                                 )
                             }
+                            Text(
+                                "👍 Helpful" + if (rv.helpfulCount > 0) " (${rv.helpfulCount})" else "",
+                                color = if (rv.id in helpfulVoted) Ids.colors.brand else Ids.colors.textTertiary,
+                                fontSize = 11.sp,
+                                modifier = Modifier.pressScaleClickable { toggleHelpful(rv.id) },
+                            )
                         }
                     }
                 }

@@ -90,6 +90,28 @@ struct ProductRatingBadge: View {
     @State private var rating: ProductRatingResponse?
     @State private var open = false
     @State private var reviews: [ProductReviewDto]?
+    // Real "도움돼요" (helpful) toggle (2026-08-25) -- see
+    // ProductReviewService.toggleHelpful's own doc comment on the backend. Tracked as a
+    // delta dictionary rather than rewriting ProductReviewDto (a Decodable-only struct
+    // with no public memberwise init across the Core/Network <-> App module boundary).
+    @State private var helpfulVoted: Set<String> = []
+    @State private var helpfulCountDeltas: [String: Int] = [:]
+
+    private func displayedHelpfulCount(_ r: ProductReviewDto) -> Int {
+        max(0, (r.helpfulCount ?? 0) + (helpfulCountDeltas[r.id] ?? 0))
+    }
+
+    private func toggleHelpful(_ reviewId: String) {
+        Task {
+            do {
+                let helpful = try await NetworkClient.shared.toggleProductReviewHelpful(reviewId).helpful
+                if helpful { helpfulVoted.insert(reviewId) } else { helpfulVoted.remove(reviewId) }
+                helpfulCountDeltas[reviewId, default: 0] += helpful ? 1 : -1
+            } catch {
+                // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+            }
+        }
+    }
 
     var body: some View {
         Group {
@@ -113,6 +135,12 @@ struct ProductRatingBadge: View {
                                         .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                     if let reply = r.ownerReply, !reply.isEmpty {
                                         Text("↳ Seller: \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary).padding(.leading, 12)
+                                    }
+                                    Button(action: { toggleHelpful(r.id) }) {
+                                        let count = displayedHelpfulCount(r)
+                                        Text("👍 Helpful" + (count > 0 ? " (\(count))" : ""))
+                                            .font(.caption2)
+                                            .foregroundColor(helpfulVoted.contains(r.id) ? IDS.Colors.brand : IDS.Colors.textTertiary)
                                     }
                                 }
                             }

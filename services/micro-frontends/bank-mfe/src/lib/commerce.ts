@@ -184,6 +184,10 @@ export interface ProductReview {
   // ProductReviewService.replyToProductReview's own doc comment on the backend.
   ownerReply: string | null;
   ownerRepliedAt: string | null;
+  // helpfulCount added 2026-08-25 -- real Coupang/Naver-style "도움돼요" counter, see
+  // ProductReview.kt's own doc comment on the backend. Mirrors EatsReview's own
+  // helpfulCount field exactly.
+  helpfulCount: number;
   createdAt: string;
 }
 
@@ -225,6 +229,11 @@ export const fetchProductInquiries = (productId: string) =>
 
 export const fetchProductRating = (productId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/orders/products/${productId}/rating`);
+
+// Real Coupang/Naver-style "helpful" idempotent toggle (2026-08-25) -- mirrors
+// eats.ts's own toggleReviewHelpful exactly.
+export const toggleProductReviewHelpful = (reviewId: string) =>
+  apiFetch<{ success: boolean; helpful: boolean }>(`/api/v1/orders/reviews/${reviewId}/helpful`, { method: 'POST' }).then((r) => r.helpful);
 
 // Real bulk/wholesale pricing -- see the backend's ProductPriceTier doc comment.
 // Buyer-facing read half: merchant-mfe already has the owner-config half

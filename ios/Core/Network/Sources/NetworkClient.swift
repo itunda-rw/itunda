@@ -3985,8 +3985,12 @@ public struct ProductReviewDto: Decodable {
     // (the reply-writing side lives on MerchantApp, the merchant-owner app).
     public let ownerReply: String?
     public let ownerRepliedAt: String?
+    // helpfulCount added 2026-08-25 -- real Coupang/Naver-style "도움돼요" counter, see
+    // ProductReview.kt's own doc comment on the backend.
+    public let helpfulCount: Int?
     public let createdAt: String
 }
+public struct ToggleHelpfulReviewResponse: Decodable { public let success: Bool; public let helpful: Bool }
 public struct ProductReviewResponse: Decodable { public let success: Bool; public let review: ProductReviewDto }
 public struct ProductReviewsResponse: Decodable { public let success: Bool; public let reviews: [ProductReviewDto] }
 public struct ProductRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
@@ -5407,6 +5411,12 @@ extension NetworkClient {
 
     public func getProductReviews(_ productId: String) async throws -> ProductReviewsResponse {
         try await get("api/v1/orders/products/\(productId)/reviews")
+    }
+
+    // Real Coupang/Naver-style "helpful" idempotent toggle (2026-08-25) -- see
+    // ProductReviewService.toggleHelpful's own doc comment on the backend.
+    public func toggleProductReviewHelpful(_ reviewId: String) async throws -> ToggleHelpfulReviewResponse {
+        try await authenticatedPost("api/v1/orders/reviews/\(reviewId)/helpful", body: EmptyBody())
     }
 
     // Real Coupang-style pre-purchase product Q&A (상품문의) -- see
