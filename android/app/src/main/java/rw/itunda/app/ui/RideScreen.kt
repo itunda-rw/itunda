@@ -891,11 +891,13 @@ private fun RideDriverContent() {
                                     }
                                     Column {
                                         Text("Gross fare", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        Text("${weekEarnings.sumOf { it.grossFare }} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        // Real fix (2026-08-26, same comma-formatting sweep as formatMoneyRide's own
+                                        // doc comment) -- was raw BigDecimal interpolation with no formatting at all.
+                                        Text("${formatMoneyRide(weekEarnings.sumOf { it.grossFare })} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                     Column {
                                         Text("Net earnings", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                        Text("${weekEarnings.sumOf { it.netEarnings }} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        Text("${formatMoneyRide(weekEarnings.sumOf { it.netEarnings })} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                 }
                         }
@@ -1112,5 +1114,5 @@ private fun rideTripStatusColor(status: String): Color = when (status) {
 
 private fun formatMoneyRide(value: java.math.BigDecimal): String {
     val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) rounded.toBigInteger().toString() else "%,.2f".format(rounded)
+    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
 }

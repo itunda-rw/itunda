@@ -240,5 +240,5 @@ private fun SetBudgetForm(categories: List<SpendingCategoryDto>, onSet: (String?
 
 private fun formatMoneySpending(value: BigDecimal): String {
     val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) rounded.toBigInteger().toString() else "%,.2f".format(rounded)
+    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
 }

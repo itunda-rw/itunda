@@ -235,5 +235,5 @@ private fun YouthAccountActionButton(label: String, enabled: Boolean, onClick: (
 
 private fun formatMoneyMini(value: Double): String {
     val rounded = Math.round(value * 100.0) / 100.0
-    return if (rounded == Math.floor(rounded)) rounded.toLong().toString() else "%.2f".format(rounded)
+    return if (rounded == Math.floor(rounded)) "%,d".format(rounded.toLong()) else "%,.2f".format(rounded)
 }

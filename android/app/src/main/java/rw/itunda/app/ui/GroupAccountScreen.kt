@@ -508,5 +508,5 @@ private fun GroupAccountActionButton(title: String, enabled: Boolean, modifier: 
 
 private fun formatMoneyGroup(value: BigDecimal): String {
     val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) rounded.toBigInteger().toString() else "%,.2f".format(rounded)
+    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
 }

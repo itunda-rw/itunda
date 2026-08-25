@@ -519,5 +519,5 @@ private fun designatedDriverStatusColor(status: String): Color = when (status) {
 
 private fun formatMoneyDesignatedDriver(value: java.math.BigDecimal): String {
     val rounded = value.stripTrailingZeros()
-    return if (rounded.scale() <= 0) rounded.toBigInteger().toString() else "%,.2f".format(rounded)
+    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
 }

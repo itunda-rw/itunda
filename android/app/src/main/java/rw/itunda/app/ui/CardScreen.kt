@@ -269,8 +269,8 @@ fun CardScreen(onBack: () -> Unit) {
                             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text("Spend limits", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text("Today: ${c.spentToday.toPlainString()} / ${c.dailyLimit.toPlainString()} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                                    Text("This month: ${c.spentThisMonth.toPlainString()} / ${c.monthlyLimit.toPlainString()} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    Text("Today: ${formatMoneyCard(c.spentToday)} / ${formatMoneyCard(c.dailyLimit)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    Text("This month: ${formatMoneyCard(c.spentThisMonth)} / ${formatMoneyCard(c.monthlyLimit)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         IdsTextField(value = dailyLimitInput, onValueChange = { dailyLimitInput = it }, label = "Daily limit", modifier = Modifier.weight(1f))
                                         IdsTextField(value = monthlyLimitInput, onValueChange = { monthlyLimitInput = it }, label = "Monthly limit", modifier = Modifier.weight(1f))
@@ -303,7 +303,7 @@ fun CardScreen(onBack: () -> Unit) {
                             items(transactions, key = { it.id }) { t ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(t.merchantName, color = Ids.colors.textPrimary, fontSize = 13.sp)
-                                    Text("${t.amount.toPlainString()} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("${formatMoneyCard(t.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
                         }
@@ -324,4 +324,13 @@ private fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Uni
     ) {
         Text(label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
     }
+}
+
+// Real fix (2026-08-26) -- was raw BigDecimal.toPlainString() with zero thousands
+// grouping (matches the exact same bug this pass fixed in the 19 other per-screen
+// formatMoneyX helpers across this same app -- see e.g. RideScreen.kt's
+// formatMoneyRide own doc comment).
+private fun formatMoneyCard(value: BigDecimal): String {
+    val rounded = value.stripTrailingZeros()
+    return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
 }
