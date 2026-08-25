@@ -1709,6 +1709,20 @@ private fun HomeTab(
     var feedEntries by remember { mutableStateOf<List<HomeFeedEntry>>(emptyList()) }
     LaunchedEffect(Unit) {
         try { stocks = rw.itunda.core.network.NetworkClient.apiService.getStocks().stocks.take(2) } catch (_: Exception) {}
+    }
+    // Real fix (2026-08-26, live-caught: uiautomator logs showed 4 guaranteed
+    // 400s -- NeighborhoodNotSetException -- firing on every single Home load
+    // for any user who hasn't set a neighborhood yet). All 4 of these are
+    // real "my neighborhood" endpoints that unconditionally throw when
+    // MarketplaceService.myNeighborhood's own real caller.neighborhood check
+    // fails server-side; the try/catch below already degraded gracefully
+    // (empty feed, no crash) but still wasted 4 real round-trips + 4 noisy
+    // error logs every load. viewModel.profile is already fetched at app
+    // launch for other reasons (see MainViewModel's own init), so this is a
+    // free, already-cached check, not a 5th network call to save 4.
+    val profile by viewModel.profile.collectAsState()
+    LaunchedEffect(profile?.neighborhood) {
+        if (profile?.neighborhood == null) return@LaunchedEffect
         val listings = try { rw.itunda.core.network.NetworkClient.apiService.getListingsMyNeighborhood().listings } catch (_: Exception) { emptyList() }
         val posts = try { rw.itunda.core.network.NetworkClient.apiService.getCommunityPostsMyNeighborhood().posts } catch (_: Exception) { emptyList() }
         val jobs = try { rw.itunda.core.network.NetworkClient.apiService.getJobPostsMyNeighborhood().posts } catch (_: Exception) { emptyList() }
