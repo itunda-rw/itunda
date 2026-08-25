@@ -252,53 +252,27 @@ struct CommerceShopContent: View {
     }
 
     private func loadFollowedMerchantIds() async {
-        do {
-            let res = try await NetworkClient.shared.getMyFollowedMerchants()
-            followedMerchantIds = Set(res.follows.map { $0.merchantId })
-        } catch {
-            // Best-effort -- see loadFavoriteProductIds's own doc comment above.
-        }
+        if let ids = await loadShopFollowedMerchantIds() { followedMerchantIds = ids }
     }
 
     private func toggleFollow(_ merchantId: String) async {
         followBusyMerchantId = merchantId
         defer { followBusyMerchantId = nil }
-        do {
-            if followedMerchantIds.contains(merchantId) {
-                _ = try await NetworkClient.shared.unfollowMerchant(merchantId: merchantId)
-                followedMerchantIds.remove(merchantId)
-            } else {
-                _ = try await NetworkClient.shared.followMerchant(merchantId: merchantId)
-                followedMerchantIds.insert(merchantId)
-            }
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
+        let (newIds, err) = await toggleShopMerchantFollow(merchantId, followedMerchantIds: followedMerchantIds)
+        if let newIds { followedMerchantIds = newIds }
+        if let err { self.error = err }
     }
 
     private func loadFavoriteProductIds() async {
-        do {
-            let res = try await NetworkClient.shared.getMyFavoriteProducts()
-            favoriteProductIds = Set(res.favorites.map { $0.productId })
-        } catch {
-            // Best-effort -- hearts just won't render as filled if this fails.
-        }
+        if let ids = await loadShopFavoriteProductIds() { favoriteProductIds = ids }
     }
 
     private func toggleProductFavorite(_ productId: String) async {
         favoritingProductId = productId
         defer { favoritingProductId = nil }
-        do {
-            if favoriteProductIds.contains(productId) {
-                _ = try await NetworkClient.shared.removeProductFavorite(productId)
-                favoriteProductIds.remove(productId)
-            } else {
-                _ = try await NetworkClient.shared.addProductFavorite(productId)
-                favoriteProductIds.insert(productId)
-            }
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
+        let (newIds, err) = await toggleShopProductFavoriteIds(productId, favoriteProductIds: favoriteProductIds)
+        if let newIds { favoriteProductIds = newIds }
+        if let err { self.error = err }
     }
 
     // Same debounced category/search filter as Eats' OrderFoodContent -- see
@@ -484,90 +458,10 @@ struct CommerceShopContent: View {
                         // now use (previously fell back to a merchant-name text search
                         // -- this closes that same gap for the same reason).
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let deals, !deals.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack(spacing: 6) {
-                                    FlameGlyph(size: 17)
-                                    Text("Deals")
-                                }
-                                .font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 10) {
-                                        ForEach(deals) { d in
-                                            VStack(alignment: .leading, spacing: 6) {
-                                                ProductImageThumb(imageUrl: d.imageUrl, side: 96)
-                                                Text(d.name).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                                                if let discountPercent = d.discountPercent, discountPercent > 0 {
-                                                    Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
-                                                }
-                                                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                                                    Text("\(Int(d.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                                    // Real strikethrough original price (2026-08-25, matches the
-                                                    // Toss Shopping reference) -- same real originalPrice field the
-                                                    // discount badge above already derives from.
-                                                    if let originalPrice = d.originalPrice, originalPrice > d.price {
-                                                        Text("\(Int(originalPrice)) RWF").font(.caption2).foregroundColor(IDS.Colors.textTertiary).strikethrough()
-                                                    }
-                                                }
-                                                // rating/reviewCount (2026-08-25) -- real batched ProductReview
-                                                // data, same real "no review yet -> no stars" honesty as this
-                                                // app's Android client.
-                                                if let rating = d.rating, let reviewCount = d.reviewCount, reviewCount > 0 {
-                                                    HStack(spacing: 2) {
-                                                        Image(systemName: "star.fill").font(.system(size: 9)).foregroundColor(Color(red: 0.96, green: 0.65, blue: 0.14))
-                                                        Text(String(format: "%.1f (%d)", rating, reviewCount)).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                                    }
-                                                }
-                                                Text(d.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
-                                                    .font(.caption2).foregroundColor(d.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
-                                            }
-                                            .frame(width: 120, alignment: .leading)
-                                            .padding(10)
-                                            .background(IDS.Colors.card)
-                                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
-                                            .onTapGesture {
-                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: d.merchantId, businessName: d.merchantName, category: nil, cashbackRate: "1%")) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            ShopDealsCarousel(deals: deals, onOpenMerchant: { m in Task { await openMerchant(m) } })
                         }
-                        // Real Coupang 타임특가 (Time Deal, item 226) -- see
-                        // TimeDealDto's own doc comment. Tapping a deal jumps
-                        // straight to that real merchant, same minimal-
-                        // ShoppingMerchantDto shortcut the Deals rail above uses.
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let timeDeals, !timeDeals.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("⏰ Time Deals").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 10) {
-                                        ForEach(timeDeals) { v in
-                                            VStack(alignment: .leading, spacing: 6) {
-                                                ProductImageThumb(imageUrl: v.productImageUrl, side: 96)
-                                                Text(v.productName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                                                Text("\(Int(v.deal.dealPrice)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                                // Real Coupang badge system (2026-08-05) -- see IdsBadge's own doc
-                                                // comment. Matches Android ShopScreen.kt's own identical StatusBadge
-                                                // treatment (this was plain Text on iOS until now).
-                                                // Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping
-                                                // reference screenshot) -- TimelineView ticks this to the second off
-                                                // the same real v.deal.endsAt, no manual Timer/@State plumbing needed.
-                                                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                                                    Text("⏰ \(formatTimeDealCountdownHms(v.deal.endsAt))").font(.caption2).bold().foregroundColor(IDS.Colors.danger)
-                                                }
-                                                IdsBadge("\(v.deal.remainingQuantity) left", tint: IDS.Colors.danger)
-                                            }
-                                            .frame(width: 120, alignment: .leading)
-                                            .padding(10)
-                                            .background(IDS.Colors.card)
-                                            .cornerRadius(IDS.Layout.cardCornerRadius).idsCardBorder(cornerRadius: IDS.Layout.cardCornerRadius)
-                                            .onTapGesture {
-                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: v.deal.merchantId, businessName: v.businessName, category: nil, cashbackRate: "1%")) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            ShopTimeDealsCarousel(timeDeals: timeDeals, onOpenMerchant: { m in Task { await openMerchant(m) } })
                         }
                         SearchAndCategoryChips(
                             searchText: searchInput,
@@ -688,30 +582,10 @@ struct CommerceShopContent: View {
         reorderingId = order.id
         reorderError = nil
         defer { reorderingId = nil }
-        do {
-            let orderDetail = try await NetworkClient.shared.getOrder(order.id)
-            let menuRes = try await NetworkClient.shared.getMerchantProducts(merchantId: order.merchantId)
-            guard orderDetail.success, menuRes.success else {
-                reorderError = "Could not reorder."
-                return
-            }
-            let activeProducts = Dictionary(uniqueKeysWithValues: menuRes.products.filter(\.active).map { ($0.id, $0) })
-            var addedAny = false
-            for item in orderDetail.items {
-                guard let product = activeProducts[item.productId] else { continue }
-                let key = "\(order.merchantId):\(product.id)"
-                let existingQuantity = cart[key]?.quantity ?? 0
-                cart[key] = CommerceCartLine(merchantId: order.merchantId, businessName: menuRes.merchant.businessName, product: product, quantity: existingQuantity + item.quantity)
-                addedAny = true
-            }
-            guard addedAny else {
-                reorderError = "None of the items from that order are available anymore."
-                return
-            }
-            showCart = true
-        } catch {
-            reorderError = "Couldn't reach itunda. Check your connection and try again."
-        }
+        let result = await performShopReorder(order, cart: cart)
+        if let newCart = result.newCart { cart = newCart }
+        if let err = result.error { reorderError = err }
+        if result.opened { showCart = true }
     }
 }
 

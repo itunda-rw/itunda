@@ -1,0 +1,232 @@
+import SwiftUI
+import CoreLocation
+import CoreDesignSystem
+import CoreNetwork
+
+// Real fix (2026-08-26): split out of RideScreenView.swift once that file grew
+// past its file-size-lint baseline. Components shared by/used from both
+// RidePassengerContent and RideDriverContent (RideTripCard, driver rating), plus
+// the trusted-contacts section / review row used only by the passenger flow --
+// same split already done for Android's RideScreen.kt. Flipped from private to
+// internal since their callers stay behind.
+
+// Real Uber Safety "Trusted Contacts" (item 161, help.uber.com) -- a persistent, up to
+// 5 contact list set up once, distinct from the per-share conversation pick the
+// existing "Share trip" flow already offers. Last iOS client for RideController's
+// trusted-contacts endpoints; mirrors bank-mfe's TrustedContactsSection/Android's own
+// TrustedContactsSection exactly, adapted to this file's SwiftUI/Button conventions.
+struct TrustedContactsSection: View {
+    let contacts: [RideTrustedContactDto]?
+    @Binding var phone: String
+    @Binding var name: String
+    let adding: Bool
+    let onAdd: () -> Void
+    let removingContactId: String?
+    let onRemove: (String) -> Void
+    let error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Trusted contacts").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+            Text("Add up to 5 people who can get your live trip status with one tap.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+            if let contacts {
+                ForEach(contacts, id: \.id) { contact in
+                    HStack {
+                        Text(contact.contactName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Button(removingContactId == contact.id ? "…" : "Remove") { onRemove(contact.id) }
+                            .font(.caption).foregroundColor(.red)
+                            .disabled(removingContactId == contact.id)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+                if contacts.count < 5 {
+                    HStack(spacing: 8) {
+                        IdsTextField("Phone number", text: $phone)
+                        IdsTextField("Name", text: $name)
+                    }
+                    Button(action: onAdd) {
+                        Text(adding ? "Adding…" : "Add trusted contact").bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(phone.trimmingCharacters(in: .whitespaces).isEmpty ? Color(.tertiarySystemBackground) : IDS.Colors.brand)
+                            .cornerRadius(10)
+                    }
+                    .disabled(adding || phone.trimmingCharacters(in: .whitespaces).isEmpty)
+                } else {
+                    Text("You've reached the limit of 5 trusted contacts.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+            } else {
+                Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+        }
+        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+    }
+}
+
+// Real Kakao T-style post-trip driver rating (item 213) -- see this file's own doc
+// comment. Simple 5-star tap-to-rate row, matching bank-mfe's RideReviewPrompt shape.
+struct RideReviewRow: View {
+    let busy: Bool
+    let onSubmit: (Int, String) async -> Void
+    @State private var rating = 0
+    @State private var comment = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Rate your driver").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            HStack(spacing: 4) {
+                ForEach(1...5, id: \.self) { n in
+                    Text("★")
+                        .foregroundColor(n <= rating ? .yellow : IDS.Colors.textSecondary)
+                        .onTapGesture { rating = n }
+                }
+            }
+            if rating > 0 {
+                IdsTextField("Comment (optional)", text: $comment)
+                Button(action: { Task { await onSubmit(rating, comment) } }) {
+                    Text(busy ? "Submitting…" : "Submit rating").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(busy)
+            }
+        }
+    }
+}
+
+/// Real "meet your driver" rating + reviews during an active trip (item 233) -- found
+/// via the uncalled-endpoint sweep, see NetworkClient.getRideDriverReviews's own doc
+/// comment. bank-mfe/Android shipped this first (2026-08-05); this is the iOS port.
+/// Honest v1: no driver name/vehicle field exists on the backend, so this shows the
+/// driver's real rating + written reviews only, never a fabricated name.
+struct DriverRatingSection: View {
+    let driverId: String
+    @State private var rating: RideDriverRatingResponse?
+    @State private var reviews: [RideTripReviewDto]?
+    @State private var expanded = false
+
+    var body: some View {
+        Group {
+            if let rating, rating.count > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    Button(action: {
+                        expanded.toggle()
+                        if expanded && reviews == nil {
+                            Task {
+                                reviews = (try? await NetworkClient.shared.getRideDriverReviews(driverId: driverId).reviews) ?? []
+                            }
+                        }
+                    }) {
+                        Text("★ \(String(format: "%.1f", rating.average ?? 0)) (\(rating.count) rating\(rating.count == 1 ? "" : "s")) \(expanded ? "▲" : "▼")")
+                            .font(.caption).bold().foregroundColor(Color(red: 1, green: 0.76, blue: 0.03))
+                    }
+                    if expanded {
+                        if let reviews {
+                            if reviews.isEmpty {
+                                Text("No written reviews yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            } else {
+                                // Real fix (2026-08-24, flat-design sweep): dropped the
+                                // per-row Card -- a history log of reviews, kept the
+                                // per-row Divider convention (docs/DESIGN_REFERENCES.md
+                                // §274).
+                                ForEach(reviews, id: \.id) { review in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(String(repeating: "⭐", count: review.rating)).font(.caption2).bold()
+                                        if let comment = review.comment { Text(comment).font(.caption).foregroundColor(IDS.Colors.textPrimary) }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 6)
+                                    Divider().overlay(IDS.Colors.divider)
+                                }
+                            }
+                        } else {
+                            Text("Loading reviews…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: driverId) {
+            rating = try? await NetworkClient.shared.getRideDriverRating(driverId: driverId)
+        }
+    }
+}
+
+struct RideTripCard<Action: View>: View {
+    let trip: RideTripDto
+    var stops: [RideTripStopDto] = []
+    let action: () -> Action
+
+    init(trip: RideTripDto, stops: [RideTripStopDto] = [], @ViewBuilder action: @escaping () -> Action = { EmptyView() }) {
+        self.trip = trip
+        self.stops = stops
+        self.action = action
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(trip.pickupAddress).bold().foregroundColor(IDS.Colors.textPrimary)
+            ForEach(stops) { stop in
+                Text("\(stop.arrivedAt != nil ? "✓" : "→") \(stop.address)")
+                    .font(.caption).foregroundColor(stop.arrivedAt != nil ? IDS.Colors.textSecondary : IDS.Colors.textPrimary)
+            }
+            Text("→ \(trip.dropoffAddress)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            if let scheduledFor = trip.scheduledFor {
+                HStack(spacing: 3) {
+                    ClockGlyph(size: 11)
+                    Text("Scheduled for \(String(scheduledFor.prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                }
+                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            }
+            HStack {
+                Text(rideTripStatusLabel(trip)).font(.caption).bold().foregroundColor(rideTripStatusColor(trip.status))
+                Spacer()
+                Text("\(formatMoneyRide(trip.fare)) RWF · \(String(format: "%.1f", trip.distanceKm)) km")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            action()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+    }
+}
+
+private func rideTripStatusLabel(_ trip: RideTripDto) -> String {
+    if trip.status == "REQUESTED", trip.scheduledFor != nil { return "Scheduled" }
+    switch trip.status {
+    case "REQUESTED": return "Finding a driver…"
+    case "DRIVER_ASSIGNED": return "Driver assigned"
+    case "IN_PROGRESS": return "In progress"
+    case "COMPLETED": return "Completed"
+    case "CANCELLED": return "Cancelled"
+    default: return trip.status
+    }
+}
+
+private func rideTripStatusColor(_ status: String) -> Color {
+    switch status {
+    case "COMPLETED": return .green
+    case "CANCELLED": return .red
+    default: return IDS.Colors.brand
+    }
+}
+
+private func formatMoneyRide(_ value: Double) -> String {
+    let rounded = (value * 100).rounded() / 100
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    formatter.usesGroupingSeparator = true
+    if rounded == rounded.rounded(.down) {
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
+    }
+    formatter.minimumFractionDigits = 2
+    formatter.maximumFractionDigits = 2
+    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
+}

@@ -457,11 +457,9 @@ struct ChatThreadScreen: View {
         uploadingPhoto = true
         defer { uploadingPhoto = false }
         do {
-            let uploaded = try await NetworkClient.shared.uploadPhoto(data: jpegData, filename: "photo.jpg", mimeType: "image/jpeg")
-            let res = try await NetworkClient.shared.sendMessage(conversationId: conversation.conversationId, body: "", replyToMessageId: replyingTo?.id, imageUrl: uploaded.url)
-            if res.success {
+            if let message = try await sendTalkThreadPhoto(conversationId: conversation.conversationId, jpegData: jpegData, replyToMessageId: replyingTo?.id) {
                 replyingTo = nil
-                messages = (messages ?? []) + [res.message]
+                messages = (messages ?? []) + [message]
             }
         } catch {
             self.error = "Couldn't upload that photo. Check your connection and try again."
@@ -484,15 +482,13 @@ struct ChatThreadScreen: View {
     // Real per-thread gift history -- fetched alongside a conversation's messages so
     // the thread can render gift bubbles for whichever messages carry one.
     private func loadGifts() async {
-        let gifts = (try? await NetworkClient.shared.getGiftsForConversation(conversationId: conversation.conversationId).gifts) ?? []
-        giftsByMessageId = Dictionary(uniqueKeysWithValues: gifts.map { ($0.messageId, $0) })
+        giftsByMessageId = await loadTalkThreadGifts(conversation.conversationId)
     }
 
     // Real per-thread gift-voucher history -- see GiftVoucherComposerPanel's own doc
     // comment.
     private func loadVouchers() async {
-        let vouchers = (try? await NetworkClient.shared.getGiftVouchersForConversation(conversationId: conversation.conversationId).vouchers) ?? []
-        vouchersByMessageId = Dictionary(uniqueKeysWithValues: vouchers.map { ($0.messageId, $0) })
+        vouchersByMessageId = await loadTalkThreadVouchers(conversation.conversationId)
     }
 
     private func sendGift() async {
@@ -502,12 +498,7 @@ struct ChatThreadScreen: View {
         needsDeviceVerification = false
         defer { sendingGift = false }
         do {
-            _ = try await NetworkClient.shared.sendGiftInConversation(
-                conversationId: conversation.conversationId,
-                amount: amount,
-                note: giftNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : giftNote,
-                theme: giftTheme
-            )
+            try await sendTalkThreadGift(conversationId: conversation.conversationId, amount: amount, note: giftNote, theme: giftTheme)
             giftAmount = ""
             giftNote = ""
             giftTheme = nil
@@ -551,24 +542,12 @@ struct ChatThreadScreen: View {
     // both is cheap and correct rather than guessing which one applies (mirrors
     // bank-mfe's own ConversationThread.loadOffers).
     private func loadOffers() async {
-        let marketplaceOffers = (try? await NetworkClient.shared.getOffersForConversation(conversationId: conversation.conversationId).offers) ?? []
-        let propertyOffers = (try? await NetworkClient.shared.getPropertyOffersForConversation(conversationId: conversation.conversationId).offers) ?? []
-        var merged: [String: OfferBubbleData] = [:]
-        for o in marketplaceOffers { merged[o.messageId] = o.toBubbleData() }
-        for o in propertyOffers { merged[o.messageId] = o.toBubbleData() }
-        offersByMessageId = merged
+        offersByMessageId = await loadTalkThreadOffers(conversation.conversationId)
     }
 
     private func respondToOffer(_ offerId: String, _ action: String, _ counterAmount: Double?) async {
         do {
-            // Real offer ids are stably prefixed by their real owning service
-            // ("price_offer_"/"property_offer_") -- a reliable dispatch key, matching
-            // bank-mfe's own ConversationThread.
-            if offerId.hasPrefix("property_offer_") {
-                _ = try await NetworkClient.shared.respondToPropertyOffer(offerId: offerId, action: action, counterAmount: counterAmount)
-            } else {
-                _ = try await NetworkClient.shared.respondToOffer(offerId: offerId, action: action, counterAmount: counterAmount)
-            }
+            try await respondToTalkThreadOffer(offerId: offerId, action: action, counterAmount: counterAmount)
             await refresh()
         } catch {
             self.error = "Couldn't respond to this offer. Check your connection and try again."
