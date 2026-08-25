@@ -209,6 +209,9 @@ import rw.itunda.core.designsystem.itundaface.FamilyGlyph
 import rw.itunda.core.designsystem.itundaface.WarningGlyph
 import rw.itunda.core.designsystem.itundaface.ParkingGlyph
 import rw.itunda.core.designsystem.itundaface.BarChartGlyph
+import rw.itunda.core.designsystem.itundaface.CalendarGlyph
+import rw.itunda.core.designsystem.itundaface.ChildGlyph
+import rw.itunda.core.designsystem.itundaface.WrenchGlyph
 import rw.itunda.feature.maps.impl.PlaceRestaurant
 import rw.itunda.feature.maps.impl.PlaceMarket
 import rw.itunda.feature.maps.impl.PlaceBank
@@ -4288,7 +4291,7 @@ private fun MenuScreen(
         FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
         FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", glyph = { FamilyGlyph(size = 28.dp) }, onClick = onOpenFamilyLink),
         FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
-        FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo, onClick = onOpenSubscriptions),
+        FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", glyph = { CalendarGlyph(size = 28.dp) }, onClick = onOpenSubscriptions),
         FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", glyph = { ObjectPen(size = 28.dp) }, onClick = onOpenCertificate),
     )
     val sendPayRows = listOf(
@@ -4312,7 +4315,7 @@ private fun MenuScreen(
         FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenWeeklySavings),
         FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
         FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", glyph = { LockGlyph(size = 28.dp) }, onClick = onOpenUpfrontDeposit),
-        FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", icon = Icons.Outlined.ChildCare, iconColor = AccentTeal, onClick = onOpenYouthAccount),
+        FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", glyph = { ChildGlyph(size = 28.dp) }, onClick = onOpenYouthAccount),
         FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Groups, iconColor = AccentTeal, onClick = onOpenIkimina),
         FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenSacco),
     )
@@ -4334,7 +4337,7 @@ private fun MenuScreen(
         FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenBikeRental),
         FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", glyph = { ParkingGlyph(size = 28.dp) }, onClick = onOpenParking),
         FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenBus),
-        FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
+        FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", glyph = { WrenchGlyph(size = 28.dp) }, onClick = onOpenVehicleInspection),
         FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenVehicleValuation),
     )
     val communityTrustRows = listOf(
@@ -4346,9 +4349,9 @@ private fun MenuScreen(
         FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenFloatMarketplace),
     )
     val switchSaveRows = listOf(
-        FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentIndigo, onClick = onOpenLoans),
+        FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans),
         FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, glyph = { TravelHouse(size = 28.dp) }, onClick = onOpenLoans),
-        FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenLoans)
+        FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenLoans)
     )
     val cardsRows = listOf(
         FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, glyph = { ObjectCreditCard(size = 28.dp) }, onClick = onOpenCard),
@@ -4356,7 +4359,7 @@ private fun MenuScreen(
     )
     val servicesRows = listOf(
         FlatRow("Rent deposit protection", glyph = { TravelHouse(size = 28.dp) }),
-        FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentIndigo, onClick = onOpenSubscriptions),
+        FlatRow("Recurring payments", glyph = { CalendarGlyph(size = 28.dp) }, onClick = onOpenSubscriptions),
         FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
         FlatRow("REG & WASAC bills", glyph = { ObjectLightBulb(size = 28.dp) }, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
@@ -4367,8 +4370,8 @@ private fun MenuScreen(
         FlatRow("Interest earned this month", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
         FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
         FlatRow("Split a bill with friends", glyph = { SplitBillDice(size = 28.dp) }, onClick = onSwitchToTalk),
-        FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo),
-        FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
+        FlatRow("Shared calendar", glyph = { CalendarGlyph(size = 28.dp) }),
+        FlatRow("Kids' allowance tasks", glyph = { ChildGlyph(size = 28.dp) })
     )
     val foreignCurrencyRows = listOf(
         FlatRow("Foreign currency account", trailing = "100% rate preference", trailingIsLink = true, glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
@@ -4376,13 +4379,13 @@ private fun MenuScreen(
     )
     val growMoneyRows = listOf(
         FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
-        FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentIndigo, onClick = onOpenInvest),
+        FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenInvest),
         FlatRow("IPO schedule", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
-        FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal, onClick = onOpenInvest)
+        FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenInvest)
     )
     val pensionRows = listOf(
-        FlatRow("Check my RSSB pension", icon = Icons.Outlined.AccountBalance, iconColor = AccentIndigo),
-        FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentIndigo)
+        FlatRow("Check my RSSB pension", glyph = { PlaceBank(size = 28.dp) }),
+        FlatRow("Pension products", glyph = { MoneyBagGlyph(size = 28.dp) })
     )
     val loansRows = listOf(
         FlatRow("Check my max limit", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenLoans),
