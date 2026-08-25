@@ -57,36 +57,11 @@ import rw.itunda.marketplace.MarketplaceEscrowNotFoundException
 import rw.itunda.marketplace.MarketplaceService
 import rw.itunda.marketplace.NeighborhoodNotSetException
 import rw.itunda.marketplace.OfferAlreadyResolvedException
-import rw.itunda.marketplace.OfferResponseAction
 import rw.itunda.marketplace.OwnListingException
 import rw.itunda.marketplace.OwnOfferException
 import rw.itunda.marketplace.PriceOfferNotFoundException
 import rw.itunda.marketplace.PriceOfferService
 import rw.itunda.marketplace.SellerNoAccountException
-import java.math.BigDecimal
-
-data class CreateListingRequest(
-    val title: String,
-    val description: String,
-    val price: BigDecimal,
-    val category: String,
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    val meetingPlace: String? = null,
-    val photoUrl: String? = null,
-)
-
-data class MakeOfferRequest(val amount: BigDecimal)
-data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmount: BigDecimal? = null)
-data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
-data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
-data class BoostListingRequest(val days: Int)
-// Real 가격 수정 (price edit) -- see MarketplaceService.updatePrice's own doc comment.
-data class UpdateListingPriceRequest(val price: BigDecimal)
-data class DisputeEscrowRequest(val reason: String)
-// Real gap closed 2026-08-15 -- see MarketplaceEscrow.deliveryAddress's own doc comment.
-// Optional: omit it (or send it empty) for the original in-person handoff.
-data class PayEscrowRequest(val deliveryAddress: String? = null)
 
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
