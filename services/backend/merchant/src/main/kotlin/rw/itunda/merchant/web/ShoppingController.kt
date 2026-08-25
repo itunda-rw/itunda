@@ -23,6 +23,7 @@ import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
+import rw.itunda.core.repository.ProductReviewRepository
 import rw.itunda.core.search.FullTextSearchUtil
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
@@ -53,6 +54,7 @@ class ShoppingController(
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
     private val priceTierRepository: ProductPriceTierRepository,
     private val merchantProductService: rw.itunda.merchant.MerchantProductService,
+    private val productReviewRepository: ProductReviewRepository,
 ) {
     // Real Coupang WING 상품분석 (product analytics) view trigger -- see
     // MerchantProductService.getProduct's own doc comment. bank-mfe's `ProductDetailView`
@@ -367,7 +369,14 @@ class ShoppingController(
         }
         // Batch-resolved, same no-N+1 discipline as ProductFavoriteService.getMyFavorites.
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        // rating/reviewCount added 2026-08-25 -- real ProductReview data, batched the
+        // same way as EatsReviewRepository.getRestaurantRatingSummaries. See
+        // ProductReviewRepository.getProductRatingSummaries' own doc comment.
+        val ratingByProduct = if (page.content.isNotEmpty()) {
+            productReviewRepository.getProductRatingSummaries(page.content.map { it.id }).associateBy { it.productId }
+        } else emptyMap()
         val products = page.content.map { p ->
+            val rating = ratingByProduct[p.id]
             mapOf(
                 "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
                 "name" to p.name, "price" to p.price,
@@ -378,6 +387,7 @@ class ShoppingController(
                 "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
                 "description" to p.description,
                 "stockQuantity" to p.stockQuantity,
+                "rating" to rating?.average, "reviewCount" to (rating?.count ?: 0L),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
@@ -395,13 +405,21 @@ class ShoppingController(
     ): ResponseEntity<Map<String, Any?>> {
         val page = merchantProductRepository.findDeals(MerchantStatus.ACTIVE, businessType, pageable)
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        // rating/reviewCount added 2026-08-25, same real batched lookup as
+        // searchProducts above -- closes the "no star rating on the recommended grid"
+        // gap against the real Toss Shopping reference.
+        val ratingByProduct = if (page.content.isNotEmpty()) {
+            productReviewRepository.getProductRatingSummaries(page.content.map { it.id }).associateBy { it.productId }
+        } else emptyMap()
         val products = page.content.map { p ->
+            val rating = ratingByProduct[p.id]
             mapOf(
                 "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
                 "name" to p.name, "price" to p.price,
                 "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
                 "description" to p.description,
                 "stockQuantity" to p.stockQuantity,
+                "rating" to rating?.average, "reviewCount" to (rating?.count ?: 0L),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))

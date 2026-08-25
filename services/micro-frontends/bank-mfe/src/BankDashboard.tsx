@@ -22099,6 +22099,15 @@ function ShopView() {
                 <ProductImageThumb imageUrl={d.imageUrl} size={96} />
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{d.name}</p>
                 <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
+                {/* rating/reviewCount added 2026-08-25 -- real batched ProductReview
+                    data already on this row (see lib/shopping.ts's ProductSearchResult
+                    comment), same IconStar treatment the merchant browse card already
+                    uses -- no per-item fetch needed. */}
+                {d.rating != null && d.reviewCount ? (
+                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <IconStar size={11} color="#F5A623" fill="#F5A623" /> {d.rating.toFixed(1)} ({d.reviewCount})
+                  </p>
+                ) : null}
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: d.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                   {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
                 </p>

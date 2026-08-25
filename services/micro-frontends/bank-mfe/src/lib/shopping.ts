@@ -105,6 +105,12 @@ export interface ProductSearchResult {
   discountPercent?: number | null;
   description?: string | null;
   stockQuantity?: number | null;
+  // rating/reviewCount added 2026-08-25 -- real batched ProductReview data (see
+  // ShoppingController.getDeals' own doc comment), same field Android/iOS clients
+  // just added. Absent/null rating means genuinely zero reviews yet -- render no
+  // stars, never a fabricated default.
+  rating?: number | null;
+  reviewCount?: number | null;
 }
 
 // Real cross-merchant product search (2026-07-20) -- until now a shopper could only

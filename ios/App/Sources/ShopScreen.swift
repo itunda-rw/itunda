@@ -510,7 +510,24 @@ struct CommerceShopContent: View {
                                                 if let discountPercent = d.discountPercent, discountPercent > 0 {
                                                     Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
                                                 }
-                                                Text("\(Int(d.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                                                    Text("\(Int(d.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                    // Real strikethrough original price (2026-08-25, matches the
+                                                    // Toss Shopping reference) -- same real originalPrice field the
+                                                    // discount badge above already derives from.
+                                                    if let originalPrice = d.originalPrice, originalPrice > d.price {
+                                                        Text("\(Int(originalPrice)) RWF").font(.caption2).foregroundColor(IDS.Colors.textTertiary).strikethrough()
+                                                    }
+                                                }
+                                                // rating/reviewCount (2026-08-25) -- real batched ProductReview
+                                                // data, same real "no review yet -> no stars" honesty as this
+                                                // app's Android client.
+                                                if let rating = d.rating, let reviewCount = d.reviewCount, reviewCount > 0 {
+                                                    HStack(spacing: 2) {
+                                                        Image(systemName: "star.fill").font(.system(size: 9)).foregroundColor(Color(red: 0.96, green: 0.65, blue: 0.14))
+                                                        Text(String(format: "%.1f (%d)", rating, reviewCount)).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                                    }
+                                                }
                                                 Text(d.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
                                                     .font(.caption2).foregroundColor(d.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
                                             }

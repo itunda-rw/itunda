@@ -3481,6 +3481,12 @@ public struct DealProductDto: Decodable, Identifiable {
     public let discountPercent: Int?
     public let description: String?
     public let stockQuantity: Int?
+    // rating/reviewCount added 2026-08-25 -- real batched ProductReview data (see
+    // ShoppingController.getDeals' own doc comment), same field this app's Android
+    // client just added. nil rating means genuinely zero reviews yet -- render no
+    // stars, never a fabricated default.
+    public let rating: Double?
+    public let reviewCount: Int?
 }
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }

@@ -1246,6 +1246,11 @@ data class DealProductDto(
     val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double,
     val imageUrl: String? = null, val originalPrice: Double? = null, val discountPercent: Int? = null, val description: String? = null,
     val stockQuantity: Int? = null,
+    // rating/reviewCount added 2026-08-25 -- real ProductReview data (batched GROUP BY
+    // lookup, see ShoppingController.getDeals' own doc comment), not fabricated. null
+    // rating means the product genuinely has zero reviews yet -- render no stars, not a
+    // fake default.
+    val rating: Double? = null, val reviewCount: Long = 0L,
 )
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
 

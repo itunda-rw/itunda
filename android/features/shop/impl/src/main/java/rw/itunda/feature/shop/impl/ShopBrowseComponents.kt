@@ -184,11 +184,16 @@ internal fun ShoppingPointsRow(
 // Real Toss Shopping "Recommended for you" 2-column grid (2026-08-12, direct user
 // screenshot) -- restyles the existing real Deals rail data (badge/rating/cashback/
 // heart) instead of a horizontal-scroll rail, matching the reference layout exactly.
-// Rating isn't fetched per-card here (would be N real network calls for a grid this
-// size) -- real cashback (via ShoppingCashbackService's own published flat rate,
+// rating/reviewCount (2026-08-25) is real ProductReview data, batched server-side
+// (see ShoppingController.getDeals' own doc comment) -- same IdsIcons.Star/StarGold/
+// "%.1f (%d)" treatment EatsCategoryBrowse's restaurant cards already use, for the
+// same real reason (an honest star only when a real review exists, never a fabricated
+// default). Real cashback (via ShoppingCashbackService's own published flat rate,
 // itunda's real "1%" the same fallback the merchant-open shortcuts elsewhere in this
-// file already use) and the real discount/stock badges are shown instead, an honest
-// subset rather than a fabricated rating number.
+// file already use) and the real discount/stock badges are shown too. Deliberately NOT
+// shown: a "Now at 30-day low" price-history indicator -- itunda has no price-history
+// table, so that reference-screenshot element stays honestly scoped out rather than
+// fabricated.
 @Composable
 internal fun RecommendedForYouGrid(
     deals: List<DealProductDto>,
@@ -198,7 +203,9 @@ internal fun RecommendedForYouGrid(
 ) {
     val rowCount = (deals.size + 1) / 2
     Column(
-        modifier = Modifier.height((rowCount * 260).dp),
+        // 284dp (was 260dp) -- +24dp for the new rating row / strikethrough price line
+        // added 2026-08-25.
+        modifier = Modifier.height((rowCount * 284).dp),
     ) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
@@ -232,7 +239,30 @@ internal fun RecommendedForYouGrid(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(d.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2)
-                    Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        // Real strikethrough original price (2026-08-25, matches the
+                        // Toss Shopping reference) -- only shown when the merchant
+                        // actually set a higher originalPrice, same field the discount
+                        // badge above already derives from.
+                        val originalPrice = d.originalPrice
+                        if (originalPrice != null && originalPrice > d.price) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "%,.0f RWF".format(originalPrice),
+                                color = Ids.colors.textTertiary,
+                                fontSize = 11.sp,
+                                textDecoration = TextDecoration.LineThrough,
+                            )
+                        }
+                    }
+                    if (d.rating != null && d.reviewCount > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 1.dp)) {
+                            Icon(IdsIcons.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("%.1f (%d)".format(d.rating, d.reviewCount), color = Ids.colors.textSecondary, fontSize = 11.sp)
+                        }
+                    }
                     Text(
                         d.stockQuantity?.let { if (it == 0) "Out of stock" else "Ships today" } ?: "Ships today",
                         color = if (d.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,
