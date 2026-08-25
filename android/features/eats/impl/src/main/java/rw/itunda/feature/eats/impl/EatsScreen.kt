@@ -76,53 +76,6 @@ import java.io.IOException
 
 internal enum class EatsMode { ORDER, DELIVER }
 
-@Composable
-fun EatsContent(
-    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
-    // Real "Delivery" pill deep-link from Maps (2026-08-09) -- see
-    // ItundaAppScreen.kt's own doc comment on pendingEatsMerchantId for the full
-    // account. Forces ORDER mode (not DELIVER) since a pending target is always a real
-    // merchant to order FROM, never a rider-role entry point.
-    pendingMerchantId: String? = null,
-    pendingMerchantName: String? = null,
-    onPendingMerchantConsumed: () -> Unit = {},
-) {
-    var mode by remember { mutableStateOf(EatsMode.ORDER) }
-    LaunchedEffect(pendingMerchantId) {
-        if (pendingMerchantId != null) mode = EatsMode.ORDER
-    }
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)) {
-        // Real de-emphasis (2026-07-24) -- "Deliver" (the rider role) previously got
-        // equal 50% visual weight next to "Order food" as a full segmented toggle,
-        // even though itunda already ships a dedicated, separate riderapp
-        // (rw.itunda.rider) for exactly this role. Stacked on top of Shop/Eats' own
-        // toggle above and Restaurants/Favorites/My orders below, that read as three
-        // full tiers of chrome before any real content -- most people opening Eats
-        // are ordering, not delivering. Kept reachable (a rider without the separate
-        // app installed can still use it here) as a small secondary link instead of
-        // an equal peer tab.
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-            Text(
-                text = if (mode == EatsMode.ORDER) "Deliver instead" else "Back to ordering",
-                color = Ids.colors.textBrand,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                modifier = Modifier.pressScaleClickable { mode = if (mode == EatsMode.ORDER) EatsMode.DELIVER else EatsMode.ORDER },
-            )
-        }
-        when (mode) {
-            EatsMode.ORDER -> OrderFoodContent(
-                deviceStepUpHost,
-                pendingMerchantId = pendingMerchantId,
-                pendingMerchantName = pendingMerchantName,
-                onPendingMerchantConsumed = onPendingMerchantConsumed,
-            )
-            EatsMode.DELIVER -> DeliverContent()
-        }
-    }
-}
-
-
 internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS }
 
 @Composable
@@ -362,54 +315,29 @@ internal fun OrderFoodContent(
         }
     }
 
-    val confirmed = confirmedOrder
-    if (confirmed != null) {
-        EatsOrderConfirmationView(confirmed, onDone = {
-            confirmedOrder = null
-            selectedRestaurant = null
-            menu = null
-            cart.clear()
-            showCheckout = false
-            view = OrderFoodView.ORDERS
-        })
-        return
-    }
-    val confirmedDineIn = confirmedDineInOrder
-    if (confirmedDineIn != null) {
-        DineInOrderConfirmationView(confirmedDineIn, onDone = {
-            confirmedDineInOrder = null
-            selectedRestaurant = null
-            menu = null
-            cart.clear()
-            showCheckout = false
-            view = OrderFoodView.ORDERS
-        })
-        return
-    }
-
-    val restaurant = selectedRestaurant
-    if (restaurant != null) {
-        if (showCheckout) {
-            EatsCheckoutView(
-                restaurant = restaurant,
-                cart = cart,
-                menu = menu.orEmpty(),
-                onBack = { showCheckout = false },
-                onOrderPlaced = { order -> confirmedOrder = order },
-                onDineInOrderPlaced = { order -> confirmedDineInOrder = order },
-                deviceStepUpHost = deviceStepUpHost,
-            )
-        } else {
-            RestaurantMenuView(
-                restaurant = restaurant,
-                menu = menu,
-                cart = cart,
-                onBack = { selectedRestaurant = null },
-                onCheckout = { showCheckout = true },
-            )
-        }
-        return
-    }
+    if (EatsOrderFlowDispatch(
+            confirmedOrder = confirmedOrder,
+            confirmedDineInOrder = confirmedDineInOrder,
+            selectedRestaurant = selectedRestaurant,
+            showCheckout = showCheckout,
+            menu = menu,
+            cart = cart,
+            deviceStepUpHost = deviceStepUpHost,
+            onOrderConfirmationDone = {
+                confirmedOrder = null; selectedRestaurant = null; menu = null
+                cart.clear(); showCheckout = false; view = OrderFoodView.ORDERS
+            },
+            onDineInConfirmationDone = {
+                confirmedDineInOrder = null; selectedRestaurant = null; menu = null
+                cart.clear(); showCheckout = false; view = OrderFoodView.ORDERS
+            },
+            onCheckoutBack = { showCheckout = false },
+            onOrderPlaced = { order -> confirmedOrder = order },
+            onDineInOrderPlaced = { order -> confirmedDineInOrder = order },
+            onMenuBack = { selectedRestaurant = null },
+            onCheckoutRequested = { showCheckout = true },
+        )
+    ) return
 
     // Real fix (2026-08-25, direct user directive: "implant that into our designs
     // and apply it across our ecosystems", following the account ledger's own
