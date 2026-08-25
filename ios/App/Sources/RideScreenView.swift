@@ -961,5 +961,15 @@ private func rideTripStatusColor(_ status: String) -> Color {
 
 private func formatMoneyRide(_ value: Double) -> String {
     let rounded = (value * 100).rounded() / 100
-    return rounded == rounded.rounded(.down) ? String(Int64(rounded)) : String(format: "%.2f", rounded)
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    formatter.usesGroupingSeparator = true
+    if rounded == rounded.rounded(.down) {
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int64(rounded))
+    }
+    formatter.minimumFractionDigits = 2
+    formatter.maximumFractionDigits = 2
+    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
 }

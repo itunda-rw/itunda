@@ -197,5 +197,15 @@ private func formatDate(_ iso: String) -> String { String(iso.prefix(10)) }
 
 private func formatMoney(_ value: Double) -> String {
     let rounded = (value * 100).rounded() / 100
-    return rounded == rounded.rounded(.down) ? String(Int(rounded)) : String(format: "%.2f", rounded)
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    formatter.usesGroupingSeparator = true
+    if rounded == rounded.rounded(.down) {
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: rounded)) ?? String(Int(rounded))
+    }
+    formatter.minimumFractionDigits = 2
+    formatter.maximumFractionDigits = 2
+    return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
 }
