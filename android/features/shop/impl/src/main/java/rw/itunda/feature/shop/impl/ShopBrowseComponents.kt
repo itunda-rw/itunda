@@ -36,8 +36,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,6 +96,18 @@ internal fun ShoppingBannerCarousel(banners: List<rw.itunda.core.network.TimeDea
                         if (discountPercent > 0) {
                             Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
+                        // Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping
+                        // reference screenshot -- "⏰ 23:24:20 Limited time offer") --
+                        // ticks off the same real v.deal.endsAt the rail badge below
+                        // already reads via formatTimeDealCountdown, just to the second.
+                        var countdown by remember(v.deal.endsAt) { mutableStateOf(formatTimeDealCountdownHms(v.deal.endsAt)) }
+                        LaunchedEffect(v.deal.endsAt) {
+                            while (true) {
+                                countdown = formatTimeDealCountdownHms(v.deal.endsAt)
+                                delay(1000)
+                            }
+                        }
+                        Text("⏰ $countdown left", color = Ids.colors.danger, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Text(v.productName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2)
                         Text("%,.0f RWF".format(v.deal.dealPrice), color = Ids.colors.textPrimary, fontSize = 15.sp)
                         Text(v.businessName, color = Ids.colors.textSecondary, fontSize = 12.sp)

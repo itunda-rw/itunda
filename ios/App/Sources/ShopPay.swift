@@ -155,6 +155,20 @@ func formatTimeDealCountdown(_ endsAt: String) -> String {
     return hours > 0 ? "\(hours)h \(minutes)m left" : "\(minutes)m left"
 }
 
+// Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping reference screenshot
+// -- "⏰ 23:24:20 Limited time offer") -- same real TimeDeal.endsAt formatTimeDealCountdown
+// above already reads, ticking to the second, same real data Android's identical
+// formatTimeDealCountdownHms now uses.
+func formatTimeDealCountdownHms(_ endsAt: String) -> String {
+    guard let end = ISO8601DateFormatter(withFractionalSeconds: true).date(from: endsAt) ?? ISO8601DateFormatter().date(from: endsAt) else { return "00:00:00" }
+    let secondsLeft = Int(end.timeIntervalSinceNow)
+    if secondsLeft <= 0 { return "00:00:00" }
+    let hours = secondsLeft / 3600
+    let minutes = (secondsLeft % 3600) / 60
+    let seconds = secondsLeft % 60
+    return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+}
+
 /// Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
 /// this struct's own doc comment previously named. Mirrors bank-mfe's PayByCodeCard
 /// exactly: a non-Face-Pay code with real eligible coupons stops at a preview step

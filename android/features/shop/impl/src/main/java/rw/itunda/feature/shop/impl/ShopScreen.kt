@@ -108,6 +108,20 @@ internal fun formatTimeDealCountdown(endsAt: String): String {
     return if (hours > 0) "${hours}h ${minutes}m left" else "${minutes}m left"
 }
 
+// Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping reference screenshot
+// -- "⏰ 23:24:20 Limited time offer") -- same real TimeDeal.endsAt this file's own
+// formatTimeDealCountdown already reads, just ticking to the second and formatted for
+// the hero banner rather than a small rail badge.
+internal fun formatTimeDealCountdownHms(endsAt: String): String {
+    val msLeft = java.time.Instant.parse(endsAt).toEpochMilli() - java.time.Instant.now().toEpochMilli()
+    if (msLeft <= 0) return "00:00:00"
+    val totalSeconds = msLeft / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return "%02d:%02d:%02d".format(hours, minutes, seconds)
+}
+
 @Composable
 fun CommerceShopContent(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,

@@ -560,7 +560,12 @@ struct CommerceShopContent: View {
                                                 // Real Coupang badge system (2026-08-05) -- see IdsBadge's own doc
                                                 // comment. Matches Android ShopScreen.kt's own identical StatusBadge
                                                 // treatment (this was plain Text on iOS until now).
-                                                IdsBadge(formatTimeDealCountdown(v.deal.endsAt), filled: false, tint: IDS.Colors.brand)
+                                                // Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping
+                                                // reference screenshot) -- TimelineView ticks this to the second off
+                                                // the same real v.deal.endsAt, no manual Timer/@State plumbing needed.
+                                                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                                                    Text("⏰ \(formatTimeDealCountdownHms(v.deal.endsAt))").font(.caption2).bold().foregroundColor(IDS.Colors.danger)
+                                                }
                                                 IdsBadge("\(v.deal.remainingQuantity) left", tint: IDS.Colors.danger)
                                             }
                                             .frame(width: 120, alignment: .leading)

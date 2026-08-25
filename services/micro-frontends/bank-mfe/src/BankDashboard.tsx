@@ -21621,6 +21621,29 @@ function formatDealCountdown(endsAt: string): string {
   return hours > 0 ? `${hours}h ${minutes}m left` : `${minutes}m left`;
 }
 
+// Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping reference screenshot
+// -- "23:24:20 Limited time offer") -- same real TimeDeal.endsAt formatDealCountdown
+// above already reads, ticking to the second, same real data Android/iOS's identical
+// formatTimeDealCountdownHms now use.
+function formatDealCountdownHms(endsAt: string, now: number): string {
+  const msLeft = new Date(endsAt).getTime() - now;
+  if (msLeft <= 0) return '00:00:00';
+  const totalSeconds = Math.floor(msLeft / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return [hours, minutes, seconds].map((n) => String(n).padStart(2, '0')).join(':');
+}
+
+function LiveDealCountdown({ endsAt }: { endsAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{formatDealCountdownHms(endsAt, now)}</>;
+}
+
 function ShopView() {
   const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
@@ -22170,6 +22193,12 @@ function ShopView() {
                     comment. Matches Android ShopScreen.kt's own identical StatusBadge
                     treatment (this was plain <p> text on bank-mfe until now). */}
                 <Badge text={formatDealCountdown(v.deal.endsAt)} filled={false} tint="var(--itunda-indigo)" />
+                {/* Real live HH:MM:SS countdown (2026-08-25, direct Toss Shopping
+                    reference screenshot -- "23:24:20 Limited time offer") -- same
+                    real v.deal.endsAt the rounded badge above already reads. */}
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)', fontWeight: 700 }}>
+                  ⏰ <LiveDealCountdown endsAt={v.deal.endsAt} />
+                </p>
                 <Badge text={`${v.deal.remainingQuantity} left`} tint="var(--itunda-red)" />
               </button>
             ))}
