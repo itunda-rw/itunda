@@ -18,8 +18,10 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
+import rw.itunda.core.repository.ProductReviewHelpfulVoteRepository
 import rw.itunda.core.repository.ProductReviewRepository
 import rw.itunda.core.repository.RatingSummaryProjection
+import rw.itunda.auth.RateLimiter
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -32,7 +34,9 @@ class ProductReviewServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val productReviewHelpfulVoteRepository = mockk<ProductReviewHelpfulVoteRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService, productReviewHelpfulVoteRepository, rateLimiter)
 
         val deliveredOrder = Order(
             id = "order_1", buyerId = "buyer_1", merchantId = "merchant_1", deliveryAddress = "addr",
@@ -165,7 +169,9 @@ class ProductReviewServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val productReviewHelpfulVoteRepository = mockk<ProductReviewHelpfulVoteRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService, productReviewHelpfulVoteRepository, rateLimiter)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val review = ProductReview(
