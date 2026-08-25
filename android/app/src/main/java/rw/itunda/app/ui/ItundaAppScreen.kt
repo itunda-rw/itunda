@@ -205,6 +205,10 @@ import rw.itunda.core.designsystem.itundaface.VoucherTicket
 import rw.itunda.core.designsystem.itundaface.BriefcaseGlyph
 import rw.itunda.core.designsystem.itundaface.ChartIncreasingGlyph
 import rw.itunda.core.designsystem.itundaface.QuestionGlyph
+import rw.itunda.core.designsystem.itundaface.FamilyGlyph
+import rw.itunda.core.designsystem.itundaface.WarningGlyph
+import rw.itunda.core.designsystem.itundaface.ParkingGlyph
+import rw.itunda.core.designsystem.itundaface.BarChartGlyph
 import rw.itunda.feature.maps.impl.PlaceRestaurant
 import rw.itunda.feature.maps.impl.PlaceMarket
 import rw.itunda.feature.maps.impl.PlaceBank
@@ -4280,9 +4284,9 @@ private fun MenuScreen(
         FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenOverview),
         FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenOverview),
         FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", glyph = { ObjectCreditCard(size = 28.dp) }, onClick = onOpenCard),
-        FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentIndigo, onClick = onOpenSpending),
+        FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", glyph = { BarChartGlyph(size = 28.dp) }, onClick = onOpenSpending),
         FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
-        FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
+        FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", glyph = { FamilyGlyph(size = 28.dp) }, onClick = onOpenFamilyLink),
         FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
         FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo, onClick = onOpenSubscriptions),
         FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", glyph = { ObjectPen(size = 28.dp) }, onClick = onOpenCertificate),
@@ -4328,7 +4332,7 @@ private fun MenuScreen(
         FlatRow("Rides", subtitle = "Request a ride or drive for real fares", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenRides),
         FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
         FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenBikeRental),
-        FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", icon = Icons.Outlined.LocalParking, iconColor = AccentPurple, onClick = onOpenParking),
+        FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", glyph = { ParkingGlyph(size = 28.dp) }, onClick = onOpenParking),
         FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenBus),
         FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
         FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenVehicleValuation),
@@ -4403,7 +4407,7 @@ private fun MenuScreen(
         FlatRow("FAQ", glyph = { QuestionGlyph(size = 28.dp) }),
         FlatRow("Live chat", glyph = { SpeechBubbleGlyph(size = 28.dp) }),
         FlatRow("Call support", glyph = { ObjectMobilePhone(size = 28.dp) }),
-        FlatRow("Report an issue with a transaction", icon = Icons.Outlined.ReportProblem, iconColor = AccentRed, showChevron = true, onClick = onOpenSupport),
+        FlatRow("Report an issue with a transaction", glyph = { WarningGlyph(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
         FlatRow("My support tickets", glyph = { VoucherTicket(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
         FlatRow("Announcements", glyph = { BellGlyph(size = 28.dp) })
     )
