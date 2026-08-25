@@ -92,7 +92,6 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.util.UUID
 
-
 @Composable
 internal fun ChatThreadView(
     conversation: ConversationSummaryDto,
@@ -208,36 +207,15 @@ internal fun ChatThreadView(
     // both is cheap and correct rather than guessing which one applies (mirrors
     // bank-mfe's own ConversationThread.loadOffers).
     suspend fun loadOffers() {
-        val marketplaceOffers: List<PriceOfferDto> = try {
-            NetworkClient.apiService.getOffersForConversation(conversation.conversationId).offers
-        } catch (_: Exception) {
-            emptyList()
-        }
-        val propertyOffers: List<PropertyPriceOfferDto> = try {
-            NetworkClient.apiService.getPropertyOffersForConversation(conversation.conversationId).offers
-        } catch (_: Exception) {
-            emptyList()
-        }
-        offersByMessageId = (marketplaceOffers.map { it.toBubbleData() to it.messageId } + propertyOffers.map { it.toBubbleData() to it.messageId })
-            .associate { (data, messageId) -> messageId to data }
+        loadTalkThreadOffers(conversation.conversationId) { offersByMessageId = it }
     }
 
     suspend fun loadGifts() {
-        try {
-            val res = NetworkClient.apiService.getGiftsForConversation(conversation.conversationId)
-            if (res.success) giftsByMessageId = res.gifts.associateBy { it.messageId }
-        } catch (_: Exception) {
-            // Real, non-critical -- only backs the inline gift bubble.
-        }
+        loadTalkThreadGifts(conversation.conversationId) { giftsByMessageId = it }
     }
 
     suspend fun loadVouchers() {
-        try {
-            val res = NetworkClient.apiService.getGiftVouchersForConversation(conversation.conversationId)
-            if (res.success) vouchersByMessageId = res.vouchers.associateBy { it.messageId }
-        } catch (_: Exception) {
-            // Real, non-critical -- only backs the inline gift-voucher bubble.
-        }
+        loadTalkThreadVouchers(conversation.conversationId) { vouchersByMessageId = it }
     }
 
     suspend fun refresh() {
