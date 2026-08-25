@@ -103,6 +103,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -141,6 +142,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -1560,8 +1563,14 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
                 // Ids.colors.background in dark mode (0x202027 vs 0x17171C), making
                 // the bottom bar visibly stand out from the page -- real Toss/Coupang
                 // keep every chrome bar the same color as the content underneath it.
-                .background(Ids.colors.background)
-                .padding(top = 8.dp, bottom = 10.dp),
+                .background(Ids.colors.background),
+                // Real fix (2026-08-25, direct user comparison against the live real
+                // Toss app on the same physical device -- uiautomator-measured):
+                // this Row's own top/bottom padding used to stack with each tab
+                // Column's own padding below, a real "padding on padding" bug that
+                // alone added ~10dp of dead space no design called for. Toss's real
+                // bar (measured the same way, same device) has exactly one padding
+                // layer -- so does this one now.
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1571,7 +1580,10 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
                     modifier = Modifier
                         .weight(1f)
                         .pressScaleClickable { onSelect(tab) }
-                        .padding(vertical = 4.dp),
+                        // Real fix (2026-08-25) -- matches Toss's own real measured
+                        // ~8dp top / ~8dp bottom inset exactly (this Column is now the
+                        // only padding layer, see the Row's own comment above).
+                        .padding(top = 8.dp, bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
@@ -1580,10 +1592,25 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
                         modifier = Modifier.size(24.dp),
                         tint = if (selected) Ids.colors.brand else Ids.colors.textTertiary
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = tab.label,
                         fontSize = 11.sp,
+                        // Real fix (2026-08-25, same live-device comparison) -- Compose's
+                        // Text defaults to the font's full built-in line-height metrics
+                        // (~24dp measured for this 11sp label), well beyond the glyphs'
+                        // own ink; Toss's real native-Android label renders the same text
+                        // at ~14dp. lineHeight + includeFontPadding=false + a trimmed
+                        // LineHeightStyle is Compose's own documented fix for exactly
+                        // this gap, not a made-up workaround.
+                        lineHeight = 13.sp,
+                        style = LocalTextStyle.current.copy(
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both,
+                            ),
+                        ),
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                         color = if (selected) Ids.colors.brand else Ids.colors.textTertiary
                     )
