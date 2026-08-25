@@ -3675,8 +3675,15 @@ private fun PayTab(
             }
         }
     }
+    // Real fix (2026-08-25, direct user report + live-measured, same session as
+    // ItundaBottomBar's own identical padding-stacking fix): this LazyColumn's own
+    // `vertical = screenVertical` bottom padding was stacking with the Scaffold's
+    // already-correct bottomBar inset (paddingValues, applied once by the shared Box
+    // in ItundaAppScreen's own Scaffold) -- a real, measured 16dp of dead space
+    // between the last row and the nav bar that nothing needed. Top kept (real
+    // breathing room below the status bar); bottom now comes from Scaffold alone.
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         // Real Toss Pay home reference (4 screenshots, 2026-08-22): a bold "Pay"
@@ -4389,8 +4396,11 @@ private fun MenuScreen(
         "Support" to supportRows,
     )
 
+    // Real fix (2026-08-25) -- same redundant-bottom-padding-vs-Scaffold-inset bug as
+    // PayTab's own identical LazyColumn, see that one's doc comment for the full
+    // account.
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item {
@@ -4667,8 +4677,11 @@ private fun MyTab(
         try { myBookingReviews = rw.itunda.core.network.NetworkClient.apiService.getMyBookingReviews().reviews } catch (_: Exception) { }
     }
 
+    // Real fix (2026-08-25) -- same redundant-bottom-padding-vs-Scaffold-inset bug as
+    // PayTab's own identical LazyColumn, see that one's doc comment for the full
+    // account.
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item { BackTopBar("My", onBack) }

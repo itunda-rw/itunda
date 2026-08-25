@@ -141,7 +141,11 @@ fun TalkTab(
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
+    // Real fix (2026-08-25) -- same redundant-bottom-padding-vs-Scaffold-inset bug as
+    // ItundaAppScreen.kt's PayTab/MenuScreen/MyTab (that file's own doc comment has
+    // the full account): this bottom padding was stacking with the Scaffold's already
+    // -correct bottomBar inset. Top kept, bottom now comes from Scaffold alone.
+    Column(modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical)) {
         TabHeader("Talk")
         IdsSegmentedControl(
             options = listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"),
