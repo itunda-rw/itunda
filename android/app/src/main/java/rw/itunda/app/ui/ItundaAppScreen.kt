@@ -200,6 +200,8 @@ import rw.itunda.core.designsystem.itundaface.SpeechBubbleGlyph
 import rw.itunda.core.designsystem.itundaface.SplitBillDice
 import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.itundaface.BikeGlyph
+import rw.itunda.core.designsystem.itundaface.GiftBox
+import rw.itunda.core.designsystem.itundaface.VoucherTicket
 import rw.itunda.feature.maps.impl.PlaceRestaurant
 import rw.itunda.feature.maps.impl.PlaceMarket
 import rw.itunda.feature.maps.impl.PlaceBank
@@ -212,6 +214,8 @@ import rw.itunda.feature.talk.impl.ObjectLightBulb
 import rw.itunda.feature.talk.impl.TravelHouse
 import rw.itunda.feature.talk.impl.TravelCar
 import rw.itunda.feature.talk.impl.NatureStar
+import rw.itunda.feature.talk.impl.NatureGlowingStar
+import rw.itunda.feature.talk.impl.ObjectPen
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
 // theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
@@ -4261,12 +4265,12 @@ private fun MenuScreen(
         // section does (rw.itunda.rewards, real tasks/steps/referral, real RWF
         // payouts) -- points there instead of a second, fake destination.
         FlatRow(
-            "Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange,
+            "Benefits", subtitle = "Points, coupons, rewards", glyph = { GiftBox(size = 28.dp) },
             onClick = { context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
         ),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
-        FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentIndigo, onClick = onOpenWeeklySavings),
-        FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
+        FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenWeeklySavings),
+        FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
         FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", glyph = { PinGlyph(size = 28.dp) }, onClick = onOpenMap),
     )
     val accountsRows = listOf(
@@ -4278,7 +4282,7 @@ private fun MenuScreen(
         FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
         FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
         FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentIndigo, onClick = onOpenSubscriptions),
-        FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", glyph = { LockGlyph(size = 28.dp) }, onClick = onOpenCertificate),
+        FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", glyph = { ObjectPen(size = 28.dp) }, onClick = onOpenCertificate),
     )
     val sendPayRows = listOf(
         FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = IdsIcons.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
@@ -4311,7 +4315,7 @@ private fun MenuScreen(
     // already had their own distinct icons and are unchanged.
     val borrowRows = listOf(
         FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans),
-        FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
+        FlatRow("Credit score", subtitle = "Free check, alternative data", glyph = { NatureGlowingStar(size = 28.dp) }, onClick = onOpenCreditScore),
         FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.Agriculture, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
         FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = IdsIcons.ShieldCheck, iconColor = AccentIndigo, onClick = onOpenVupLoan),
         FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", glyph = { PlaceSchool(size = 28.dp) }, onClick = onOpenStudentLoan),
@@ -4397,7 +4401,7 @@ private fun MenuScreen(
         FlatRow("Live chat", glyph = { SpeechBubbleGlyph(size = 28.dp) }),
         FlatRow("Call support", glyph = { ObjectMobilePhone(size = 28.dp) }),
         FlatRow("Report an issue with a transaction", icon = Icons.Outlined.ReportProblem, iconColor = AccentRed, showChevron = true, onClick = onOpenSupport),
-        FlatRow("My support tickets", icon = Icons.Outlined.ConfirmationNumber, iconColor = AccentOrange, showChevron = true, onClick = onOpenSupport),
+        FlatRow("My support tickets", glyph = { VoucherTicket(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
         FlatRow("Announcements", glyph = { BellGlyph(size = 28.dp) })
     )
     // Real Toss Bank reference mapping (see the doc comment further down, kept in
