@@ -49,40 +49,6 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class RestaurantNotFoundException(message: String) : RuntimeException(message)
-class RestaurantNoAccountException(message: String) : RuntimeException(message)
-class EatsBuyerNoAccountException(message: String) : RuntimeException(message)
-class EmptyEatsOrderException(message: String) : RuntimeException(message)
-class InvalidEatsDeliveryAddressException(message: String) : RuntimeException(message)
-class InvalidEatsQuantityException(message: String) : RuntimeException(message)
-class MenuItemNotFoundException(message: String) : RuntimeException(message)
-class MenuItemSoldOutException(message: String) : RuntimeException(message)
-class MenuItemSurplusDealExpiredException(message: String) : RuntimeException(message)
-class SelfEatsOrderException(message: String) : RuntimeException(message)
-class RestaurantNotAcceptingOrdersException(message: String) : RuntimeException(message)
-class EatsOrderNotFoundException(message: String) : RuntimeException(message)
-class InvalidEatsOrderStatusTransitionException(message: String) : RuntimeException(message)
-class RiderNotAvailableException(message: String) : RuntimeException(message)
-class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
-class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
-class NotAssignedRiderException(message: String) : RuntimeException(message)
-class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
-class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(message)
-class NoActiveOfferException(message: String) : RuntimeException(message)
-class MissingRequiredMenuOptionException(message: String) : RuntimeException(message)
-class InvalidMenuOptionSelectionException(message: String) : RuntimeException(message)
-class ScheduledOrdersNotSupportedException(message: String) : RuntimeException(message)
-class InvalidScheduledOrderTimeException(message: String) : RuntimeException(message)
-class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
-class EatsOrderItemNotFoundException(message: String) : RuntimeException(message)
-class EatsOrderItemAlreadyUnavailableException(message: String) : RuntimeException(message)
-class EatsOrderAllItemsUnavailableException(message: String) : RuntimeException(message)
-class EatsOrderNotDeliveredException(message: String) : RuntimeException(message)
-class EatsOrderAlreadyTippedException(message: String) : RuntimeException(message)
-class EatsOrderTipWindowExpiredException(message: String) : RuntimeException(message)
-class InvalidEatsTipAmountException(message: String) : RuntimeException(message)
-class EatsOrderNoRiderException(message: String) : RuntimeException(message)
-
 // Real menu-options selection (2026-07-21, v1: required single-select only) --
 // `selectedChoiceIds` is empty for the overwhelming majority of pre-existing menu items
 // that have no option groups defined, so this is purely additive: an unchanged client
