@@ -202,6 +202,9 @@ import rw.itunda.core.designsystem.itundaface.WishlistHeart
 import rw.itunda.core.designsystem.itundaface.BikeGlyph
 import rw.itunda.core.designsystem.itundaface.GiftBox
 import rw.itunda.core.designsystem.itundaface.VoucherTicket
+import rw.itunda.core.designsystem.itundaface.BriefcaseGlyph
+import rw.itunda.core.designsystem.itundaface.ChartIncreasingGlyph
+import rw.itunda.core.designsystem.itundaface.QuestionGlyph
 import rw.itunda.feature.maps.impl.PlaceRestaurant
 import rw.itunda.feature.maps.impl.PlaceMarket
 import rw.itunda.feature.maps.impl.PlaceBank
@@ -4252,7 +4255,7 @@ private fun MenuScreen(
         FlatRow("Eats", subtitle = "Food delivery, order or deliver", glyph = { PlaceRestaurant(size = 28.dp) }, onClick = onOpenEats),
         FlatRow("Marketplace", subtitle = "당근마켓-style neighborhood buy/sell", glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenMarketplace),
         FlatRow("Community", subtitle = "Neighborhood life, local questions and posts", glyph = { SpeechBubbleGlyph(size = 28.dp) }, onClick = onOpenCommunity),
-        FlatRow("Jobs", subtitle = "Neighborhood gigs and part-time work", icon = Icons.Outlined.Work, iconColor = AccentTeal, onClick = onOpenJobs),
+        FlatRow("Jobs", subtitle = "Neighborhood gigs and part-time work", glyph = { BriefcaseGlyph(size = 28.dp) }, onClick = onOpenJobs),
         FlatRow("Property", subtitle = "Neighborhood rentals and sales", glyph = { TravelHouse(size = 28.dp) }, onClick = onOpenProperty),
         // Real fix (2026-08-13, direct user report: "entire app is still messy...
         // give me something real"): used to open BenefitsTab, a full screen of
@@ -4268,7 +4271,7 @@ private fun MenuScreen(
             "Benefits", subtitle = "Points, coupons, rewards", glyph = { GiftBox(size = 28.dp) },
             onClick = { context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
         ),
-        FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
+        FlatRow("Invest", subtitle = "RSE stocks, real portfolio", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
         FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenWeeklySavings),
         FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
         FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", glyph = { PinGlyph(size = 28.dp) }, onClick = onOpenMap),
@@ -4368,9 +4371,9 @@ private fun MenuScreen(
         FlatRow("International transfer", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency)
     )
     val growMoneyRows = listOf(
-        FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal, onClick = onOpenInvest),
+        FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
         FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentIndigo, onClick = onOpenInvest),
-        FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed, onClick = onOpenInvest),
+        FlatRow("IPO schedule", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
         FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal, onClick = onOpenInvest)
     )
     val pensionRows = listOf(
@@ -4378,7 +4381,7 @@ private fun MenuScreen(
         FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentIndigo)
     )
     val loansRows = listOf(
-        FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenLoans),
+        FlatRow("Check my max limit", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenLoans),
         FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans)
     )
     // Real Toss arrangement (2026-08-12, direct user screenshot comparison) -- the
@@ -4397,7 +4400,7 @@ private fun MenuScreen(
     // 6 rows previously had none at all (plain text), a real visible "still not the
     // same" gap the user flagged directly against the reference screenshot.
     val supportRows = listOf(
-        FlatRow("FAQ", icon = Icons.Outlined.HelpOutline, iconColor = AccentIndigo),
+        FlatRow("FAQ", glyph = { QuestionGlyph(size = 28.dp) }),
         FlatRow("Live chat", glyph = { SpeechBubbleGlyph(size = 28.dp) }),
         FlatRow("Call support", glyph = { ObjectMobilePhone(size = 28.dp) }),
         FlatRow("Report an issue with a transaction", icon = Icons.Outlined.ReportProblem, iconColor = AccentRed, showChevron = true, onClick = onOpenSupport),
@@ -4803,7 +4806,7 @@ private fun MyTab(
                 "My listings",
                 listOf(
                     FlatRow("Marketplace", trailing = "$myListingsCount", glyph = { PlaceMarket(size = 28.dp) }, onClick = onSwitchToMarketplace),
-                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", icon = Icons.Outlined.Work, iconColor = AccentIndigo, onClick = onSwitchToJobs),
+                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", glyph = { BriefcaseGlyph(size = 28.dp) }, onClick = onSwitchToJobs),
                     FlatRow("Property listed", trailing = "$myPropertyListingsCount", glyph = { TravelHouse(size = 28.dp) }, onClick = onSwitchToProperty),
                 ),
             )
