@@ -823,7 +823,12 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
         </div>
 
         <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
-          <span style={{ fontSize: '38px', fontWeight: 800 }}>
+          {/* Real Toss largeAmount token (34px/41px/700, same value Android's
+              IdsTypography.LargeAmount and iOS's IDS.swift already agree on --
+              see project_itunda_product_feel's own doc comment) -- this was the
+              app's single largest, most prominent number on screen but used an
+              invented 38px/800 pair matching no real Toss/itunda token. */}
+          <span style={{ fontSize: 'var(--itunda-type-large-amount-size)', lineHeight: 'var(--itunda-type-large-amount-line-height)', fontWeight: 'var(--itunda-type-large-amount-weight)' }}>
             {amount === '' ? '0' : Number(amount).toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
           </span>
           <div>
