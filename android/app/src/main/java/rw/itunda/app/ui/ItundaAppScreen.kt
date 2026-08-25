@@ -212,6 +212,11 @@ import rw.itunda.core.designsystem.itundaface.BarChartGlyph
 import rw.itunda.core.designsystem.itundaface.CalendarGlyph
 import rw.itunda.core.designsystem.itundaface.ChildGlyph
 import rw.itunda.core.designsystem.itundaface.WrenchGlyph
+import rw.itunda.core.designsystem.itundaface.SeedlingGlyph
+import rw.itunda.core.designsystem.itundaface.RefreshCardGlyph
+import rw.itunda.core.designsystem.itundaface.ReceiptGlyph
+import rw.itunda.core.designsystem.itundaface.ShieldEmojiGlyph
+import rw.itunda.feature.talk.impl.ObjectKey
 import rw.itunda.feature.maps.impl.PlaceRestaurant
 import rw.itunda.feature.maps.impl.PlaceMarket
 import rw.itunda.feature.maps.impl.PlaceBank
@@ -4296,8 +4301,8 @@ private fun MenuScreen(
     )
     val sendPayRows = listOf(
         FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = IdsIcons.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
-        FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentIndigo, onClick = onOpenRequestMoney),
-        FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentIndigo, onClick = onOpenAutoTopUp),
+        FlatRow("Request money", subtitle = "Generate a real payment request code", glyph = { ReceiptGlyph(size = 28.dp) }, onClick = onOpenRequestMoney),
+        FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", glyph = { RefreshCardGlyph(size = 28.dp) }, onClick = onOpenAutoTopUp),
         FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", glyph = { ObjectMobilePhone(size = 28.dp) }, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
@@ -4326,14 +4331,14 @@ private fun MenuScreen(
     val borrowRows = listOf(
         FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans),
         FlatRow("Credit score", subtitle = "Free check, alternative data", glyph = { NatureGlowingStar(size = 28.dp) }, onClick = onOpenCreditScore),
-        FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.Agriculture, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
-        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = IdsIcons.ShieldCheck, iconColor = AccentIndigo, onClick = onOpenVupLoan),
+        FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", glyph = { SeedlingGlyph(size = 28.dp) }, onClick = onOpenHarvestAdvance),
+        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", glyph = { ShieldEmojiGlyph(size = 28.dp) }, onClick = onOpenVupLoan),
         FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", glyph = { PlaceSchool(size = 28.dp) }, onClick = onOpenStudentLoan),
         FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
     )
     val transportRows = listOf(
         FlatRow("Rides", subtitle = "Request a ride or drive for real fares", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenRides),
-        FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
+        FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", glyph = { ObjectKey(size = 28.dp) }, onClick = onOpenDesignatedDriver),
         FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenBikeRental),
         FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", glyph = { ParkingGlyph(size = 28.dp) }, onClick = onOpenParking),
         FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenBus),
@@ -4367,8 +4372,8 @@ private fun MenuScreen(
         // Real fix (2026-08-11): interest now auto-credits to the account the instant
         // it accrues (see backend SavingsService.accrueInterest's own doc comment) --
         // "Claim interest now" overclaimed a pending action that no longer exists.
-        FlatRow("Interest earned this month", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
-        FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
+        FlatRow("Interest earned this month", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onClaimInterest),
+        FlatRow("SME income tax estimate", glyph = { ReceiptGlyph(size = 28.dp) }),
         FlatRow("Split a bill with friends", glyph = { SplitBillDice(size = 28.dp) }, onClick = onSwitchToTalk),
         FlatRow("Shared calendar", glyph = { CalendarGlyph(size = 28.dp) }),
         FlatRow("Kids' allowance tasks", glyph = { ChildGlyph(size = 28.dp) })
