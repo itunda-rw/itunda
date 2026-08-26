@@ -14,18 +14,26 @@ import CoreNetwork
 // no-ViewModel, "call NetworkClient.shared directly from Task {} blocks" convention
 // GroupAccountScreenView.swift already established.
 
+private enum IkiminaMode { case list, intro, create }
+
 struct IkiminaScreenView: View {
     var onBack: () -> Void = {}
     @State private var selectedId: String?
+    @State private var mode: IkiminaMode = .list
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: { selectedId != nil ? (selectedId = nil) : onBack() }) {
+                Button(action: {
+                    if selectedId != nil { selectedId = nil }
+                    else if mode == .create { mode = .intro }
+                    else if mode == .intro { mode = .list }
+                    else { onBack() }
+                }) {
                     IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body)
                 }.accessibilityLabel("Back")
                 Spacer()
-                Text("Ikimina").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                Text(selectedId != nil ? "Ikimina detail" : mode == .create ? "New ikimina" : "Ikimina").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Color.clear.frame(width: 20)
             }
@@ -33,9 +41,13 @@ struct IkiminaScreenView: View {
 
             if let id = selectedId {
                 IkiminaDetailContent(id: id)
+            } else if mode == .intro {
+                IkiminaIntroContent(onContinue: { mode = .create })
+            } else if mode == .create {
+                IkiminaCreateContent(onCreated: { mode = .list })
             } else {
                 ScrollView {
-                    IkiminaListContent(onOpen: { selectedId = $0 })
+                    IkiminaListContent(onOpen: { selectedId = $0 }, onStartCreate: { mode = .intro })
                 }
             }
         }
@@ -43,53 +55,105 @@ struct IkiminaScreenView: View {
     }
 }
 
-private struct IkiminaListContent: View {
-    let onOpen: (String) -> Void
+// Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) -- ikimina is
+// itunda's own real ROSCA product, "genuinely the first feature in this codebase not
+// sourced from Toss/Kakao/Naver/Coupang" (see this file's own header doc comment), so
+// unlike Grow31/WeeklySavings a user has no prior mental model from those reference
+// apps at all. Matches Android's identical IkiminaIntroContent.
+private struct IkiminaIntroContent: View {
+    let onContinue: () -> Void
 
-    @State private var ikiminas: [IkiminaDto] = []
-    @State private var loaded = false
-    @State private var error: String?
-    @State private var showCreate = false
+    var body: some View {
+        FixedBottomCTA {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("A rotating savings group with people you trust")
+                    .font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Everyone contributes the same fixed amount")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("Every member pays in the same amount, on the same weekly or monthly schedule you set when you create the group.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("One member takes home the full pot each round")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("The payout rotates in a pre-agreed order until every member has been paid exactly once -- not itunda deciding who's next, the group's own real turn order.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("You choose the size and schedule")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("Set a max member count and a weekly or monthly contribution cycle -- the group only starts once you're ready.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+            }
+            .padding()
+        } cta: {
+            IdsButton(text: "Continue", action: onContinue)
+        }
+    }
+}
+
+private struct IkiminaCreateContent: View {
+    let onCreated: () -> Void
+
     @State private var name = ""
     @State private var contributionAmount = ""
     @State private var cycleFrequencyDays = 30
     @State private var memberCap = "10"
     @State private var creating = false
+    @State private var error: String?
+
+    var body: some View {
+        FixedBottomCTA {
+            VStack(alignment: .leading, spacing: 8) {
+                IdsTextField("Group name (e.g. Umuryango)", text: $name)
+                IdsTextField("Contribution per round (RWF)", text: $contributionAmount, keyboardType: .numberPad)
+                Picker("Frequency", selection: $cycleFrequencyDays) {
+                    Text("Weekly").tag(7)
+                    Text("Monthly").tag(30)
+                }
+                .pickerStyle(.segmented)
+                IdsTextField("Max members", text: $memberCap, keyboardType: .numberPad)
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+            .padding()
+        } cta: {
+            IdsButton(text: creating ? "Creating…" : "Create", isEnabled: !creating, action: { Task { await create() } })
+        }
+    }
+
+    private func create() async {
+        guard !name.isEmpty, let amount = Double(contributionAmount), amount > 0, let cap = Int(memberCap), cap >= 2 else { return }
+        creating = true
+        do {
+            _ = try await NetworkClient.shared.createIkimina(name: name, contributionAmount: amount, cycleFrequencyDays: cycleFrequencyDays, memberCap: cap)
+            ToastCenter.shared.show("Ikimina group created.")
+            onCreated()
+        } catch {
+            self.error = "Could not create this ikimina."
+        }
+        creating = false
+    }
+}
+
+private struct IkiminaListContent: View {
+    let onOpen: (String) -> Void
+    let onStartCreate: () -> Void
+
+    @State private var ikiminas: [IkiminaDto] = []
+    @State private var loaded = false
+    @State private var error: String?
 
     var body: some View {
         VStack(spacing: 10) {
             Text("Everyone contributes the same amount each round; one member takes home the full pot, in turn.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
 
-            if showCreate {
-                VStack(spacing: 8) {
-                    IdsTextField("Group name (e.g. Umuryango)", text: $name)
-                    IdsTextField("Contribution per round (RWF)", text: $contributionAmount, keyboardType: .numberPad)
-                    Picker("Frequency", selection: $cycleFrequencyDays) {
-                        Text("Weekly").tag(7)
-                        Text("Monthly").tag(30)
-                    }
-                    .pickerStyle(.segmented)
-                    IdsTextField("Max members", text: $memberCap, keyboardType: .numberPad)
-                    HStack(spacing: 8) {
-                        Button("Cancel") { showCreate = false }
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color(.secondarySystemBackground)).cornerRadius(10)
-                        Button(action: { Task { await create() } }) {
-                            Text(creating ? "Creating…" : "Create").foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(IDS.Colors.brand).cornerRadius(10)
-                        }
-                        .disabled(creating)
-                    }
-                }
-            } else {
-                Button(action: { showCreate = true }) {
-                    Text("+ New ikimina").bold()
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color(.secondarySystemBackground)).cornerRadius(10)
-                }
-            }
+            IdsButton(text: "+ New ikimina", action: onStartCreate)
 
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -135,20 +199,6 @@ private struct IkiminaListContent: View {
             self.error = "Could not load your ikimina groups."
         }
         loaded = true
-    }
-
-    private func create() async {
-        guard !name.isEmpty, let amount = Double(contributionAmount), amount > 0, let cap = Int(memberCap), cap >= 2 else { return }
-        creating = true
-        do {
-            _ = try await NetworkClient.shared.createIkimina(name: name, contributionAmount: amount, cycleFrequencyDays: cycleFrequencyDays, memberCap: cap)
-            name = ""; contributionAmount = ""; memberCap = "10"
-            showCreate = false
-            await load()
-        } catch {
-            self.error = "Could not create this ikimina."
-        }
-        creating = false
     }
 }
 

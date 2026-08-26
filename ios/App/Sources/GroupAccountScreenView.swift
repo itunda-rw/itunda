@@ -55,23 +55,12 @@ private struct GroupAccountListContent: View {
                 VStack(spacing: 8) {
                     IdsTextField("Group name (e.g. Roommates)", text: $name)
                     HStack(spacing: 8) {
-                        Button("Cancel") { showCreate = false; name = "" }
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color(.secondarySystemBackground)).cornerRadius(10)
-                        Button(action: { Task { await create() } }) {
-                            Text(creating ? "Creating…" : "Create").foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(IDS.Colors.brand).cornerRadius(10)
-                        }
-                        .disabled(creating)
+                        IdsButton(text: "Cancel", action: { showCreate = false; name = "" })
+                        IdsButton(text: creating ? "Creating…" : "Create", isEnabled: !creating, action: { Task { await create() } })
                     }
                 }
             } else {
-                Button(action: { showCreate = true }) {
-                    Text("+ New group account").bold()
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color(.secondarySystemBackground)).cornerRadius(10)
-                }
+                IdsButton(text: "+ New group account", action: { showCreate = true })
             }
 
             if let error {
@@ -194,19 +183,9 @@ private struct GroupAccountDetailContent: View {
                             Text(isOwner ? "Deposit or withdraw" : "Deposit").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                             IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
                             HStack(spacing: 8) {
-                                Button(action: { Task { await deposit() } }) {
-                                    Text(busy ? "…" : "Deposit").bold().foregroundColor(.white)
-                                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                        .background(IDS.Colors.brand).cornerRadius(10)
-                                }
-                                .disabled(busy || amount.isEmpty)
+                                IdsButton(text: busy ? "…" : "Deposit", isEnabled: !busy && !amount.isEmpty, action: { Task { await deposit() } })
                                 if isOwner {
-                                    Button(action: { Task { await withdraw() } }) {
-                                        Text(busy ? "…" : "Withdraw").bold()
-                                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                                    }
-                                    .disabled(busy || amount.isEmpty)
+                                    IdsButton(text: busy ? "…" : "Withdraw", isEnabled: !busy && !amount.isEmpty, action: { Task { await withdraw() } })
                                 }
                             }
                         }
