@@ -2514,10 +2514,10 @@ extension NetworkClient {
     // Real direct P2P push-transfer (2026-07-20) -- see SendDirectP2pRequest's own doc
     // comment for why this replaces quoteTransfer/confirmTransfer above in
     // TransferViewModel.sendTransfer.
-    public func sendDirect(recipient: String, amount: Double) async throws -> SendDirectP2pResponse {
+    public func sendDirect(recipient: String, amount: Double, memo: String = "") async throws -> SendDirectP2pResponse {
         try await postP2p(
             "api/v1/p2p/send",
-            body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: ""),
+            body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: memo),
             idempotencyKey: UUID().uuidString
         )
     }

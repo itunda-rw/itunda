@@ -268,7 +268,7 @@ struct TransferFlowContainer: View {
                     isSubmitting = true
                     let retryResult = pendingIsGift
                         ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: pendingAmountRwf, note: pendingGiftNote, theme: pendingGiftTheme)
-                        : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf)
+                        : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf, memo: pendingGiftNote ?? "")
                     isSubmitting = false
                     if case .success = retryResult { step = .success(amountRwf: pendingAmountRwf, recipientLabel: recipientDisplayName ?? accountNumber) }
                     else if case .failure(let message) = retryResult { errorMessage = message }
@@ -303,7 +303,7 @@ struct TransferFlowContainer: View {
                 isSubmitting = true
                 let result = isGift
                     ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: amountRwf, note: note, theme: theme)
-                    : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf)
+                    : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf, memo: note ?? "")
                 isSubmitting = false
                 switch result {
                 case .success:

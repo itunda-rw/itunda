@@ -132,7 +132,7 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
     ],
 ]
 
-private func pt(_ key: String) -> String {
+func pt(_ key: String) -> String {
     let locale = loadPaymentsLocale()
     return paymentsStrings[locale]?[key] ?? paymentsStrings[.en]?[key] ?? key
 }
@@ -352,7 +352,7 @@ public struct TransferAmountScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: pt("fromAccount"), sublabel: pt("availableBalance", formatAmount(Int(availableBalance))), symbol: "creditcard")
+                TransferPartyRow(label: pt("fromAccount"), sublabel: pt("availableBalance", transferFormatAmount(Int(availableBalance))), symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
                 TransferPartyRow(label: pt("toAccount", recipientAccountNumber), sublabel: pt("newRecipient"), symbol: "leaf")
 
@@ -403,6 +403,22 @@ public struct TransferAmountScreen: View {
                         }
                     }
                     .pickerStyle(.menu)
+                } else {
+                    // Real gap found live (fresh Toss research, toss.tech/article/
+                    // thinking-user-perspective's real "obvious to us, not to users"
+                    // finding about an ambiguous memo field): P2pService.sendDirect
+                    // already embeds this text into BOTH parties' own ledger-leg
+                    // description ("Transfer - $description"), so the recipient
+                    // genuinely sees whatever a sender types here -- this field had no
+                    // UI on iOS at all until now, matching Android's identical port.
+                    // Reuses giftNote's own state and the note param onConfirm already
+                    // threads through -- the two modes are mutually exclusive.
+                    TextField("Add a memo -- the recipient will see this", text: $giftNote)
+                        .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .subheadline))
+                        .padding(10)
+                        .background(IDS.Colors.backgroundSecondary)
+                        .cornerRadius(8)
+                        .padding(.top, 8)
                 }
             }
             .padding(.horizontal, 24)
@@ -413,7 +429,7 @@ public struct TransferAmountScreen: View {
                 Text(pt("amountQuestion"))
                     .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textSecondary)
-                Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
+                Text(digits.isEmpty ? "0 RWF" : "\(transferFormatAmount(amount)) RWF")
                     .font(IDS.scaledFont(size: digits.isEmpty ? 32 : 42, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
                 // Real gap found live (2026-08-10), applying Toss Tech's own "the best
@@ -423,7 +439,7 @@ public struct TransferAmountScreen: View {
                 // round-trip to the backend's 422 before saying anything. Same fix as
                 // Android's TransferFlow.kt.
                 if insufficientBalance {
-                    Text(pt("amountInsufficient", formatAmount(Int(availableBalance))))
+                    Text(pt("amountInsufficient", transferFormatAmount(Int(availableBalance))))
                         .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                         .foregroundColor(.red)
                 }
@@ -503,7 +519,7 @@ public struct SavingsAmountScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: "From Itunda Account", sublabel: "Available RWF \(formatAmount(Int(availableBalance)))", symbol: "creditcard")
+                TransferPartyRow(label: "From Itunda Account", sublabel: "Available RWF \(transferFormatAmount(Int(availableBalance)))", symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
                 TransferPartyRow(label: "To \(goalName)", sublabel: mode == .deposit ? "Savings goal" : "Interest jar", symbol: "leaf")
             }
@@ -520,7 +536,7 @@ public struct SavingsAmountScreen: View {
                 Text(mode == .deposit ? "How much to save?" : "Interest already added to your balance")
                     .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textSecondary)
-                Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
+                Text(digits.isEmpty ? "0 RWF" : "\(transferFormatAmount(amount)) RWF")
                     .font(IDS.scaledFont(size: digits.isEmpty ? 32 : 42, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
                 // Same "the best error is one that never occurs" fix (2026-08-10) as
@@ -528,7 +544,7 @@ public struct SavingsAmountScreen: View {
                 // balance (already known here) previously only surfaced after a
                 // wasted round trip to the backend's 422.
                 if insufficientBalance {
-                    Text("Not enough balance -- you have RWF \(formatAmount(Int(availableBalance)))")
+                    Text("Not enough balance -- you have RWF \(transferFormatAmount(Int(availableBalance)))")
                         .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                         .foregroundColor(.red)
                 }
@@ -561,142 +577,5 @@ public struct SavingsAmountScreen: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-    }
-}
-
-private func formatAmount(_ value: Int) -> String {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.groupingSeparator = ","
-    return formatter.string(from: NSNumber(value: value)) ?? "0"
-}
-
-private struct FlowTopBar: View {
-    let onBack: () -> Void
-    var body: some View {
-        HStack {
-            Button(action: onBack) {
-                IDS.Icons.back(size: 18, color: IDS.Colors.textPrimary, relativeTo: .title3).frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("Back")
-            Spacer()
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-    }
-}
-
-private struct RecentRecipientRow: View {
-    let name: String
-    let bankAndAccount: String
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 14) {
-                Circle()
-                    .fill(IDS.Colors.chipBackground)
-                    .frame(width: 44, height: 44)
-                    .overlay(Text(String(name.prefix(1))).font(IDS.scaledFont(size: 17, weight: .bold, relativeTo: .body)).foregroundColor(IDS.Colors.textPrimary))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name).font(IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .callout)).foregroundColor(IDS.Colors.textPrimary)
-                    Text(bankAndAccount).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
-                }
-                Spacer()
-            }
-            .padding(.vertical, 10)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct TransferPartyRow: View {
-    let label: String
-    let sublabel: String
-    let symbol: String
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(IDS.scaledFont(size: 17, weight: .semibold, relativeTo: .body)).foregroundColor(IDS.Colors.textPrimary)
-                Text(sublabel).font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textTertiary)
-            }
-            Spacer()
-            RoundedRectangle(cornerRadius: 14)
-                .fill(IDS.Colors.chipBackground)
-                .frame(width: 42, height: 42)
-                .overlay(Image(systemName: symbol).font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).foregroundColor(IDS.Colors.textPrimary))
-        }
-        .padding(.vertical, 6)
-    }
-}
-
-private struct QuickAmountChip: View {
-    let label: String
-    let onTap: () -> Void
-    var body: some View {
-        Button(action: onTap) {
-            Text(label)
-                .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .subheadline))
-                .foregroundColor(IDS.Colors.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(IDS.Colors.chipBackground)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct FlowNextBar: View {
-    let enabled: Bool
-    let label: String
-    let onTap: () -> Void
-    var body: some View {
-        Button(action: onTap) {
-            Text(label)
-                .font(IDS.scaledFont(size: 17, weight: .bold, relativeTo: .body))
-                .foregroundColor(enabled ? .white : IDS.Colors.textTertiary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(enabled ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-        }
-        .disabled(!enabled)
-        .buttonStyle(.plain)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-    }
-}
-
-private struct NumericKeypad: View {
-    let onDigit: (String) -> Void
-    let onDelete: () -> Void
-    private let rows = [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["00", "0", "DEL"]]
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(rows, id: \.self) { row in
-                HStack(spacing: 0) {
-                    ForEach(row, id: \.self) { key in
-                        Button(action: { key == "DEL" ? onDelete() : onDigit(key) }) {
-                            Group {
-                                if key == "DEL" {
-                                    Image(systemName: "delete.left")
-                                } else {
-                                    Text(key).font(IDS.scaledFont(size: 24, weight: .medium, relativeTo: .title2))
-                                }
-                            }
-                            .foregroundColor(IDS.Colors.textPrimary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 60)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(key == "DEL" ? pt("deleteDigit") : key)
-                    }
-                }
-            }
-        }
-        .padding(.bottom, 8)
     }
 }

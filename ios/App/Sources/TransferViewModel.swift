@@ -29,11 +29,12 @@ enum MoneyActionResult {
 /// needed here, since there's no external rail decision to quote.
 @MainActor
 final class TransferViewModel: ObservableObject {
-    func sendTransfer(recipientAccountNumber: String, amountRwf: Int) async -> MoneyActionResult {
+    func sendTransfer(recipientAccountNumber: String, amountRwf: Int, memo: String = "") async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.sendDirect(
                 recipient: Self.normalizeRecipientIdentifier(recipientAccountNumber),
-                amount: Double(amountRwf)
+                amount: Double(amountRwf),
+                memo: memo
             )
             return .success(response.message)
         } catch NetworkError.deviceNotVerified {
