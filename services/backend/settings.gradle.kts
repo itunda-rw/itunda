@@ -41,6 +41,7 @@ include(
     ":vehicle",
     ":family",
     ":card",
+    ":transit",
     ":ussd",
     ":app"
 )

@@ -201,6 +201,11 @@ class SpendingInsightService(
                 // P2P transfer would (grouped under RAIL_SUSPENSE's "Transfers" case
                 // above, but a delayed transfer never touches rail_suspense).
                 LedgerAccountType.P2P_DELAY_HOLDING -> "Transfers"
+                // Same reasoning as CARD_SPEND_EXPENSE/POSTPAID_CREDIT_PAYABLE above -- a
+                // real transit top-up (TransitService.topUp) debits the account and
+                // credits this holding account in the very same transaction, so it
+                // real-appears here and deserves its own category.
+                LedgerAccountType.TRANSIT_BALANCE_PAYABLE -> "Transit"
                 // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
                 // accounts (they pay money *into* a account) -- they'd never realistically be the
                 // counterpart to a ACCOUNT debit here, but the compiler correctly demands every
@@ -212,7 +217,13 @@ class SpendingInsightService(
                 // accrueContribution posts between itunda's own two internal accounts, never
                 // touching a user's ACCOUNT debit, so this branch is unreachable in practice
                 // but still required for exhaustiveness.
-                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerAccountType.DEPOSIT_PROTECTION_RESERVE, LedgerAccountType.DEPOSIT_PROTECTION_EXPENSE, null -> "Other"
+                // TRANSIT_FARE_EXPENSE (2026-08-27) -- same shape as this comment's own
+                // reasoning above: TransitService.tapFare posts between itunda's own two
+                // internal accounts (TRANSIT_BALANCE_PAYABLE debit / TRANSIT_FARE_EXPENSE
+                // credit), never touching a user's ACCOUNT debit directly (that already
+                // happened, into TRANSIT_BALANCE_PAYABLE, at top-up time) -- unreachable
+                // in practice but still required for exhaustiveness.
+                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerAccountType.DEPOSIT_PROTECTION_RESERVE, LedgerAccountType.DEPOSIT_PROTECTION_EXPENSE, LedgerAccountType.TRANSIT_FARE_EXPENSE, null -> "Other"
                 LedgerAccountType.WALLET -> "Other"
             }
             totals[category] = (totals[category] ?: BigDecimal.ZERO) + debit.amount

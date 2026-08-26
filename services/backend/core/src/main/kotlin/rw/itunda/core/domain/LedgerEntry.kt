@@ -130,6 +130,22 @@ enum class LedgerAccountType {
     // safely," it just hasn't reached the recipient yet -- held here until the real
     // delay window elapses (or the sender cancels within it).
     P2P_DELAY_HOLDING,
+    // Real Kigali Tap&Go-style transit stored-value balance (2026-08-27) -- see
+    // TransitBalance.kt's own doc comment. A real "owed back to the user until it's
+    // spent on a fare (or refunded)" liability, the same shape SAVINGS_GOAL_PAYABLE/
+    // GIFT_HOLDING already establish: the user's real money already left their main
+    // account at top-up time, held in this one pooled account until a real tap spends
+    // it (see TRANSIT_FARE_EXPENSE below) -- individual users' balances live on
+    // TransitBalance.balance, not as separate ledger accounts per user.
+    TRANSIT_BALANCE_PAYABLE,
+    // Real Kigali Tap&Go-style transit fare spend (2026-08-27) -- see
+    // TransitBalance.kt's own doc comment. A real "itunda pays this out" expense
+    // account, the same shape CARD_SPEND_EXPENSE already establishes: a transit fare's
+    // real counterparty is an external, unmodeled bus operator (Kigali Bus Services/
+    // Royal Express), not another itunda account -- itunda has no real settlement
+    // partnership with them or with AC Group (Tap&Go's real operator), same honest
+    // boundary CARD_SPEND_EXPENSE's own doc comment already draws for card purchases.
+    TRANSIT_FARE_EXPENSE,
 }
 
 /**

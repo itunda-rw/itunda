@@ -156,6 +156,13 @@ class LedgerAccount(
             // seed-row-missing bug class above): seeded here BEFORE the first real
             // delayed transfer runs, not after a live 500 discovers it's missing.
             "p2p_delay_holding" to "P2P Delayed Transfer Holding",
+            // Real Kigali Tap&Go-style transit stored-value balance (2026-08-27) -- see
+            // TransitBalance.kt's own doc comment. Learned from this exact file's own
+            // documented history (TEN prior instances of the identical
+            // seed-row-missing bug class above): seeded here BEFORE the first real
+            // top-up runs, not after a live 500 discovers it's missing.
+            "transit_balance_payable" to "Transit Balance Payable",
+            "transit_fare_expense" to "Transit Fare Expense",
         )
     }
 }
