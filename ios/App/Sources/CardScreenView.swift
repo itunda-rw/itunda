@@ -47,27 +47,72 @@ struct CardScreenView: View {
                     case .loading:
                         ProgressView().frame(maxWidth: .infinity).padding(40)
                     case .noCard:
+                        // Real card-shaped mockup (2026-08-26, direct user
+                        // instruction: "all cards designs should resemble real
+                        // card") -- fully masked since no card is issued yet, a
+                        // real bank app shows this same all-dots placeholder
+                        // rather than a fabricated number. iOS previously had no
+                        // pre-issuance mockup at all (web/Android both did) --
+                        // real parity gap, closed here rather than left for a
+                        // separate pass since this screen was already open.
+                        VStack {
+                            HStack {
+                                Text("itunda").font(.subheadline).bold().foregroundColor(.white)
+                                Spacer()
+                                CardContactlessGlyph(size: 16)
+                            }
+                            Spacer()
+                            HStack(alignment: .bottom) {
+                                BankCardChip(size: 26)
+                                Spacer()
+                                Text("•••• •••• •••• ••••").font(.caption).foregroundColor(.white.opacity(0.75))
+                            }
+                        }
+                        .padding(16)
+                        .frame(height: 110)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(IDS.Colors.brand)
+                        .cornerRadius(16)
                         Text("App-controlled spend limits and one-tap freeze -- no branch visit, no waiting.")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         CardActionButton(title: busy ? "Issuing…" : "Get your itunda card", disabled: busy, action: issue)
                     case .active:
                         if let card {
                             VStack(alignment: .leading, spacing: 6) {
+                                // Real EMV chip + tap-to-pay silhouette (2026-08-26,
+                                // direct user instruction: "all cards designs
+                                // should resemble real card") -- see
+                                // BankCardChip's own doc comment.
+                                HStack {
+                                    BankCardChip(size: 32)
+                                    Spacer()
+                                    if card.frozen {
+                                        LockGlyph(size: 18)
+                                    } else {
+                                        CardContactlessGlyph(size: 18)
+                                    }
+                                }
+                                Spacer()
                                 Text("itunda card").font(.caption).foregroundColor(.white.opacity(0.85))
                                 Text("•••• •••• •••• \(card.last4)").font(.title3).bold().foregroundColor(.white)
                                 if card.frozen {
-                                    HStack(spacing: 4) {
-                                        LockGlyph(size: 11)
-                                        Text("Frozen")
-                                    }
-                                    .font(.caption).foregroundColor(.white.opacity(0.85))
+                                    Text("Frozen").font(.caption).foregroundColor(.white.opacity(0.85))
                                 } else {
                                     Text("✓ Active").font(.caption).foregroundColor(.white.opacity(0.85))
                                 }
                             }
                             .padding(20)
+                            .aspectRatio(1.586, contentMode: .fit)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(card.frozen ? Color.gray : IDS.Colors.brand)
+                            .background(
+                                ZStack {
+                                    card.frozen ? Color.gray : IDS.Colors.brand
+                                    // Diagonal sheen -- the same "flat color read
+                                    // as a card" fix applied to every card-shaped
+                                    // visual in this app.
+                                    LinearGradient(colors: [Color.white.opacity(0.18), Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                }
+                            )
                             .cornerRadius(16)
 
                             CardActionButton(title: card.frozen ? "Unfreeze card" : "Freeze card", disabled: busy, action: toggleFreeze)

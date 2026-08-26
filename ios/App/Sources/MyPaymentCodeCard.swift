@@ -77,10 +77,14 @@ private struct AccountCardCarousel: View {
         )) {
             ForEach(accounts, id: \.id) { w in
                 VStack(alignment: .leading) {
-                    // Small light rectangle mimicking a real card's EMV chip -- a
-                    // cheap, honest visual cue that reads as "card" at a glance,
-                    // matching Android's identical real-card metaphor.
-                    RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.35)).frame(width: 32, height: 24)
+                    // Real EMV chip + tap-to-pay silhouette (2026-08-26, direct
+                    // user instruction: "all cards designs should resemble real
+                    // card") -- see BankCardChip's own doc comment.
+                    HStack {
+                        BankCardChip(size: 30)
+                        Spacer()
+                        CardContactlessGlyph(size: 18)
+                    }
                     Spacer()
                     Text(w.type == "PAY" ? "itunda Pay" : w.type == "MAIN" ? "itunda Bank" : "itunda Pay \(w.currency)")
                         .font(IDS.scaledFont(size: 13, weight: .bold, relativeTo: .footnote)).foregroundColor(.white)
@@ -89,7 +93,14 @@ private struct AccountCardCarousel: View {
                 }
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(cardColor(w.currency))
+                .background(
+                    ZStack {
+                        LinearGradient(colors: [cardColor(w.currency), cardColor(w.currency), Color.black.opacity(0.18)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        // Diagonal sheen -- the same "flat color read as a card"
+                        // fix applied to every card-shaped visual in this app.
+                        LinearGradient(colors: [Color.white.opacity(0.18), Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    }
+                )
                 .cornerRadius(16)
                 .padding(.horizontal, 4)
                 .tag(w.id)
