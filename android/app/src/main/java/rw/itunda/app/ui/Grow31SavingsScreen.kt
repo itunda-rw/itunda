@@ -58,9 +58,9 @@ import java.util.UUID
 // surfaces that action front and center rather than just a due-date countdown.
 //
 // TERM_DAYS is a display-only constant mirrored from Grow31SavingsService.kt.
-private const val TERM_DAYS = 31
+internal const val TERM_DAYS = 31
 
-private enum class Grow31Mode { LIST, NEW }
+private enum class Grow31Mode { LIST, INTRO, NEW }
 
 @Composable
 fun Grow31SavingsScreen(onBack: () -> Unit) {
@@ -90,12 +90,14 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         val title = when {
             selectedPlanId != null -> "Plan detail"
+            mode == Grow31Mode.INTRO -> "31-day plan"
             mode == Grow31Mode.NEW -> "New 31-day plan"
             else -> "31-Day Savings"
         }
         val backAction: () -> Unit = when {
             selectedPlanId != null -> { { selectedPlanId = null; refreshKey++ } }
-            mode == Grow31Mode.NEW -> { { mode = Grow31Mode.LIST } }
+            mode == Grow31Mode.NEW -> { { mode = Grow31Mode.INTRO } }
+            mode == Grow31Mode.INTRO -> { { mode = Grow31Mode.LIST } }
             else -> onBack
         }
         BackTopBar(title = title, onBack = backAction)
@@ -103,6 +105,7 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
         when {
             selectedPlanId != null -> Grow31DetailContent(planId = selectedPlanId!!, onChanged = { refreshKey++ })
             mode == Grow31Mode.NEW -> Grow31CreateContent(onCreated = { mode = Grow31Mode.LIST; refreshKey++ })
+            mode == Grow31Mode.INTRO -> Grow31IntroContent(onContinue = { mode = Grow31Mode.NEW })
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -111,7 +114,7 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(Ids.colors.brand).pressScaleClickable { mode = Grow31Mode.NEW }
+                            .background(Ids.colors.brand).pressScaleClickable { mode = Grow31Mode.INTRO }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -179,7 +182,7 @@ private fun grow31StatusColor(plan: Grow31SavingsPlanDto): Color = when (plan.st
 
 // Real, sourced tier table mirrored from Grow31SavingsService.bonusRateForStreak on the
 // backend (display-only copy, same convention TERM_DAYS above already follows).
-private fun grow31BonusRateForStreak(streak: Int): Double = when {
+internal fun grow31BonusRateForStreak(streak: Int): Double = when {
     streak >= 31 -> 10.0
     streak >= 21 -> 8.0
     streak >= 14 -> 6.0

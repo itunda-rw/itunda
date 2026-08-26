@@ -60,8 +60,8 @@ import java.math.BigDecimal
 // TERM_WEEKS/ESCALATION_STEP_WEEKS are display-only constants mirrored from
 // WeeklySavingsService.kt -- there's no endpoint that exposes them since they never
 // change for any plan.
-private const val TERM_WEEKS = 26
-private const val ESCALATION_STEP_WEEKS = 4
+internal const val TERM_WEEKS = 26
+internal const val ESCALATION_STEP_WEEKS = 4
 
 private data class EscalationOption(val rate: BigDecimal, val label: String)
 
@@ -74,7 +74,7 @@ private val escalationOptions = listOf(
     EscalationOption(BigDecimal("1.00"), "+100%"),
 )
 
-private enum class WeeklySavingsMode { LIST, NEW }
+private enum class WeeklySavingsMode { LIST, INTRO, NEW }
 
 @Composable
 fun WeeklySavingsScreen(onBack: () -> Unit) {
@@ -104,12 +104,14 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         val title = when {
             selectedPlanId != null -> "Plan detail"
+            mode == WeeklySavingsMode.INTRO -> "26-week plan"
             mode == WeeklySavingsMode.NEW -> "New 26-week plan"
             else -> "26-Week Savings"
         }
         val backAction: () -> Unit = when {
             selectedPlanId != null -> { { selectedPlanId = null; refreshKey++ } }
-            mode == WeeklySavingsMode.NEW -> { { mode = WeeklySavingsMode.LIST } }
+            mode == WeeklySavingsMode.NEW -> { { mode = WeeklySavingsMode.INTRO } }
+            mode == WeeklySavingsMode.INTRO -> { { mode = WeeklySavingsMode.LIST } }
             else -> onBack
         }
         BackTopBar(title = title, onBack = backAction)
@@ -117,6 +119,7 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
         when {
             selectedPlanId != null -> WeeklySavingsDetailContent(planId = selectedPlanId!!, onChanged = { refreshKey++ })
             mode == WeeklySavingsMode.NEW -> WeeklySavingsCreateContent(onCreated = { mode = WeeklySavingsMode.LIST; refreshKey++ })
+            mode == WeeklySavingsMode.INTRO -> WeeklySavingsIntroContent(onContinue = { mode = WeeklySavingsMode.NEW })
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -125,7 +128,7 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(Ids.colors.brand).pressScaleClickable { mode = WeeklySavingsMode.NEW }
+                            .background(Ids.colors.brand).pressScaleClickable { mode = WeeklySavingsMode.INTRO }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
