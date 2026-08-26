@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { IconBell, IconEye, IconEyeOff, IconSend, IconShieldCheck, IconStar } from './icons/ItundaIcons';
 import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-motion';
 import { itundaSpring } from './lib/motion';
@@ -17,6 +17,7 @@ import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph,
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap, PayHubOtherServicesRail, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { PinSetupCard } from './PinSetupCard';
+import { CardExplainer } from './CardExplainer';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -31,7 +32,7 @@ import { AccountDetailScreen } from './AccountDetailScreen';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
-import { chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
+import { cardDesign, chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
 import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
@@ -21561,73 +21562,16 @@ function DevicesView() {
 // photorealistic 3D render, matching itundaface's own established flat/geometric
 // illustration language (see project_itunda_own_icons_graphics) rather than inventing a
 // new visual style for one screen.
-function CardExplainer({ busy, onIssue }: { busy: boolean; onIssue: () => void }) {
-  const FEATURES: { glyph: ReactNode; label: string }[] = [
-    { glyph: <MoneyBagGlyph size={22} />, label: 'No annual fee, ever' },
-    { glyph: <IconAdd size={20} color="var(--itunda-indigo)" />, label: 'Issued instantly in the app -- no branch visit' },
-    { glyph: <IconShieldCheck size={20} color="var(--itunda-indigo)" />, label: 'Set your own daily and monthly spend limits' },
-    { glyph: <LockGlyph size={22} />, label: 'One-tap freeze if it’s ever lost' },
-  ];
-
-  return (
-    <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        style={{
-          width: '220px', height: '139px', margin: '0 auto 20px', borderRadius: '16px', position: 'relative', overflow: 'hidden',
-          background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, var(--itunda-indigo-active) 100%)',
-          boxShadow: '0 12px 24px -8px rgba(116, 114, 244, 0.45)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '18px',
-        }}
-      >
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 800, color: 'var(--itunda-white)', textAlign: 'left' }}>itunda</span>
-          <CardContactlessGlyph size={18} />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <BankCardChip size={30} />
-          {/* Fully masked -- no card is issued yet, so there is no real last4 to
-              show. A real bank app shows this same all-dots placeholder before
-              issuance rather than a fabricated number. */}
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 600, color: 'rgba(255,255,255,0.75)', letterSpacing: '1px' }}>•••• •••• •••• ••••</span>
-        </div>
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Your own itunda card, in seconds</h3>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '24px' }}>
-          A real debit card for your itunda balance -- no paperwork, no waiting.
-        </p>
-      </motion.div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', marginBottom: '24px' }}>
-        {FEATURES.map((f, i) => (
-          <motion.div
-            key={f.label}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.16 + i * 0.06, duration: 0.25 }}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 4px' }}
-          >
-            <span style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {f.glyph}
-            </span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{f.label}</span>
-          </motion.div>
-        ))}
-      </div>
-
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4, duration: 0.25 }}>
-        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy} onClick={onIssue}>
-          {busy ? 'Issuing…' : 'Get your itunda card'}
-        </button>
-      </motion.div>
-    </div>
-  );
-}
-
+// Real Toss Bank "which color do you like?" issuance step (namu.wiki: 5 real named
+// colorways; toss.tech's own engineering post on the picker's 3D touch-and-rotate
+// interaction) -- direct user instruction 2026-08-27: "update itunda bank with all
+// those cards designs allowing users to choose from those designs... that's how toss
+// does it too". Picks from CARD_DESIGNS (lib/card.ts), itunda's own real front/back
+// colorways validated in the standalone card-lineup design pass. Front-only during
+// picking, matching that same pass's own real-photo-sourced finding: the real card's
+// front is color and chip, nothing else -- no fabricated printed number here either,
+// same "fully masked, no card exists yet" reasoning the previous single-design mockup
+// already established.
 // Real Toss Bank 체크카드 (check/debit card) -- see the backend's DebitCard.kt doc
 // comment for the full sourced account (item 207) and the honest boundary around this
 // not riding a real Visa/Mastercard rail. "Pay with card" below is itunda's own real,
@@ -21681,11 +21625,11 @@ function CardView() {
   };
   useEffect(load, []);
 
-  const handleIssue = async () => {
+  const handleIssue = async (design: string) => {
     setBusy(true);
     setError(null);
     try {
-      await issueCard();
+      await issueCard(design);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -21804,7 +21748,8 @@ function CardView() {
         <div
           style={{
             width: '72px', height: '46px', borderRadius: '8px', flexShrink: 0, position: 'relative', overflow: 'hidden',
-            background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-indigo), #1B64DA)',
+            background: card.frozen ? 'var(--itunda-grey-500)' : cardDesign(card.design).front,
+            border: !card.frozen && cardDesign(card.design).frontLight ? '1px solid #e2e2de' : 'none',
             display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '6px',
           }}
         >
@@ -21813,7 +21758,7 @@ function CardView() {
           {card.frozen ? (
             <LockGlyph size={14} color="#fff" style={{ alignSelf: 'flex-end' }} />
           ) : (
-            <CardContactlessGlyph size={12} />
+            <CardContactlessGlyph size={12} color={cardDesign(card.design).frontLight ? 'rgba(25,31,40,0.55)' : 'rgba(255,255,255,0.85)'} />
           )}
         </div>
       </div>

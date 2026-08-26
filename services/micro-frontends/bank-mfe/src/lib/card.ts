@@ -15,6 +15,7 @@ export interface Card {
   monthlyLimit: number;
   frozen: boolean;
   issuedAt: string;
+  design: string;
   spentToday: number;
   spentThisMonth: number;
   remainingToday: number;
@@ -29,8 +30,38 @@ export interface CardTransaction {
   createdAt: string;
 }
 
-export const issueCard = () =>
-  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/issue', { method: 'POST' }).then((r) => r.card);
+// Real Toss Bank precedent (namu.wiki: 5 named colorways, e.g. 레몬 블루/오렌지 밀크/나이트
+// 핑크), direct user instruction 2026-08-27: "update itunda bank with all those cards
+// designs allowing users to choose from those designs... that's how toss does it too".
+// itunda's own 5, each a real front/back color pair validated in the card-lineup design
+// pass -- this array is the single source of truth CardExplainer's picker and CardView's
+// issued-card rendering both read from, and its `id` values are exactly what the
+// backend's DebitCardDesign whitelist (DebitCard.kt) accepts.
+export interface CardDesign {
+  id: string;
+  name: string;
+  front: string;
+  back: string;
+  frontLight?: boolean;
+}
+
+export const CARD_DESIGNS: CardDesign[] = [
+  { id: 'onyx_indigo', name: 'Onyx Indigo', front: '#191f28', back: '#7472f4' },
+  { id: 'indigo_onyx', name: 'Indigo Onyx', front: '#7472f4', back: '#191f28' },
+  { id: 'rose_forest', name: 'Rose Forest', front: '#df466c', back: '#05804a' },
+  { id: 'frost_onyx', name: 'Frost Onyx', front: '#f4f4f2', back: '#191f28', frontLight: true },
+  { id: 'forest_rose', name: 'Forest Rose', front: '#05804a', back: '#df466c' },
+];
+
+export const DEFAULT_CARD_DESIGN = CARD_DESIGNS[0].id;
+
+export const cardDesign = (id: string): CardDesign => CARD_DESIGNS.find((d) => d.id === id) ?? CARD_DESIGNS[0];
+
+export const issueCard = (design: string = DEFAULT_CARD_DESIGN) =>
+  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/issue', {
+    method: 'POST',
+    body: JSON.stringify({ design }),
+  }).then((r) => r.card);
 
 export const fetchMyCard = () =>
   apiFetch<{ success: boolean; card: Card }>('/api/v1/card/my-card').then((r) => r.card);

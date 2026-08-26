@@ -32,3 +32,17 @@ export function BankCardChip({ size = 32 }: { size?: number }) {
 export function CardContactlessGlyph({ size = 18, color = 'rgba(255,255,255,0.85)' }: { size?: number; color?: string }) {
   return <Wifi size={size} color={color} style={{ transform: 'rotate(90deg)' }} aria-hidden="true" />;
 }
+
+// Real itunda petal mark (2026-08-27) -- the exact same geometry as public/favicon.svg
+// / Android's ic_launcher_foreground.xml / iOS's AppIcon, flattened to one silhouette
+// (right facet's outer curve + left facet's outer curve, sharing the same two real
+// endpoints -- the internal seam line is simply not drawn) for legibility at the small
+// lockup size CardExplainer/CardView need it at. See project_itunda_brand_identity for
+// the full derivation; this is not a new or reinterpreted mark.
+export function PetalMark({ size = 12, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M42,16 C74,8 94,44 56,88 C24,86 8,48 42,16 Z" fill={color} />
+    </svg>
+  );
+}
