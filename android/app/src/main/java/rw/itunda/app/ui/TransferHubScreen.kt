@@ -49,11 +49,9 @@ import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.network.AutoTransferDto
 import rw.itunda.core.network.AutoTransferFrequency
 import rw.itunda.core.network.CreateAutoTransferRequest
-import rw.itunda.core.network.CreateScheduledTransferRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ScheduledTransferDto
 import rw.itunda.core.network.superAppErrorMessage
-import java.util.UUID
 
 /**
  * Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- Home's own "Send" button
@@ -333,59 +331,63 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
 
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         BackTopBar("New auto-transfer", onBack)
-        Column(
-            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            IdsTextField(value = recipient, onValueChange = { recipient = it }, label = "Phone number or account number", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(AutoTransferFrequency.WEEKLY to "Weekly", AutoTransferFrequency.MONTHLY to "Monthly").forEach { (f, label) ->
-                    val selected = frequency == f
-                    Text(
-                        label,
-                        color = if (selected) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                            .pressScaleClickable { frequency = f }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            }
-            if (frequency == AutoTransferFrequency.MONTHLY) {
-                IdsTextField(value = dayOfMonth, onValueChange = { dayOfMonth = it.filter(Char::isDigit) }, label = "Day of month (1-28)", modifier = Modifier.fillMaxWidth())
-            } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun").forEach { (d, label) ->
-                        val selected = dayOfWeek == d
+        // Real fix (full-app audit, docs/UI_UX_GUIDELINES.md rule 1) -- matches the
+        // identical iOS fix (TransferHubScreen.swift): the submit button used to sit
+        // inline at the end of a plain, non-scrolling Column -- on a small device
+        // this could clip content instead of the button ever moving, the same real
+        // risk Grow31/WeeklySavings had before FixedBottomCta. No intro screen (this
+        // form has no real non-obvious mechanics rule 13 would require explaining).
+        rw.itunda.core.designsystem.components.FixedBottomCta(
+            content = {
+                IdsTextField(value = recipient, onValueChange = { recipient = it }, label = "Phone number or account number", modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(AutoTransferFrequency.WEEKLY to "Weekly", AutoTransferFrequency.MONTHLY to "Monthly").forEach { (f, label) ->
+                        val selected = frequency == f
                         Text(
                             label,
                             color = if (selected) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(999.dp))
                                 .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .pressScaleClickable { dayOfWeek = d }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .pressScaleClickable { frequency = f }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
                 }
-            }
-            IdsTextField(value = description, onValueChange = { description = it }, label = "What's this for? (optional)", modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-            IdsButton(
-                if (submitting) "Setting up…" else "Set up auto-transfer",
-                onClick = ::submit,
-                enabled = !submitting,
-                modifier = Modifier.fillMaxWidth(),
-                variant = IdsButtonVariant.Filled,
-                size = IdsButtonSize.Large,
-            )
-        }
+                if (frequency == AutoTransferFrequency.MONTHLY) {
+                    IdsTextField(value = dayOfMonth, onValueChange = { dayOfMonth = it.filter(Char::isDigit) }, label = "Day of month (1-28)", modifier = Modifier.fillMaxWidth())
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun").forEach { (d, label) ->
+                            val selected = dayOfWeek == d
+                            Text(
+                                label,
+                                color = if (selected) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .pressScaleClickable { dayOfWeek = d }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+                IdsTextField(value = description, onValueChange = { description = it }, label = "What's this for? (optional)", modifier = Modifier.fillMaxWidth())
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+            },
+            cta = {
+                IdsButton(
+                    if (submitting) "Setting up…" else "Set up auto-transfer",
+                    onClick = ::submit,
+                    enabled = !submitting,
+                )
+            },
+        )
     }
 }
 
@@ -493,68 +495,3 @@ private fun ScheduledTransferCard(transfer: ScheduledTransferDto, onCancel: () -
     }
 }
 
-@Composable
-fun NewScheduledTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
-    var recipient by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var daysFromNow by remember { mutableStateOf("1") }
-    var description by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
-    var submitting by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    fun submit() {
-        val amountValue = amount.toDoubleOrNull()
-        val days = daysFromNow.toLongOrNull()
-        if (recipient.isBlank()) { error = "Enter a phone number or account number."; return }
-        if (amountValue == null || amountValue <= 0) { error = "Enter a valid amount."; return }
-        if (days == null || days <= 0) { error = "Enter how many days from now to send this."; return }
-        submitting = true
-        error = null
-        scope.launch {
-            try {
-                val scheduledDate = java.time.LocalDate.now().plusDays(days).toString()
-                NetworkClient.apiService.createScheduledTransfer(
-                    UUID.randomUUID().toString(),
-                    CreateScheduledTransferRequest(
-                        recipient = recipient.trim(),
-                        amount = java.math.BigDecimal.valueOf(amountValue),
-                        scheduledDate = scheduledDate,
-                        description = description,
-                    ),
-                )
-                onCreated()
-            } catch (e: retrofit2.HttpException) {
-                // Real fix (2026-08-11) -- see NewAutoTransferScreen's own identical
-                // fix above for the full account.
-                error = superAppErrorMessage(e)
-            } catch (e: Exception) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                submitting = false
-            }
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
-        BackTopBar("New scheduled transfer", onBack)
-        Column(
-            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            IdsTextField(value = recipient, onValueChange = { recipient = it }, label = "Phone number or account number", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = daysFromNow, onValueChange = { daysFromNow = it.filter(Char::isDigit) }, label = "Send in how many days", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = description, onValueChange = { description = it }, label = "What's this for? (optional)", modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-            IdsButton(
-                if (submitting) "Setting up…" else "Schedule transfer",
-                onClick = ::submit,
-                enabled = !submitting,
-                modifier = Modifier.fillMaxWidth(),
-                variant = IdsButtonVariant.Filled,
-                size = IdsButtonSize.Large,
-            )
-        }
-    }
-}
