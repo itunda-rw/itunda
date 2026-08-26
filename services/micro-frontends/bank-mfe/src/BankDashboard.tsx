@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
+import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Gift as GiftIcon, HandCoins, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, RefreshCw, Settings, ShoppingBag, SmilePlus, Sprout, Store, Timer, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -1204,6 +1204,12 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   }, []);
 
   const cashbackRatePercent = averageCashbackRatePercent(nearbyMerchants);
+  // Real Toss motion pattern (toss.im/tossfeed/article/why-motion-in-finance) -- the
+  // real "Pay money" summary row below (2026-08-26 redesign, direct user reference to
+  // itunda Bank hub's own AccountSummaryRow.tsx pattern) needs its own animated
+  // balance, promoted out of MyPaymentCodeCard's embedded row into a real top-level
+  // row matching AccountSummaryRow's exact shape.
+  const animatedPayBalance = useCountUp(account?.balance ?? 0);
 
   const handleFacePayToggle = async () => {
     setFacePayBusy(true);
@@ -1239,15 +1245,17 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 
   return (
     <div>
-      {/* Bold "Pay" wordmark + a real QR scan shortcut + settings icon (routes to
-          You -- no dedicated Pay-settings screen exists), not the generic
-          ProductPageHeader. Real Toss Pay reference (2026-08-23): the QR button
-          jumps straight to PayByCodeCard's own already-real camera-scan flow
+      {/* Real redesign (2026-08-26, direct user reference to itunda Bank hub's own
+          real structure -- SavingsView's ProductPageHeader/AccountSummaryRow/
+          CooperativeSavingsRail): "itunda Pay" branded header (matching Bank hub's
+          own "itunda Bank" title convention, not the bare "Pay" this used to say) +
+          a real QR scan shortcut + settings icon (routes to You -- no dedicated
+          Pay-settings screen exists). The QR button jumps straight to
+          PayByCodeCard's own already-real camera-scan flow
           (id="pay-by-code-section" below) -- not a new scanner, just a faster,
-          top-bar-level entry point to the existing real one, matching the
-          reference's own prominent QR placement. */}
+          top-bar-level entry point to the existing real one. */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '4px 4px 16px' }}>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>Pay</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>itunda Pay</h2>
         <div style={{ display: 'flex', gap: '4px' }}>
           <button
             onClick={() => document.getElementById('pay-by-code-section')?.scrollIntoView({ behavior: 'smooth' })}
@@ -1261,10 +1269,45 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           </button>
         </div>
       </div>
-      <NearbyMerchantsMap merchants={nearbyMerchants} userLocation={userLocation} onTap={() => setShowNearbyMerchantsDialog(true)} />
+      {/* Real "Pay money" summary row -- the exact same real shape as itunda Bank
+          hub's own AccountSummaryRow.tsx (big balance, chevron, opens the real
+          ledger/statement screen on tap), promoted out of MyPaymentCodeCard's own
+          smaller embedded row so it reads as Pay's own top-level "account" the same
+          way AccountSummaryRow does for Bank. */}
+      {account && (
+        <button
+          onClick={() => setOpenAccountDetail(account)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0 20px', textAlign: 'left' }}
+        >
+          <div>
+            <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Pay money</p>
+            <p style={{ margin: '4px 0 0', fontSize: '26px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
+              {Math.round(animatedPayBalance).toLocaleString()} RWF
+            </p>
+          </div>
+          <IconChevronRight size={20} color="var(--itunda-grey-400)" />
+        </button>
+      )}
+      {/* Real embedded nearby-merchants map, paired with an explicit "Find store"
+          button (the map's own overlay pill already opens the same real
+          NearbyMerchantsDialog on tap; this adds a clearly-labeled second entry
+          point next to it, matching the real Toss Pay reference's separate map +
+          store-finder affordance). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+        <NearbyMerchantsMap merchants={nearbyMerchants} userLocation={userLocation} onTap={() => setShowNearbyMerchantsDialog(true)} />
+        {nearbyMerchants.length > 0 && (
+          <button
+            onClick={() => setShowNearbyMerchantsDialog(true)}
+            className="itunda-btn itunda-btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', minHeight: '44px' }}
+          >
+            <Store size={16} /> Find store
+          </button>
+        )}
+      </div>
       {showNearbyMerchantsDialog && <NearbyMerchantsDialog merchants={nearbyMerchants} onClose={() => setShowNearbyMerchantsDialog(false)} />}
       <FacePayStatusRow enrolled={facePayEnrolled} busy={facePayBusy} cashbackRatePercent={cashbackRatePercent} onToggle={handleFacePayToggle} />
-      <MyPaymentCodeCard accounts={accounts} onOpenAccountDetail={setOpenAccountDetail} />
+      <MyPaymentCodeCard accounts={accounts} />
       {showTransfer && (
         <TransferFlow
           accountBalance={account?.balance ?? 0}
@@ -1281,19 +1324,78 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           <Receipt size={17} /> Bills & airtime
         </button>
       </div>
+      {/* Real "list of other pay services" -- the exact same flat-row shape itunda
+          Bank hub's own CooperativeSavingsRail already uses (icon-in-tinted-square +
+          title + subtitle), replacing the previous scattered mix of standalone cards
+          with one real navigable list. Each row scrolls to its own already-real
+          section below (or, for Cards/Rewards, the same existing real destination
+          those rows already had) rather than duplicating any of their logic.
+          Real, sourced money-transfer copy in `IconChevronRight` — this file's own
+          existing icon set, nothing new invented for these rows beyond the icons
+          imported at the top of this file (all real lucide-react icons already a
+          dependency here). */}
+      <PayOtherServicesRail onCardsClick={onNavigateToCard} onNavigateToTab={onNavigateToTab} />
       <QuickActions onCardsClick={onNavigateToCard} />
       {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
       {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
-      <RequestMoneyCard />
+      <div id="pay-request-money-section">
+        <RequestMoneyCard />
+      </div>
       <div id="pay-by-code-section">
         <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
       </div>
       <PayByStaticQrCard onPaid={setPaymentResult} />
-      <ScheduledTransfersCard />
-      <DelayedTransfersCard />
-      {account && <AutoTopUpCard accountId={account.id} />}
+      <div id="pay-scheduled-transfers-section">
+        <ScheduledTransfersCard />
+      </div>
+      <div id="pay-delayed-transfers-section">
+        <DelayedTransfersCard />
+      </div>
+      <div id="pay-auto-topup-section">
+        {account && <AutoTopUpCard accountId={account.id} />}
+      </div>
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <GetHelpLinks onOpenSupport={() => onNavigateToTab('SUPPORT')} />
+    </div>
+  );
+}
+
+// Real "list of other pay services" (2026-08-26 redesign), the exact same flat-row
+// shape itunda Bank hub's own CooperativeSavingsRail uses (icon-in-tinted-square +
+// title + subtitle inside .itunda-flat-section) -- see PayHub's own doc comment
+// above for the full account. Each row scrolls smoothly to its own already-real
+// section rendered further down this same page, the same "rail links to real
+// content, doesn't duplicate it" shape CooperativeSavingsRail itself uses.
+function PayOtherServicesRail({ onCardsClick, onNavigateToTab }: { onCardsClick: () => void; onNavigateToTab: (tab: Tab) => void }) {
+  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; onClick: () => void }[] = [
+    { key: 'cards', title: 'Cards', subtitle: 'Manage your itunda cards', icon: <AccountIcon size={20} color="#8A2BE2" />, tint: 'rgba(138, 43, 226, 0.12)', onClick: onCardsClick },
+    { key: 'request_money', title: 'Request money', subtitle: 'Ask someone to send you a specific amount', icon: <HandCoins size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', onClick: () => document.getElementById('pay-request-money-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'scheduled', title: 'Scheduled transfers', subtitle: 'Send on a future date, one time', icon: <Clock size={20} color="var(--itunda-indigo)" />, tint: 'var(--itunda-indigo-light)', onClick: () => document.getElementById('pay-scheduled-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'delayed', title: 'Delayed transfers', subtitle: 'A short grace period to cancel before it sends', icon: <Timer size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', onClick: () => document.getElementById('pay-delayed-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'auto_topup', title: 'Auto top-up', subtitle: 'Automatically refill from a linked account', icon: <RefreshCw size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', onClick: () => document.getElementById('pay-auto-topup-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'rewards', title: 'Rewards', subtitle: 'Cashback and reward tasks', icon: <GiftIcon size={20} color="#E0507A" />, tint: 'rgba(224, 80, 122, 0.12)', onClick: () => onNavigateToTab('REWARDS') },
+  ];
+
+  return (
+    <div className="itunda-flat-section">
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-grey-900)' }}>Other pay services</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+        {items.map((item) => (
+          <button
+            key={item.key}
+            onClick={item.onClick}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
+          >
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {item.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>{item.title}</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</div>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -6236,7 +6338,7 @@ async function shareOrCopyLink(url: string, title: string, text: string): Promis
 //   Android's own account-only carousel was already an honest, deliberate
 //   simplification of that row, not an inaccuracy -- kept as-is when this pass
 //   restores everything else.
-function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Account[]; onOpenAccountDetail: (account: Account) => void }) {
+function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
   const [revealed, setRevealed] = useState(false);
   const [code, setCode] = useState<CustomerPaymentCode | null>(null);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
@@ -6250,10 +6352,6 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
   // explicitly swipes to a different account), MAIN kept only as a defensive fallback.
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const account = accounts.find((w) => w.id === selectedAccountId) ?? accounts.find((w) => w.type === 'PAY') ?? accounts.find((w) => w.type === 'MAIN') ?? accounts[0] ?? null;
-  // Real Toss motion pattern (toss.im/tossfeed/article/why-motion-in-finance) --
-  // see useCountUp's own doc comment. This is itunda's real Pay-tab headline
-  // balance, the closest analogue to Toss Pay's own animated balance.
-  const animatedBalance = useCountUp(account?.balance ?? 0);
 
   // Real auto-refresh shortly before the code's own real 2-minute expiry, matching
   // Android's identical MyPaymentCodeCard -- a customer standing at a register
@@ -6372,19 +6470,6 @@ function MyPaymentCodeCard({ accounts, onOpenAccountDetail }: { accounts: Accoun
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
         )}
       </div>
-      {account && (
-        // Real drill-in to the "Toss Pay Money" detail/statement screen (user
-        // screenshots, 2026-08-21) -- see PayMoneyDetail's own doc comment.
-        <button
-          onClick={() => onOpenAccountDetail(account)}
-          style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: '16px', padding: '4px 0' }}
-        >
-          <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>itunda Pay</span>
-          <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {animatedBalance.toLocaleString()} RWF <IconChevronRight size={16} color="var(--itunda-grey-500)" />
-          </span>
-        </button>
-      )}
       {linkedAccount && (
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-600)' }}>Funding account</span>
