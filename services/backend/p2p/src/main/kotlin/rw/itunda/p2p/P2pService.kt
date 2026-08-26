@@ -7,7 +7,6 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.P2pPaymentRequest
 import rw.itunda.core.domain.P2pPaymentRequestStatus
 import rw.itunda.core.domain.Transaction
@@ -18,8 +17,6 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
-import rw.itunda.core.push.PushNotificationService
-import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
@@ -33,23 +30,6 @@ import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
-
-class P2pRequestNotFoundException(message: String) : RuntimeException(message)
-class P2pRequestNotPayableException(message: String) : RuntimeException(message)
-class P2pSelfPaymentException(message: String) : RuntimeException(message)
-class P2pNoAccountException(message: String) : RuntimeException(message)
-class P2pRecipientNotFoundException(message: String) : RuntimeException(message)
-class P2pInvalidAmountException(message: String) : RuntimeException(message)
-class P2pTransferLimitExceededException(message: String) : RuntimeException(message)
-
-/**
- * Real Toss/Kakao Bank-style recipient-name confirmation payload -- see
- * [P2pService.resolveRecipient]'s own doc comment for the full sourced account of why
- * this exists. Deliberately just the two fields a client needs to render "Send X RWF
- * to [displayName]?"; never leaks the recipient's phone number or account number back
- * out (the caller already knows the identifier they typed in).
- */
-data class P2pRecipientPreview(val recipientUserId: String, val displayName: String)
 
 /**
  * Real person-to-person QR -- see docs/TOSS_PARITY_MATRIX.md's QR Pay row. Deliberately
@@ -71,12 +51,11 @@ class P2pService(
     private val ledgerService: LedgerService,
     private val fraudRuleEngine: FraudRuleEngine,
     private val rateLimiter: RateLimiter,
-    private val notificationRepository: NotificationRepository,
     private val roundUpService: RoundUpService,
     private val familyLinkService: FamilyLinkService,
     private val autoTopUpService: AutoTopUpService,
-    private val pushNotificationService: PushNotificationService,
     private val p2pTransferLimitService: P2pTransferLimitService,
+    private val p2pNotificationService: P2pNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(P2pService::class.java)
 
@@ -168,8 +147,8 @@ class P2pService(
         request.completedTransactionId = transaction.id
         request.paidByUserId = payerUserId
         p2pPaymentRequestRepository.save(request)
-        notifyMoneyReceived(request.requesterUserId, payerUserId, request.amount)
-        notifyMoneySent(payerUserId, payerAccount, request.requesterUserId, request.amount)
+        p2pNotificationService.notifyMoneyReceived(request.requesterUserId, payerUserId, request.amount)
+        p2pNotificationService.notifyMoneySent(payerUserId, payerAccount, request.requesterUserId, request.amount)
 
         // Re-fetch, same as AccountService.confirmTransfer -- postLedgerTransaction doesn't
         // mutate the Account instance already held in memory, only the underlying row.
@@ -348,8 +327,8 @@ class P2pService(
         // history and permanently mask NEW_RECIPIENT.
         fraudRuleEngine.evaluate(senderUserId, recipientAccount.userId, amount, transaction.id)
         transactionRepository.save(transaction)
-        notifyMoneyReceived(recipientAccount.userId, senderUserId, amount)
-        notifyMoneySent(senderUserId, senderAccount, recipientAccount.userId, amount)
+        p2pNotificationService.notifyMoneyReceived(recipientAccount.userId, senderUserId, amount)
+        p2pNotificationService.notifyMoneySent(senderUserId, senderAccount, recipientAccount.userId, amount)
         // Real round-up auto-saving (2026-07-25) -- see RoundUpService's own doc
         // comment for the full account, including why P2P transfer specifically is
         // this feature's honest v1 scope.
@@ -429,140 +408,5 @@ class P2pService(
         val childAccount = accountRepository.findByUserIdAndType(childUserId, AccountType.MAIN)
             ?: throw P2pRecipientNotFoundException("No itunda account found for this family member")
         return sendDirect(guardianUserId, childAccount.accountNumber, amount, description)
-    }
-
-    // Real-time "money received" notification (2026-07-22) -- modeled on one of Toss
-    // Bank's most iconic, signature UX elements: an instant in-app notification the
-    // moment money arrives (real Toss shows "OOO님이 5,000원을 보냈어요" -- "OOO sent you
-    // 5,000 won" -- the instant a transfer completes), not something a recipient has to
-    // notice by manually opening the app and checking their balance. Found as a real,
-    // significant gap by auditing this file directly: zero `Notification` references
-    // existed anywhere in it despite both real money-movement paths (payRequest,
-    // sendDirect) completing successfully -- confirmed by grep across every module that
-    // already does write real notifications (auth, savings, account budget alerts,
-    // messaging, commerce, community, agents), `p2p` and `merchant` were the two
-    // conspicuously absent ones for money actually arriving in someone's account.
-    // Was written recipient-only, on the unsourced assumption that real Toss only
-    // notifies the *other* party -- **corrected 2026-08-23** by a real, user-supplied
-    // Toss screenshot showing the SENDER's own device getting a push confirming their
-    // own outgoing transfer. See notifyMoneySent below for the sender-side equivalent
-    // this file now also sends.
-    // Best-effort: a notification failure must never roll back or fail money that
-    // already moved, same "auxiliary side-effect can't block real money movement"
-    // discipline `MerchantService.collect`'s own cashback-award try/catch established.
-    //
-    // Real push wired in (2026-07-28) -- see `PushNotificationService`'s own doc comment
-    // for the wider rollout this joins. Picked as the highest-priority remaining site of
-    // the ~16 named there: an instant "money received" push is real Toss's own single
-    // most iconic, signature notification -- of every notification type in this backend,
-    // this is the one a user would notice missing first.
-    private fun notifyMoneyReceived(recipientUserId: String, senderUserId: String, amount: BigDecimal) {
-        try {
-            val sender = userRepository.findById(senderUserId).orElse(null)
-            val senderName = sender?.let { "${it.firstName} ${it.lastName}" } ?: "Someone"
-            val title = "Money received"
-            val body = "$senderName sent you $amount RWF."
-            notificationRepository.save(
-                Notification(
-                    id = "notif_${UUID.randomUUID()}",
-                    userId = recipientUserId,
-                    type = "MONEY_RECEIVED",
-                    title = title,
-                    body = body,
-                    isRead = false,
-                    createdAt = Instant.now(),
-                    dataJson = "{\"amount\":\"$amount\",\"senderId\":\"$senderUserId\"}",
-                ),
-            )
-            sendMoneyReceivedPushAfterCommit(recipientUserId, title, body, amount, senderUserId)
-        } catch (e: Exception) {
-            // Non-critical -- the real transfer already completed and succeeded.
-        }
-    }
-
-    private fun sendMoneyReceivedPushAfterCommit(
-        recipientUserId: String,
-        title: String,
-        body: String,
-        amount: BigDecimal,
-        senderUserId: String,
-    ) {
-        val send = {
-            pushNotificationService.sendToUser(
-                recipientUserId,
-                title,
-                body,
-                mapOf("amount" to amount.toString(), "senderId" to senderUserId),
-                type = "MONEY_RECEIVED",
-            )
-        }
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            send()
-            return
-        }
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() = send()
-        })
-    }
-
-    // Real Toss-parity correction (2026-08-23, user-supplied real Toss push-notification
-    // screenshot: "3,000원 출금" / "내 전북은행 통장 → 토스 김민석" -- a real Toss SENDER's
-    // own device getting a push confirming their own outgoing transfer). The
-    // notifyMoneyReceived doc comment above claims "Deliberately recipient-only... matching
-    // real Toss's own behavior of notifying the *other* party" -- that claim was never
-    // sourced (no citation, unlike the rest of this file's decisions), and this real
-    // screenshot directly contradicts it, so it's corrected here rather than left standing
-    // against real evidence. A sender-side confirmation also serves a real security purpose
-    // already established elsewhere in this codebase: an unauthorized transfer from a
-    // hijacked session is exactly the kind of thing the real account owner needs to see
-    // immediately, the same reasoning LoansService.applyForLoan's own real
-    // NEW_LOAN_DISBURSED Asset Protection Alert push already uses.
-    //
-    // Title says "sent," not Toss's own "출금" (withdrawal) -- itunda's transfer model
-    // moves money directly between itunda accounts, not a withdrawal from an external
-    // linked bank account the way Toss Pay's own real product works, so "sent" is the
-    // honest term for what actually happened here, matching this file's own existing
-    // "Money received" title language for the recipient side.
-    private fun notifyMoneySent(senderUserId: String, senderAccount: Account, recipientUserId: String, amount: BigDecimal) {
-        try {
-            val recipient = userRepository.findById(recipientUserId).orElse(null)
-            val recipientName = recipient?.let { "${it.firstName} ${it.lastName}" } ?: "the recipient"
-            val title = "$amount RWF sent"
-            val body = "${senderAccount.accountName} → $recipientName"
-            notificationRepository.save(
-                Notification(
-                    id = "notif_${UUID.randomUUID()}",
-                    userId = senderUserId,
-                    type = "MONEY_SENT",
-                    title = title,
-                    body = body,
-                    isRead = false,
-                    createdAt = Instant.now(),
-                    dataJson = "{\"amount\":\"$amount\",\"recipientId\":\"$recipientUserId\"}",
-                ),
-            )
-            sendMoneySentPushAfterCommit(senderUserId, title, body, amount, recipientUserId)
-        } catch (e: Exception) {
-            // Non-critical -- the real transfer already completed and succeeded.
-        }
-    }
-
-    private fun sendMoneySentPushAfterCommit(senderUserId: String, title: String, body: String, amount: BigDecimal, recipientUserId: String) {
-        val send = {
-            pushNotificationService.sendToUser(
-                senderUserId,
-                title,
-                body,
-                mapOf("amount" to amount.toString(), "recipientId" to recipientUserId),
-                type = "MONEY_SENT",
-            )
-        }
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            send()
-            return
-        }
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() = send()
-        })
     }
 }
