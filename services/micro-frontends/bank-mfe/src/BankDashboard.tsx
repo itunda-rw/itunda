@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Gift as GiftIcon, HandCoins, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, RefreshCw, Settings, ShoppingBag, SmilePlus, Sprout, Store, Timer, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
+import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Gift as GiftIcon, HandCoins, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, RefreshCw, Settings, ShoppingBag, SmilePlus, Sprout, Store, Timer, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Wifi, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -6506,6 +6506,36 @@ function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
 // the accountId MyPaymentCodeCard's own code is generated against, matching the
 // real "swipe to choose what you pay with" KakaoPay behavior. CSS scroll-snap is
 // the web equivalent of Android's HorizontalPager -- no extra dependency needed.
+// Real EMV chip + tap-to-pay silhouette (2026-08-26, direct user instruction: "all
+// cards designs should resemble real card") -- shared by every card-shaped visual
+// below (AccountCardCarousel's account tiles, CardExplainer's pre-issuance mockup,
+// CardView's issued-card thumbnail) so the metal-chip look and contactless mark stay
+// one real component, not three local forks. Gold gradient + a contact-pad grid is
+// the standard flat-icon convention for "this is a chip card" every major bank app
+// uses; the rotated `Wifi` glyph is the same widely-used tap-to-pay substitute (no
+// card network's actual trademarked mark is reproduced).
+function BankCardChip({ size = 32 }: { size?: number }) {
+  const height = Math.round(size * 0.76);
+  return (
+    <div
+      style={{
+        width: `${size}px`, height: `${height}px`, borderRadius: '5px', position: 'relative', overflow: 'hidden', flexShrink: 0,
+        background: 'linear-gradient(135deg, #F6E7B4 0%, #D9B36C 55%, #C89A4E 100%)',
+        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.18)',
+      }}
+    >
+      <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '1px', backgroundColor: 'rgba(0,0,0,0.22)' }} />
+      <div style={{ position: 'absolute', top: 0, bottom: 0, left: '25%', width: '1px', backgroundColor: 'rgba(0,0,0,0.14)' }} />
+      <div style={{ position: 'absolute', top: 0, bottom: 0, left: '75%', width: '1px', backgroundColor: 'rgba(0,0,0,0.14)' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '1px', backgroundColor: 'rgba(0,0,0,0.22)' }} />
+    </div>
+  );
+}
+
+function CardContactlessGlyph({ size = 18, color = 'rgba(255,255,255,0.85)' }: { size?: number; color?: string }) {
+  return <Wifi size={size} color={color} style={{ transform: 'rotate(90deg)' }} aria-hidden="true" />;
+}
+
 function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accounts: Account[]; selectedAccountId: string | null; onSelect: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -6529,14 +6559,21 @@ function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accoun
           <div
             key={w.id}
             style={{
-              scrollSnapAlign: 'center', flexShrink: 0, width: '220px', height: '148px', borderRadius: '16px',
-              backgroundColor: accountCardColor(w.currency), padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              scrollSnapAlign: 'center', flexShrink: 0, width: '220px', height: '139px', borderRadius: '16px', position: 'relative', overflow: 'hidden',
+              background: `linear-gradient(135deg, ${accountCardColor(w.currency)} 0%, ${accountCardColor(w.currency)} 60%, rgba(0,0,0,0.18) 100%)`,
+              padding: '16px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+              boxShadow: '0 10px 20px -10px rgba(0,0,0,0.4)',
             }}
           >
-            {/* Small light rectangle mimicking a real card's EMV chip -- a cheap,
-                honest visual cue that reads as "card" at a glance, matching
-                Android's identical real-card metaphor. */}
-            <div style={{ width: '32px', height: '24px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.35)' }} />
+            {/* Diagonal sheen, painted first so it sits behind the chip/wordmark/
+                balance -- the same "flat color read as a card" fix (2026-08-26,
+                direct user instruction: "all cards designs should resemble real
+                card") applied to every card-shaped visual in this file. */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <BankCardChip size={30} />
+              <CardContactlessGlyph size={18} />
+            </div>
             <div>
               <p style={{ margin: 0, color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>{w.type === 'PAY' ? 'itunda Pay' : w.type === 'MAIN' ? 'itunda Bank' : `itunda Pay ${w.currency}`}</p>
               <p style={{ margin: '2px 0 0', color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-19-size)' }}>
@@ -21608,13 +21645,23 @@ function CardExplainer({ busy, onIssue }: { busy: boolean; onIssue: () => void }
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
         style={{
-          width: '220px', height: '138px', margin: '0 auto 20px', borderRadius: '16px', position: 'relative',
+          width: '220px', height: '139px', margin: '0 auto 20px', borderRadius: '16px', position: 'relative', overflow: 'hidden',
           background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, var(--itunda-indigo-active) 100%)',
           boxShadow: '0 12px 24px -8px rgba(116, 114, 244, 0.45)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '18px',
         }}
       >
-        <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 800, color: 'var(--itunda-white)', textAlign: 'left' }}>itunda</span>
-        <span style={{ width: '34px', height: '26px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.25)', alignSelf: 'flex-start' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 800, color: 'var(--itunda-white)', textAlign: 'left' }}>itunda</span>
+          <CardContactlessGlyph size={18} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <BankCardChip size={30} />
+          {/* Fully masked -- no card is issued yet, so there is no real last4 to
+              show. A real bank app shows this same all-dots placeholder before
+              issuance rather than a fabricated number. */}
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 600, color: 'rgba(255,255,255,0.75)', letterSpacing: '1px' }}>•••• •••• •••• ••••</span>
+        </div>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.3 }}>
@@ -21825,12 +21872,18 @@ function CardView() {
         </div>
         <div
           style={{
-            width: '64px', height: '40px', borderRadius: '8px', flexShrink: 0,
+            width: '72px', height: '46px', borderRadius: '8px', flexShrink: 0, position: 'relative', overflow: 'hidden',
             background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-indigo), #1B64DA)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '6px',
           }}
         >
-          {card.frozen && <LockGlyph size={16} color="#fff" />}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)' }} />
+          <BankCardChip size={16} />
+          {card.frozen ? (
+            <LockGlyph size={14} color="#fff" style={{ alignSelf: 'flex-end' }} />
+          ) : (
+            <CardContactlessGlyph size={12} />
+          )}
         </div>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
