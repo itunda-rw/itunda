@@ -255,7 +255,7 @@ private struct RidePassengerContent: View {
                                     IdsTextField("Longitude", text: $stop.lng, keyboardType: .decimalPad)
                                 }
                             }
-                            .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            .padding(10).background(IDS.Colors.card).cornerRadius(10)
                         }
                         if stops.count < 3 {
                             Button("+ Add a stop") { stops.append(RideStopInput()) }
@@ -270,7 +270,7 @@ private struct RidePassengerContent: View {
                         }
                         .disabled(requesting || locationFetcher.coordinate == nil || dropoffAddress.isEmpty)
                     }
-                    .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    .padding(16).background(IDS.Colors.card).cornerRadius(12)
                     .onChange(of: locationFetcher.coordinate?.latitude) { _ in
                         if locationFetcher.coordinate != nil { pickupAddress = "Current location" }
                     }
@@ -484,7 +484,7 @@ private struct RideDriverContent: View {
                         }
                         .disabled(registering)
                     }
-                    .frame(maxWidth: .infinity).padding(24).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    .frame(maxWidth: .infinity).padding(24).background(IDS.Colors.card).cornerRadius(12)
                 } else if let current = driver {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -503,7 +503,7 @@ private struct RideDriverContent: View {
                                 .background(current.available ? Color.red : IDS.Colors.brand).cornerRadius(10)
                         }
                     }
-                    .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    .padding(16).background(IDS.Colors.card).cornerRadius(12)
 
                     // Real Uber "Destination Filter" -- see RideDriverDto.destinationLatitude's
                     // own doc comment.
@@ -537,7 +537,7 @@ private struct RideDriverContent: View {
                             .disabled(destinationBusy || Double(destinationLat) == nil || Double(destinationLng) == nil)
                         }
                     }
-                    .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    .padding(16).background(IDS.Colors.card).cornerRadius(12)
 
                     // Real Uber Driver-style earnings report -- see NetworkClient's own
                     // getMyRideEarnings doc comment. Hidden entirely for a fresh driver
@@ -562,7 +562,7 @@ private struct RideDriverContent: View {
                                 }
                             }
                         }
-                        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                        .padding(16).background(IDS.Colors.card).cornerRadius(12)
                     }
 
                     if !activeDriverTrips.isEmpty {
