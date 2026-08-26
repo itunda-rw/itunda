@@ -4,7 +4,8 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Gift as GiftIcon, HandCoins, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, RefreshCw, Settings, ShoppingBag, SmilePlus, Sprout, Store, Timer, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Wifi, Zap } from 'lucide-react';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
+import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
@@ -13,7 +14,7 @@ import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { FlameGlyph, PackageGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, BellGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, WrenchGlyph, PriceDropGlyph } from './icons/ItundaFaceMisc';
-import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
+import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap, PayHubOtherServicesRail, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { PinSetupCard } from './PinSetupCard';
 import { recordEvent } from './lib/analytics';
@@ -1334,7 +1335,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           existing icon set, nothing new invented for these rows beyond the icons
           imported at the top of this file (all real lucide-react icons already a
           dependency here). */}
-      <PayOtherServicesRail onCardsClick={onNavigateToCard} onNavigateToTab={onNavigateToTab} />
+      <PayHubOtherServicesRail onCardsClick={onNavigateToCard} onNavigateToTab={onNavigateToTab} />
       <QuickActions onCardsClick={onNavigateToCard} />
       {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
       {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
@@ -1356,46 +1357,6 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       </div>
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <GetHelpLinks onOpenSupport={() => onNavigateToTab('SUPPORT')} />
-    </div>
-  );
-}
-
-// Real "list of other pay services" (2026-08-26 redesign), the exact same flat-row
-// shape itunda Bank hub's own CooperativeSavingsRail uses (icon-in-tinted-square +
-// title + subtitle inside .itunda-flat-section) -- see PayHub's own doc comment
-// above for the full account. Each row scrolls smoothly to its own already-real
-// section rendered further down this same page, the same "rail links to real
-// content, doesn't duplicate it" shape CooperativeSavingsRail itself uses.
-function PayOtherServicesRail({ onCardsClick, onNavigateToTab }: { onCardsClick: () => void; onNavigateToTab: (tab: Tab) => void }) {
-  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; onClick: () => void }[] = [
-    { key: 'cards', title: 'Cards', subtitle: 'Manage your itunda cards', icon: <AccountIcon size={20} color="#8A2BE2" />, tint: 'rgba(138, 43, 226, 0.12)', onClick: onCardsClick },
-    { key: 'request_money', title: 'Request money', subtitle: 'Ask someone to send you a specific amount', icon: <HandCoins size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', onClick: () => document.getElementById('pay-request-money-section')?.scrollIntoView({ behavior: 'smooth' }) },
-    { key: 'scheduled', title: 'Scheduled transfers', subtitle: 'Send on a future date, one time', icon: <Clock size={20} color="var(--itunda-indigo)" />, tint: 'var(--itunda-indigo-light)', onClick: () => document.getElementById('pay-scheduled-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
-    { key: 'delayed', title: 'Delayed transfers', subtitle: 'A short grace period to cancel before it sends', icon: <Timer size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', onClick: () => document.getElementById('pay-delayed-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
-    { key: 'auto_topup', title: 'Auto top-up', subtitle: 'Automatically refill from a linked account', icon: <RefreshCw size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', onClick: () => document.getElementById('pay-auto-topup-section')?.scrollIntoView({ behavior: 'smooth' }) },
-    { key: 'rewards', title: 'Rewards', subtitle: 'Cashback and reward tasks', icon: <GiftIcon size={20} color="#E0507A" />, tint: 'rgba(224, 80, 122, 0.12)', onClick: () => onNavigateToTab('REWARDS') },
-  ];
-
-  return (
-    <div className="itunda-flat-section">
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-grey-900)' }}>Other pay services</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
-        {items.map((item) => (
-          <button
-            key={item.key}
-            onClick={item.onClick}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
-          >
-            <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {item.icon}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>{item.title}</div>
-              <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</div>
-            </div>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -6506,36 +6467,6 @@ function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
 // the accountId MyPaymentCodeCard's own code is generated against, matching the
 // real "swipe to choose what you pay with" KakaoPay behavior. CSS scroll-snap is
 // the web equivalent of Android's HorizontalPager -- no extra dependency needed.
-// Real EMV chip + tap-to-pay silhouette (2026-08-26, direct user instruction: "all
-// cards designs should resemble real card") -- shared by every card-shaped visual
-// below (AccountCardCarousel's account tiles, CardExplainer's pre-issuance mockup,
-// CardView's issued-card thumbnail) so the metal-chip look and contactless mark stay
-// one real component, not three local forks. Gold gradient + a contact-pad grid is
-// the standard flat-icon convention for "this is a chip card" every major bank app
-// uses; the rotated `Wifi` glyph is the same widely-used tap-to-pay substitute (no
-// card network's actual trademarked mark is reproduced).
-function BankCardChip({ size = 32 }: { size?: number }) {
-  const height = Math.round(size * 0.76);
-  return (
-    <div
-      style={{
-        width: `${size}px`, height: `${height}px`, borderRadius: '5px', position: 'relative', overflow: 'hidden', flexShrink: 0,
-        background: 'linear-gradient(135deg, #F6E7B4 0%, #D9B36C 55%, #C89A4E 100%)',
-        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.18)',
-      }}
-    >
-      <div style={{ position: 'absolute', top: 0, bottom: 0, left: '50%', width: '1px', backgroundColor: 'rgba(0,0,0,0.22)' }} />
-      <div style={{ position: 'absolute', top: 0, bottom: 0, left: '25%', width: '1px', backgroundColor: 'rgba(0,0,0,0.14)' }} />
-      <div style={{ position: 'absolute', top: 0, bottom: 0, left: '75%', width: '1px', backgroundColor: 'rgba(0,0,0,0.14)' }} />
-      <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '1px', backgroundColor: 'rgba(0,0,0,0.22)' }} />
-    </div>
-  );
-}
-
-function CardContactlessGlyph({ size = 18, color = 'rgba(255,255,255,0.85)' }: { size?: number; color?: string }) {
-  return <Wifi size={size} color={color} style={{ transform: 'rotate(90deg)' }} aria-hidden="true" />;
-}
-
 function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accounts: Account[]; selectedAccountId: string | null; onSelect: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
 

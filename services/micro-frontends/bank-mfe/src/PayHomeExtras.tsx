@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Navigation, ScanFace } from 'lucide-react';
+import { useEffect, useRef, type ReactElement } from 'react';
+import { Clock, Gift as GiftIcon, HandCoins, Navigation, RefreshCw, ScanFace, Timer, Wallet as AccountIcon } from 'lucide-react';
 import { IconChevronRight } from './icons/ItundaIcons';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -193,6 +193,52 @@ export function GetHelpLinks({ onOpenSupport }: { onOpenSupport: () => void }) {
       <button onClick={onOpenSupport} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 4px', fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
         Send feedback
       </button>
+    </div>
+  );
+}
+
+// Real "list of other pay services" (2026-08-26 redesign, direct user instruction:
+// "list of other pay services as itunda bank hub does"), the exact same flat-row
+// shape itunda Bank hub's own CooperativeSavingsRail uses (icon-in-tinted-square +
+// title + subtitle inside .itunda-flat-section) -- see PayHub's own doc comment in
+// BankDashboard.tsx for the full account. Split out here (not left in
+// BankDashboard.tsx) to stay under this file's own file-size-lint baseline, same
+// convention this file's own doc comment above already established. Each row scrolls
+// smoothly to its own already-real section rendered further down PayHub, the same
+// "rail links to real content, doesn't duplicate it" shape CooperativeSavingsRail
+// itself uses. `onNavigateToTab` is narrowed to the one literal tab this rail ever
+// navigates to, rather than importing BankDashboard's full `Tab` union back into this
+// file (which is imported BY BankDashboard.tsx -- that would be circular).
+export function PayHubOtherServicesRail({ onCardsClick, onNavigateToTab }: { onCardsClick: () => void; onNavigateToTab: (tab: 'REWARDS') => void }) {
+  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; onClick: () => void }[] = [
+    { key: 'cards', title: 'Cards', subtitle: 'Manage your itunda cards', icon: <AccountIcon size={20} color="#8A2BE2" />, tint: 'rgba(138, 43, 226, 0.12)', onClick: onCardsClick },
+    { key: 'request_money', title: 'Request money', subtitle: 'Ask someone to send you a specific amount', icon: <HandCoins size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', onClick: () => document.getElementById('pay-request-money-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'scheduled', title: 'Scheduled transfers', subtitle: 'Send on a future date, one time', icon: <Clock size={20} color="var(--itunda-indigo)" />, tint: 'var(--itunda-indigo-light)', onClick: () => document.getElementById('pay-scheduled-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'delayed', title: 'Delayed transfers', subtitle: 'A short grace period to cancel before it sends', icon: <Timer size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', onClick: () => document.getElementById('pay-delayed-transfers-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'auto_topup', title: 'Auto top-up', subtitle: 'Automatically refill from a linked account', icon: <RefreshCw size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', onClick: () => document.getElementById('pay-auto-topup-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { key: 'rewards', title: 'Rewards', subtitle: 'Cashback and reward tasks', icon: <GiftIcon size={20} color="#E0507A" />, tint: 'rgba(224, 80, 122, 0.12)', onClick: () => onNavigateToTab('REWARDS') },
+  ];
+
+  return (
+    <div className="itunda-flat-section">
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, margin: 0, color: 'var(--itunda-grey-900)' }}>Other pay services</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+        {items.map((item) => (
+          <button
+            key={item.key}
+            onClick={item.onClick}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
+          >
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {item.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>{item.title}</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</div>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
