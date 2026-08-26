@@ -28,6 +28,11 @@ struct CreateWeeklySavingsPlanView: View {
     let onCreated: () -> Void
     let onCancel: () -> Void
 
+    // Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13, 2026-08-26) --
+    // see CreateGrow31SavingsPlanView's identical shape for why this is internal state
+    // on the same view rather than a second .sheet.
+    @State private var showingIntro = true
+
     @State private var name = ""
     @State private var baseWeeklyAmount = ""
     @State private var escalationRate: Double = 0.10
@@ -36,11 +41,19 @@ struct CreateWeeklySavingsPlanView: View {
 
     var body: some View {
         NavigationView {
+            if showingIntro {
+                WeeklySavingsIntroContent(onContinue: { showingIntro = false })
+                    .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+                    .navigationTitle("26-week plan")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel", action: onCancel)
+                        }
+                    }
+            } else {
             FixedBottomCTA {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("The amount steps up automatically every \(WeeklySavingsConstants.escalationStepWeeks) weeks by whatever rate you pick below, and holding an unbroken streak all 26 weeks to maturity earns a bonus rate on top of the base rate -- miss one week and the bonus is forfeited for good.")
-                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Plan name").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
                         TextField("e.g. New laptop", text: $name)
@@ -88,8 +101,9 @@ struct CreateWeeklySavingsPlanView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
+                    Button("Back", action: { showingIntro = true })
                 }
+            }
             }
         }
     }

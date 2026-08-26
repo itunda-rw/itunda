@@ -13,6 +13,14 @@ struct CreateGrow31SavingsPlanView: View {
     let onCreated: () -> Void
     let onCancel: () -> Void
 
+    // Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13, 2026-08-26) --
+    // porting the same pattern already proven on web/Android. Kept as internal state on
+    // this same view (not a second .sheet) rather than chaining two sheet
+    // presentations, which is fragile in SwiftUI when the trigger changes mid-
+    // presentation -- matches this view's own existing "one sheet, internal step
+    // state" shape.
+    @State private var showingIntro = true
+
     @State private var name = ""
     @State private var dailyAmount = ""
     @State private var error: String?
@@ -20,42 +28,51 @@ struct CreateGrow31SavingsPlanView: View {
 
     var body: some View {
         NavigationView {
-            FixedBottomCTA {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Pick a small amount you can realistically save every single day for \(Grow31SavingsConstants.termDays) days. Miss a day and your streak resets -- but your longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.")
-                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Plan name").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
-                        TextField("e.g. New laptop", text: $name)
-                            .padding(10)
-                            .background(IDS.Colors.chipBackground)
-                            .cornerRadius(10)
+            if showingIntro {
+                Grow31IntroContent(onContinue: { showingIntro = false })
+                    .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+                    .navigationTitle("31-day plan")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel", action: onCancel)
+                        }
                     }
+            } else {
+                FixedBottomCTA {
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Plan name").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                            TextField("e.g. New laptop", text: $name)
+                                .padding(10)
+                                .background(IDS.Colors.chipBackground)
+                                .cornerRadius(10)
+                        }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Daily amount (RWF)").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
-                        TextField("e.g. 500", text: $dailyAmount)
-                            .keyboardType(.numberPad)
-                            .padding(10)
-                            .background(IDS.Colors.chipBackground)
-                            .cornerRadius(10)
-                    }
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Daily amount (RWF)").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                            TextField("e.g. 500", text: $dailyAmount)
+                                .keyboardType(.numberPad)
+                                .padding(10)
+                                .background(IDS.Colors.chipBackground)
+                                .cornerRadius(10)
+                        }
 
-                    if let error {
-                        Text(error).font(.caption).foregroundColor(.red)
+                        if let error {
+                            Text(error).font(.caption).foregroundColor(.red)
+                        }
                     }
+                    .padding()
+                } cta: {
+                    IdsButton(text: submitting ? "Working…" : "Start 31-day plan", isEnabled: !submitting, action: create)
                 }
-                .padding()
-            } cta: {
-                IdsButton(text: submitting ? "Working…" : "Start 31-day plan", isEnabled: !submitting, action: create)
-            }
-            .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-            .navigationTitle("New 31-day plan")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
+                .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+                .navigationTitle("New 31-day plan")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Back", action: { showingIntro = true })
+                    }
                 }
             }
         }
