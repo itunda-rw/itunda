@@ -23300,7 +23300,7 @@ function Row({ label, value }: { label: string; value: string }) {
 // CreateIkiminaForm's own identical doc comment above for the full real sourcing.
 // This card asked 3 real decisions at once (plan name, weekly amount, escalation
 // rate) -- rebuilt as a real step flow with the real ProgressStepper indicator.
-type CreateWeeklySavingsPlanStep = 'closed' | 'name' | 'amount' | 'escalation';
+type CreateWeeklySavingsPlanStep = 'closed' | 'intro' | 'name' | 'amount' | 'escalation';
 const WEEKLY_SAVINGS_STEP_LABELS = ['Name', 'Amount', 'Escalation'];
 
 function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
@@ -23325,7 +23325,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setStep('name')}
+        onClick={() => setStep('intro')}
       >
         <IconAdd size={16} /> New 26-week savings plan
       </button>
@@ -23347,21 +23347,59 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  // Real Toss product-intro pattern (rule 13) -- see OpenForeignAccountFlow and
+  // CreateGrow31SavingsPlanForm's own 'intro' step, the first two applications. Not
+  // counted in WEEKLY_SAVINGS_STEP_LABELS's progress -- it's a preamble, not a wizard
+  // step. WeeklySavings' bonus is stricter than Grow31's: Grow31 locks in a partial
+  // bonus for the longest streak reached even after a break, but WeeklySavings'
+  // bonus is all-or-nothing (WeeklySavingsService.matures: `plan.baseRate + (if
+  // (plan.streakBroken) 0.0 else plan.bonusRate)`) -- one missed week, or any early
+  // withdrawal, forfeits it permanently. Worth stating plainly rather than blurring
+  // the two products' real mechanics together.
+  if (step === 'intro') {
+    return (
+      <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={() => setStep('name')}>Continue</IdsButton>}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, maxWidth: '260px' }}>A weekly habit that grows on its own</h2>
+          <button type="button" aria-label="Close" onClick={reset} style={{ background: 'none', border: 'none', display: 'flex', padding: '4px' }}>
+            <IconClose size={22} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>A real 26-week term deposit</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              Like KakaoBank's 26주적금: your weekly amount auto-debits from your main account every week for {WEEKLY_SAVINGS_TERM_WEEKS} weeks — nothing to top up manually.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Base 5% + a 3% bonus for staying unbroken</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              The 3% bonus is all-or-nothing: miss even one week's installment, or withdraw early, and the bonus is forfeited for good — unlike a 31-day plan's partial-credit streak, this one doesn't have a middle ground.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Your weekly amount can step up automatically</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              Choose an escalation rate and your weekly amount compounds up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks — start small and build up, instead of committing to one fixed amount for all 26 weeks.
+            </p>
+          </div>
+        </div>
+      </FullScreenFlow>
+    );
+  }
+
   if (step === 'name') {
     return (
       <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}>
         <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
           <ProgressStepper activeStepIndex={0} steps={WEEKLY_SAVINGS_STEP_LABELS} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What are you saving toward?</h3>
-            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <IconClose size={20} color="var(--itunda-grey-500)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" aria-label="Back" onClick={() => setStep('intro')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+              <IconBack size={20} color="var(--itunda-grey-700)" />
             </button>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>What are you saving toward?</h3>
           </div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-            A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main account
-            and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
-          </p>
           <input
             type="text" required autoFocus placeholder="e.g. New Laptop Fund" value={name} onChange={(e) => setName(e.target.value)}
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
