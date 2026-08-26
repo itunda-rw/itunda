@@ -29,56 +29,65 @@ struct HomeTabContent: View {
                 if bankViewModel.isOffline {
                     HStack(spacing: 10) {
                         Image(systemName: "wifi.slash")
-                            .foregroundColor(.red)
+                            .foregroundColor(IDS.Colors.danger)
                         Text("You are offline. Showing limited, non-live data.")
                             .font(scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
-                            .foregroundColor(.red)
+                            .foregroundColor(IDS.Colors.danger)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.red.opacity(0.12))
+                    .background(IDS.Colors.dangerTint)
                     .cornerRadius(14)
                     .padding(.horizontal, 24)
                 }
+                // Real flat-design fix (docs/UI_UX_GUIDELINES.md rule 10, "Flat over
+                // card-heavy") -- this was the one screen every user sees first still
+                // boxing its rows in a card, the same gap found on web's identical
+                // DiscoverSection the same full-app audit pass caught. Rows now sit
+                // directly on the page background with a divider between them,
+                // matching every other already-flattened list in this codebase.
                 if !bankViewModel.discoverRows.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Discover")
                             .font(scaledFont(size: 20, weight: .bold, relativeTo: .title3))
-                            .foregroundColor(.primary)
-                        ForEach(bankViewModel.discoverRows) { row in
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "sparkles")
-                                    .foregroundColor(.accentIndigo)
-                                    .frame(width: 36, height: 36)
-                                    .background(Color.accentIndigo.opacity(0.15))
-                                    .clipShape(Circle())
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(row.isNew ? "\(row.title) · NEW" : row.title)
-                                        .font(scaledFont(size: 15, weight: .semibold, relativeTo: .body))
-                                        .foregroundColor(.primary)
-                                    Text(row.subtitle)
-                                        .font(scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
-                                        .foregroundColor(.secondary)
+                            .foregroundColor(IDS.Colors.textPrimary)
+                        VStack(spacing: 0) {
+                            ForEach(bankViewModel.discoverRows) { row in
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: "sparkles")
+                                        .foregroundColor(IDS.Colors.brand)
+                                        .frame(width: 36, height: 36)
+                                        .background(IDS.Colors.chipBackground)
+                                        .clipShape(Circle())
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(row.isNew ? "\(row.title) · NEW" : row.title)
+                                            .font(scaledFont(size: 15, weight: .semibold, relativeTo: .body))
+                                            .foregroundColor(IDS.Colors.textPrimary)
+                                        Text(row.subtitle)
+                                            .font(scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
+                                            .foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    if let badge = row.badge {
+                                        Text(badge)
+                                            .font(scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
+                                            .foregroundColor(IDS.Colors.textSecondary)
+                                    }
                                 }
-                                Spacer()
-                                if let badge = row.badge {
-                                    Text(badge)
-                                        .font(scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
-                                        .foregroundColor(.secondary)
+                                .padding(.vertical, 10)
+                                if row.id != bankViewModel.discoverRows.last?.id {
+                                    Divider().background(IDS.Colors.divider)
                                 }
                             }
                         }
                     }
-                    .padding(16)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(16)
                     .padding(.horizontal, 24)
                 }
             }
             .padding(.top, 8)
             .padding(.bottom, 32)
         }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+        .background(IDS.Colors.backgroundPrimary.edgesIgnoringSafeArea(.all))
         .task { await bankViewModel.load() }
         // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not
         // the mirror" strategy memo, recommendation (ii), and
@@ -103,9 +112,9 @@ struct HeaderTitle: View {
         HStack {
             Text(title)
                 .font(scaledFont(size: 28, weight: .bold, relativeTo: .largeTitle))
-                .foregroundColor(.primary)
+                .foregroundColor(IDS.Colors.textPrimary)
             Spacer()
-            IDS.Icons.bell(size: 22, color: .secondary)
+            IDS.Icons.bell(size: 22, color: IDS.Colors.textSecondary)
         }
         .padding(.horizontal, 24)
         .padding(.top, 16)
@@ -124,21 +133,21 @@ struct TransactionRow: View {
     var body: some View {
         let content = HStack {
             Circle()
-                .fill(Color.secondary.opacity(0.2))
+                .fill(IDS.Colors.chipBackground)
                 .frame(width: 40, height: 40)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(scaledFont(size: 16, weight: .semibold, relativeTo: .body))
-                    .foregroundColor(.primary)
+                    .foregroundColor(IDS.Colors.textPrimary)
                 Text(date)
                     .font(scaledFont(size: 14, weight: .regular, relativeTo: .footnote))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(IDS.Colors.textSecondary)
             }
             Spacer()
             Text(amount)
                 .font(scaledFont(size: 16, weight: .bold, relativeTo: .body))
-                .foregroundColor(isNegative ? .primary : .blue)
+                .foregroundColor(isNegative ? IDS.Colors.textPrimary : IDS.Colors.brand)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 12)
