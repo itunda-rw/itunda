@@ -41,38 +41,6 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
-class InvalidRideLocationException(message: String) : RuntimeException(message)
-class RideSelfTripException(message: String) : RuntimeException(message)
-class RideTripNotFoundException(message: String) : RuntimeException(message)
-class RideTripAlreadyClaimedException(message: String) : RuntimeException(message)
-class RideDriverAlreadyOnTripException(message: String) : RuntimeException(message)
-class RideDriverNotAvailableException(message: String) : RuntimeException(message)
-class InvalidRideTripStatusTransitionException(message: String) : RuntimeException(message)
-class RideNoActiveOfferException(message: String) : RuntimeException(message)
-class InvalidScheduledRideTimeException(message: String) : RuntimeException(message)
-class RideTooManyStopsException(message: String) : RuntimeException(message)
-class RideNoRemainingStopsException(message: String) : RuntimeException(message)
-class RidePinMismatchException(message: String) : RuntimeException(message)
-class InvalidEarningsRangeException(message: String) : RuntimeException(message)
-class RideTripNotCompletedException(message: String) : RuntimeException(message)
-class RideTripAlreadyTippedException(message: String) : RuntimeException(message)
-class RideTripTipWindowExpiredException(message: String) : RuntimeException(message)
-class InvalidTipAmountException(message: String) : RuntimeException(message)
-
-// Real Kakao T-style multi-stop waypoint input (item 214) -- see RideTripStop.kt's own
-// doc comment.
-data class RideStopInput(val address: String, val latitude: Double, val longitude: Double)
-
-// Real Uber Driver app-style earnings report (2026-08-16) -- see
-// RideTripService.getMyEarnings's own doc comment.
-data class DriverEarningsDay(
-    val date: java.time.LocalDate,
-    val tripCount: Int,
-    val grossFare: BigDecimal,
-    val platformFees: BigDecimal,
-    val netEarnings: BigDecimal,
-)
-
 /**
  * Real Kakao T-style ride-hailing (2026-07-26) -- closes `docs/DESIGN_REFERENCES.md`'s
  * own remaining round-2 candidate. Sourced directly from Kakao Mobility's own official
@@ -201,20 +169,8 @@ class RideTripService(
         rideDriverRepository.findByUserId(userId)
             ?: throw RideDriverNotRegisteredException("This account is not registered as a driver")
 
-    /**
-     * Real distance+fare calculation, extracted from `requestTrip` (2026-08-24) so a
-     * real fare preview (`estimateFare`) can never drift from what a real request
-     * actually charges -- same OSRM `routeThrough` call with the identical never-fail
-     * haversine fallback, same formula. Pure computation, no DB/ledger access, so it's
-     * safe to call from a read-only preview path with no side effects at all.
-     */
-    private fun calculateFare(routePoints: List<Pair<Double, Double>>): Pair<BigDecimal, BigDecimal> {
-        val totalDistanceKm = osrmRoutingClient.routeThrough(routePoints, TravelMode.DRIVING)?.distanceKm
-            ?: routePoints.zipWithNext().sumOf { (a, b) -> GeoUtils.haversineKm(a.first, a.second, b.first, b.second) }
-        val distanceKm = BigDecimal(totalDistanceKm).setScale(3, RoundingMode.HALF_UP)
-        val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
-        return distanceKm to fare
-    }
+    private fun calculateFare(routePoints: List<Pair<Double, Double>>): Pair<BigDecimal, BigDecimal> =
+        calculateRideFare(osrmRoutingClient, routePoints, baseFare, perKmRate, minFare)
 
     // Real Uber "Upfront Fare" simplification (2026-08-24, uber.com/gb/en/blog/
     // understanding-your-upfront-fare-when-it-can-change-and-what-extra-fees-may-apply --
@@ -399,26 +355,11 @@ class RideTripService(
     ): List<Pair<RideDriver, Double>> {
         val actuallyBusy = busyDriverIds
             ?: rideTripRepository.findDistinctDriverIdsByStatusIn(listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS)).toSet()
-        return (candidatePool ?: rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull())
-            .filterNot { it.userId in excludedUserIds }
-            .filterNot { it.id in actuallyBusy }
-            .filterNot { driver ->
-                driver.totalOffers >= MIN_OFFERS_FOR_ACCEPTANCE_FILTER &&
-                    BigDecimal(driver.totalAccepted).divide(BigDecimal(driver.totalOffers), 4, RoundingMode.HALF_UP) < MIN_ACCEPTANCE_RATE
-            }
-            .filterNot { driver ->
-                val destLat = driver.destinationLatitude
-                val destLng = driver.destinationLongitude
-                if (destLat == null || destLng == null) {
-                    false
-                } else {
-                    val distanceFromCurrent = GeoUtils.haversineKm(driver.currentLatitude!!, driver.currentLongitude!!, destLat, destLng)
-                    val distanceFromDropoff = GeoUtils.haversineKm(dropoffLat, dropoffLng, destLat, destLng)
-                    distanceFromDropoff >= distanceFromCurrent
-                }
-            }
-            .map { driver -> driver to GeoUtils.haversineKm(pickupLat, pickupLng, driver.currentLatitude!!, driver.currentLongitude!!) }
-            .sortedBy { (_, distanceKm) -> distanceKm }
+        val candidates = candidatePool ?: rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+        return rankRideDriverCandidates(
+            pickupLat, pickupLng, dropoffLat, dropoffLng, excludedUserIds, candidates, actuallyBusy,
+            MIN_OFFERS_FOR_ACCEPTANCE_FILTER, MIN_ACCEPTANCE_RATE,
+        )
     }
 
     private fun dispatchToNextDriver(trip: RideTrip, candidatePool: List<RideDriver>? = null, busyDriverIds: Set<String>? = null) {
