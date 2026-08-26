@@ -2092,6 +2092,26 @@ data class ChargeCardResponse(val success: Boolean, val transaction: CardTransac
 // DebitCardDesign whitelist real-400s anything else.
 data class IssueCardRequest(val design: String)
 
+// Real Kigali public-transit stored-value balance (2026-08-27) -- see the backend's
+// TransitBalance.kt doc comment for the full sourced account of Kigali's real Tap&Go
+// fare system (AC Group Ltd, Kigali Bus Services, Royal Express) and the honest
+// boundary this simulates: itunda has no real partnership with any of them, so this is
+// never named "Tap&Go" anywhere in this client.
+data class TransitBalanceDto(val balance: java.math.BigDecimal, val createdAt: String)
+data class TransitBalanceResponse(val success: Boolean, val balance: TransitBalanceDto)
+data class TransitTripDto(
+    val id: String,
+    val userId: String,
+    val operator: String,
+    val fare: java.math.BigDecimal,
+    val ledgerTransactionId: String,
+    val createdAt: String,
+)
+data class TransitTripsResponse(val success: Boolean, val trips: List<TransitTripDto>, val totalElements: Long, val totalPages: Int)
+data class TopUpTransitRequest(val amount: java.math.BigDecimal)
+data class TapFareRequest(val operator: String, val fare: java.math.BigDecimal)
+data class TapFareResponse(val success: Boolean, val trip: TransitTripDto, val balance: TransitBalanceDto)
+
 // Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere; the
 // "Support" section in this app was five static rows (FAQ/Live chat/...) with no
@@ -3933,6 +3953,18 @@ interface ApiService {
 
     @POST("api/v1/card/charge")
     suspend fun chargeCard(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ChargeCardRequest): ChargeCardResponse
+
+    @GET("api/v1/transit/balance")
+    suspend fun getMyTransitBalance(): TransitBalanceResponse
+
+    @GET("api/v1/transit/trips")
+    suspend fun getTransitTrips(@Query("page") page: Int = 0, @Query("size") size: Int = 20): TransitTripsResponse
+
+    @POST("api/v1/transit/topup")
+    suspend fun topUpTransit(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TopUpTransitRequest): TransitBalanceResponse
+
+    @POST("api/v1/transit/tap")
+    suspend fun tapTransitFare(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TapFareRequest): TapFareResponse
 
     @POST("api/v1/support/tickets")
     suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse

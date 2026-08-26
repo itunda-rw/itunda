@@ -473,6 +473,9 @@ fun ItundaAppScreen(
         // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
         // bank-mfe shipped first; same pattern.
         var showCard by rememberSaveable { mutableStateOf(false) }
+        // Real Kigali public-transit stored-value balance (2026-08-27) -- bank-mfe
+        // shipped first; same pattern.
+        var showTransit by rememberSaveable { mutableStateOf(false) }
         var showSpending by rememberSaveable { mutableStateOf(false) }
         var showRides by rememberSaveable { mutableStateOf(false) }
         // Real Kakao T 대리운전 (designated driver, item 221) -- bank-mfe shipped first;
@@ -1252,6 +1255,13 @@ fun ItundaAppScreen(
             CardScreen(onBack = { showCard = false })
             return@IdsTheme
         }
+        // Real Kigali public-transit stored-value balance (2026-08-27) -- see
+        // TransitScreen.kt's own doc comment for the full sourced account.
+        if (showTransit) {
+            BackHandler { showTransit = false }
+            TransitScreen(onBack = { showTransit = false })
+            return@IdsTheme
+        }
         // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 104)
         // -- first Android client for this feature. Same pattern.
         if (showIkimina) {
@@ -1540,6 +1550,7 @@ fun ItundaAppScreen(
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
                             onOpenYouthAccount = { showYouthAccount = true },
                             onOpenCard = { showCard = true },
+                            onOpenTransit = { showTransit = true },
                             onOpenGroupAccounts = { showGroupAccounts = true },
                             onOpenIkimina = { showIkimina = true },
                             onOpenSacco = { showSacco = true },
@@ -3694,6 +3705,7 @@ private fun MenuScreen(
     onOpenUpfrontDeposit: () -> Unit = {},
     onOpenYouthAccount: () -> Unit = {},
     onOpenCard: () -> Unit = {},
+    onOpenTransit: () -> Unit = {},
     onOpenGroupAccounts: () -> Unit = {},
     onOpenIkimina: () -> Unit = {},
     onOpenSacco: () -> Unit = {},
@@ -3791,6 +3803,9 @@ private fun MenuScreen(
         FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenOverview),
         FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenOverview),
         FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", glyph = { ObjectCreditCard(size = 28.dp) }, onClick = onOpenCard),
+        // Real Kigali public-transit stored-value balance (2026-08-27) -- see
+        // TransitScreen.kt's own doc comment for the full sourced account.
+        FlatRow("Transit", subtitle = "Top up and tap to pay your real Kigali bus fare", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenTransit),
         FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", glyph = { BarChartGlyph(size = 28.dp) }, onClick = onOpenSpending),
         FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
         FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", glyph = { FamilyGlyph(size = 28.dp) }, onClick = onOpenFamilyLink),
