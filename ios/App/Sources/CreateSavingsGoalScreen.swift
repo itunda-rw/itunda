@@ -8,10 +8,12 @@ import CoreNetwork
 // MainViewModel.createSavingsGoal and web's own CreateGoalForm (BankDashboard.tsx),
 // both real and already-shipped. Self-contained single-screen form, matching
 // CreateWeeklySavingsPlanView's own established pattern (WeeklySavingsScreenView.swift)
-// rather than web's newer multi-step ProgressStepper wizard -- iOS has no
-// ProgressStepper/FixedBottomCTA port yet (a separate, bigger, not-yet-started gap,
-// see project_itunda_product_feel roadmap item 10), so this matches the CURRENT real
-// iOS convention for a "create X" screen rather than inventing a one-off wizard.
+// rather than web's newer multi-step ProgressStepper wizard.
+//
+// FixedBottomCTA applied 2026-08-26 (roadmap item 10, now closed -- see
+// FixedBottomCTA's own doc comment in Components.swift): the "Create goal" button
+// used to sit inline at the end of the scrolling form, invisible until scrolled all
+// the way down. Now pinned below the scroll area, matching web's FullScreenFlow.
 struct CreateSavingsGoalScreen: View {
     let onCreated: () -> Void
     let onCancel: () -> Void
@@ -33,7 +35,7 @@ struct CreateSavingsGoalScreen: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
+            FixedBottomCTA {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("What are you saving for?").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
@@ -73,18 +75,10 @@ struct CreateSavingsGoalScreen: View {
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
-
-                    Button(action: create) {
-                        Text(submitting ? "Creating…" : "Create goal")
-                            .foregroundColor(.white).bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(IDS.Colors.brand)
-                            .cornerRadius(12)
-                    }
-                    .disabled(submitting)
                 }
                 .padding()
+            } cta: {
+                IdsButton(text: submitting ? "Creating…" : "Create goal", isEnabled: !submitting, action: create)
             }
             .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
             .navigationTitle("New savings goal")

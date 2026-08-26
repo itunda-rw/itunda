@@ -36,7 +36,7 @@ struct CreateWeeklySavingsPlanView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
+            FixedBottomCTA {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("The amount steps up automatically every \(WeeklySavingsConstants.escalationStepWeeks) weeks by whatever rate you pick below, and holding an unbroken streak all 26 weeks to maturity earns a bonus rate on top of the base rate -- miss one week and the bonus is forfeited for good.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -78,18 +78,10 @@ struct CreateWeeklySavingsPlanView: View {
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
-
-                    Button(action: create) {
-                        Text(submitting ? "Working…" : "Start 26-week plan")
-                            .foregroundColor(.white).bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(IDS.Colors.brand)
-                            .cornerRadius(12)
-                    }
-                    .disabled(submitting)
                 }
                 .padding()
+            } cta: {
+                IdsButton(text: submitting ? "Working…" : "Start 26-week plan", isEnabled: !submitting, action: create)
             }
             .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
             .navigationTitle("New 26-week plan")

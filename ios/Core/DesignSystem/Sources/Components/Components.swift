@@ -142,6 +142,47 @@ public struct IdsButton: View {
     }
 }
 
+// Real Toss FixedBottomCTA port (2026-08-26, direct user follow-up against real Toss
+// Bank product-intro screenshots: "toss always keep those confirm buttons in bottom
+// in many cases regardless of contents... when contents are many users needs to
+// scroll to see other contents they still see that buttons to click anytime they
+// make up their mind"). Web already has this exact pattern (`FullScreenFlow` in
+// BankDashboard.tsx: flex column, scrollable content in flex:1, a bottomCTA pinned
+// below with a border-top separator) and it was already the standard for every
+// multi-step Bank flow there -- iOS never got a port (a real, previously self-named
+// open gap, see CreateSavingsGoalScreen.swift's own doc comment and
+// project_itunda_product_feel roadmap item 10), so every iOS "create X" screen put
+// its primary button INLINE at the end of the scrolling form content instead, where
+// it's invisible until the user scrolls all the way down. This wraps that same
+// flex-column layout: `content` scrolls in the available space, `cta` stays fixed
+// below it with the same divider-colored top border and safe-area-aware bottom
+// padding as web's version.
+public struct FixedBottomCTA<Content: View, CTA: View>: View {
+    let content: Content
+    let cta: CTA
+
+    public init(@ViewBuilder content: () -> Content, @ViewBuilder cta: () -> CTA) {
+        self.content = content()
+        self.cta = cta()
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                content
+            }
+            VStack(spacing: 0) {
+                Divider().background(IDS.Colors.divider)
+                cta
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
+            }
+            .background(IDS.Colors.backgroundPrimary)
+        }
+    }
+}
+
 // Real fix, found live 2026-08-05 auditing the app (user flagged the whole app still
 // looks unstyled): this design system had IdsButton/IdsListRow but no text field at
 // all -- 51 files / 247 raw `TextField(...)` call sites (confirmed via a repo-wide

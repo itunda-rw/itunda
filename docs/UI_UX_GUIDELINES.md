@@ -30,6 +30,21 @@ real, shipped mechanism for this — a multi-step flow gets ONE full-screen page
 with ONE pinned `bottomCTA`, not a compound form as one busy page. Applied to `TransferFlow`
 and all four savings-creation flows already; use it for any new multi-field flow.
 
+**The pin is non-negotiable, not just for long forms (2026-08-26, direct user follow-up
+against real Toss Bank product-intro screenshots)**: "toss always keep those confirm
+buttons in bottom in many cases regardless of contents, so when contents are few it keep
+designs look good and when contents are many users needs to scroll to see other contents
+they still see that buttons to click anytime they make up their mind." The primary CTA
+stays fixed at the screen bottom independent of content length — short content doesn't
+mean "put the button inline instead," it's still pinned, just with empty space above it.
+iOS never had a port of this (`ContentView.swift`'s own scroll layout put the button
+inline at the end of the form, invisible until scrolled all the way down) — closed with
+`FixedBottomCTA` (`CoreDesignSystem`'s `Components.swift`), the same flex-column shape as
+`FullScreenFlow`: content scrolls in the available space, the CTA stays fixed below it
+with a divider-colored top border. Applied to all 3 iOS single-screen creation forms
+(`CreateSavingsGoalScreen`, `CreateGrow31SavingsPlanView`, `CreateWeeklySavingsPlanView`);
+use it for any new iOS form with a primary action, not just multi-step ones.
+
 ## 2. Explain why, don't just demand (Toss)
 
 Toss's real Product Principles name **Explain Why** ("never assume what's obvious to us is
@@ -144,6 +159,20 @@ element that duplicates an existing shared component's job, use the shared compo
 (`IdsButton`, `Badge`, `EmptyState`, etc.) instead. The 415+ existing raw buttons are a
 real, tracked, NOT-yet-fixed backlog — don't add to it, and prefer converting one when
 you're already touching that screen for another reason.
+
+**Real instance found 2026-08-26** (direct user follow-up comparing itunda's back button
+against real Toss Bank screenshots, "that back button style we need to adopt in
+ecosystems to replace that one we had that doesn't look good"): web's `IconBack` and the
+main consumer apps' `BackTopBar`/`IDS.Icons.back` already matched the clean, thin-stroke,
+no-background-chip Toss reference closely. The actual divergence was in the Rider
+mini-apps specifically (`android/riderapp`'s `DeliveryDetailScreen.kt`/
+`CommerceDeliveryDetailScreen.kt`, `ios/RiderApp`'s equivalents) — a local fork using each
+platform's stock icon (`Icons.Filled.ArrowBack` in a default Material `IconButton`;
+`Image(systemName: "chevron.left")`) instead of the shared component, exactly this rule's
+named failure mode. Fixed by switching both to the real shared component
+(`BackTopBar`/`IDS.Icons.back`). Check sibling apps (Rider/Merchant/Agent, on both
+platforms) specifically when auditing for this — they're the ones most likely to have
+grown their own local fork since they're not the primary app anyone reviews by default.
 
 ## 10. Flat over card-heavy (Toss, direct 2026-08-21 user correction)
 
@@ -298,3 +327,8 @@ just within the one screen it was written for.
    it's a genuinely separate module? → apply rule 10.
 9. Does this new name collide with an existing one anywhere in the ecosystem, or misuse
    "[itunda] Account" for something that isn't the identity layer? → apply rule 12.
+10. Does a form with a primary action let that button scroll away with the content
+    instead of staying pinned, or does a back/nav icon reach for a platform default
+    instead of the shared component? → apply rule 1's pin requirement / rule 9's
+    back-button instance. Check sibling mini-apps (Rider/Merchant/Agent) too, not just
+    the primary app.

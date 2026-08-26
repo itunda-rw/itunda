@@ -20,7 +20,7 @@ struct CreateGrow31SavingsPlanView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView {
+            FixedBottomCTA {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Pick a small amount you can realistically save every single day for \(Grow31SavingsConstants.termDays) days. Miss a day and your streak resets -- but your longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -45,18 +45,10 @@ struct CreateGrow31SavingsPlanView: View {
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
-
-                    Button(action: create) {
-                        Text(submitting ? "Working…" : "Start 31-day plan")
-                            .foregroundColor(.white).bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(IDS.Colors.brand)
-                            .cornerRadius(12)
-                    }
-                    .disabled(submitting)
                 }
                 .padding()
+            } cta: {
+                IdsButton(text: submitting ? "Working…" : "Start 31-day plan", isEnabled: !submitting, action: create)
             }
             .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
             .navigationTitle("New 31-day plan")
