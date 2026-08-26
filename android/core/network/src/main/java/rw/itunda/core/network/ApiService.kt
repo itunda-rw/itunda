@@ -2066,6 +2066,7 @@ data class CardDto(
     val monthlyLimit: java.math.BigDecimal,
     val frozen: Boolean,
     val issuedAt: String,
+    val design: String,
     val spentToday: java.math.BigDecimal,
     val spentThisMonth: java.math.BigDecimal,
     val remainingToday: java.math.BigDecimal,
@@ -2083,6 +2084,13 @@ data class CardTransactionsResponse(val success: Boolean, val transactions: List
 data class SetCardLimitsRequest(val dailyLimit: java.math.BigDecimal, val monthlyLimit: java.math.BigDecimal)
 data class ChargeCardRequest(val amount: java.math.BigDecimal, val merchantName: String)
 data class ChargeCardResponse(val success: Boolean, val transaction: CardTransactionDto, val card: CardDto)
+
+// Real card-design picker (2026-08-27, direct user instruction: "update itunda bank
+// with all those cards designs allowing users to choose from those designs... that's
+// how toss does it too") -- `design` must be one of the 5 real ids CardDesigns.ALL
+// (ItundaAppScreen.kt's own doc comment has the full colorway list); the backend's own
+// DebitCardDesign whitelist real-400s anything else.
+data class IssueCardRequest(val design: String)
 
 // Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere; the
@@ -3906,7 +3914,7 @@ interface ApiService {
     suspend fun repayPostpaidCredit(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PostpaidCreditAmountRequest): PostpaidCreditActionResponse
 
     @POST("api/v1/card/issue")
-    suspend fun issueCard(): CardResponse
+    suspend fun issueCard(@Body request: IssueCardRequest): CardResponse
 
     @GET("api/v1/card/my-card")
     suspend fun getMyCard(): CardResponse

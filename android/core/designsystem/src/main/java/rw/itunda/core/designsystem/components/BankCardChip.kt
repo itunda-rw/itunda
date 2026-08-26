@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -72,4 +73,27 @@ fun CardContactlessGlyph(size: Dp = 18.dp, tint: Color = Color.White.copy(alpha 
         tint = tint,
         modifier = Modifier.size(size).rotate(90f),
     )
+}
+
+// Real itunda petal mark (2026-08-27) -- the exact same geometry as
+// ic_launcher_foreground.xml / bank-mfe's public/favicon.svg / iOS's AppIcon,
+// flattened to one silhouette (right facet's outer curve + left facet's outer curve,
+// sharing the same two real endpoints -- the internal seam line is simply not drawn)
+// for legibility at the small lockup size CardScreen's picker/issued-card thumbnail
+// need it at. See project_itunda_brand_identity for the full derivation; not a new or
+// reinterpreted mark. Path coordinates are in a 0..100 space (matching the SVG source
+// this was ported from), scaled to `size` via Canvas.scale.
+@Composable
+fun PetalMark(size: Dp = 12.dp, color: Color = Color.White) {
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(size)) {
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(42f, 16f)
+            cubicTo(74f, 8f, 94f, 44f, 56f, 88f)
+            cubicTo(24f, 86f, 8f, 48f, 42f, 16f)
+            close()
+        }
+        scale(this.size.width / 100f, this.size.height / 100f, pivot = androidx.compose.ui.geometry.Offset.Zero) {
+            drawPath(path, color = color)
+        }
+    }
 }

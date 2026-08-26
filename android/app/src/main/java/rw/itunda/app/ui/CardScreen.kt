@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Bolt
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material3.Icon
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -47,11 +43,11 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.BankCardChip
 import rw.itunda.core.designsystem.components.CardContactlessGlyph
 import rw.itunda.core.designsystem.itundaface.LockGlyph
-import rw.itunda.core.designsystem.itundaface.MoneyBagGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CardDto
 import rw.itunda.core.network.CardTransactionDto
 import rw.itunda.core.network.ChargeCardRequest
+import rw.itunda.core.network.IssueCardRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetCardLimitsRequest
 import rw.itunda.core.network.apiErrorCode
@@ -105,12 +101,12 @@ fun CardScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(Unit) { load() }
 
-    fun issue() {
+    fun issue(design: String) {
         busy = true
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.issueCard()
+                NetworkClient.apiService.issueCard(IssueCardRequest(design))
                 load()
             } catch (e: HttpException) {
                 if (apiErrorCode(e) == "CARD_ALREADY_ISSUED") {
@@ -209,50 +205,15 @@ fun CardScreen(onBack: () -> Unit) {
                 CardMode.LOADING -> item {
                     SkeletonBlock(height = 120.dp)
                 }
-                // Real, sourced Toss Bank "explain the product before you commit" rebuild
-                // (2026-08-24, direct user-supplied reference + follow-up "improve a kind
-                // of products like this that needs it" -- Card is the SAME real gap
-                // YouthAccountScreen just closed). See ProductExplainerScreen's own doc
-                // comment for the full sourced account and the honest boundary this
-                // mirrors byte-for-byte from bank-mfe's own CardExplainer (commit
-                // f9ff4971): no fabricated Toss-specific features (K-Pass, NFC tap-to-pay),
-                // every claim grounded in CardService.kt's real capabilities.
+                // Real Toss Bank "which color do you like?" issuance step -- direct
+                // user instruction 2026-08-27: "update itunda bank with all those
+                // cards designs allowing users to choose from those designs... that's
+                // how toss does it too". See CardDesignPicker.kt's own doc comment for
+                // the full sourced account (this replaced the earlier single-design
+                // ProductExplainerScreen mockup, which is still real and still used
+                // as-is by YouthAccountScreen's own pre-open state).
                 CardMode.NO_CARD -> item {
-                    val feeIcon: @Composable () -> Unit = { MoneyBagGlyph(size = 20.dp) }
-                    val instantIcon: @Composable () -> Unit = { Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }
-                    val limitsIcon: @Composable () -> Unit = { Icon(Icons.Outlined.Shield, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(20.dp)) }
-                    val freezeIcon: @Composable () -> Unit = { LockGlyph(size = 20.dp) }
-                    val features: List<Pair<@Composable () -> Unit, String>> = listOf(
-                        feeIcon to "No annual fee, ever",
-                        instantIcon to "Issued instantly in the app -- no branch visit",
-                        limitsIcon to "Set your own daily and monthly spend limits",
-                        freezeIcon to "One-tap freeze if it's ever lost",
-                    )
-                    rw.itunda.core.designsystem.components.ProductExplainerScreen(
-                        icon = {
-                            // Real card-shaped mockup (2026-08-26, direct user
-                            // instruction: "all cards designs should resemble real
-                            // card") -- fully masked since no card is issued yet, a
-                            // real bank app shows this same all-dots placeholder
-                            // rather than a fabricated number.
-                            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("itunda", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                    CardContactlessGlyph(size = 16.dp)
-                                }
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                                    BankCardChip(size = 26.dp)
-                                    Text("•••• •••• •••• ••••", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, letterSpacing = 1.sp)
-                                }
-                            }
-                        },
-                        title = "Your own itunda card, in seconds",
-                        subtitle = "A real debit card for your itunda balance -- no paperwork, no waiting.",
-                        features = features,
-                        ctaLabel = if (busy) "Issuing…" else "Get your itunda card",
-                        ctaEnabled = !busy,
-                        onCta = { issue() },
-                    )
+                    CardDesignPicker(busy = busy, onIssue = { design -> issue(design) })
                 }
                 CardMode.ACTIVE -> {
                     val c = card
@@ -265,6 +226,15 @@ fun CardScreen(onBack: () -> Unit) {
                             // AccountCardCarousel and ProductExplainerScreen, see
                             // their own doc comment in ItundaAppScreen.kt), instead
                             // of a flat color block with just masked-number text.
+                            val cardDesign = CardDesigns.byId(c.design)
+                            // Real per-design colors (2026-08-27, direct user
+                            // instruction: "update itunda bank with all those cards
+                            // designs allowing users to choose from those designs") --
+                            // the issued card renders the finish this account actually
+                            // chose, not one hardcoded brand gradient. Text stays dark
+                            // on Frost Onyx's light front, matching bank-mfe's
+                            // identical contrast fix.
+                            val onFront = if (!c.frozen && cardDesign.frontLight) Color(0xFF191F28) else Color.White
                             Card(
                                 shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                                 colors = CardDefaults.cardColors(containerColor = Color.Transparent),
@@ -276,8 +246,8 @@ fun CardScreen(onBack: () -> Unit) {
                                         .background(
                                             androidx.compose.ui.graphics.Brush.linearGradient(
                                                 listOf(
-                                                    if (c.frozen) Ids.colors.textTertiary else Ids.colors.brand,
-                                                    if (c.frozen) Ids.colors.textTertiary else Ids.colors.brand,
+                                                    if (c.frozen) Ids.colors.textTertiary else cardDesign.front,
+                                                    if (c.frozen) Ids.colors.textTertiary else cardDesign.front,
                                                     Color.Black.copy(alpha = 0.18f),
                                                 ),
                                             ),
@@ -295,15 +265,15 @@ fun CardScreen(onBack: () -> Unit) {
                                     Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             BankCardChip(size = 32.dp)
-                                            if (c.frozen) LockGlyph(size = 18.dp) else CardContactlessGlyph(size = 18.dp)
+                                            if (c.frozen) LockGlyph(size = 18.dp) else CardContactlessGlyph(size = 18.dp, tint = onFront.copy(alpha = 0.85f))
                                         }
                                         Column {
-                                            Text("itunda card", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
-                                            Text("•••• •••• •••• ${c.last4}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
+                                            Text("itunda card", color = onFront.copy(alpha = 0.85f), fontSize = 13.sp)
+                                            Text("•••• •••• •••• ${c.last4}", color = onFront, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
                                             if (c.frozen) {
-                                                Text("Frozen", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                                Text("Frozen", color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
                                             } else {
-                                                Text("✓ Active", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                                Text("✓ Active", color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
                                             }
                                         }
                                     }
