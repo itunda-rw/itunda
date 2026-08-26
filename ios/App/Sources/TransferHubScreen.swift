@@ -159,20 +159,12 @@ struct AutoTransferListScreen: View {
                 }
                 .padding()
 
-                Button(action: { showNewForm = true }) {
-                    Text("+ New auto-transfer")
-                        .font(.subheadline).bold()
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(IDS.Colors.brand)
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                IdsButton(text: "+ New auto-transfer", action: { showNewForm = true })
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
 
                 if let loadError {
                     Text(loadError)
-                        .font(.caption).foregroundColor(.red)
+                        .font(.caption).foregroundColor(IDS.Colors.danger)
                         .padding(.horizontal, IDS.Layout.screenHorizontal)
                         .padding(.top, 8)
                 }
@@ -270,7 +262,7 @@ private struct AutoTransferCard: View {
                 Text("Paused").font(.caption).bold().foregroundColor(IDS.Colors.textTertiary)
             }
             if let reason = autoTransfer.lastFailureReason {
-                Text("Last attempt skipped: \(reason)").font(.caption).foregroundColor(.red)
+                Text("Last attempt skipped: \(reason)").font(.caption).foregroundColor(IDS.Colors.danger)
             }
             HStack(spacing: 8) {
                 Button(autoTransfer.status == "PAUSED" ? "Resume" : "Pause", action: onTogglePause)
@@ -278,7 +270,7 @@ private struct AutoTransferCard: View {
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(IDS.Colors.chipBackground).cornerRadius(10)
                 Button("Cancel", action: onCancel)
-                    .font(.caption).bold().foregroundColor(.red)
+                    .font(.caption).bold().foregroundColor(IDS.Colors.danger)
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(IDS.Colors.chipBackground).cornerRadius(10)
             }
@@ -325,7 +317,13 @@ struct NewAutoTransferScreen: View {
             }
             .padding()
 
-            ScrollView {
+            // Real fix (full-app audit, docs/UI_UX_GUIDELINES.md rule 1) -- the
+            // "Set up auto-transfer" button used to sit inline at the end of the
+            // scrolling form, invisible until scrolled all the way down. No intro
+            // screen added (unlike Ikimina) -- auto-transfer has no real non-obvious
+            // mechanics rule 13 would require explaining, just a pinned CTA like
+            // CreateSavingsGoalScreen's own established single-screen-form pattern.
+            FixedBottomCTA {
                 VStack(alignment: .leading, spacing: 12) {
                     TextField("Phone number or account number", text: $recipient)
                         .padding(12).background(IDS.Colors.chipBackground).cornerRadius(10)
@@ -361,21 +359,13 @@ struct NewAutoTransferScreen: View {
                         .padding(12).background(IDS.Colors.chipBackground).cornerRadius(10)
 
                     if let error {
-                        Text(error).font(.caption).foregroundColor(.red)
+                        Text(error).font(.caption).foregroundColor(IDS.Colors.danger)
                     }
-
-                    Button(action: submit) {
-                        Text(submitting ? "Setting up…" : "Set up auto-transfer")
-                            .foregroundColor(.white).bold()
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(IDS.Colors.brand)
-                            .cornerRadius(12)
-                    }
-                    .disabled(submitting)
                 }
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.top, 4)
+            } cta: {
+                IdsButton(text: submitting ? "Setting up…" : "Set up auto-transfer", isEnabled: !submitting, action: submit)
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
