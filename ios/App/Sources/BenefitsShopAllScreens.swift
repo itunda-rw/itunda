@@ -900,10 +900,10 @@ struct MyTabView: View {
                 // (2026-08-10, Hood's segmented Picker retired), so this is a real,
                 // direct deep link, not "one more tap" into a shared sub-view.
                 FlatSection(title: "My favorites", rows: [
-                    FlatRow(title: "Marketplace wishlist", trailing: "\(favoriteListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToMarketplace),
-                    FlatRow(title: "Jobs wishlist", trailing: "\(favoriteJobPostsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToJobs),
-                    FlatRow(title: "Property wishlist", trailing: "\(favoritePropertyListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToProperty),
-                    FlatRow(title: "Restaurant favorites", trailing: "\(favoriteRestaurantsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToEats),
+                    FlatRow(title: "Marketplace wishlist", trailing: "\(favoriteListingsCount)", glyph: { AnyView(WishlistHeart(favorited: true, size: 28)) }, action: onSwitchToMarketplace),
+                    FlatRow(title: "Jobs wishlist", trailing: "\(favoriteJobPostsCount)", glyph: { AnyView(WishlistHeart(favorited: true, size: 28)) }, action: onSwitchToJobs),
+                    FlatRow(title: "Property wishlist", trailing: "\(favoritePropertyListingsCount)", glyph: { AnyView(WishlistHeart(favorited: true, size: 28)) }, action: onSwitchToProperty),
+                    FlatRow(title: "Restaurant favorites", trailing: "\(favoriteRestaurantsCount)", glyph: { AnyView(WishlistHeart(favorited: true, size: 28)) }, action: onSwitchToEats),
                 ])
                 // Real "my own posts" tracking (Marketplace/Jobs/Property listings I
                 // created) -- same Naver-style "track your own activity" pattern.
