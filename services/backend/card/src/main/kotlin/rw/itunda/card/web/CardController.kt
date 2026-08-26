@@ -20,6 +20,7 @@ import rw.itunda.card.CardAlreadyIssuedException
 import rw.itunda.card.CardDailyLimitExceededException
 import rw.itunda.card.CardFrozenException
 import rw.itunda.card.CardInvalidAmountException
+import rw.itunda.card.CardInvalidDesignException
 import rw.itunda.card.CardInvalidLimitException
 import rw.itunda.card.CardMonthlyLimitExceededException
 import rw.itunda.card.CardNoAccountException
@@ -30,12 +31,19 @@ import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.AccountFrozenException
+import rw.itunda.core.domain.DebitCardDesign
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
 data class SetCardLimitsRequest(val dailyLimit: BigDecimal, val monthlyLimit: BigDecimal)
 data class ChargeCardRequest(val amount: BigDecimal, val merchantName: String)
+
+// `design` is nullable/optional (2026-08-27) so an old, not-yet-updated client that
+// still calls POST /issue with no body at all keeps working exactly as before --
+// falls back to DebitCardDesign.DEFAULT, the same real default the Flyway migration
+// backfilled onto every card issued before this feature existed.
+data class IssueCardRequest(val design: String? = null)
 
 @RestController
 @RequestMapping("/api/v1/card")
@@ -44,8 +52,11 @@ class CardController(
     private val idempotencyService: IdempotencyService,
 ) {
     @PostMapping("/issue")
-    fun issue(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val card = cardService.issueCard(currentUser.userId)
+    fun issue(
+        @RequestBody(required = false) request: IssueCardRequest?,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val card = cardService.issueCard(currentUser.userId, request?.design ?: DebitCardDesign.DEFAULT)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "card" to cardService.getMyCard(currentUser.userId), "cardId" to card.id))
     }
 
@@ -102,6 +113,9 @@ class CardController(
 
     @ExceptionHandler(CardInvalidLimitException::class)
     fun handleInvalidLimit(ex: CardInvalidLimitException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CARD_LIMIT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CardInvalidDesignException::class)
+    fun handleInvalidDesign(ex: CardInvalidDesignException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CARD_DESIGN", ex.message ?: "Bad request"))
 
     @ExceptionHandler(CardInvalidAmountException::class)
     fun handleInvalidAmount(ex: CardInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))

@@ -8,6 +8,7 @@ import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DebitCard
+import rw.itunda.core.domain.DebitCardDesign
 import rw.itunda.core.domain.DebitCardTransaction
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -37,6 +38,7 @@ class CardInvalidLimitException(message: String) : RuntimeException(message)
 class CardInvalidAmountException(message: String) : RuntimeException(message)
 class CardDailyLimitExceededException(message: String) : RuntimeException(message)
 class CardMonthlyLimitExceededException(message: String) : RuntimeException(message)
+class CardInvalidDesignException(message: String) : RuntimeException(message)
 
 data class CardView(
     val id: String,
@@ -45,6 +47,7 @@ data class CardView(
     val monthlyLimit: BigDecimal,
     val frozen: Boolean,
     val issuedAt: Instant,
+    val design: String,
     val spentToday: BigDecimal,
     val spentThisMonth: BigDecimal,
     val remainingToday: BigDecimal,
@@ -81,9 +84,12 @@ class CardService(
     private val secureRandom = SecureRandom()
 
     @Transactional
-    fun issueCard(userId: String): DebitCard {
+    fun issueCard(userId: String, design: String = DebitCardDesign.DEFAULT): DebitCard {
         if (debitCardRepository.findByUserId(userId) != null) {
             throw CardAlreadyIssuedException("You already have an itunda debit card")
+        }
+        if (design !in DebitCardDesign.ALL) {
+            throw CardInvalidDesignException("'$design' is not a real itunda card design")
         }
         // A real routable PAN needs a real card-network partnership itunda doesn't
         // have (see this entity's own doc comment) -- last4 is real stored display
@@ -98,6 +104,7 @@ class CardService(
                 last4 = last4,
                 dailyLimit = DebitCard.DEFAULT_DAILY_LIMIT,
                 monthlyLimit = DebitCard.DEFAULT_MONTHLY_LIMIT,
+                design = design,
             ),
         )
         return card
@@ -225,7 +232,7 @@ class CardService(
             transaction = transaction,
             card = CardView(
                 id = card.id, last4 = card.last4, dailyLimit = card.dailyLimit, monthlyLimit = card.monthlyLimit,
-                frozen = card.frozen, issuedAt = card.issuedAt,
+                frozen = card.frozen, issuedAt = card.issuedAt, design = card.design,
                 spentToday = spentTodayAfter, spentThisMonth = spentThisMonthAfter,
                 remainingToday = card.dailyLimit.subtract(spentTodayAfter).max(BigDecimal.ZERO),
                 remainingThisMonth = card.monthlyLimit.subtract(spentThisMonthAfter).max(BigDecimal.ZERO),
@@ -243,7 +250,7 @@ class CardService(
         val spentThisMonth = debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(card.id, startOfMonth)
         return CardView(
             id = card.id, last4 = card.last4, dailyLimit = card.dailyLimit, monthlyLimit = card.monthlyLimit,
-            frozen = card.frozen, issuedAt = card.issuedAt,
+            frozen = card.frozen, issuedAt = card.issuedAt, design = card.design,
             spentToday = spentToday, spentThisMonth = spentThisMonth,
             remainingToday = card.dailyLimit.subtract(spentToday).max(BigDecimal.ZERO),
             remainingThisMonth = card.monthlyLimit.subtract(spentThisMonth).max(BigDecimal.ZERO),

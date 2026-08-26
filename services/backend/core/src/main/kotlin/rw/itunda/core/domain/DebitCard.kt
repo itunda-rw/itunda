@@ -28,6 +28,14 @@ import java.time.Instant
  * Default limits (500,000 RWF/day, 5,000,000 RWF/month) are itunda's own honest choice,
  * scaled for the Rwandan market -- Toss's own real KRW figures don't have a sourced RWF
  * equivalent, named explicitly rather than presented as if copied from a real number.
+ *
+ * `design` (2026-08-27, direct user instruction: "update itunda bank with all those
+ * cards designs allowing users to choose from those designs... that's how toss does it
+ * too") -- real Toss Bank precedent (namu.wiki: 5 named colorways, e.g. 레몬 블루/오렌지
+ * 밀크/나이트 핑크). itunda's own 5, each a real front/back color-split validated in the
+ * card-lineup design pass: [[DebitCardDesign]] is the single whitelist both this entity
+ * and CardService's validation share, so a design can never be persisted that no client
+ * actually knows how to render.
  */
 @Entity
 @Table(name = "debit_cards")
@@ -54,6 +62,9 @@ class DebitCard(
     @Column(name = "issued_at", nullable = false)
     val issuedAt: Instant = Instant.now(),
 
+    @Column(nullable = false, length = 32)
+    val design: String = DebitCardDesign.DEFAULT,
+
     // A limit change and a purchase both racing the same card must not silently lose
     // one of their effects -- see Order/AutoTransfer's own doc comments for the same
     // reasoning applied here.
@@ -70,6 +81,24 @@ class DebitCard(
         val DEFAULT_MONTHLY_LIMIT: BigDecimal = BigDecimal("5000000")
         val MAX_LIMIT: BigDecimal = BigDecimal("50000000")
     }
+}
+
+/**
+ * The 5 real card colorways from itunda's own card-design pass (each a real front/back
+ * color pair: Onyx Indigo, Indigo Onyx, Rose Forest, Frost Onyx, Forest Rose). A plain
+ * whitelist object rather than a JPA `@Enumerated` type -- `design` is stored as a raw
+ * string column so a client can never desync from a strict enum ordinal, matching the
+ * same reasoning `LedgerAccountType` string-keyed seeding already established.
+ */
+object DebitCardDesign {
+    const val ONYX_INDIGO = "onyx_indigo"
+    const val INDIGO_ONYX = "indigo_onyx"
+    const val ROSE_FOREST = "rose_forest"
+    const val FROST_ONYX = "frost_onyx"
+    const val FOREST_ROSE = "forest_rose"
+    const val DEFAULT = ONYX_INDIGO
+
+    val ALL: Set<String> = setOf(ONYX_INDIGO, INDIGO_ONYX, ROSE_FOREST, FROST_ONYX, FOREST_ROSE)
 }
 
 /**

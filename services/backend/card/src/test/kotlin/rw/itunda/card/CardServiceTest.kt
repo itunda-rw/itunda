@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.DebitCard
+import rw.itunda.core.domain.DebitCardDesign
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Account
@@ -64,16 +65,44 @@ class CardServiceTest : BehaviorSpec({
         every { debitCardRepository.save(capture(savedSlot)) } answers { firstArg() }
         val service = newService(debitCardRepository = debitCardRepository)
 
-        When("issuing a card") {
+        When("issuing a card with no design specified") {
             val card = service.issueCard("user_1")
 
-            Then("it real-issues a fresh, unfrozen card at the real default limits with a real 4-digit last4") {
+            Then("it real-issues a fresh, unfrozen card at the real default limits, design, and a real 4-digit last4") {
                 card.userId shouldBe "user_1"
                 card.frozen shouldBe false
                 card.dailyLimit shouldBe DebitCard.DEFAULT_DAILY_LIMIT
                 card.monthlyLimit shouldBe DebitCard.DEFAULT_MONTHLY_LIMIT
+                card.design shouldBe DebitCardDesign.DEFAULT
                 card.last4.length shouldBe 4
                 savedSlot.size shouldBe 1
+            }
+        }
+    }
+
+    Given("a real user picking a real card design at issuance") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        every { debitCardRepository.findByUserId("user_1") } returns null
+        val savedSlot = mutableListOf<DebitCard>()
+        every { debitCardRepository.save(capture(savedSlot)) } answers { firstArg() }
+        val service = newService(debitCardRepository = debitCardRepository)
+
+        When("issuing with a real whitelisted design") {
+            val card = service.issueCard("user_1", DebitCardDesign.ROSE_FOREST)
+
+            Then("the chosen design is real-persisted, not silently overridden") {
+                card.design shouldBe DebitCardDesign.ROSE_FOREST
+            }
+        }
+
+        When("issuing with a design no client actually knows how to render") {
+            Then("it real-400s rather than silently persisting an unknown design") {
+                try {
+                    service.issueCard("user_1", "hot_pink_glitter")
+                    error("expected CardInvalidDesignException")
+                } catch (_: CardInvalidDesignException) {
+                    // expected
+                }
             }
         }
     }
