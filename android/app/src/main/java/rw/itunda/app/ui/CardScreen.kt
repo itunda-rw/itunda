@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,6 +44,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.BankCardChip
+import rw.itunda.core.designsystem.components.CardContactlessGlyph
 import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.itundaface.MoneyBagGlyph
 import rw.itunda.core.designsystem.theme.Ids
@@ -227,8 +230,20 @@ fun CardScreen(onBack: () -> Unit) {
                     )
                     rw.itunda.core.designsystem.components.ProductExplainerScreen(
                         icon = {
-                            Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
-                                Text("itunda", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            // Real card-shaped mockup (2026-08-26, direct user
+                            // instruction: "all cards designs should resemble real
+                            // card") -- fully masked since no card is issued yet, a
+                            // real bank app shows this same all-dots placeholder
+                            // rather than a fabricated number.
+                            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("itunda", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    CardContactlessGlyph(size = 16.dp)
+                                }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                                    BankCardChip(size = 26.dp)
+                                    Text("•••• •••• •••• ••••", color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp, letterSpacing = 1.sp)
+                                }
                             }
                         },
                         title = "Your own itunda card, in seconds",
@@ -243,21 +258,54 @@ fun CardScreen(onBack: () -> Unit) {
                     val c = card
                     if (c != null) {
                         item {
+                            // Real card-shaped visual (2026-08-26, direct user
+                            // instruction: "all cards designs should resemble real
+                            // card") -- a real ISO/IEC 7810 ID-1 card aspect ratio,
+                            // BankCardChip + CardContactlessGlyph (shared with
+                            // AccountCardCarousel and ProductExplainerScreen, see
+                            // their own doc comment in ItundaAppScreen.kt), instead
+                            // of a flat color block with just masked-number text.
                             Card(
                                 shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                                colors = CardDefaults.cardColors(containerColor = if (c.frozen) Ids.colors.textTertiary else Ids.colors.brand),
-                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                                modifier = Modifier.fillMaxWidth().aspectRatio(1.586f),
                             ) {
-                                Column(modifier = Modifier.padding(20.dp)) {
-                                    Text("itunda card", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
-                                    Text("•••• •••• •••• ${c.last4}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
-                                    if (c.frozen) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            LockGlyph(size = 12.dp)
-                                            Text("Frozen", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                                listOf(
+                                                    if (c.frozen) Ids.colors.textTertiary else Ids.colors.brand,
+                                                    if (c.frozen) Ids.colors.textTertiary else Ids.colors.brand,
+                                                    Color.Black.copy(alpha = 0.18f),
+                                                ),
+                                            ),
+                                        ),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .background(
+                                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                                    listOf(Color.White.copy(alpha = 0.18f), Color.Transparent),
+                                                ),
+                                            ),
+                                    )
+                                    Column(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            BankCardChip(size = 32.dp)
+                                            if (c.frozen) LockGlyph(size = 18.dp) else CardContactlessGlyph(size = 18.dp)
                                         }
-                                    } else {
-                                        Text("✓ Active", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                        Column {
+                                            Text("itunda card", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                                            Text("•••• •••• •••• ${c.last4}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
+                                            if (c.frozen) {
+                                                Text("Frozen", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                            } else {
+                                                Text("✓ Active", color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                                            }
+                                        }
                                     }
                                 }
                             }
