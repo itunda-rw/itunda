@@ -136,21 +136,19 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
     ) {
         item {
             if (!showCreate) {
-                GroupAccountActionButton(title = "+ New group account", enabled = true) { showCreate = true }
+                rw.itunda.core.designsystem.components.IdsButton(text = "+ New group account", onClick = { showCreate = true })
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Roommates)", modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                .pressScaleClickable { showCreate = false; name = "" }.padding(vertical = 14.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .pressScaleClickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
+                        rw.itunda.core.designsystem.components.IdsButton(
+                            text = "Cancel", onClick = { showCreate = false; name = "" },
+                            variant = rw.itunda.core.designsystem.components.IdsButtonVariant.Tinted, modifier = Modifier.weight(1f),
+                        )
+                        rw.itunda.core.designsystem.components.IdsButton(
+                            text = if (creating) "Creating…" else "Create", onClick = { create() },
+                            enabled = !creating, modifier = Modifier.weight(1f),
+                        )
                     }
                 }
             }
@@ -459,13 +457,16 @@ private fun GroupAccountDetailContent(id: String) {
                             quickAmounts = listOf(10_000L, 100_000L),
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            GroupAccountActionButton(title = if (busy) "…" else "Deposit", enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f)) { deposit() }
+                            rw.itunda.core.designsystem.components.IdsButton(
+                                text = if (busy) "…" else "Deposit", onClick = { deposit() },
+                                enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f),
+                            )
                             if (isOwner) {
-                                Box(
-                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                        .pressScaleClickable(enabled = !busy && amount.isNotBlank()) { withdraw() }.padding(vertical = 14.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) { Text(if (busy) "…" else "Withdraw", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+                                rw.itunda.core.designsystem.components.IdsButton(
+                                    text = if (busy) "…" else "Withdraw", onClick = { withdraw() },
+                                    enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f),
+                                    variant = rw.itunda.core.designsystem.components.IdsButtonVariant.Tinted,
+                                )
                             }
                         }
                 }
@@ -491,18 +492,6 @@ private fun GroupAccountDetailContent(id: String) {
         }
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item { Spacer(modifier = Modifier.height(8.dp)) }
-    }
-}
-
-@Composable
-private fun GroupAccountActionButton(title: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(
-        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(Ids.colors.brand).pressScaleClickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
     }
 }
 

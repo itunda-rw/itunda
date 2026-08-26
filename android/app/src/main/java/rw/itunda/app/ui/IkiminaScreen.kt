@@ -63,7 +63,7 @@ import rw.itunda.core.designsystem.components.EmptyState
  * IkiminaSection/IkiminaDetailView/CreateIkiminaForm exactly, same no-ViewModel,
  * direct-NetworkClient-call convention GroupAccountScreen.kt already established.
  */
-private enum class IkiminaMode { LIST, DETAIL }
+private enum class IkiminaMode { LIST, INTRO, CREATE, DETAIL }
 
 @Composable
 fun IkiminaScreen(onBack: () -> Unit) {
@@ -73,33 +73,134 @@ fun IkiminaScreen(onBack: () -> Unit) {
     var refreshKey by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        val backAction: () -> Unit = if (mode == IkiminaMode.DETAIL) {
-            { mode = IkiminaMode.LIST; selectedId = null; refreshKey++ }
-        } else onBack
-        BackTopBar(title = "Ikimina (rotating savings)", onBack = backAction)
+        val title = when (mode) {
+            IkiminaMode.DETAIL -> "Ikimina detail"
+            IkiminaMode.INTRO -> "Ikimina"
+            IkiminaMode.CREATE -> "New ikimina"
+            IkiminaMode.LIST -> "Ikimina (rotating savings)"
+        }
+        val backAction: () -> Unit = when (mode) {
+            IkiminaMode.DETAIL -> { { mode = IkiminaMode.LIST; selectedId = null; refreshKey++ } }
+            IkiminaMode.CREATE -> { { mode = IkiminaMode.INTRO } }
+            IkiminaMode.INTRO -> { { mode = IkiminaMode.LIST } }
+            IkiminaMode.LIST -> onBack
+        }
+        BackTopBar(title = title, onBack = backAction)
 
-        if (mode == IkiminaMode.DETAIL && selectedId != null) {
-            IkiminaDetailContent(id = selectedId!!)
-        } else {
-            IkiminaListContent(
+        when {
+            mode == IkiminaMode.DETAIL && selectedId != null -> IkiminaDetailContent(id = selectedId!!)
+            mode == IkiminaMode.INTRO -> IkiminaIntroContent(onContinue = { mode = IkiminaMode.CREATE })
+            mode == IkiminaMode.CREATE -> IkiminaCreateContent(onCreated = { mode = IkiminaMode.LIST; refreshKey++ })
+            else -> IkiminaListContent(
                 refreshKey = refreshKey,
                 onOpen = { selectedId = it; mode = IkiminaMode.DETAIL },
+                onStartCreate = { mode = IkiminaMode.INTRO },
             )
         }
     }
 }
 
+// Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) -- ikimina is
+// itunda's own real ROSCA product, "genuinely the first feature in this codebase not
+// sourced from Toss/Kakao/Naver/Coupang" (see this file's own header doc comment), so
+// unlike Grow31/WeeklySavings a user has no prior mental model from those reference
+// apps at all -- if anything this mechanic needs MORE explanation up front, not less.
 @Composable
-private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
-    var ikiminas by remember { mutableStateOf<List<IkiminaDto>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var showCreate by remember { mutableStateOf(false) }
+private fun IkiminaIntroContent(onContinue: () -> Unit) {
+    rw.itunda.core.designsystem.components.FixedBottomCta(
+        content = {
+            Text(
+                "A rotating savings group with people you trust",
+                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Everyone contributes the same fixed amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "Every member pays in the same amount, on the same weekly or monthly schedule you set when you create the group.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("One member takes home the full pot each round", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "The payout rotates in a pre-agreed order until every member has been paid exactly once -- not itunda deciding who's next, the group's own real turn order.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("You choose the size and schedule", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "Set a max member count and a weekly or monthly contribution cycle -- the group only starts once you're ready.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                )
+            }
+        },
+        cta = {
+            rw.itunda.core.designsystem.components.IdsButton(text = "Continue", onClick = onContinue)
+        },
+    )
+}
+
+@Composable
+private fun IkiminaCreateContent(onCreated: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var contributionAmount by remember { mutableStateOf("") }
     var cycleFrequencyDays by remember { mutableStateOf(30) }
     var memberCap by remember { mutableStateOf("10") }
     var frequencyMenuOpen by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun create() {
+        val amount = contributionAmount.toBigDecimalOrNull()
+        val cap = memberCap.toIntOrNull()
+        if (name.isBlank() || amount == null || amount.signum() <= 0 || cap == null || cap < 2) return
+        creating = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.createIkimina(CreateIkiminaRequest(name.trim(), amount, cycleFrequencyDays, cap))
+                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Ikimina group created.")
+                onCreated()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                creating = false
+            }
+        }
+    }
+
+    rw.itunda.core.designsystem.components.FixedBottomCta(
+        content = {
+            IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Umuryango)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = contributionAmount, onValueChange = { contributionAmount = it }, label = "Contribution per round (RWF)", modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                            .pressScaleClickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
+                    ) { Text(if (cycleFrequencyDays == 7) "Weekly" else "Monthly", fontSize = 14.sp) }
+                    DropdownMenu(expanded = frequencyMenuOpen, onDismissRequest = { frequencyMenuOpen = false }) {
+                        DropdownMenuItem(text = { Text("Weekly") }, onClick = { cycleFrequencyDays = 7; frequencyMenuOpen = false })
+                        DropdownMenuItem(text = { Text("Monthly") }, onClick = { cycleFrequencyDays = 30; frequencyMenuOpen = false })
+                    }
+                }
+                IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.weight(1f))
+            }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+        },
+        cta = {
+            rw.itunda.core.designsystem.components.IdsButton(text = if (creating) "Creating…" else "Create", onClick = { create() }, enabled = !creating)
+        },
+    )
+}
+
+@Composable
+private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit, onStartCreate: () -> Unit) {
+    var ikiminas by remember { mutableStateOf<List<IkiminaDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -117,28 +218,6 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
     }
     LaunchedEffect(refreshKey) { load() }
 
-    fun create() {
-        val amount = contributionAmount.toBigDecimalOrNull()
-        val cap = memberCap.toIntOrNull()
-        if (name.isBlank() || amount == null || amount.signum() <= 0 || cap == null || cap < 2) return
-        creating = true
-        coroutineScope.launch {
-            try {
-                NetworkClient.apiService.createIkimina(CreateIkiminaRequest(name.trim(), amount, cycleFrequencyDays, cap))
-                name = ""; contributionAmount = ""; memberCap = "10"
-                showCreate = false
-                load()
-                rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, "Ikimina group created.")
-            } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
-            } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
-            } finally {
-                creating = false
-            }
-        }
-    }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -151,43 +230,11 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
             )
         }
         item {
-            if (!showCreate) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                        .pressScaleClickable { showCreate = true }.padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center,
-                ) { Text("+ New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Umuryango)", modifier = Modifier.fillMaxWidth())
-                    IdsTextField(value = contributionAmount, onValueChange = { contributionAmount = it }, label = "Contribution per round (RWF)", modifier = Modifier.fillMaxWidth())
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                    .pressScaleClickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
-                            ) { Text(if (cycleFrequencyDays == 7) "Weekly" else "Monthly", fontSize = 14.sp) }
-                            DropdownMenu(expanded = frequencyMenuOpen, onDismissRequest = { frequencyMenuOpen = false }) {
-                                DropdownMenuItem(text = { Text("Weekly") }, onClick = { cycleFrequencyDays = 7; frequencyMenuOpen = false })
-                                DropdownMenuItem(text = { Text("Monthly") }, onClick = { cycleFrequencyDays = 30; frequencyMenuOpen = false })
-                            }
-                        }
-                        IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.weight(1f))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
-                                .pressScaleClickable { showCreate = false }.padding(vertical = 14.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .pressScaleClickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
-                    }
-                }
-            }
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                    .pressScaleClickable { onStartCreate() }.padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("+ New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
         }
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         when {
