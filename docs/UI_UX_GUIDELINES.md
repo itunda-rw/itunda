@@ -42,8 +42,18 @@ inline at the end of the form, invisible until scrolled all the way down) — cl
 `FixedBottomCTA` (`CoreDesignSystem`'s `Components.swift`), the same flex-column shape as
 `FullScreenFlow`: content scrolls in the available space, the CTA stays fixed below it
 with a divider-colored top border. Applied to all 3 iOS single-screen creation forms
-(`CreateSavingsGoalScreen`, `CreateGrow31SavingsPlanView`, `CreateWeeklySavingsPlanView`);
-use it for any new iOS form with a primary action, not just multi-step ones.
+(`CreateSavingsGoalScreen`, `CreateGrow31SavingsPlanView`, `CreateWeeklySavingsPlanView`).
+
+Android had the identical gap once actually checked — `Grow31CreateContent` put its
+button as the last item in a plain non-scrolling `Column` (so on a short screen the
+button just sits wherever content ends, and on a tall form/small device there's no
+scroll at all, so overflow silently clips instead of the button moving);
+`WeeklySavingsCreateContent` used a `Spacer(Modifier.weight(1f))` push-to-bottom hack
+with the same missing-scroll problem underneath. Closed with the equivalent
+`FixedBottomCta` (`core:designsystem`'s `IdsButton.kt`), applied to both. All 3 platforms
+now have the real pinned-bottom-CTA mechanism (`FullScreenFlow` web,
+`FixedBottomCTA` iOS, `FixedBottomCta` Android) — use the platform's version for any new
+form with a primary action, not just multi-step ones.
 
 ## 2. Explain why, don't just demand (Toss)
 

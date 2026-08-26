@@ -236,33 +236,30 @@ private fun Grow31CreateContent(onCreated: () -> Unit) {
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Text(
-            "Pick a small amount you can realistically save every single day for $TERM_DAYS days. Miss a day and " +
-                "your streak resets -- but your longest streak still locks in a bonus rate at maturity, up to +10% " +
-                "for a full unbroken run.",
-            color = Ids.colors.textSecondary, fontSize = 13.sp,
-        )
-        IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
-        Text("Daily amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        rw.itunda.core.designsystem.components.AmountKeypadInput(
-            digits = dailyAmount, onDigitsChange = { dailyAmount = it },
-            quickAmounts = listOf(500L, 1_000L),
-        )
-        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-        Box(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                .background(Ids.colors.brand)
-                .pressScaleClickable(enabled = !submitting) { submit() }
-                .padding(vertical = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(if (submitting) "Working…" else "Start plan", color = Color.White, fontWeight = FontWeight.Bold)
-        }
-    }
+    rw.itunda.core.designsystem.components.FixedBottomCta(
+        content = {
+            Text(
+                "Pick a small amount you can realistically save every single day for $TERM_DAYS days. Miss a day and " +
+                    "your streak resets -- but your longest streak still locks in a bonus rate at maturity, up to +10% " +
+                    "for a full unbroken run.",
+                color = Ids.colors.textSecondary, fontSize = 13.sp,
+            )
+            IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
+            Text("Daily amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            rw.itunda.core.designsystem.components.AmountKeypadInput(
+                digits = dailyAmount, onDigitsChange = { dailyAmount = it },
+                quickAmounts = listOf(500L, 1_000L),
+            )
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+        },
+        cta = {
+            rw.itunda.core.designsystem.components.IdsButton(
+                text = if (submitting) "Working…" else "Start plan",
+                onClick = { submit() },
+                enabled = !submitting,
+            )
+        },
+    )
 }
 
 @Composable

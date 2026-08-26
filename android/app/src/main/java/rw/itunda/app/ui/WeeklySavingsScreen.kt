@@ -242,53 +242,49 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Text(
-            "The weekly amount steps up automatically every $ESCALATION_STEP_WEEKS weeks by your chosen rate, " +
-                "and keeping an unbroken streak all the way to week $TERM_WEEKS earns a bonus interest rate on " +
-                "top of the base rate.",
-            color = Ids.colors.textSecondary, fontSize = 13.sp,
-        )
-        IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
-        Text("Base weekly amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        rw.itunda.core.designsystem.components.AmountKeypadInput(
-            digits = baseAmount, onDigitsChange = { baseAmount = it },
-            quickAmounts = listOf(1_000L, 5_000L),
-        )
-        Text("Escalation rate", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            escalationOptions.chunked(3).forEach { rowOptions ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    rowOptions.forEach { option ->
-                        val selected = option.rate == selectedRate.rate
-                        Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
-                                .pressScaleClickable { selectedRate = option }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(option.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    rw.itunda.core.designsystem.components.FixedBottomCta(
+        content = {
+            Text(
+                "The weekly amount steps up automatically every $ESCALATION_STEP_WEEKS weeks by your chosen rate, " +
+                    "and keeping an unbroken streak all the way to week $TERM_WEEKS earns a bonus interest rate on " +
+                    "top of the base rate.",
+                color = Ids.colors.textSecondary, fontSize = 13.sp,
+            )
+            IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
+            Text("Base weekly amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            rw.itunda.core.designsystem.components.AmountKeypadInput(
+                digits = baseAmount, onDigitsChange = { baseAmount = it },
+                quickAmounts = listOf(1_000L, 5_000L),
+            )
+            Text("Escalation rate", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                escalationOptions.chunked(3).forEach { rowOptions ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowOptions.forEach { option ->
+                            val selected = option.rate == selectedRate.rate
+                            Box(
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .pressScaleClickable { selectedRate = option }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(option.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
             }
-        }
-        Spacer(modifier = Modifier.weight(1f))
-        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-        Box(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                .background(Ids.colors.brand)
-                .pressScaleClickable(enabled = !submitting) { submit() }
-                .padding(vertical = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(if (submitting) "Working…" else "Start plan", color = Color.White, fontWeight = FontWeight.Bold)
-        }
-    }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+        },
+        cta = {
+            rw.itunda.core.designsystem.components.IdsButton(
+                text = if (submitting) "Working…" else "Start plan",
+                onClick = { submit() },
+                enabled = !submitting,
+            )
+        },
+    )
 }
 
 @Composable
