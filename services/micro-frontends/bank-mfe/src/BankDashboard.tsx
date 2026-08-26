@@ -23668,8 +23668,13 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 // Real Toss "One Thing per One Page" fix (Section 199 follow-up) -- see
 // CreateIkiminaForm's own identical doc comment above for the full real sourcing.
 // This card asked 2 real decisions at once (plan name, daily amount).
-type CreateGrow31Step = 'closed' | 'name' | 'amount';
+type CreateGrow31Step = 'closed' | 'intro' | 'name' | 'amount';
 const GROW31_STEP_LABELS = ['Name', 'Daily amount'];
+// Real, sourced streak-bonus tiers (tossbank.com/articles/savings-account,
+// g-enews.com 2026-08-06, mirrored from Grow31SavingsService.bonusRateForStreak) --
+// shown in full on the intro step (rule 13) rather than the single "up to +10%"
+// summary line the name step used to carry alone.
+const GROW31_BONUS_TIERS = [3, 7, 14, 21, 31] as const;
 
 function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
   const { t } = useI18n();
@@ -23691,7 +23696,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setStep('name')}
+        onClick={() => setStep('intro')}
       >
         <IconAdd size={16} /> New 31-day plan
       </button>
@@ -23713,21 +23718,62 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  // Real Toss product-intro pattern (rule 13, 2026-08-26): a dedicated screen
+  // explaining the real mechanics before the creation form starts, not part of the
+  // Name/Daily-amount progress count -- matches ForeignCurrencyView's own
+  // OpenForeignAccountFlow, the first application of this pattern.
+  if (step === 'intro') {
+    return (
+      <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={() => setStep('name')}>Continue</IdsButton>}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <h2 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, maxWidth: '260px' }}>Save a little every day, earn more the longer you keep it up</h2>
+          <button type="button" aria-label="Close" onClick={reset} style={{ background: 'none', border: 'none', display: 'flex', padding: '4px' }}>
+            <IconClose size={22} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>One small deposit, every day, for {GROW31_TERM_DAYS} days</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              Pick a fixed amount you can realistically save every single day. A base 1% rate applies from day one.
+            </p>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>The longer your unbroken streak, the higher your bonus</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5, marginBottom: '10px' }}>
+              Your bonus rate is locked in by the longest unbroken run of daily deposits you reach:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {GROW31_BONUS_TIERS.map((days) => (
+                <div key={days} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)' }}>
+                  <span style={{ color: 'var(--itunda-grey-700)' }}>{days === GROW31_TERM_DAYS ? `${days} days (full term)` : `${days}-day streak`}</span>
+                  <span style={{ fontWeight: 700 }}>+{grow31BonusRateForStreak(days)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Miss a day? You keep what you already earned</h3>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>
+              A missed day resets your current streak, but the longest streak you already reached still locks in that bonus rate at maturity — it isn't lost.
+            </p>
+          </div>
+        </div>
+      </FullScreenFlow>
+    );
+  }
+
   if (step === 'name') {
     return (
       <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}>
         <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
           <ProgressStepper activeStepIndex={0} steps={GROW31_STEP_LABELS} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Name your 31-day streak</h3>
-            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-              <IconClose size={20} color="var(--itunda-grey-500)" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" aria-label="Back" onClick={() => setStep('intro')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+              <IconBack size={20} color="var(--itunda-grey-700)" />
             </button>
+            <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>Name your 31-day streak</h3>
           </div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-            Pick a small amount you can realistically save every single day for {GROW31_TERM_DAYS} days. Miss a day and your streak resets — but your
-            longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.
-          </p>
           <input
             type="text" required autoFocus placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
