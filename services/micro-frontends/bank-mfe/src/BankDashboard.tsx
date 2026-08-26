@@ -1468,9 +1468,21 @@ function DiscoverSection() {
   return (
     <div style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 700, marginBottom: '10px' }}>{t('discover.title')}</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {items.map((item) => (
-          <div key={item.id} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '20px' }}>
+      {/* Real flat-design fix (docs/UI_UX_GUIDELINES.md rule 10, "Flat over
+          card-heavy") -- full-app audit found Home's own Discover section was still
+          boxing every row in .itunda-card, missed by the 2026-08-24 flat-design
+          sweep since this section wasn't touched that pass. Rows now sit directly
+          on the page with a divider between them, matching every other
+          already-flattened list in this file. */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {items.map((item, i) => (
+          <div
+            key={item.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0',
+              borderBottom: i < items.length - 1 ? '1px solid var(--itunda-grey-200)' : 'none',
+            }}
+          >
             <div style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: item.color, flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
