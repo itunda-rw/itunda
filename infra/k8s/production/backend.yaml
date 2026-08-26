@@ -117,8 +117,16 @@ spec:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        # Real gap found live-testing the card-design-picker feature (2026-08-27):
+        # this list never included the private cloud's own NodePort origins
+        # (infra/k8s/private-cloud/micro-frontends.yaml, 30520-30525), so no
+        # browser-based login against a private-cloud-served mfe has ever actually
+        # worked -- every prior verification pass either hit the backend directly
+        # with curl (no CORS enforcement there) or ran against a different
+        # deployment. Added all 6 real mfe NodePort origins, not a wildcard, to
+        # keep this an explicit allowlist.
         - name: ITUNDA_CORS_ALLOWED_ORIGINS
-          value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
+          value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005,http://192.168.252.4:30520,http://192.168.252.4:30521,http://192.168.252.4:30522,http://192.168.252.4:30523,http://192.168.252.4:30524,http://192.168.252.4:30525"
         # Real FCM push (2026-08-12) -- see PushConfig.kt's own doc comment. A file
         # path, not a raw string value like JWT_SECRET above, so it's a Secret
         # *volume* mount (below), not secretKeyRef on the env var directly --
