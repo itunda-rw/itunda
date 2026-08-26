@@ -93,6 +93,7 @@ import {
   type UpfrontInterestDeposit,
 } from './lib/upfrontDeposit';
 import { ForeignCurrencyView } from './ForeignCurrencyView';
+import { FullScreenFlow } from './FullScreenFlow';
 import {
   advanceDineInOrderStatus, cancelDineInOrder, fetchMyDineInOrders, fetchRestaurantDineInOrders, placeDineInOrder,
   type DineInOrder, type DineInOrderStatus,
@@ -403,32 +404,6 @@ function ReportScamLink({ identifier }: { identifier: string }) {
 // backend (P2pService.resolveRecipient) with zero client caller until now -- it's what
 // lets the amount/confirm screens show the real resolved "To [name]" the same way the
 // reference screenshots do.
-// Real Toss FixedBottomCTA pattern -- see tossmini-docs.toss.im/tds-mobile/components/
-// BottomCTA/fixed-bottom-cta's own real doc: a CTA button pinned to the screen bottom
-// while the rest of the screen scrolls underneath, supporting a single button or a
-// real two-button (Cancel/Confirm) layout. This genuinely only makes sense for a
-// dedicated full-screen flow (TDS's own real pattern assumes one) -- itunda's prior
-// convention for TransferFlow/CreateGoalForm/etc. was an inline card that stayed
-// embedded in a longer scrolling page (per this file's own earlier doc comment on
-// TransferFlow, "inline-card-replaces-trigger convention... not a modal overlay"),
-// which is exactly what a fixed-bottom button would fight against -- it would float
-// over unrelated real content below the active card. So this wrapper also takes the
-// flow full-screen when active, replacing that prior convention specifically for
-// genuinely multi-step processes (2026-08-19, direct user request to build this after
-// the "One Thing per One Page" pass) -- itunda's simpler single-panel toggles
-// elsewhere are a different, legitimate pattern and are NOT being changed by this.
-function FullScreenFlow({ children, bottomCTA }: { children: ReactNode; bottomCTA?: ReactNode }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>{children}</div>
-      {bottomCTA && (
-        <div style={{ padding: '12px 20px', paddingBottom: 'max(12px, env(safe-area-inset-bottom))', borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-white)' }}>
-          {bottomCTA}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // Real Toss ProgressStepper component, compact variant -- see
 // tossmini-docs.toss.im/tds-mobile/components/progress-stepper's own real API shape

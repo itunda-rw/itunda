@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react';
-import { IconBell } from './icons/ItundaIcons';
+import { IconAdd, IconBell, IconClose } from './icons/ItundaIcons';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { useCountUp } from './hooks/useCountUp';
+import { FullScreenFlow } from './FullScreenFlow';
+import { IdsButton } from './IdsButton';
 import {
   clearRateAlert, convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyAccounts, fetchMyRateAlerts, openForeignCurrencyAccount, setRateAlert,
   FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ExchangeRateAlert, type ForeignCurrencyCode, type ForeignCurrencyAccount,
 } from './lib/foreignCurrency';
+
+// Real currency full names for the intro screen's picker -- the rest of this file
+// only ever showed the bare currency code.
+const CURRENCY_FULL_NAME: Record<ForeignCurrencyCode, string> = {
+  USD: 'US Dollar',
+  EUR: 'Euro',
+  GBP: 'British Pound',
+};
 
 // Real fix (2026-08-26): split out of BankDashboard.tsx once that file grew past
 // its file-size-lint baseline. The real 토스뱅크 외화통장 (foreign-currency account)
@@ -49,7 +59,7 @@ export function ForeignCurrencyView() {
         accounts.map((w) => <ForeignCurrencyAccountRow key={w.id} account={w} />)
       )}
 
-      {availableToOpen.length > 0 && <OpenForeignAccountCard currencies={availableToOpen} onOpened={load} />}
+      {availableToOpen.length > 0 && <OpenForeignAccountFlow currencies={availableToOpen} onOpened={load} />}
       {accounts.length > 0 && <ConvertCurrencyCard accounts={accounts} onConverted={load} />}
       {accounts.length > 0 && <RateAlertCard accounts={accounts} />}
 
@@ -82,41 +92,124 @@ function ForeignCurrencyAccountRow({ account }: { account: ForeignCurrencyAccoun
   );
 }
 
-function OpenForeignAccountCard({ currencies, onOpened }: { currencies: readonly ForeignCurrencyCode[]; onOpened: () => void }) {
+// Real Toss product-intro pattern (2026-08-26, direct user follow-up with real Toss
+// Bank screenshots of 생계비보호통장/개인사업자통장/외화통장 intro screens: "toss how
+// introduce product before you sign up for it... explaining to users so they understand
+// product before they sign up for it"). Before this, "opening" a foreign currency
+// account was a bare row of 3 currency-code buttons -- zero explanation of what the
+// account actually does, no acknowledgment this is a real product decision. Every fact
+// below is real and sourced from ForeignCurrencyAccountService.kt's own doc comment and
+// MARGIN_RATE constant, not invented copy: the 1.5% margin, the live mid-market rate,
+// and the rate-alert feature are all real, already-shipped backend behavior -- this
+// screen is the first time any of it gets explained to the user before they act on it.
+function OpenForeignAccountFlow({ currencies, onOpened }: { currencies: readonly ForeignCurrencyCode[]; onOpened: () => void }) {
   const { t } = useI18n();
-  const [opening, setOpening] = useState<ForeignCurrencyCode | null>(null);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<ForeignCurrencyCode | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleOpen = async (currency: ForeignCurrencyCode) => {
+  const close = () => {
+    setOpen(false);
+    setSelected(null);
     setError(null);
-    setOpening(currency);
+  };
+
+  const handleOpen = async () => {
+    if (!selected) return;
+    setError(null);
+    setSubmitting(true);
     try {
-      await openForeignCurrencyAccount(currency);
+      await openForeignCurrencyAccount(selected);
+      close();
       onOpened();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
-      setOpening(null);
+      setSubmitting(false);
     }
   };
 
+  if (!open) {
+    return (
+      <button
+        className="itunda-btn itunda-btn-secondary"
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        onClick={() => setOpen(true)}
+      >
+        <IconAdd size={16} /> Open a foreign currency account
+      </button>
+    );
+  }
+
   return (
-    <div className="itunda-flat-section">
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Open an account</h3>
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        {currencies.map((c) => (
-          <button
-            key={c}
-            className="itunda-btn itunda-btn-secondary"
-            style={{ flex: 1 }}
-            disabled={opening !== null}
-            onClick={() => handleOpen(c)}
-          >
-            {opening === c ? '…' : c}
-          </button>
-        ))}
+    <FullScreenFlow
+      bottomCTA={
+        <IdsButton fullWidth onClick={handleOpen} disabled={!selected || submitting}>
+          {submitting ? 'Opening…' : 'Open account'}
+        </IdsButton>
+      }
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, maxWidth: '260px' }}>Hold and convert real foreign currency</h2>
+        <button type="button" aria-label="Close" onClick={close} style={{ background: 'none', border: 'none', display: 'flex', padding: '4px' }}>
+          <IconClose size={22} color="var(--itunda-grey-500)" />
+        </button>
       </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <ForeignCurrencyIntroRow
+          title="A separate account for each currency"
+          body="Keep USD, EUR, or GBP in its own account, completely separate from your RWF balance."
+        />
+        <ForeignCurrencyIntroRow
+          title="Convert at a real live rate"
+          body="Move money between RWF and your foreign currency anytime, at the real market rate plus itunda's transparent 1.5% margin -- no hidden fees."
+        />
+        <ForeignCurrencyIntroRow
+          title="Get notified at your rate"
+          body="Set a target rate once the account is open, and itunda tells you the moment the market crosses it -- convert when it's good for you, not just when you happen to check."
+        />
+      </div>
+
+      <div style={{ marginTop: '28px' }}>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Choose a currency</h3>
+        {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {currencies.map((c) => {
+            const isSelected = selected === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setSelected(c)}
+                aria-pressed={isSelected}
+                style={{
+                  flex: 1,
+                  padding: '14px 8px',
+                  borderRadius: '10px',
+                  border: isSelected ? '2px solid var(--itunda-indigo)' : '1px solid var(--itunda-grey-200)',
+                  backgroundColor: isSelected ? 'var(--itunda-indigo-light)' : 'transparent',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: isSelected ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>{c}</div>
+                <div style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>{CURRENCY_FULL_NAME[c]}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </FullScreenFlow>
+  );
+}
+
+function ForeignCurrencyIntroRow({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{title}</h3>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', lineHeight: 1.5 }}>{body}</p>
     </div>
   );
 }

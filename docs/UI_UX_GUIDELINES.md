@@ -323,6 +323,39 @@ layer), rename before shipping rather than after a live collision is found. This
 ecosystem-wide — a name has to stay unambiguous across web, Android, and iOS at once, not
 just within the one screen it was written for.
 
+## 13. Explain the product before asking someone to commit to it (Toss)
+
+Real Toss Bank product screens (user-provided screenshots, 2026-08-26 — 생계비보호통장
+"livelihood-protection account," 개인사업자통장 "business account," 외화통장 "foreign-currency
+account," 나눠모으기통장 "split-savings account"): before any of these products' creation
+form, there's a dedicated screen that explains what the product actually does — a few
+short benefit statements, not a wall of terms-and-conditions text — with the creation
+action as the pinned CTA at the bottom (rule 1). The user reads what they're getting
+*before* being asked to act, not after.
+
+itunda's own real gap, found via this rule: "opening" a foreign-currency account
+(`ForeignCurrencyView.tsx`) used to be a bare row of 3 currency-code buttons with zero
+explanation — tap "USD," the account exists, with nothing said about what it does, the
+1.5% conversion margin, or the rate-alert feature that already existed on the backend
+with no client ever surfacing it. Closed by giving it a real Toss-shaped intro screen
+(`OpenForeignAccountFlow`) — three short, **real, sourced** benefit lines (pulled directly
+from `ForeignCurrencyAccountService.kt`'s own doc comment and `MARGIN_RATE` constant, not
+invented copy) ahead of the currency picker and the pinned "Open account" CTA.
+
+**How to apply**: before building a "create X" flow for a product with real, non-obvious
+mechanics (a fee/margin, a bonus structure, a feature the user wouldn't guess exists),
+check whether the user would understand what they're signing up for from the creation
+form alone. If not, add a short intro step ahead of it — 2-4 real benefit statements
+sourced from the actual backend service/doc comment implementing the feature, never
+invented marketing copy (see `feedback_dont_imagine_use_real_reference`), ending in the
+same pinned-bottom CTA the creation step itself uses. A simple, single-field, no-real-
+mechanics form (a plain named savings goal, for instance) doesn't need this — the bar is
+"does skipping the explanation actually leave the user in the dark," not "does every
+creation flow need a preamble." Still open ecosystem-wide beyond this one screen — this
+is the first application, not a completed sweep; check other product-creation flows
+(Grow31/WeeklySavings' real streak/escalation mechanics, Ikimina, group accounts) for the
+same gap before assuming it's covered.
+
 ## Standing checklist before shipping a new screen
 
 1. Does it do more than one job? → apply rule 1.
@@ -342,3 +375,6 @@ just within the one screen it was written for.
     instead of the shared component? → apply rule 1's pin requirement / rule 9's
     back-button instance. Check sibling mini-apps (Rider/Merchant/Agent) too, not just
     the primary app.
+11. Does this "create X" flow have real non-obvious mechanics (a fee/margin, a bonus
+    structure, a feature the user wouldn't guess exists) that the creation form alone
+    won't explain? → apply rule 13.
