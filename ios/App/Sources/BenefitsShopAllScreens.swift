@@ -126,6 +126,7 @@ struct EntireMenuScreen: View {
     // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
     // bank-mfe/Android shipped first; this is the last remaining client platform.
     @State private var showCard = false
+    @State private var showTransit = false
     // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 105) --
     // last remaining client platform for this feature (bank-mfe always had it, Android
     // ported the same day as item 104).
@@ -251,6 +252,9 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
                 FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
                 FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
+                // Real Kigali public-transit stored-value balance (2026-08-27) -- see
+                // TransitScreenView.swift's own doc comment for the full sourced account.
+                FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                 FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
                 FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
@@ -421,6 +425,9 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
                         FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
+                // Real Kigali public-transit stored-value balance (2026-08-27) -- see
+                // TransitScreenView.swift's own doc comment for the full sourced account.
+                FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
                         FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
@@ -737,6 +744,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showCard) {
             CardScreenView(onBack: { showCard = false })
+        }
+        .sheet(isPresented: $showTransit) {
+            TransitScreenView(onBack: { showTransit = false })
         }
         .sheet(isPresented: $showGroupAccounts) {
             GroupAccountScreenView(onBack: { showGroupAccounts = false })

@@ -93,6 +93,18 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/card/issue", body: IssueCardRequest(design: design))
     }
 
+    public func getMyTransitBalance() async throws -> TransitBalanceResponse { try await get("api/v1/transit/balance") }
+
+    public func getTransitTrips() async throws -> TransitTripsResponse { try await get("api/v1/transit/trips") }
+
+    public func topUpTransit(amount: Double) async throws -> TransitBalanceResponse {
+        try await authenticatedPost("api/v1/transit/topup", body: TopUpTransitRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func tapTransitFare(operatorName: String, fare: Double) async throws -> TapFareResponse {
+        try await authenticatedPost("api/v1/transit/tap", body: TapFareRequest(operatorName: operatorName, fare: fare), idempotencyKey: UUID().uuidString)
+    }
+
     public func getMyCard() async throws -> CardResponse { try await get("api/v1/card/my-card") }
 
     public func getCardTransactions() async throws -> CardTransactionsResponse { try await get("api/v1/card/transactions") }

@@ -5927,6 +5927,36 @@ public struct ChargeCardResponse: Decodable { public let success: Bool; public l
 // DebitCardDesign whitelist real-400s anything else.
 public struct IssueCardRequest: Encodable { public let design: String }
 
+// Real Kigali public-transit stored-value balance (2026-08-27) -- see the backend's
+// TransitBalance.kt doc comment for the full sourced account of Kigali's real Tap&Go
+// fare system (AC Group Ltd, Kigali Bus Services, Royal Express) and the honest
+// boundary this simulates: itunda has no real partnership with any of them, so this is
+// never named "Tap&Go" anywhere in this client.
+public struct TransitBalanceDto: Decodable {
+    public let balance: Double
+    public let createdAt: String
+}
+public struct TransitBalanceResponse: Decodable { public let success: Bool; public let balance: TransitBalanceDto }
+public struct TransitTripDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let operatorName: String
+    public let fare: Double
+    public let ledgerTransactionId: String
+    public let createdAt: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id, userId, fare, ledgerTransactionId, createdAt
+        case operatorName = "operator"
+    }
+}
+public struct TransitTripsResponse: Decodable { public let success: Bool; public let trips: [TransitTripDto]; public let totalElements: Int; public let totalPages: Int }
+public struct TopUpTransitRequest: Encodable { public let amount: Double }
+public struct TapFareRequest: Encodable { public let operatorName: String; public let fare: Double
+    private enum CodingKeys: String, CodingKey { case operatorName = "operator"; case fare }
+}
+public struct TapFareResponse: Decodable { public let success: Bool; public let trip: TransitTripDto; public let balance: TransitBalanceDto }
+
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 
