@@ -5884,6 +5884,7 @@ public struct CardDto: Decodable, Identifiable {
     public let monthlyLimit: Double
     public let frozen: Bool
     public let issuedAt: String
+    public let design: String
     public let spentToday: Double
     public let spentThisMonth: Double
     public let remainingToday: Double
@@ -5892,13 +5893,14 @@ public struct CardDto: Decodable, Identifiable {
     // Explicit memberwise init -- Swift doesn't synthesize a public one across module
     // boundaries, same real gotcha OverdraftAccountDto's own doc comment already
     // documents.
-    public init(id: String, last4: String, dailyLimit: Double, monthlyLimit: Double, frozen: Bool, issuedAt: String, spentToday: Double, spentThisMonth: Double, remainingToday: Double, remainingThisMonth: Double) {
+    public init(id: String, last4: String, dailyLimit: Double, monthlyLimit: Double, frozen: Bool, issuedAt: String, design: String, spentToday: Double, spentThisMonth: Double, remainingToday: Double, remainingThisMonth: Double) {
         self.id = id
         self.last4 = last4
         self.dailyLimit = dailyLimit
         self.monthlyLimit = monthlyLimit
         self.frozen = frozen
         self.issuedAt = issuedAt
+        self.design = design
         self.spentToday = spentToday
         self.spentThisMonth = spentThisMonth
         self.remainingToday = remainingToday
@@ -5917,6 +5919,13 @@ public struct CardTransactionsResponse: Decodable { public let success: Bool; pu
 public struct SetCardLimitsRequest: Encodable { public let dailyLimit: Double; public let monthlyLimit: Double }
 public struct ChargeCardRequest: Encodable { public let amount: Double; public let merchantName: String }
 public struct ChargeCardResponse: Decodable { public let success: Bool; public let transaction: CardTransactionDto; public let card: CardDto }
+
+// Real card-design picker (2026-08-27, direct user instruction: "update itunda bank
+// with all those cards designs allowing users to choose from those designs... that's
+// how toss does it too") -- `design` must be one of the 5 real ids CardDesigns.all
+// (CardDesignPicker.swift has the full colorway list); the backend's own
+// DebitCardDesign whitelist real-400s anything else.
+public struct IssueCardRequest: Encodable { public let design: String }
 
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }

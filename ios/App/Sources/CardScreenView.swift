@@ -47,37 +47,24 @@ struct CardScreenView: View {
                     case .loading:
                         ProgressView().frame(maxWidth: .infinity).padding(40)
                     case .noCard:
-                        // Real card-shaped mockup (2026-08-26, direct user
-                        // instruction: "all cards designs should resemble real
-                        // card") -- fully masked since no card is issued yet, a
-                        // real bank app shows this same all-dots placeholder
-                        // rather than a fabricated number. iOS previously had no
-                        // pre-issuance mockup at all (web/Android both did) --
-                        // real parity gap, closed here rather than left for a
-                        // separate pass since this screen was already open.
-                        VStack {
-                            HStack {
-                                Text("itunda").font(.subheadline).bold().foregroundColor(.white)
-                                Spacer()
-                                CardContactlessGlyph(size: 16)
-                            }
-                            Spacer()
-                            HStack(alignment: .bottom) {
-                                BankCardChip(size: 26)
-                                Spacer()
-                                Text("•••• •••• •••• ••••").font(.caption).foregroundColor(.white.opacity(0.75))
-                            }
-                        }
-                        .padding(16)
-                        .frame(height: 110)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(IDS.Colors.brand)
-                        .cornerRadius(16)
-                        Text("App-controlled spend limits and one-tap freeze -- no branch visit, no waiting.")
-                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        CardActionButton(title: busy ? "Issuing…" : "Get your itunda card", disabled: busy, action: issue)
+                        // Real Toss Bank "which color do you like?" issuance step --
+                        // direct user instruction 2026-08-27: "update itunda bank
+                        // with all those cards designs allowing users to choose from
+                        // those designs... that's how toss does it too". See
+                        // CardDesignPicker's own doc comment for the full sourced
+                        // account (this replaced the earlier single-design mockup).
+                        CardDesignPicker(busy: busy, onIssue: issue)
                     case .active:
                         if let card {
+                            // Real per-design colors (2026-08-27, direct user
+                            // instruction: "update itunda bank with all those cards
+                            // designs allowing users to choose from those designs") --
+                            // the issued card renders the finish this account
+                            // actually chose, not one hardcoded brand gradient. Text
+                            // stays dark on Frost Onyx's light front, matching
+                            // bank-mfe/Android's identical contrast fix.
+                            let cardDesign = CardDesigns.byId(card.design)
+                            let onFront: Color = (!card.frozen && cardDesign.frontLight) ? Color(hex: 0x191F28) : .white
                             VStack(alignment: .leading, spacing: 6) {
                                 // Real EMV chip + tap-to-pay silhouette (2026-08-26,
                                 // direct user instruction: "all cards designs
@@ -89,16 +76,16 @@ struct CardScreenView: View {
                                     if card.frozen {
                                         LockGlyph(size: 18)
                                     } else {
-                                        CardContactlessGlyph(size: 18)
+                                        CardContactlessGlyph(size: 18, color: onFront.opacity(0.85))
                                     }
                                 }
                                 Spacer()
-                                Text("itunda card").font(.caption).foregroundColor(.white.opacity(0.85))
-                                Text("•••• •••• •••• \(card.last4)").font(.title3).bold().foregroundColor(.white)
+                                Text("itunda card").font(.caption).foregroundColor(onFront.opacity(0.85))
+                                Text("•••• •••• •••• \(card.last4)").font(.title3).bold().foregroundColor(onFront)
                                 if card.frozen {
-                                    Text("Frozen").font(.caption).foregroundColor(.white.opacity(0.85))
+                                    Text("Frozen").font(.caption).foregroundColor(onFront.opacity(0.85))
                                 } else {
-                                    Text("✓ Active").font(.caption).foregroundColor(.white.opacity(0.85))
+                                    Text("✓ Active").font(.caption).foregroundColor(onFront.opacity(0.85))
                                 }
                             }
                             .padding(20)
@@ -106,7 +93,7 @@ struct CardScreenView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(
                                 ZStack {
-                                    card.frozen ? Color.gray : IDS.Colors.brand
+                                    card.frozen ? Color.gray : cardDesign.front
                                     // Diagonal sheen -- the same "flat color read
                                     // as a card" fix applied to every card-shaped
                                     // visual in this app.
@@ -186,12 +173,12 @@ struct CardScreenView: View {
         }
     }
 
-    private func issue() {
+    private func issue(design: String) {
         busy = true
         error = nil
         Task {
             do {
-                _ = try await NetworkClient.shared.issueCard()
+                _ = try await NetworkClient.shared.issueCard(design: design)
                 busy = false
                 load()
             } catch NetworkError.httpError(let statusCode) where statusCode == 409 {

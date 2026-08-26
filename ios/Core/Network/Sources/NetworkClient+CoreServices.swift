@@ -89,8 +89,8 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/loans/postpaid-credit/repay", body: PostpaidCreditAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
-    public func issueCard() async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/issue", body: EmptyRequest())
+    public func issueCard(design: String) async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/issue", body: IssueCardRequest(design: design))
     }
 
     public func getMyCard() async throws -> CardResponse { try await get("api/v1/card/my-card") }
