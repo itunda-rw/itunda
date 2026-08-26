@@ -29,7 +29,7 @@ private func pretendardFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
     return UIFont(name: postscriptName, size: size) ?? UIFont.systemFont(ofSize: size, weight: weight)
 }
 
-private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
+func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
     Font(UIFontMetrics(forTextStyle: style).scaledFont(for: pretendardFont(size: size, weight: weight)))
 }
 

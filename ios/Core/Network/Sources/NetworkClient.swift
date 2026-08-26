@@ -403,11 +403,11 @@ public final class NetworkClient {
     // static/internal (2026-07-16) so SaroniteBrownfieldModule can reuse the exact same
     // value rather than a second hardcoded literal that could drift out of sync.
     public static let baseURLString = "http://localhost:4001/"
-    private let baseURL = URL(string: NetworkClient.baseURLString)!
+    let baseURL = URL(string: NetworkClient.baseURLString)!
     private let session = URLSession(configuration: .default)
 
     private lazy var encoder: JSONEncoder = JSONEncoder()
-    private lazy var decoder: JSONDecoder = JSONDecoder()
+    lazy var decoder: JSONDecoder = JSONDecoder()
 
     private init() {}
 
@@ -440,7 +440,7 @@ public final class NetworkClient {
     /// (single-flight, see RefreshCoordinator above) and retries the exact same
     /// request with the new token. `/auth/refresh` itself is excluded from the retry
     /// to avoid a hard loop if the refresh call somehow 401s.
-    private func dataWithRefresh(for request: URLRequest) async throws -> (Data, URLResponse) {
+    func dataWithRefresh(for request: URLRequest) async throws -> (Data, URLResponse) {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 401,
               request.value(forHTTPHeaderField: "Authorization") != nil,
@@ -2011,7 +2011,7 @@ extension NetworkClient {
 
     public func getMotoOwnershipPlan(planId: String) async throws -> MotoOwnershipPlanResponse { try await get("api/v1/moto-ownership/plans/\(planId)") }
 
-    private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+    func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -2083,7 +2083,7 @@ extension NetworkClient {
         _ = try await authenticatedPost("api/v1/notifications/\(id)/read", body: EmptyBody()) as MarkReadResponse
     }
 
-    private func get<Response: Decodable>(_ path: String) async throws -> Response {
+    func get<Response: Decodable>(_ path: String) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "GET"
         if let token = KeychainTokenStore.shared.getAccessToken() {
@@ -2101,7 +2101,7 @@ extension NetworkClient {
     /// `appendingPathComponent`, which percent-encodes `?`/`=`/`&` and breaks a query
     /// string (same gotcha `searchDeliveryAddress` already worked around inline); this
     /// is the reusable version of that same fix for any future query-param endpoint.
-    private func get<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
+    func get<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         components.queryItems = query.filter { $0.value != nil && !($0.value!.isEmpty) }
         var request = URLRequest(url: components.url!)
@@ -2120,7 +2120,7 @@ extension NetworkClient {
     /// Authenticated POST, with an optional Idempotency-Key -- every money-moving
     /// call below needs one so a retried tap after a timeout replays the original
     /// result instead of double-spending, same contract as Android's equivalent.
-    fileprivate func authenticatedPost<Body: Encodable, Response: Decodable>(
+    func authenticatedPost<Body: Encodable, Response: Decodable>(
         _ path: String,
         body: Body,
         idempotencyKey: String? = nil
@@ -2155,7 +2155,7 @@ extension NetworkClient {
     // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
     // setAccountPin's own doc comment for why this exists instead of reusing
     // authenticatedPut, same real reasoning as postP2p just below.
-    fileprivate func authenticatedPutWithMessage<Body: Encodable, Response: Decodable>(
+    func authenticatedPutWithMessage<Body: Encodable, Response: Decodable>(
         _ path: String,
         body: Body
     ) async throws -> Response {
@@ -2208,7 +2208,7 @@ extension NetworkClient {
     }
 }
 
-private struct ApiErrorBody: Decodable { let code: String?; let message: String? }
+struct ApiErrorBody: Decodable { let code: String?; let message: String? }
 
 // Mirrors services/backend/account's AccountController.kt/TransferQuote.kt and
 // services/backend/savings's SavingsController.kt exactly (2026-07-12) -- wires
@@ -2603,7 +2603,7 @@ extension NetworkClient {
     }
 }
 
-private struct EmptyBody: Encodable {}
+struct EmptyBody: Encodable {}
 
 // MARK: - Messaging / Marketplace / Commerce (2026-07-18)
 //
@@ -5660,7 +5660,7 @@ extension NetworkClient {
     /// see `authenticatedPost`'s own doc comment for why the Idempotency-Key handling
     /// lives there; DELETE never needs one (removing an already-removed listing is
     /// naturally idempotent at the database level, unlike a real money-moving POST).
-    fileprivate func authenticatedDelete<Response: Decodable>(_ path: String) async throws -> Response {
+    func authenticatedDelete<Response: Decodable>(_ path: String) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "DELETE"
         if let token = KeychainTokenStore.shared.getAccessToken() {
@@ -5679,7 +5679,7 @@ extension NetworkClient {
     /// string, same gotcha the query-param `get(_:query:)` overload above already
     /// worked around. clearRateAlert needs this because the backend takes the pair as
     /// query params, not a path segment.
-    fileprivate func authenticatedDelete<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
+    func authenticatedDelete<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         components.queryItems = query.filter { $0.value != nil && !($0.value!.isEmpty) }
         var request = URLRequest(url: components.url!)
