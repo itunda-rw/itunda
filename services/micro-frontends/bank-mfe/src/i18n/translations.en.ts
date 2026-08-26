@@ -52,7 +52,7 @@ export const en: Record<TranslationKey, string> = {
     'transfer.recipientStepTitle': 'Who would you like to send money to?',
     'transfer.recentLabel': 'Recent',
     'transfer.balanceLabel': 'Balance {{amount}} RWF',
-    'transfer.memoPlaceholder': 'Add a memo (optional)',
+    'transfer.memoPlaceholder': 'Add a memo — the recipient will see this',
     'transfer.next': 'Next',
     'transfer.confirmSendNow': 'Send {{amount}} RWF to {{recipient}} now',
     'transfer.feeCovered': 'itunda covered the transfer fee',

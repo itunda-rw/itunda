@@ -52,7 +52,7 @@ export const rw: Record<TranslationKey, string> = {
     'transfer.recipientStepTitle': 'Ushaka kohereza amafaranga kuri nde?',
     'transfer.recentLabel': 'Vuba aha',
     'transfer.balanceLabel': 'Amafaranga ufite {{amount}} RWF',
-    'transfer.memoPlaceholder': 'Ongeraho ubutumwa (si ngombwa)',
+    'transfer.memoPlaceholder': 'Ongeraho ubutumwa — uwakira arabubona',
     'transfer.next': 'Komeza',
     'transfer.confirmSendNow': 'Ohereza {{amount}} RWF kuri {{recipient}} nonaha',
     'transfer.feeCovered': 'itunda yishyuye amafaranga y’ubwoherezi',
