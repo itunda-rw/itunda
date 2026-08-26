@@ -8136,9 +8136,14 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // Real fix (full-app audit, docs/UI_UX_GUIDELINES.md rule 1): was a classic
+  // centered-card-on-dark-overlay modal, the same "old" pattern the rest of this
+  // file has already moved away from in favor of FullScreenFlow (TransferFlow,
+  // CreateGoalForm, Grow31/WeeklySavings, etc.). Same fix applied to
+  // ForwardPickerModal below, which had the identical shape.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div className="itunda-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <FullScreenFlow>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><ShoppingBagGlyph size={18} /> Emoticon Store</p>
           {/* Real touch-target-size fix (item 244, web accessibility sweep):
@@ -8205,7 +8210,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
           })
         )}
       </div>
-    </div>
+    </FullScreenFlow>
   );
 }
 
@@ -9624,48 +9629,39 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
     fetchGroups().then(setGroups).catch(() => setGroups([]));
   }, []);
 
+  // Real fix (full-app audit, docs/UI_UX_GUIDELINES.md rule 1) -- same dark-overlay-
+  // card pattern EmoticonStoreModal above had, now FullScreenFlow like the rest of
+  // this file's already-modernized flows.
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}
-      onClick={onClose}
-    >
-      <div
-        className="itunda-card"
-        style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>Forward to…</p>
-        {conversations === null || groups === null ? (
-          <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
-        ) : conversations.length === 0 && groups.length === 0 ? (
-          <EmptyState message="No conversations to forward to yet — start a chat first." />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {conversations.map((c) => (
-              <button
-                key={c.conversationId}
-                style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
-                onClick={() => onForward('DIRECT', c.conversationId)}
-              >
-                {c.otherUserName}
-              </button>
-            ))}
-            {groups.map((g) => (
-              <button
-                key={g.groupId}
-                style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
-                onClick={() => onForward('GROUP', g.groupId)}
-              >
-                {g.name} (group)
-              </button>
-            ))}
-          </div>
-        )}
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </div>
+    <FullScreenFlow bottomCTA={<IdsButton variant="tinted" fullWidth onClick={onClose}>Cancel</IdsButton>}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>Forward to…</p>
+      {conversations === null || groups === null ? (
+        <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
+      ) : conversations.length === 0 && groups.length === 0 ? (
+        <EmptyState message="No conversations to forward to yet — start a chat first." />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {conversations.map((c) => (
+            <button
+              key={c.conversationId}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
+              onClick={() => onForward('DIRECT', c.conversationId)}
+            >
+              {c.otherUserName}
+            </button>
+          ))}
+          {groups.map((g) => (
+            <button
+              key={g.groupId}
+              style={{ width: '100%', textAlign: 'left', padding: '10px 0' }}
+              onClick={() => onForward('GROUP', g.groupId)}
+            >
+              {g.name} (group)
+            </button>
+          ))}
+        </div>
+      )}
+    </FullScreenFlow>
   );
 }
 
