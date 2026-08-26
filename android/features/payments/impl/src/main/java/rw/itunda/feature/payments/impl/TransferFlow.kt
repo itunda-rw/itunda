@@ -462,6 +462,26 @@ fun TransferAmountScreen(
                         )
                     }
                 }
+            } else {
+                // Real gap found live (fresh Toss research, toss.tech/article/
+                // thinking-user-perspective's real "obvious to us, not to users" finding
+                // about an ambiguous memo field): itunda's own P2pService.sendDirect
+                // already embeds this text into BOTH parties' own ledger-leg description
+                // ("Transfer - $description"), so the recipient genuinely sees whatever a
+                // sender types here -- this field had no UI on Android at all until now
+                // despite the backend already accepting `description` (web already had
+                // it, but with the same unclear "optional" placeholder this port
+                // deliberately does not repeat). Reuses `giftNote`'s own state slot and
+                // the same `note` param onConfirm already threads through -- the two
+                // modes are mutually exclusive, never shown together.
+                Spacer(modifier = Modifier.height(6.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = giftNote,
+                    onValueChange = { giftNote = it },
+                    placeholder = { Text("Add a memo -- the recipient will see this") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
             }
         }
 

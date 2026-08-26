@@ -685,7 +685,7 @@ fun ItundaAppScreen(
                                         suspend fun doSend() = if (isGift) {
                                             viewModel.sendGift(step.accountNumber, amountRwf, giftNote, giftTheme)
                                         } else {
-                                            viewModel.sendTransfer(step.accountNumber, amountRwf)
+                                            viewModel.sendTransfer(step.accountNumber, amountRwf, memo = giftNote ?: "")
                                         }
                                         when (val result = doSend()) {
                                             is rw.itunda.app.ui.MoneyActionResult.Success -> {

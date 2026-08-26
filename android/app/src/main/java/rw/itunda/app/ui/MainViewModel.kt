@@ -361,11 +361,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun sendTransfer(recipientIdentifier: String, amountRwf: Long): MoneyActionResult {
+    suspend fun sendTransfer(recipientIdentifier: String, amountRwf: Long, memo: String = ""): MoneyActionResult {
         return try {
             val res = NetworkClient.apiService.sendDirect(
                 idempotencyKey = UUID.randomUUID().toString(),
-                request = SendDirectP2pRequest(recipient = normalizeRecipientIdentifier(recipientIdentifier), amount = BigDecimal(amountRwf)),
+                request = SendDirectP2pRequest(recipient = normalizeRecipientIdentifier(recipientIdentifier), amount = BigDecimal(amountRwf), description = memo),
             )
             fetchData()
             MoneyActionResult.Success(res.message)
