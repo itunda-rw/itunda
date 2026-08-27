@@ -50,6 +50,18 @@ export interface ShoppingMerchant {
   // real current Rwanda local time, so this can never drift from what
   // EatsOrderService.placeOrder's own enforcement actually checks.
   closedToday?: boolean;
+  // Real Coupang 와우(WOW)-style per-restaurant "member gets free delivery" badge
+  // (itunda Eats redesign, 2026-08-28) -- see backend Merchant.
+  // participatesInEatsMembership's own doc comment. A real, merchant-opted-in flag,
+  // never a blanket "every restaurant" claim -- itunda's real Baemin Club-style
+  // EatsMembershipService only waives delivery at a restaurant that set this true.
+  participatesInEatsMembership?: boolean;
+  // Real "Discount" sort/badge signal (itunda Eats redesign, 2026-08-28) -- see
+  // backend ShoppingMerchantBrowseService.getMaxDiscountByMerchantIds' own doc
+  // comment: the real, currently-highest discountPercent among this merchant's own
+  // active products. null/undefined means genuinely no active discount, never 0
+  // used as a fabricated placeholder.
+  maxDiscountPercent?: number | null;
 }
 
 // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's

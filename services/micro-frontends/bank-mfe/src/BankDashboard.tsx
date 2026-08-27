@@ -23,6 +23,8 @@ import { PayFundingSourcePicker } from './PayFundingSourcePicker';
 import { CouponBoxView } from './CouponBoxView';
 import { MembershipView } from './MembershipView';
 import { ShopSellerContactPicker, ShopMessageSellerButton, ShopBestSellerBadge, ShopDeliveryEtaPill } from './ShopSellerContactPicker';
+import { RecommendedDishesRail, PopularDishesRail, EatsNearbyAdsRail } from './EatsDishRails';
+import { EatsFrequentlyOrderedWith } from './EatsFrequentlyOrderedWith';
 import { TransitScreen } from './TransitScreen';
 import { TransitCollectScreen } from './TransitCollectScreen';
 import { MotoFareCollectScreen } from './MotoFareCollectScreen';
@@ -168,12 +170,16 @@ import {
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, completePickupOrder, contactRestaurant, EATS_MEMBERSHIP_TIERS,
-  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS,
-  removeFavoriteRestaurant, replyToRestaurantReview, reportEatsReview, searchDeliveryAddress, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type EatsReviewReportReason, type FavoriteRestaurant, type MenuItem, type PlatformMembership, type RatingSummary, type RestaurantSortMode,
+  addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, completePickupOrder, contactRestaurant,
+  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchRestaurantCategories,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, placeEatsOrder,
+  removeFavoriteRestaurant, replyToRestaurantReview, reportEatsReview, searchDeliveryAddress, shareFavoritesToConversation, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful,
+  type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type EatsReview, type EatsReviewReportReason, type FavoriteRestaurant, type MenuItem, type RatingSummary, type RestaurantSortMode,
 } from './lib/eats';
+import {
+  EATS_MEMBERSHIP_TIERS, fetchMyMembership, fetchMyPlatformMembership, PLATFORM_MEMBERSHIP_TIERS, subscribeMembership, subscribePlatformMembership,
+  type EatsMembership, type PlatformMembership,
+} from './lib/eatsMembership';
 import {
   advanceRiderOrder, claimDelivery, fetchAvailableDeliveries, fetchMyRiderProfile, fetchRiderDeliveries, registerRider, setRiderAvailability, type Rider,
 } from './lib/eatsRider';
@@ -14480,6 +14486,15 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
               <div key={r.id} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>
                 <span style={{ color: '#F5A623' }}>{'★'.repeat(r.restaurantRating)}{'☆'.repeat(5 - r.restaurantRating)}</span>
                 {r.restaurantComment && <span> — {r.restaurantComment}</span>}
+                {/* Real review photo (itunda Eats redesign, 2026-08-28) -- see
+                    EatsReview.photoUrl's own doc comment. */}
+                {r.photoUrl && (
+                  <img
+                    src={r.photoUrl} alt="" loading="lazy"
+                    style={{ display: 'block', width: '80px', height: '80px', borderRadius: 'var(--itunda-radius-md)', objectFit: 'cover', marginTop: '6px' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
                 {r.ownerReply && (
                   <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--itunda-grey-500)' }}>
                     ↳ Restaurant: {r.ownerReply}
@@ -14612,6 +14627,16 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
     <div className="itunda-flat-section">
       <span style={{ color: '#F5A623', fontSize: 'var(--itunda-type-scale-13-size)' }}>{'★'.repeat(review.restaurantRating)}{'☆'.repeat(5 - review.restaurantRating)}</span>
       {review.restaurantComment && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', marginTop: '4px' }}>{review.restaurantComment}</p>}
+      {/* Real review photo (itunda Eats redesign, 2026-08-28) -- see
+          EatsReview.photoUrl's own doc comment: real end-to-end on the backend since
+          2026-08-04, never rendered anywhere on web until now. */}
+      {review.photoUrl && (
+        <img
+          src={review.photoUrl} alt="" loading="lazy"
+          style={{ width: '96px', height: '96px', borderRadius: 'var(--itunda-radius-md)', objectFit: 'cover', marginTop: '8px' }}
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
+      )}
       {review.ownerReply ? (
         <div style={{ marginTop: '8px', paddingLeft: '10px', borderLeft: '2px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>
           Your reply: {review.ownerReply}
@@ -14648,6 +14673,11 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   const [restaurantComment, setRestaurantComment] = useState('');
   const [riderRating, setRiderRating] = useState(0);
   const [riderComment, setRiderComment] = useState('');
+  // Real optional review photo (itunda Eats redesign, 2026-08-28) -- see
+  // lib/eats.ts's submitEatsReview doc comment. itunda has no upload/storage
+  // pipeline, so this is a real "paste your own already-hosted photo URL" field,
+  // same honest bar as Merchant.photoUrl elsewhere in this codebase.
+  const [photoUrl, setPhotoUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -14666,7 +14696,7 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
     setSubmitting(true);
     setError(null);
     try {
-      await submitEatsReview(order.id, restaurantRating, restaurantComment, hasRider ? riderRating : null, riderComment);
+      await submitEatsReview(order.id, restaurantRating, restaurantComment, hasRider ? riderRating : null, riderComment, photoUrl);
       setDone(true);
       onSubmitted();
     } catch (err) {
@@ -14702,6 +14732,13 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
           value={restaurantComment}
           onChange={(e) => setRestaurantComment(e.target.value)}
           placeholder="How was the food? (optional)"
+          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
+        />
+        <input
+          type="url"
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="Photo URL (optional)"
           style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
         />
       </div>
@@ -14949,7 +14986,18 @@ function MenuView({
   // "inline-card-replaces-trigger" convention (no modal-overlay pattern exists anywhere
   // in this codebase).
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
-  const [pendingChoices, setPendingChoices] = useState<Record<string, string>>({});
+  // Real optional/multi-select menu option groups (itunda Eats redesign, 2026-08-28)
+  // -- the backend has always supported 4 real group combinations (required x
+  // multiSelect, see MenuOptionGroup.kt's own doc comment), but this UI only ever
+  // rendered required-single-select radios. groupId -> the real selected choiceIds
+  // for that group (0 or 1 for a single-select group, 0+ for multiSelect) -- the
+  // underlying eatsCartKey/eatsLineUnitPrice/eatsOptionsSummary helpers already
+  // operate on a plain choiceIds[] with no single-choice assumption, so this is a
+  // real UI-layer fix, not a pricing/cart-model change. DineInMenuView has its own
+  // separate, still-radio-only copy of this same pattern -- deliberately not
+  // touched here, out of this pass's real scope (browse/menu/checkout, not
+  // Dine-in's own structure).
+  const [pendingChoices, setPendingChoices] = useState<Record<string, string[]>>({});
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [deliveryNotes, setDeliveryNotes] = useState('');
@@ -14989,6 +15037,20 @@ function MenuView({
 
   const cartItems = Object.entries(cart).filter(([, line]) => line.quantity > 0);
   const cartCount = cartItems.reduce((sum, [, line]) => sum + line.quantity, 0);
+  // Real cart-bar subtotal + savings breakdown (itunda Eats redesign, 2026-08-28) --
+  // the fixed bottom bar previously only showed the item count, deferring every real
+  // number to the checkout screen. Purely a client-side sum over cart data already
+  // fetched -- no new backend call. cartOriginalSubtotal only differs from
+  // cartSubtotal when a real originalPrice is set on at least one cart line.
+  const cartSubtotal = cartItems.reduce((sum, [, line]) => {
+    const item = menu?.products.find((p) => p.id === line.productId);
+    return item ? sum + eatsLineUnitPrice(item, line.choiceIds) * line.quantity : sum;
+  }, 0);
+  const cartOriginalSubtotal = cartItems.reduce((sum, [, line]) => {
+    const item = menu?.products.find((p) => p.id === line.productId);
+    if (!item) return sum;
+    return sum + (item.originalPrice ?? item.price) * line.quantity;
+  }, 0);
 
   // For a no-option item only -- the original single-stepper interaction, completely
   // unchanged for the overwhelming majority of menu items that have no option groups.
@@ -15008,8 +15070,12 @@ function MenuView({
 
   const addConfiguredToCart = (item: MenuItem) => {
     const groups = item.optionGroups ?? [];
-    const choiceIds = groups.map((g) => pendingChoices[g.id]).filter((id): id is string => Boolean(id));
-    if (choiceIds.length !== groups.length) return; // one real required choice per group, enforced client-side too
+    // Real optional/multi-select support (2026-08-28) -- a required group needs at
+    // least one real selected choice; an optional group is valid with zero. A
+    // multiSelect group may contribute more than one choiceId, a single-select
+    // group at most one -- both flow through the same flatMap.
+    if (groups.some((g) => g.required && (pendingChoices[g.id]?.length ?? 0) === 0)) return;
+    const choiceIds = groups.flatMap((g) => pendingChoices[g.id] ?? []);
     const key = eatsCartKey(item.id, choiceIds);
     setCart((c) => ({ ...c, [key]: { productId: item.id, quantity: (c[key]?.quantity ?? 0) + 1, choiceIds } }));
     setPendingChoices({});
@@ -15156,7 +15222,7 @@ function MenuView({
             const simpleKey = eatsCartKey(item.id, []);
             const simpleQty = hasOptions ? 0 : (cart[simpleKey]?.quantity ?? 0);
             const isExpanded = expandedProductId === item.id;
-            const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
+            const allGroupsChosen = groups.every((g) => !g.required || (pendingChoices[g.id]?.length ?? 0) > 0);
             // Real fix (2026-08-24, flat-design sweep): dropped itunda-card, reusing
             // itunda-flat-section for this real Baemin-style flat menu-item list.
             return (
@@ -15164,10 +15230,16 @@ function MenuView({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{item.name}</p>
+                    {/* Real per-dish discount badge (itunda Eats redesign, 2026-08-28) --
+                        see lib/eats.ts's own MenuItem.discountPercent doc comment: the
+                        shared catalog endpoint has always returned this, Eats' own menu
+                        never rendered it. */}
+                    <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: item.soldOut ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
-                      {item.price.toLocaleString()} RWF{hasOptions ? ' · options required' : ''}
+                      {hasOptions ? 'Options required' : ''}
                       {item.soldOut ? <> · <SoldOutGlyph size={12} /> Sold out</> : ''}
                     </p>
+                    {item.isBestSeller && <ShopBestSellerBadge />}
                   </div>
                   {/* Real Baemin CEO app/DoorDash-style "86" enforcement (2026-08-16) --
                       see MenuItem.soldOut's own doc comment. Shown, not hidden -- the
@@ -15187,26 +15259,45 @@ function MenuView({
                 </div>
                 {!item.soldOut && hasOptions && isExpanded && (
                   <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--itunda-grey-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {groups.map((group) => (
-                      <div key={group.id}>
-                        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '6px' }}>
-                          {group.name} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 400 }}>· choose 1</span>
-                        </p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {group.choices.map((choice) => (
-                            <label key={choice.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', cursor: 'pointer' }}>
-                              <input
-                                type="radio"
-                                name={`eats-option-group-${group.id}`}
-                                checked={pendingChoices[group.id] === choice.id}
-                                onChange={() => setPendingChoices((p) => ({ ...p, [group.id]: choice.id }))}
-                              />
-                              {choice.name}{choice.priceDelta > 0 ? ` (+${choice.priceDelta.toLocaleString()} RWF)` : ''}
-                            </label>
-                          ))}
+                    {groups.map((group) => {
+                      const selected = pendingChoices[group.id] ?? [];
+                      // Real optional/multi-select labels (2026-08-28) -- honest about
+                      // what this group actually requires, matching its own real
+                      // required/multiSelect flags rather than always claiming "choose 1".
+                      const groupHint = group.multiSelect
+                        ? (group.required ? 'choose at least 1' : 'choose any (optional)')
+                        : (group.required ? 'choose 1' : 'choose 1 (optional)');
+                      return (
+                        <div key={group.id}>
+                          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginBottom: '6px' }}>
+                            {group.name} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 400 }}>· {groupHint}</span>
+                          </p>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {group.choices.map((choice) => (
+                              <label key={choice.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)', cursor: 'pointer' }}>
+                                <input
+                                  type={group.multiSelect ? 'checkbox' : 'radio'}
+                                  name={`eats-option-group-${group.id}`}
+                                  checked={selected.includes(choice.id)}
+                                  onChange={() => setPendingChoices((p) => {
+                                    if (group.multiSelect) {
+                                      const next = selected.includes(choice.id) ? selected.filter((id) => id !== choice.id) : [...selected, choice.id];
+                                      return { ...p, [group.id]: next };
+                                    }
+                                    // Single-select: re-clicking the current choice clears it
+                                    // when the group is optional (a real "none of these"),
+                                    // never for a required group.
+                                    const next = selected[0] === choice.id && !group.required ? [] : [choice.id];
+                                    return { ...p, [group.id]: next };
+                                  })}
+                                />
+                                {choice.name}{choice.priceDelta > 0 ? ` (+${choice.priceDelta.toLocaleString()} RWF)` : ''}
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <button
                       type="button"
                       className="itunda-btn itunda-btn-primary"
@@ -15243,13 +15334,37 @@ function MenuView({
           </div>
         </div>
       )}
+      {/* Real "frequently ordered together" cross-sell (itunda Eats redesign,
+          2026-08-28) -- keyed off the most recently added cart line, matching the
+          reference's own per-item placement as closely as this menu's flat (no
+          per-item detail page) layout allows. See EatsFrequentlyOrderedWith.tsx's
+          own doc comment. */}
+      {cartItems.length > 0 && (
+        <EatsFrequentlyOrderedWith
+          productId={cartItems[cartItems.length - 1][1].productId}
+          // Real, honest limitation: a "quick add" straight from this rail always
+          // adds a no-option cart line -- if the real co-purchased dish actually has
+          // real required option groups, the existing per-item "Choose options" flow
+          // in the main list below is how a buyer configures it; this cross-sell
+          // rail intentionally doesn't duplicate that UI for a secondary rail.
+          onAdd={(item) => setSimpleQty(item.id, (cart[eatsCartKey(item.id, [])]?.quantity ?? 0) + 1)}
+        />
+      )}
       {cartCount > 0 && (
         <button
           className="itunda-btn itunda-btn-primary"
-          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
+          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px' }}
           onClick={() => setShowCheckout(true)}
         >
-          Checkout ({cartCount} item{cartCount === 1 ? '' : 's'})
+          <span>Checkout ({cartCount} item{cartCount === 1 ? '' : 's'})</span>
+          {/* Real computed subtotal + savings (2026-08-28) -- see cartSubtotal's own
+              doc comment just above. */}
+          <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+            {cartOriginalSubtotal > cartSubtotal && (
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', textDecoration: 'line-through', opacity: 0.7 }}>{cartOriginalSubtotal.toLocaleString()} RWF</span>
+            )}
+            <span>{cartSubtotal.toLocaleString()} RWF</span>
+          </span>
         </button>
       )}
     </div>
@@ -15637,8 +15752,12 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
             onSelectCategory={setSelectedCategory}
           />
           {/* Real Coupang Eats-style sort picker (2026-08-19) -- see selectSortMode's
-              own doc comment. Only the 4 real backend-supported modes, no fabricated
-              "Recommended"/"Newest" pill. */}
+              own doc comment. Only real backend-supported modes, no fabricated
+              "Recommended"/"Newest" pill. discount/min_order added 2026-08-28 (itunda
+              Eats redesign) -- adapts the real Coupang Eats reference's own quick-
+              filter chip row (최대할인/최소주문낮은매장) onto itunda's own real
+              per-merchant signals, see ShoppingMerchantBrowseService.browse's own doc
+              comment on both real sort modes. Neither needs a real buyer location. */}
           <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '4px', paddingBottom: '2px' }}>
             {([
               { mode: null, label: 'Default' },
@@ -15646,6 +15765,8 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
               { mode: 'delivery_time' as const, label: pendingSortMode === 'delivery_time' ? '⏱ Locating…' : '⏱ Fastest delivery' },
               { mode: 'rating' as const, label: '⭐ Highest rated' },
               { mode: 'favorites' as const, label: '❤️ Most favorited' },
+              { mode: 'discount' as const, label: '🔥 Max discount' },
+              { mode: 'min_order' as const, label: '💸 Low minimum order' },
             ]).map(({ mode, label }) => (
               <button
                 key={label}
@@ -15664,6 +15785,17 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
           </div>
           {sortLocationError && (
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{sortLocationError}</p>
+          )}
+          {/* Real dish-discovery rails (itunda Eats redesign, 2026-08-28) -- see
+              EatsDishRails.tsx's own doc comment. Hidden once filtering starts, same
+              "merchandising above the raw list" discipline recently-viewed already
+              establishes just below. */}
+          {!selectedCategory && !debouncedSearch && (
+            <>
+              <RecommendedDishesRail onOpenRestaurant={setSelected} />
+              <PopularDishesRail onOpenRestaurant={setSelected} />
+              <EatsNearbyAdsRail onOpenRestaurant={setSelected} />
+            </>
           )}
           {/* Real "recently viewed restaurants" rail -- see lib/recentlyViewed.ts's own
               doc comment. Hidden once the user starts filtering, same "merchandising
@@ -15740,6 +15872,15 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                     ⏸ Temporarily paused
                   </span>
                 )}
+                {/* Real Coupang 와우(WOW)-style per-restaurant membership badge
+                    (itunda Eats redesign, 2026-08-28) -- see
+                    ShoppingMerchant.participatesInEatsMembership's own doc comment.
+                    A real, merchant-opted-in flag, never shown on every card. */}
+                {r.participatesInEatsMembership && (
+                  <span style={{ position: 'absolute', top: '10px', left: r.isAcceptingOrders === false ? '124px' : '10px', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-indigo)', padding: '3px 9px', borderRadius: '99px' }}>
+                    Member — free delivery
+                  </span>
+                )}
                 {/* Real gap found live (2026-08-10), docs/DESIGN_REFERENCES.md Section 7's
                     own "four separate bespoke favorite implementations" note: this was a
                     hand-rolled Lucide Heart button, distinct from the shared
@@ -15788,6 +15929,15 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>
+                {/* Real "Discount" badge (itunda Eats redesign, 2026-08-28) -- see
+                    ShoppingMerchant.maxDiscountPercent's own doc comment: the real,
+                    currently-highest discount among this restaurant's own active
+                    menu, never a fabricated store-wide promo. */}
+                {r.maxDiscountPercent != null && r.maxDiscountPercent > 0 && (
+                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-red)', marginTop: '2px' }}>
+                    Up to {r.maxDiscountPercent}% off
+                  </p>
+                )}
               </div>
             </div>
           ))}
@@ -18740,27 +18890,30 @@ function PlatformMembershipCard() {
 
   if (membership === undefined) return null;
 
+  // Real bold hero-banner treatment (itunda Eats redesign, 2026-08-28) -- same real
+  // copy/pricing as before, just matching the reference's own real Coupang WOW
+  // banner visual weight (a real, already-live feature deserved better merchandising
+  // than a plain subscribe card, not a new membership product).
   return (
-    <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>itunda Plus</h3>
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+    <div style={{ padding: '18px', marginBottom: '16px', borderRadius: 'var(--itunda-radius-lg)', background: 'linear-gradient(135deg, var(--itunda-indigo), var(--itunda-indigo-active))', color: 'var(--itunda-white)' }}>
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 800, marginBottom: '4px' }}>⚡ itunda Plus</h3>
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-white)', opacity: 0.9, marginBottom: '8px' }} role="alert">{error}</p>}
       {isActive ? (
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', opacity: 0.9 }}>
           Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at every restaurant, no participation required.
         </p>
       ) : (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
-            Free delivery at every restaurant -- no minimum order, no restaurant opt-in required.
+          <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', opacity: 0.9, marginBottom: '12px' }}>
+            Free delivery at every restaurant, every order — no minimum, no restaurant opt-in required.
           </p>
           <div style={{ display: 'flex', gap: '8px' }}>
             {PLATFORM_MEMBERSHIP_TIERS.map((tier) => (
               <button
                 key={tier.days}
-                className="itunda-btn itunda-btn-primary"
                 disabled={busy}
                 onClick={() => handleSubscribe(tier.days)}
-                style={{ flex: 1, fontSize: 'var(--itunda-type-scale-13-size)' }}
+                style={{ flex: 1, fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, padding: '10px', borderRadius: 'var(--itunda-radius-md)', backgroundColor: 'var(--itunda-white)', color: 'var(--itunda-indigo)' }}
               >
                 {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString()} RWF`}
               </button>

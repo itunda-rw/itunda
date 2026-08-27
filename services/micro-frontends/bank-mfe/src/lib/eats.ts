@@ -26,7 +26,11 @@ import type { ShoppingMerchant } from './shopping';
 // 'rating'/'distance' added 2026-08-19 -- real Coupang Eats-style 별점순/거리순 sort;
 // both were already computed per-row on the backend for display, just never sortable.
 // 'distance', like 'delivery_time', only takes effect with a real buyerLat/buyerLng.
-export type RestaurantSortMode = 'delivery_time' | 'favorites' | 'rating' | 'distance';
+// 'discount'/'min_order' added 2026-08-28 (itunda Eats redesign, adapting the real
+// Coupang Eats quick-filter chip row -- 최대할인/최소주문낮은매장 -- onto itunda's own
+// real per-merchant signals rather than a fabricated curated chip) -- see
+// ShoppingMerchantBrowseService.browse's own doc comment on both sort modes.
+export type RestaurantSortMode = 'delivery_time' | 'favorites' | 'rating' | 'distance' | 'discount' | 'min_order';
 export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number, sortBy?: RestaurantSortMode) => {
   const params = new URLSearchParams();
   params.set('businessType', 'RESTAURANT');
@@ -57,6 +61,46 @@ export const fetchRestaurantCategories = () =>
     (r) => r.categories,
   );
 
+// Real Coupang Eats-style dish grid (itunda Eats redesign, 2026-08-28) -- see backend
+// EatsController.getDishes' own doc comment. Fully built since 2026-08-03, zero web/
+// Android/iOS client anywhere until now (found via a real grep sweep before building
+// this). `recommended` is real, not fabricated -- true only when the buyer has
+// actually ordered from that dish's own restaurant before (a real personal-history
+// signal, distinct from the neighborhood-popularity rail below).
+export interface RecommendedDish {
+  id: string;
+  merchantId: string;
+  merchantName: string;
+  name: string;
+  price: number;
+  imageUrl: string | null;
+  recommended: boolean;
+}
+
+export const fetchRecommendedDishes = (sortBy?: 'popular') =>
+  apiFetch<{ success: boolean; dishes: RecommendedDish[] }>(`/api/v1/eats/dishes?size=20${sortBy ? `&sortBy=${sortBy}` : ''}`).then((r) => r.dishes);
+
+// Real "frequently ordered together" cross-sell (itunda Eats redesign, 2026-08-28) --
+// see backend OrderItemRepository.getFrequentlyOrderedWith's own doc comment. Real
+// co-purchase data only; an empty real list means genuinely no real pair has cleared
+// the minimum co-occurrence threshold yet, never padded with unrelated products.
+export interface FrequentlyOrderedWithItem {
+  id: string;
+  merchantId: string;
+  merchantName: string;
+  name: string;
+  price: number;
+  imageUrl: string | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  stockQuantity: number | null;
+}
+
+export const fetchFrequentlyOrderedWith = (productId: string) =>
+  apiFetch<{ success: boolean; products: FrequentlyOrderedWithItem[] }>(`/api/v1/shopping/products/${productId}/frequently-ordered-with`).then(
+    (r) => r.products,
+  );
+
 // Real menu-item option groups (2026-07-21, v1: required single-select only) -- closes
 // docs/DESIGN_REFERENCES.md's Eats recommendation #3, the single biggest structural
 // gap: itunda previously had no way to represent size/spice-level/add-on choices at
@@ -71,6 +115,14 @@ export interface MenuOptionGroup {
   id: string;
   name: string;
   choices: MenuOptionChoice[];
+  // Real optional/multi-select support (itunda Eats redesign, 2026-08-28) -- the
+  // shared ShoppingController.getMerchantProducts response has always returned
+  // these two real fields (see backend MenuOptionGroup.kt's own doc comment on the
+  // 4 real group combinations), this client type just never declared them, so
+  // every group rendered as a required-single-select radio regardless of its real
+  // shape.
+  required: boolean;
+  multiSelect: boolean;
 }
 
 export interface MenuItem {
@@ -85,6 +137,16 @@ export interface MenuItem {
   // see backend MerchantProduct.soldOut's own doc comment. Shown, not filtered out
   // (unlike `active`), so a buyer sees WHY the item can't be added right now.
   soldOut?: boolean;
+  // Real per-dish discount + "Best seller" badge (itunda Eats redesign, 2026-08-28) --
+  // the shared ShoppingController.getMerchantProducts response has always returned
+  // these real fields (see lib/shopping.ts's MerchantProductDto-equivalent), this
+  // client type just never declared them, so Eats' own menu never rendered a discount
+  // badge despite Shop's identical catalog already having one. Real merchant-set
+  // originalPrice/server-computed discountPercent, real order-count-derived
+  // isBestSeller -- see ShoppingController.bestSellerProductIds' own doc comment.
+  originalPrice?: number | null;
+  discountPercent?: number | null;
+  isBestSeller?: boolean;
 }
 
 export const fetchMenu = (restaurantId: string) =>
@@ -253,6 +315,12 @@ export interface EatsReview {
   // EatsOrder.tipAmount above: the backend has always returned this, this client
   // type never declared it.
   helpfulCount?: number;
+  // Real review photo (itunda Eats redesign, 2026-08-28) -- see backend
+  // EatsReview.photoUrl's own doc comment (migration V224). Same silent-discard
+  // shape as helpfulCount above: real end-to-end on the backend (submit + read),
+  // this client type just never declared it, so a real submitted photo was never
+  // rendered anywhere. Null/undefined means the reviewer genuinely didn't attach one.
+  photoUrl?: string | null;
 }
 
 export interface RatingSummary {
@@ -303,6 +371,12 @@ export const submitEatsReview = (
   restaurantComment: string,
   riderRating: number | null,
   riderComment: string,
+  // Real optional review photo (itunda Eats redesign, 2026-08-28) -- see
+  // EatsReview.photoUrl's own doc comment; the backend has taken this since
+  // 2026-08-04, no web client ever sent it. Same "bring your own already-hosted
+  // URL" bar as Merchant.photoUrl elsewhere in this codebase -- itunda has no
+  // image-upload/storage pipeline to invent one.
+  photoUrl?: string,
 ) =>
   apiFetch<{ success: boolean; review: EatsReview }>(`/api/v1/eats/orders/${orderId}/review`, {
     method: 'POST',
@@ -311,6 +385,7 @@ export const submitEatsReview = (
       restaurantComment: restaurantComment.trim() || null,
       riderRating,
       riderComment: riderRating == null ? null : riderComment.trim() || null,
+      photoUrl: photoUrl?.trim() || null,
     }),
   }).then((r) => r.review);
 
@@ -371,55 +446,11 @@ export const shareFavoritesToConversation = (conversationId: string) =>
     body: JSON.stringify({ conversationId }),
   });
 
-// Real Baemin Club (배민클럽)-style free-delivery membership (rw.itunda.eats.
-// EatsMembershipService, 2026-07-26) -- backend-only until now (item 102), first client
-// UI for this feature. Free delivery only applies at a restaurant that has itself
-// opted in (see MerchantController.setParticipatesInEatsMembership) -- never a blanket
-// waiver, mirroring Baemin's own real "참여 가게" scoping.
-export interface EatsMembership {
-  id: string;
-  userId: string;
-  activeUntil: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export const EATS_MEMBERSHIP_TIERS: { days: number; priceRwf: number }[] = [
-  { days: 30, priceRwf: 1500 },
-  { days: 90, priceRwf: 4000 },
-];
-
-export const fetchMyMembership = () =>
-  apiFetch<{ success: boolean; membership: EatsMembership | null }>('/api/v1/eats/membership/me').then((r) => r.membership);
-
-export const subscribeMembership = (days: number) =>
-  apiFetch<{ success: boolean; membership: EatsMembership }>('/api/v1/eats/membership/subscribe', {
-    method: 'POST',
-    headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ days }),
-  }).then((r) => r.membership);
-
-// Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver (item 211,
-// rw.itunda.eats.PlatformMembershipService, 2026-07-31) -- see PlatformMembership.kt's
-// own doc comment. Deliberately distinct from Eats Club above: this waives the fee at
-// every restaurant, no merchant opt-in required, the same real broader guarantee
-// Coupang Wow has over a participating-seller-only free-delivery program.
-export type PlatformMembership = EatsMembership;
-
-export const PLATFORM_MEMBERSHIP_TIERS: { days: number; priceRwf: number }[] = [
-  { days: 30, priceRwf: 2500 },
-  { days: 90, priceRwf: 6500 },
-];
-
-export const fetchMyPlatformMembership = () =>
-  apiFetch<{ success: boolean; membership: PlatformMembership | null }>('/api/v1/eats/platform-membership/me').then((r) => r.membership);
-
-export const subscribePlatformMembership = (days: number) =>
-  apiFetch<{ success: boolean; membership: PlatformMembership }>('/api/v1/eats/platform-membership/subscribe', {
-    method: 'POST',
-    headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ days }),
-  }).then((r) => r.membership);
+// Real Eats membership products (EatsMembership/PlatformMembership + their real
+// tiers/fetch/subscribe functions) moved to lib/eatsMembership.ts (2026-08-28, real
+// file-size-lint threshold crossed for the first time) -- genuinely distinct from
+// everything else in this file, same "own real lifecycle" precedent
+// lib/eatsRider.ts/lib/eatsGroupOrders.ts already established.
 
 // Real 배달의민족 함께주문 (Baemin "Together Order") shared-cart group ordering moved to
 // lib/eatsGroupOrders.ts (2026-08-20, real file-size-lint threshold crossed a second
