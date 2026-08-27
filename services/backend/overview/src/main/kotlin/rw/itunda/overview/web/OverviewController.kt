@@ -25,6 +25,10 @@ class OverviewController(private val overviewService: OverviewService) {
                 "investments" to result.investments,
                 "insurance" to result.insurance,
                 "linkedAccounts" to result.linkedAccounts,
+                "cards" to result.cards,
+                "vehicles" to result.vehicles,
+                "tax" to result.tax,
+                "points" to result.points,
             ),
         )
     }

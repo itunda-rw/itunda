@@ -1,15 +1,23 @@
 package rw.itunda.overview
 
 import org.springframework.stereotype.Service
+import rw.itunda.core.domain.AccountType
 import rw.itunda.core.domain.LinkedAccountStatus
 import rw.itunda.core.domain.LoanStatus
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
+import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.LinkedAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
+import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.VehicleRepository
 import java.math.BigDecimal
+import java.time.Instant
 
 data class AccountSummary(val id: String, val type: String, val name: String, val balance: BigDecimal, val currency: String)
 data class SavingsSummary(val totalSaved: BigDecimal, val goalCount: Int)
@@ -24,6 +32,31 @@ data class LinkedAccountSummary(
     val id: String, val provider: String, val maskedAccountNumber: String, val status: String,
     val demoBalance: BigDecimal?, val demoBalanceCurrency: String?, val isDemoBalance: Boolean,
 )
+// Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
+// Toss "총자산" screenshots, "this is how my asset screen should look like"). Each of
+// these 4 mirrors Toss's own real-card-vs-teaser-card pattern for a category
+// OverviewService didn't previously surface at all -- see this file's own git history
+// / PR description for the full sourced account of why each is shaped the way it is.
+data class CardsSummary(val hasCard: Boolean, val last4: String?, val design: String?, val frozen: Boolean?)
+// Real count + real purchase-price total ONLY -- the live depreciated market value is
+// VehicleValuationService's own private algorithm, in the :vehicle module, which
+// :overview deliberately does not depend on (see this class's own header comment).
+// Duplicating that math here would risk drifting out of sync with the real one; the
+// client routes to the real Vehicle screen for the actual valuation number instead.
+data class VehicleSummary(val vehicleCount: Int, val totalPurchasePrice: BigDecimal)
+// Real count + real total of this user's own RRA tax-biller payments (b8/b9/b10,
+// BillsCatalog.providers) -- always a real card, even at zero, matching Toss's own
+// "₩0 / 8월 환급액" always-populated Tax tab (no "link a tax account" step exists;
+// paying a real RRA bill through Bills IS the real activity this reflects).
+data class TaxSummary(val totalPaid: BigDecimal, val paymentCount: Int)
+// rewardsTotal mirrors RewardsService.getTasks' own real fold over RewardClaim rows
+// exactly (not a new algorithm, just reproduced via :core to respect the same
+// module-boundary :overview already holds everywhere else in this file).
+// payMoneyBalance is the user's real AccountType.PAY balance -- itunda's own real
+// "itunda Pay money" analog to Toss Pay Money, already present in `accounts` above,
+// just also broken out here since Toss's own Points tab shows it alongside Points.
+data class PointsSummary(val rewardsTotal: BigDecimal, val payMoneyBalance: BigDecimal)
+
 data class OverviewResult(
     val netWorth: BigDecimal,
     val accounts: List<AccountSummary>,
@@ -32,6 +65,10 @@ data class OverviewResult(
     val investments: InvestmentsSummary,
     val insurance: InsuranceSummary,
     val linkedAccounts: List<LinkedAccountSummary>,
+    val cards: CardsSummary,
+    val vehicles: VehicleSummary,
+    val tax: TaxSummary,
+    val points: PointsSummary,
 )
 
 /**
@@ -63,7 +100,20 @@ class OverviewService(
     private val holdingRepository: HoldingRepository,
     private val insurancePolicyRepository: InsurancePolicyRepository,
     private val linkedAccountRepository: LinkedAccountRepository,
+    private val debitCardRepository: DebitCardRepository,
+    private val vehicleRepository: VehicleRepository,
+    private val transactionRepository: TransactionRepository,
+    private val rewardClaimRepository: RewardClaimRepository,
 ) {
+    companion object {
+        // Real RRA tax billers (BillsCatalog.providers, b8/b9/b10) -- a bill payment's
+        // real description is always "Bill payment - <billId>(...)" (BillsService.payBill),
+        // so an exact prefix match on "Bill payment - b8" etc. is required, NOT a bare
+        // .contains("b1") -- "b1" (REG - Electricity) is a literal substring of "b10"
+        // (RRA - Trading License), which would silently misclassify a real electricity
+        // payment as a tax payment.
+        private val TAX_BILLER_DESCRIPTION_PREFIXES = listOf("Bill payment - b8", "Bill payment - b9", "Bill payment - b10")
+    }
 
     fun getOverview(userId: String): OverviewResult {
         val userAccounts = accountRepository.findByUserId(userId)
@@ -102,6 +152,28 @@ class OverviewService(
 
         val netWorth = accountTotal + savingsTotal + costBasisTotal - outstandingTotal
 
-        return OverviewResult(netWorth, accounts, savings, loans, investments, insurance, linkedAccounts)
+        val card = debitCardRepository.findByUserId(userId)
+        val cards = CardsSummary(hasCard = card != null, last4 = card?.last4, design = card?.design, frozen = card?.frozen)
+
+        val vehicles = vehicleRepository.findByUserIdOrderByCreatedAtDesc(userId)
+        val vehicleSummary = VehicleSummary(
+            vehicleCount = vehicles.size,
+            totalPurchasePrice = vehicles.fold(BigDecimal.ZERO) { acc, v -> acc + v.purchasePrice },
+        )
+
+        val billTransactions = transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
+            userId, TransactionType.BILL, TransactionStatus.COMPLETED, Instant.EPOCH,
+        )
+        val taxTransactions = billTransactions.filter { tx -> TAX_BILLER_DESCRIPTION_PREFIXES.any { tx.description.startsWith(it) } }
+        val tax = TaxSummary(
+            totalPaid = taxTransactions.fold(BigDecimal.ZERO) { acc, tx -> acc + tx.amount },
+            paymentCount = taxTransactions.size,
+        )
+
+        val rewardsTotal = rewardClaimRepository.findByUserId(userId).fold(BigDecimal.ZERO) { acc, c -> acc + c.amount }
+        val payMoneyBalance = userAccounts.find { it.type == AccountType.PAY }?.balance ?: BigDecimal.ZERO
+        val points = PointsSummary(rewardsTotal = rewardsTotal, payMoneyBalance = payMoneyBalance)
+
+        return OverviewResult(netWorth, accounts, savings, loans, investments, insurance, linkedAccounts, cards, vehicleSummary, tax, points)
     }
 }
