@@ -15,12 +15,10 @@
 
 import { useEffect, useState } from 'react';
 import { ApiError, getStoredUser } from './lib/api';
-import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type AccountSummary, type LinkedAccount, type Overview } from './lib/overview';
+import { fetchLinkedAccounts, fetchOverview, unlinkAccount, type AccountSummary, type LinkedAccount, type Overview } from './lib/overview';
+import { AccountLinkForm } from './AccountLinkForm';
 import { useI18n } from './i18n/I18nContext';
 import { useCountUp } from './hooks/useCountUp';
-
-const LINK_PROVIDERS = ['MTN Mobile Money', 'Airtel Money', 'Bank of Kigali', 'Equity Bank Rwanda'];
-const MOMO_PROVIDERS = ['MTN Mobile Money', 'Airtel Money'];
 
 type AssetTab = 'ACCOUNTS' | 'CARDS' | 'LOANS' | 'INVESTMENT' | 'INSURANCE' | 'REAL_ESTATE' | 'CAR' | 'TAX' | 'POINTS';
 
@@ -56,9 +54,6 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showLinkForm, setShowLinkForm] = useState(false);
-  const [provider, setProvider] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
   const [activeTab, setActiveTab] = useState<AssetTab>('ACCOUNTS');
   const [showAllAccounts, setShowAllAccounts] = useState(false);
   const myPhoneNumber = getStoredUser()?.phoneNumber ?? '';
@@ -71,28 +66,6 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
   };
 
   useEffect(refresh, []);
-
-  const handleLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const linked = await linkAccount(provider, accountNumber);
-      setProvider(''); setAccountNumber(''); setShowLinkForm(false);
-      refresh();
-      // Real gap found via Toss Simplicity21 research (2026-08-08): a declined provider
-      // verification is still a 200 response (the account is saved as VERIFICATION_FAILED
-      // so it shows up in history) -- without this check the form just closed as if the
-      // link had worked, and the only trace was the status text buried in the list below.
-      if (linked.status === 'VERIFICATION_FAILED') {
-        setError(linked.failureReason ?? t('overview.verificationFailed', { provider }));
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('overview.linkError'));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const handleUnlink = async (id: string) => {
     setBusy(true);
@@ -279,38 +252,9 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
             )}
           </div>
         ))}
-        {!showLinkForm ? (
-          <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '10px' }} onClick={() => setShowLinkForm(true)}>
-            {t('overview.linkAccountPrompt')}
-          </button>
-        ) : (
-          <form onSubmit={handleLink} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {LINK_PROVIDERS.map((p) => (
-                <button
-                  type="button" key={p} className="itunda-btn itunda-btn-secondary"
-                  onClick={() => {
-                    setProvider(p);
-                    // Real friction fix (2026-08-10) -- pre-fill with the caller's own
-                    // already-known phone number for a MoMo provider, still editable in
-                    // case they want to link a different number. Left blank for a real
-                    // bank, where the account number is genuinely a different, unknown value.
-                    if (MOMO_PROVIDERS.includes(p) && !accountNumber) setAccountNumber(myPhoneNumber);
-                  }}
-                >{p}</button>
-              ))}
-            </div>
-            <input
-              type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('overview.providerNamePlaceholder')} required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-            />
-            <input
-              type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder={t('overview.accountPhonePlaceholder')} required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-            />
-            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</button>
-          </form>
-        )}
+        <div style={{ marginTop: '10px' }}>
+          <AccountLinkForm myPhoneNumber={myPhoneNumber} onLinked={() => refresh()} onError={setError} />
+        </div>
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>

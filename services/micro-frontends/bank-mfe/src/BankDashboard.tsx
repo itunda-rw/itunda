@@ -19,6 +19,9 @@ import { getStoredUser, logout, ApiError } from './lib/api';
 import { PinSetupCard } from './PinSetupCard';
 import { CardExplainer } from './CardExplainer';
 import { OverviewAssetsView } from './OverviewAssetsView';
+import { PayFundingSourcePicker } from './PayFundingSourcePicker';
+import { CouponBoxView } from './CouponBoxView';
+import { MembershipView } from './MembershipView';
 import { TransitScreen } from './TransitScreen';
 import { TransitCollectScreen } from './TransitCollectScreen';
 import { MotoFareCollectScreen } from './MotoFareCollectScreen';
@@ -1140,6 +1143,7 @@ function ProductPageHeader({ title, subtitle }: { title: string; subtitle: strin
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
 function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
+  const { t } = useI18n();
   const [account, setAccount] = useState<Account | null>(null);
   // Real swipeable funding-source cards (Pay-parity port, §240) -- see
   // AccountCardCarousel's own doc comment. Only the real payment-eligible accounts
@@ -1168,6 +1172,16 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   // comment. Holds the specific account drilled into, not just a boolean, since
   // MyPaymentCodeCard's own real funding-source picker can select MAIN too.
   const [openAccountDetail, setOpenAccountDetail] = useState<Account | null>(null);
+  // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+  // screenshots) -- new Coupon Box / Membership screens, both presented the same
+  // full-screen-overlay way PayMoneyDetail already is above.
+  const [showCouponBox, setShowCouponBox] = useState(false);
+  const [showMembership, setShowMembership] = useState(false);
+  // Real itunda-issued card summary row -- see DebitCard.kt's own doc comment for
+  // why this is itunda's own real, ledger-backed card simulation, not a real
+  // Visa/Mastercard rail. null = genuinely not issued yet (real teaser state),
+  // undefined = still loading.
+  const [card, setCard] = useState<Card | null | undefined>(undefined);
 
   // Real architectural fix (2026-08-13) -- see HomeView's own doc comment for why
   // the account balance, quick actions, and transaction history moved here from
@@ -1195,6 +1209,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
     loadAccount();
     fetchFacePayStatus().then((result) => setFacePayEnrolled(result.enrolled)).catch(() => setFacePayEnrolled(false));
     fetchRewardTasks().then(setRewardsPreview).catch(() => setRewardsPreview(null));
+    fetchMyCard().then(setCard).catch(() => setCard(null));
   }, []);
 
   // Silent when location is denied -- same pattern as fetchNearbyAds above.
@@ -1246,6 +1261,20 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
         // AutoTopUpCard is already visible, rather than routing this button
         // somewhere unrelated (e.g. Bills) that would silently do the wrong thing.
         onAddMoney={() => setOpenAccountDetail(null)}
+      />
+    );
+  }
+
+  if (showCouponBox) {
+    return <CouponBoxView onBack={() => setShowCouponBox(false)} onBrowseMerchants={() => { setShowCouponBox(false); onNavigateToTab('SHOPPING'); }} />;
+  }
+
+  if (showMembership) {
+    return (
+      <MembershipView
+        onBack={() => setShowMembership(false)}
+        onOpenRewards={() => { setShowMembership(false); onNavigateToTab('REWARDS'); }}
+        onOpenPayMoney={() => { setShowMembership(false); if (account) setOpenAccountDetail(account); }}
       />
     );
   }
@@ -1314,7 +1343,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       </div>
       {showNearbyMerchantsDialog && <NearbyMerchantsDialog merchants={nearbyMerchants} onClose={() => setShowNearbyMerchantsDialog(false)} />}
       <FacePayStatusRow enrolled={facePayEnrolled} busy={facePayBusy} cashbackRatePercent={cashbackRatePercent} onToggle={handleFacePayToggle} />
-      <MyPaymentCodeCard accounts={accounts} />
+      <MyPaymentCodeCard accounts={accounts} onOpenCard={onNavigateToCard} />
       {showTransfer && (
         <TransferFlow
           accountBalance={account?.balance ?? 0}
@@ -1344,6 +1373,50 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       <PayHubOtherServicesRail onCardsClick={onNavigateToCard} onTransitClick={() => onNavigateToTab('TRANSIT')} onMotoFareClick={() => onNavigateToTab('MOTO_FARE_COLLECT')} onNavigateToTab={onNavigateToTab} />
       <QuickActions onCardsClick={onNavigateToCard} />
       {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
+      {/* Real itunda-issued card summary row (itunda Pay redesign, 2026-08-28) --
+          mirrors the real reference's own linked-card row using 100% real itunda
+          data (hasCard/last4/frozen from GET /api/v1/card/my-card), never a
+          fabricated "auto-apply points" claim a real external card issuer would
+          make. Teaser state reuses the exact same dashed-border pattern the
+          Overview redesign already established for an unissued card. */}
+      {card !== undefined && (
+        <div className="itunda-flat-section">
+          {card ? (
+            <button onClick={onNavigateToCard} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', textAlign: 'left' }}>
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)' }}>{t('overview.cardNumber', { last4: card.last4 })}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{card.frozen ? t('overview.cardFrozen') : t('overview.cardActive')}</p>
+              </div>
+              <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+            </button>
+          ) : (
+            <div style={{ border: '1px dashed var(--itunda-grey-300)', borderRadius: 'var(--itunda-radius-md)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.teaserCards')}</p>
+              <button className="itunda-btn itunda-btn-secondary" onClick={onNavigateToCard}>{t('overview.teaserCardsCta')}</button>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Real "Points · Pay Money" summary row (itunda Pay redesign, 2026-08-28) --
+          the real reference's own Membership-screen entry point. Real
+          rewardsTotal + real Pay balance, same two numbers RewardsSummaryRow
+          above already shows separately, combined here to match the reference's
+          own single-row layout. */}
+      {rewardsPreview && (
+        <button onClick={() => setShowMembership(true)} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', textAlign: 'left' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{t('pay.pointsPayMoneyRow')}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{((rewardsPreview.rewardsTotal ?? 0) + (account?.balance ?? 0)).toLocaleString()} RWF</span>
+            <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+          </span>
+        </button>
+      )}
+      {/* Real "Your Coupons" row -- see CouponBoxView.tsx's own doc comment for the
+          real GET /api/v1/merchant/coupons/browse endpoint this now leads to. */}
+      <button onClick={() => setShowCouponBox(true)} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', textAlign: 'left' }}>
+        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{t('pay.yourCouponsRow')}</span>
+        <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+      </button>
       {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
       <div id="pay-request-money-section">
         <RequestMoneyCard />
@@ -6031,7 +6104,7 @@ async function shareOrCopyLink(url: string, title: string, text: string): Promis
 //   Android's own account-only carousel was already an honest, deliberate
 //   simplification of that row, not an inaccuracy -- kept as-is when this pass
 //   restores everything else.
-function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
+function MyPaymentCodeCard({ accounts, onOpenCard }: { accounts: Account[]; onOpenCard: () => void }) {
   const [revealed, setRevealed] = useState(false);
   const [code, setCode] = useState<CustomerPaymentCode | null>(null);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string | null>(null);
@@ -6044,6 +6117,12 @@ function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
   // account (§257: this code always pays out of Pay money unless the customer
   // explicitly swipes to a different account), MAIN kept only as a defensive fallback.
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+  // "Facepay · QR Payment" Recent/Account/Card picker sheet) -- additive to the
+  // existing AccountCardCarousel swipe below, not a replacement (see
+  // PayFundingSourcePicker.tsx's own doc comment for why).
+  const [showFundingPicker, setShowFundingPicker] = useState(false);
+  const myPhoneNumber = getStoredUser()?.phoneNumber ?? '';
   const account = accounts.find((w) => w.id === selectedAccountId) ?? accounts.find((w) => w.type === 'PAY') ?? accounts.find((w) => w.type === 'MAIN') ?? accounts[0] ?? null;
 
   // Real auto-refresh shortly before the code's own real 2-minute expiry, matching
@@ -6163,11 +6242,27 @@ function MyPaymentCodeCard({ accounts }: { accounts: Account[] }) {
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
         )}
       </div>
-      {linkedAccount && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-600)' }}>Funding account</span>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>{linkedAccount.provider} {linkedAccount.externalAccountNumberMasked}</span>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+        <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-600)' }}>
+          {/* Real fold-in (2026-08-28) of what used to be a separate, read-only
+              "Funding account" row -- now folded into the picker sheet's own
+              Account tab, matching the real reference's single funding-source
+              entry point instead of two separate real UI affordances. */}
+          {account ? (account.type === 'PAY' ? 'itunda Pay' : account.type === 'MAIN' ? 'itunda Bank' : `itunda Pay ${account.currency}`) : linkedAccount?.provider}
+        </span>
+        <button onClick={() => setShowFundingPicker(true)} style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
+          Change
+        </button>
+      </div>
+      {showFundingPicker && (
+        <PayFundingSourcePicker
+          accounts={accounts}
+          selectedAccountId={account?.id ?? null}
+          onSelectAccount={setSelectedAccountId}
+          onClose={() => setShowFundingPicker(false)}
+          onOpenCard={onOpenCard}
+          myPhoneNumber={myPhoneNumber}
+        />
       )}
       {nearbyAds.length > 0 && (
         <div style={{ marginTop: '16px' }}>

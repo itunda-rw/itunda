@@ -126,6 +126,33 @@ export type TranslationKey =
   | 'overview.teaserRealEstateCta'
   | 'overview.teaserCar'
   | 'overview.teaserCarCta'
+  // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+  // screenshots) -- funding-source picker sheet, Coupon Box, and the adapted
+  // Membership screen (real itunda points only, never a fabricated third-party
+  // brand -- see MembershipView.tsx's own doc comment).
+  | 'pay.pickerTitle'
+  | 'pay.pickerRecent'
+  | 'pay.pickerAccount'
+  | 'pay.pickerCard'
+  | 'pay.pickerLinkedAccounts'
+  | 'pay.pickerCardNumber'
+  | 'pay.pointsPayMoneyRow'
+  | 'pay.yourCouponsRow'
+  | 'pay.couponBoxTitle'
+  | 'pay.couponsReceived'
+  | 'pay.couponsUsedExpired'
+  | 'pay.couponsEmptyTitle'
+  | 'pay.couponsEmptySubtitle'
+  | 'pay.couponsFindNew'
+  | 'pay.couponsNoneUsed'
+  | 'pay.couponExpires'
+  | 'pay.couponsLoadError'
+  | 'pay.membershipTitle'
+  | 'pay.membershipTotal'
+  | 'pay.membershipAvailablePoints'
+  | 'pay.membershipPayMoney'
+  | 'pay.membershipStorePoints'
+  | 'pay.membershipLoadError'
   // Real third slice (2026-08-08): P2P transfer, itunda's own single highest-stakes
   // money-moving screen -- following the same phased rollout, one screen at a time,
   // across all 3 platforms before moving to the next.
