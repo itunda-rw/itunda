@@ -1528,6 +1528,22 @@ data class MerchantCouponPreviewDto(
 )
 data class MerchantCouponViewDto(val coupon: MerchantCouponPreviewDto, val eligible: Boolean, val alreadyRedeemed: Boolean)
 data class MerchantCouponsForCustomerResponse(val success: Boolean, val coupons: List<MerchantCouponPreviewDto>)
+
+// Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+// Coupon box + Membership screens). Both endpoints these DTOs back had ZERO
+// controller endpoint anywhere before this pass -- see MerchantCouponService.kt's
+// own doc comments (browseCoupons/getMyRedemptions) and
+// MerchantLoyaltyPointsService.kt's (getMyBalances). Mirrors bank-mfe's
+// lib/coupons.ts exactly.
+data class CouponBrowseViewDto(val coupon: MerchantCouponPreviewDto, val merchantName: String, val eligible: Boolean, val alreadyRedeemed: Boolean)
+data class CouponBrowseResponse(val success: Boolean, val coupons: List<CouponBrowseViewDto>)
+data class CouponRedemptionDto(
+    val id: String, val couponId: String, val merchantId: String, val transactionId: String,
+    val discountAmount: java.math.BigDecimal, val redeemedAt: String,
+)
+data class CouponRedemptionsResponse(val success: Boolean, val redemptions: List<CouponRedemptionDto>)
+data class LoyaltyBalanceDto(val merchantId: String, val merchantName: String, val pointBalance: java.math.BigDecimal)
+data class LoyaltyBalancesResponse(val success: Boolean, val balances: List<LoyaltyBalanceDto>, val total: java.math.BigDecimal)
 data class PaymentIntentPreviewResponse(
     val success: Boolean, val merchantId: String, val businessName: String,
     val amount: java.math.BigDecimal, val description: String?, val coupons: List<MerchantCouponViewDto>,
@@ -3538,6 +3554,20 @@ interface ApiService {
 
     @GET("api/v1/merchant/{merchantId}/coupons")
     suspend fun getCouponsForCustomer(@Path("merchantId") merchantId: String): MerchantCouponsForCustomerResponse
+
+    // Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28) --
+    // itunda's first ever unscoped coupon read, see MerchantCouponService.
+    // browseCoupons's own doc comment. Mirrors bank-mfe's lib/coupons.ts exactly.
+    @GET("api/v1/merchant/coupons/browse")
+    suspend fun browseCoupons(): CouponBrowseResponse
+
+    @GET("api/v1/merchant/coupons/my-redemptions")
+    suspend fun getMyCouponRedemptions(): CouponRedemptionsResponse
+
+    // Real Membership-screen "Store points" row -- see MerchantLoyaltyPointsService.
+    // getMyBalances's own doc comment. Mirrors bank-mfe's lib/coupons.ts exactly.
+    @GET("api/v1/merchant/loyalty/my-balances")
+    suspend fun getMyLoyaltyBalances(): LoyaltyBalancesResponse
 
     // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
     // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/
