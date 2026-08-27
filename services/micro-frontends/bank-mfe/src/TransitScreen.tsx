@@ -33,7 +33,7 @@ function tapButtonLabel(balance: TransitBalance | null, fare: number, busy: bool
   return `Tap ${fare.toLocaleString()} RWF`;
 }
 
-export function TransitScreen() {
+export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) {
   const { t } = useI18n();
   const [balance, setBalance] = useState<TransitBalance | null | undefined>(undefined);
   const [trips, setTrips] = useState<TransitTrip[]>([]);
@@ -111,6 +111,9 @@ export function TransitScreen() {
           this is itunda&apos;s own simulated transit balance: real money moves, real fares apply, it just
           isn&apos;t carried by a real bus card reader.
         </p>
+        <button onClick={onOpenCollect} style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo-500)' }}>
+          Collecting fares for Kigali Bus Services or Royal Express? Open the collector →
+        </button>
       </div>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}

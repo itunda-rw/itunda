@@ -21,6 +21,14 @@ export interface TransitTrip {
   createdAt: string;
 }
 
+// Real collector-facing confirmation -- deliberately no rider balance or identity,
+// matching the backend's own TransitCollectResult doc comment.
+export interface TransitCollectResult {
+  operator: string;
+  fare: number;
+  collectedAt: string;
+}
+
 // The 2 real Kigali bus operators Tap&Go actually covers (acgroup.rw). A plain
 // whitelist, matching exactly what the backend's TransitOperator.ALL accepts.
 export const TRANSIT_OPERATORS = ['Kigali Bus Services', 'Royal Express'] as const;
@@ -54,3 +62,16 @@ export const tapTransitFare = (operator: string, fare: number) =>
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ operator, fare }),
   });
+
+// Real "agent collects a fare from a rider's own presented code" flow (2026-08-27,
+// direct user follow-up: "for simplification we need nfc"). `code` is the same
+// CustomerPaymentCode value lib/shopping.ts's generateCustomerPaymentCode already
+// produces and every user's own "My payment code" screen already shows as a QR --
+// this reads it back after a camera scan (NFC read is Android-native, not something
+// a browser can do reliably, so web collectors always scan).
+export const tapTransitFareByCode = (code: string, operator: string, fare: number) =>
+  apiFetch<{ success: boolean; collected: TransitCollectResult }>('/api/v1/transit/tap-by-code', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ code, operator, fare }),
+  }).then((r) => r.collected);

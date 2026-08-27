@@ -19,6 +19,8 @@ import { getStoredUser, logout, ApiError } from './lib/api';
 import { PinSetupCard } from './PinSetupCard';
 import { CardExplainer } from './CardExplainer';
 import { TransitScreen } from './TransitScreen';
+import { TransitCollectScreen } from './TransitCollectScreen';
+import { QrScanCamera, parseQrParam } from './QrScanCamera';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -264,7 +266,7 @@ import { useCountUp } from './hooks/useCountUp';
 // EXPLORE_TAB_GROUPS, same as every other Explore destination. ShopHub/HoodHub are
 // retired; ShopView/EatsView/MarketplaceView/CommunityView/JobsView/PropertyView
 // render directly, exactly as they did before either hub existed.
-type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'TRANSIT' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
+type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'TRANSIT' | 'TRANSIT_COLLECT' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 6):
 // `tab` lived only in local useState, never in the URL -- refreshing the page or
@@ -273,7 +275,7 @@ type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SH
 // union above (TypeScript types don't exist at runtime, so an incoming `?tab=` value
 // needs a real Set to validate against, not just a cast) -- kept next to the type so
 // the two can't silently drift apart when a tab is added or removed.
-const ALL_TAB_IDS = new Set<Tab>(['HOME', 'PAY', 'EXPLORE', 'YOU', 'CERTIFICATE', 'SHOPPING', 'SHOP', 'EATS', 'MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'STOCKS', 'SAVINGS', 'MESSAGES', 'RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'KNOWLEDGE', 'MAP', 'DEVICES', 'CARD', 'TRANSIT', 'OVERVIEW', 'LOANS', 'CREDIT_SCORE', 'TRUST_SCORE', 'IDENTITY', 'SUPPORT', 'MY', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY', 'REWARDS', 'INSURANCE', 'BILLS', 'AGENT', 'USSD']);
+const ALL_TAB_IDS = new Set<Tab>(['HOME', 'PAY', 'EXPLORE', 'YOU', 'CERTIFICATE', 'SHOPPING', 'SHOP', 'EATS', 'MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'STOCKS', 'SAVINGS', 'MESSAGES', 'RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'KNOWLEDGE', 'MAP', 'DEVICES', 'CARD', 'TRANSIT', 'TRANSIT_COLLECT', 'OVERVIEW', 'LOANS', 'CREDIT_SCORE', 'TRUST_SCORE', 'IDENTITY', 'SUPPORT', 'MY', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY', 'REWARDS', 'INSURANCE', 'BILLS', 'AGENT', 'USSD']);
 const TAB_QUERY_PARAM = 'tab';
 const readTabFromUrl = (): Tab => {
   try {
@@ -6122,114 +6124,6 @@ function AffiliateEarningsCard() {
 
 function couponDiscountLabel(c: MerchantCouponView['coupon']) {
   return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
-}
-
-// Real fix for a genuine "ask the user to type a code" anti-pattern (2026-08-19):
-// PayByCodeCard's own copy already said "No scanner handy? Enter the code" as if a
-// scanner existed, but no client anywhere in bank-mfe ever actually opened the camera --
-// Android already has real camera QR scanning (CameraQrScanner.kt) but the web app only
-// ever had the typed-code fallback. Uses the standard BarcodeDetector API (real in
-// Chrome/Chromium-based browsers, which is what itunda's own physical test devices run)
-// with getUserMedia; falls back to manual entry when unsupported or camera access is
-// denied, matching Kakao/Toss's own real "scan first, code is the fallback" hierarchy.
-// Real Toss-sourced accessibility fix (2026-08-23, toss.tech/article/accessibility_face --
-// "시각 정보를 소리로 번역하는 법", the same real article that already justified this file's
-// TalkChatThread liveAnnouncement pattern, toss.tech/article/38743, docs/DESIGN_REFERENCES.md
-// §14). Toss found their camera-based face-auth flow was a silent, purely-visual dead end for
-// screen-reader users -- no way to tell if recognition was progressing or had just succeeded --
-// and fixed it with a distinct in-progress/complete cue instead of only a visual progress bar.
-// This camera flow had the exact same gap: `status === 'starting'` was the only state ever
-// announced (as plain, non-live text), so a screen-reader user got no signal once scanning
-// actually started, and NONE at all the instant a code was found -- the view just silently
-// swapped to whatever `onDetect` renders next. Reusing the sr-only aria-live pattern already
-// established for chat instead of inventing a new one.
-function QrScanCamera({ onDetect, onUnavailable }: { onDetect: (value: string) => void; onUnavailable: () => void }) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [status, setStatus] = useState<'starting' | 'scanning' | 'detected'>('starting');
-
-  useEffect(() => {
-    if (!('BarcodeDetector' in window)) {
-      onUnavailable();
-      return;
-    }
-    let stream: MediaStream | null = null;
-    let raf = 0;
-    let cancelled = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BarcodeDetector isn't in TS's lib.dom yet
-    const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-
-    const tick = async () => {
-      if (cancelled || !videoRef.current) return;
-      try {
-        const codes = await detector.detect(videoRef.current);
-        if (codes.length > 0) {
-          // Real Toss-sourced fix: a brief, announced "found" moment (matching the real
-          // article's distinct completion cue) before handing off to onDetect -- 500ms is
-          // enough for a screen reader to pick up and start speaking the live-region
-          // mutation before this component unmounts; sighted users get the same visual
-          // confirmation (the frame below turns green) instead of an instant, jarring cut.
-          setStatus('detected');
-          window.setTimeout(() => onDetect(codes[0].rawValue), 500);
-          return;
-        }
-      } catch {
-        // Frame not ready yet -- keep polling.
-      }
-      raf = requestAnimationFrame(tick);
-    };
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then((s) => {
-        if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
-        stream = s;
-        if (videoRef.current) {
-          videoRef.current.srcObject = s;
-          videoRef.current.play().catch(() => {});
-        }
-        setStatus('scanning');
-        raf = requestAnimationFrame(tick);
-      })
-      .catch(() => onUnavailable());
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onDetect/onUnavailable are stable per mount, re-subscribing on every render would restart the camera
-  }, []);
-
-  let announcement = 'QR code found.';
-  if (status === 'starting') announcement = 'Starting camera…';
-  else if (status === 'scanning') announcement = 'Camera ready. Point at a QR code.';
-
-  return (
-    <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: '16px', overflow: 'hidden', background: '#111', marginBottom: '10px' }}>
-      <video ref={videoRef} muted playsInline aria-label="Camera preview for QR scanning" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      <div
-        style={{
-          position: 'absolute', inset: '14%',
-          border: `3px solid ${status === 'detected' ? 'var(--itunda-green)' : 'var(--itunda-indigo-500)'}`,
-          borderRadius: '16px', pointerEvents: 'none',
-        }}
-      />
-      {(status === 'starting' || status === 'detected') && (
-        <p style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center', fontSize: 'var(--itunda-type-scale-12-size)', color: '#fff' }}>
-          {status === 'detected' ? 'QR code found' : 'Starting camera…'}
-        </p>
-      )}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</div>
-    </div>
-  );
-}
-
-// Real itunda://pay?intentId=... / itunda://pay-static?merchantId=... QR payload format
-// -- see merchant-mfe/src/lib/merchant.ts's own paymentIntentQrPayload/staticQrPayload.
-// A scanned code is either that full URI or (for a merchant who printed just the raw
-// code) the bare id -- accept both rather than forcing the URI shape on the user.
-function parseQrParam(raw: string, key: string): string {
-  const match = raw.match(new RegExp(`[?&]${key}=([^&]+)`));
-  return match ? decodeURIComponent(match[1]) : raw.trim();
 }
 
 // Real "simplify ternary operators" fix (2026-08-19) -- see PayByCodeCard's own
@@ -24613,7 +24507,8 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'SHOPPING' && <ShoppingView />}
       {tab === 'DEVICES' && <DevicesView />}
       {tab === 'CARD' && <CardView />}
-      {tab === 'TRANSIT' && <TransitScreen />}
+      {tab === 'TRANSIT' && <TransitScreen onOpenCollect={() => setTab('TRANSIT_COLLECT')} />}
+      {tab === 'TRANSIT_COLLECT' && <TransitCollectScreen />}
       {tab === 'OVERVIEW' && <OverviewView />}
       {tab === 'LOANS' && <LoansView initialMode={pendingLoansMode ?? undefined} onConsumedInitialMode={() => setPendingLoansMode(null)} />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
