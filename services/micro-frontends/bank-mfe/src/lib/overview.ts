@@ -45,6 +45,32 @@ export interface LinkedAccountSummary {
   isDemoBalance: boolean;
 }
 
+// Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
+// Toss "총자산" screenshots). See OverviewService.kt's own doc comments for why
+// each of these 4 is shaped the way it is (Car is raw count+total, not a
+// duplicated valuation; Tax is always real, even at zero payments).
+export interface CardsSummary {
+  hasCard: boolean;
+  last4: string | null;
+  design: string | null;
+  frozen: boolean | null;
+}
+
+export interface VehicleSummary {
+  vehicleCount: number;
+  totalPurchasePrice: number;
+}
+
+export interface TaxSummary {
+  totalPaid: number;
+  paymentCount: number;
+}
+
+export interface PointsSummary {
+  rewardsTotal: number;
+  payMoneyBalance: number;
+}
+
 export interface Overview {
   netWorth: number;
   accounts: AccountSummary[];
@@ -53,6 +79,10 @@ export interface Overview {
   investments: InvestmentsSummary;
   insurance: InsuranceSummary;
   linkedAccounts: LinkedAccountSummary[];
+  cards: CardsSummary;
+  vehicles: VehicleSummary;
+  tax: TaxSummary;
+  points: PointsSummary;
 }
 
 export const fetchOverview = () => apiFetch<{ success: boolean } & Overview>('/api/v1/overview').then((r) => r);

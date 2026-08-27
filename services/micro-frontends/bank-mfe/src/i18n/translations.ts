@@ -93,6 +93,39 @@ export type TranslationKey =
   // pass over this screen. Fixed here retroactively, and on Android at the same time,
   // not left inconsistent between the two.
   | 'overview.verificationFailed'
+  // Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
+  // Toss "총자산" screenshots). One key per new tab label / real-card sentence /
+  // teaser message+CTA -- see OverviewAssetsView.tsx's own doc comment.
+  | 'overview.tabCards'
+  | 'overview.tabLoans'
+  | 'overview.tabInvestment'
+  | 'overview.tabInsurance'
+  | 'overview.tabRealEstate'
+  | 'overview.tabCar'
+  | 'overview.tabTax'
+  | 'overview.tabPoints'
+  | 'overview.manage'
+  | 'overview.viewAllAccounts'
+  | 'overview.showFewerAccounts'
+  | 'overview.cardNumber'
+  | 'overview.cardActive'
+  | 'overview.cardFrozen'
+  | 'overview.carSummary'
+  | 'overview.taxSummary'
+  | 'overview.pointsSummary'
+  | 'overview.payMoneyBalance'
+  | 'overview.teaserCards'
+  | 'overview.teaserCardsCta'
+  | 'overview.teaserLoans'
+  | 'overview.teaserLoansCta'
+  | 'overview.teaserInvestment'
+  | 'overview.teaserInvestmentCta'
+  | 'overview.teaserInsurance'
+  | 'overview.teaserInsuranceCta'
+  | 'overview.teaserRealEstate'
+  | 'overview.teaserRealEstateCta'
+  | 'overview.teaserCar'
+  | 'overview.teaserCarCta'
   // Real third slice (2026-08-08): P2P transfer, itunda's own single highest-stakes
   // money-moving screen -- following the same phased rollout, one screen at a time,
   // across all 3 platforms before moving to the next.

@@ -18,6 +18,7 @@ import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerch
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { PinSetupCard } from './PinSetupCard';
 import { CardExplainer } from './CardExplainer';
+import { OverviewAssetsView } from './OverviewAssetsView';
 import { TransitScreen } from './TransitScreen';
 import { TransitCollectScreen } from './TransitCollectScreen';
 import { MotoFareCollectScreen } from './MotoFareCollectScreen';
@@ -81,7 +82,7 @@ import {
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, resolveRecipient, sendDirect, sendToFamilyMember, type P2pPaymentRequestDto, type P2pPaymentRequestStatus, type P2pRecipientPreview } from './lib/p2p';
 import { getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature, type Certificate, type VerifyCertificateSignatureResult } from './lib/certificate';
-import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type AccountSummary, type LinkedAccount, type Overview } from './lib/overview';
+import { fetchLinkedAccounts, type LinkedAccount } from './lib/overview';
 import {
   applyForLoan, applyForPostpaidCredit, drawOverdraft, fetchLenders, fetchLoanOffers, fetchMyLoans, fetchMyOverdraft,
   fetchMyPostpaidCredit, openOverdraft, refinanceLoan, repayLoan, repayOverdraft, repayPostpaidCredit, spendPostpaidCredit,
@@ -2601,172 +2602,6 @@ function VerifyCertificateCard() {
       {error && (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
-    </div>
-  );
-}
-
-// Real Toss-style unified account overview (2026-07-22) -- found fully built on the
-// backend (rw.itunda.overview) with zero client UI anywhere until the Android port
-// the same day. See OverviewService.kt's own doc comment for why insurance is
-// excluded from net worth (a sunk expense, not an asset) and LinkedAccount.kt's for
-// why linked balances are honestly labeled demo -- itunda has no live Open Banking
-// access to fetch a real one.
-const LINK_PROVIDERS = ['MTN Mobile Money', 'Airtel Money', 'Bank of Kigali', 'Equity Bank Rwanda'];
-// Real friction point found live via Toss Simplicity21 research (2026-08-08, session 2-1
-// "신은 디테일에 있다" -- eliminating friction from a real bank-linking flow): for a MoMo
-// provider, the "account number" IS the caller's own real phone number -- the same number
-// they're already logged in with. Making them retype it is unnecessary friction with a
-// real, already-known answer, the exact shape that session's own title names.
-const MOMO_PROVIDERS = ['MTN Mobile Money', 'Airtel Money'];
-
-function OverviewView() {
-  const { t } = useI18n();
-  const [overview, setOverview] = useState<Overview | null>(null);
-  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [showLinkForm, setShowLinkForm] = useState(false);
-  const [provider, setProvider] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const myPhoneNumber = getStoredUser()?.phoneNumber ?? '';
-
-  const refresh = () => {
-    setError(null);
-    Promise.all([fetchOverview(), fetchLinkedAccounts()])
-      .then(([o, linked]) => { setOverview(o); setLinkedAccounts(linked); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('overview.loadError')));
-  };
-
-  useEffect(refresh, []);
-
-  const handleLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const linked = await linkAccount(provider, accountNumber);
-      setProvider(''); setAccountNumber(''); setShowLinkForm(false);
-      refresh();
-      // Real gap found via Toss Simplicity21 research (2026-08-08): a declined provider
-      // verification is still a 200 response (the account is saved as VERIFICATION_FAILED
-      // so it shows up in history) -- without this check the form just closed as if the
-      // link had worked, and the only trace was the status text buried in the list below.
-      if (linked.status === 'VERIFICATION_FAILED') {
-        setError(linked.failureReason ?? t('overview.verificationFailed', { provider }));
-      }
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('overview.linkError'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleUnlink = async (id: string) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await unlinkAccount(id);
-      refresh();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('overview.unlinkError'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Real Toss motion pattern -- see useCountUp's own doc comment. Called before the
-  // null check below (Rules of Hooks) with a ?? 0 fallback, same convention as this
-  // file's other overview/detail balance hooks.
-  const animatedNetWorth = useCountUp(overview?.netWorth ?? 0);
-
-  if (!overview) {
-    return <div className="itunda-flat-section skeleton" style={{ height: '260px' }} />;
-  }
-
-  // Real fix (2026-08-24, flat-design sweep): dropped itunda-card wrapping around
-  // each of these 4 sections -- a real Toss overview screen renders net
-  // worth/accounts/summary/linked-accounts as one continuous flat list, not
-  // separate white cards (docs/UI_UX_GUIDELINES.md §10). itunda-flat-section's own
-  // border-bottom divider now separates the sections.
-  return (
-    <div>
-      <div className="itunda-flat-section">
-        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.netWorth')}</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString()} RWF</h2>
-      </div>
-      <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>{t('overview.accounts')}</h3>
-        {overview.accounts.map((a) => (
-          <OverviewAccountRow key={a.id} account={a} />
-        ))}
-      </div>
-      <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.savings', { amount: overview.savings.totalSaved.toLocaleString(), count: overview.savings.goalCount })}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.loans', { amount: overview.loans.totalOutstanding.toLocaleString(), count: overview.loans.activeCount })}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.investments', { amount: overview.investments.totalCostBasis.toLocaleString(), count: overview.investments.holdingCount })}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.insurance', { count: overview.insurance.activePolicyCount, amount: overview.insurance.totalMonthlyPremium.toLocaleString() })}</p>
-      </div>
-      <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>{t('overview.linkedAccounts')}</h3>
-        {linkedAccounts.map((a) => (
-          <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.provider}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{a.externalAccountNumberMasked} · {a.status}</p>
-            {a.demoBalance != null && (
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.demoBalance', { currency: a.demoBalanceCurrency ?? '', amount: a.demoBalance.toLocaleString() })}</p>
-            )}
-            {a.status === 'LINKED' && (
-              <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>{t('overview.unlink')}</button>
-            )}
-          </div>
-        ))}
-        {!showLinkForm ? (
-          <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '10px' }} onClick={() => setShowLinkForm(true)}>
-            {t('overview.linkAccountPrompt')}
-          </button>
-        ) : (
-          <form onSubmit={handleLink} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-              {LINK_PROVIDERS.map((p) => (
-                <button
-                  type="button" key={p} className="itunda-btn itunda-btn-secondary"
-                  onClick={() => {
-                    setProvider(p);
-                    // Real friction fix (2026-08-10) -- pre-fill with the caller's own
-                    // already-known phone number for a MoMo provider, still editable in
-                    // case they want to link a different number. Left blank for a real
-                    // bank, where the account number is genuinely a different, unknown value.
-                    if (MOMO_PROVIDERS.includes(p) && !accountNumber) setAccountNumber(myPhoneNumber);
-                  }}
-                >{p}</button>
-              ))}
-            </div>
-            <input
-              type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('overview.providerNamePlaceholder')} required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-            />
-            <input
-              type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder={t('overview.accountPhonePlaceholder')} required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-            />
-            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</button>
-          </form>
-        )}
-      </div>
-      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </div>
-  );
-}
-
-// Extracted so useCountUp -- see its own doc comment -- can be called once per real
-// row rather than inside the parent's accounts.map() callback, which the Rules of
-// Hooks forbid (same pattern as ForeignCurrencyAccountRow below).
-function OverviewAccountRow({ account }: { account: AccountSummary }) {
-  const animatedBalance = useCountUp(account.balance);
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
-      <span>{account.name} ({account.type})</span>
-      <span>{account.currency} {animatedBalance.toLocaleString()}</span>
     </div>
   );
 }
@@ -24511,7 +24346,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'TRANSIT' && <TransitScreen onOpenCollect={() => setTab('TRANSIT_COLLECT')} />}
       {tab === 'TRANSIT_COLLECT' && <TransitCollectScreen />}
       {tab === 'MOTO_FARE_COLLECT' && <MotoFareCollectScreen />}
-      {tab === 'OVERVIEW' && <OverviewView />}
+      {tab === 'OVERVIEW' && <OverviewAssetsView onNavigateToTab={setTab} />}
       {tab === 'LOANS' && <LoansView initialMode={pendingLoansMode ?? undefined} onConsumedInitialMode={() => setPendingLoansMode(null)} />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
