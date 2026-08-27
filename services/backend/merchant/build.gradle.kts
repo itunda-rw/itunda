@@ -21,6 +21,12 @@ dependencies {
     // already uses, see MerchantService.kt's own doc comment on that call site. No
     // circular dependency: :account only depends on :core.
     implementation(project(":account"))
+    // For MessagingService.startOrGetConversation -- ShoppingController's real
+    // contact-seller endpoint reuses the same generic 1:1 messaging system
+    // MarketplaceController's own contact-seller already uses, see
+    // marketplace/build.gradle.kts's own :messaging dependency for the same shape. No
+    // circular dependency: :messaging only depends on :core and :auth.
+    implementation(project(":messaging"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

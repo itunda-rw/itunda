@@ -3,12 +3,21 @@ package rw.itunda.core.repository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderReturnRequest
 import rw.itunda.core.domain.OrderReturnStatus
 import rw.itunda.core.domain.OrderStatus
 import java.time.Instant
+
+// Same real average/count-style projection shape as ProductRatingSummaryProjection
+// (ProductReviewRepository.kt, same package) -- just productId + a real count.
+interface ProductOrderCountProjection {
+    val productId: String
+    val count: Long
+}
 
 interface OrderRepository : JpaRepository<Order, String> {
     // Real pagination from day one -- this session's own established convention since
@@ -36,6 +45,19 @@ interface OrderItemRepository : JpaRepository<OrderItem, String> {
     // MerchantProductService.getProduct's own doc comment. Real distinct-order count
     // for one product, backing view-to-order conversion alongside MerchantProduct.viewCount.
     fun countByProductId(productId: String): Long
+
+    // Real batched version of countByProductId above (2026-08-28) -- same no-N+1
+    // discipline as ProductReviewRepository.getProductRatingSummaries: one GROUP BY
+    // query for a whole deals/search/catalog page of products, backing a real
+    // "Best seller" badge (genuine gross order count, same "gross collected at
+    // placement" definition MerchantService.getTopSellingProducts already established
+    // -- not filtered to a completed/settled status, so this stays a single simple
+    // query rather than needing to join back to Order for its status).
+    @Query(
+        "SELECT oi.productId as productId, COUNT(oi) as count " +
+            "FROM OrderItem oi WHERE oi.productId IN :productIds GROUP BY oi.productId",
+    )
+    fun getProductOrderCounts(@Param("productIds") productIds: List<String>): List<ProductOrderCountProjection>
 }
 
 interface OrderReturnRequestRepository : JpaRepository<OrderReturnRequest, String> {
