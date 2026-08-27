@@ -134,9 +134,7 @@ fun CommerceShopContent(
     var searchInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
-    // Real seller chat (2026-08-28) -- see ShopSellerContactPicker.kt's own doc
-    // comment. The merchant currently being contacted, or null when closed.
-    var contactingMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
+    var contactingMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) } // see ShopSellerContactPickerOverlay
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProductDto?>(null) }
     val cart = remember { mutableStateMapOf<String, CommerceCartLine>() }
@@ -455,17 +453,7 @@ fun CommerceShopContent(
         }
     }
 
-    // Real seller chat (2026-08-28) -- rendered unconditionally (a no-op Dialog when
-    // null) so it overlays whichever sub-screen ShopDetailDispatch below renders,
-    // rather than being skipped by that call's own early `return`.
-    contactingMerchant?.let { merchant ->
-        ShopSellerContactPicker(
-            merchantId = merchant.merchantId,
-            merchantName = merchant.businessName,
-            onDismiss = { contactingMerchant = null },
-            onOpened = { conversationId -> contactingMerchant = null; onMessageSeller(conversationId) },
-        )
-    }
+    ShopSellerContactPickerOverlay(contactingMerchant, onDismiss = { contactingMerchant = null }, onOpened = { conversationId -> contactingMerchant = null; onMessageSeller(conversationId) })
 
     if (ShopDetailDispatch(
             results = results,

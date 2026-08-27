@@ -27,6 +27,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SendMessageRequest
+import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 
@@ -49,6 +50,28 @@ private val CONTACT_CATEGORIES = listOf(
     "Product inquiry", "Shipping inquiry", "Exchange inquiry",
     "Return inquiry", "Cancellation inquiry", "Other inquiry",
 )
+
+// Real seller chat overlay wrapper -- extracted out of ShopScreen.kt (2026-08-28,
+// keeping that file under its real file-size-lint baseline) so its own real
+// `contactingMerchant?.let { ... }` null-check + Dialog call site collapses into
+// one line at the caller. Rendered unconditionally (a real no-op when
+// contactingMerchant is null) so it overlays whichever sub-screen
+// ShopDetailDispatch renders, rather than being skipped by that call's own early
+// `return`.
+@Composable
+fun ShopSellerContactPickerOverlay(
+    contactingMerchant: ShoppingMerchantDto?,
+    onDismiss: () -> Unit,
+    onOpened: (String) -> Unit,
+) {
+    if (contactingMerchant == null) return
+    ShopSellerContactPicker(
+        merchantId = contactingMerchant.merchantId,
+        merchantName = contactingMerchant.businessName,
+        onDismiss = onDismiss,
+        onOpened = onOpened,
+    )
+}
 
 @Composable
 fun ShopSellerContactPicker(
