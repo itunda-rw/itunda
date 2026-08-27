@@ -115,6 +115,12 @@ interface TermsAcceptanceRepository : JpaRepository<TermsAcceptance, String> {
 interface MerchantLoyaltyAccountRepository : JpaRepository<MerchantLoyaltyAccount, String> {
     fun findByMerchantIdAndCustomerId(merchantId: String, customerId: String): MerchantLoyaltyAccount?
 
+    // Real "Store points" Membership-screen row (itunda Pay redesign, 2026-08-28) --
+    // every real per-merchant balance previously only ever read one merchant at a
+    // time (see getBalance's own call sites); this is the first cross-merchant read,
+    // backing MerchantLoyaltyPointsService.getMyBalances.
+    fun findByCustomerId(customerId: String): List<MerchantLoyaltyAccount>
+
     // Real scheduler feed for MerchantLoyaltyPointsExpiryScheduler -- coarse repo
     // filter (a nonzero balance untouched since before the real cutoff), exact
     // re-check-before-act done in MerchantLoyaltyPointsService.expireIfDue itself,

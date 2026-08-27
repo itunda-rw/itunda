@@ -107,6 +107,75 @@ class MerchantCouponServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28) --
+    // the first real read of MerchantCoupon across every merchant at once, see
+    // browseCoupons's own doc comment.
+    Given("real active coupons from two different real merchants, one expired, one regulars-only") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantCouponRepository = mockk<MerchantCouponRepository>()
+        val merchantCouponRedemptionRepository = mockk<MerchantCouponRedemptionRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantCouponService(
+            merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
+            transactionRepository, notificationRepository, pushNotificationService,
+        )
+
+        val merchant1 = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
+        val merchant2 = Merchant(id = "merchant_2", ownerUserId = "seller_2", accountId = "account_2", businessName = "Nyamirambo Bakery", status = MerchantStatus.ACTIVE)
+
+        val openCoupon = couponWithExpiry("coupon_open", "merchant_1", Instant.now().plus(10, ChronoUnit.DAYS))
+        val expiredCoupon = couponWithExpiry("coupon_expired", "merchant_2", Instant.now().minus(1, ChronoUnit.DAYS))
+        val regularsOnlyCoupon = MerchantCoupon(
+            id = "coupon_regulars", merchantId = "merchant_2", title = "Regulars only 20% off", discountType = CouponDiscountType.PERCENT,
+            discountValue = BigDecimal("20"), active = true, regularsOnly = true, expiresAt = null,
+        )
+
+        every { merchantCouponRepository.findByActiveTrueOrderByCreatedAtDesc() } returns listOf(openCoupon, expiredCoupon, regularsOnlyCoupon)
+        every { merchantRepository.findAllById(listOf("merchant_1", "merchant_2")) } returns listOf(merchant1, merchant2)
+        every { merchantCouponRedemptionRepository.existsByCouponIdAndCustomerId(any(), "customer_1") } returns false
+        every { transactionRepository.countBySenderIdAndRecipientIdAndTypeAndStatus("customer_1", "seller_2", any(), any()) } returns 0L
+
+        When("a customer who is not a regular anywhere browses real coupons across every merchant") {
+            val results = service.browseCoupons("customer_1")
+
+            Then("the real expired coupon is excluded entirely, and each real remaining coupon carries its real merchant name") {
+                results.map { it.coupon.id } shouldBe listOf("coupon_open", "coupon_regulars")
+                results.find { it.coupon.id == "coupon_open" }?.merchantName shouldBe "Kigali Coffee"
+                results.find { it.coupon.id == "coupon_regulars" }?.merchantName shouldBe "Nyamirambo Bakery"
+            }
+            Then("the real regulars-only coupon is marked ineligible for this non-regular customer") {
+                results.find { it.coupon.id == "coupon_regulars" }?.eligible shouldBe false
+                results.find { it.coupon.id == "coupon_open" }?.eligible shouldBe true
+            }
+        }
+    }
+
+    Given("a customer with real coupon redemption history") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantCouponRepository = mockk<MerchantCouponRepository>()
+        val merchantCouponRedemptionRepository = mockk<MerchantCouponRedemptionRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantCouponService(
+            merchantRepository, merchantCouponRepository, merchantCouponRedemptionRepository,
+            transactionRepository, notificationRepository, pushNotificationService,
+        )
+        val redemption = rw.itunda.core.domain.MerchantCouponRedemption(
+            id = "redemption_1", couponId = "coupon_1", merchantId = "merchant_1", customerId = "customer_1",
+            transactionId = "txn_1", discountAmount = BigDecimal("500"),
+        )
+        every { merchantCouponRedemptionRepository.findByCustomerIdOrderByRedeemedAtDesc("customer_1") } returns listOf(redemption)
+
+        When("fetching the real Coupon box 'Used/expired' tab") {
+            Then("it returns the real redemption history untouched -- this previously had zero controller endpoint anywhere") {
+                service.getMyRedemptions("customer_1") shouldBe listOf(redemption)
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

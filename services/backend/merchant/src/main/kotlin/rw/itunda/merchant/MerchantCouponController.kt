@@ -35,6 +35,7 @@ data class CreateCouponRequest(
 class MerchantCouponController(
     private val merchantCouponService: MerchantCouponService,
     private val merchantCouponExpiryReminderScheduler: MerchantCouponExpiryReminderScheduler,
+    private val merchantLoyaltyPointsService: MerchantLoyaltyPointsService,
 ) {
     // Real merchant coupon expiry-reminder manual trigger -- same "expose the
     // scheduler's own real logic as a callable endpoint" convention
@@ -76,6 +77,25 @@ class MerchantCouponController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "coupons" to merchantCouponService.getCouponsForCustomer(merchantId, currentUser.userId)))
+
+    // Real "Coupon box" browse (itunda Pay redesign, 2026-08-28) -- see
+    // MerchantCouponService.browseCoupons's own doc comment.
+    @GetMapping("/coupons/browse")
+    fun browseCoupons(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "coupons" to merchantCouponService.browseCoupons(currentUser.userId)))
+
+    @GetMapping("/coupons/my-redemptions")
+    fun getMyRedemptions(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "redemptions" to merchantCouponService.getMyRedemptions(currentUser.userId)))
+
+    // Real Membership-screen "Store points" row (itunda Pay redesign, 2026-08-28) --
+    // see MerchantLoyaltyPointsService.getMyBalances's own doc comment. Lives on
+    // this controller since it already owns customer-facing merchant-loyalty reads.
+    @GetMapping("/loyalty/my-balances")
+    fun getMyLoyaltyBalances(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val balances = merchantLoyaltyPointsService.getMyBalances(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "balances" to balances, "total" to balances.fold(BigDecimal.ZERO) { acc, b -> acc + b.pointBalance }))
+    }
 
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =

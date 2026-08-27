@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.MerchantLoyaltyAccountRepository
+import rw.itunda.core.repository.MerchantRepository
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -19,7 +20,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with no prior real points at a merchant") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns null
 
         When("checking their real balance") {
@@ -57,7 +58,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance at a merchant") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshAccount()
 
         When("checking their real balance") {
@@ -81,7 +82,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance, completing another real payment") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         val account = freshAccount()
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns account
         every { merchantLoyaltyAccountRepository.save(any()) } answers { firstArg() }
@@ -98,7 +99,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance, redeeming too many points") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshAccount()
 
         When("they try to redeem more real points than they actually have") {
@@ -115,7 +116,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with a real existing 500-point balance, whose real redemption is recorded after a real successful payment") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshAccount()
         val savedSlot = slot<MerchantLoyaltyAccount>()
         every { merchantLoyaltyAccountRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -131,7 +132,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer with zero real points at a merchant, attempting to redeem anyway") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_2") } returns null
 
         When("real redemption is attempted against a real account that was never created") {
@@ -170,7 +171,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real 500-point balance has sat untouched past the real expiry window") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns dormantAccount()
 
         When("checking their real balance") {
@@ -193,7 +194,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real dormant 500-point balance is re-recorded on redemption without going through validateAndComputeRedemption first") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns dormantAccount()
 
         When("recordRedemption is called directly against the real stale row") {
@@ -210,7 +211,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real dormant 500-point balance earns a new real purchase after the real expiry window") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         val account = dormantAccount()
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns account
         val savedSlot = slot<MerchantLoyaltyAccount>()
@@ -227,7 +228,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("a customer whose real 500-point balance is still within the real expiry window") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshlyActiveAccount()
 
         When("checking their real balance") {
@@ -239,7 +240,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("MerchantLoyaltyPointsExpiryScheduler's own per-item expiry method, a real dormant account due for expiry") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         val account = dormantAccount()
         every { merchantLoyaltyAccountRepository.findById("acct_dormant") } returns java.util.Optional.of(account)
         val savedSlot = slot<MerchantLoyaltyAccount>()
@@ -257,7 +258,7 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
     Given("MerchantLoyaltyPointsExpiryScheduler's own per-item expiry method, a real account whose activity moments earlier already reset its clock") {
         val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
-        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, mockk())
         val account = freshlyActiveAccount()
         every { merchantLoyaltyAccountRepository.findById("acct_active") } returns java.util.Optional.of(account)
 
@@ -266,6 +267,42 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
             Then("it is a real no-op -- the fresh activity is honored, never saved over") {
                 verify(exactly = 0) { merchantLoyaltyAccountRepository.save(any()) }
+            }
+        }
+    }
+
+    // Real Membership-screen "Store points" row (itunda Pay redesign, 2026-08-28) --
+    // the first real cross-merchant read of this data, see getMyBalances's own doc
+    // comment for the honesty reasoning (real itunda merchant balances only, never
+    // a fabricated third-party brand).
+    Given("a customer with real nonzero points at two merchants, zero at a third, and an expired balance at a fourth") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository, merchantRepository)
+        val merchant2 = Merchant(id = "merchant_2", ownerUserId = "owner_2", accountId = "account_2", businessName = "Nyamirambo Bakery", status = MerchantStatus.ACTIVE)
+
+        every { merchantLoyaltyAccountRepository.findByCustomerId("customer_1") } returns listOf(
+            MerchantLoyaltyAccount(id = "acct_m1", merchantId = "merchant_1", customerId = "customer_1", pointBalance = BigDecimal("120.00")),
+            MerchantLoyaltyAccount(id = "acct_m2", merchantId = "merchant_2", customerId = "customer_1", pointBalance = BigDecimal("45.00")),
+            // A real zero-balance row (e.g. fully redeemed) must never show up as a
+            // real "you have points here" row.
+            MerchantLoyaltyAccount(id = "acct_m3", merchantId = "merchant_3", customerId = "customer_1", pointBalance = BigDecimal.ZERO),
+            // A real dormant, expired balance must never show up as a real spendable
+            // row either -- same honesty rule getBalance already enforces.
+            dormantAccount(),
+        )
+        // Real filter order: the zero-balance and expired rows are dropped BEFORE
+        // their merchants are ever looked up, so merchant_3 (zero balance) never
+        // appears in this call's arguments at all -- only merchant_1/merchant_2.
+        every { merchantRepository.findAllById(listOf("merchant_1", "merchant_2")) } returns listOf(merchant, merchant2)
+
+        When("fetching their real Membership-screen Store points") {
+            val balances = service.getMyBalances("customer_1")
+
+            Then("only the two real nonzero, non-expired balances are returned, each with its real merchant name") {
+                balances.size shouldBe 2
+                balances.find { it.merchantId == "merchant_1" }?.let { it.merchantName shouldBe "Kigali Coffee"; it.pointBalance shouldBe BigDecimal("120.00") }
+                balances.find { it.merchantId == "merchant_2" }?.let { it.merchantName shouldBe "Nyamirambo Bakery"; it.pointBalance shouldBe BigDecimal("45.00") }
             }
         }
     }

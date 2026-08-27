@@ -27,6 +27,12 @@ class CouponAlreadyRedeemedException(message: String) : RuntimeException(message
 
 data class CouponView(val coupon: MerchantCoupon, val eligible: Boolean, val alreadyRedeemed: Boolean)
 
+// Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28) -- see
+// MerchantCouponService.browseCoupons's own doc comment. Carries merchantName
+// (CouponView doesn't, since every existing CouponView call site is already scoped
+// to one known merchant) since a cross-merchant list is meaningless without it.
+data class CouponBrowseView(val coupon: MerchantCoupon, val merchantName: String, val eligible: Boolean, val alreadyRedeemed: Boolean)
+
 /**
  * Real merchant coupons + 단골 (regular customer) loyalty gating -- see
  * `MerchantCoupon`'s own doc comment for the full account, including why eligibility is
@@ -126,6 +132,36 @@ class MerchantCouponService(
                 CouponView(coupon, eligible, alreadyRedeemed)
             }
     }
+
+    // Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28,
+    // direct user reference: real Toss Pay Coupon box screen). Every other
+    // customer-facing coupon read above (getCouponsForCustomer) is scoped to one
+    // already-known merchant -- this is the first real read across every merchant
+    // at once, enriched with businessName (batch-fetched, same
+    // ShoppingController.getEligibleMerchants N+1-avoidance pattern) since a
+    // cross-merchant list is meaningless without knowing which store each coupon
+    // is from. Deliberately no curated "brand campaign" tabs (Online/Offline/특가
+    // in the real reference) -- itunda has no such marketing partnerships; this is
+    // one flat, honest list of itunda's own real merchant coupons.
+    fun browseCoupons(customerId: String): List<CouponBrowseView> {
+        val now = Instant.now()
+        val coupons = merchantCouponRepository.findByActiveTrueOrderByCreatedAtDesc()
+            .filter { coupon -> coupon.expiresAt.let { it == null || it.isAfter(now) } }
+        val merchants = merchantRepository.findAllById(coupons.map { it.merchantId }.distinct()).associateBy { it.id }
+        return coupons.mapNotNull { coupon ->
+            val merchant = merchants[coupon.merchantId] ?: return@mapNotNull null
+            val alreadyRedeemed = merchantCouponRedemptionRepository.existsByCouponIdAndCustomerId(coupon.id, customerId)
+            val eligible = !coupon.regularsOnly || isRegularCustomer(merchant.ownerUserId, customerId)
+            CouponBrowseView(coupon, merchant.businessName, eligible, alreadyRedeemed)
+        }
+    }
+
+    // Real Coupon box "Used/expired" tab -- itunda had zero controller endpoint
+    // exposing this repository read anywhere before this (confirmed by grepping
+    // every @*Mapping in this service/controller); redemptions were previously
+    // only ever checked internally (existsByCouponIdAndCustomerId), never listed.
+    fun getMyRedemptions(customerId: String): List<MerchantCouponRedemption> =
+        merchantCouponRedemptionRepository.findByCustomerIdOrderByRedeemedAtDesc(customerId)
 
     // Real discount computation + validation, called from MerchantService.collect right
     // before it posts the payment's ledger legs -- see that method's own doc comment on

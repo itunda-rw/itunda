@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.repository.MerchantLoyaltyAccountRepository
+import rw.itunda.core.repository.MerchantRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -12,6 +13,10 @@ import java.time.Instant
 import java.util.UUID
 
 class InsufficientLoyaltyPointsException(message: String) : RuntimeException(message)
+
+// Real Membership-screen "Store points" row (itunda Pay redesign, 2026-08-28) --
+// see MerchantLoyaltyPointsService.getMyBalances's own doc comment.
+data class LoyaltyBalanceView(val merchantId: String, val merchantName: String, val pointBalance: BigDecimal)
 
 /**
  * Real Toss Place-style 자동 적립 (automatic per-merchant point accrual) -- see
@@ -54,7 +59,10 @@ class InsufficientLoyaltyPointsException(message: String) : RuntimeException(mes
  * `fixedDelay` window hasn't ticked yet.
  */
 @Service
-class MerchantLoyaltyPointsService(private val merchantLoyaltyAccountRepository: MerchantLoyaltyAccountRepository) {
+class MerchantLoyaltyPointsService(
+    private val merchantLoyaltyAccountRepository: MerchantLoyaltyAccountRepository,
+    private val merchantRepository: MerchantRepository,
+) {
 
     // Real re-check-before-act helper shared by every real balance read/write path --
     // one source of truth for "is this real balance stale," not three independently
@@ -65,6 +73,23 @@ class MerchantLoyaltyPointsService(private val merchantLoyaltyAccountRepository:
     fun getBalance(merchantId: String, customerId: String): BigDecimal {
         val account = merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId(merchantId, customerId) ?: return BigDecimal.ZERO
         return if (isExpired(account)) BigDecimal.ZERO else account.pointBalance
+    }
+
+    // Real Membership-screen "Store points" row (itunda Pay redesign, 2026-08-28,
+    // direct user reference: real Toss Pay Membership screen's own "Store points"
+    // row) -- itunda's own honest analog: real per-merchant stamp-card balances
+    // this customer actually has, never a fabricated third-party brand ("Naver
+    // Point"/"Kakao Points" etc. have no itunda equivalent and are deliberately
+    // never shown anywhere). First real cross-merchant read of this data --
+    // every other call site above is scoped to one merchant at a time.
+    fun getMyBalances(customerId: String): List<LoyaltyBalanceView> {
+        val accounts = merchantLoyaltyAccountRepository.findByCustomerId(customerId)
+            .filter { !isExpired(it) && it.pointBalance > BigDecimal.ZERO }
+        val merchants = merchantRepository.findAllById(accounts.map { it.merchantId }.distinct()).associateBy { it.id }
+        return accounts.mapNotNull { account ->
+            val merchant = merchants[account.merchantId] ?: return@mapNotNull null
+            LoyaltyBalanceView(account.merchantId, merchant.businessName, account.pointBalance)
+        }
     }
 
     /**
