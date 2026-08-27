@@ -125,6 +125,7 @@ internal fun formatTimeDealCountdownHms(endsAt: String): String {
 @Composable
 fun CommerceShopContent(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    onMessageSeller: (String) -> Unit = {},
 ) {
     var view by remember { mutableStateOf(CommerceView.BROWSE) }
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
@@ -133,6 +134,9 @@ fun CommerceShopContent(
     var searchInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
+    // Real seller chat (2026-08-28) -- see ShopSellerContactPicker.kt's own doc
+    // comment. The merchant currently being contacted, or null when closed.
+    var contactingMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProductDto?>(null) }
     val cart = remember { mutableStateMapOf<String, CommerceCartLine>() }
@@ -451,6 +455,18 @@ fun CommerceShopContent(
         }
     }
 
+    // Real seller chat (2026-08-28) -- rendered unconditionally (a no-op Dialog when
+    // null) so it overlays whichever sub-screen ShopDetailDispatch below renders,
+    // rather than being skipped by that call's own early `return`.
+    contactingMerchant?.let { merchant ->
+        ShopSellerContactPicker(
+            merchantId = merchant.merchantId,
+            merchantName = merchant.businessName,
+            onDismiss = { contactingMerchant = null },
+            onOpened = { conversationId -> contactingMerchant = null; onMessageSeller(conversationId) },
+        )
+    }
+
     if (ShopDetailDispatch(
             results = results,
             showCart = showCart,
@@ -485,6 +501,7 @@ fun CommerceShopContent(
             onOpenProduct = { selectedProduct = it },
             onToggleFollow = ::toggleFollow,
             onBillingChanged = ::loadBillingForMerchant,
+            onContactSeller = { contactingMerchant = it },
         )
     ) return
 
@@ -676,6 +693,7 @@ fun CommerceShopContent(
                                     Text(r.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                     Text(r.merchantName, color = Ids.colors.textSecondary, fontSize = 13.sp)
                                     Text(r.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (r.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 11.sp)
+                                    if (r.isBestSeller) ShopBestSellerBadge()
                                 }
                             }
                             Text("%,.0f RWF".format(r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)

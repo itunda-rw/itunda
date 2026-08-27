@@ -279,8 +279,15 @@ internal fun RecommendedForYouGrid(
                             Text("%.1f (%d)".format(d.rating, d.reviewCount), color = Ids.colors.textSecondary, fontSize = 11.sp)
                         }
                     }
+                    // Real "Best seller" badge (2026-08-28) -- see ShopSellerContactPicker.kt's
+                    // own doc comment. "Ships today" below replaced with real
+                    // available/out-of-stock stock copy -- itunda's real commerce
+                    // fulfillment model is merchant-pickup/delivery-time-estimate, not
+                    // multi-day parcel shipping, so that literal reference copy was never
+                    // honest here.
+                    if (d.isBestSeller) ShopBestSellerBadge()
                     Text(
-                        d.stockQuantity?.let { if (it == 0) "Out of stock" else "Ships today" } ?: "Ships today",
+                        d.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available",
                         color = if (d.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,
                         fontSize = 11.sp,
                     )

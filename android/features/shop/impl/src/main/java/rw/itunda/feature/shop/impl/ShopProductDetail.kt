@@ -79,6 +79,7 @@ internal fun ProductDetailScreen(
     favorited: Boolean = false,
     favoriteBusy: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    onContactSeller: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -92,7 +93,10 @@ internal fun ProductDetailScreen(
         }
     }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
-        BackTopBar(merchant.businessName, onBack)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.weight(1f)) { BackTopBar(merchant.businessName, onBack) }
+            ShopMessageSellerButton(onClick = onContactSeller)
+        }
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 ProductImageThumb(product.imageUrl, size = 220.dp, corner = 16.dp)
@@ -115,7 +119,11 @@ internal fun ProductDetailScreen(
             Spacer(modifier = Modifier.height(6.dp))
             ProductPriceRow(product)
             Spacer(modifier = Modifier.height(6.dp))
-            ProductRatingBadge(product.id)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                ProductRatingBadge(product.id)
+                if (product.isBestSeller) ShopBestSellerBadge()
+                ShopDeliveryEtaPill(merchant.deliveryTimeMinutes)
+            }
             Text(
                 product.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available",
                 color = if (product.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,

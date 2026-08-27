@@ -1241,6 +1241,10 @@ data class DealProductDto(
     // rating means the product genuinely has zero reviews yet -- render no stars, not a
     // fake default.
     val rating: Double? = null, val reviewCount: Long = 0L,
+    // Real "Best seller" badge (2026-08-28) -- a genuine, derived signal (real gross
+    // order count per product, see backend ShoppingController.bestSellerProductIds'
+    // own doc comment), not fabricated marketing copy.
+    val isBestSeller: Boolean = false,
 )
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
 
@@ -1397,6 +1401,8 @@ data class MerchantProductDto(
     // existed. See ProductPriceTier.kt's own doc comment on the backend.
     val priceTiers: List<PriceTierDto> = emptyList(),
     val stockQuantity: Int? = null,
+    // Real "Best seller" badge (2026-08-28) -- see DealProductDto's own doc comment.
+    val isBestSeller: Boolean = false,
 )
 data class PriceTierDto(val minQuantity: Int, val unitPrice: Double)
 
@@ -1464,6 +1470,8 @@ data class ProductSearchResultDto(
     val discountPercent: Int? = null,
     val description: String? = null,
     val stockQuantity: Int? = null,
+    // Real "Best seller" badge (2026-08-28) -- see DealProductDto's own doc comment.
+    val isBestSeller: Boolean = false,
 )
 data class ProductSearchResponse(val success: Boolean, val products: List<ProductSearchResultDto>)
 
@@ -3492,6 +3500,12 @@ interface ApiService {
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse
+
+    // Real seller chat (2026-08-28) -- mirrors contactSeller (Marketplace) above
+    // exactly: resolves the real merchant owner's userId server-side, hands off to
+    // the same real shared messaging system every other vertical already uses.
+    @POST("api/v1/shopping/merchants/{id}/contact-seller")
+    suspend fun contactMerchantSeller(@Path("id") merchantId: String): ContactSellerResponse
 
     // Real cross-merchant product search (item 137) -- see ProductSearchResultDto's own
     // doc comment.

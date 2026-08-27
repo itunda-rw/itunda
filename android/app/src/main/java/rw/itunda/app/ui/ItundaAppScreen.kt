@@ -1032,6 +1032,11 @@ fun ItundaAppScreen(
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
                             DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                         },
+                        onMessageSeller = { conversationId ->
+                            pendingConversationId = conversationId
+                            showShop = false
+                            selectedTab = ItundaTab.Messages
+                        },
                     )
                 }
             }

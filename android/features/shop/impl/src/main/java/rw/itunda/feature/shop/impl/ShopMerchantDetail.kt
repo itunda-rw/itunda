@@ -76,6 +76,7 @@ internal fun MerchantDetailView(
     billingPlans: List<MerchantBillingPlanDto> = emptyList(),
     mySubscriptions: List<MerchantBillingSubscriptionDto> = emptyList(),
     onBillingChanged: () -> Unit = {},
+    onContactSeller: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -115,6 +116,8 @@ internal fun MerchantDetailView(
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.weight(1f)) { BackTopBar(merchant.businessName, onBack) }
+            ShopMessageSellerButton(onClick = onContactSeller)
+            Spacer(modifier = Modifier.width(8.dp))
             // Real Naver Smart Store-style "알림받기" follow toggle -- see this
             // function's own doc comment above (item 117).
             Box(
@@ -206,7 +209,11 @@ internal fun MerchantDetailView(
                             color = if (p.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,
                             fontSize = 11.sp,
                         )
-                        ProductRatingBadge(p.id)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ProductRatingBadge(p.id)
+                            if (p.isBestSeller) ShopBestSellerBadge()
+                        }
+                        ShopDeliveryEtaPill(merchant.deliveryTimeMinutes)
                         Spacer(modifier = Modifier.height(8.dp))
                         // Bookable-service products (a real durationMinutes set) are
                         // filtered out before reaching this grid -- see ShopScreen.kt's

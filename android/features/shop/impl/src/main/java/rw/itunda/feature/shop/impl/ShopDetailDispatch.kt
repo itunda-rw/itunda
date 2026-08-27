@@ -52,6 +52,7 @@ internal fun ShopDetailDispatch(
     onOpenProduct: (MerchantProductDto) -> Unit,
     onToggleFollow: (String) -> Unit,
     onBillingChanged: (String) -> Unit,
+    onContactSeller: (ShoppingMerchantDto) -> Unit,
 ): Boolean {
     val currentResults = results
     if (currentResults != null) {
@@ -86,6 +87,7 @@ internal fun ShopDetailDispatch(
             favorited = product.id in favoriteProductIds,
             favoriteBusy = favoritingProductId == product.id,
             onToggleFavorite = { onToggleProductFavorite(product.id) },
+            onContactSeller = { onContactSeller(merchant) },
         )
         return true
     }
@@ -106,6 +108,7 @@ internal fun ShopDetailDispatch(
             billingPlans = billingPlans,
             mySubscriptions = mySubscriptions,
             onBillingChanged = { onBillingChanged(merchant.merchantId) },
+            onContactSeller = { onContactSeller(merchant) },
         )
         return true
     }
