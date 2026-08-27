@@ -35,6 +35,10 @@ export interface CommerceProduct {
   // fetch is fresh" shape ListingCard's own freshViewCount already established for
   // Marketplace.
   viewCount?: number;
+  // Real "Best seller" badge (2026-08-28) -- see lib/shopping.ts's ProductSearchResult
+  // isBestSeller for the full account; same real signal, populated by
+  // ShoppingController.getMerchantProducts for a merchant's own catalog.
+  isBestSeller?: boolean;
 }
 
 export const fetchMerchantProducts = (merchantId: string) =>

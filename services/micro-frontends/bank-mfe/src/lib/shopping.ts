@@ -111,6 +111,11 @@ export interface ProductSearchResult {
   // stars, never a fabricated default.
   rating?: number | null;
   reviewCount?: number | null;
+  // Real "Best seller" badge (2026-08-28) -- see ShoppingController.bestSellerProductIds'
+  // own doc comment on the backend: a genuine, derived signal (real gross order count
+  // per product), not fabricated marketing copy. false/absent just means this product
+  // hasn't cleared the real minimum this page, never a "we don't know" placeholder.
+  isBestSeller?: boolean;
 }
 
 // Real cross-merchant product search (2026-07-20) -- until now a shopper could only
@@ -356,3 +361,12 @@ export interface NearbyMerchant {
 
 export const fetchNearbyMerchants = (latitude: number, longitude: number, radiusKm = 5) =>
   apiFetch<{ success: boolean; merchants: NearbyMerchant[] }>(`/api/v1/merchant/nearby?latitude=${latitude}&longitude=${longitude}&radiusKm=${radiusKm}`).then((r) => r.merchants);
+
+// Real seller chat (2026-08-28) -- mirrors lib/marketplace.ts's own contactSeller
+// exactly: reuses the same real messaging system (lib/messaging.ts) under the hood,
+// the returned conversation id is a genuine messaging conversation id, openable
+// straight into the Messages tab's real chat thread.
+export const contactMerchantSeller = (merchantId: string) =>
+  apiFetch<{ success: boolean; conversation: { id: string } }>(`/api/v1/shopping/merchants/${merchantId}/contact-seller`, {
+    method: 'POST',
+  }).then((r) => r.conversation);

@@ -22,6 +22,7 @@ import { OverviewAssetsView } from './OverviewAssetsView';
 import { PayFundingSourcePicker } from './PayFundingSourcePicker';
 import { CouponBoxView } from './CouponBoxView';
 import { MembershipView } from './MembershipView';
+import { ShopSellerContactPicker, ShopMessageSellerButton, ShopBestSellerBadge, ShopDeliveryEtaPill } from './ShopSellerContactPicker';
 import { TransitScreen } from './TransitScreen';
 import { TransitCollectScreen } from './TransitCollectScreen';
 import { MotoFareCollectScreen } from './MotoFareCollectScreen';
@@ -112,7 +113,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchLoyaltyBalance, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchNearbyMerchants, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, generateCustomerPaymentCode, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type CustomerPaymentCode, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchant, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchLoyaltyBalance, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchNearbyMerchants, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, generateCustomerPaymentCode, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type CustomerPaymentCode, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchant, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
 import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
@@ -285,7 +286,14 @@ const TAB_QUERY_PARAM = 'tab';
 const readTabFromUrl = (): Tab => {
   try {
     const raw = new URLSearchParams(window.location.search).get(TAB_QUERY_PARAM);
-    return raw && ALL_TAB_IDS.has(raw as Tab) ? (raw as Tab) : 'HOME';
+    if (!raw || !ALL_TAB_IDS.has(raw as Tab)) return 'HOME';
+    // Real retirement of the legacy 'SHOPPING' tab (itunda Shopping redesign,
+    // 2026-08-28) -- 'SHOPPING' stays in ALL_TAB_IDS/Tab purely so an old
+    // bookmarked/shared `?tab=SHOPPING` link still validates and lands somewhere
+    // real (the redesigned ShopView, its real successor) rather than rendering
+    // blank content.
+    if (raw === 'SHOPPING') return 'SHOP';
+    return raw as Tab;
   } catch {
     return 'HOME';
   }
@@ -1266,7 +1274,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   }
 
   if (showCouponBox) {
-    return <CouponBoxView onBack={() => setShowCouponBox(false)} onBrowseMerchants={() => { setShowCouponBox(false); onNavigateToTab('SHOPPING'); }} />;
+    return <CouponBoxView onBack={() => setShowCouponBox(false)} onBrowseMerchants={() => { setShowCouponBox(false); onNavigateToTab('SHOP'); }} />;
   }
 
   if (showMembership) {
@@ -6693,76 +6701,6 @@ function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult;
         </p>
       )}
       <button className="itunda-btn itunda-btn-secondary" onClick={onDone} style={{ marginTop: '8px' }}>Done</button>
-    </div>
-  );
-}
-
-function ShoppingView() {
-  const { t } = useI18n();
-  const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see lib/shopping.ts's own
-  // fetchMembershipDayStatus doc comment.
-  const [membershipDay, setMembershipDay] = useState<{ isMembershipDay: boolean; multiplier: number } | null>(null);
-
-  const load = () => {
-    setError(null);
-    fetchShoppingCatalog()
-      .then(setMerchants)
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
-  };
-  const loadMembershipDayStatus = () => {
-    fetchMembershipDayStatus().then(setMembershipDay).catch(() => {});
-  };
-
-  useEffect(load, []);
-  useEffect(loadMembershipDayStatus, []);
-
-  if (error) {
-    return (
-      <ErrorCard message={error} onRetry={load} />
-    );
-  }
-
-  if (merchants === null) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
-  }
-
-  return (
-    <div>
-      {membershipDay?.isMembershipDay && (
-        <div style={{ marginBottom: '16px', padding: '12px 14px', backgroundColor: 'var(--itunda-indigo-light)', borderRadius: 'var(--itunda-radius-md)' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
-        </div>
-      )}
-      {/* Real fix (2026-08-25, direct user follow-up: "why do we have pay in
-          there?" -- matches Android's/iOS's identical ShopScreen fix). FacePay/
-          Pay-by-code/Pay-by-static-QR are real, in-person merchant payment -- they
-          already have a real home, PayHub above (~line 1320). This rendered the
-          exact same cards a second time, unconditionally, at the top of Shop's own
-          online-catalog browse screen. */}
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
-        Earn cashback every time you shop with Itunda merchants.
-      </p>
-      {merchants.length === 0 ? (
-        <EmptyState message="No stores here yet — check back soon as more merchants join itunda." />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {merchants.map((m) => (
-            <div key={m.merchantId} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 0' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShoppingBag size={20} color="var(--itunda-indigo)" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Pay by QR or code to earn cashback</p>
-              </div>
-              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{m.cashbackRate} back</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -19705,7 +19643,7 @@ function ProductPriceBlock({ price, originalPrice, discountPercent }: { price: n
 // already has -- this is a real second surface for the same real data, not new business
 // logic.
 function ProductDetailView({
-  merchant, product, cart, onSetQty, onBack, onViewCart,
+  merchant, product, cart, onSetQty, onBack, onViewCart, onContactSeller,
 }: {
   merchant: ShoppingMerchant;
   product: CommerceProduct;
@@ -19713,6 +19651,7 @@ function ProductDetailView({
   onSetQty: (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => void;
   onBack: () => void;
   onViewCart: () => void;
+  onContactSeller: () => void;
 }) {
   const [favorited, setFavorited] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -19761,7 +19700,8 @@ function ProductDetailView({
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to catalog">
           <IconBack size={20} />
         </button>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{merchant.businessName}</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, flex: 1 }}>{merchant.businessName}</h3>
+        <ShopMessageSellerButton onClick={onContactSeller} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -19777,7 +19717,11 @@ function ProductDetailView({
           </div>
           <WishlistButton favorited={favorited} busy={busy} onToggle={toggleFavorite} />
         </div>
-        <ProductRatingBadge productId={product.id} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <ProductRatingBadge productId={product.id} />
+          {product.isBestSeller && <ShopBestSellerBadge />}
+          <ShopDeliveryEtaPill minutes={merchant.deliveryTimeMinutes} />
+        </div>
         {product.description && (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
         )}
@@ -19811,7 +19755,7 @@ function ProductDetailView({
 }
 
 function ProductCatalogView({
-  merchant, cart, onSetQty, onBack, onViewCart, onOpenProduct,
+  merchant, cart, onSetQty, onBack, onViewCart, onOpenProduct, onContactSeller,
 }: {
   merchant: ShoppingMerchant;
   cart: CommerceCart;
@@ -19819,6 +19763,7 @@ function ProductCatalogView({
   onBack: () => void;
   onViewCart: () => void;
   onOpenProduct: (product: CommerceProduct) => void;
+  onContactSeller: () => void;
 }) {
   const { t } = useI18n();
   const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
@@ -19939,6 +19884,7 @@ function ProductCatalogView({
           <IconBack size={20} />
         </button>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, flex: 1 }}>{catalog.businessName}</h3>
+        <ShopMessageSellerButton onClick={onContactSeller} />
         <button
           type="button"
           onClick={toggleFollow}
@@ -20007,7 +19953,11 @@ function ProductCatalogView({
               <p style={{ minHeight: '16px', fontSize: 'var(--itunda-type-scale-12-size)', color: item.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                 {item.stockQuantity === null || item.stockQuantity === undefined ? 'Available' : item.stockQuantity === 0 ? 'Out of stock' : `${item.stockQuantity} available`}
               </p>
-              <ProductRatingBadge productId={item.id} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <ProductRatingBadge productId={item.id} />
+                {item.isBestSeller && <ShopBestSellerBadge />}
+              </div>
+              <ShopDeliveryEtaPill minutes={merchant.deliveryTimeMinutes} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '4px' }}>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                 <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
@@ -20607,10 +20557,13 @@ function LiveDealCountdown({ endsAt }: { endsAt: string }) {
   return <>{formatDealCountdownHms(endsAt, now)}</>;
 }
 
-function ShopView() {
+function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   const { t } = useI18n();
   const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
+  // Real seller chat (2026-08-28) -- see ShopSellerContactPicker.tsx's own doc
+  // comment. The merchant currently being contacted, or null when the picker is closed.
+  const [contactingMerchant, setContactingMerchant] = useState<ShoppingMerchant | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [merchantSearchInput, setMerchantSearchInput] = useState('');
@@ -20849,6 +20802,18 @@ function ShopView() {
     setShowCart(false);
   };
 
+  // Real seller chat (2026-08-28) -- see ShopSellerContactPicker.tsx's own doc
+  // comment. Owned here (not inside ProductCatalogView/ProductDetailView
+  // themselves) so the picker overlay renders once, shared by both sub-screens.
+  const contactPickerNode = contactingMerchant && (
+    <ShopSellerContactPicker
+      merchantId={contactingMerchant.merchantId}
+      merchantName={contactingMerchant.businessName}
+      onClose={() => setContactingMerchant(null)}
+      onOpened={(conversationId) => { setContactingMerchant(null); onMessageSeller(conversationId); }}
+    />
+  );
+
   if (results) {
     return (
       <MultiCartResultsView
@@ -20864,27 +20829,35 @@ function ShopView() {
 
   if (selected && selectedProduct) {
     return (
-      <ProductDetailView
-        merchant={selected}
-        product={selectedProduct}
-        cart={cart}
-        onSetQty={setQtyByMerchant}
-        onBack={() => setSelectedProduct(null)}
-        onViewCart={() => { setSelectedProduct(null); setShowCart(true); }}
-      />
+      <>
+        <ProductDetailView
+          merchant={selected}
+          product={selectedProduct}
+          cart={cart}
+          onSetQty={setQtyByMerchant}
+          onBack={() => setSelectedProduct(null)}
+          onViewCart={() => { setSelectedProduct(null); setShowCart(true); }}
+          onContactSeller={() => setContactingMerchant(selected)}
+        />
+        {contactPickerNode}
+      </>
     );
   }
 
   if (selected) {
     return (
-      <ProductCatalogView
-        merchant={selected}
-        cart={cart}
-        onSetQty={setQtyByMerchant}
-        onBack={() => setSelected(null)}
-        onViewCart={() => setShowCart(true)}
-        onOpenProduct={setSelectedProduct}
-      />
+      <>
+        <ProductCatalogView
+          merchant={selected}
+          cart={cart}
+          onSetQty={setQtyByMerchant}
+          onBack={() => setSelected(null)}
+          onViewCart={() => setShowCart(true)}
+          onOpenProduct={setSelectedProduct}
+          onContactSeller={() => setContactingMerchant(selected)}
+        />
+        {contactPickerNode}
+      </>
     );
   }
 
@@ -21094,6 +21067,7 @@ function ShopView() {
                     <IconStar size={11} color="#F5A623" fill="#F5A623" /> {d.rating.toFixed(1)} ({d.reviewCount})
                   </p>
                 ) : null}
+                {d.isBestSeller && <ShopBestSellerBadge />}
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: d.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                   {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
                 </p>
@@ -21210,6 +21184,7 @@ function ShopView() {
                     <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: r.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                       {r.stockQuantity === null || r.stockQuantity === undefined ? 'Available' : r.stockQuantity === 0 ? 'Out of stock' : `${r.stockQuantity} available`}
                     </p>
+                    {r.isBestSeller && <ShopBestSellerBadge />}
                   </div>
                 </div>
                 <ProductPriceBlock price={r.price} originalPrice={r.originalPrice} discountPercent={r.discountPercent} />
@@ -24222,7 +24197,6 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'KNOWLEDGE', label: 'Q&A' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
-    { id: 'SHOPPING', label: 'Shopping' },
     { id: 'DEVICES', label: 'Devices' },
     { id: 'CARD', label: 'Card' },
     { id: 'TRANSIT', label: 'Transit' },
@@ -24289,7 +24263,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { title: 'Get around', ids: ['DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
     { title: 'Money tools', ids: ['SAVINGS', 'STOCKS', 'LOANS', 'CREDIT_SCORE', 'INSURANCE', 'FOREIGN_CURRENCY'] },
     { title: 'Trust & community', ids: ['TRUST_SCORE', 'KNOWLEDGE', 'REWARDS'] },
-    { title: 'More', ids: ['CERTIFICATE', 'SHOPPING', 'AGENT', 'USSD'] },
+    { title: 'More', ids: ['CERTIFICATE', 'AGENT', 'USSD'] },
   ];
   const tabLabel = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
   const [recentMoreTabs, setRecentMoreTabs] = useState<Tab[]>([]);
@@ -24389,7 +24363,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       )}
       {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
-      {tab === 'SHOP' && <ShopView />}
+      {tab === 'SHOP' && <ShopView onMessageSeller={handleMessageSeller} />}
       {tab === 'EATS' && <EatsView onMessageSeller={handleMessageSeller} />}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
       {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
@@ -24435,7 +24409,6 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         </Suspense>
       )}
       {tab === 'CERTIFICATE' && <CertificateView />}
-      {tab === 'SHOPPING' && <ShoppingView />}
       {tab === 'DEVICES' && <DevicesView />}
       {tab === 'CARD' && <CardView />}
       {tab === 'TRANSIT' && <TransitScreen onOpenCollect={() => setTab('TRANSIT_COLLECT')} />}

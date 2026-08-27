@@ -153,6 +153,22 @@ export type TranslationKey =
   | 'pay.membershipPayMoney'
   | 'pay.membershipStorePoints'
   | 'pay.membershipLoadError'
+  // Real Shopping redesign (2026-08-28, direct user reference: real Toss Shopping
+  // screenshots) -- a real seller-chat entry point (ShopSellerContactPicker.tsx)
+  // wired into the same real messaging system Marketplace/Eats/Jobs/Property already
+  // use, plus a real, derived "Best seller" badge and a real delivery-ETA pill.
+  | 'shop.contactSellerButton'
+  | 'shop.contactPickerTitle'
+  | 'shop.categoryProduct'
+  | 'shop.categoryShipping'
+  | 'shop.categoryExchange'
+  | 'shop.categoryReturn'
+  | 'shop.categoryCancellation'
+  | 'shop.categoryOther'
+  | 'shop.contactSkip'
+  | 'shop.contactError'
+  | 'shop.bestSeller'
+  | 'shop.etaMinutes'
   // Real third slice (2026-08-08): P2P transfer, itunda's own single highest-stakes
   // money-moving screen -- following the same phased rollout, one screen at a time,
   // across all 3 platforms before moving to the next.
