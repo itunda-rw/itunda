@@ -5711,6 +5711,15 @@ public struct OverviewLoansSummaryDto: Decodable { public let totalOutstanding: 
 public struct OverviewInvestmentsSummaryDto: Decodable { public let totalCostBasis: Double; public let holdingCount: Int }
 public struct OverviewInsuranceSummaryDto: Decodable { public let activePolicyCount: Int; public let totalMonthlyPremium: Double }
 public struct LinkedAccountSummaryDto: Decodable, Identifiable { public let id: String; public let provider: String; public let maskedAccountNumber: String; public let status: String; public let demoBalance: Double?; public let demoBalanceCurrency: String?; public let isDemoBalance: Bool }
+// Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
+// Toss "총자산" screenshots). See OverviewService.kt's own doc comments for exactly
+// how each is sourced -- Car is raw count+purchase-price only (the live valuation
+// math stays private to :vehicle's VehicleValuationService), Tax/Points are always
+// real even at zero.
+public struct OverviewCardsSummaryDto: Decodable { public let hasCard: Bool; public let last4: String?; public let design: String?; public let frozen: Bool? }
+public struct OverviewVehicleSummaryDto: Decodable { public let vehicleCount: Int; public let totalPurchasePrice: Double }
+public struct OverviewTaxSummaryDto: Decodable { public let totalPaid: Double; public let paymentCount: Int }
+public struct OverviewPointsSummaryDto: Decodable { public let rewardsTotal: Double; public let payMoneyBalance: Double }
 public struct OverviewResponse: Decodable {
     public let success: Bool
     public let netWorth: Double
@@ -5720,6 +5729,10 @@ public struct OverviewResponse: Decodable {
     public let investments: OverviewInvestmentsSummaryDto
     public let insurance: OverviewInsuranceSummaryDto
     public let linkedAccounts: [LinkedAccountSummaryDto]
+    public let cards: OverviewCardsSummaryDto
+    public let vehicles: OverviewVehicleSummaryDto
+    public let tax: OverviewTaxSummaryDto
+    public let points: OverviewPointsSummaryDto
 }
 
 public struct LinkAccountRequest: Encodable { public let provider: String; public let externalAccountNumber: String }

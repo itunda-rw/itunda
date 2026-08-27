@@ -24,6 +24,10 @@ private let momoLinkProviders: Set<String> = ["MTN Mobile Money", "Airtel Money"
 // detection a second time. Includes overview.verificationFailed from the start -- web's own
 // first pass over this exact screen missed that key entirely (only caught while porting to
 // Android), so it's added here up front rather than repeating that omission a third time.
+// Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
+// Toss "총자산" screenshots, "this is how my asset screen should look like"). One
+// key per new tab label / real-card sentence / teaser message+CTA -- see
+// OverviewService.kt's own doc comments for exactly how each new category is sourced.
 private let overviewStrings: [AppLocale: [String: String]] = [
     .en: [
         "title": "My assets",
@@ -45,6 +49,20 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "linkError": "Could not link that account.",
         "unlinkError": "Could not unlink this account.",
         "verificationFailed": "Could not verify that %@ account. It wasn't linked.",
+        "tabCards": "Cards", "tabLoans": "Loans", "tabInvestment": "Investment", "tabInsurance": "Insurance",
+        "tabRealEstate": "Real estate", "tabCar": "Car", "tabTax": "Tax", "tabPoints": "Points",
+        "manage": "Manage",
+        "cardNumber": "Card •••• %@", "cardActive": "Active", "cardFrozen": "Frozen",
+        "carSummary": "%d vehicle(s), %d RWF purchase price",
+        "taxSummary": "%d tax payment(s), %d RWF paid",
+        "pointsSummary": "%d RWF rewards earned",
+        "payMoneyBalance": "Pay Money balance: %d RWF",
+        "teaserCards": "No card yet", "teaserCardsCta": "Get a card",
+        "teaserLoans": "No loans yet", "teaserLoansCta": "Browse loan offers",
+        "teaserInvestment": "No investments yet", "teaserInvestmentCta": "Start investing",
+        "teaserInsurance": "No insurance yet", "teaserInsuranceCta": "Browse plans",
+        "teaserRealEstate": "No real estate linked", "teaserRealEstateCta": "Explore real estate",
+        "teaserCar": "No vehicle yet", "teaserCarCta": "Add a vehicle",
     ],
     .rw: [
         "title": "Umutungo wanjye",
@@ -66,6 +84,20 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "linkError": "Ntibishoboka guhuza iyo konti.",
         "unlinkError": "Ntibishoboka kuraho iyo konti.",
         "verificationFailed": "Ntibishoboka kwemeza iyo konti ya %@. Ntiyahujwe.",
+        "tabCards": "Amakarita", "tabLoans": "Inguzanyo", "tabInvestment": "Ishoramari", "tabInsurance": "Ubwishingizi",
+        "tabRealEstate": "Imitungo itimukanwa", "tabCar": "Imodoka", "tabTax": "Imisoro", "tabPoints": "Amanota",
+        "manage": "Gucunga",
+        "cardNumber": "Ikarita •••• %@", "cardActive": "Irakora", "cardFrozen": "Yahagaritswe",
+        "carSummary": "Imodoka %d, RWF %d y'igiciro cyo kugura",
+        "taxSummary": "Kwishyura umusoro %d, RWF %d yishyuwe",
+        "pointsSummary": "RWF %d y'ibihembo byabonetse",
+        "payMoneyBalance": "Amafaranga ya Pay Money: RWF %d",
+        "teaserCards": "Nta karita ufite", "teaserCardsCta": "Bona ikarita",
+        "teaserLoans": "Nta nguzanyo ufite", "teaserLoansCta": "Reba inguzanyo zihari",
+        "teaserInvestment": "Nta shoramari ufite", "teaserInvestmentCta": "Tangira gushora imari",
+        "teaserInsurance": "Nta bwishingizi ufite", "teaserInsuranceCta": "Reba gahunda zihari",
+        "teaserRealEstate": "Nta mutungo utimukanwa uhujwe", "teaserRealEstateCta": "Reba imitungo itimukanwa",
+        "teaserCar": "Nta modoka ufite", "teaserCarCta": "Ongeraho imodoka",
     ],
     // Real French added 2026-08-15, same session as LoginScreen.swift's AppLocale
     // widening to .fr -- kept together, not left English-only a second time (the
@@ -91,11 +123,37 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "linkError": "Impossible de lier ce compte.",
         "unlinkError": "Impossible de dissocier ce compte.",
         "verificationFailed": "Impossible de vérifier ce compte %@. Il n'a pas été lié.",
+        "tabCards": "Cartes", "tabLoans": "Prêts", "tabInvestment": "Placements", "tabInsurance": "Assurance",
+        "tabRealEstate": "Immobilier", "tabCar": "Voiture", "tabTax": "Impôts", "tabPoints": "Points",
+        "manage": "Gérer",
+        "cardNumber": "Carte •••• %@", "cardActive": "Active", "cardFrozen": "Bloquée",
+        "carSummary": "%d véhicule(s), %d RWF de prix d'achat",
+        "taxSummary": "%d paiement(s) d'impôt, %d RWF payés",
+        "pointsSummary": "%d RWF de récompenses gagnées",
+        "payMoneyBalance": "Solde Pay Money : %d RWF",
+        "teaserCards": "Pas encore de carte", "teaserCardsCta": "Obtenir une carte",
+        "teaserLoans": "Pas encore de prêt", "teaserLoansCta": "Voir les offres de prêt",
+        "teaserInvestment": "Pas encore de placement", "teaserInvestmentCta": "Commencer à investir",
+        "teaserInsurance": "Pas encore d'assurance", "teaserInsuranceCta": "Voir les formules",
+        "teaserRealEstate": "Aucun bien immobilier lié", "teaserRealEstateCta": "Explorer l'immobilier",
+        "teaserCar": "Pas encore de véhicule", "teaserCarCta": "Ajouter un véhicule",
     ],
 ]
 
+private enum AssetTab: String, CaseIterable {
+    case accounts, cards, loans, investment, insurance, realEstate, car, tax, points
+}
+
 struct OverviewScreenView: View {
     var onBack: () -> Void = {}
+    var onOpenCard: () -> Void = {}
+    var onOpenLoans: () -> Void = {}
+    var onOpenInvest: () -> Void = {}
+    var onOpenProperty: () -> Void = {}
+    var onOpenVehicleValuation: () -> Void = {}
+    var onOpenInsurance: () -> Void = {}
+    var onOpenBills: () -> Void = {}
+    var onOpenRewards: () -> Void = {}
     @State private var locale: AppLocale = loadStoredLocale()
     @State private var overview: OverviewResponse?
     @State private var linkedAccounts: [LinkedAccountDto] = []
@@ -105,6 +163,7 @@ struct OverviewScreenView: View {
     @State private var provider = ""
     @State private var accountNumber = ""
     @State private var myPhoneNumber = ""
+    @State private var activeTab: AssetTab = .accounts
 
     private func t(_ key: String) -> String {
         overviewStrings[locale]?[key] ?? overviewStrings[.en]?[key] ?? key
@@ -125,32 +184,27 @@ struct OverviewScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if let overview {
-                        // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper
-                        // around each of these 4 sections -- real Toss doesn't box every
-                        // section of a linear overview screen (docs/UI_UX_GUIDELINES.md §10).
-                        // They render together on one screen, so a Divider marks each real
-                        // section boundary instead.
+                        // Real "My assets" tab-by-tab redesign (2026-08-27, direct user
+                        // reference: 3 real Toss "총자산" screenshots) -- deliberately
+                        // reverses the 2026-08-24 flat-design sweep's Card removal for
+                        // THIS screen only, since the user's own literal pixel reference
+                        // is card-based (confirmed with them before starting).
                         VStack(alignment: .leading, spacing: 4) {
                             Text(t("netWorth")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text("\(Int(overview.netWorth)) RWF").font(.title).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        Divider().overlay(IDS.Colors.divider)
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(t("accounts")).bold()
-                            ForEach(overview.accounts) { a in
-                                HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(Int(a.balance))") }.font(.subheadline)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 20) {
+                                ForEach(AssetTab.allCases, id: \.self) { tab in
+                                    AssetTabLabel(title: assetTabTitle(tab), selected: activeTab == tab) { activeTab = tab }
+                                }
                             }
                         }
-                        Divider().overlay(IDS.Colors.divider)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(String(format: t("savings"), Int(overview.savings.totalSaved), overview.savings.goalCount)).font(.subheadline)
-                            Text(String(format: t("loans"), Int(overview.loans.totalOutstanding), overview.loans.activeCount)).font(.subheadline)
-                            Text(String(format: t("investments"), Int(overview.investments.totalCostBasis), overview.investments.holdingCount)).font(.subheadline)
-                            Text(String(format: t("insurance"), overview.insurance.activePolicyCount, Int(overview.insurance.totalMonthlyPremium))).font(.subheadline)
-                        }
+                        assetTabContent(overview)
+
                         Divider().overlay(IDS.Colors.divider)
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -249,6 +303,174 @@ struct OverviewScreenView: View {
             _ = try await NetworkClient.shared.unlinkAccount(accountId: accountId)
             await refresh()
         } catch { self.error = t("unlinkError") }
+    }
+
+    private func assetTabTitle(_ tab: AssetTab) -> String {
+        switch tab {
+        case .accounts: return t("accounts")
+        case .cards: return t("tabCards")
+        case .loans: return t("tabLoans")
+        case .investment: return t("tabInvestment")
+        case .insurance: return t("tabInsurance")
+        case .realEstate: return t("tabRealEstate")
+        case .car: return t("tabCar")
+        case .tax: return t("tabTax")
+        case .points: return t("tabPoints")
+        }
+    }
+
+    @ViewBuilder
+    private func assetTabContent(_ overview: OverviewResponse) -> some View {
+        switch activeTab {
+        case .accounts:
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(overview.accounts) { a in
+                    HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(Int(a.balance))") }.font(.subheadline)
+                }
+            }
+        case .cards:
+            if overview.cards.hasCard {
+                AssetSummaryCard(
+                    title: String(format: t("cardNumber"), overview.cards.last4 ?? ""),
+                    value: (overview.cards.frozen ?? false) ? t("cardFrozen") : t("cardActive"),
+                    ctaLabel: t("manage"), onCta: onOpenCard,
+                )
+            } else {
+                AssetTeaserCard(maskedValue: "••••", message: t("teaserCards"), ctaLabel: t("teaserCardsCta"), onCta: onOpenCard)
+            }
+        case .loans:
+            if overview.loans.activeCount > 0 {
+                AssetSummaryCard(
+                    title: t("tabLoans"),
+                    value: String(format: t("loans"), Int(overview.loans.totalOutstanding), overview.loans.activeCount),
+                    ctaLabel: t("manage"), onCta: onOpenLoans,
+                )
+            } else {
+                AssetTeaserCard(maskedValue: "₩???", message: t("teaserLoans"), ctaLabel: t("teaserLoansCta"), onCta: onOpenLoans)
+            }
+        case .investment:
+            if overview.investments.holdingCount > 0 {
+                AssetSummaryCard(
+                    title: t("tabInvestment"),
+                    value: String(format: t("investments"), Int(overview.investments.totalCostBasis), overview.investments.holdingCount),
+                    ctaLabel: t("manage"), onCta: onOpenInvest,
+                )
+            } else {
+                AssetTeaserCard(maskedValue: "??%", message: t("teaserInvestment"), ctaLabel: t("teaserInvestmentCta"), onCta: onOpenInvest)
+            }
+        case .insurance:
+            if overview.insurance.activePolicyCount > 0 {
+                AssetSummaryCard(
+                    title: t("tabInsurance"),
+                    value: String(format: t("insurance"), overview.insurance.activePolicyCount, Int(overview.insurance.totalMonthlyPremium)),
+                    ctaLabel: t("manage"), onCta: onOpenInsurance,
+                )
+            } else {
+                AssetTeaserCard(maskedValue: "???", message: t("teaserInsurance"), ctaLabel: t("teaserInsuranceCta"), onCta: onOpenInsurance)
+            }
+        case .realEstate:
+            // Real estate has no home-valuation/ownership-tracking backend feature at
+            // all (the realestate module is a marketplace listing flow, not a "track
+            // your own home" asset feature) -- always a teaser, matches Toss's own
+            // screenshot showing this tab in teaser state too.
+            AssetTeaserCard(maskedValue: "₩???", message: t("teaserRealEstate"), ctaLabel: t("teaserRealEstateCta"), onCta: onOpenProperty)
+        case .car:
+            if overview.vehicles.vehicleCount > 0 {
+                AssetSummaryCard(
+                    title: t("tabCar"),
+                    value: String(format: t("carSummary"), overview.vehicles.vehicleCount, Int(overview.vehicles.totalPurchasePrice)),
+                    ctaLabel: t("manage"), onCta: onOpenVehicleValuation,
+                )
+            } else {
+                AssetTeaserCard(maskedValue: "₩???", message: t("teaserCar"), ctaLabel: t("teaserCarCta"), onCta: onOpenVehicleValuation)
+            }
+        case .tax:
+            // Always a real card, even at zero payments -- matches Toss's own
+            // always-populated Tax tab (no "link a tax account" step exists; paying a
+            // real RRA bill through Bills IS the real activity this reflects).
+            AssetSummaryCard(
+                title: t("tabTax"),
+                value: String(format: t("taxSummary"), overview.tax.paymentCount, Int(overview.tax.totalPaid)),
+                ctaLabel: t("manage"), onCta: onOpenBills,
+            )
+        case .points:
+            VStack(alignment: .leading, spacing: 6) {
+                Text(String(format: t("pointsSummary"), Int(overview.points.rewardsTotal))).font(.subheadline)
+                Text(String(format: t("payMoneyBalance"), Int(overview.points.payMoneyBalance))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Button(action: onOpenRewards) { Text(t("manage")).font(.caption).bold() }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(IDS.Colors.card)
+            .cornerRadius(12)
+            .idsCardBorder(cornerRadius: 12)
+        }
+    }
+}
+
+private struct AssetTabLabel: View {
+    let title: String
+    let selected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(selected ? .subheadline.bold() : .subheadline)
+                    .foregroundColor(selected ? IDS.Colors.textPrimary : IDS.Colors.textSecondary)
+                Rectangle()
+                    .fill(IDS.Colors.brand)
+                    .frame(width: selected ? 24 : 0, height: 2)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// Real "My assets" real-card treatment -- see OverviewScreenView's own doc comment
+// on why this screen deliberately reintroduces a Card look.
+private struct AssetSummaryCard: View {
+    let title: String
+    let value: String
+    let ctaLabel: String
+    let onCta: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.body).bold()
+            Text(value).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            Button(action: onCta) { Text(ctaLabel).font(.caption).bold() }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IDS.Colors.card)
+        .cornerRadius(12)
+        .idsCardBorder(cornerRadius: 12)
+    }
+}
+
+// Real Toss up-sell-to-link masked teaser card -- native dashed border via
+// StrokeStyle(dash:), no new shared component needed (unlike Android, Compose has
+// no single built-in dashed-border parameter; see DashedBorder.kt's own comment).
+private struct AssetTeaserCard: View {
+    let maskedValue: String
+    let message: String
+    let ctaLabel: String
+    let onCta: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text(maskedValue).font(.title3).bold().foregroundColor(IDS.Colors.textTertiary)
+            Text(message).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            Button(action: onCta) { Text(ctaLabel).font(.caption).bold() }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(IDS.Colors.divider, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        )
     }
 }
 

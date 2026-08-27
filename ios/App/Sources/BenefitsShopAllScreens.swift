@@ -711,7 +711,17 @@ struct EntireMenuScreen: View {
             InvestScreenView(onBack: { showInvest = false })
         }
         .sheet(isPresented: $showOverview) {
-            OverviewScreenView(onBack: { showOverview = false })
+            OverviewScreenView(
+                onBack: { showOverview = false },
+                onOpenCard: { showOverview = false; showCard = true },
+                onOpenLoans: { showOverview = false; showLoans = true },
+                onOpenInvest: { showOverview = false; showInvest = true },
+                onOpenProperty: { showOverview = false; onOpenProperty() },
+                onOpenVehicleValuation: { showOverview = false; showVehicleValuation = true },
+                onOpenInsurance: { showOverview = false; showInsuranceMiniApp = true },
+                onOpenBills: { showOverview = false; showPayBillsMiniApp = true },
+                onOpenRewards: { showOverview = false; showRewardTasksMiniApp = true },
+            )
         }
         .sheet(isPresented: $showLoans) {
             LoansScreenView(onBack: { showLoans = false })
