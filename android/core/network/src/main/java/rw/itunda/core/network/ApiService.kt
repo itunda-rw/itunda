@@ -1934,6 +1934,15 @@ data class LinkedAccountSummaryDto(
     val id: String, val provider: String, val maskedAccountNumber: String, val status: String,
     val demoBalance: java.math.BigDecimal?, val demoBalanceCurrency: String?, val isDemoBalance: Boolean,
 )
+// Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
+// Toss "총자산" screenshots). See OverviewService.kt's own doc comments for exactly
+// how each is sourced -- Car is raw count+purchase-price only (the live valuation
+// math stays private to :vehicle's VehicleValuationService), Tax/Points are always
+// real even at zero.
+data class OverviewCardsSummaryDto(val hasCard: Boolean, val last4: String?, val design: String?, val frozen: Boolean?)
+data class OverviewVehicleSummaryDto(val vehicleCount: Int, val totalPurchasePrice: java.math.BigDecimal)
+data class OverviewTaxSummaryDto(val totalPaid: java.math.BigDecimal, val paymentCount: Int)
+data class OverviewPointsSummaryDto(val rewardsTotal: java.math.BigDecimal, val payMoneyBalance: java.math.BigDecimal)
 data class OverviewResponse(
     val success: Boolean,
     val netWorth: java.math.BigDecimal,
@@ -1943,6 +1952,10 @@ data class OverviewResponse(
     val investments: OverviewInvestmentsSummaryDto,
     val insurance: OverviewInsuranceSummaryDto,
     val linkedAccounts: List<LinkedAccountSummaryDto>,
+    val cards: OverviewCardsSummaryDto,
+    val vehicles: OverviewVehicleSummaryDto,
+    val tax: OverviewTaxSummaryDto,
+    val points: OverviewPointsSummaryDto,
 )
 
 // Real external bank/MoMo account linking (rw.itunda.overview.LinkedAccountService) --

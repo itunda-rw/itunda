@@ -77,6 +77,39 @@
          missed in the first web localization pass over this exact screen. Fixed here
          AND retroactively in bank-mfe's own translations.ts, not left inconsistent. -->
     <string name="overview_verification_failed">Could not verify that %1$s account. It wasn\'t linked.</string>
+    <!-- Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3
+         real Toss "총자산" screenshots). See OverviewService.kt's own doc comments
+         for exactly how each new category is sourced. -->
+    <string name="overview_tab_cards">Cards</string>
+    <string name="overview_tab_loans">Loans</string>
+    <string name="overview_tab_investment">Investment</string>
+    <string name="overview_tab_insurance">Insurance</string>
+    <string name="overview_tab_real_estate">Real estate</string>
+    <string name="overview_tab_car">Car</string>
+    <string name="overview_tab_tax">Tax</string>
+    <string name="overview_tab_points">Points</string>
+    <string name="overview_manage">Manage</string>
+    <string name="overview_view_all_accounts">View all %1$d accounts</string>
+    <string name="overview_show_fewer_accounts">Show fewer</string>
+    <string name="overview_card_number">Card •••• %1$s</string>
+    <string name="overview_card_active">Active</string>
+    <string name="overview_card_frozen">Frozen</string>
+    <string name="overview_car_summary">%1$d vehicle(s), RWF %2$s purchase price</string>
+    <string name="overview_tax_summary">%1$d tax payment(s), RWF %2$s paid</string>
+    <string name="overview_points_summary">RWF %1$s rewards earned</string>
+    <string name="overview_pay_money_balance">Pay Money balance: RWF %1$s</string>
+    <string name="overview_teaser_cards">No card yet</string>
+    <string name="overview_teaser_cards_cta">Get a card</string>
+    <string name="overview_teaser_loans">No loans yet</string>
+    <string name="overview_teaser_loans_cta">Browse loan offers</string>
+    <string name="overview_teaser_investment">No investments yet</string>
+    <string name="overview_teaser_investment_cta">Start investing</string>
+    <string name="overview_teaser_insurance">No insurance yet</string>
+    <string name="overview_teaser_insurance_cta">Browse plans</string>
+    <string name="overview_teaser_real_estate">No real estate linked</string>
+    <string name="overview_teaser_real_estate_cta">Explore real estate</string>
+    <string name="overview_teaser_car">No vehicle yet</string>
+    <string name="overview_teaser_car_cta">Add a vehicle</string>
     <!-- Real gap caught while localizing iOS's TransferFlowContainer.swift (2026-08-08):
          this scam-report reason dialog exists only in ItundaAppScreen.kt's transfer step,
          separate from TransferFlow.kt's own "Report this number as a scam" link (already

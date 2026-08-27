@@ -1169,7 +1169,14 @@ fun ItundaAppScreen(
         }
         if (showOverview) {
             BackHandler { showOverview = false }
-            OverviewScreen(onBack = { showOverview = false })
+            OverviewScreen(
+                onBack = { showOverview = false },
+                onOpenCard = { showOverview = false; showCard = true },
+                onOpenLoans = { showOverview = false; showLoans = true },
+                onOpenInvest = { showOverview = false; showInvest = true },
+                onOpenProperty = { showOverview = false; showProperty = true },
+                onOpenVehicleValuation = { showOverview = false; showVehicleValuation = true },
+            )
             return@IdsTheme
         }
         if (showLoans) {
