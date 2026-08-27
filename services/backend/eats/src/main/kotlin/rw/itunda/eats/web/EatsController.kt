@@ -165,6 +165,7 @@ class EatsController(
     private val userRepository: rw.itunda.core.repository.UserRepository,
     private val eatsOrderRepository: rw.itunda.core.repository.EatsOrderRepository,
     private val messagingService: rw.itunda.messaging.MessagingService,
+    private val dishRecommendationService: rw.itunda.eats.EatsDishRecommendationService,
 ) {
     // Real fresh Uber Eats research (2026-08-15, restaurantdive.com's coverage of Uber
     // Eats' own delivery-tracker redesign, sourced from real internal research across
@@ -202,49 +203,20 @@ class EatsController(
             "riderName" to riderName, "estimatedArrivalMinutes" to etaMinutes,
         )
     }
-    // Real Coupang Eats-style dish grid (2026-08-03) -- user-directed 100% UI/UX
-    // parity pass, sourced from a real Coupang Eats UX teardown (brunch.co.kr
-    // @e6b24f6f7c6949f/20): the actual home browse surface isn't a restaurant-card
-    // list (itunda's own pre-existing RestaurantCard, still used for search/favorites)
-    // -- it's a 3-column grid of individual DISH photos, with rating/delivery-time/fee
-    // deferred entirely to the restaurant detail page. Real photos only
-    // (imageUrl IS NOT NULL, see MerchantProductRepository.findDishes) -- a dish
-    // without a merchant-set photo isn't shown here rather than falling back to a
-    // fabricated placeholder tile, since a placeholder-photo grid would defeat the
-    // entire point of this being a *visual* browse surface. category is the exact
-    // same Merchant.category chip Eats' own restaurant list already filters by.
+    // Real Coupang Eats-style dish grid (2026-08-03) -- see
+    // EatsDishRecommendationService.getDishes' own doc comment for the full
+    // sourcing + real sortBy=popular addition (extracted from this endpoint
+    // 2026-08-28, keeping this controller at its real frozen file-size-lint
+    // baseline).
     @GetMapping("/dishes")
     fun getDishes(
         @RequestParam(required = false) category: String?,
-        // Real Coupang Eats-style budget filter (2026-08-16, "AI 개인화 메뉴 추천" --
-        // see EatsPromotionCalculator-adjacent research: budget-aware dish browsing).
-        // Just the price cap, not Coupang's own real delivery-fee-aware total budget
-        // (would need a per-merchant distance/fee computation at browse time -- a
-        // bigger v2, not this pass).
         @RequestParam(required = false) maxBudget: java.math.BigDecimal?,
+        @RequestParam(required = false) sortBy: String?,
         @PageableDefault(size = 30) pageable: Pageable,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        // businessType=RESTAURANT added 2026-08-13 -- see MerchantBusinessType's own doc
-        // comment. Without it, any non-food merchant's photographed product (a phone, a
-        // t-shirt) qualified as a "dish" purely by having imageUrl set.
-        val page = merchantProductRepository.findDishes(rw.itunda.core.domain.MerchantStatus.ACTIVE, category, rw.itunda.core.domain.MerchantBusinessType.RESTAURANT, maxBudget, pageable)
-        val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
-        // Real "recommended for you" ranking (2026-08-16) -- a plain, honest re-sort
-        // (never a re-fetch, so this page's own real pagination/count stays exact) by
-        // whether the buyer has actually ordered from that dish's restaurant before,
-        // not a fabricated ML ranking. sortedByDescending is stable, so within each
-        // group the existing real p.createdAt DESC ordering from the query is preserved.
-        val familiarRestaurantIds = eatsOrderRepository.findDistinctRestaurantIdsByBuyerId(currentUser.userId).toSet()
-        val dishes = page.content
-            .sortedByDescending { it.merchantId in familiarRestaurantIds }
-            .map { p ->
-                mapOf(
-                    "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
-                    "name" to p.name, "price" to p.price, "imageUrl" to p.imageUrl,
-                    "recommended" to (p.merchantId in familiarRestaurantIds),
-                )
-            }
+        val (page, dishes) = dishRecommendationService.getDishes(category, maxBudget, sortBy, pageable, currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "dishes" to dishes) + pageMeta(page))
     }
 
