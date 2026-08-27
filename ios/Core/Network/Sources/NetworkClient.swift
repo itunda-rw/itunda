@@ -3487,6 +3487,11 @@ public struct DealProductDto: Decodable, Identifiable {
     // stars, never a fabricated default.
     public let rating: Double?
     public let reviewCount: Int?
+    // Real "Best seller" badge (2026-08-28) -- a genuine, derived signal (real gross
+    // order count per product, see backend ShoppingController.bestSellerProductIds'
+    // own doc comment), not fabricated marketing copy. Always present in the real
+    // JSON (Kotlin's `false` default still serializes), so non-optional.
+    public let isBestSeller: Bool
 }
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }
@@ -3646,6 +3651,8 @@ public struct MerchantProductDto: Decodable, Identifiable {
     // Real Kakao Hair Shop-style prepay-to-book -- only meaningful when
     // durationMinutes is set.
     public let requiresPrepay: Bool?
+    // Real "Best seller" badge (2026-08-28) -- see DealProductDto's own doc comment.
+    public let isBestSeller: Bool
 }
 public struct PriceTierDto: Decodable { public let minQuantity: Int; public let unitPrice: Double }
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
@@ -3746,6 +3753,8 @@ public struct ProductSearchResultDto: Decodable, Identifiable {
     public let discountPercent: Int?
     public let description: String?
     public let stockQuantity: Int?
+    // Real "Best seller" badge (2026-08-28) -- see DealProductDto's own doc comment.
+    public let isBestSeller: Bool
 }
 public struct ProductSearchResponse: Decodable { public let success: Bool; public let products: [ProductSearchResultDto] }
 
@@ -5243,6 +5252,13 @@ extension NetworkClient {
 
     public func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")
+    }
+
+    // Real seller chat (2026-08-28) -- mirrors contactSeller (Marketplace) above
+    // exactly: resolves the real merchant owner's userId server-side, hands off to
+    // the same real shared messaging system every other vertical already uses.
+    public func contactMerchantSeller(merchantId: String) async throws -> ContactSellerResponse {
+        try await authenticatedPost("api/v1/shopping/merchants/\(merchantId)/contact-seller", body: EmptyBody())
     }
 
     // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link program (item 229) --

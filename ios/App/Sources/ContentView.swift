@@ -400,7 +400,11 @@ struct ContentView: View {
                     )
                 }
                 .fullScreenCover(isPresented: $showShop) {
-                    CommerceShopContent()
+                    CommerceShopContent(onMessageSeller: { conversationId in
+                        pendingConversationId = conversationId
+                        showShop = false
+                        selectedTab = 3
+                    })
                 }
                 .fullScreenCover(isPresented: $showEats) {
                     EatsContent()

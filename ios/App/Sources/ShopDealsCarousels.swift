@@ -51,6 +51,7 @@ struct ShopDealsCarousel: View {
                                     Text(String(format: "%.1f (%d)", rating, reviewCount)).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                 }
                             }
+                            if d.isBestSeller { ShopBestSellerBadge() }
                             Text(d.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
                                 .font(.caption2).foregroundColor(d.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
                         }

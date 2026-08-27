@@ -14,6 +14,7 @@ struct ProductDetailView: View {
     var favorited: Bool = false
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
+    var onContactSeller: () -> Void = {}
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private var key: String { "\(merchant.merchantId):\(product.id)" }
@@ -32,6 +33,7 @@ struct ProductDetailView: View {
                 .accessibilityLabel("Back")
                 Text(merchant.businessName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
+                ShopMessageSellerButton(action: onContactSeller)
             }
             .padding(.horizontal, 8)
 
@@ -60,7 +62,11 @@ struct ProductDetailView: View {
                     Spacer().frame(height: 6)
                     ProductPriceRow(product: product)
                     Spacer().frame(height: 6)
-                    ProductRatingBadge(productId: product.id)
+                    HStack(spacing: 8) {
+                        ProductRatingBadge(productId: product.id)
+                        if product.isBestSeller { ShopBestSellerBadge() }
+                        ShopDeliveryEtaPill(minutes: merchant.deliveryTimeMinutes)
+                    }
                     if let description = product.description, !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Spacer().frame(height: 12)
                         Text(description).font(.footnote).foregroundColor(IDS.Colors.textSecondary)

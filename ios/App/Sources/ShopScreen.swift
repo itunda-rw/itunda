@@ -84,6 +84,14 @@ struct CommerceCheckoutResult: Identifiable {
 }
 
 struct CommerceShopContent: View {
+    // Real seller chat (2026-08-28) -- see ShopSellerContactPicker.swift's own doc
+    // comment. Default no-op keeps both existing call sites (ContentView.swift's
+    // real root, BenefitsShopAllScreens.swift's secondary sheet) compiling
+    // unchanged; only ContentView.swift's real root wires this to the real
+    // pendingConversationId/selectedTab hand-off, matching Marketplace/Community/
+    // Jobs/Property's own established pattern.
+    var onMessageSeller: (String) -> Void = { _ in }
+
     @State private var view: CommerceView = .browse
     @State private var merchants: [ShoppingMerchantDto]?
     @State private var categories: [String] = []
@@ -99,6 +107,9 @@ struct CommerceShopContent: View {
     @State private var results: [CommerceCheckoutResult]?
     @State private var reorderingId: String?
     @State private var reorderError: String?
+    // Real seller chat (2026-08-28) -- the merchant currently being contacted, or
+    // nil when the picker is closed.
+    @State private var contactingMerchant: ShoppingMerchantDto?
 
     // Real Shop product wishlist (2026-07-24) -- lifted here same as Marketplace's own
     // favoriteIds (HoodScreen.swift), so the heart on a product card (grid or detail)
@@ -198,7 +209,8 @@ struct CommerceShopContent: View {
                     onViewCart: { selectedProduct = nil; showCart = true },
                     favorited: favoriteProductIds.contains(product.id),
                     favoriteBusy: favoritingProductId == product.id,
-                    onToggleFavorite: { Task { await toggleProductFavorite(product.id) } }
+                    onToggleFavorite: { Task { await toggleProductFavorite(product.id) } },
+                    onContactSeller: { contactingMerchant = merchant }
                 )
             } else if let merchant = selectedMerchant {
                 MerchantDetailView(
@@ -213,11 +225,22 @@ struct CommerceShopContent: View {
                     onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } },
                     following: followedMerchantIds.contains(merchant.merchantId),
                     followBusy: followBusyMerchantId == merchant.merchantId,
-                    onToggleFollow: { Task { await toggleFollow(merchant.merchantId) } }
+                    onToggleFollow: { Task { await toggleFollow(merchant.merchantId) } },
+                    onContactSeller: { contactingMerchant = merchant }
                 )
             } else {
                 browseBody
             }
+        }
+        .sheet(item: $contactingMerchant) { merchant in
+            ShopSellerContactPicker(
+                merchantId: merchant.merchantId,
+                merchantName: merchant.businessName,
+                onOpened: { conversationId in
+                    contactingMerchant = nil
+                    onMessageSeller(conversationId)
+                }
+            )
         }
         .task {
             if merchants == nil { await loadMerchants() }
@@ -380,6 +403,7 @@ struct CommerceShopContent: View {
                                                 Text(r.merchantName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                                 Text(r.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
                                                     .font(.caption).foregroundColor(r.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
+                                                if r.isBestSeller { ShopBestSellerBadge() }
                                             }
                                             Spacer()
                                             Text("\(Int(r.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)

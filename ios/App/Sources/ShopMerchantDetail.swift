@@ -18,6 +18,7 @@ struct MerchantDetailView: View {
     var following: Bool = false
     var followBusy: Bool = false
     var onToggleFollow: () -> Void = {}
+    var onContactSeller: () -> Void = {}
 
     // Real Kakao Pay 정기결제/Toss 빌링키-style recurring billing plans this merchant
     // itself has published -- see MerchantBillingService's own doc comment. bank-mfe/
@@ -69,6 +70,7 @@ struct MerchantDetailView: View {
                 .accessibilityLabel("Back")
                 Text(merchant.businessName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
+                ShopMessageSellerButton(action: onContactSeller)
                 // Real Naver Smart Store-style "알림받기" follow toggle -- first iOS
                 // client for this feature (item 117, found via a content-grep sweep:
                 // bank-mfe has it, Android/iOS didn't; Android ported the same day).
@@ -146,7 +148,11 @@ struct MerchantDetailView: View {
                                             .disabled(sharingProductId == product.id)
                                         }
                                     }
-                                    ProductRatingBadge(productId: product.id)
+                                    HStack(spacing: 6) {
+                                        ProductRatingBadge(productId: product.id)
+                                        if product.isBestSeller { ShopBestSellerBadge() }
+                                    }
+                                    ShopDeliveryEtaPill(minutes: merchant.deliveryTimeMinutes)
                                     Text(product.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
                                         .font(.caption)
                                         .foregroundColor(product.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
