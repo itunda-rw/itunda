@@ -176,24 +176,44 @@ spec:
         # startupProbe owns the "give it time to boot" budget (up to 5 minutes);
         # readiness/liveness only start being evaluated after startupProbe succeeds
         # once.
+        #
+        # Real second-order bug hit (2026-08-28, itunda Shopping redesign deploy):
+        # none of these three probes set timeoutSeconds, so it silently defaulted to
+        # Kubernetes' own built-in 1s. That's fine once the node is calm, but under
+        # real contention on this single overcommitted node, /actuator/health's own
+        # Redis health contributor was observed taking 10-30s to respond (seen live
+        # in the app's own logs: "Health contributor ... (redis) took 29689ms to
+        # respond") -- a full, genuinely-healthy JVM that had already logged "Started
+        # ItundaApplicationKt in 238.488 seconds" still failed every single probe
+        # attempt (startupProbe's real 300s failureThreshold budget included) purely
+        # because each individual HTTP call timed out at 1s, never because the app
+        # wasn't actually up. CrashLoopBackOff on a container that was never actually
+        # broken, again -- same root cause class as the comment above, just the
+        # per-request timeout this time instead of the total attempt budget.
+        # timeoutSeconds: 5 gives a real health check enough room to answer even
+        # during a slow window, without masking a genuinely hung process (still far
+        # tighter than the total startupProbe budget above).
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           failureThreshold: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
+          timeoutSeconds: 5
       volumes:
       - name: firebase-credentials
         secret:
