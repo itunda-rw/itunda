@@ -109,6 +109,10 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/transit/tap-by-code", body: TapFareByCodeRequest(code: code, operatorName: operatorName, fare: fare), idempotencyKey: UUID().uuidString)
     }
 
+    public func collectMotoFare(code: String, fare: Double) async throws -> CollectMotoFareResponse {
+        try await authenticatedPost("api/v1/moto-fare/collect", body: CollectMotoFareRequest(code: code, fare: fare), idempotencyKey: UUID().uuidString)
+    }
+
     public func getMyCard() async throws -> CardResponse { try await get("api/v1/card/my-card") }
 
     public func getCardTransactions() async throws -> CardTransactionsResponse { try await get("api/v1/card/transactions") }

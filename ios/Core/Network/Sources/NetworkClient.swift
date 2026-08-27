@@ -5977,6 +5977,14 @@ public struct TransitCollectResultDto: Decodable {
 }
 public struct TapFareByCodeResponse: Decodable { public let success: Bool; public let collected: TransitCollectResultDto }
 
+// Real "tap to pay your moto-taxi fare" (2026-08-27, direct user follow-up: "now we
+// can make pay for tax and moto as well"). `code` is the same CustomerPaymentCode
+// value generateCustomerPaymentCode already produces -- see the backend's
+// MotoFareService.kt doc comment for the full sourced account.
+public struct CollectMotoFareRequest: Encodable { public let code: String; public let fare: Double }
+public struct MotoFareCollectResultDto: Decodable { public let fare: Double; public let collectedAt: String }
+public struct CollectMotoFareResponse: Decodable { public let success: Bool; public let collected: MotoFareCollectResultDto }
+
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 

@@ -128,6 +128,7 @@ struct EntireMenuScreen: View {
     @State private var showCard = false
     @State private var showTransit = false
     @State private var showTransitCollect = false
+    @State private var showMotoFareCollect = false
     // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 105) --
     // last remaining client platform for this feature (bank-mfe always had it, Android
     // ported the same day as item 104).
@@ -306,6 +307,10 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", glyph: { AnyView(BikeGlyph(size: 28)) }, action: { showBikeRental = true }),
                 FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", glyph: { AnyView(ParkingGlyph(size: 28)) }, action: { showParking = true }),
                 FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", glyph: { AnyView(PlaceGlyph(category: "BUS_STOP", size: 28)) }, action: { showBus = true }),
+                // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user
+                // follow-up: "now we can make pay for tax and moto as well") -- see
+                // MotoFareCollectScreenView.swift's own doc comment.
+                FlatRow(title: "Collect a moto fare", subtitle: "Drivers: tap or scan a rider's code to collect a real fare", symbol: "bicycle", tint: Color(hex: 0xD97706), action: { showMotoFareCollect = true }),
                 FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", glyph: { AnyView(WrenchGlyph(size: 28)) }, action: { showVehicleInspection = true }),
                 FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", glyph: { AnyView(TravelCar(size: 28)) }, action: { showVehicleValuation = true }),
             ]),
@@ -547,6 +552,10 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", glyph: { AnyView(BikeGlyph(size: 28)) }, action: { showBikeRental = true }),
                         FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", glyph: { AnyView(ParkingGlyph(size: 28)) }, action: { showParking = true }),
                         FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", glyph: { AnyView(PlaceGlyph(category: "BUS_STOP", size: 28)) }, action: { showBus = true }),
+                // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user
+                // follow-up: "now we can make pay for tax and moto as well") -- see
+                // MotoFareCollectScreenView.swift's own doc comment.
+                FlatRow(title: "Collect a moto fare", subtitle: "Drivers: tap or scan a rider's code to collect a real fare", symbol: "bicycle", tint: Color(hex: 0xD97706), action: { showMotoFareCollect = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", glyph: { AnyView(WrenchGlyph(size: 28)) }, action: { showVehicleInspection = true }),
                         FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", glyph: { AnyView(TravelCar(size: 28)) }, action: { showVehicleValuation = true }),
                     ], isExpanded: expandedMenuSection == "Transport", onToggle: { expandedMenuSection = (expandedMenuSection == "Transport") ? nil : "Transport" })
@@ -751,6 +760,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showTransitCollect) {
             TransitCollectScreenView(onBack: { showTransitCollect = false })
+        }
+        .sheet(isPresented: $showMotoFareCollect) {
+            MotoFareCollectScreenView(onBack: { showMotoFareCollect = false })
         }
         .sheet(isPresented: $showGroupAccounts) {
             GroupAccountScreenView(onBack: { showGroupAccounts = false })
