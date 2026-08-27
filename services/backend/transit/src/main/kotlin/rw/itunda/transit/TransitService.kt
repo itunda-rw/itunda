@@ -14,6 +14,7 @@ import rw.itunda.core.domain.TransitTrip
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.CustomerPaymentCodeRepository
 import rw.itunda.core.repository.TransitBalanceRepository
 import rw.itunda.core.repository.TransitTripRepository
 import java.math.BigDecimal
@@ -26,6 +27,17 @@ class TransitInvalidAmountException(message: String) : RuntimeException(message)
 class TransitInvalidOperatorException(message: String) : RuntimeException(message)
 class TransitInvalidFareException(message: String) : RuntimeException(message)
 class TransitInsufficientBalanceException(message: String) : RuntimeException(message)
+// Real "agent collects a fare from a rider's own presented code" flow (2026-08-27) --
+// see tapFareByCode's own doc comment for the full account. Same real bug class
+// CustomerPaymentCodeNotFoundException/CustomerPaymentCodeNotPayableException already
+// establish in MerchantService.chargeByCustomerCode -- separate exception types here
+// (not a cross-module reuse of Merchant's) since :transit deliberately doesn't depend
+// on :merchant, only on CustomerPaymentCode/CustomerPaymentCodeRepository which live in
+// :core and are a generic "prove I'm this account, right now" primitive, not
+// merchant-specific despite their package's historical URL prefix.
+class TransitCodeNotFoundException(message: String) : RuntimeException(message)
+class TransitCodeNotPayableException(message: String) : RuntimeException(message)
+class TransitSelfCollectionException(message: String) : RuntimeException(message)
 
 data class TransitBalanceView(
     val balance: BigDecimal,
@@ -35,6 +47,17 @@ data class TransitBalanceView(
 data class TransitTapResult(
     val trip: TransitTrip,
     val balance: TransitBalanceView,
+)
+
+// Real collector-facing confirmation (2026-08-27) -- deliberately does NOT include the
+// rider's balance or any identity beyond what the collector already knows from having
+// just read their code (which carries no name/phone). A real bus conductor's own
+// reader shows a pass/fail light and a beep, not the passenger's stored-value balance
+// or identity -- same privacy-by-default reasoning.
+data class TransitCollectResult(
+    val operator: String,
+    val fare: BigDecimal,
+    val collectedAt: Instant,
 )
 
 /**
@@ -47,6 +70,7 @@ class TransitService(
     private val transitBalanceRepository: TransitBalanceRepository,
     private val transitTripRepository: TransitTripRepository,
     private val accountRepository: AccountRepository,
+    private val customerPaymentCodeRepository: CustomerPaymentCodeRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
@@ -99,6 +123,52 @@ class TransitService(
     @Transactional
     fun tapFare(userId: String, operator: String, fare: BigDecimal): TransitTapResult {
         rateLimiter.checkLimit("transit:tap:$userId", limit = 30, window = Duration.ofMinutes(1))
+        val (trip, balance) = chargeFare(userId, operator, fare)
+        return TransitTapResult(trip = trip, balance = toView(balance))
+    }
+
+    /**
+     * Real "agent collects a fare from a rider's own presented code" flow (2026-08-27,
+     * direct user follow-up: "for simplification we need nfc"). Reuses
+     * [rw.itunda.core.domain.CustomerPaymentCode] -- the same short-lived, single-use
+     * bearer token every itunda user can already generate and show as a QR/barcode via
+     * "My payment code" on all three platforms -- rather than building a parallel
+     * token system. `code` is transport-agnostic: it may have reached the collector's
+     * device via a camera QR scan, or (Android riders only, since third-party NFC card
+     * emulation is Apple-restricted on iOS) an NFC tap, but this method has no idea
+     * which and doesn't need to. Any logged-in user may act as a collector -- itunda has
+     * no real relationship with actual Kigali conductors to gate this against, same
+     * honest-MVP boundary the rest of this feature already draws.
+     */
+    @Transactional
+    fun tapFareByCode(collectorUserId: String, code: String, operator: String, fare: BigDecimal): TransitCollectResult {
+        rateLimiter.checkLimit("transit:tap-by-code:$collectorUserId", limit = 60, window = Duration.ofMinutes(1))
+        val paymentCode = customerPaymentCodeRepository.findByCode(code)
+            ?: throw TransitCodeNotFoundException("This code was not found")
+        if (paymentCode.usedAt != null) {
+            throw TransitCodeNotPayableException("This code has already been used")
+        }
+        if (paymentCode.expiresAt.isBefore(Instant.now())) {
+            throw TransitCodeNotPayableException("This code has expired -- ask the rider to refresh their Pay screen")
+        }
+        val riderUserId = paymentCode.userId
+        if (riderUserId == collectorUserId) {
+            throw TransitSelfCollectionException("That's your own code -- a rider taps their own code against someone else's device, not their own")
+        }
+
+        chargeFare(riderUserId, operator, fare)
+
+        paymentCode.usedAt = Instant.now()
+        customerPaymentCodeRepository.save(paymentCode)
+
+        return TransitCollectResult(operator = operator, fare = fare, collectedAt = Instant.now())
+    }
+
+    /** Shared real charge shape between the self-service [tapFare] and the
+     * collector-initiated [tapFareByCode] -- same validation, same ledger legs, same
+     * balance lock, same trip row; only how the rider's identity was established
+     * differs between the two callers. */
+    private fun chargeFare(riderUserId: String, operator: String, fare: BigDecimal): Pair<TransitTrip, TransitBalance> {
         if (operator !in TransitOperator.ALL) {
             throw TransitInvalidOperatorException("'$operator' is not a real Kigali transit operator itunda supports")
         }
@@ -106,7 +176,7 @@ class TransitService(
             throw TransitInvalidFareException("Fare must be between ${TransitTrip.MIN_FARE} and ${TransitTrip.MAX_FARE} RWF, Kigali's real sourced fare range")
         }
 
-        val balance = getBalanceOrThrow(userId)
+        val balance = getBalanceOrThrow(riderUserId)
         val locked = transitBalanceRepository.findByIdForUpdate(balance.id).orElseThrow { IllegalStateException("Unknown transit balance ${balance.id}") }
         if (locked.balance < fare) {
             throw TransitInsufficientBalanceException("Your transit balance is too low for this fare. Top up and try again.")
@@ -126,14 +196,14 @@ class TransitService(
         val trip = transitTripRepository.save(
             TransitTrip(
                 id = "transittrip_${UUID.randomUUID()}",
-                userId = userId,
+                userId = riderUserId,
                 operator = operator,
                 fare = fare,
                 ledgerTransactionId = result.transactionId,
             ),
         )
 
-        return TransitTapResult(trip = trip, balance = toView(savedBalance))
+        return trip to savedBalance
     }
 
     private fun getBalanceOrThrow(userId: String): TransitBalance =

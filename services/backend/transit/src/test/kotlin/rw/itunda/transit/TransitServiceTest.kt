@@ -4,9 +4,11 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
+import rw.itunda.core.domain.CustomerPaymentCode
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.TransitBalance
@@ -15,9 +17,11 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.CustomerPaymentCodeRepository
 import rw.itunda.core.repository.TransitBalanceRepository
 import rw.itunda.core.repository.TransitTripRepository
 import java.math.BigDecimal
+import java.time.Instant
 import java.util.Optional
 
 /** First test coverage for the real Kigali transit stored-value balance -- see
@@ -37,9 +41,10 @@ class TransitServiceTest : BehaviorSpec({
         transitBalanceRepository: TransitBalanceRepository = mockk(),
         transitTripRepository: TransitTripRepository = mockk(),
         accountRepository: AccountRepository = mockk(),
+        customerPaymentCodeRepository: CustomerPaymentCodeRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = TransitService(transitBalanceRepository, transitTripRepository, accountRepository, ledgerService, rateLimiter)
+    ) = TransitService(transitBalanceRepository, transitTripRepository, accountRepository, customerPaymentCodeRepository, ledgerService, rateLimiter)
 
     Given("a real user topping up their transit balance for the first time") {
         val transitBalanceRepository = mockk<TransitBalanceRepository>()
@@ -164,6 +169,107 @@ class TransitServiceTest : BehaviorSpec({
                     service.tapFare("user_1", TransitOperator.KIGALI_BUS_SERVICES, BigDecimal("200"))
                     error("expected TransitNoAccountException")
                 } catch (_: TransitNoAccountException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    fun paymentCode(userId: String, code: String = "abc123", usedAt: Instant? = null, expiresAt: Instant = Instant.now().plusSeconds(60)) =
+        CustomerPaymentCode(id = "cpc_1", userId = userId, code = code, expiresAt = expiresAt, usedAt = usedAt)
+
+    Given("a real collector reading a rider's still-valid, unused payment code via NFC or a QR scan") {
+        val transitBalanceRepository = mockk<TransitBalanceRepository>()
+        val transitTripRepository = mockk<TransitTripRepository>()
+        val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val riderBalance = freshBalance("rider_1", BigDecimal("1000"))
+        every { customerPaymentCodeRepository.findByCode("abc123") } returns paymentCode("rider_1")
+        every { customerPaymentCodeRepository.save(any()) } answers { firstArg() }
+        every { transitBalanceRepository.findByUserId("rider_1") } returns riderBalance
+        every { transitBalanceRepository.findByIdForUpdate("transit_1") } returns Optional.of(riderBalance)
+        every { transitBalanceRepository.save(any()) } answers { firstArg() }
+        every { transitTripRepository.save(any()) } answers { firstArg() }
+        every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        val service = newService(
+            transitBalanceRepository = transitBalanceRepository, transitTripRepository = transitTripRepository,
+            customerPaymentCodeRepository = customerPaymentCodeRepository, ledgerService = ledgerService,
+        )
+
+        When("the collector taps to collect a real, in-range fare") {
+            val result = service.tapFareByCode("collector_1", "abc123", TransitOperator.ROYAL_EXPRESS, BigDecimal("300"))
+
+            Then("it real-charges the RIDER's balance (not the collector's) and real-consumes the code") {
+                result.fare shouldBe BigDecimal("300")
+                result.operator shouldBe TransitOperator.ROYAL_EXPRESS
+                riderBalance.balance shouldBe BigDecimal("700")
+                verify(exactly = 1) { customerPaymentCodeRepository.save(match { it.usedAt != null }) }
+            }
+        }
+    }
+
+    Given("a real payment code that doesn't exist") {
+        val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>()
+        every { customerPaymentCodeRepository.findByCode("ghost") } returns null
+        val service = newService(customerPaymentCodeRepository = customerPaymentCodeRepository)
+
+        When("a collector tries to tap it") {
+            Then("it real-404s rather than silently no-oping") {
+                try {
+                    service.tapFareByCode("collector_1", "ghost", TransitOperator.KIGALI_BUS_SERVICES, BigDecimal("200"))
+                    error("expected TransitCodeNotFoundException")
+                } catch (_: TransitCodeNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real payment code already used by a previous collector") {
+        val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>()
+        every { customerPaymentCodeRepository.findByCode("abc123") } returns paymentCode("rider_1", usedAt = Instant.now())
+        val service = newService(customerPaymentCodeRepository = customerPaymentCodeRepository)
+
+        When("a second collector tries to tap the same code") {
+            Then("it real-blocks the replay") {
+                try {
+                    service.tapFareByCode("collector_1", "abc123", TransitOperator.KIGALI_BUS_SERVICES, BigDecimal("200"))
+                    error("expected TransitCodeNotPayableException")
+                } catch (_: TransitCodeNotPayableException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real payment code that has expired") {
+        val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>()
+        every { customerPaymentCodeRepository.findByCode("abc123") } returns paymentCode("rider_1", expiresAt = Instant.now().minusSeconds(1))
+        val service = newService(customerPaymentCodeRepository = customerPaymentCodeRepository)
+
+        When("a collector tries to tap it") {
+            Then("it real-blocks rather than accepting a stale code") {
+                try {
+                    service.tapFareByCode("collector_1", "abc123", TransitOperator.KIGALI_BUS_SERVICES, BigDecimal("200"))
+                    error("expected TransitCodeNotPayableException")
+                } catch (_: TransitCodeNotPayableException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real user's own payment code") {
+        val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>()
+        every { customerPaymentCodeRepository.findByCode("abc123") } returns paymentCode("user_1")
+        val service = newService(customerPaymentCodeRepository = customerPaymentCodeRepository)
+
+        When("that same user tries to collect their own code") {
+            Then("it real-blocks self-collection") {
+                try {
+                    service.tapFareByCode("user_1", "abc123", TransitOperator.KIGALI_BUS_SERVICES, BigDecimal("200"))
+                    error("expected TransitSelfCollectionException")
+                } catch (_: TransitSelfCollectionException) {
                     // expected
                 }
             }
