@@ -103,6 +103,10 @@ struct OrderFoodContent: View {
     @State private var categories: [String] = []
     @State private var selectedCategory: String?
     @State private var searchInput: String = ""
+    // Real Baemin/Coupang Eats-style sort mode (itunda Eats redesign, 2026-08-28) --
+    // extends RestaurantSortMode; web/Android already have this, first iOS client. See
+    // EatsSortChip's own doc comment.
+    @State private var sortMode: String?
     @State private var filterTask: Task<Void, Never>?
     @State private var error: String?
     @State private var selectedRestaurant: ShoppingMerchantDto?
@@ -220,6 +224,17 @@ struct OrderFoodContent: View {
         scheduleFilterReload()
     }
 
+    private func selectSort(_ mode: String) {
+        sortMode = (sortMode == mode) ? nil : mode
+        scheduleFilterReload()
+    }
+
+    private func openDish(_ dish: EatsDishDto) {
+        let restaurant = allRestaurants?.first(where: { $0.merchantId == dish.merchantId })
+            ?? ShoppingMerchantDto(merchantId: dish.merchantId, businessName: dish.merchantName, category: nil, cashbackRate: "1%")
+        Task { await openRestaurant(restaurant) }
+    }
+
     private var browseBody: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
@@ -256,6 +271,26 @@ struct OrderFoodContent: View {
                         selectedCategory: selectedCategory,
                         onSelectCategory: selectCategory
                     )
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            EatsSortChip(label: "📍 Nearest", active: sortMode == "distance") { selectSort("distance") }
+                            EatsSortChip(label: "⏱ Fastest delivery", active: sortMode == "delivery_time") { selectSort("delivery_time") }
+                            EatsSortChip(label: "⭐ Highest rated", active: sortMode == "rating") { selectSort("rating") }
+                            EatsSortChip(label: "❤️ Most favorited", active: sortMode == "favorites") { selectSort("favorites") }
+                            EatsSortChip(label: "🔥 Max discount", active: sortMode == "discount") { selectSort("discount") }
+                            EatsSortChip(label: "💸 Low min order", active: sortMode == "min_order") { selectSort("min_order") }
+                        }
+                    }
+
+                    // Real dish-grid + nearby-ads rails (itunda Eats redesign,
+                    // 2026-08-28) -- only on the unfiltered landing state, same
+                    // discipline the recently-viewed rail below already follows.
+                    if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty {
+                        EatsDishRail(title: "Recommended for you", category: nil, sortBy: nil, onOpen: openDish)
+                        EatsDishRail(title: "🔥 Popular now", category: nil, sortBy: "popular", onOpen: openDish)
+                        EatsNearbyAdsRail(onOpen: { restaurant in Task { await openRestaurant(restaurant) } })
+                    }
 
                     // Real "recently viewed restaurants" rail -- see
                     // RecentlyViewedStores.swift's own doc comment. Hidden once the user
@@ -318,6 +353,23 @@ struct OrderFoodContent: View {
                                     // already carries a real cashbackRate; show that instead.
                                     Text(restaurant.category.map { "\($0) · \(restaurant.cashbackRate) cashback" } ?? "\(restaurant.cashbackRate) cashback")
                                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    // Real per-restaurant WOW membership badge + max-discount
+                                    // line (itunda Eats redesign, 2026-08-28) -- merchandises
+                                    // the real, already-shipped PlatformMembershipService
+                                    // opt-in and real MerchantProduct.discountPercent data,
+                                    // never fabricated. web/Android already have this badge.
+                                    HStack(spacing: 6) {
+                                        if restaurant.participatesInEatsMembership {
+                                            Text("⚡ Free delivery w/ itunda Plus")
+                                                .font(.caption2).bold().foregroundColor(.white)
+                                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                                .background(IDS.Colors.brand).clipShape(Capsule())
+                                        }
+                                        if let maxDiscount = restaurant.maxDiscountPercent, maxDiscount > 0 {
+                                            Text("Up to \(maxDiscount)% off")
+                                                .font(.caption2).bold().foregroundColor(.red)
+                                        }
+                                    }
                                     // Real browse-card enrichment (2026-07-21) -- closes
                                     // docs/DESIGN_REFERENCES.md's Eats recommendations #1/#2:
                                     // rating previously sat one tap deeper inside
@@ -373,7 +425,7 @@ struct OrderFoodContent: View {
     private func loadRestaurants() async {
         do {
             let q = searchInput.trimmingCharacters(in: .whitespaces)
-            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, businessType: "RESTAURANT", q: q.isEmpty ? nil : q)
+            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, businessType: "RESTAURANT", q: q.isEmpty ? nil : q, sortBy: sortMode)
             restaurants = res.merchants
             error = nil
         } catch {

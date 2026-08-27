@@ -3,24 +3,6 @@ import CoreDesignSystem
 import CoreNetwork
 
 
-// Real post-delivery ratings & reviews (2026-07-18) -- itunda's own self-hosted rating
-// system, ported from bank-mfe's own review UI (the template for this iOS version).
-struct StarRatingRow: View {
-    let value: Int
-    let onChange: (Int) -> Void
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(1...5, id: \.self) { n in
-                Button(action: { onChange(n) }) {
-                    IDS.Icons.star(size: 24, color: n <= value ? .yellow : IDS.Colors.textTertiary)
-                }
-                .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
-            }
-        }
-    }
-}
-
 // Real restaurant-photo thumbnail (2026-07-21) -- photoUrl is a merchant-supplied
 // external URL (see backend Merchant.kt's own doc comment: no upload/storage layer
 // exists in this backend, same "bring your own URL" convention ShopScreen's own
@@ -60,158 +42,6 @@ struct RestaurantPhotoThumb: View {
     }
 }
 
-// Real written-review list + owner-reply display (item 184/185/186) -- bank-mfe (item
-// 184) and Android (item 185) already have this; this is the first iOS client. Mirrors
-// ProductRatingBadge's own expand-on-tap pattern exactly (ShopScreen.swift, this app's
-// Commerce equivalent).
-struct RestaurantRatingBadge: View {
-    let restaurantId: String
-    @State private var rating: EatsRatingResponse?
-    @State private var open = false
-    @State private var reviews: [EatsReviewDto]?
-
-    var body: some View {
-        Group {
-            if let rating, rating.count > 0 {
-                VStack(alignment: .leading, spacing: 4) {
-                    Button(action: toggle) {
-                        HStack(spacing: 4) {
-                            IDS.Icons.star(size: 13, color: .yellow)
-                            Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
-                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        }
-                    }
-                    if open {
-                        if let reviews {
-                            if reviews.isEmpty {
-                                EmptyStateView("No written reviews yet — be the first to share how it went.")
-                            } else {
-                                ForEach(reviews, id: \.id) { r in
-                                    let stars = String(repeating: "★", count: r.restaurantRating) + String(repeating: "☆", count: 5 - r.restaurantRating)
-                                    Text(r.restaurantComment.map { "\(stars) — \($0)" } ?? stars)
-                                        .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                    if let reply = r.ownerReply, !reply.isEmpty {
-                                        Text("↳ Restaurant: \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary).padding(.leading, 12)
-                                    }
-                                }
-                            }
-                        } else {
-                            Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                        }
-                    }
-                }
-            }
-        }
-        .task {
-            do {
-                rating = try await NetworkClient.shared.getRestaurantRating(restaurantId)
-            } catch {
-                // Real, non-critical -- a rating fetch failure shouldn't block browsing
-                // the menu.
-            }
-        }
-    }
-
-    private func toggle() {
-        open.toggle()
-        guard open, reviews == nil else { return }
-        Task {
-            do {
-                reviews = try await NetworkClient.shared.getRestaurantReviews(restaurantId).reviews
-            } catch {
-                reviews = []
-            }
-        }
-    }
-}
-
-struct ReviewOrderCard: View {
-    let order: EatsOrderDto
-
-    @State private var open = false
-    @State private var done = false
-    @State private var restaurantRating = 0
-    @State private var restaurantComment = ""
-    @State private var riderRating = 0
-    @State private var riderComment = ""
-    @State private var submitting = false
-    @State private var error: String?
-
-    var body: some View {
-        if done {
-            Text("Thanks for your review!").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-        } else if !open {
-            Button(action: { open = true }) {
-                Text("Rate this order").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                    .padding(.horizontal, 16).padding(.vertical, 10)
-                    .background(IDS.Colors.chipBackground).cornerRadius(12)
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Restaurant").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    StarRatingRow(value: restaurantRating) { restaurantRating = $0 }
-                    TextField("How was the food? (optional)", text: $restaurantComment)
-                        .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Rider").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    StarRatingRow(value: riderRating) { riderRating = $0 }
-                    TextField("How was the delivery? (optional)", text: $riderComment)
-                        .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
-                }
-                if let error {
-                    Text(error).font(.caption).foregroundColor(.red)
-                }
-                HStack(spacing: 10) {
-                    Button(action: { open = false }) {
-                        Text("Cancel").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(IDS.Colors.chipBackground).cornerRadius(12)
-                    }
-                    Button(action: { Task { await submit() } }) {
-                        Text(submitting ? "Submitting…" : "Submit review").font(.subheadline).bold().foregroundColor(.white)
-                            .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(submitting ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(12)
-                    }
-                    .disabled(submitting)
-                }
-            }
-        }
-    }
-
-    private func submit() async {
-        guard restaurantRating > 0, riderRating > 0 else {
-            error = "Rate both the restaurant and the rider."
-            return
-        }
-        submitting = true
-        error = nil
-        defer { submitting = false }
-        do {
-            _ = try await NetworkClient.shared.submitEatsReview(
-                orderId: order.id,
-                restaurantRating: restaurantRating,
-                restaurantComment: restaurantComment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : restaurantComment,
-                riderRating: riderRating,
-                riderComment: riderComment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : riderComment
-            )
-            done = true
-        } catch let NetworkError.httpError(statusCode) {
-            // A 409 here is the real ORDER_ALREADY_REVIEWED case in practice -- this
-            // card only ever renders for a real DELIVERED order, so the sibling "not
-            // yet delivered" 409 can't actually occur through this UI path.
-            if statusCode == 409 {
-                done = true
-            } else {
-                error = TalkScreen.errorMessage(statusCode)
-            }
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
-        }
-    }
-}
-
 struct RestaurantMenuView: View {
     let restaurant: ShoppingMerchantDto
     let menu: [MerchantProductDto]?
@@ -219,14 +49,38 @@ struct RestaurantMenuView: View {
     let onBack: () -> Void
     let onCheckout: () -> Void
 
-    // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
-    // ports bank-mfe's own MenuView 1:1. Only one item's option panel is expanded at a
-    // time, matching this file's own established "inline-card-replaces-trigger"
-    // convention (no modal-overlay pattern exists anywhere in this app).
+    // Real menu-options selection UI (2026-07-21, v2 2026-08-28: real optional +
+    // multi-select groups, ports bank-mfe/Android's own just-built rework 1:1) -- ports
+    // bank-mfe's own MenuView 1:1. Only one item's option panel is expanded at a time,
+    // matching this file's own established "inline-card-replaces-trigger" convention
+    // (no modal-overlay pattern exists anywhere in this app). pendingChoices reworked
+    // from a single choiceId per group to an array, since a multiSelect group can now
+    // hold more than one.
     @State private var expandedProductId: String?
-    @State private var pendingChoices: [String: String] = [:]
+    @State private var pendingChoices: [String: [String]] = [:]
+    // Real "frequently ordered together" cross-sell key (itunda Eats redesign,
+    // 2026-08-28) -- the most recently added cart line's productId, same "keyed off the
+    // last cart addition" precedent web/Android's own just-built rail already uses.
+    @State private var lastAddedProductId: String?
 
     private var cartCount: Int { cart.values.reduce(0) { $0 + $1.quantity } }
+    private var cartSubtotal: Double {
+        cart.values.reduce(0.0) { total, line in
+            guard let item = menuItem(line.productId) else { return total }
+            return total + eatsLineUnitPrice(item, line.choiceIds) * Double(line.quantity)
+        }
+    }
+    private var cartOriginalSubtotal: Double {
+        cart.values.reduce(0.0) { total, line in
+            guard let item = menuItem(line.productId) else { return total }
+            let delta = (item.optionGroups ?? []).flatMap { $0.choices }.filter { line.choiceIds.contains($0.id) }.reduce(0.0) { $0 + $1.priceDelta }
+            return total + ((item.originalPrice ?? item.price) + delta) * Double(line.quantity)
+        }
+    }
+
+    private func menuItem(_ productId: String) -> MerchantProductDto? {
+        (menu ?? []).first(where: { $0.id == productId })
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -261,15 +115,39 @@ struct RestaurantMenuView: View {
             }
 
             if cartCount > 0 {
+                // Real "frequently ordered together" cross-sell (itunda Eats redesign,
+                // 2026-08-28) -- see EatsFrequentlyOrderedWith's own doc comment. Only
+                // adds a no-option quick-add line, same real, deliberate scope
+                // limitation web/Android's own just-built rail already documents (this
+                // rail carries no option-group configuration).
+                if let lastAddedProductId {
+                    EatsFrequentlyOrderedWith(productId: lastAddedProductId, onAdd: { item in
+                        let key = eatsCartKey(item.id, [])
+                        cart[key] = EatsCartLine(productId: item.id, quantity: (cart[key]?.quantity ?? 0) + 1, choiceIds: [])
+                    })
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
                 Button(action: onCheckout) {
                     HStack {
                         Image(systemName: "cart.fill")
-                        Text("Checkout (\(cartCount) item\(cartCount == 1 ? "" : "s"))")
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Checkout (\(cartCount) item\(cartCount == 1 ? "" : "s"))").font(IDS.Typography.bodyBold)
+                            // Real cart-bar subtotal (itunda Eats redesign, 2026-08-28) --
+                            // a pure client-side sum of already-fetched cart line prices,
+                            // same real strikethrough-original-price treatment web/Android
+                            // already show. bank-mfe/Android already have this.
+                            HStack(spacing: 6) {
+                                Text("\(Int(cartSubtotal)) RWF").font(.caption).bold()
+                                if cartOriginalSubtotal > cartSubtotal {
+                                    Text("\(Int(cartOriginalSubtotal)) RWF").font(.caption2).strikethrough().foregroundColor(.white.opacity(0.7))
+                                }
+                            }
+                        }
+                        Spacer()
                     }
-                    .font(IDS.Typography.bodyBold)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 14).padding(.horizontal, 16)
                     .background(IDS.Colors.brand)
                     .cornerRadius(16)
                 }
@@ -285,13 +163,37 @@ struct RestaurantMenuView: View {
         let simpleKey = eatsCartKey(item.id, [])
         let simpleQty = hasOptions ? 0 : (cart[simpleKey]?.quantity ?? 0)
         let isExpanded = expandedProductId == item.id
-        let allGroupsChosen = groups.allSatisfy { pendingChoices[$0.id] != nil }
+        // Real optional/multi-select option-group support (itunda Eats redesign,
+        // 2026-08-28) -- the backend already supported 4 real required×multiSelect
+        // combinations, but this UI only ever rendered required-single-select; an
+        // optional group now needs no selection at all, matching web/Android's own
+        // just-built rework.
+        let allGroupsChosen = groups.allSatisfy { !$0.required || !(pendingChoices[$0.id] ?? []).isEmpty }
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary)
-                    Text("\(Int(item.price)) RWF\(hasOptions ? " · options required" : "")").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                    HStack(spacing: 6) {
+                        Text(item.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary)
+                        if item.discountPercent != nil, let discount = item.discountPercent, discount > 0 {
+                            Text("-\(discount)%").font(.caption2).bold().foregroundColor(.white)
+                                .padding(.horizontal, 5).padding(.vertical, 1).background(Color.red).cornerRadius(4)
+                        } else if item.isBestSeller {
+                            ShopBestSellerBadge()
+                        }
+                    }
+                    // Real discount price block (itunda Eats redesign, 2026-08-28) --
+                    // originalPrice/discountPercent already flow through the shared
+                    // MerchantProduct-backed menu endpoint; this UI never rendered them.
+                    HStack(spacing: 6) {
+                        Text("\(Int(item.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        if let originalPrice = item.originalPrice, originalPrice > item.price {
+                            Text("\(Int(originalPrice)) RWF").font(.caption).strikethrough().foregroundColor(IDS.Colors.textTertiary)
+                        }
+                        if hasOptions {
+                            Text("· options available").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
                 }
                 Spacer()
                 if hasOptions {
@@ -313,15 +215,23 @@ struct RestaurantMenuView: View {
             if hasOptions && isExpanded {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(groups) { group in
+                        // Real groupHint (itunda Eats redesign, 2026-08-28) -- matches
+                        // web/Android's own just-built 4-variant copy exactly.
+                        let groupHint = group.required
+                            ? (group.multiSelect ? "· choose any" : "· choose 1")
+                            : (group.multiSelect ? "· optional, choose any" : "· optional")
                         VStack(alignment: .leading, spacing: 6) {
                             Text("\(group.name)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                + Text(" · choose 1").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                                + Text(" \(groupHint)").font(.caption).foregroundColor(IDS.Colors.textTertiary)
                             VStack(alignment: .leading, spacing: 8) {
                                 ForEach(group.choices) { choice in
-                                    Button(action: { pendingChoices[group.id] = choice.id }) {
+                                    let selected = (pendingChoices[group.id] ?? []).contains(choice.id)
+                                    Button(action: { toggleChoice(group, choice, selected: selected) }) {
                                         HStack(spacing: 8) {
-                                            Image(systemName: pendingChoices[group.id] == choice.id ? "largecircle.fill.circle" : "circle")
-                                                .foregroundColor(pendingChoices[group.id] == choice.id ? IDS.Colors.brand : IDS.Colors.textTertiary)
+                                            Image(systemName: group.multiSelect
+                                                ? (selected ? "checkmark.square.fill" : "square")
+                                                : (selected ? "largecircle.fill.circle" : "circle"))
+                                                .foregroundColor(selected ? IDS.Colors.brand : IDS.Colors.textTertiary)
                                             Text(choice.name + (choice.priceDelta > 0 ? " (+\(Int(choice.priceDelta)) RWF)" : ""))
                                                 .font(.caption)
                                                 .foregroundColor(IDS.Colors.textPrimary)
@@ -354,6 +264,7 @@ struct RestaurantMenuView: View {
     private func setSimpleQty(_ productId: String, _ qty: Int) {
         let key = eatsCartKey(productId, [])
         cart[key] = EatsCartLine(productId: productId, quantity: max(0, qty), choiceIds: [])
+        if qty > 0 { lastAddedProductId = productId }
     }
 
     private func toggleExpand(_ productId: String) {
@@ -361,12 +272,30 @@ struct RestaurantMenuView: View {
         expandedProductId = (expandedProductId == productId) ? nil : productId
     }
 
+    // Real toggle logic (itunda Eats redesign, 2026-08-28, ports web/Android's own
+    // just-built rework 1:1) -- a multiSelect group adds/removes from the array; a
+    // single-select group replaces the array, or clears it entirely on re-tap IF the
+    // group is optional (a required single-select group can't be cleared back to
+    // nothing, same as before this rework).
+    private func toggleChoice(_ group: MenuOptionGroupDto, _ choice: MenuOptionChoiceDto, selected: Bool) {
+        if group.multiSelect {
+            var current = pendingChoices[group.id] ?? []
+            if selected { current.removeAll { $0 == choice.id } } else { current.append(choice.id) }
+            pendingChoices[group.id] = current
+        } else if selected, !group.required {
+            pendingChoices[group.id] = []
+        } else {
+            pendingChoices[group.id] = [choice.id]
+        }
+    }
+
     private func addConfiguredToCart(_ item: MerchantProductDto) {
         let groups = item.optionGroups ?? []
-        let choiceIds = groups.compactMap { pendingChoices[$0.id] }
-        guard choiceIds.count == groups.count else { return } // one real required choice per group, enforced client-side too
+        guard groups.allSatisfy({ !$0.required || !(pendingChoices[$0.id] ?? []).isEmpty }) else { return }
+        let choiceIds = groups.flatMap { pendingChoices[$0.id] ?? [] }
         let key = eatsCartKey(item.id, choiceIds)
         cart[key] = EatsCartLine(productId: item.id, quantity: (cart[key]?.quantity ?? 0) + 1, choiceIds: choiceIds)
+        lastAddedProductId = item.id
         pendingChoices = [:]
         expandedProductId = nil
     }

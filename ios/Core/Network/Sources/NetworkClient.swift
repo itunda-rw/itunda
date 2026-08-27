@@ -3422,12 +3422,17 @@ public struct ShoppingMerchantDto: Decodable, Identifiable {
     // 2 fields), tracked honestly rather than silently left out.
     public let phoneNumber: String?
     public let openingHours: String?
+    // Real per-restaurant WOW membership badge + max-active-discount (2026-08-28,
+    // see backend Merchant.participatesInEatsMembership / getMaxDiscountByMerchantIds).
+    public let participatesInEatsMembership: Bool
+    public let maxDiscountPercent: Int?
     public var id: String { merchantId }
 
     public init(
         merchantId: String, businessName: String, category: String?, cashbackRate: String, latitude: Double? = nil, longitude: Double? = nil,
         photoUrl: String? = nil, minOrderAmount: Double? = nil, rating: Double? = nil, reviewCount: Int? = nil,
-        distanceKm: Double? = nil, deliveryTimeMinutes: Int? = nil, phoneNumber: String? = nil, openingHours: String? = nil
+        distanceKm: Double? = nil, deliveryTimeMinutes: Int? = nil, phoneNumber: String? = nil, openingHours: String? = nil,
+        participatesInEatsMembership: Bool = false, maxDiscountPercent: Int? = nil
     ) {
         self.merchantId = merchantId
         self.businessName = businessName
@@ -3443,6 +3448,8 @@ public struct ShoppingMerchantDto: Decodable, Identifiable {
         self.deliveryTimeMinutes = deliveryTimeMinutes
         self.phoneNumber = phoneNumber
         self.openingHours = openingHours
+        self.participatesInEatsMembership = participatesInEatsMembership
+        self.maxDiscountPercent = maxDiscountPercent
     }
 }
 public struct ShoppingMerchantsResponse: Decodable { public let success: Bool; public let merchants: [ShoppingMerchantDto] }
@@ -3495,6 +3502,39 @@ public struct DealProductDto: Decodable, Identifiable {
 }
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }
+
+// Real Coupang Eats-style dish grid (itunda Eats redesign, 2026-08-28) -- see
+// backend EatsDishRecommendationService.getDishes' own doc comment. Fully built on
+// the backend since 2026-08-03 (Android already ported it); this is the first iOS
+// client, found via a real grep sweep showing zero iOS caller anywhere. recommended
+// is real (has the buyer actually ordered from this restaurant before), never
+// fabricated.
+public struct EatsDishDto: Decodable, Identifiable {
+    public let id: String
+    public let merchantId: String
+    public let merchantName: String
+    public let name: String
+    public let price: Double
+    public let imageUrl: String?
+    public let recommended: Bool
+}
+public struct EatsDishesResponse: Decodable { public let success: Bool; public let dishes: [EatsDishDto] }
+
+// Real "frequently ordered together" cross-sell (itunda Eats redesign, 2026-08-28)
+// -- see backend OrderItemRepository.getFrequentlyOrderedWith's own doc comment: a
+// real, derived co-occurrence signal, never a fabricated pairing.
+public struct FrequentlyOrderedWithItemDto: Decodable, Identifiable {
+    public let id: String
+    public let merchantId: String
+    public let merchantName: String
+    public let name: String
+    public let price: Double
+    public let imageUrl: String?
+    public let originalPrice: Double?
+    public let discountPercent: Int?
+    public let stockQuantity: Int?
+}
+public struct FrequentlyOrderedWithResponse: Decodable { public let success: Bool; public let products: [FrequentlyOrderedWithItemDto] }
 
 // Real Coupang 타임특가 (Time Deal, item 226) -- see the backend TimeDeal.kt's own doc
 // comment. A time-boxed, quantity-capped discount OVERLAY on an existing product,
@@ -3619,6 +3659,11 @@ public struct MenuOptionGroupDto: Decodable, Identifiable {
     public let id: String
     public let name: String
     public let choices: [MenuOptionChoiceDto]
+    // required/multiSelect added 2026-08-28 -- the backend has always returned
+    // these real fields (4 real group combinations, MenuOptionGroup.kt), never
+    // declared here, so every group rendered as a required-single-select radio.
+    public let required: Bool
+    public let multiSelect: Bool
 }
 
 public struct MerchantProductDto: Decodable, Identifiable {
@@ -4180,6 +4225,10 @@ public struct SubmitEatsReviewRequest: Encodable {
     public let restaurantComment: String?
     public let riderRating: Int
     public let riderComment: String?
+    // Real optional review photo (itunda Eats redesign, 2026-08-28) -- see
+    // EatsReviewDto.photoUrl's own doc comment. itunda has no upload/storage
+    // pipeline, so this is a real "paste your own already-hosted URL" field.
+    public let photoUrl: String?
 }
 public struct EatsReviewDto: Decodable {
     public let id: String
@@ -4196,6 +4245,10 @@ public struct EatsReviewDto: Decodable {
     // and Android (item 185) already have this; this is the first iOS client.
     public let ownerReply: String?
     public let ownerRepliedAt: String?
+    // Real review photo (itunda Eats redesign, 2026-08-28) -- see backend
+    // EatsReview.photoUrl's own doc comment: real end-to-end on the backend since
+    // 2026-08-04, Android already has it, this is the first iOS client.
+    public let photoUrl: String?
     public let createdAt: String
 }
 public struct EatsReviewResponse: Decodable { public let success: Bool; public let review: EatsReviewDto }
@@ -5059,11 +5112,16 @@ extension NetworkClient {
     // Electronics/Fashion merchants, since it shared Shop's exact unfiltered browse).
     // EatsScreen.swift passes "RESTAURANT"; ShopScreen.swift leaves it nil (unfiltered,
     // unchanged), same split as Android/web.
-    public func getShoppingMerchants(category: String? = nil, businessType: String? = nil, q: String? = nil, buyerLat: Double? = nil, buyerLng: Double? = nil) async throws -> ShoppingMerchantsResponse {
+    // sortBy added 2026-08-28 (itunda Eats redesign) -- real RestaurantSortMode values
+    // (delivery_time/favorites/rating/distance/discount/min_order), see
+    // ShoppingMerchantBrowseService.browse's own doc comment. web/Android already have
+    // this; this is the first iOS client.
+    public func getShoppingMerchants(category: String? = nil, businessType: String? = nil, q: String? = nil, buyerLat: Double? = nil, buyerLng: Double? = nil, sortBy: String? = nil) async throws -> ShoppingMerchantsResponse {
         try await get("api/v1/shopping/merchants", query: [
             URLQueryItem(name: "category", value: category),
             URLQueryItem(name: "businessType", value: businessType),
             URLQueryItem(name: "q", value: q),
+            URLQueryItem(name: "sortBy", value: sortBy),
             URLQueryItem(name: "buyerLat", value: buyerLat.map { String($0) }),
             URLQueryItem(name: "buyerLng", value: buyerLng.map { String($0) }),
         ])
@@ -5092,6 +5150,24 @@ extension NetworkClient {
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe/Android
     // already have this; this is the first iOS client.
     public func getMembershipDayStatus() async throws -> MembershipDayStatusResponse { try await get("api/v1/shopping/membership-day") }
+
+    // Real Coupang Eats-style dish grid (itunda Eats redesign, 2026-08-28) -- see
+    // EatsDishRecommendationService.getDishes' own doc comment. sortBy="popular" ranks
+    // by real order count; otherwise real personal "recommended for you" history.
+    // Android/web already have this; this is the first iOS client.
+    public func getEatsDishes(category: String? = nil, maxBudget: Double? = nil, sortBy: String? = nil) async throws -> EatsDishesResponse {
+        try await get("api/v1/eats/dishes", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "maxBudget", value: maxBudget.map { String($0) }),
+            URLQueryItem(name: "sortBy", value: sortBy),
+        ])
+    }
+
+    // Real "frequently ordered together" cross-sell (itunda Eats redesign, 2026-08-28)
+    // -- see OrderItemRepository.getFrequentlyOrderedWith's own doc comment.
+    public func getFrequentlyOrderedWith(_ productId: String) async throws -> FrequentlyOrderedWithResponse {
+        try await get("api/v1/shopping/products/\(productId)/frequently-ordered-with")
+    }
 
     public func subscribeToProduct(merchantId: String, productId: String, quantity: Int, intervalDays: Int, deliveryAddress: String) async throws -> ProductSubscriptionResponse {
         try await authenticatedPost("api/v1/product-subscriptions", body: CreateProductSubscriptionRequest(merchantId: merchantId, productId: productId, quantity: quantity, intervalDays: intervalDays, deliveryAddress: deliveryAddress), idempotencyKey: UUID().uuidString)
@@ -5575,10 +5651,10 @@ extension NetworkClient {
     /// doc comment. Uses URLComponents (not appendingPathComponent) so the query string
     /// is encoded correctly -- the first query-param GET in this client.
     // Real post-delivery ratings & reviews (2026-07-18) -- see EatsController.submitReview.
-    public func submitEatsReview(orderId: String, restaurantRating: Int, restaurantComment: String?, riderRating: Int, riderComment: String?) async throws -> EatsReviewResponse {
+    public func submitEatsReview(orderId: String, restaurantRating: Int, restaurantComment: String?, riderRating: Int, riderComment: String?, photoUrl: String? = nil) async throws -> EatsReviewResponse {
         try await authenticatedPost(
             "api/v1/eats/orders/\(orderId)/review",
-            body: SubmitEatsReviewRequest(restaurantRating: restaurantRating, restaurantComment: restaurantComment, riderRating: riderRating, riderComment: riderComment)
+            body: SubmitEatsReviewRequest(restaurantRating: restaurantRating, restaurantComment: restaurantComment, riderRating: riderRating, riderComment: riderComment, photoUrl: photoUrl)
         )
     }
 
