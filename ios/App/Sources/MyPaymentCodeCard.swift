@@ -129,6 +129,7 @@ private struct AccountCardCarousel: View {
 // (`QrScanCamera.swift`'s new `generateBarcodeImage`) -- no third-party library,
 // same discipline `generateQrImage` already established for the QR half.
 struct MyPaymentCodeCard: View {
+    var onOpenCard: () -> Void = {}
     @State private var revealed = false
     @State private var code: CustomerPaymentCodeResponse?
     @State private var barcodeImage: UIImage?
@@ -150,6 +151,10 @@ struct MyPaymentCodeCard: View {
     @State private var showAccountDetail = false
     @State private var accountDetailTransactions: [TransactionDisplayItem]?
     @State private var accountDetailError: String?
+    // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+    // "Facepay · QR Payment" Recent/Account/Card picker sheet) -- additive to the
+    // existing AccountCardCarousel swipe below, not a replacement.
+    @State private var showFundingPicker = false
 
     // Real Toss Bank/Toss Pay separation (2026-08-21) -- this code always pays out
     // of itunda Pay money, not Bank (MerchantService.chargeByCustomerCode's own real
@@ -232,12 +237,24 @@ struct MyPaymentCodeCard: View {
                 }
                 .buttonStyle(.plain)
             }
-            if let linkedAccount {
-                HStack {
-                    Text("Funding account").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    Spacer()
-                    Text("\(linkedAccount.provider) \(linkedAccount.externalAccountNumberMasked)").font(.caption).foregroundColor(IDS.Colors.textPrimary)
+            // Real fold-in (2026-08-28) of what used to be a separate, read-only
+            // "Funding account" row -- now folded into the picker sheet's own
+            // Account tab, matching the real reference's single funding-source
+            // entry point instead of two separate real UI affordances.
+            HStack {
+                Text(account.map { $0.type == "PAY" ? "itunda Pay" : $0.type == "MAIN" ? "itunda Bank" : "itunda Pay \($0.currency)" } ?? linkedAccount?.provider ?? "")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Spacer()
+                Button(action: { showFundingPicker = true }) {
+                    Text("Change").font(.caption).bold().foregroundColor(IDS.Colors.brand)
                 }
+            }
+            .sheet(isPresented: $showFundingPicker) {
+                PayFundingSourcePickerView(
+                    accounts: accounts, selectedAccountId: selectedAccountId,
+                    onSelectAccount: { selectedAccountId = $0 },
+                    onOpenCard: onOpenCard,
+                )
             }
             if !nearbyAds.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {

@@ -23,6 +23,10 @@ struct PayAMerchantSection: View {
     // it; nil for callers that don't (e.g. ShopScreen's own PayAMerchantSection use),
     // in which case FacePaySettingsCard just omits the cashback-rate line.
     var cashbackRatePercent: Double? = nil
+    // Real itunda Pay redesign (2026-08-28) -- threaded down to MyPaymentCodeCard's
+    // own funding-source picker Card tab. Defaults to a no-op for callers (e.g.
+    // ShopScreen's own PayAMerchantSection use) that have no real Card destination.
+    var onOpenCard: () -> Void = {}
     // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
     // here, same as bank-mfe's own ShoppingView, so this card and PayByCodeCard don't
     // each fetch enrollment status independently.
@@ -50,7 +54,7 @@ struct PayAMerchantSection: View {
             VStack(alignment: .leading, spacing: 10) {
                 // MyPaymentCodeCard deliberately keeps its own card visual -- a real,
                 // literal payment-card metaphor, not reflexive section wrapping.
-                MyPaymentCodeCard()
+                MyPaymentCodeCard(onOpenCard: onOpenCard)
                 Divider().overlay(IDS.Colors.divider)
                 FacePaySettingsCard(enrolled: facePayEnrolled, cashbackRatePercent: cashbackRatePercent, onChanged: { Task { await loadFacePayStatus() } })
                 Divider().overlay(IDS.Colors.divider)

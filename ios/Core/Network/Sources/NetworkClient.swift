@@ -3840,6 +3840,37 @@ public struct MerchantCouponViewDto: Decodable, Identifiable {
 }
 public struct MerchantCouponsForCustomerResponse: Decodable { public let success: Bool; public let coupons: [MerchantCouponPreviewDto] }
 
+// Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+// Coupon box + Membership screens). Both endpoints these DTOs back had ZERO
+// controller endpoint anywhere before this pass -- see MerchantCouponService.kt's
+// own doc comments (browseCoupons/getMyRedemptions) and
+// MerchantLoyaltyPointsService.kt's (getMyBalances). Mirrors bank-mfe's
+// lib/coupons.ts exactly.
+public struct CouponBrowseViewDto: Decodable, Identifiable {
+    public let coupon: MerchantCouponPreviewDto
+    public let merchantName: String
+    public let eligible: Bool
+    public let alreadyRedeemed: Bool
+    public var id: String { coupon.id }
+}
+public struct CouponBrowseResponse: Decodable { public let success: Bool; public let coupons: [CouponBrowseViewDto] }
+public struct CouponRedemptionDto: Decodable, Identifiable {
+    public let id: String
+    public let couponId: String
+    public let merchantId: String
+    public let transactionId: String
+    public let discountAmount: Double
+    public let redeemedAt: String
+}
+public struct CouponRedemptionsResponse: Decodable { public let success: Bool; public let redemptions: [CouponRedemptionDto] }
+public struct LoyaltyBalanceDto: Decodable, Identifiable {
+    public let merchantId: String
+    public let merchantName: String
+    public let pointBalance: Double
+    public var id: String { merchantId }
+}
+public struct LoyaltyBalancesResponse: Decodable { public let success: Bool; public let balances: [LoyaltyBalanceDto]; public let total: Double }
+
 // Real customer-presented payment code (Pay-parity port, §239) -- see
 // MerchantService.generateCustomerPaymentCode's own doc comment, and bank-mfe's
 // lib/shopping.ts generateCustomerPaymentCode for the identical real contract this
@@ -5263,6 +5294,22 @@ extension NetworkClient {
     }
     public func getCouponsForCustomer(merchantId: String) async throws -> MerchantCouponsForCustomerResponse {
         try await get("api/v1/merchant/\(merchantId)/coupons")
+    }
+
+    // Real "Coupon box" cross-merchant browse (itunda Pay redesign, 2026-08-28) --
+    // itunda's first ever unscoped coupon read, see MerchantCouponService.
+    // browseCoupons's own doc comment. Mirrors bank-mfe's lib/coupons.ts exactly.
+    public func browseCoupons() async throws -> CouponBrowseResponse {
+        try await get("api/v1/merchant/coupons/browse")
+    }
+    public func getMyCouponRedemptions() async throws -> CouponRedemptionsResponse {
+        try await get("api/v1/merchant/coupons/my-redemptions")
+    }
+
+    // Real Membership-screen "Store points" row -- see MerchantLoyaltyPointsService.
+    // getMyBalances's own doc comment. Mirrors bank-mfe's lib/coupons.ts exactly.
+    public func getMyLoyaltyBalances() async throws -> LoyaltyBalancesResponse {
+        try await get("api/v1/merchant/loyalty/my-balances")
     }
 
     // Real cross-merchant product search (item 138) -- see ProductSearchResultDto's

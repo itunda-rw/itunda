@@ -196,6 +196,17 @@ struct PayScreen: View {
     @State private var showNearbyMerchants = false
     @StateObject private var nearbyMerchantsLoader = NearbyMerchantsLoader()
     var onSwitchToYou: () -> Void = {}
+    // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
+    // screenshots) -- itunda's own real issued-card summary row, Coupon Box, and
+    // adapted Membership screen. See PayFundingSourcePickerView.swift/
+    // CouponBoxScreenView.swift/MembershipScreenView.swift's own doc comments.
+    @State private var hasCard: Bool?
+    @State private var cardLast4: String?
+    @State private var cardFrozen = false
+    @State private var payBalance: Double = 0
+    @State private var showCard = false
+    @State private var showCouponBox = false
+    @State private var showMembership = false
 
     var body: some View {
         ScrollView {
@@ -215,10 +226,66 @@ struct PayScreen: View {
                 .padding(.horizontal, 20)
                 NearbyMerchantsBanner(merchants: nearbyMerchantsLoader.merchants, onTap: { showNearbyMerchants = true })
                     .padding(.horizontal, 20)
-                PayAMerchantSection(paymentResult: $paymentResult, cashbackRatePercent: nearbyMerchantsLoader.averageCashbackRatePercent)
+                PayAMerchantSection(
+                    paymentResult: $paymentResult, cashbackRatePercent: nearbyMerchantsLoader.averageCashbackRatePercent,
+                    onOpenCard: { showCard = true },
+                )
                     .padding(.horizontal, 20)
                 RewardsSummaryRow(rewardsTotal: rewardsTotal)
                     .padding(.horizontal, 20)
+                // Real itunda-issued card summary row -- mirrors the real reference's
+                // own linked-card row using 100% real itunda data, never a fabricated
+                // "auto-apply points" claim a real external card issuer would make.
+                if let hasCard {
+                    Group {
+                        if hasCard {
+                            Button(action: { showCard = true }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Card •••• \(cardLast4 ?? "")").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        Text(cardFrozen ? "Frozen" : "Active").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            HStack {
+                                Text("No card yet").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                                Spacer()
+                                Button(action: { showCard = true }) { Text("Get a card").font(.caption).bold() }
+                            }
+                            .padding(16)
+                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(IDS.Colors.divider, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+                // Real "Points · Pay Money" summary row -- the real reference's own
+                // Membership-screen entry point.
+                Button(action: { showMembership = true }) {
+                    HStack {
+                        Text("Points · Pay Money").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Text("\(Int(rewardsTotal + payBalance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
+                        Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                // Real "Your Coupons" row -- see CouponBoxScreenView.swift's own doc
+                // comment for the real GET /api/v1/merchant/coupons/browse endpoint
+                // this now leads to.
+                Button(action: { showCouponBox = true }) {
+                    HStack {
+                        Text("Your Coupons").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
                 RewardsPreviewSection(tasks: rewardTasks, claimingId: claimingRewardId, onClaim: claimReward)
                     .padding(.horizontal, 20)
                 GetHelpLinks(onOpenSupport: { showSupport = true })
@@ -232,12 +299,38 @@ struct PayScreen: View {
             rewardTasks = result?.tasks ?? []
             rewardsTotal = result?.rewardsTotal ?? 0
             nearbyMerchantsLoader.requestLocation()
+            payBalance = ((try? await NetworkClient.shared.getAccounts().accounts) ?? []).first(where: { $0.type == "PAY" })?.balance ?? 0
+            do {
+                let card = try await NetworkClient.shared.getMyCard().card
+                hasCard = true
+                cardLast4 = card.last4
+                cardFrozen = card.frozen
+            } catch {
+                hasCard = false
+            }
         }
         .sheet(isPresented: $showSupport) {
             SupportScreenView(onBack: { showSupport = false })
         }
         .sheet(isPresented: $showNearbyMerchants) {
             NearbyMerchantsSheet(merchants: nearbyMerchantsLoader.merchants)
+        }
+        .sheet(isPresented: $showCard) {
+            CardScreenView(onBack: { showCard = false })
+        }
+        .sheet(isPresented: $showCouponBox) {
+            CouponBoxScreenView(onBack: { showCouponBox = false }, onBrowseMerchants: { showCouponBox = false })
+        }
+        .sheet(isPresented: $showMembership) {
+            // Real gap, honestly scoped out for now (same shape as MyPaymentCodeCard.
+            // swift's own already-documented "no wired Send entry point" gap): the
+            // real Pay Money detail/statement screen needs its own transaction fetch
+            // (see MyPaymentCodeCard.openAccountDetail), not duplicated here just for
+            // this one row. Closing back to Pay rather than routing somewhere unrelated.
+            MembershipScreenView(
+                onBack: { showMembership = false },
+                onOpenPayMoney: { showMembership = false },
+            )
         }
     }
 
