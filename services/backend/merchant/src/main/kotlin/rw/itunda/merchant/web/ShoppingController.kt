@@ -78,6 +78,8 @@ class ShoppingController(
     companion object {
         private const val MIN_ORDERS_FOR_BEST_SELLER = 3L
         private const val MAX_BEST_SELLERS_PER_PAGE = 3
+        private const val MIN_CO_OCCURRENCE_FOR_FREQUENTLY_ORDERED_WITH = 2L
+        private const val MAX_FREQUENTLY_ORDERED_WITH = 4
     }
     // Real Coupang WING 상품분석 (product analytics) view trigger -- see
     // MerchantProductService.getProduct's own doc comment. bank-mfe's `ProductDetailView`
@@ -86,6 +88,38 @@ class ShoppingController(
     @GetMapping("/products/{productId}")
     fun getProduct(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "product" to merchantProductService.getProduct(productId)))
+
+    // Real "frequently ordered together" cross-sell (itunda Eats redesign, 2026-08-28)
+    // -- see OrderItemRepository.getFrequentlyOrderedWith's own doc comment for the
+    // real co-occurrence query this reads from. Deliberately conservative, same
+    // "never fabricate a signal from too little real data" discipline
+    // bestSellerProductIds already establishes: a pair that has only ever shared ONE
+    // real past order never qualifies, and the response is honestly empty (not padded
+    // with unrelated products) when nothing clears the bar.
+    @GetMapping("/products/{productId}/frequently-ordered-with")
+    fun getFrequentlyOrderedWith(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> {
+        val coOccurringIds = orderItemRepository.getFrequentlyOrderedWith(productId)
+            .filter { it.count >= MIN_CO_OCCURRENCE_FOR_FREQUENTLY_ORDERED_WITH }
+            .take(MAX_FREQUENTLY_ORDERED_WITH)
+            .map { it.productId }
+        if (coOccurringIds.isEmpty()) {
+            return ResponseEntity.ok(mapOf("success" to true, "products" to emptyList<Any>()))
+        }
+        // findAllById doesn't preserve caller order, so re-sort by the real
+        // co-occurrence ranking above rather than whatever order the DB returns.
+        val productsById = merchantProductRepository.findAllById(coOccurringIds).associateBy { it.id }
+        val orderedProducts = coOccurringIds.mapNotNull { productsById[it] }
+        val merchantNames = merchantRepository.findAllById(orderedProducts.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        val products = orderedProducts.map { p ->
+            mapOf(
+                "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
+                "name" to p.name, "price" to p.price,
+                "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
+                "stockQuantity" to p.stockQuantity,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "products" to products))
+    }
 
     // Real category/search filter (2026-07-19) -- both params optional and
     // independently combinable, backing restaurant categories + search/filter for Eats

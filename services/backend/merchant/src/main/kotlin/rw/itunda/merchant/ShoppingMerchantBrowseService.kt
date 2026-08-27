@@ -12,6 +12,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.EatsFavoriteRepository
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewRepository
+import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -32,6 +33,7 @@ class ShoppingMerchantBrowseService(
     private val eatsReviewRepository: EatsReviewRepository,
     private val eatsFavoriteRepository: EatsFavoriteRepository,
     private val eatsOrderRepository: EatsOrderRepository,
+    private val merchantProductRepository: MerchantProductRepository,
 ) {
     fun browse(
         category: String?,
@@ -67,7 +69,15 @@ class ShoppingMerchantBrowseService(
         } else {
             emptyMap()
         }
-        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?, val favoriteCount: Long, val rating: Double?, val distanceKm: Double?)
+        // Real "Discount" sort mode (2026-08-28) -- see
+        // getMaxDiscountByMerchantIds' own doc comment for why this is a real,
+        // derived per-merchant signal rather than a fabricated one.
+        val maxDiscountByMerchant = if (page.content.isNotEmpty()) {
+            merchantProductRepository.getMaxDiscountByMerchantIds(page.content.map { it.id }).associate { it.merchantId to it.maxDiscountPercent }
+        } else {
+            emptyMap()
+        }
+        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?, val favoriteCount: Long, val rating: Double?, val distanceKm: Double?, val maxDiscountPercent: Int?, val minOrderAmount: java.math.BigDecimal?)
         var rows = page.content.map { merchant ->
             val distanceKm = if (hasBuyerLocation && merchant.latitude != null && merchant.longitude != null) {
                 GeoUtils.haversineKm(buyerLat!!, buyerLng!!, merchant.latitude!!, merchant.longitude!!)
@@ -124,11 +134,23 @@ class ShoppingMerchantBrowseService(
                     // doc comment. Null unless the merchant has actually set one.
                     "phoneNumber" to merchant.phoneNumber,
                     "openingHours" to merchant.openingHours,
+                    // Real Coupang 와우(WOW)-style per-restaurant "member gets free
+                    // delivery" badge (itunda Eats redesign, 2026-08-28) -- see
+                    // Merchant.participatesInEatsMembership's own doc comment. Already
+                    // computed on the entity, just never surfaced on this response
+                    // before now.
+                    "participatesInEatsMembership" to merchant.participatesInEatsMembership,
+                    // Real "Discount" sort signal, also shown as a badge -- see
+                    // getMaxDiscountByMerchantIds' own doc comment. Null (not 0) when
+                    // this merchant genuinely has no active discounted product.
+                    "maxDiscountPercent" to maxDiscountByMerchant[merchant.id],
                 ),
                 deliveryTimeMinutes,
                 favoriteCount,
                 rating?.average,
                 distanceKm,
+                maxDiscountByMerchant[merchant.id],
+                merchant.minOrderAmount,
             )
         }
         // sortedBy is stable, so ties (or every row when no buyer location was supplied,
@@ -154,6 +176,18 @@ class ShoppingMerchantBrowseService(
             // real-location gate delivery_time already requires -- distanceKm is null
             // for every row otherwise.
             rows = rows.sortedWith(compareBy(nullsLast()) { it.distanceKm })
+        } else if (sortBy == "discount") {
+            // Real Eats redesign quick-filter chip (2026-08-28) -- explicit two-key
+            // comparator (is-null, then descending discount), same discipline the
+            // rating sort above already establishes: wrapping nullsLast() in
+            // .reversed() would silently flip it back to nulls-FIRST, exactly the
+            // "easy to get backwards" trap that sort's own comment warns about.
+            rows = rows.sortedWith(compareBy<MerchantRow> { it.maxDiscountPercent == null }.thenByDescending { it.maxDiscountPercent })
+        } else if (sortBy == "min_order") {
+            // Real Eats redesign quick-filter chip (2026-08-28) -- ascending (lowest
+            // real minOrderAmount first); a merchant with no real minimum set sorts
+            // after every merchant this sort CAN honestly rank.
+            rows = rows.sortedWith(compareBy(nullsLast()) { it.minOrderAmount })
         }
         return page to rows.map { it.map }
     }

@@ -17,6 +17,7 @@ import rw.itunda.core.repository.MenuOptionChoiceRepository
 import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.FrequentlyOrderedWithProjection
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.ProductOrderCountProjection
 import rw.itunda.core.repository.ProductPriceTierRepository
@@ -145,10 +146,68 @@ class ShoppingControllerTest : BehaviorSpec({
             }
         }
     }
+    Given("a real product with genuinely different real co-occurrence counts against other products") {
+        val orderItemRepository = mockk<OrderItemRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+
+        // co1: 5 real shared orders, co2: 3, co3: 2 (right at the threshold),
+        // co4: 1 (below threshold, never surfaced) -- ranked highest-first, capped
+        // at MAX_FREQUENTLY_ORDERED_WITH (4), so all three that clear the bar show.
+        every { orderItemRepository.getFrequentlyOrderedWith("p1") } returns listOf(
+            coOccurrenceProjection("co1", 5), coOccurrenceProjection("co2", 3),
+            coOccurrenceProjection("co3", 2), coOccurrenceProjection("co4", 1),
+        )
+        fun product(id: String) = MerchantProduct(id = id, merchantId = "merchant_2", name = "Product $id", price = BigDecimal("500"))
+        // Returned out of rank order deliberately, to prove the controller re-sorts
+        // by the real co-occurrence ranking rather than trusting findAllById's order.
+        every { merchantProductRepository.findAllById(listOf("co1", "co2", "co3")) } returns listOf(product("co3"), product("co1"), product("co2"))
+        every { merchantRepository.findAllById(listOf("merchant_2")) } returns listOf(
+            mockk<Merchant>().also { every { it.id } returns "merchant_2"; every { it.businessName } returns "Other Store" },
+        )
+
+        val sut = controller(
+            orderItemRepository = orderItemRepository,
+            merchantProductRepository = merchantProductRepository,
+            merchantRepository = merchantRepository,
+        )
+
+        When("fetching what's frequently ordered with it") {
+            val response = sut.getFrequentlyOrderedWith("p1")
+
+            Then("only real pairs clearing the minimum co-occurrence show, ranked highest-first") {
+                @Suppress("UNCHECKED_CAST")
+                val body = response.body?.get("products") as List<Map<String, Any?>>
+                body.map { it["id"] } shouldBe listOf("co1", "co2", "co3")
+            }
+        }
+    }
+
+    Given("a real product with no real co-purchases at all") {
+        val orderItemRepository = mockk<OrderItemRepository>()
+        every { orderItemRepository.getFrequentlyOrderedWith("p_lonely") } returns emptyList()
+        val sut = controller(orderItemRepository = orderItemRepository)
+
+        When("fetching what's frequently ordered with it") {
+            val response = sut.getFrequentlyOrderedWith("p_lonely")
+
+            Then("it's honestly empty, never padded with unrelated products") {
+                @Suppress("UNCHECKED_CAST")
+                val body = response.body?.get("products") as List<Map<String, Any?>>
+                body shouldBe emptyList()
+            }
+        }
+    }
 })
 
 private fun projection(productId: String, count: Long): ProductOrderCountProjection =
     object : ProductOrderCountProjection {
+        override val productId = productId
+        override val count = count
+    }
+
+private fun coOccurrenceProjection(productId: String, count: Long): FrequentlyOrderedWithProjection =
+    object : FrequentlyOrderedWithProjection {
         override val productId = productId
         override val count = count
     }

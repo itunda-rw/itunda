@@ -208,4 +208,24 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     @org.springframework.data.jpa.repository.Modifying
     @Query("UPDATE MerchantProduct p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     fun incrementViewCount(@Param("id") id: String): Int
+
+    // Real "Discount" restaurant-sort mode (itunda Eats redesign, 2026-08-28) -- see
+    // ShoppingMerchantBrowseService.browse's own doc comment. A real, derived
+    // per-merchant signal (each real merchant's own best currently-active
+    // discountPercent among its real products, the same field findDeals above
+    // already treats as the sole honest source of a "deal"), not a fabricated
+    // merchant-level promo. Same batched-GROUP-BY-for-a-whole-page discipline
+    // getProductRatingSummaries/getProductOrderCounts already established --
+    // one query for the whole browse page, not one per merchant.
+    @Query(
+        "SELECT p.merchantId as merchantId, MAX(p.discountPercent) as maxDiscountPercent " +
+            "FROM MerchantProduct p WHERE p.merchantId IN :merchantIds AND p.active = true " +
+            "AND p.discountPercent IS NOT NULL AND p.discountPercent > 0 GROUP BY p.merchantId",
+    )
+    fun getMaxDiscountByMerchantIds(@Param("merchantIds") merchantIds: List<String>): List<MerchantMaxDiscountProjection>
+}
+
+interface MerchantMaxDiscountProjection {
+    val merchantId: String
+    val maxDiscountPercent: Int
 }
