@@ -17,6 +17,11 @@ dependencies {
     // own doc comment. Mirrors EatsFavoriteService.shareFavoritesToConversation's exact
     // existing use of MessagingService.
     implementation(project(":messaging"))
+    // Real moto-taxi fare tap-collection (2026-08-27) -- see MotoFareService.kt's own
+    // doc comment. Needs AutoTopUpService for the same real "top up itunda Pay money
+    // from Bank if short" default MerchantService.chargeByCustomerCode already
+    // establishes for a customer-presented-code charge.
+    implementation(project(":account"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
