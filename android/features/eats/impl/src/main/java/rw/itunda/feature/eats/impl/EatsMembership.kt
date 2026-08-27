@@ -70,22 +70,33 @@ internal fun PlatformMembershipCard() {
     val current = membership
     if (!loaded) return
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("itunda Plus", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
+    // Real bold hero-banner treatment (itunda Eats redesign, 2026-08-28) -- same
+    // real copy/pricing as before, just matching the reference's own real Coupang
+    // WOW banner visual weight (a real, already-live feature deserved better
+    // merchandising than a plain subscribe card, not a new membership product).
+    Box(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+            // 0xFF5C55D8 is the real --itunda-indigo-active token value from
+            // packages/design-tokens/tokens.css -- no darker-brand token exists in
+            // this module's own IdsSemanticColors yet, so this is the same real hex,
+            // not an invented shade.
+            .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Ids.colors.brand, Color(0xFF5C55D8)))),
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text("⚡ itunda Plus", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+            error?.let { Text(it, color = Color.White, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
             if (current != null && java.time.Instant.parse(current.activeUntil).isAfter(java.time.Instant.now())) {
                 val activeUntilDate = java.time.Instant.parse(current.activeUntil).let {
                     java.time.LocalDateTime.ofInstant(it, java.time.ZoneId.systemDefault()).toLocalDate()
                 }
                 Text(
                     "Free delivery active until $activeUntilDate at every restaurant, no participation required.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
+                    color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp),
                 )
             } else {
                 Text(
-                    "Free delivery at every restaurant -- no minimum order, no restaurant opt-in required.",
-                    color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
+                    "Free delivery at every restaurant, every order -- no minimum, no restaurant opt-in required.",
+                    color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PLATFORM_MEMBERSHIP_TIERS.forEach { tier ->
@@ -93,7 +104,7 @@ internal fun PlatformMembershipCard() {
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Ids.colors.brand)
+                                .background(Color.White)
                                 .pressScaleClickable(enabled = !busy) {
                                     busy = true
                                     error = null
@@ -118,7 +129,7 @@ internal fun PlatformMembershipCard() {
                         ) {
                             Text(
                                 if (busy) "…" else "${tier.days} days -- %,d RWF".format(tier.priceRwf),
-                                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                                color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp,
                             )
                         }
                     }

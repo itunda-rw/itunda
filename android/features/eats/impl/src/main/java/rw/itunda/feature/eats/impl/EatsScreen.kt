@@ -108,6 +108,9 @@ internal fun OrderFoodContent(
     var favoritingId by remember { mutableStateOf<String?>(null) }
     // Real dish grid (2026-08-03) -- see EatsDishGrid's own doc comment.
     var dishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
+    // Real "Popular now" rail (itunda Eats redesign, 2026-08-28) -- see
+    // EatsDishRecommendationService.getDishes' own doc comment.
+    var popularDishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
     // Real "recently viewed restaurants" rail (2026-08-23) -- Baemin/Coupang Eats both
     // show this; itunda already shipped the identical real feature for Shop's own
@@ -137,16 +140,27 @@ internal fun OrderFoodContent(
         val hasPermission = ContextCompat.checkSelfPermission(locationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (hasPermission) requestBrowseLocation()
     }
-    // Real Baemin/Coupang Eats-style "fastest delivery" sort tab -- only meaningful
-    // once a real browseLocation exists (deliveryTimeMinutes is null server-side
-    // without one), so the toggle itself only renders when browseLocation is real.
-    var sortByFastestDelivery by remember { mutableStateOf(false) }
+    // Real Baemin/Coupang Eats-style sort mode (itunda Eats redesign, 2026-08-28,
+    // extending the previous fastest-delivery-only boolean toggle) -- "delivery_time"
+    // only takes effect once a real browseLocation exists (deliveryTimeMinutes is
+    // null server-side without one, see that chip's own gated rendering below);
+    // "discount"/"min_order" are real, always-available signals adapting the
+    // reference's own 최대할인/최소주문낮은매장 quick-filter chips onto itunda's own
+    // real per-merchant data (see ShoppingMerchantBrowseService.browse's own doc
+    // comment on both).
+    var sortMode by remember { mutableStateOf<String?>(null) }
 
     fun loadDishes() {
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.getEatsDishes(selectedCategory)
                 if (res.success) dishes = res.dishes
+            } catch (e: Exception) { /* non-critical -- the restaurant list below still works */ }
+        }
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getEatsDishes(selectedCategory, sortBy = "popular")
+                if (res.success) popularDishes = res.dishes
             } catch (e: Exception) { /* non-critical -- the restaurant list below still works */ }
         }
     }
@@ -184,7 +198,7 @@ internal fun OrderFoodContent(
                 val res = NetworkClient.apiService.getShoppingMerchants(
                     category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
                     buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
-                    sortBy = if (sortByFastestDelivery) "delivery_time" else null,
+                    sortBy = sortMode,
                 )
                 if (res.success) restaurants = res.merchants
                 error = null
@@ -214,7 +228,7 @@ internal fun OrderFoodContent(
     // Real category/search filter (2026-07-19), debounced so typing doesn't re-fetch on
     // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the
     // debounce mechanism here.
-    LaunchedEffect(selectedCategory, searchInput, sortByFastestDelivery) {
+    LaunchedEffect(selectedCategory, searchInput, sortMode) {
         delay(rw.itunda.core.network.SEARCH_DEBOUNCE_MS)
         loadRestaurants()
     }
@@ -425,32 +439,35 @@ internal fun OrderFoodContent(
                     onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
                 )
             }
-            // Real Baemin/Coupang Eats-style "fastest delivery" sort tab -- only shown
-            // once a real browseLocation exists, since the sort is a no-op without one
-            // (see ShoppingController.getEligibleMerchants's own doc comment).
-            if (browseLocation != null) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().pressScaleClickable { sortByFastestDelivery = !sortByFastestDelivery },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.Bolt, contentDescription = null,
-                            tint = if (sortByFastestDelivery) Ids.colors.brand else Ids.colors.textSecondary,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            "Fastest delivery",
-                            color = if (sortByFastestDelivery) Ids.colors.brand else Ids.colors.textSecondary,
-                            fontWeight = if (sortByFastestDelivery) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 13.sp,
-                        )
+            // Real Baemin/Coupang Eats-style sort chip row (itunda Eats redesign,
+            // 2026-08-28) -- "Fastest delivery" only shown once a real browseLocation
+            // exists (the sort is a no-op without one, see
+            // ShoppingController.getEligibleMerchants's own doc comment);
+            // "Discount"/"Low min order" are real, always-available signals adapting
+            // the reference's own quick-filter chip row.
+            item {
+                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    if (browseLocation != null) {
+                        EatsSortChip("Fastest delivery", Icons.Outlined.Bolt, active = sortMode == "delivery_time") {
+                            sortMode = if (sortMode == "delivery_time") null else "delivery_time"
+                        }
                     }
+                    EatsSortChip("Max discount", null, active = sortMode == "discount") { sortMode = if (sortMode == "discount") null else "discount" }
+                    EatsSortChip("Low min order", null, active = sortMode == "min_order") { sortMode = if (sortMode == "min_order") null else "min_order" }
                 }
             }
             if (searchInput.isBlank() && dishes.isNotEmpty()) {
                 item { EatsDishGrid(dishes, onOpen = ::openDish) }
+            }
+            // Real "Popular now" rail (itunda Eats redesign, 2026-08-28) -- see backend
+            // EatsDishRecommendationService.getDishes' own doc comment: a real, order-
+            // count-derived popularity ranking, distinct from the dish grid above's
+            // real personal-history "recommended" re-sort.
+            if (searchInput.isBlank() && popularDishes.isNotEmpty()) {
+                item {
+                    Text("🔥 Popular now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                }
+                item { EatsDishGrid(popularDishes, onOpen = ::openDish) }
             }
             // Real "recently viewed restaurants" rail -- see RecentlyViewedRestaurantsRail's
             // own doc comment (EatsRecentlyViewed.kt). Hidden once the user starts

@@ -73,8 +73,27 @@ internal fun RestaurantMenuView(
     // time, matching this file's own established "inline-card-replaces-trigger"
     // convention (no modal-overlay pattern exists anywhere in this app).
     var expandedProductId by remember { mutableStateOf<String?>(null) }
-    val pendingChoices = remember { mutableStateMapOf<String, String>() }
+    // Real optional/multi-select menu option groups (itunda Eats redesign,
+    // 2026-08-28) -- the backend has always supported 4 real group combinations
+    // (required x multiSelect, see MenuOptionGroup.kt's own doc comment), but this
+    // UI only ever rendered required-single-select radios. groupId -> the real
+    // selected choiceIds for that group (0 or 1 for a single-select group, 0+ for
+    // multiSelect) -- eatsCartKey/eatsLineUnitPrice/eatsOptionsSummary already
+    // operate on a plain choiceIds list with no single-choice assumption, so this
+    // is a real UI-layer fix, not a pricing/cart-model change.
+    val pendingChoices = remember { mutableStateMapOf<String, List<String>>() }
     val cartCount = cart.values.sumOf { it.quantity }
+    // Real cart-bar subtotal + savings breakdown (2026-08-28) -- the fixed bottom
+    // bar previously only showed the item count. Purely a client-side sum over
+    // cart data already fetched -- no new backend call.
+    val cartSubtotal = cart.values.filter { it.quantity > 0 }.sumOf { line ->
+        val item = menu?.find { it.id == line.productId }
+        if (item != null) eatsLineUnitPrice(item, line.choiceIds) * line.quantity else 0.0
+    }
+    val cartOriginalSubtotal = cart.values.filter { it.quantity > 0 }.sumOf { line ->
+        val item = menu?.find { it.id == line.productId }
+        if (item != null) (item.originalPrice ?: item.price) * line.quantity else 0.0
+    }
 
     fun setSimpleQty(productId: String, qty: Int) {
         val key = eatsCartKey(productId, emptyList())
@@ -88,8 +107,8 @@ internal fun RestaurantMenuView(
 
     fun addConfiguredToCart(item: MerchantProductDto) {
         val groups = item.optionGroups
-        val choiceIds = groups.mapNotNull { pendingChoices[it.id] }
-        if (choiceIds.size != groups.size) return // one real required choice per group, enforced client-side too
+        if (groups.any { it.required && pendingChoices[it.id].isNullOrEmpty() }) return
+        val choiceIds = groups.flatMap { pendingChoices[it.id] ?: emptyList() }
         val key = eatsCartKey(item.id, choiceIds)
         cart[key] = EatsCartLine(item.id, (cart[key]?.quantity ?: 0) + 1, choiceIds)
         pendingChoices.clear()
@@ -110,7 +129,7 @@ internal fun RestaurantMenuView(
                     val simpleKey = eatsCartKey(p.id, emptyList())
                     val simpleQty = if (hasOptions) 0 else (cart[simpleKey]?.quantity ?: 0)
                     val isExpanded = expandedProductId == p.id
-                    val allGroupsChosen = p.optionGroups.all { pendingChoices[it.id] != null }
+                    val allGroupsChosen = p.optionGroups.all { !it.required || !pendingChoices[it.id].isNullOrEmpty() }
                     Column(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(16.dp),
                     ) {
@@ -127,6 +146,12 @@ internal fun RestaurantMenuView(
                                 val discountPercent = p.discountPercent
                                 if (discountPercent != null && discountPercent > 0) {
                                     StatusBadge("$discountPercent%", tint = Ids.colors.danger, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
+                                } else if (p.isBestSeller) {
+                                    // Real "Best seller" badge (2026-08-28) -- a genuine,
+                                    // derived signal (real gross order count per product,
+                                    // see backend ShoppingController.bestSellerProductIds'
+                                    // own doc comment), not fabricated marketing copy.
+                                    StatusBadge("Best seller", tint = Ids.colors.brand, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
                                 }
                             }
                             Spacer(modifier = Modifier.width(12.dp))
@@ -166,20 +191,44 @@ internal fun RestaurantMenuView(
                         if (hasOptions && isExpanded) {
                             Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 p.optionGroups.forEach { group ->
+                                    val selectedIds = pendingChoices[group.id] ?: emptyList()
+                                    // Real optional/multi-select labels (2026-08-28) -- honest
+                                    // about what this group actually requires, matching its own
+                                    // real required/multiSelect flags rather than always
+                                    // claiming "choose 1".
+                                    val groupHint = if (group.multiSelect) {
+                                        if (group.required) "choose at least 1" else "choose any (optional)"
+                                    } else {
+                                        if (group.required) "choose 1" else "choose 1 (optional)"
+                                    }
                                     Column {
                                         Row {
                                             Text(group.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("· choose 1", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                                            Text("· $groupHint", color = Ids.colors.textTertiary, fontSize = 13.sp)
                                         }
                                         Column(modifier = Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                             group.choices.forEach { choice ->
-                                                val selected = pendingChoices[group.id] == choice.id
+                                                val selected = choice.id in selectedIds
+                                                fun toggle() {
+                                                    pendingChoices[group.id] = if (group.multiSelect) {
+                                                        if (selected) selectedIds - choice.id else selectedIds + choice.id
+                                                    } else {
+                                                        // Single-select: re-tapping the current choice
+                                                        // clears it when the group is optional (a real
+                                                        // "none of these"), never for a required group.
+                                                        if (selected && !group.required) emptyList() else listOf(choice.id)
+                                                    }
+                                                }
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.fillMaxWidth().pressScaleClickable { pendingChoices[group.id] = choice.id },
+                                                    modifier = Modifier.fillMaxWidth().pressScaleClickable { toggle() },
                                                 ) {
-                                                    androidx.compose.material3.RadioButton(selected = selected, onClick = { pendingChoices[group.id] = choice.id })
+                                                    if (group.multiSelect) {
+                                                        androidx.compose.material3.Checkbox(checked = selected, onCheckedChange = { toggle() })
+                                                    } else {
+                                                        androidx.compose.material3.RadioButton(selected = selected, onClick = { toggle() })
+                                                    }
                                                     Text(
                                                         choice.name + if (choice.priceDelta > 0) " (+%,.0f RWF)".format(choice.priceDelta) else "",
                                                         color = Ids.colors.textPrimary, fontSize = 13.sp,
@@ -204,15 +253,35 @@ internal fun RestaurantMenuView(
                 }
             }
         }
+        // Real "frequently ordered together" cross-sell (itunda Eats redesign,
+        // 2026-08-28) -- keyed off the most recently added cart line. See
+        // EatsFrequentlyOrderedWith's own doc comment.
+        cart.values.filter { it.quantity > 0 }.lastOrNull()?.let { lastLine ->
+            EatsFrequentlyOrderedWith(productId = lastLine.productId) { item ->
+                setSimpleQty(item.id, (cart[eatsCartKey(item.id, emptyList())]?.quantity ?: 0) + 1)
+            }
+        }
         if (cartCount > 0) {
             Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onCheckout).padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Ids.colors.brand).pressScaleClickable(onClick = onCheckout).padding(horizontal = 20.dp, vertical = 16.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Checkout ($cartCount item${if (cartCount == 1) "" else "s"})", color = Color.White, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Checkout ($cartCount item${if (cartCount == 1) "" else "s"})", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    // Real computed subtotal + savings (2026-08-28) -- see
+                    // cartSubtotal's own doc comment just above.
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        if (cartOriginalSubtotal > cartSubtotal) {
+                            Text(
+                                "%,.0f RWF".format(cartOriginalSubtotal), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp,
+                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough, modifier = Modifier.padding(end = 6.dp),
+                            )
+                        }
+                        Text("%,.0f RWF".format(cartSubtotal), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
                 }
             }
         }

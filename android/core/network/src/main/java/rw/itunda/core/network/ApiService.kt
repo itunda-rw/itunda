@@ -1204,6 +1204,10 @@ data class ShoppingMerchantDto(
     // the backend. Null unless the merchant has actually set one.
     val phoneNumber: String? = null,
     val openingHours: String? = null,
+    // Real per-restaurant WOW membership badge + max-active-discount (2026-08-28,
+    // see backend Merchant.participatesInEatsMembership / getMaxDiscountByMerchantIds).
+    val participatesInEatsMembership: Boolean = false,
+    val maxDiscountPercent: Int? = null,
 )
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 
@@ -1247,6 +1251,10 @@ data class DealProductDto(
     val isBestSeller: Boolean = false,
 )
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
+
+// Real "frequently ordered together" item (2026-08-28) -- see getFrequentlyOrderedWith.
+data class FrequentlyOrderedWithItemDto(val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double, val imageUrl: String? = null, val originalPrice: Double? = null, val discountPercent: Int? = null, val stockQuantity: Int? = null)
+data class FrequentlyOrderedWithResponse(val success: Boolean, val products: List<FrequentlyOrderedWithItemDto>)
 
 // Real Coupang Eats-style dish grid (2026-08-03) -- see backend EatsController.kt's
 // own doc comment for the full 100%-UI/UX-parity sourcing. Same shape as
@@ -1373,7 +1381,9 @@ val MAP_NEARBY_CATEGORIES = listOf(
 // MenuOptionGroup.kt's own doc comment on the backend for the full, honestly-scoped
 // account.
 data class EatsMenuOptionChoiceDto(val id: String, val name: String, val priceDelta: Double)
-data class EatsMenuOptionGroupDto(val id: String, val name: String, val choices: List<EatsMenuOptionChoiceDto> = emptyList())
+// required/multiSelect added 2026-08-28 -- the backend has always returned these
+// real fields (4 real group combinations, MenuOptionGroup.kt), never declared here.
+data class EatsMenuOptionGroupDto(val id: String, val name: String, val choices: List<EatsMenuOptionChoiceDto> = emptyList(), val required: Boolean = true, val multiSelect: Boolean = false)
 
 data class MerchantProductDto(
     val id: String,
@@ -3457,7 +3467,16 @@ interface ApiService {
     // Real Coupang Eats-style dish grid (2026-08-03) -- see EatsDishDto's own doc
     // comment for the sourcing.
     @GET("api/v1/eats/dishes")
-    suspend fun getEatsDishes(@Query("category") category: String? = null, @Query("maxBudget") maxBudget: Double? = null): EatsDishesResponse
+    // sortBy="popular" added 2026-08-28 -- real order-count-derived ranking,
+    // distinct from the default real "recommended for you" personal-history sort.
+    suspend fun getEatsDishes(@Query("category") category: String? = null, @Query("maxBudget") maxBudget: Double? = null, @Query("sortBy") sortBy: String? = null): EatsDishesResponse
+
+    // Real "frequently ordered together" cross-sell (2026-08-28) -- see backend
+    // OrderItemRepository.getFrequentlyOrderedWith. A dedicated lean DTO (not
+    // DealProductDto): Gson deserializes a genuinely-absent field to null, not a
+    // Kotlin default, so reusing DealProductDto here would risk a silent mismatch.
+    @GET("api/v1/shopping/products/{id}/frequently-ordered-with")
+    suspend fun getFrequentlyOrderedWith(@Path("id") productId: String): FrequentlyOrderedWithResponse
 
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
     @GET("api/v1/time-deals")

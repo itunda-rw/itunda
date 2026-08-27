@@ -104,6 +104,27 @@ internal fun EatsCategoryIconRow(categories: List<String>, selectedCategory: Str
     }
 }
 
+// Real Baemin/Coupang Eats-style sort chip (itunda Eats redesign, 2026-08-28) --
+// see EatsScreen.kt's own sortMode doc comment for the full account.
+@Composable
+internal fun EatsSortChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector?, active: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.pressScaleClickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = if (active) Ids.colors.brand else Ids.colors.textSecondary, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+        Text(
+            label,
+            color = if (active) Ids.colors.brand else Ids.colors.textSecondary,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 13.sp,
+        )
+    }
+}
+
 @Composable
 internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favoriteBusy: Boolean, onOpen: () -> Unit, onToggleFavorite: () -> Unit, isScrollTouched: Boolean = false) {
     Card(
@@ -142,9 +163,29 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                         .size(22.dp)
                         .pressScaleClickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                 )
+                // Real Coupang 와우(WOW)-style per-restaurant membership badge (itunda
+                // Eats redesign, 2026-08-28) -- see
+                // ShoppingMerchantDto.participatesInEatsMembership's own doc comment.
+                if (m.participatesInEatsMembership) {
+                    Text(
+                        "Member — free delivery", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(10.dp)
+                            .background(Ids.colors.brand, RoundedCornerShape(999.dp))
+                            .padding(horizontal = 9.dp, vertical = 4.dp),
+                    )
+                }
             }
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(m.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                // Real "Discount" badge (itunda Eats redesign, 2026-08-28) -- see
+                // ShoppingMerchantDto.maxDiscountPercent's own doc comment: the real,
+                // currently-highest discount among this restaurant's own active menu.
+                val maxDiscountPercent = m.maxDiscountPercent
+                if (maxDiscountPercent != null && maxDiscountPercent > 0) {
+                    Text("Up to $maxDiscountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
                 Text(
                     listOfNotNull(m.category, "${m.cashbackRate} cashback").joinToString(" · "),
                     color = Ids.colors.textSecondary,
