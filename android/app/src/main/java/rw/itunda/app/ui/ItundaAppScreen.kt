@@ -480,6 +480,9 @@ fun ItundaAppScreen(
         // direct user follow-up: "for simplification we need nfc") -- reached from a
         // link inside TransitScreen, not its own top-level entry point.
         var showTransitCollect by rememberSaveable { mutableStateOf(false) }
+        // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user follow-up:
+        // "now we can make pay for tax and moto as well").
+        var showMotoFareCollect by rememberSaveable { mutableStateOf(false) }
         var showSpending by rememberSaveable { mutableStateOf(false) }
         var showRides by rememberSaveable { mutableStateOf(false) }
         // Real Kakao T 대리운전 (designated driver, item 221) -- bank-mfe shipped first;
@@ -1274,6 +1277,14 @@ fun ItundaAppScreen(
             TransitCollectScreen(onBack = { showTransitCollect = false })
             return@IdsTheme
         }
+        // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user follow-up:
+        // "now we can make pay for tax and moto as well") -- see
+        // MotoFareCollectScreen.kt's own doc comment for the full sourced account.
+        if (showMotoFareCollect) {
+            BackHandler { showMotoFareCollect = false }
+            MotoFareCollectScreen(onBack = { showMotoFareCollect = false })
+            return@IdsTheme
+        }
         // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 104)
         // -- first Android client for this feature. Same pattern.
         if (showIkimina) {
@@ -1572,6 +1583,7 @@ fun ItundaAppScreen(
                             onOpenDesignatedDriver = { showDesignatedDriver = true },
                             onOpenBikeRental = { showBikeRental = true },
                             onOpenParking = { showParking = true },
+                            onOpenMotoFareCollect = { showMotoFareCollect = true },
                             onOpenBus = { showBus = true },
                             onOpenKnowledge = { showKnowledge = true },
                             onOpenVehicleInspection = { showVehicleInspection = true },
@@ -3739,6 +3751,7 @@ private fun MenuScreen(
     onOpenDesignatedDriver: () -> Unit = {},
     onOpenBikeRental: () -> Unit = {},
     onOpenParking: () -> Unit = {},
+    onOpenMotoFareCollect: () -> Unit = {},
     onOpenBus: () -> Unit = {},
     onOpenKnowledge: () -> Unit = {},
     onOpenVehicleInspection: () -> Unit = {},
@@ -3880,6 +3893,10 @@ private fun MenuScreen(
         FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenBikeRental),
         FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", glyph = { ParkingGlyph(size = 28.dp) }, onClick = onOpenParking),
         FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenBus),
+        // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user follow-up:
+        // "now we can make pay for tax and moto as well") -- see
+        // MotoFareCollectScreen.kt's own doc comment for the full sourced account.
+        FlatRow("Collect a moto fare", subtitle = "Drivers: tap or scan a rider's code to collect a real fare", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenMotoFareCollect),
         FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", glyph = { WrenchGlyph(size = 28.dp) }, onClick = onOpenVehicleInspection),
         FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenVehicleValuation),
     )
