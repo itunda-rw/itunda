@@ -16,6 +16,14 @@
          features/talk/impl needed the same capability). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Real NFC "tap to present/collect my transit payment code" (2026-08-27): see
+         TransitHceService.kt (rider's phone emulating a card) and
+         TransitNfcReader.kt (collector's phone reading it) for the full account.
+         required="false": itunda's own honest fallback (a camera QR scan) already
+         covers any device without real NFC hardware, or any iPhone rider (iOS can
+         read but never emulate a card for a third-party app). -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <!-- Real push notifications (2026-08-12): Android 13+ (API 33+) requires this
          runtime-requested permission before ANY notification can post, unlike every
          permission above: notifications without it simply never show, no crash, no
@@ -125,5 +133,22 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="general" />
+
+        <!-- Real NFC "tap to present my transit payment code" (2026-08-27); see
+             TransitHceService.kt's own doc comment. exported=true + BIND_NFC_SERVICE
+             is the real, required Android convention for any HostApduService (only
+             the OS's own NFC stack may bind to it, never another app directly). -->
+        <service
+            android:name=".nfc.TransitHceService"
+            android:exported="true"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/apduservice" />
+        </service>
     </application>
 </manifest>

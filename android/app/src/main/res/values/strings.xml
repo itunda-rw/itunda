@@ -248,4 +248,5 @@
     <string name="bank_deposit_protection_covered">Your covered balance</string>
     <string name="bank_deposit_protection_cap">Covered up to RWF %1$s per user</string>
     <string name="bank_deposit_protection_reserve">itunda\'s reserve: RWF %1$s</string>
+    <string name="transit_hce_description">itunda Transit payment code</string>
 </resources>

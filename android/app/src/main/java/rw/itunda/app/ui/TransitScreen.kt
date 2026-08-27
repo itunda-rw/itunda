@@ -59,7 +59,7 @@ private val MIN_FARE = BigDecimal("200")
 private val MAX_FARE = BigDecimal("500")
 
 @Composable
-fun TransitScreen(onBack: () -> Unit) {
+fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
     BackHandler(onBack = onBack)
     var mode by remember { mutableStateOf(TransitMode.LOADING) }
     var balance by remember { mutableStateOf<TransitBalanceDto?>(null) }
@@ -161,6 +161,12 @@ fun TransitScreen(onBack: () -> Unit) {
                                 "partnership with them -- this is itunda's own simulated transit balance: real " +
                                 "money moves, real fares apply, it just isn't carried by a real bus card reader.",
                             fontSize = 11.sp, color = Ids.colors.textSecondary,
+                        )
+                        Text(
+                            "Collecting fares for Kigali Bus Services or Royal Express? Open the collector →",
+                            fontSize = 12.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = Ids.colors.brand,
+                            modifier = Modifier.padding(top = 8.dp).pressScaleClickable(onClick = onOpenCollect),
                         )
                     }
                     item {

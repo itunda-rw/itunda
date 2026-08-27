@@ -476,6 +476,10 @@ fun ItundaAppScreen(
         // Real Kigali public-transit stored-value balance (2026-08-27) -- bank-mfe
         // shipped first; same pattern.
         var showTransit by rememberSaveable { mutableStateOf(false) }
+        // Real "agent collects a fare from a rider's presented code" flow (2026-08-27,
+        // direct user follow-up: "for simplification we need nfc") -- reached from a
+        // link inside TransitScreen, not its own top-level entry point.
+        var showTransitCollect by rememberSaveable { mutableStateOf(false) }
         var showSpending by rememberSaveable { mutableStateOf(false) }
         var showRides by rememberSaveable { mutableStateOf(false) }
         // Real Kakao T 대리운전 (designated driver, item 221) -- bank-mfe shipped first;
@@ -1259,7 +1263,15 @@ fun ItundaAppScreen(
         // TransitScreen.kt's own doc comment for the full sourced account.
         if (showTransit) {
             BackHandler { showTransit = false }
-            TransitScreen(onBack = { showTransit = false })
+            TransitScreen(onBack = { showTransit = false }, onOpenCollect = { showTransitCollect = true })
+            return@IdsTheme
+        }
+        // Real "agent collects a fare from a rider's presented code" flow (2026-08-27,
+        // direct user follow-up: "for simplification we need nfc") -- see
+        // TransitCollectScreen.kt's own doc comment for the full sourced account.
+        if (showTransitCollect) {
+            BackHandler { showTransitCollect = false }
+            TransitCollectScreen(onBack = { showTransitCollect = false })
             return@IdsTheme
         }
         // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 104)
@@ -3455,7 +3467,12 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, 
     // to a different real account while the code is already showing must regenerate it
     // against the newly-selected account, not silently keep charging the old one.
     LaunchedEffect(revealed, selectedAccount?.id) {
-        if (!revealed) return@LaunchedEffect
+        if (!revealed) {
+            // Real NFC bridge (2026-08-27) -- see TransitPresentmentStore.kt's own doc
+            // comment. A hidden code must never still be broadcastable over NFC.
+            rw.itunda.app.nfc.TransitPresentmentStore.clear()
+            return@LaunchedEffect
+        }
         while (true) {
             try {
                 val res = rw.itunda.core.network.NetworkClient.apiService.generateCustomerPaymentCode(
@@ -3464,12 +3481,19 @@ private fun MyPaymentCodeCard(selectedAccount: rw.itunda.core.network.Account?, 
                 code = res.code
                 expiresAtMillis = java.time.Instant.parse(res.expiresAt).toEpochMilli()
                 error = null
+                rw.itunda.app.nfc.TransitPresentmentStore.set(res.code, expiresAtMillis)
             } catch (e: Exception) {
                 error = "Could not load your payment code."
             }
             val waitMs = (expiresAtMillis - System.currentTimeMillis() - 10_000L).coerceAtLeast(5_000L)
             kotlinx.coroutines.delay(waitMs)
         }
+    }
+    // A rider who navigates away from this screen entirely (composable disposed, not
+    // just `revealed` toggled off) must also stop broadcasting -- same real intent as
+    // the `!revealed` branch above.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { rw.itunda.app.nfc.TransitPresentmentStore.clear() }
     }
     LaunchedEffect(revealed) {
         if (!revealed) return@LaunchedEffect
