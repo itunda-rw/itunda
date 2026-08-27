@@ -20,6 +20,7 @@ private let maxFare: Double = 500
 
 struct TransitScreenView: View {
     var onBack: () -> Void = {}
+    var onOpenCollect: () -> Void = {}
     @State private var mode: TransitMode = .loading
     @State private var balance: TransitBalanceDto?
     @State private var trips: [TransitTripDto] = []
@@ -59,6 +60,10 @@ struct TransitScreenView: View {
 
                         Text("Kigali's real public buses (Kigali Bus Services, Royal Express) run on a real contactless fare system called Tap&Go, built by AC Group. itunda has no real partnership with them -- this is itunda's own simulated transit balance: real money moves, real fares apply, it just isn't carried by a real bus card reader.")
                             .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                        Button(action: onOpenCollect) {
+                            Text("Collecting fares for Kigali Bus Services or Royal Express? Open the collector →")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        }
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Top up").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)

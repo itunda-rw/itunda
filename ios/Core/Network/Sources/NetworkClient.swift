@@ -5957,6 +5957,26 @@ public struct TapFareRequest: Encodable { public let operatorName: String; publi
 }
 public struct TapFareResponse: Decodable { public let success: Bool; public let trip: TransitTripDto; public let balance: TransitBalanceDto }
 
+// Real "agent collects a fare from a rider's own presented code" flow (2026-08-27,
+// direct user follow-up: "for simplification we need nfc"). `code` is the same
+// CustomerPaymentCode value generateCustomerPaymentCode already produces and
+// MyPaymentCodeCard already shows as a QR -- reached here via a real
+// NFCTagReaderSession read (Android riders only, see TransitCollectScreenView.swift's
+// own doc comment) or a camera QR scan (any rider).
+public struct TapFareByCodeRequest: Encodable {
+    public let code: String
+    public let operatorName: String
+    public let fare: Double
+    private enum CodingKeys: String, CodingKey { case code, fare; case operatorName = "operator" }
+}
+public struct TransitCollectResultDto: Decodable {
+    public let operatorName: String
+    public let fare: Double
+    public let collectedAt: String
+    private enum CodingKeys: String, CodingKey { case fare, collectedAt; case operatorName = "operator" }
+}
+public struct TapFareByCodeResponse: Decodable { public let success: Bool; public let collected: TransitCollectResultDto }
+
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 

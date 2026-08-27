@@ -206,6 +206,17 @@ allTargets.append(
             // showing a permission prompt; matches bank-mfe's/Android's own real
             // "point your camera at the merchant's QR code" copy.
             "NSCameraUsageDescription": "itunda uses your camera to scan a merchant's payment QR code.",
+            // Real NFC "collect a transit fare by tapping a rider's phone" (2026-08-27,
+            // direct user follow-up: "for simplification we need nfc") -- see
+            // TransitCollectScreenView.swift's own doc comment. iOS can only ever be
+            // the reader side (third-party card emulation is Apple-restricted to
+            // Apple Pay/Wallet), so this app only ever needs NFCTagReaderSession, not
+            // HostApduService's iOS equivalent, which doesn't exist for third-party
+            // apps. select-identifiers must list the exact same self-assigned AID
+            // Android's apduservice.xml/TransitHceService.kt declare -- Apple requires
+            // every ISO 7816 AID a reader session may select to be pre-declared here.
+            "NFCReaderUsageDescription": "itunda uses NFC to collect a transit fare when a rider taps their phone.",
+            "com.apple.developer.nfc.readersession.iso7816.select-identifiers": ["F04954554E4441"],
             // Real typeface fix (2026-08-13, direct user feedback: "we are still far away
             // from toss") -- see Android's identical Pretendard.kt for the full sourced
             // account (github.com/orioncactus/pretendard, SIL Open Font License 1.1). iOS
@@ -230,6 +241,14 @@ allTargets.append(
         // App/Resources/Assets.xcassets/AppIcon.appiconset and
         // project_itunda_brand_identity.md for the full derivation.
         resources: ["App/Resources/Fonts/**", "App/Resources/Assets.xcassets/**"],
+        // Real code-signing entitlement NFCTagReaderSession requires (2026-08-27) --
+        // see the infoPlist select-identifiers comment above for the full account.
+        // Without this, an NFCTagReaderSession fails to start on a real device even
+        // with NFCReaderUsageDescription present; that key alone covers the older
+        // NDEF-reading API, not ISO 7816 tag polling.
+        entitlements: .dictionary([
+            "com.apple.developer.nfc.readersession.formats": ["TAG"],
+        ]),
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's

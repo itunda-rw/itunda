@@ -127,6 +127,7 @@ struct EntireMenuScreen: View {
     // bank-mfe/Android shipped first; this is the last remaining client platform.
     @State private var showCard = false
     @State private var showTransit = false
+    @State private var showTransitCollect = false
     // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 105) --
     // last remaining client platform for this feature (bank-mfe always had it, Android
     // ported the same day as item 104).
@@ -746,7 +747,10 @@ struct EntireMenuScreen: View {
             CardScreenView(onBack: { showCard = false })
         }
         .sheet(isPresented: $showTransit) {
-            TransitScreenView(onBack: { showTransit = false })
+            TransitScreenView(onBack: { showTransit = false }, onOpenCollect: { showTransitCollect = true })
+        }
+        .sheet(isPresented: $showTransitCollect) {
+            TransitCollectScreenView(onBack: { showTransitCollect = false })
         }
         .sheet(isPresented: $showGroupAccounts) {
             GroupAccountScreenView(onBack: { showGroupAccounts = false })
