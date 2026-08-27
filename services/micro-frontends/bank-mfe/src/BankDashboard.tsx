@@ -20,6 +20,7 @@ import { PinSetupCard } from './PinSetupCard';
 import { CardExplainer } from './CardExplainer';
 import { TransitScreen } from './TransitScreen';
 import { TransitCollectScreen } from './TransitCollectScreen';
+import { MotoFareCollectScreen } from './MotoFareCollectScreen';
 import { QrScanCamera, parseQrParam } from './QrScanCamera';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -266,7 +267,7 @@ import { useCountUp } from './hooks/useCountUp';
 // EXPLORE_TAB_GROUPS, same as every other Explore destination. ShopHub/HoodHub are
 // retired; ShopView/EatsView/MarketplaceView/CommunityView/JobsView/PropertyView
 // render directly, exactly as they did before either hub existed.
-type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'TRANSIT' | 'TRANSIT_COLLECT' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
+type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'TRANSIT' | 'TRANSIT_COLLECT' | 'MOTO_FARE_COLLECT' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 6):
 // `tab` lived only in local useState, never in the URL -- refreshing the page or
@@ -275,7 +276,7 @@ type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SH
 // union above (TypeScript types don't exist at runtime, so an incoming `?tab=` value
 // needs a real Set to validate against, not just a cast) -- kept next to the type so
 // the two can't silently drift apart when a tab is added or removed.
-const ALL_TAB_IDS = new Set<Tab>(['HOME', 'PAY', 'EXPLORE', 'YOU', 'CERTIFICATE', 'SHOPPING', 'SHOP', 'EATS', 'MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'STOCKS', 'SAVINGS', 'MESSAGES', 'RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'KNOWLEDGE', 'MAP', 'DEVICES', 'CARD', 'TRANSIT', 'TRANSIT_COLLECT', 'OVERVIEW', 'LOANS', 'CREDIT_SCORE', 'TRUST_SCORE', 'IDENTITY', 'SUPPORT', 'MY', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY', 'REWARDS', 'INSURANCE', 'BILLS', 'AGENT', 'USSD']);
+const ALL_TAB_IDS = new Set<Tab>(['HOME', 'PAY', 'EXPLORE', 'YOU', 'CERTIFICATE', 'SHOPPING', 'SHOP', 'EATS', 'MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'STOCKS', 'SAVINGS', 'MESSAGES', 'RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'KNOWLEDGE', 'MAP', 'DEVICES', 'CARD', 'TRANSIT', 'TRANSIT_COLLECT', 'MOTO_FARE_COLLECT', 'OVERVIEW', 'LOANS', 'CREDIT_SCORE', 'TRUST_SCORE', 'IDENTITY', 'SUPPORT', 'MY', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY', 'REWARDS', 'INSURANCE', 'BILLS', 'AGENT', 'USSD']);
 const TAB_QUERY_PARAM = 'tab';
 const readTabFromUrl = (): Tab => {
   try {
@@ -1339,7 +1340,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           existing icon set, nothing new invented for these rows beyond the icons
           imported at the top of this file (all real lucide-react icons already a
           dependency here). */}
-      <PayHubOtherServicesRail onCardsClick={onNavigateToCard} onTransitClick={() => onNavigateToTab('TRANSIT')} onNavigateToTab={onNavigateToTab} />
+      <PayHubOtherServicesRail onCardsClick={onNavigateToCard} onTransitClick={() => onNavigateToTab('TRANSIT')} onMotoFareClick={() => onNavigateToTab('MOTO_FARE_COLLECT')} onNavigateToTab={onNavigateToTab} />
       <QuickActions onCardsClick={onNavigateToCard} />
       {rewardsPreview && <RewardsSummaryRow rewardsTotal={rewardsPreview.rewardsTotal} payBalance={account?.balance ?? null} />}
       {rewardsPreview && <RewardsPreviewSection tasks={rewardsPreview} onViewAll={() => onNavigateToTab('REWARDS')} />}
@@ -24509,6 +24510,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'CARD' && <CardView />}
       {tab === 'TRANSIT' && <TransitScreen onOpenCollect={() => setTab('TRANSIT_COLLECT')} />}
       {tab === 'TRANSIT_COLLECT' && <TransitCollectScreen />}
+      {tab === 'MOTO_FARE_COLLECT' && <MotoFareCollectScreen />}
       {tab === 'OVERVIEW' && <OverviewView />}
       {tab === 'LOANS' && <LoansView initialMode={pendingLoansMode ?? undefined} onConsumedInitialMode={() => setPendingLoansMode(null)} />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
