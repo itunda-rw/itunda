@@ -46,7 +46,7 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, FOLLOWERS, PAYROLL, ADS, BILLING, CASH_ADVANCE }
+private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, VISITORS, FOLLOWERS, PAYROLL, ADS, BILLING, CASH_ADVANCE }
 
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
@@ -62,11 +62,8 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
                 Text("Itunda Merchant", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(merchant.businessName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Real Coupang badge system (2026-08-05) -- see
-                    // docs/DESIGN_REFERENCES.md Section 9's own account. A real, named
-                    // verification tier next to the business name, not buried in a
-                    // settings screen -- this field existed on the DTO but was never
-                    // rendered anywhere in this app at all before now.
+                    // Real Coupang badge system (2026-08-05) -- see docs/DESIGN_REFERENCES.md
+                    // Section 9. A real, named verification tier next to the business name.
                     if (merchant.kybVerified) {
                         StatusBadge("✓ Verified", tint = Ids.colors.brand)
                     }
@@ -88,6 +85,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
                 MerchantTab.REPORTS to "Reports",
                 MerchantTab.REVIEWS to "Reviews",
                 MerchantTab.COUPONS to "Coupons",
+                MerchantTab.VISITORS to "Visitors",
                 MerchantTab.FOLLOWERS to "Followers",
                 MerchantTab.PAYROLL to "Payroll",
                 MerchantTab.ADS to "Ads",
@@ -114,6 +112,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             MerchantTab.REPORTS -> ReportsTab()
             MerchantTab.REVIEWS -> ReviewsTab(restaurantId = merchant.id)
             MerchantTab.COUPONS -> CouponsTab()
+            MerchantTab.VISITORS -> VisitorAnalyticsTab()
             MerchantTab.FOLLOWERS -> FollowersTab()
             MerchantTab.PAYROLL -> PayrollTab()
             MerchantTab.ADS -> AdsTab()

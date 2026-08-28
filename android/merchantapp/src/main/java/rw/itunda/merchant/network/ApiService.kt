@@ -93,10 +93,8 @@ data class MerchantDto(
     // 2026-07-26, zero native UI on either merchant app until now.
     val participatesInEatsMembership: Boolean = false,
     // Real restaurant-card photo, min-order, boosted-cashback, and scheduled-orders
-    // opt-in -- see MerchantService.setPhotoUrl/setMinOrderAmount/setCashbackRate/
-    // setAcceptsScheduledOrders's own doc comments. Found 2026-08-01 (dead-field sweep):
-    // real on the backend since 2026-07-21/07-26, zero client anywhere (not even
-    // merchant-mfe) until now.
+    // opt-in -- see MerchantService.setPhotoUrl/etc.'s own doc comments (found in the
+    // 2026-08-01 dead-field sweep, zero client anywhere until then).
     val photoUrl: String? = null,
     val minOrderAmount: Double? = null,
     val cashbackRate: Double? = null,
@@ -134,6 +132,11 @@ data class MerchantCouponDto(
 )
 data class MerchantCouponResponse(val success: Boolean, val coupon: MerchantCouponDto)
 data class MerchantCouponsResponse(val success: Boolean, val coupons: List<MerchantCouponDto>)
+
+// Real 비즈프로필 (Karrot Business Profile) visitor-count trend (2026-08-28) -- see
+// backend MerchantProfileView.kt's own doc comment.
+data class MerchantProfileViewDto(val id: String, val merchantId: String, val viewDate: String, val viewCount: Long)
+data class MerchantProfileViewTrendResponse(val success: Boolean, val trend: List<MerchantProfileViewDto>)
 
 // Real B2B payroll -- real account-to-account money movement (see PayrollController.kt's
 // own doc comment), real on merchant-mfe/web only until now -- zero native UI on
@@ -451,11 +454,9 @@ interface ApiService {
     @POST("api/v1/merchant/qr/generate")
     suspend fun generateQr(@Body request: GenerateQrRequest): PaymentIntentResponse
 
-    // Real customer-presented payment code (2026-08-11) -- see backend's
-    // MerchantService.chargeByCustomerCode doc comment. Real KakaoPay/Toss Pay's
-    // actual primary in-store flow, reversed from generateQr above: the CUSTOMER's
-    // own app already shows a scannable code, this merchant app scans it (real
-    // camera QR scanning, see PaymentScanScreen.kt) and enters the amount.
+    // Real customer-presented payment code (2026-08-11) -- reversed from generateQr
+    // above: the customer's own app shows a scannable code, this app scans it (see
+    // PaymentScanScreen.kt) and enters the amount.
     @POST("api/v1/merchant/pay/charge-by-code")
     suspend fun chargeByCustomerCode(@Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(), @Body request: ChargeByCustomerCodeRequest): CollectPaymentResultDto
 
@@ -602,10 +603,8 @@ interface ApiService {
     @POST("api/v1/merchant/webhook-deliveries/{id}/replay")
     suspend fun replayWebhookDelivery(@Path("id") deliveryId: String): ReplayWebhookDeliveryResponse
 
-    // Real store-settings endpoints -- see MerchantController.kt's own doc comments.
-    // Found 2026-08-01 via a dead-field sweep: category/photo/min-order/cashback-rate/
-    // scheduled-orders/eats-membership were all real DTO fields with zero (or partial)
-    // client anywhere.
+    // Real store-settings endpoints (2026-08-01 dead-field sweep) -- see
+    // MerchantController.kt's own doc comments.
     @POST("api/v1/merchant/category")
     suspend fun setCategory(@Body request: SetCategoryRequest): MerchantResponse
 
@@ -629,6 +628,9 @@ interface ApiService {
 
     @POST("api/v1/merchant/coupons/{couponId}/deactivate")
     suspend fun deactivateCoupon(@Path("couponId") couponId: String): MerchantCouponResponse
+
+    @GET("api/v1/merchant/profile-views/trend")
+    suspend fun getProfileViewTrend(@Query("days") days: Int = 7): MerchantProfileViewTrendResponse
 
     // Real B2B payroll -- see PayrollController.kt's own doc comment. merchant-mfe
     // already has this; this is the first native client (Android/iOS).
@@ -692,9 +694,7 @@ interface ApiService {
 
     // Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
     // broadcast-to-followers -- see MerchantFollowController's own doc comment.
-    // Distinct from the customer-facing follow/unfollow already real on bank-mfe/
-    // Android app/iOS app. merchant-mfe already has this (item 118); this is the
-    // first native-merchant-app client for the owner-facing half.
+    // merchant-mfe already has this (item 118); first native-merchant-app client.
     @GET("api/v1/merchant/followers/count")
     suspend fun getFollowerCount(): FollowerCountResponse
 
