@@ -1,4 +1,6 @@
 import SwiftUI
+import CoreDesignSystem
+import CoreNetwork
 
 // Real 당근카 (Karrot Vehicles) listing-creation fields (itunda Hood redesign,
 // 2026-08-28) -- a new file since HoodMarketplace.swift/HoodMarketplaceCard.swift are
