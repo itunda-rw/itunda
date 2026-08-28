@@ -45,6 +45,11 @@ struct TalkScreen: View {
     // check for every listed contact, refreshed on a 10s cadence, a real coarser signal
     // than the 4s message poll. Per-thread real-time push happens in ChatThreadScreen.
     @State private var presence: [String: Bool] = [:]
+    // Real chat-list filter tabs (전체/안읽음/통화) (itunda Talk redesign, 2026-08-28)
+    // -- see TalkFilterTabs.swift's own doc comment.
+    @State private var listFilter: TalkListFilter = .all
+    @State private var calls: [CallSessionDto]?
+    @State private var callsError: String?
 
     var body: some View {
         Group {
@@ -109,28 +114,34 @@ struct TalkScreen: View {
                     }
                 })
             } else if view == .direct {
-                DirectMessagesList(
-                    conversations: conversations,
-                    archivedConversations: archivedConversations,
-                    error: conversationsError,
-                    presence: presence,
-                    onRetry: { Task { await loadConversations() } },
-                    onStarted: { conversationId in
-                        Task {
-                            await loadConversations()
-                            if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
-                                openConversation = match
+                TalkFilterTabsBar(selection: $listFilter)
+                if listFilter == .calls {
+                    CallHistoryList(calls: calls, error: callsError, onRetry: { Task { await loadCalls() } })
+                        .task { await loadCalls() }
+                } else {
+                    DirectMessagesList(
+                        conversations: listFilter == .unread ? conversations?.filter { $0.unreadCount > 0 } : conversations,
+                        archivedConversations: archivedConversations,
+                        error: conversationsError,
+                        presence: presence,
+                        onRetry: { Task { await loadConversations() } },
+                        onStarted: { conversationId in
+                            Task {
+                                await loadConversations()
+                                if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
+                                    openConversation = match
+                                }
+                            }
+                        },
+                        onOpen: { openConversation = $0 },
+                        onArchiveChanged: {
+                            Task {
+                                await loadConversations()
+                                await loadArchivedConversations()
                             }
                         }
-                    },
-                    onOpen: { openConversation = $0 },
-                    onArchiveChanged: {
-                        Task {
-                            await loadConversations()
-                            await loadArchivedConversations()
-                        }
-                    }
-                )
+                    )
+                }
             } else {
                 GroupsList(
                     groups: groups,
@@ -182,6 +193,16 @@ struct TalkScreen: View {
         // Real, non-critical -- the active list and "Archived (N)" count still work
         // even if this background fetch fails; retried on next load.
         archivedConversations = try? await NetworkClient.shared.getConversations(archived: true).conversations
+    }
+
+    private func loadCalls() async {
+        do {
+            let res = try await NetworkClient.shared.getCallHistory()
+            calls = res.calls
+            callsError = nil
+        } catch {
+            callsError = "Couldn't reach itunda. Check your connection and try again."
+        }
     }
 
     private func loadGroups() async {
