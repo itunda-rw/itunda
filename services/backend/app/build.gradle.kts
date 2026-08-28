@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":eats"))
     implementation(project(":maps"))
     implementation(project(":gift"))
+    implementation(project(":calling"))
     implementation(project(":rideshare"))
     implementation(project(":vehicle"))
     implementation(project(":family"))

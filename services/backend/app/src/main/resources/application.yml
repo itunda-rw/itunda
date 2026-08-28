@@ -160,6 +160,12 @@ itunda:
   ai-summary:
     base-url: ${AI_SUMMARY_BASE_URL:}
     model: ${AI_SUMMARY_MODEL:llama-3.2-1b-instruct}
+  # Real TURN/STUN ephemeral-credential minting (2026-08-28, itunda Talk redesign) --
+  # see CallService.getTurnCredentials's own doc comment. Empty by default; matches
+  # coturn.yaml's own itunda-turn-secret Secret, provisioned out-of-band the same way
+  # every other real credential in this file already is.
+  turn:
+    secret: ${TURN_SECRET:}
   # Real external-checkout hosted page (2026-07-21) -- see PaymentsApiController's own
   # doc comment. Where a customer's browser lands after a `requestPayment()` widget
   # call, matching Toss Payments' own hosted-checkout-page shape.

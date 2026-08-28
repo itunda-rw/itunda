@@ -1,5 +1,6 @@
 package rw.itunda.core.realtime
 
+import rw.itunda.core.domain.CallType
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 import java.time.Instant
@@ -91,4 +92,20 @@ interface RealtimeMessagePublisher {
      * interface already holds itself to.
      */
     fun publishGroupReadReceiptChange(groupId: String, recipientUserIds: List<String>, readByUserId: String, lastReadAt: Instant)
+
+    /**
+     * Real 1:1 calling (itunda Talk redesign, 2026-08-28) -- these two are the only
+     * REST-triggered call pushes; the real SDP offer/answer/ICE-candidate signaling
+     * exchange is relayed entirely inline inside `MessagingWebSocketHandler
+     * .handleTextMessage`, the exact same client-originated-frame relay shape
+     * `typing` already established (never going through this interface, since the
+     * server never needs to interpret that payload, only verify + forward it).
+     * `publishCallRing` fires when a real `CallSession` row is created
+     * (`POST /api/v1/calls`); `publishCallEnded` fires on any real state transition
+     * to `endedAt` (answered-elsewhere, declined, cancelled, hung up) so the OTHER
+     * party's UI updates even when they never sent a WS frame themselves.
+     */
+    fun publishCallRing(recipientUserId: String, callId: String, callerId: String, callType: CallType)
+
+    fun publishCallEnded(recipientUserId: String, callId: String, reason: String)
 }

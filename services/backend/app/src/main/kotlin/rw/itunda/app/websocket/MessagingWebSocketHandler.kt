@@ -13,6 +13,8 @@ import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import rw.itunda.auth.RateLimiter
+import rw.itunda.calling.CallService
+import rw.itunda.core.domain.CallType
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 import rw.itunda.core.realtime.ReactionGroup
@@ -26,6 +28,12 @@ import java.util.concurrent.ConcurrentHashMap
 internal const val WS_USER_ID_ATTR = "userId"
 internal const val WS_TOKEN_ID_ATTR = "tokenId"
 internal const val WS_TOKEN_EXPIRES_AT_ATTR = "tokenExpiresAt"
+
+// Real 1:1 calling signal types (2026-08-28) -- see handleCallSignal's own doc
+// comment. call_decline/call_end also flow through here (a real, already-active
+// call's own in-progress hangup), distinct from CallService.endCall's own REST path
+// (used when there's no live socket, e.g. cancelling before the callee ever answers).
+private val CALL_SIGNAL_TYPES = setOf("call_offer", "call_answer", "call_ice_candidate", "call_decline", "call_end")
 
 /**
  * Real live-transport for messaging (2026-07-18) -- see `RealtimeMessagePublisher`'s
@@ -47,6 +55,7 @@ class MessagingWebSocketHandler(
     private val groupConversationMemberRepository: GroupConversationMemberRepository,
     private val rateLimiter: RateLimiter,
     private val meterRegistry: MeterRegistry,
+    private val callService: CallService,
     @Value("\${itunda.websocket.max-sessions-per-user:5}")
     private val maxSessionsPerUser: Int,
 ) : TextWebSocketHandler(), RealtimeMessagePublisher {
@@ -122,7 +131,12 @@ class MessagingWebSocketHandler(
         val userId = session.attributes[WS_USER_ID_ATTR] as? String ?: return
         try {
             val json = objectMapper.readTree(message.payload)
-            if (json.get("type")?.asText() != "typing") return
+            val type = json.get("type")?.asText()
+            if (type in CALL_SIGNAL_TYPES) {
+                handleCallSignal(userId, type!!, json)
+                return
+            }
+            if (type != "typing") return
             val conversationId = typingTargetId(json, "conversationId")
             val groupId = typingTargetId(json, "groupConversationId")
             // One typing frame means one target. Reject dual/missing/oversized IDs
@@ -149,6 +163,28 @@ class MessagingWebSocketHandler(
             // Real, non-critical -- a malformed/unexpected/rate-limited inbound frame
             // shouldn't kill the socket; typing indicators are best-effort.
         }
+    }
+
+    // Real SDP offer/answer/ICE-candidate relay for 1:1 calling (2026-08-28) -- see
+    // RealtimeMessagePublisher's own doc comment on why this is relayed entirely
+    // inline here (exact same client-originated-frame shape `typing` already uses)
+    // rather than through that interface: the server never needs to interpret this
+    // payload, only verify the sender is a real, still-active call participant
+    // (CallService.verifyActiveParticipant -- never trust a client-asserted
+    // callId/target) and forward it verbatim to the real other participant.
+    // Best-effort, matching typing's own convention: a malformed/rate-limited/
+    // unauthorized frame is silently dropped, never errors the socket.
+    private fun handleCallSignal(userId: String, type: String, json: JsonNode) {
+        val callId = json.get("callId")?.takeIf { it.isTextual }?.asText()?.trim()?.takeIf { it.isNotEmpty() && it.length <= 64 } ?: return
+        rateLimiter.checkLimit("call-signal:$userId:$callId", limit = 30, window = Duration.ofSeconds(10))
+        val otherUserId = try {
+            callService.verifyActiveParticipant(userId, callId)
+        } catch (e: Exception) {
+            return
+        }
+        val relayed = json.deepCopy<com.fasterxml.jackson.databind.node.ObjectNode>()
+        relayed.put("fromUserId", userId)
+        sendToUser(otherUserId, objectMapper.writeValueAsString(relayed))
     }
 
     private fun typingTargetId(json: JsonNode, field: String): String? =
@@ -282,6 +318,18 @@ class MessagingWebSocketHandler(
             mapOf("type" to "group_read_receipt", "groupConversationId" to groupId, "readByUserId" to readByUserId, "lastReadAt" to lastReadAt.toString()),
         )
         recipientUserIds.forEach { sendToUser(it, payload) }
+    }
+
+    // Real 1:1 calling (2026-08-28) -- see RealtimeMessagePublisher's own doc
+    // comment for why these are the only two call events pushed via this interface.
+    override fun publishCallRing(recipientUserId: String, callId: String, callerId: String, callType: CallType) {
+        val payload = objectMapper.writeValueAsString(mapOf("type" to "call_ring", "callId" to callId, "callerId" to callerId, "callType" to callType.name))
+        sendToUser(recipientUserId, payload)
+    }
+
+    override fun publishCallEnded(recipientUserId: String, callId: String, reason: String) {
+        val payload = objectMapper.writeValueAsString(mapOf("type" to "call_ended", "callId" to callId, "reason" to reason))
+        sendToUser(recipientUserId, payload)
     }
 
     private fun sendToUser(userId: String, payload: String) {

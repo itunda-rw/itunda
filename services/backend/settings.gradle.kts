@@ -36,6 +36,7 @@ include(
     ":maps",
     ":gift",
     ":splitbill",
+    ":calling",
     ":agents",
     ":rideshare",
     ":vehicle",

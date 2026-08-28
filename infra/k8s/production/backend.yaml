@@ -132,6 +132,16 @@ spec:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        # Real TURN/STUN ephemeral-credential minting (2026-08-28, itunda Talk
+        # redesign) -- see CallService.getTurnCredentials's own doc comment. Must be
+        # the exact same value as coturn.yaml's own itunda-turn-secret Secret
+        # (coturn's static-auth-secret), provisioned out-of-band the same way every
+        # other real credential above is.
+        - name: TURN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: itunda-turn-secret
+              key: secret
         # Real gap found live-testing the card-design-picker feature (2026-08-27):
         # this list never included the private cloud's own NodePort origins
         # (infra/k8s/private-cloud/micro-frontends.yaml, 30520-30525), so no
