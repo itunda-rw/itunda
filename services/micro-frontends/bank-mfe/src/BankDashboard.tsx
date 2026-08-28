@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, Bike, Bot, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
 import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
@@ -134,6 +134,7 @@ import {
   fetchCallHistory, setConversationFavorite,
   type CallSession, type ConversationSummaryWithFavorite,
 } from './lib/talk';
+import { TalkAiChatThread, TalkServiceChannelThread } from './TalkThreads';
 import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   sendGroupEmoticon,
@@ -9587,6 +9588,26 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
   );
 }
 
+// Real client-side-synthesized row (itunda + itunda AI) -- same visual shape as a
+// real conversation row so the service channel/AI chatbot read like natural rows in
+// the list, matching real KakaoTalk's own official-channel-alongside-friends layout.
+function TalkVirtualRow({ icon, name, preview, onClick }: { icon: ReactElement; name: string; preview: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 0', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+    >
+      <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{name}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{preview}</p>
+      </div>
+    </button>
+  );
+}
+
 function emptyConversationsMessage(showArchived: boolean, filterTab: 'all' | 'unread' | 'calls'): string {
   if (showArchived) return "You haven't archived any chats.";
   if (filterTab === 'unread') return 'No unread chats.';
@@ -9680,6 +9701,14 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialConversationId, conversations]);
 
+  // Real client-side-synthesized entry points for the service channel + AI chatbot
+  // (itunda Talk redesign, 2026-08-28) -- no real conversation row exists for either
+  // on the backend (see ServiceChannelService/AiChatService's own doc comments), so
+  // this is session-local nav state, not a conversationId.
+  const [openVirtualThread, setOpenVirtualThread] = useState<'service' | 'ai' | null>(null);
+  if (openVirtualThread === 'service') return <TalkServiceChannelThread onBack={() => setOpenVirtualThread(null)} />;
+  if (openVirtualThread === 'ai') return <TalkAiChatThread onBack={() => setOpenVirtualThread(null)} />;
+
   const openConversation = conversations?.find((c) => c.conversationId === openConversationId);
   if (openConversation) {
     return (
@@ -9738,6 +9767,12 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
         <TalkCallLog calls={callHistory} currentUserId={getStoredUser()?.id ?? null} />
       ) : (
         <>
+      {filterTab === 'all' && !showArchived && (
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '4px' }}>
+          <TalkVirtualRow icon={<MessageCircle size={20} color="var(--itunda-indigo)" />} name="itunda" preview="Real-time updates about your account" onClick={() => setOpenVirtualThread('service')} />
+          <TalkVirtualRow icon={<Bot size={20} color="var(--itunda-indigo)" />} name="itunda AI" preview="Ask itunda AI anything about the app" onClick={() => setOpenVirtualThread('ai')} />
+        </div>
+      )}
       {archivedCount > 0 && (
         <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setShowArchived((value) => !value)} style={{ marginBottom: '10px' }}>
           {showArchived ? 'Show active chats' : `Archived (${archivedCount})`}
