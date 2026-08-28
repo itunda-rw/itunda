@@ -98,10 +98,20 @@ internal fun GroupManageMembersView(
     var description by remember { mutableStateOf(group.description ?: "") }
     var savingInfo by remember { mutableStateOf(false) }
     var infoSaved by remember { mutableStateOf(false) }
+    // Real group 공지/투표 entry point (itunda Talk redesign, 2026-08-28) -- local
+    // sub-navigation state, kept inside this composable rather than threading a new
+    // callback through TalkGroupThread.kt (which has almost no real file-size
+    // headroom left).
+    var showAnnouncementPoll by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         try { contacts = NetworkClient.apiService.getTalkContacts().contacts } catch (_: Exception) { }
+    }
+
+    if (showAnnouncementPoll) {
+        GroupAnnouncementPollView(groupId = group.groupId, onBack = { showAnnouncementPoll = false })
+        return
     }
 
     val addableContacts = contacts.filter { contact -> members.none { it.userId == contact.userId } }
@@ -145,6 +155,15 @@ internal fun GroupManageMembersView(
                             } finally { savingInfo = false }
                         }
                     },
+                )
+            }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item {
+                IdsButton(
+                    text = "Announcement & polls",
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Medium,
+                    onClick = { showAnnouncementPoll = true },
                 )
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }
