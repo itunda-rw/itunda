@@ -717,6 +717,7 @@ private fun PropertyListingCard(
                 TrustBadge(listerTrustScore)
             }
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
+            listing.neighborhood?.let { NeighborhoodReviewsSection(it) }
             // Real 당근-style price-offer negotiation (2026-07-19) -- see
             // PropertyPriceOfferService's own doc comment; mirrors ListingCard's own
             // offering UI exactly.

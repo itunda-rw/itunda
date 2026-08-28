@@ -101,6 +101,11 @@ fun CommunityContent(
     var view by remember { mutableStateOf(CommunityView.BROWSE) }
     var categories by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
+    // Real 동네생활 topic-chip filter row (2026-08-28) -- a lifestyle axis independent
+    // of the functional category above, see backend CommunityService.TOPICS' own doc
+    // comment.
+    var topics by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
+    var activeTopic by remember { mutableStateOf<String?>(null) }
     var posts by remember { mutableStateOf<List<CommunityPostDto>?>(null) }
     // Real 같이해요 (join-together) group join counts (2026-07-24) -- postId -> real
     // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
@@ -137,6 +142,7 @@ fun CommunityContent(
 
     LaunchedEffect(Unit) {
         try { categories = NetworkClient.apiService.getCommunityCategories().categories } catch (e: Exception) { /* chips just won't render */ }
+        try { topics = NetworkClient.apiService.getCommunityTopics().topics } catch (e: Exception) { /* chips just won't render */ }
     }
 
     LaunchedEffect(requestedView) {
@@ -192,7 +198,7 @@ fun CommunityContent(
         }
         coroutineScope.launch {
             try {
-                val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory) else NetworkClient.apiService.getMyCommunityPosts()
+                val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory, activeTopic) else NetworkClient.apiService.getMyCommunityPosts()
                 if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
                 error = null
             } catch (e: HttpException) {
@@ -202,7 +208,7 @@ fun CommunityContent(
             }
         }
     }
-    LaunchedEffect(view, activeCategory) { load() }
+    LaunchedEffect(view, activeCategory, activeTopic) { load() }
 
     // Real relevance-ranked search (2026-08-14) -- see backend CommunityService
     // .search's own doc comment; same "uncalled endpoint" gap class as
@@ -317,6 +323,25 @@ fun CommunityContent(
                                 .pressScaleClickable { activeCategory = if (active) null else c.id }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                         ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
+                    }
+                }
+            }
+        }
+        if (view == CommunityView.BROWSE && topics.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    topics.forEach { t ->
+                        val active = activeTopic == t.id
+                        Box(
+                            modifier = Modifier
+                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .pressScaleClickable { activeTopic = if (active) null else t.id }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary) }
                     }
                 }
             }
@@ -605,6 +630,19 @@ private fun CommunityPostCard(
                 if (eventDate != null) {
                     val capacityLabel = post.capacity?.let { " · $joinedCount/$it" } ?: ""
                     Text("🗓️ ${formatMeetupDate(eventDate)}$capacityLabel", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
+                // Real AI-generated 모임 summary (2026-08-28) -- see backend
+                // HoodAiSummaryService's own doc comment. Never shown without this
+                // visible "AI" disclosure badge, same convention this session's Maps
+                // AI-summary work already established.
+                post.aiSummary?.let { summary ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp)).padding(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("AI", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.background(Ids.colors.brand, RoundedCornerShape(4.dp)).padding(horizontal = 5.dp, vertical = 2.dp))
+                        Text(summary, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
                 }
                 // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
                 // "view" navigation: it adds the tapper to a real GroupConversation
