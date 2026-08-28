@@ -15,6 +15,13 @@ dependencies {
     // For RateLimiter -- same anti-spam convention every other user-facing endpoint in
     // this codebase already has (search/directions are cheap to call in a loop otherwise).
     implementation(project(":auth"))
+    // Real consolidated place-detail endpoint (itunda Maps redesign, 2026-08-28) --
+    // MapsPlaceDetailService reuses EatsReviewService's real rating/tag data and
+    // MerchantUpdateService's real news feed directly rather than duplicating them.
+    // Confirmed no circular module dependency first: neither :eats nor :merchant
+    // depends on :maps.
+    implementation(project(":eats"))
+    implementation(project(":merchant"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

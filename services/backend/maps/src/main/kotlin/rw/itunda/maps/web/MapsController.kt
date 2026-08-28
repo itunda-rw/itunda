@@ -40,7 +40,16 @@ import rw.itunda.maps.RouteNotFoundException
 // comment. Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/maps")
-class MapsController(private val mapsService: MapsService, private val liveLocationShareService: LiveLocationShareService) {
+class MapsController(
+    private val mapsService: MapsService,
+    private val liveLocationShareService: LiveLocationShareService,
+    private val mapsPlaceDetailService: rw.itunda.maps.MapsPlaceDetailService,
+) {
+    // Real consolidated place-detail endpoint -- see MapsPlaceDetailService's own doc
+    // comment.
+    @GetMapping("/places/{merchantId}")
+    fun placeDetail(@PathVariable merchantId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "place" to mapsPlaceDetailService.getPlaceDetail(merchantId)))
 
     @GetMapping("/search")
     fun search(@RequestParam q: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
@@ -326,6 +335,10 @@ class MapsController(private val mapsService: MapsService, private val liveLocat
     @ExceptionHandler(InvalidMapsCoordinateException::class)
     fun handleInvalidCoordinate(ex: InvalidMapsCoordinateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(rw.itunda.merchant.MerchantNotFoundException::class)
+    fun handleMerchantNotFound(ex: rw.itunda.merchant.MerchantNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidMapsItineraryException::class)
     fun handleInvalidItinerary(ex: InvalidMapsItineraryException) =
