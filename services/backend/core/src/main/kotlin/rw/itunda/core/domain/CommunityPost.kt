@@ -109,6 +109,15 @@ class CommunityPost(
     @Column(nullable = true)
     var capacity: Int? = null,
 
+    // Real self-hosted AI 모임 summary (itunda Hood redesign, 2026-08-28) -- see
+    // HoodAiSummaryService's own doc comment. Only ever generated for category ==
+    // "meetup"; null for every other post, forever.
+    @Column(name = "ai_summary", nullable = true, length = 500)
+    var aiSummary: String? = null,
+
+    @Column(name = "ai_summary_generated_at", nullable = true)
+    var aiSummaryGeneratedAt: Instant? = null,
+
     // Comments, likes, removal, and first-meetup initialization all update this row.
     // Versioning protects its cached counters and group linkage from lost updates.
     @Version
