@@ -46,6 +46,13 @@ class MapsController(private val mapsService: MapsService, private val liveLocat
     fun search(@RequestParam q: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "results" to mapsService.searchPlaces(currentUser.userId, q)))
 
+    // Real Kigali weather chip -- see KigaliWeatherClient's own doc comment.
+    @GetMapping("/weather")
+    fun weather(): ResponseEntity<Map<String, Any?>> {
+        val weather = mapsService.getWeather() ?: return ResponseEntity.ok(mapOf("success" to true, "weather" to null))
+        return ResponseEntity.ok(mapOf("success" to true, "weather" to weather))
+    }
+
     @GetMapping("/reverse")
     fun reverse(
         @RequestParam lat: Double,

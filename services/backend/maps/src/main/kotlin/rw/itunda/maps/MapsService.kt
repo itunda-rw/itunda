@@ -12,6 +12,8 @@ import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
 import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.repository.MapBookmarkRepository
+import rw.itunda.core.weather.KigaliWeather
+import rw.itunda.core.weather.KigaliWeatherClient
 import java.time.Duration
 import java.util.UUID
 
@@ -44,9 +46,15 @@ class MapsService(
     private val osrmRoutingClient: OsrmRoutingClient,
     private val rateLimiter: RateLimiter,
     private val mapBookmarkRepository: MapBookmarkRepository,
+    private val kigaliWeatherClient: KigaliWeatherClient,
 ) {
     /** An ordered stop in an itinerary, using itunda's `[lat, lng]` convention. */
     data class ItineraryWaypoint(val latitude: Double, val longitude: Double)
+
+    // Real Kigali weather chip -- see KigaliWeatherClient's own doc comment. Null if
+    // the real upstream is unreachable and there's no still-fresh cache -- never a
+    // fabricated reading.
+    fun getWeather(): KigaliWeather? = kigaliWeatherClient.current()
 
     // Real anti-spam limit -- same convention every other user-facing endpoint in this
     // codebase already has (search-as-you-type is easy to hammer otherwise).
