@@ -35,11 +35,8 @@ export type TranslationKey =
   | 'login.signIn'
   | 'login.connectionError'
   // Real 2nd-localization-pass additions (2026-08-15): MerchantDashboard's own nav
-  // shell -- visible on every session regardless of which tab a merchant is using,
-  // same "the shell every session hits" reasoning that made bank-mfe's own Home/
-  // Overview tab its own 2nd priority screen. Individual tab CONTENT screens
-  // (CollectScreen, PosScreen, etc.) are each their own much larger file and are a
-  // real, separate, not-yet-done follow-up -- named honestly, not silently folded in.
+  // shell, visible on every session. Individual tab CONTENT screens are each their
+  // own separate follow-up, named honestly, not silently folded in.
   | 'dashboard.loadError'
   | 'dashboard.signOut'
   | 'tabs.collect'
@@ -51,6 +48,7 @@ export type TranslationKey =
   | 'tabs.reviews'
   | 'tabs.billing'
   | 'tabs.coupons'
+  | 'tabs.visitors'
   | 'tabs.ads'
   | 'tabs.business'
   | 'tabs.cashAdvance'
@@ -484,10 +482,8 @@ export type TranslationKey =
   | 'pos.creating'
   | 'pos.pastDealsSingular'
   | 'pos.pastDealsPlural'
-  // Real 15th (and final)-localization-pass additions (2026-08-15): SettingsScreen --
-  // the last remaining tab-content screen, closing merchant-mfe's entire backlog.
-  // Covers webhook config, followers broadcast, API integration, devices, category,
-  // store settings, Eats Club opt-in, fee waiver, and KYB verification.
+  // Real 15th (and final)-localization-pass additions (2026-08-15): SettingsScreen,
+  // closing merchant-mfe's entire backlog (webhooks, followers, API, devices, KYB).
   | 'settings.saveError'
   | 'settings.saved'
   | 'settings.saving'
@@ -621,6 +617,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.reviews': 'Reviews',
     'tabs.billing': 'Billing',
     'tabs.coupons': 'Coupons',
+    'tabs.visitors': 'Visitors',
     'tabs.ads': 'Ads',
     'tabs.business': 'Business',
     'tabs.cashAdvance': 'Cash advance',
@@ -1152,6 +1149,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.reviews': 'Ibitekerezo',
     'tabs.billing': 'Kwishyura',
     'tabs.coupons': 'Amakuponi',
+    'tabs.visitors': 'Abasuye',
     'tabs.ads': 'Kwamamaza',
     'tabs.business': 'Ubucuruzi',
     'tabs.cashAdvance': 'Inguzanyo y\'amafaranga',
@@ -1683,6 +1681,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.reviews': 'Avis',
     'tabs.billing': 'Facturation',
     'tabs.coupons': 'Coupons',
+    'tabs.visitors': 'Visiteurs',
     'tabs.ads': 'Publicités',
     'tabs.business': 'Entreprise',
     'tabs.cashAdvance': 'Avance de trésorerie',

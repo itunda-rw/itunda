@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, Utensils, UtensilsCrossed, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
@@ -19,9 +19,10 @@ import ReportsScreen from './screens/ReportsScreen';
 import ReviewsScreen from './screens/ReviewsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import VendorCashAdvanceScreen from './screens/VendorCashAdvanceScreen';
+import VisitorAnalyticsScreen from './screens/VisitorAnalyticsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
 // Real 2nd-localization-pass (2026-08-15): labelKey replaces a literal string so the
 // nav renders in the merchant's own chosen language -- see i18n/translations.ts's own
@@ -46,6 +47,7 @@ const TABS: { id: Tab; labelKey: TranslationKey; icon: typeof QrCode }[] = [
   { id: 'reviews', labelKey: 'tabs.reviews', icon: Star },
   { id: 'billing', labelKey: 'tabs.billing', icon: CreditCard },
   { id: 'coupons', labelKey: 'tabs.coupons', icon: Tag },
+  { id: 'visitors', labelKey: 'tabs.visitors', icon: Users2 },
   { id: 'ads', labelKey: 'tabs.ads', icon: Megaphone },
   { id: 'business', labelKey: 'tabs.business', icon: Briefcase },
   // Real Isoko Vendor Cash Advance (item 210) -- see lib/vendorCashAdvance.ts's own
@@ -189,6 +191,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'reviews' && <ReviewsScreen merchant={merchant} />}
         {tab === 'billing' && <BillingScreen />}
         {tab === 'coupons' && <CouponsScreen />}
+        {tab === 'visitors' && <VisitorAnalyticsScreen />}
         {tab === 'ads' && <AdsScreen />}
         {tab === 'business' && <BusinessAccountScreen />}
         {tab === 'advance' && <VendorCashAdvanceScreen merchant={merchant} />}
