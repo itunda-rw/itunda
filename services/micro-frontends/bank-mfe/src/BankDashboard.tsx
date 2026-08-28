@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Bot, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, Megaphone, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, Bike, Bot, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, Link as LinkIcon, LogOut, Megaphone, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
 import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
@@ -131,11 +131,12 @@ import {
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
 import {
-  fetchCallHistory, setConversationFavorite,
+  extractLinks, fetchCallHistory, setConversationFavorite,
   type CallSession, type ConversationSummaryWithFavorite,
 } from './lib/talk';
 import { TalkAiChatThread, TalkServiceChannelThread } from './TalkThreads';
 import { TalkGroupAnnouncementPoll } from './TalkGroupAnnouncementPoll';
+import { TalkLinksModal } from './TalkLinksTab';
 import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   sendGroupEmoticon,
@@ -8192,6 +8193,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+  // Real Links tab (itunda Talk redesign, 2026-08-28) -- see TalkLinksTab.tsx's own
+  // doc comment, mirrors showMediaGallery's exact shape.
+  const [showLinks, setShowLinks] = useState(false);
   // Real 1:1-chat split-bill (2026-08-09) -- see DirectSplitBillsView's own doc
   // comment; mirrors GroupThread's own identical showSplitBills toggle.
   const [showSplitBills, setShowSplitBills] = useState(false);
@@ -8596,6 +8600,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', marginLeft: 'auto' }} aria-label="Shared photos">
           <ImageIcon size={20} />
         </button>
+        <button type="button" onClick={() => setShowLinks(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)' }} aria-label="Shared links">
+          <LinkIcon size={20} />
+        </button>
         <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)' }} aria-label="Split a bill">
           <Receipt size={20} />
         </button>
@@ -8618,6 +8625,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           imageUrls={(messages ?? []).map((m) => m.imageUrl).filter((u): u is string => !!u).reverse()}
           onClose={() => setShowMediaGallery(false)}
         />
+      )}
+      {showLinks && (
+        <TalkLinksModal links={extractLinks((messages ?? []).map((m) => m.body))} onClose={() => setShowLinks(false)} />
       )}
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -8973,6 +8983,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+  // Real Links tab (itunda Talk redesign, 2026-08-28) -- see TalkLinksTab.tsx's own
+  // doc comment, mirrors showMediaGallery's exact shape.
+  const [showLinks, setShowLinks] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -9226,6 +9239,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Shared photos">
             <ImageIcon size={20} />
           </button>
+          <button type="button" onClick={() => setShowLinks(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Shared links">
+            <LinkIcon size={20} />
+          </button>
           <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Manage members">
             <Users size={20} />
           </button>
@@ -9243,6 +9259,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           imageUrls={(messages ?? []).map((m) => m.imageUrl).filter((u): u is string => !!u).reverse()}
           onClose={() => setShowMediaGallery(false)}
         />
+      )}
+      {showLinks && (
+        <TalkLinksModal links={extractLinks((messages ?? []).map((m) => m.body))} onClose={() => setShowLinks(false)} />
       )}
 
       {pinnedMessage && (

@@ -102,3 +102,17 @@ export interface CallSession {
 
 export const fetchCallHistory = () =>
   apiFetch<{ success: boolean; calls: CallSession[] }>('/api/v1/calls/history').then((r) => r.calls);
+
+// Real Links tab (see TalkLinksTab.tsx's own doc comment) -- pure client-side
+// extraction over already-fetched message bodies, no new backend endpoint.
+const URL_REGEX = /https?:\/\/[^\s]+/g;
+
+export function extractLinks(bodies: (string | null | undefined)[]): string[] {
+  const links: string[] = [];
+  for (const body of bodies) {
+    if (!body) continue;
+    const matches = body.match(URL_REGEX);
+    if (matches) links.push(...matches);
+  }
+  return links.reverse();
+}
