@@ -45,6 +45,15 @@ class JobApplication(
     @Column(name = "responded_at")
     var respondedAt: Instant? = null,
 
+    // Real résumé attach at submission time (itunda Hood redesign, 2026-08-28) -- a
+    // real JSON snapshot of the applicant's Resume/ResumeExperience/ResumeEducation/
+    // ResumeCertification rows as they stood the moment this application was
+    // submitted, not a live resumeId reference -- a later resume edit must never
+    // retroactively change what a poster already saw on a pending/decided
+    // application. Null means the applicant had no resume built yet at apply time.
+    @Column(name = "resume_snapshot_json", nullable = true, columnDefinition = "TEXT")
+    var resumeSnapshotJson: String? = null,
+
     // A poster may respond from multiple sessions; only one terminal decision should
     // resolve a pending application.
     @Version

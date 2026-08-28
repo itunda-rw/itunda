@@ -31,7 +31,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_1", "poster_1")
         every { jobPostRepository.findById("job_post_1") } returns Optional.of(post)
@@ -64,7 +66,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_2", "poster_2")
         every { jobPostRepository.findById("job_post_2") } returns Optional.of(post)
@@ -94,7 +98,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_3", "poster_3")
         every { jobPostRepository.findById("job_post_3") } returns Optional.of(post)
@@ -123,7 +129,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_4", "poster_4")
         every { jobPostRepository.findById("job_post_4") } returns Optional.of(post)
@@ -146,7 +154,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>(relaxed = true)
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_5", "poster_5").apply { status = JobPostStatus.FILLED }
         every { jobPostRepository.findById("job_post_5") } returns Optional.of(post)
@@ -168,7 +178,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_6", "poster_6")
         val application = JobApplication(id = "job_application_1", jobPostId = "job_post_6", applicantId = "applicant_6", message = "Pick me")
@@ -193,7 +205,9 @@ class JobApplicationServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService)
+        val resumeService = mockk<ResumeService>(relaxed = true)
+        val objectMapper = mockk<com.fasterxml.jackson.databind.ObjectMapper>(relaxed = true)
+        val service = JobApplicationService(jobApplicationRepository, jobPostRepository, rateLimiter, messagingService, resumeService, objectMapper)
 
         val post = openJobPost("job_post_7", "poster_7")
         val application = JobApplication(id = "job_application_2", jobPostId = "job_post_7", applicantId = "applicant_7", message = "Pick me")

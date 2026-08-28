@@ -1,5 +1,6 @@
 package rw.itunda.jobs
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
@@ -34,6 +35,8 @@ class JobApplicationService(
     private val jobPostRepository: JobPostRepository,
     private val rateLimiter: RateLimiter,
     private val messagingService: MessagingService,
+    private val resumeService: ResumeService,
+    private val objectMapper: ObjectMapper,
 ) {
     @Transactional
     fun apply(applicantId: String, jobPostId: String, message: String): JobApplication {
@@ -67,8 +70,20 @@ class JobApplicationService(
             throw JobApplicationAlreadyPendingException("You already have a pending application for this job post")
         }
 
+        // Real résumé attach at submission time -- see JobApplication.resumeSnapshotJson's
+        // own doc comment for why this is a snapshot, not a live resumeId reference.
+        // Best-effort: a serialization hiccup must never block a real application.
+        val resumeSnapshotJson = try {
+            resumeService.getResume(applicantId).takeIf { it.resume != null }?.let { objectMapper.writeValueAsString(it) }
+        } catch (e: Exception) {
+            null
+        }
+
         return jobApplicationRepository.save(
-            JobApplication(id = "job_application_${UUID.randomUUID()}", jobPostId = jobPostId, applicantId = applicantId, message = trimmedMessage),
+            JobApplication(
+                id = "job_application_${UUID.randomUUID()}", jobPostId = jobPostId, applicantId = applicantId,
+                message = trimmedMessage, resumeSnapshotJson = resumeSnapshotJson,
+            ),
         )
     }
 
