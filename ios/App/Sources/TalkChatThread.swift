@@ -64,6 +64,7 @@ struct ChatThreadScreen: View {
     // Transfer/Savings via TransferFlowContainer/SavingsFlowContainer.
     @State private var needsDeviceVerification = false
     @State private var pendingGiftRetry: (() async -> Void)?
+    @State private var showRoomInfo = false // Real Links tab + room settings -- see TalkRoomInfo.swift.
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -86,6 +87,7 @@ struct ChatThreadScreen: View {
                     Image(systemName: "photo.on.rectangle").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Shared photos")
+                Button(action: { showRoomInfo = true }) { Image(systemName: "link").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40) }.accessibilityLabel("Room info")
                 Button(action: { showSplitBills = true }) {
                     Image(systemName: "receipt").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
@@ -426,6 +428,7 @@ struct ChatThreadScreen: View {
         .sheet(isPresented: $showMediaGallery) {
             MediaGalleryView(imageUrls: (messages ?? []).compactMap { $0.imageUrl }.reversed())
         }
+        .sheet(isPresented: $showRoomInfo) { TalkRoomInfoView(roomId: conversation.conversationId, texts: (messages ?? []).map { $0.body }) }
         .sheet(isPresented: $showSplitBills) {
             DirectSplitBillsView(otherUserId: conversation.otherUserId, otherUserName: conversation.otherUserName, currentUserId: currentUserId)
         }

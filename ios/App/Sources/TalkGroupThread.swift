@@ -83,6 +83,9 @@ struct GroupThreadScreen: View {
     // Real group 공지/투표 (announcement/poll) (itunda Talk redesign, 2026-08-28) --
     // see TalkGroupAnnouncementPoll.swift's own doc comment.
     @State private var showAnnouncementPoll = false
+    // Real Links tab + room settings (itunda Talk redesign, 2026-08-28) -- see
+    // TalkRoomInfo.swift's own doc comment.
+    @State private var showRoomInfo = false
     // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
     // NetworkClient.sendGroupEmoticon's own doc comment. 1:1 chat has had this since
     // the Emoticon Store shipped; group chat never got a client for the identical,
@@ -152,6 +155,10 @@ struct GroupThreadScreen: View {
                     Image(systemName: "megaphone").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Announcement and polls")
+                Button(action: { showRoomInfo = true }) {
+                    Image(systemName: "link").font(IDS.scaledFont(size: 18, weight: .regular, relativeTo: .title3)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Room info")
             }
             .padding(.horizontal, 8)
 
@@ -360,6 +367,9 @@ struct GroupThreadScreen: View {
         }
         .sheet(isPresented: $showAnnouncementPoll) {
             TalkGroupAnnouncementPollView(groupId: group.groupId)
+        }
+        .sheet(isPresented: $showRoomInfo) {
+            TalkRoomInfoView(roomId: group.groupId, texts: (messages ?? []).map { $0.body })
         }
         .sheet(isPresented: $showSplitBills) {
             GroupSplitBillsView(groupConversationId: group.groupId, members: members, currentUserId: currentUserId)

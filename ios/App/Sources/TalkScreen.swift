@@ -54,15 +54,19 @@ struct TalkScreen: View {
     var body: some View {
         Group {
             if let openConversation {
-                ChatThreadScreen(conversation: openConversation, onBack: {
-                    self.openConversation = nil
-                    Task { await loadConversations() }
-                })
+                RoomLockGate(roomId: openConversation.conversationId) {
+                    ChatThreadScreen(conversation: openConversation, onBack: {
+                        self.openConversation = nil
+                        Task { await loadConversations() }
+                    })
+                }
             } else if let openGroup {
-                GroupThreadScreen(group: openGroup, onBack: {
-                    self.openGroup = nil
-                    Task { await loadGroups() }
-                })
+                RoomLockGate(roomId: openGroup.groupId) {
+                    GroupThreadScreen(group: openGroup, onBack: {
+                        self.openGroup = nil
+                        Task { await loadGroups() }
+                    })
+                }
             } else {
                 listBody
             }
