@@ -49,6 +49,7 @@ data class ConversationSummary(
     val pinnedMessageId: String?,
     val archived: Boolean,
     val pinnedToTop: Boolean,
+    val favorite: Boolean,
 )
 data class TalkContact(val userId: String, val name: String)
 
@@ -147,10 +148,7 @@ class MessagingService(
         requireParticipant(userId, conversationId)
 
     // Real message forwarding (2026-07-25) -- see MessageForwardService.forward's own
-    // doc comment. Resolves the real source message server-side, verifying the
-    // forwarder actually had access to read it (was a real participant in its
-    // conversation) -- never trusts a client-asserted body/source, same discipline
-    // this service already applies everywhere else.
+    // doc comment. Resolves the source message server-side, verifying real read access.
     fun getMessageForParticipant(userId: String, messageId: String): Message {
         val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
         requireParticipant(userId, message.conversationId)
@@ -336,10 +334,7 @@ class MessagingService(
     }
 
     // Real online/offline presence (2026-07-19) -- reads the real WebSocket session
-    // registry via RealtimeMessagePublisher.isOnline, never a fabricated status. No
-    // participant/membership check on the requested ids -- presence is a real,
-    // low-sensitivity signal (same as any messaging app showing a contact's online
-    // dot without requiring an existing conversation first).
+    // registry, never fabricated. No membership check -- low-sensitivity signal.
     fun getPresence(userIds: List<String>): Map<String, Boolean> =
         userIds.distinct().associateWith { realtimeMessagePublisher.isOnline(it) }
 
@@ -351,17 +346,9 @@ class MessagingService(
             .distinctBy { it.userId }.sortedBy { it.name.lowercase() }
     }
 
-    // Real KakaoTalk "오늘의 생일" (Today's Birthday) (2026-08-17) -- KakaoTalk's own real
-    // feature: friends with a birthday today surface in a dedicated section at the top
-    // of the friend list, letting you message or gift them directly without hunting
-    // through the full contact list. Reuses the exact same real Talk-contact pool
-    // listTalkContacts already establishes (a contact must be a saved phone contact who
-    // is also a real itunda user -- never a public search that would leak a stranger's
-    // birthday) and the real, already-settable User.birthDate
-    // (POST /auth/profile/birth-date, previously only used for Mini-account age-
-    // eligibility). Only ever compares month+day, never year, since a birthday recurs
-    // annually regardless of age. Africa/Kigali local date, same real-timezone
-    // convention Merchant.isClosedToday() already established.
+    // Real KakaoTalk "오늘의 생일" (Today's Birthday) (2026-08-17) -- reuses the same
+    // real Talk-contact pool listTalkContacts establishes (never a public search) and
+    // the real User.birthDate. Only ever compares month+day (Africa/Kigali local date).
     fun getTodaysBirthdays(userId: String): List<TalkContact> {
         val contacts = contactRepository.findByUserId(userId)
         val usersByPhone = userRepository.findAllByPhoneNumberIn(contacts.map { it.phoneNumber }.distinct()).associateBy { it.phoneNumber }
@@ -374,10 +361,8 @@ class MessagingService(
         }.distinctBy { it.userId }.sortedBy { it.name.lowercase() }
     }
 
-    // Real emoji reactions (2026-07-19) -- closes the "message reactions" item on the
-    // Talk polish roadmap. Deliberately a toggle: tapping an already-active reaction
-    // removes it rather than erroring, the same "add is idempotent-by-toggling, not by
-    // 409ing" UX [[project_itunda_toss_parity]] already established for Eats favorites.
+    // Real emoji reactions (2026-07-19) -- deliberately a toggle: tapping an
+    // already-active reaction removes it rather than erroring (idempotent-by-toggling).
     @Transactional
     fun toggleReaction(userId: String, messageId: String, emoji: String): List<ReactionGroup> {
         val trimmedEmoji = emoji.trim()
@@ -408,8 +393,7 @@ class MessagingService(
         return reactions
     }
 
-    // Real batch fetch (2026-07-19) -- backs attaching a reaction summary to every
-    // message in a fetched page with a single query, not one query per message.
+    // Real batch fetch (2026-07-19) -- one query for every message's reactions, not one per message.
     fun getReactionSummaries(messageIds: List<String>): Map<String, List<ReactionGroup>> {
         if (messageIds.isEmpty()) return emptyMap()
         return messageReactionRepository.findByMessageIdIn(messageIds)
@@ -464,19 +448,8 @@ class MessagingService(
         return page
     }
 
-    // Real batch fetch (2026-07-19, found in a security/performance sweep) -- was a real
-    // N+1: up to 3 queries per conversation (other-user lookup, last message, unread
-    // count), so a real 20-item page cost up to 60 queries. Now 4 queries total
-    // regardless of page size: the page itself, one batched `findAllById` for every
-    // other-participant's real name, one batched ordered fetch for last messages
-    // (grouped in-app to "first per conversationId", see
-    // MessageRepository.findByConversationIdInOrderBySentAtDesc's own doc comment for
-    // the real bound this relies on), and one batched GROUP BY for unread counts.
-    // Real recoverable archive (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk
-    // recommendation #4's own archive half (swipe gesture is a client-only concern,
-    // wired separately per platform). `archived` toggles which real DB-level query
-    // below runs; defaults to the non-archived list, matching every existing caller's
-    // expectation of "my active conversations" with zero behavior change for them.
+    // Real batch fetch (2026-07-19): 4 queries total regardless of page size (was
+    // up to 3/conversation). `archived` (2026-08-05) toggles the DB-level query.
     fun listConversations(userId: String, pageable: Pageable, archived: Boolean = false): Page<ConversationSummary> {
         val page = if (archived) conversationRepository.findByParticipantArchived(userId, pageable)
         else conversationRepository.findByParticipantNotArchived(userId, pageable)
@@ -512,6 +485,7 @@ class MessagingService(
                 pinnedMessageId = conversation.pinnedMessageId,
                 archived = preference?.archived ?: false,
                 pinnedToTop = preference?.pinned ?: false,
+                favorite = preference?.favorite ?: false,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)
@@ -570,5 +544,31 @@ class MessagingService(
     fun isConversationPinnedToTop(userId: String, conversationId: String): Boolean {
         requireParticipant(userId, conversationId)
         return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.pinned ?: false
+    }
+
+    // Real "favorite" chat (2026-08-28) -- see ConversationPreference.favorite.
+    @Transactional
+    fun setConversationFavorite(userId: String, conversationId: String, favorite: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (favorite) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    favorite = true,
+                ),
+            )
+        } else {
+            preference.favorite = favorite
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationFavorite(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.favorite ?: false
     }
 }

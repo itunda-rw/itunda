@@ -257,6 +257,7 @@ class MessagingServiceTest : BehaviorSpec({
             }
         }
 
+
         When("a recipient tries to delete another person's direct message") {
             val conversation = Conversation(id = "conversation_delete_owner", participantAId = "user_a", participantBId = "user_b")
             val message = Message(id = "message_delete_owner", conversationId = "conversation_delete_owner", senderId = "user_a", body = "keep")

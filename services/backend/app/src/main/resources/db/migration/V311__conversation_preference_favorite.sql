@@ -1,0 +1,1 @@
+ALTER TABLE conversation_preferences ADD COLUMN favorite BOOLEAN NOT NULL DEFAULT FALSE;

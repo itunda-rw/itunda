@@ -50,6 +50,7 @@ data class ToggleReactionRequest(val emoji: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
 data class SetConversationArchivedRequest(val archived: Boolean)
 data class SetConversationPinnedToTopRequest(val pinned: Boolean)
+data class SetConversationFavoriteRequest(val favorite: Boolean)
 // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
 data class ForwardMessageRequest(val destinationType: String, val destinationId: String)
 
@@ -314,6 +315,25 @@ class MessagingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "pinned" to messagingService.isConversationPinnedToTop(currentUser.userId, conversationId)))
+
+    // Real KakaoTalk-style "favorite" chat (itunda Talk redesign, 2026-08-28) -- see
+    // ConversationPreference.favorite's own doc comment.
+    @PostMapping("/conversations/{conversationId}/favorite")
+    fun setConversationFavorite(
+        @PathVariable conversationId: String,
+        @RequestBody request: SetConversationFavoriteRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> {
+        messagingService.setConversationFavorite(currentUser.userId, conversationId, request.favorite)
+        return ResponseEntity.ok(mapOf("success" to true, "favorite" to request.favorite))
+    }
+
+    @GetMapping("/conversations/{conversationId}/favorite")
+    fun getConversationFavorite(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "favorite" to messagingService.isConversationFavorite(currentUser.userId, conversationId)))
 
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
     // own doc comment. Works for any set of user ids, not just 1:1 conversation

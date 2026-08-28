@@ -49,6 +49,15 @@ class ConversationPreference(
     @Column(name = "pinned", nullable = false)
     var pinned: Boolean = false,
 
+    // Real KakaoTalk-style "favorite" chat (itunda Talk redesign, 2026-08-28) --
+    // same private-to-one-participant model as every other preference here. Scoped
+    // to 1:1 conversations only for now, matching this table's own scope -- group
+    // chat has no equivalent per-user preference entity yet (no quiet/archived/
+    // pinned-to-top on a GroupConversation either), so this isn't a new gap, just
+    // consistent with what already exists.
+    @Column(name = "favorite", nullable = false)
+    var favorite: Boolean = false,
+
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 ) {
