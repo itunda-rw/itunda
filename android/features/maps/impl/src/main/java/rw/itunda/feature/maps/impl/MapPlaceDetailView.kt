@@ -32,26 +32,26 @@ import rw.itunda.core.designsystem.itundaface.ClockGlyph
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BusTripDto
 import rw.itunda.core.network.EatsReviewDto
+import rw.itunda.core.network.MapPlaceDetailDto
 import rw.itunda.core.network.MapsDirectionsResponse
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.RouteResultDto
 import rw.itunda.core.network.ShoppingMerchantDto
+import rw.itunda.core.network.TransitJourneyDto
 
 // Extracted from MapScreen's own bottom-sheet lambda (2026-08-20), same real reason
 // SharedFolderSection/ItineraryBuilderCard/AroundYouSection/MapTopChrome were already
-// extracted before it. Pure "values in, callbacks out" rendering -- MapScreen still
-// owns every var this reads; only the UI tree itself lives here now. The two locally-
-// defined closures the original inline block had (fetchDirections/clearRoute) stay as
-// real functions in MapScreen (they need routing/error/myLocation/etc, the same vars
-// every other MapScreen closure already touches) and are passed down as plain
-// callbacks, same as every other write-site here.
+// extracted before it. Pure "values in, callbacks out" rendering -- MapScreen still owns
+// every var this reads; fetchDirections/clearRoute stay real functions in MapScreen
+// (they need routing/error/myLocation/etc) and are passed down as plain callbacks.
 @Composable
 internal fun PlaceDetailAndRouteView(
     place: PlaceSearchResultDto,
     selectedMerchant: ShoppingMerchantDto?,
     placeProducts: List<MerchantProductDto>?,
     placeReviews: List<EatsReviewDto>?,
+    placeDetail: MapPlaceDetailDto?,
     placeTab: PlaceTab,
     followedMerchantIds: Set<String>,
     following: Boolean,
@@ -69,6 +69,8 @@ internal fun PlaceDetailAndRouteView(
     otherModeEtaMinutes: Double?,
     busSearching: Boolean,
     busTrips: List<BusTripDto>?,
+    transitSearching: Boolean,
+    transitJourneys: List<TransitJourneyDto>?,
     routeAlternatives: List<RouteResultDto>?,
     selectedRouteIndex: Int,
     showSteps: Boolean,
@@ -87,6 +89,7 @@ internal fun PlaceDetailAndRouteView(
     onConfirmSaveToFolder: () -> Unit,
     onCancelSaveToFolder: () -> Unit,
     onSearchBus: (String) -> Unit,
+    onSearchTransit: () -> Unit,
     onSelectRouteAlternative: (Int, RouteResultDto) -> Unit,
     onToggleShowSteps: () -> Unit,
     onStartNavigation: () -> Unit,
@@ -152,8 +155,7 @@ internal fun PlaceDetailAndRouteView(
                     onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$callNumber"))) },
                 )
             }
-            // Real "배달" (Delivery) pill (2026-08-09) -- only shown when this merchant
-            // genuinely has a real orderable catalog.
+            // Real "배달" (Delivery) pill (2026-08-09) -- only when a real orderable catalog exists.
             if (selectedMerchant != null && !placeProducts.isNullOrEmpty()) {
                 PlaceActionPill(
                     icon = "🛵",
@@ -176,21 +178,29 @@ internal fun PlaceDetailAndRouteView(
             }
         }
         if (matchedMerchant != null) {
-            // Real "Itunda Places" tab row (2026-08-09) -- Menu/Reviews only appear
-            // once the real fetch actually returned content, never as an empty promise.
+            // Real "Itunda Places" tab row (2026-08-09) -- each tab only appears once its
+            // real fetch returned content; INFO is unconditional (a real dead-code bug
+            // fixed this pass -- defined in PlaceTab but never added to this row before).
             val showMenuTab = !placeProducts.isNullOrEmpty()
             val showReviewsTab = !placeReviews.isNullOrEmpty()
-            if (showMenuTab || showReviewsTab) {
+            val showPhotosTab = !placeDetail?.photoUrls.isNullOrEmpty() || placeDetail?.photoUrl != null
+            val showNewsTab = !placeDetail?.updates.isNullOrEmpty()
+            if (showMenuTab || showReviewsTab || showPhotosTab || showNewsTab) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                     listOfNotNull(
                         PlaceTab.HOME,
                         PlaceTab.MENU.takeIf { showMenuTab },
                         PlaceTab.REVIEWS.takeIf { showReviewsTab },
+                        PlaceTab.PHOTOS.takeIf { showPhotosTab },
+                        PlaceTab.NEWS.takeIf { showNewsTab },
+                        PlaceTab.INFO,
                     ).forEach { tab ->
                         val label = when (tab) {
                             PlaceTab.HOME -> "Home"
                             PlaceTab.MENU -> "Menu (${placeProducts?.size ?: 0})"
                             PlaceTab.REVIEWS -> "Reviews (${placeReviews?.size ?: 0})"
+                            PlaceTab.PHOTOS -> "Photos"
+                            PlaceTab.NEWS -> "News"
                             PlaceTab.INFO -> "Info"
                         }
                         val active = placeTab == tab
@@ -258,7 +268,14 @@ internal fun PlaceDetailAndRouteView(
                 }
             }
         }
+        if (matchedMerchant != null && placeTab == PlaceTab.PHOTOS) {
+            PlacePhotosTab(placeDetail)
+        }
+        if (matchedMerchant != null && placeTab == PlaceTab.NEWS) { PlaceNewsTab(placeDetail) }
+        if (matchedMerchant != null && placeTab == PlaceTab.INFO) { PlaceInfoTab(matchedMerchant.category, matchedMerchant.openingHours, matchedMerchant.phoneNumber) }
         if (matchedMerchant != null && placeTab == PlaceTab.REVIEWS) {
+            // Real preset-tag aggregate (2026-08-28) -- real counts from real submitted tags only, never fabricated.
+            PlaceGoodPointsRow(placeDetail)
             // Real transaction-verified reviews (2026-08-09) -- the exact same
             // EatsReviewDto Eats' own review UI already renders.
             Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -294,6 +311,10 @@ internal fun PlaceDetailAndRouteView(
             }
         }
         if (matchedMerchant != null && placeTab == PlaceTab.HOME) {
+            // Real self-hosted AI summary (2026-08-28, itunda Maps redesign) -- see
+            // AiSummaryService's own doc comment on the backend: generated only from
+            // real, already-known facts, always shown with a visible "AI" disclosure.
+            PlaceAiSummaryCard(placeDetail)
             // Real simplicity fix (2026-08-09) -- grouped into 3 lines: (category ·
             // rating · distance), (cashback · min order), (hours), plus phone as the
             // one real tappable action.
@@ -454,6 +475,8 @@ internal fun PlaceDetailAndRouteView(
                 routing = routing,
                 busSearching = busSearching,
                 busTrips = busTrips,
+                transitSearching = transitSearching,
+                transitJourneys = transitJourneys,
                 routeAlternatives = routeAlternatives,
                 selectedRouteIndex = selectedRouteIndex,
                 showSteps = showSteps,
@@ -462,6 +485,7 @@ internal fun PlaceDetailAndRouteView(
                 onClearRoute = onClearRoute,
                 onFetchDirections = onFetchDirections,
                 onSearchBus = onSearchBus,
+                onSearchTransit = onSearchTransit,
                 onSelectRouteAlternative = onSelectRouteAlternative,
                 onToggleShowSteps = onToggleShowSteps,
                 onStartNavigation = onStartNavigation,

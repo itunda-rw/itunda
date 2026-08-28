@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BusTripDto
+import rw.itunda.core.network.TransitJourneyDto
 
 // Extracted from MapsScreen.kt (2026-08-19) -- see MapStyle.kt's own header comment for
 // the full account of why/how. These three are small, stateless leaf composables/pure
@@ -68,6 +69,44 @@ internal fun BusTripResultsView(placeName: String, busSearching: Boolean, busTri
             }
         }
     }
+}
+
+// Real Kigali GTFS-scheduled transit journeys (2026-08-28, itunda Maps redesign) --
+// separate from BusTripResultsView above (that's itunda's own intercity coach
+// marketplace; this is real published-schedule city transit). Honest
+// schedule-based labeling, same discipline as BusTripResultsView: no fake live-GPS
+// or crowding claim, since Kigali's real transit rollout is itself schedule-based.
+@Composable
+internal fun TransitJourneyResultsView(journeys: List<TransitJourneyDto>?, transitSearching: Boolean) {
+    Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (transitSearching) {
+            Text("Searching real scheduled transit…", fontSize = 13.sp, color = Ids.colors.textSecondary)
+        } else if (journeys.isNullOrEmpty()) {
+            Text("No scheduled transit journey found for this trip right now.", fontSize = 13.sp, color = Ids.colors.textSecondary)
+        } else {
+            journeys.forEach { journey ->
+                val routeLabel = journey.route.shortName ?: journey.route.longName ?: "Transit"
+                Column(
+                    modifier = Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp)).padding(12.dp),
+                ) {
+                    Text(
+                        "🚶 ${"%.1f".format(journey.walkToOriginStopKm)} km → 🚌 $routeLabel → 🚶 ${"%.1f".format(journey.walkFromDestinationStopKm)} km",
+                        fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
+                    )
+                    Text(
+                        "${journey.originStop.name} → ${journey.destinationStop.name} · Scheduled ${formatSecondsAfterMidnight(journey.departureSecondsAfterMidnight)}–${formatSecondsAfterMidnight(journey.arrivalSecondsAfterMidnight)}",
+                        fontSize = 12.sp, color = Ids.colors.textSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatSecondsAfterMidnight(seconds: Int): String {
+    val h = (seconds / 3600) % 24
+    val m = (seconds % 3600) / 60
+    return "%02d:%02d".format(h, m)
 }
 
 @Composable

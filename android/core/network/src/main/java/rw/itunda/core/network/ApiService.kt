@@ -1211,25 +1211,8 @@ data class ShoppingMerchantDto(
 )
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 
-// Real "search this map" + "directions" (2026-07-19) -- see rw.itunda.maps.MapsService's
-// own doc comment on the backend for why these are a new, general-purpose front door
-// onto itunda's already-deployed self-hosted Nominatim/OSRM.
-data class PlaceSearchResultDto(val displayName: String, val latitude: Double, val longitude: Double)
-data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearchResultDto>)
-data class MapsReverseGeocodeResponse(val success: Boolean, val placeName: String?)
-data class RouteStepDto(val instruction: String, val distanceMeters: Double, val streetName: String?)
-data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStepDto> = emptyList())
-data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDto)
-// Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives' own
-// doc comment on the backend. Often just a single-element list -- OSRM itself decides
-// whether a real alternative exists for a given trip.
-data class MapsDirectionsAlternativesResponse(val success: Boolean, val routes: List<RouteResultDto>)
-// Ordered multi-stop directions (2026-07-22). The backend deliberately accepts only
-// 2–5 Rwanda waypoints so the self-hosted OSRM request and the mobile itinerary stay
-// legible. The returned RouteResultDto is one continuous road route through that order.
-data class ItineraryWaypointRequest(val latitude: Double, val longitude: Double)
-data class ItineraryDirectionsRequest(val waypoints: List<ItineraryWaypointRequest>, val mode: String = "DRIVING")
-data class MapsItineraryResponse(val success: Boolean, val route: RouteResultDto)
+// Maps DTOs (search/directions/transit/place-detail/weather) live in MapsDtos.kt
+// (extracted 2026-08-28, itunda Maps redesign, to stay under this file's own baseline).
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
 // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
@@ -3390,6 +3373,23 @@ interface ApiService {
     suspend fun getItineraryDirections(
         @Body request: ItineraryDirectionsRequest,
     ): MapsItineraryResponse
+
+    // Real Kigali GTFS transit journeys (2026-08-28) -- see TransitJourneyDto's own doc comment.
+    @GET("api/v1/maps/directions/transit")
+    suspend fun getTransitDirections(
+        @Query("fromLat") fromLat: Double,
+        @Query("fromLng") fromLng: Double,
+        @Query("toLat") toLat: Double,
+        @Query("toLng") toLng: Double,
+    ): MapsTransitDirectionsResponse
+
+    // Real consolidated place-detail (2026-08-28) -- see MapPlaceDetailDto's own doc comment.
+    @GET("api/v1/maps/places/{merchantId}")
+    suspend fun getMapPlaceDetail(@Path("merchantId") merchantId: String): MapPlaceDetailResponse
+
+    // Real, free, keyless Kigali weather (2026-08-28) -- see KigaliWeatherDto's own doc comment.
+    @GET("api/v1/maps/weather")
+    suspend fun getKigaliWeather(): MapsWeatherResponse
 
     // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) --
     // see rw.itunda.maps.MapsService's own doc comment on the backend.

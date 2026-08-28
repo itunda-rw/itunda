@@ -20,6 +20,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BusTripDto
 import rw.itunda.core.network.MapsDirectionsResponse
 import rw.itunda.core.network.RouteResultDto
+import rw.itunda.core.network.TransitJourneyDto
 
 // Extracted from MapPlaceDetailView.kt (2026-08-20), same real reason every other
 // piece of this bottom sheet was already extracted -- pure "values in, callbacks
@@ -38,6 +39,8 @@ internal fun RoutePlanningView(
     routing: Boolean,
     busSearching: Boolean,
     busTrips: List<BusTripDto>?,
+    transitSearching: Boolean,
+    transitJourneys: List<TransitJourneyDto>?,
     routeAlternatives: List<RouteResultDto>?,
     selectedRouteIndex: Int,
     showSteps: Boolean,
@@ -46,6 +49,7 @@ internal fun RoutePlanningView(
     onClearRoute: () -> Unit,
     onFetchDirections: (String) -> Unit,
     onSearchBus: (String) -> Unit,
+    onSearchTransit: () -> Unit,
     onSelectRouteAlternative: (Int, RouteResultDto) -> Unit,
     onToggleShowSteps: () -> Unit,
     onStartNavigation: () -> Unit,
@@ -59,20 +63,25 @@ internal fun RoutePlanningView(
             modifier = Modifier.pressScaleClickable { onClearRoute() }.padding(bottom = 6.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking", "BUS" to "🚌 Bus").forEach { (mode, label) ->
+            listOf(
+                "DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking", "BIKING" to "🚴 Bike",
+                "BUS" to "🚌 Intercity bus", "TRANSIT" to "🚏 City transit",
+            ).forEach { (mode, label) ->
                 val active = travelMode == mode
-                // Real per-mode precomputed time (2026-08-09) -- Bus has no real
-                // precomputed ETA, so this honestly shows a trip count once searched
-                // instead of a fake time.
-                val eta = if (mode == "BUS") null else if (active) currentRoute.route.durationMinutes else otherModeEtaMinutes
+                // Real per-mode precomputed time (2026-08-09) -- Bus/Transit have no
+                // real precomputed ETA, so this honestly shows a real trip/journey
+                // count once searched instead of a fake time.
+                val eta = if (mode == "BUS" || mode == "TRANSIT") null else if (active) currentRoute.route.durationMinutes else otherModeEtaMinutes
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .weight(1f)
                         .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                        .pressScaleClickable(enabled = !routing && !busSearching) {
+                        .pressScaleClickable(enabled = !routing && !busSearching && !transitSearching) {
                             if (mode == "BUS") {
                                 onSearchBus(placeName)
+                            } else if (mode == "TRANSIT") {
+                                onSearchTransit()
                             } else if (mode != travelMode) {
                                 onFetchDirections(mode)
                             }
@@ -92,15 +101,23 @@ internal fun RoutePlanningView(
                             fontSize = 10.sp,
                             color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
                         )
+                    } else if (mode == "TRANSIT" && active) {
+                        Text(
+                            if (transitSearching) "…" else "${transitJourneys?.size ?: 0} found",
+                            fontSize = 10.sp,
+                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                        )
                     }
                 }
             }
         }
         if (travelMode == "BUS") {
             BusTripResultsView(placeName, busSearching, busTrips)
+        } else if (travelMode == "TRANSIT") {
+            TransitJourneyResultsView(transitJourneys, transitSearching)
         } else {
             Text(
-                "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                "${travelModeIcon(travelMode)} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
                 fontSize = 13.sp, color = Ids.colors.textSecondary,
                 modifier = Modifier.padding(top = 8.dp),
             )
@@ -214,4 +231,12 @@ internal fun RoutePlanningView(
             }
         }
     }
+}
+
+// Real per-mode icon for the real-road (OSRM) result line above -- mirrors web's own
+// travelModeIcon() helper in lib/maps.ts, added once BIKING became a 3rd real mode.
+private fun travelModeIcon(mode: String): String = when (mode) {
+    "DRIVING" -> "🚗"
+    "BIKING" -> "🚴"
+    else -> "🚶"
 }

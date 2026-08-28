@@ -28,6 +28,7 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.itundaface.GlobeGlyph
 import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.KigaliWeatherDto
 import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.core.network.MapBookmarkDto
 import rw.itunda.core.network.NearbyPlaceDto
@@ -39,6 +40,7 @@ import rw.itunda.core.network.ShoppingMerchantDto
 // "values in, callbacks out" rendering -- MapScreen still owns every var this reads.
 @Composable
 internal fun AroundYouSection(
+    weather: KigaliWeatherDto?,
     bookmarks: List<MapBookmarkDto>,
     activeCategory: String?,
     categoryResults: List<NearbyPlaceDto>?,
@@ -64,7 +66,19 @@ internal fun AroundYouSection(
     onMoveFolderColorChange: (String) -> Unit,
     onConfirmMove: () -> Unit,
 ) {
-    Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Ids.colors.textPrimary)
+    // Real, free, keyless Kigali weather (itunda Maps redesign, 2026-08-28) -- see
+    // KigaliWeatherClient's own doc comment on the backend. Renders nothing at all
+    // when the real upstream is unreachable -- never a fabricated reading.
+    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+        Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Ids.colors.textPrimary)
+        if (weather != null) {
+            Text(
+                "${weather.temperatureCelsius.toInt()}° ${weather.condition}" +
+                    (weather.pm2_5?.let { " · PM2.5 ${it.toInt()}" } ?: ""),
+                fontSize = 12.sp, color = Ids.colors.textSecondary,
+            )
+        }
+    }
     val home = bookmarks.firstOrNull { it.folderName.equals("Home", ignoreCase = true) }
     val work = bookmarks.firstOrNull { it.folderName.equals("Work", ignoreCase = true) }
     if (home != null || work != null) {

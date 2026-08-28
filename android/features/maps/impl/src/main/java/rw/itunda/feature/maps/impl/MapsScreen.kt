@@ -122,6 +122,7 @@ import rw.itunda.core.network.EatsReviewDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.core.network.MapBookmarkDto
+import rw.itunda.core.network.MapPlaceDetailDto
 import rw.itunda.core.network.MoveMapBookmarkRequest
 import rw.itunda.core.network.MapsDirectionsResponse
 import rw.itunda.core.network.ItineraryDirectionsRequest
@@ -141,6 +142,8 @@ import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.RecentMapSearchesStore
 import rw.itunda.core.network.RouteResultDto
 import rw.itunda.core.network.BusTripDto
+import rw.itunda.core.network.KigaliWeatherDto
+import rw.itunda.core.network.TransitJourneyDto
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 
@@ -181,64 +184,47 @@ fun MapScreen(
     onBack: () -> Unit,
     initialCategory: String? = null,
     initialSearchQuery: String? = null,
-    // itunda://maps/shared/{userId}/{folderName}, as (ownerUserId, folderName) -- the
-    // receiving half of toggleFolderShare's own share sheet below. Optional/no-op
-    // default so no other MapScreen call site breaks.
+    // itunda://maps/shared/{userId}/{folderName} -- receiving half of toggleFolderShare's
+    // own share sheet below. Optional/no-op default so no other call site breaks.
     initialSharedFolder: Pair<String, String>? = null,
-    // Real "배달" (Delivery) pill (2026-08-09) -- see docs/DESIGN_REFERENCES.md Section
-    // 35's own "named, not built this pass" note for why this needed a new navigation
-    // contract: itunda's Feature-module isolation forbids Maps depending on Eats
-    // directly, so the app shell (the only thing that can see both) supplies this
-    // callback instead. Optional/no-op default so no other MapScreen call site breaks.
+    // Real "배달" (Delivery) pill (2026-08-09) -- itunda's Feature-module isolation forbids
+    // Maps depending on Eats directly, so the app shell supplies this callback instead.
     onOrderDelivery: (merchantId: String, businessName: String) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    // Real dark map style (2026-08-10) -- see mapStyleJson's own doc comment. Read once
-    // at map-open time via `remember`, matching every one-shot MapView setup below.
+    // Real dark map style (2026-08-10) -- read once via `remember`, like every other
+    // one-shot MapView setup below.
     val isDarkMap = isSystemInDarkTheme()
     val styleJson = remember(isDarkMap) { mapStyleJson(isDarkMap) }
     // The cash-out flow deliberately arrives with the public agent network selected.
-    // Keep that intent visible while the customer explores the general-purpose map.
     val isAgentCashDiscovery = initialCategory == "ITUNDA_AGENT"
-    // Must run synchronously during composition, not in a LaunchedEffect -- LaunchedEffect
-    // only fires after composition commits, but `remember { MapView(context) }` below runs
-    // synchronously during this same initial composition, so MapView was being constructed
-    // before MapLibre.getInstance() ever ran, crashing every time with
-    // MapLibreConfigurationException the moment Map was opened.
+    // Must run synchronously during composition, not LaunchedEffect -- `remember { MapView(context) }`
+    // below runs synchronously in this same initial composition, so MapView was being
+    // constructed before MapLibre.getInstance() ever ran, crashing every time.
     remember { MapLibre.getInstance(context) }
 
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>>(emptyList()) }
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PlaceSearchResultDto>?>(null) }
     var searching by remember { mutableStateOf(false) }
-    // Real recent-searches list (2026-07-22) -- see RecentMapSearchesStore's own doc
-    // comment; ported from bank-mfe's own real localStorage-backed feature.
-    val recentSearchesStore = remember { RecentMapSearchesStore(context) }
+    val recentSearchesStore = remember { RecentMapSearchesStore(context) } // ported from bank-mfe
     var recentSearches by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
     var searchFocused by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
     var bookingService by remember { mutableStateOf<MerchantProductDto?>(null) } // moved from Shop, see MapsBooking.kt
-    // Real "Itunda Places" (2026-08-09), directly requested after 16 real Naver Places
-    // screenshots: "like naver places we should have itunda places." itunda already has
-    // real underlying data for a genuine tabbed business-profile page -- not fabricated for
-    // this: real per-merchant products (MerchantProductDto, the same catalog Commerce/Eats
-    // checkout already uses) and real transaction-verified reviews (EatsReviewDto, real
-    // text + rating + optional photo + real owner replies, already used by Eats' own review
-    // UI on all 3 platforms). Both fetched only for a real itunda merchant match (never for
-    // a generic OSM/Nominatim place, which has neither) and both tabs only ever render if
-    // the real fetch actually returned content -- no empty/fake tab shown while loading or
-    // for a merchant that genuinely has none yet.
+    // Real "Itunda Places" (2026-08-09) -- per-merchant products/reviews/detail, fetched
+    // only for a real itunda merchant match; each tab renders only once its own fetch returns content.
     var placeTab by remember { mutableStateOf(PlaceTab.HOME) }
     var placeProducts by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
     var placeReviews by remember { mutableStateOf<List<EatsReviewDto>?>(null) }
-    // Computed once here (shared by the fetch effect below and the detail-sheet render
-    // block) rather than duplicating the same coordinate-match lookup in both places.
+    var placeDetail by remember { mutableStateOf<MapPlaceDetailDto?>(null) }
     val selectedMerchant = selectedPlace?.let { place -> merchants.find { it.latitude == place.latitude && it.longitude == place.longitude } }
     LaunchedEffect(selectedMerchant?.merchantId) {
         placeTab = PlaceTab.HOME
         placeProducts = null
         placeReviews = null
+        placeDetail = null
         val merchantId = selectedMerchant?.merchantId ?: return@LaunchedEffect
         try {
             placeProducts = NetworkClient.apiService.getMerchantProducts(merchantId).products.filter { it.active }
@@ -253,38 +239,27 @@ fun MapScreen(
             // Same honesty: a merchant with no Eats review history (not a restaurant, or
             // genuinely zero reviews yet) leaves the Reviews tab silently absent.
         }
+        // Real consolidated Photos/News/AI-summary/tag-aggregate (2026-08-28).
+        try { placeDetail = NetworkClient.apiService.getMapPlaceDetail(merchantId).place } catch (_: Exception) { /* real, honest: absent means the tabs below stay silent, never fabricated */ }
     }
     if (MerchantBookingGate(selectedMerchant, bookingService) { bookingService = null }) return
     var route by remember { mutableStateOf<MapsDirectionsResponse?>(null) }
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
-    // own doc comment on the network client. Often just a single-element list -- OSRM
-    // itself decides whether a real alternative exists for a given trip.
+    // Real alternative routes (2026-07-22) -- often a single-element list, OSRM itself
+    // decides whether a real alternative exists for a given trip.
     var routeAlternatives by remember { mutableStateOf<List<RouteResultDto>?>(null) }
     var selectedRouteIndex by remember { mutableStateOf(0) }
-    // A deliberately bounded itinerary builder: the real Maps endpoint accepts the
-    // start plus one to six ordered places (2–7 stops total). Search results are used
-    // as the picker so these are genuine geocoded Rwanda places, not typed coordinates.
+    // Bounded itinerary builder: the real Maps endpoint accepts start + 1-6 ordered
+    // places. Search results are the picker so these are genuine geocoded places.
     var itineraryBuilding by remember { mutableStateOf(false) }
     var itineraryStops by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
     var showingItineraryRoute by remember { mutableStateOf(false) }
-    // Real driving/walking toggle (2026-07-22) -- see OsrmRoutingClient.route's own doc
-    // comment on the backend for the real, separately-deployed foot-profile OSRM
-    // instance this reaches.
-    var travelMode by remember { mutableStateOf("DRIVING") }
-    // Real "each mode shows its own precomputed time" (2026-08-09) -- the mode-selector row
-    // in the real reference screenshots (Section 27) shows every mode's own time up front,
-    // not just the currently-active one. A lightweight background fetch for the one mode NOT
-    // currently active; null until that fetch resolves (or forever, if it errors -- an honest
-    // omission, never a guessed number).
+    var travelMode by remember { mutableStateOf("DRIVING") } // real driving/walking/biking toggle, see OsrmRoutingClient.route
+    // Real "each mode shows its own precomputed time" (2026-08-09) -- a background fetch
+    // for the one mode NOT currently active; null until it resolves (or forever if it
+    // errors -- an honest omission, never a guessed number).
     var otherModeEtaMinutes by remember { mutableStateOf<Double?>(null) }
-    // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- unlike
-    // driving/walking, itunda has no live bus-GPS or national transit-schedule feed to
-    // draw a real route line from, so this deliberately doesn't fake one. What IS real:
-    // itunda's own peer-to-peer intercity bus marketplace (BusService.kt, already
-    // shipped, real scheduled departures/fares/seats) -- surfaced here as a genuine
-    // scheduled-departure option, honestly labeled "Scheduled" rather than implying
-    // live tracking.
-    var busTrips by remember { mutableStateOf<List<BusTripDto>?>(null) }
+    var busTrips by remember { mutableStateOf<List<BusTripDto>?>(null) } // real intercity coach marketplace, BusService.kt
     var busSearching by remember { mutableStateOf(false) }
     fun searchBus(destination: String) {
         busSearching = true
@@ -300,52 +275,54 @@ fun MapScreen(
             }
         }
     }
+    var transitJourneys by remember { mutableStateOf<List<TransitJourneyDto>?>(null) } // real Kigali GTFS journeys, separate from the intercity-bus tab above
+    var transitSearching by remember { mutableStateOf(false) }
     var showSteps by remember { mutableStateOf(false) }
     var routing by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
     var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) } // lat, lng
+    fun searchTransit(toLat: Double, toLng: Double) {
+        val (fromLat, fromLng) = myLocation ?: return
+        transitSearching = true
+        transitJourneys = null
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getTransitDirections(fromLat, fromLng, toLat, toLng)
+                if (res.success) transitJourneys = res.journeys
+            } catch (e: Exception) {
+                transitJourneys = emptyList()
+            } finally {
+                transitSearching = false
+            }
+        }
+    }
+    var weather by remember { mutableStateOf<KigaliWeatherDto?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
     var categoryLoading by remember { mutableStateOf(false) }
     var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
     var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
     var bookmarking by remember { mutableStateOf(false) }
-    // Someone else's shared folder, opened from a real itunda://maps/shared/... link.
-    var sharedFolderBookmarks by remember { mutableStateOf<List<MapBookmarkDto>?>(null) }
+    var sharedFolderBookmarks by remember { mutableStateOf<List<MapBookmarkDto>?>(null) } // opened from a real itunda://maps/shared/... link
     var sharedFolderError by remember { mutableStateOf<String?>(null) }
     var loadingSharedFolder by remember { mutableStateOf(false) }
-    // Real Kakao Map-style "구독" (subscribe) state -- the write half of a shared folder,
-    // ported from bank-mfe (2026-08-18). null = not yet subscribed this session.
-    var subscribingSharedFolder by remember { mutableStateOf(false) }
+    var subscribingSharedFolder by remember { mutableStateOf(false) } // real "구독" (subscribe), write half of a shared folder
     var subscribedSharedFolderCount by remember { mutableStateOf<Int?>(null) }
-    // Real "알림받기" (Notify/Follow) pill (2026-08-09) -- from the full-screen Naver Maps
-    // reference screenshots. The backend + Retrofit endpoints already existed
-    // (followMerchant/unfollowMerchant/getMyFollowedMerchants, ported for bank-mfe) but had
-    // zero Android UI anywhere -- real, already-built functionality, just never wired to a
-    // screen on this platform.
+    // Real "알림받기" (Notify/Follow) pill (2026-08-09) -- the backend + Retrofit endpoints
+    // already existed (ported for bank-mfe) but had zero Android UI until this pass.
     var followedMerchantIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var following by remember { mutableStateOf(false) }
-    // Real Naver Map-style public/private folder + share (2026-08-04) -- see
-    // SetMapFolderVisibilityRequest's own doc comment on the backend.
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     var sharingFolder by remember { mutableStateOf<String?>(null) }
     var shareConfirmation by remember { mutableStateOf<String?>(null) }
-    // Real folder/color picker (2026-07-22) -- see MapBookmarkDto's own doc comment;
-    // ported from bank-mfe's own real save-time picker. `savingToFolder` holds whichever
-    // real place's picker is currently expanded (null = closed).
-    var savingToFolder by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
+    var savingToFolder by remember { mutableStateOf<PlaceSearchResultDto?>(null) } // real save-time folder/color picker, ported from bank-mfe
     var folderNameInput by remember { mutableStateOf(DEFAULT_BOOKMARK_FOLDER) }
     var folderColorInput by remember { mutableStateOf(BOOKMARK_COLOR_PALETTE[0]) }
-    // Real "move to folder" (found 2026-07-22 fully built on the backend,
-    // PATCH /api/v1/maps/bookmarks, with zero UI anywhere) -- movingBookmark holds
-    // whichever real bookmark's move-picker is currently expanded (null = closed).
-    var movingBookmark by remember { mutableStateOf<MapBookmarkDto?>(null) }
+    var movingBookmark by remember { mutableStateOf<MapBookmarkDto?>(null) } // real "move to folder", PATCH /api/v1/maps/bookmarks
     var moveFolderNameInput by remember { mutableStateOf("") }
     var moveFolderColorInput by remember { mutableStateOf(BOOKMARK_COLOR_PALETTE[0]) }
 
-    // Real distance-measurement (ruler) tool state (2026-07-23) -- plain (lat, lng)
-    // pairs in tap order, same convention bank-mfe's own MapView.tsx uses.
-    var measuring by remember { mutableStateOf(false) }
+    var measuring by remember { mutableStateOf(false) } // real distance-measurement (ruler) tool, tap-order (lat,lng) pairs
     var measurePoints by remember { mutableStateOf<List<Pair<Double, Double>>>(emptyList()) }
     var lastMeasuredPlaceName by remember { mutableStateOf<String?>(null) }
 
@@ -577,6 +554,19 @@ fun MapScreen(
 
     LaunchedEffect(Unit) {
         recentSearches = recentSearchesStore.getAll()
+    }
+
+    // Real Kigali weather chip (2026-08-28, itunda Maps redesign) -- see
+    // KigaliWeatherClient's own doc comment on the backend, real 30-minute server
+    // cache; a real once-on-load fetch here is enough, not a client-side poll.
+    // `weather` stays null (chip doesn't render) if the real upstream is
+    // unreachable -- never fabricated.
+    LaunchedEffect(Unit) {
+        try {
+            weather = NetworkClient.apiService.getKigaliWeather().weather
+        } catch (e: Exception) {
+            // Honest partial failure, same discipline as merchants/bookmarks above.
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -1574,6 +1564,7 @@ fun MapScreen(
                                 selectedMerchant = selectedMerchant,
                                 placeProducts = placeProducts,
                                 placeReviews = placeReviews,
+                                placeDetail = placeDetail,
                                 placeTab = placeTab,
                                 followedMerchantIds = followedMerchantIds,
                                 following = following,
@@ -1591,6 +1582,8 @@ fun MapScreen(
                                 otherModeEtaMinutes = otherModeEtaMinutes,
                                 busSearching = busSearching,
                                 busTrips = busTrips,
+                                transitSearching = transitSearching,
+                                transitJourneys = transitJourneys,
                                 routeAlternatives = routeAlternatives,
                                 selectedRouteIndex = selectedRouteIndex,
                                 showSteps = showSteps,
@@ -1609,6 +1602,7 @@ fun MapScreen(
                                 onConfirmSaveToFolder = { confirmSaveToFolder() },
                                 onCancelSaveToFolder = { savingToFolder = null },
                                 onSearchBus = { destination -> travelMode = "BUS"; searchBus(destination) },
+                                onSearchTransit = { travelMode = "TRANSIT"; searchTransit(place.latitude, place.longitude) },
                                 onSelectRouteAlternative = { i, alt ->
                                     selectedRouteIndex = i
                                     route = MapsDirectionsResponse(success = true, route = alt)
@@ -1664,6 +1658,7 @@ fun MapScreen(
                             // a time.
                             if (!itineraryBuilding) {
                                 AroundYouSection(
+                                    weather = weather,
                                     bookmarks = bookmarks,
                                     activeCategory = activeCategory,
                                     categoryResults = categoryResults,

@@ -135,9 +135,13 @@ internal fun createPinBitmap(density: Float, fillColorHex: String): Bitmap {
 // section 1, recommendation 1.
 internal enum class MapSheetValue { Peek, Half, Full }
 
-// Real "Itunda Places" tabs -- see the `placeTab` state's own doc comment for why only
-// Home/Info are unconditional (Menu/Reviews only ever appear once real content is confirmed).
-internal enum class PlaceTab { HOME, MENU, REVIEWS, INFO }
+// Real "Itunda Places" tabs -- Home is unconditional; Menu/Reviews/Photos/News only
+// ever appear once real content is confirmed. INFO (2026-08-09) was a real, confirmed
+// dead-code bug until 2026-08-28's itunda Maps redesign fixed it -- defined here but
+// never actually added to the rendered tab row in MapPlaceDetailView.kt. PHOTOS/NEWS
+// added 2026-08-28 (direct Naver Map reference), backed by the new consolidated
+// MapPlaceDetailDto.
+internal enum class PlaceTab { HOME, MENU, REVIEWS, PHOTOS, NEWS, INFO }
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- mirrors
 // bank-mfe's MapView.tsx MAP_STYLE constant exactly (same source, same layer set, no
