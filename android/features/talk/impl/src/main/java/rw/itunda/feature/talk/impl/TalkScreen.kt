@@ -3,6 +3,7 @@ package rw.itunda.feature.talk.impl
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +69,13 @@ fun TalkTab(
     var directFilter by remember { mutableStateOf(TalkDirectFilter.ALL) }
     var showServiceChannel by remember { mutableStateOf(false) }
     var showAiChat by remember { mutableStateOf(false) }
+    // Real per-room Links/Settings + input-lock (itunda Talk redesign, 2026-08-28) --
+    // see TalkLinksTab.kt/TalkRoomSettings.kt's own doc comments.
+    var showLinksTab by remember { mutableStateOf(false) }
+    var showRoomSettings by remember { mutableStateOf(false) }
+    var unlockedConversationIds by remember { mutableStateOf(setOf<String>()) }
+    val context = LocalContext.current
+    val roomPreferenceStore = remember { TalkRoomPreferenceStore(context) }
     var conversations by remember { mutableStateOf<List<ConversationSummaryDto>?>(null) }
     var conversationsError by remember { mutableStateOf<String?>(null) }
     // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
@@ -168,7 +182,43 @@ fun TalkTab(
 
     val openConversation = conversations?.find { it.conversationId == openConversationId }
     if (openConversation != null) {
-        ChatThreadView(conversation = openConversation, onBack = { openConversationId = null; loadConversations() }, deviceStepUpHost = deviceStepUpHost)
+        if (showLinksTab) {
+            TalkLinksTabView(conversationId = openConversation.conversationId, onBack = { showLinksTab = false })
+            return
+        }
+        if (showRoomSettings) {
+            TalkRoomSettingsView(conversationId = openConversation.conversationId, roomName = openConversation.otherUserName, onBack = { showRoomSettings = false })
+            return
+        }
+        // Real per-room input lock -- reuses the same real device-step-up gate this
+        // tab already receives for payment-adjacent flows (see this file's own header
+        // comment on why deviceStepUpHost is injected), rather than adding a second,
+        // separate biometric dependency to this Feature module.
+        if (roomPreferenceStore.isLocked(openConversation.conversationId) && openConversation.conversationId !in unlockedConversationIds) {
+            deviceStepUpHost(
+                true,
+                { openConversationId = null },
+                { unlockedConversationIds = unlockedConversationIds + openConversation.conversationId },
+            )
+            return
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            ChatThreadView(conversation = openConversation, onBack = { openConversationId = null; loadConversations() }, deviceStepUpHost = deviceStepUpHost)
+            // Real Links/Settings entry point -- an overlay rather than an edit to
+            // ChatThreadView itself, which is frozen at its file-size-lint baseline
+            // (TalkChatThread.kt, 751/751 lines) with zero real headroom. BackTopBar's
+            // own title Text has no weight(1f) -- it sits left-aligned right after the
+            // back icon, so this overlay lands in real empty space for any
+            // reasonably-sized conversation name rather than colliding with it.
+            Row(modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp)) {
+                IconButton(onClick = { showLinksTab = true }) {
+                    Icon(Icons.Outlined.Link, contentDescription = "Links", tint = Ids.colors.textPrimary)
+                }
+                IconButton(onClick = { showRoomSettings = true }) {
+                    Icon(Icons.Outlined.Settings, contentDescription = "Room settings", tint = Ids.colors.textPrimary)
+                }
+            }
+        }
         return
     }
     val openGroup = groups?.find { it.groupId == openGroupId }
