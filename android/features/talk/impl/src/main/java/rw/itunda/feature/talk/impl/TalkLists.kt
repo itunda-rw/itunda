@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.filled.PushPin as PushPinFilled
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.filled.Star as StarFilled
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +63,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetConversationArchivedRequest
+import rw.itunda.core.network.SetConversationFavoriteRequest
 import rw.itunda.core.network.SetConversationPinnedToTopRequest
 import rw.itunda.core.network.StartConversationRequest
 import rw.itunda.core.network.TalkContactDto
@@ -115,6 +118,21 @@ internal fun DirectMessagesList(
             } catch (_: Exception) {
                 // Real, non-critical -- a failed pin/unpin just leaves the row where it
                 // was; the user can retry the tap.
+            }
+        }
+    }
+
+    // Real KakaoTalk favorite chat toggle (itunda Talk redesign, 2026-08-28) -- see
+    // ConversationSummaryDto.favorite's own doc comment. Same fire-and-refresh shape
+    // as togglePinnedToTop above.
+    fun toggleFavorite(conversationId: String, favorite: Boolean) {
+        coroutineScope.launch {
+            try {
+                NetworkClient.talkApi.setConversationFavorite(conversationId, SetConversationFavoriteRequest(favorite))
+                onArchiveChanged()
+            } catch (_: Exception) {
+                // Real, non-critical -- a failed favorite toggle just leaves the row
+                // where it was; the user can retry the tap.
             }
         }
     }
@@ -244,6 +262,7 @@ internal fun DirectMessagesList(
                     onClick = { onOpen(c.conversationId) },
                     onArchiveToggle = { setArchived(c.conversationId, !showArchived) },
                     onPinToggle = { togglePinnedToTop(c.conversationId, !c.pinnedToTop) },
+                    onFavoriteToggle = { toggleFavorite(c.conversationId, !c.favorite) },
                 )
             }
         }
@@ -266,6 +285,7 @@ internal fun SwipeableConversationRow(
     onClick: () -> Unit,
     onArchiveToggle: () -> Unit,
     onPinToggle: () -> Unit,
+    onFavoriteToggle: () -> Unit,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -312,6 +332,7 @@ internal fun SwipeableConversationRow(
                 // own active-list-only gating (pinning an archived room to the top of
                 // the active list would be a confusing, silently-unarchiving side effect).
                 onPinToggle = if (isArchived) null else onPinToggle,
+                onFavoriteToggle = if (isArchived) null else onFavoriteToggle,
             )
         }
     }
@@ -334,6 +355,7 @@ internal fun ConversationRow(
     online: Boolean,
     onClick: () -> Unit,
     onPinToggle: (() -> Unit)? = null,
+    onFavoriteToggle: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -405,6 +427,19 @@ internal fun ConversationRow(
                     if (conversation.pinnedToTop) Icons.Filled.PushPinFilled else Icons.Outlined.PushPin,
                     contentDescription = if (conversation.pinnedToTop) "Unpin from top" else "Pin to top",
                     tint = if (conversation.pinnedToTop) Ids.colors.brand else Ids.colors.textTertiary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        // Real KakaoTalk favorite chat toggle (itunda Talk redesign, 2026-08-28) --
+        // see ConversationSummaryDto.favorite's own doc comment. Same always-visible
+        // icon-button convention as the pin-to-top toggle just above.
+        if (onFavoriteToggle != null) {
+            IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    if (conversation.favorite) Icons.Filled.StarFilled else Icons.Outlined.StarBorder,
+                    contentDescription = if (conversation.favorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (conversation.favorite) Ids.colors.warning else Ids.colors.textTertiary,
                     modifier = Modifier.size(18.dp),
                 )
             }
