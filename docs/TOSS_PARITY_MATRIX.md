@@ -571,3 +571,17 @@ wrongly claim" callout). `docs/API_SPECIFICATION.md` has been kept current throu
 session's own passes (Auth/Rewards sections, changelog entries) — see its own "What Changed"
 section for the honest account of which earlier gaps in *that* doc's own changelog coverage
 remain (not the same thing as describing the deleted backend).
+
+**2026-08-28 correction (Maps row, superseded above): bike mode is now real.** The Maps
+row above records "no bicycle mode (not built speculatively — Naver Maps has one, but
+nothing in itunda's own usage points to a real need yet)" as a deliberate exclusion,
+twice — that was the correct, honest call at the time, made absent any real reference
+or user request. It's superseded now, not because the reasoning was wrong, but because
+the precondition it named ("if a real need for it surfaces") has now genuinely been
+met: the user supplied 15 real Naver Map reference screenshots and explicitly
+instructed building bike routing, not a speculative guess on itunda's own part. A real
+3rd OSRM instance was built the identical way the foot.lua dataset already was (same
+Rwanda Geofabrik extract, same osrm-extract/partition/customize MLD pipeline,
+bicycle.lua profile) and `TravelMode` gained a real `BIKING` value
+(`OsrmRoutingClient.kt`). See `project_itunda_eats_coupang_redesign.md`'s sibling memory
+file and this session's own itunda Maps redesign work for the full account.

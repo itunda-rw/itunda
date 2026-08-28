@@ -32,13 +32,29 @@ class OsrmRoutingClient(
     // above: unconfigured falls back to the driving route (still correct, just not
     // pedestrian-aware), never a failure.
     @Value("\${itunda.osrm.foot-base-url:}") private val footBaseUrl: String,
+    // Real bike routing (itunda Maps redesign, 2026-08-28, direct Naver Map reference
+    // + explicit user instruction to build it) -- reverses this class's own prior
+    // "not invented speculatively" note below: a real bicycle.lua-profile dataset was
+    // built the identical way the foot dataset above was, same real Geofabrik Rwanda
+    // extract, same osrm-extract/partition/customize MLD pipeline, deployed as a 3rd
+    // persistent OSRM instance. Optional by the same convention as footBaseUrl:
+    // unconfigured falls back to the driving dataset, never a failure.
+    @Value("\${itunda.osrm.bike-base-url:}") private val bikeBaseUrl: String,
 ) {
     private val logger = LoggerFactory.getLogger(OsrmRoutingClient::class.java)
     private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.create(baseUrl) else null
     private val footRestClient: RestClient? = if (footBaseUrl.isNotBlank()) RestClient.create(footBaseUrl) else null
+    private val bikeRestClient: RestClient? = if (bikeBaseUrl.isNotBlank()) RestClient.create(bikeBaseUrl) else null
 
     val isConfigured: Boolean get() = restClient != null
     val isFootConfigured: Boolean get() = footRestClient != null
+    val isBikeConfigured: Boolean get() = bikeRestClient != null
+
+    private fun clientFor(mode: TravelMode): RestClient? = when (mode) {
+        TravelMode.WALKING -> footRestClient ?: restClient
+        TravelMode.BIKING -> bikeRestClient ?: restClient
+        TravelMode.DRIVING -> restClient
+    }
 
     /**
      * Real road distance in km between two real coordinates via a real OSRM `/route`
@@ -153,7 +169,7 @@ class OsrmRoutingClient(
      */
     fun routeThrough(waypoints: List<Pair<Double, Double>>, mode: TravelMode = TravelMode.DRIVING): RouteResult? {
         if (waypoints.size < 2) return null
-        val client = (if (mode == TravelMode.WALKING) footRestClient else null) ?: restClient ?: return null
+        val client = clientFor(mode) ?: return null
         return try {
             // OSRM requires `lng,lat;lng,lat`; construct its separators literally so
             // Spring's URI templating cannot encode the semicolons in a variable path.
@@ -204,7 +220,7 @@ class OsrmRoutingClient(
         mode: TravelMode,
         alternatives: Boolean,
     ): List<RouteResult> {
-        val client = (if (mode == TravelMode.WALKING) footRestClient else null) ?: restClient ?: return emptyList()
+        val client = clientFor(mode) ?: return emptyList()
         return try {
             @Suppress("UNCHECKED_CAST")
             val response = client.get()
@@ -303,10 +319,10 @@ class OsrmRoutingClient(
 }
 
 // Real walking directions (2026-07-22) -- see OsrmRoutingClient.route's own doc
-// comment. Only DRIVING and WALKING exist for now: a real bicycle.lua-profile
-// dataset could be built the identical way if a real need for it surfaces, but
-// isn't invented speculatively here.
-enum class TravelMode { DRIVING, WALKING }
+// comment. BIKING added 2026-08-28 (itunda Maps redesign) -- see the client's own
+// bikeBaseUrl doc comment for why this reverses the earlier "not invented
+// speculatively" stance.
+enum class TravelMode { DRIVING, WALKING, BIKING }
 
 data class RouteStep(val instruction: String, val distanceMeters: Double, val streetName: String?)
 data class RouteResult(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStep> = emptyList())

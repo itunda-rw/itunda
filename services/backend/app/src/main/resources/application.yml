@@ -142,6 +142,10 @@ itunda:
     # never-fail convention as base-url above: unconfigured falls back to the driving
     # route for a WALKING request rather than failing it.
     foot-base-url: ${OSRM_FOOT_BASE_URL:}
+    # Real bike routing (2026-08-28, itunda Maps redesign) -- a 3rd real OSRM
+    # instance/dataset (bicycle.lua profile). Empty by default, same never-fail
+    # convention as the two above.
+    bike-base-url: ${OSRM_BIKE_BASE_URL:}
   # Real self-hosted Nominatim geocoding (2026-07-18) -- itunda's own Rwanda-only
   # address index, not a third-party geocoding API. See NominatimGeocodingClient's own
   # doc comment. Empty by default: without a configured base-url, a buyer's free-text
