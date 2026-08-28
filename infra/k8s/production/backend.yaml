@@ -27,7 +27,22 @@ metadata:
   name: backend
   namespace: itunda
 spec:
-  replicas: 2
+  # Real fix (2026-08-28, itunda Talk/KakaoTalk redesign): this was `replicas: 2`,
+  # but MessagingWebSocketHandler's own real-time session tracking is a plain
+  # ConcurrentHashMap in JVM heap, single-instance by design -- RealtimeMessagePublisher's
+  # own doc comment says explicitly it only reaches a recipient whose WebSocket
+  # session is held open on the SAME backend instance that processed the send.
+  # With 2 replicas, real-time push (messages/typing/presence/reactions) was
+  # silently failing for any two users whose sockets happened to land on different
+  # pods -- a real, live bug, not a hypothetical one. Reducing to 1 fixes it
+  # outright: infra/openstack/cmdb/private-cloud-inventory.json confirms
+  # itunda-dc-b is status: disabled, so both replicas were already colocating on
+  # the one real node (itunda-dc-a) regardless -- podAntiAffinity's "prefer
+  # different hosts" below was already a no-op. This also frees up to 1Gi of real
+  # memory headroom (this Deployment's own `limits.memory` below) on a node
+  # `docs/DESIGN_REFERENCES.md`'s own private-cloud incident history already
+  # documents as severely, repeatedly memory-constrained.
+  replicas: 1
   minReadySeconds: 10
   revisionHistoryLimit: 5
   strategy:

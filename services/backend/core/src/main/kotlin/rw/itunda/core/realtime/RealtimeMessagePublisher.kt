@@ -35,6 +35,13 @@ data class ReactionGroup(val emoji: String, val userIds: List<String>)
  * future multi-instance/horizontally-scaled deployment (a session-affinity load
  * balancer or a pub/sub fan-out across instances would be the right fix then, not
  * attempted here since itunda currently runs single-instance).
+ *
+ * Real fix (2026-08-28): production/backend.yaml actually ran `replicas: 2` up
+ * until this date, meaning the "single-instance" assumption above was NOT true in
+ * the real deployed cluster and this silently broke real-time delivery for any
+ * two users whose sockets landed on different pods. Corrected to `replicas: 1`
+ * (see that manifest's own doc comment for the full account) -- this interface's
+ * own single-instance design is now actually matched by what's deployed.
  */
 interface RealtimeMessagePublisher {
     /**
