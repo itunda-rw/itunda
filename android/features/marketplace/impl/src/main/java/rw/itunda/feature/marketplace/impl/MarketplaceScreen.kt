@@ -1048,6 +1048,7 @@ private fun ListingDetailScreen(
                 TrustBadge(sellerTrustScore)
             }
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
+            VehicleDetailSection(listing)
             listing.meetingPlace?.let {
                 Text("Suggested hand-off: $it", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }

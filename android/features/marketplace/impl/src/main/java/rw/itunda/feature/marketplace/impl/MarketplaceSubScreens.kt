@@ -297,6 +297,7 @@ internal fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     var photoUrl by remember { mutableStateOf<String?>(null) }
     var pickedImageUri by remember { mutableStateOf<Uri?>(null) }
     var uploadingPhoto by remember { mutableStateOf(false) }
+    val vehicleState = rememberVehicleListingState()
     val context = LocalContext.current
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -388,6 +389,7 @@ internal fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+            VehicleListingFieldsSection(vehicleState)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -428,6 +430,15 @@ internal fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                                             title, description, priceValue, category, loc?.first, loc?.second,
                                             meetingPlace.trim().takeIf { it.isNotEmpty() },
                                             photoUrl,
+                                            vehicleMileageKm = vehicleState.mileageKm.toIntOrNull().takeIf { vehicleState.isVehicle },
+                                            vehicleInsuranceClaimCount = vehicleState.insuranceClaimCount.toIntOrNull().takeIf { vehicleState.isVehicle },
+                                            vehicleIsLeaseTakeover = vehicleState.isVehicle && vehicleState.isLeaseTakeover,
+                                            leaseTotalAcquisitionCost = vehicleState.leaseTotalAcquisitionCost.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
+                                            leaseRemainingMonths = vehicleState.leaseRemainingMonths.toIntOrNull().takeIf { vehicleState.isLeaseTakeover },
+                                            leaseTotalMonths = vehicleState.leaseTotalMonths.toIntOrNull().takeIf { vehicleState.isLeaseTakeover },
+                                            leaseMonthlyPayment = vehicleState.leaseMonthlyPayment.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
+                                            leaseSubsidyAmount = vehicleState.leaseSubsidyAmount.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
+                                            leaseReturnFee = vehicleState.leaseReturnFee.toDoubleOrNull().takeIf { vehicleState.isLeaseTakeover },
                                         ),
                                     )
                                     if (res.success) onCreated()

@@ -139,17 +139,17 @@ class MarketplaceService(
         // was missing was any real curated taxonomy driving it, same "backend has the
         // filter, no real taxonomy or UI to use it" shape Eats/Shop already closed via
         // `MerchantService.CATEGORIES`. Adapted honestly to general secondhand goods
-        // relevant to Rwanda rather than translated verbatim -- itunda's own `vehicle`/
-        // `realestate` modules already own those categories elsewhere, so they're
-        // deliberately not duplicated here. Purely additive: existing free-text
-        // listings (confirmed live via direct DB check -- real seeded values include
-        // "Electronics"/"Sports"/"Furniture"/"other") keep working unchanged; this is a
-        // real curated list to browse BY, not a validation change to what a seller can
-        // type when creating a listing.
+        // relevant to Rwanda rather than translated verbatim. Purely additive: existing
+        // free-text listings (confirmed live via direct DB check -- real seeded values
+        // include "Electronics"/"Sports"/"Furniture"/"other") keep working unchanged;
+        // this is a real curated list to browse BY, not a validation change to what a
+        // seller can type when creating a listing. "Vehicles" added 2026-08-28 for real
+        // 당근카 listings (see Listing.vehicleIsLeaseTakeover) -- `:vehicle` is a separate
+        // valuation estimator, not a listing-browse taxonomy, so this doesn't duplicate it.
         val CATEGORIES = listOf(
             "Electronics", "Furniture", "Home & Kitchen", "Kids & Baby", "Fashion",
             "Beauty & Health", "Sports & Outdoors", "Books & Media", "Toys & Games",
-            "Musical Instruments", "Pet Supplies", "Other",
+            "Musical Instruments", "Pet Supplies", "Vehicles", "Other",
         )
     }
 

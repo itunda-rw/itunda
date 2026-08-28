@@ -836,38 +836,6 @@ data class PresenceResponse(val success: Boolean, val presence: Map<String, Bool
 // new "Hood" bottom-nav tab (당근마켓/Danggeun-style neighborhood marketplace). See
 // rw.itunda.marketplace.MarketplaceService's own doc comment for the honest "no real
 // location data" scope this mobile client inherits unchanged.
-data class ListingDto(
-    val id: String,
-    val sellerId: String,
-    val title: String,
-    val description: String,
-    val price: Double,
-    val category: String,
-    val status: String,
-    val createdAt: String,
-    // Real optional seller-set location (2026-07-18 backend) -- backs real proximity
-    // search and, 2026-07-19, "Directions to this seller".
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    val neighborhood: String? = null,
-    val meetingPlace: String? = null,
-    val photoUrl: String? = null,
-    // buyerId added 2026-07-24 -- real optional buyer identification captured at
-    // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
-    // review becomes possible for this transaction.
-    val buyerId: String? = null,
-    // Real seller-paid sponsored placement (2026-07-25) -- see backend Listing.kt's own
-    // doc comment. Null/expired means "not boosted" -- clients should only show a
-    // "Sponsored" badge when this is a real, still-future ISO instant.
-    val boostedUntil: String? = null,
-    // Real like count (2026-08-03) -- see backend Listing.kt's own doc comment. A
-    // separate concept from favoriteIds' personal wishlist -- this is a public
-    // engagement count, matching real 당근마켓's heart count on every listing row.
-    val likeCount: Long = 0,
-    // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10 -- see backend
-    // Listing.kt's own doc comment. Null means never bumped.
-    val bumpedAt: String? = null,
-)
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class BoostListingRequest(val days: Int)
 data class BoostTiersResponse(val success: Boolean, val tiers: Map<String, Double>)
@@ -901,16 +869,6 @@ data class HoodReviewDto(
 data class HoodReviewResponse(val success: Boolean, val review: HoodReviewDto)
 data class HoodReviewsResponse(val success: Boolean, val reviews: List<HoodReviewDto>)
 
-data class CreateListingRequest(
-    val title: String,
-    val description: String,
-    val price: Double,
-    val category: String,
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    val meetingPlace: String? = null,
-    val photoUrl: String? = null,
-)
 data class UploadResponse(val success: Boolean, val url: String)
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
 // trustScores added 2026-07-24 -- backend has spread this alongside every
@@ -1026,11 +984,19 @@ data class CommunityPostDto(
     // identical fix, see [[project_itunda_full_ecosystem_polish]]. The backend has
     // stamped this on every post since 2026-07-20 and serializes the entity directly.
     val neighborhood: String? = null,
+    // Real 동네생활 topic chip (2026-08-28) -- see backend CommunityPost.topic's own doc
+    // comment, a lifestyle axis independent of the functional `category` above.
+    val topic: String? = null,
+    // Real AI-generated 모임 summary (2026-08-28) -- see backend HoodAiSummaryService's
+    // own doc comment. Null means either not a meetup post or the honesty gate declined
+    // (thin body) -- never fabricate a summary client-side when this is null.
+    val aiSummary: String? = null,
+    val aiSummaryGeneratedAt: String? = null,
 )
 data class CreateCommunityPostRequest(
     val category: String, val title: String, val body: String,
     val latitude: Double? = null, val longitude: Double? = null,
-    val eventDate: String? = null, val capacity: Int? = null,
+    val eventDate: String? = null, val capacity: Int? = null, val topic: String? = null,
 )
 data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDto)
 // joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
@@ -1038,6 +1004,7 @@ data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDt
 // (join-together) posts get a dedicated pinned mid-feed slot."
 data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>, val joinedCounts: Map<String, Int> = emptyMap())
 data class CommunityCategoriesResponse(val success: Boolean, val categories: List<CommunityCategoryDto>)
+data class CommunityTopicsResponse(val success: Boolean, val topics: List<CommunityCategoryDto>)
 data class CommunityPostDetailResponse(val success: Boolean, val post: CommunityPostDto, val authorName: String, val likedByMe: Boolean)
 data class CommunityCommentDto(val id: String, val postId: String, val authorId: String, val body: String, val createdAt: String)
 data class CommunityCommentWithAuthorDto(val comment: CommunityCommentDto, val authorName: String)
@@ -3084,6 +3051,11 @@ interface ApiService {
     @GET("api/v1/community/categories")
     suspend fun getCommunityCategories(): CommunityCategoriesResponse
 
+    // Real 동네생활 topic-chip filter row (2026-08-28) -- see backend
+    // CommunityService.TOPICS' own doc comment.
+    @GET("api/v1/community/topics")
+    suspend fun getCommunityTopics(): CommunityTopicsResponse
+
     @POST("api/v1/community/posts")
     suspend fun createCommunityPost(@Body request: CreateCommunityPostRequest): CommunityPostResponse
 
@@ -3093,7 +3065,7 @@ interface ApiService {
     suspend fun getUpcomingMeetups(): CommunityPostsResponse
 
     @GET("api/v1/community/posts")
-    suspend fun browseCommunityPosts(@Query("category") category: String? = null): CommunityPostsResponse
+    suspend fun browseCommunityPosts(@Query("category") category: String? = null, @Query("topic") topic: String? = null): CommunityPostsResponse
 
     @GET("api/v1/community/posts/nearby")
     suspend fun getNearbyCommunityPosts(
