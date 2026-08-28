@@ -36,7 +36,7 @@ class AiSummaryServiceTest : BehaviorSpec({
 
             Then("the real prompt is built only from real, already-known facts -- never invented ones") {
                 promptSlot.captured shouldBe
-                    "Business name: Kigali Diner\nCategory: Rwandan\nReal average rating: 4.5 out of 5, from 20 real reviews\nWhat reviewers most often praised: great food, good for conversation"
+                    "Business name: Kigali Diner\nCategory: Rwandan\nWhat reviewers most often praised: great food, good for conversation\nReal average rating: 4.5 out of 5, from 20 real reviews"
             }
         }
 
@@ -48,6 +48,24 @@ class AiSummaryServiceTest : BehaviorSpec({
             val summary = service.generateSummaryFor(bareMerchant)
 
             Then("it honestly declines rather than asking the model to pad out nothing") {
+                summary shouldBe null
+            }
+        }
+
+        // Real, live-verified finding (2026-08-28): deployed against the real
+        // self-hosted llama-server, a name-plus-rating-only prompt made the model
+        // invent a cuisine and location that were never given -- a real small-model
+        // instruction-following gap, not just a hypothetical. This case (a real
+        // rating, but zero descriptive facts) must still decline, not just the
+        // fully-bare case above.
+        When("only a name and a rating are known -- no category, tags, or hours to actually describe") {
+            val ratedOnlyMerchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", accountId = "account_3", businessName = "Review Reply Diner", status = MerchantStatus.ACTIVE)
+            every { eatsReviewService.getRestaurantRating("merchant_3") } returns RatingSummary(average = 5.0, count = 1)
+            every { eatsReviewService.restaurantGoodPointCounts("merchant_3") } returns emptyMap()
+
+            val summary = service.generateSummaryFor(ratedOnlyMerchant)
+
+            Then("it declines rather than risk the model inventing what the place actually is") {
                 summary shouldBe null
             }
         }
@@ -78,13 +96,13 @@ class AiSummaryServiceTest : BehaviorSpec({
         every { eatsReviewService.getRestaurantRating(any()) } returns RatingSummary(average = 4.0, count = 5)
         every { eatsReviewService.restaurantGoodPointCounts(any()) } returns emptyMap()
 
-        val fresh = Merchant(id = "m_fresh", ownerUserId = "o1", accountId = "a1", businessName = "Fresh", status = MerchantStatus.ACTIVE)
+        val fresh = Merchant(id = "m_fresh", ownerUserId = "o1", accountId = "a1", businessName = "Fresh", status = MerchantStatus.ACTIVE, category = "Cafe")
         fresh.aiSummary = "Already summarized."
         fresh.aiSummaryGeneratedAt = Instant.now()
-        val stale = Merchant(id = "m_stale", ownerUserId = "o2", accountId = "a2", businessName = "Stale", status = MerchantStatus.ACTIVE)
+        val stale = Merchant(id = "m_stale", ownerUserId = "o2", accountId = "a2", businessName = "Stale", status = MerchantStatus.ACTIVE, category = "Cafe")
         stale.aiSummary = "Old summary."
         stale.aiSummaryGeneratedAt = Instant.now().minus(30, ChronoUnit.DAYS)
-        val missing = Merchant(id = "m_missing", ownerUserId = "o3", accountId = "a3", businessName = "Missing", status = MerchantStatus.ACTIVE)
+        val missing = Merchant(id = "m_missing", ownerUserId = "o3", accountId = "a3", businessName = "Missing", status = MerchantStatus.ACTIVE, category = "Cafe")
 
         every { merchantRepository.findAll() } returns listOf(fresh, stale, missing)
         every { aiSummaryClient.complete(any(), any(), any()) } returns "Real generated summary."

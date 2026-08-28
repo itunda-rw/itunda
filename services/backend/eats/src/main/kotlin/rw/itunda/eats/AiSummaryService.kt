@@ -60,14 +60,23 @@ class AiSummaryService(
         val goodPointCounts = eatsReviewService.restaurantGoodPointCounts(merchant.id)
         val topTags = goodPointCounts.entries.sortedByDescending { it.value }.take(3).map { it.key.lowercase().replace('_', ' ') }
 
-        val facts = buildList {
-            add("Business name: ${merchant.businessName}")
+        // Real, live-verified finding (2026-08-28): with only a name + rating, the
+        // model would rather invent a plausible-sounding cuisine/location than admit
+        // it has nothing to describe -- a real small-model instruction-following gap,
+        // not fixable by prompt wording alone. So generation requires at least one
+        // real DESCRIPTIVE fact (what the place actually IS/does), not just a number.
+        val descriptiveFacts = buildList {
             merchant.category?.let { add("Category: $it") }
-            if (rating.count > 0 && rating.average != null) add("Real average rating: %.1f out of 5, from ${rating.count} real reviews".format(rating.average))
             if (topTags.isNotEmpty()) add("What reviewers most often praised: ${topTags.joinToString(", ")}")
             merchant.openingHours?.let { add("Opening hours: $it") }
         }
-        if (facts.size <= 1) return null // Not enough real signal to summarize honestly.
+        if (descriptiveFacts.isEmpty()) return null // Nothing real to describe -- an honest general sentence would still risk sounding invented.
+
+        val facts = buildList {
+            add("Business name: ${merchant.businessName}")
+            addAll(descriptiveFacts)
+            if (rating.count > 0 && rating.average != null) add("Real average rating: %.1f out of 5, from ${rating.count} real reviews".format(rating.average))
+        }
 
         return aiSummaryClient.complete(SYSTEM_PROMPT, facts.joinToString("\n"))
     }
