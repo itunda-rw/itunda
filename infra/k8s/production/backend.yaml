@@ -233,10 +233,24 @@ spec:
         # /actuator/health to answer, and kubelet killed a genuinely healthy,
         # already-Ready pod mid-request ("Liveness probe failed... context deadline
         # exceeded"). Paired with a real fix on the request side too
-        # (AiSummaryClient's own new bounded 45s read timeout, so a single completion
+        # (AiSummaryClient's own new bounded read timeout, so a single completion
         # can no longer tie up a worker thread indefinitely) -- this bump alone isn't
         # a full guarantee under arbitrarily bad contention, but is a real, evidence-
         # based increase proportionate to what was actually observed live.
+        #
+        # Real follow-up (same day, caught on the very next live-verify pass): the
+        # actual crash this incident produced wasn't just one blocked worker thread --
+        # `HikariPool-1 housekeeper` (an unrelated low-priority background thread)
+        # itself logged "Thread starvation ... delta=49s", meaning the whole JVM went
+        # genuinely unscheduled by the OS for ~49s, not just the AI request's own
+        # thread. At the previous livenessProbe periodSeconds: 15 with Kubernetes'
+        # default failureThreshold: 3, that's a 45s kill-window -- just under the
+        # measured 49s stall, which is exactly why it still got killed even after the
+        # timeoutSeconds bump above. failureThreshold: 4 below widens that to a real
+        # 60s window, covering the measured stall with margin. readinessProbe is left
+        # at its own default failureThreshold on purpose -- failing readiness fast
+        # during genuine starvation is the correct behavior (sheds new traffic without
+        # killing the pod), unlike livenessProbe where failing fast means a restart.
         readinessProbe:
           httpGet:
             path: /actuator/health
@@ -251,6 +265,7 @@ spec:
           initialDelaySeconds: 45
           periodSeconds: 15
           timeoutSeconds: 10
+          failureThreshold: 4
       volumes:
       - name: firebase-credentials
         secret:

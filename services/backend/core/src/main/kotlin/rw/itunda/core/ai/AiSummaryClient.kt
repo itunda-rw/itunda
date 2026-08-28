@@ -42,13 +42,19 @@ class AiSummaryClient(
     // llama-server's own (separate-process) inference work, that duration was long
     // enough to make this backend's own /actuator/health probe -- served by a
     // DIFFERENT thread, but starved by the same real node-wide CPU pressure -- time
-    // out and get killed by kubelet as if it had hung, even though it hadn't. 30s is
-    // generous for a CPU-only 1B model under real contention, but real and bounded --
-    // a request that's genuinely stuck no longer blocks a worker thread forever.
+    // out and get killed by kubelet as if it had hung, even though it hadn't.
+    //
+    // 45s (the first fix) turned out to be too tight once live-verified: a direct
+    // timed call against llama-server on itunda-dc-a under real, moderate contention
+    // (load average ~11-19) measured ~2.75 real seconds per generated token, so even
+    // AiChatService's own reduced MAX_TOKENS bound (see its doc comment) needs real
+    // headroom beyond 45s. 90s is still bounded -- a genuinely stuck request can't
+    // block a worker thread forever -- but gives a real, measured-not-guessed margin
+    // for this hardware's actual throughput under contention.
     private val requestFactory = ClientHttpRequestFactories.get(
         ClientHttpRequestFactorySettings.DEFAULTS
             .withConnectTimeout(Duration.ofSeconds(5))
-            .withReadTimeout(Duration.ofSeconds(45)),
+            .withReadTimeout(Duration.ofSeconds(90)),
     )
     private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build() else null
 
