@@ -164,6 +164,9 @@ struct PropertyListingCard: View {
                     .background(IDS.Colors.brand.opacity(0.12)).cornerRadius(8)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            if let neighborhood = listing.neighborhood {
+                NeighborhoodReviewsSection(neighborhood: neighborhood)
+            }
             if offering {
                 HStack(spacing: 8) {
                     IdsTextField("Your offer (RWF)", text: $offerAmount, keyboardType: .numberPad)

@@ -2994,46 +2994,10 @@ public enum MessagingSocketPush {
     case reactionChange(conversationId: String?, groupConversationId: String?, messageId: String, reactions: [ReactionGroupDto])
 }
 
-public struct ListingDto: Decodable, Identifiable {
-    public let id: String
-    public let sellerId: String
-    public let title: String
-    public let description: String
-    public let price: Double
-    public let category: String
-    public let status: String
-    public let createdAt: String
-    // Real optional seller-set location (2026-07-18 backend) -- backs real proximity
-    // search and, 2026-07-19, "Directions to this seller".
-    public let latitude: Double?
-    public let longitude: Double?
-    public let meetingPlace: String?
-    // buyerId added 2026-07-24 -- real optional buyer identification captured at
-    // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
-    // review becomes possible for this transaction.
-    public let buyerId: String?
-    // Real seller-paid sponsored placement -- see backend
-    // MarketplaceService.boostListing's own doc comment. A real, still-future
-    // boostedUntil only -- never fabricated for an unpaid or expired listing.
-    // Android already has this; this is the first iOS client.
-    public let boostedUntil: String?
-    // Real seller-uploaded photo (rw.itunda.marketplace.web.UploadController), real on
-    // backend + Android since 2026-07-24/25 -- iOS never had this field at all until
-    // now. Set once at creation time only (no separate edit-photo endpoint).
-    public let photoUrl: String?
-}
-
-public struct CreateListingRequest: Encodable {
-    public let title: String
-    public let description: String
-    public let price: Double
-    public let category: String
-    public let latitude: Double?
-    public let longitude: Double?
-    public let meetingPlace: String?
-    public let photoUrl: String?
-}
-
+// ListingDto/CreateListingRequest moved to NetworkClient+Hood.swift (2026-08-28,
+// itunda Hood redesign) -- extracted to make room for real 당근카 vehicle fields
+// without pushing this already-at-baseline file over its frozen file-size-lint limit,
+// same "extract, don't just trim" precedent NetworkClient+Maps.swift already set.
 public struct ListingResponse: Decodable { public let success: Bool; public let listing: ListingDto }
 public struct MarkSoldRequest: Encodable { public let buyerPhoneNumber: String? }
 // Real seller-paid sponsored placement -- mirrors Android's ApiService.kt exactly.
@@ -3200,12 +3164,17 @@ public struct CommunityPostDto: Decodable, Identifiable {
     // CommunityPost.kt's own doc comment. Both nil unless category == "meetup".
     public let eventDate: String?
     public let capacity: Int?
-    public init(id: String, authorId: String, category: String, title: String, body: String, status: String, likeCount: Int, commentCount: Int, createdAt: String, latitude: Double?, longitude: Double?, groupConversationId: String? = nil, eventDate: String? = nil, capacity: Int? = nil) { self.id = id; self.authorId = authorId; self.category = category; self.title = title; self.body = body; self.status = status; self.likeCount = likeCount; self.commentCount = commentCount; self.createdAt = createdAt; self.latitude = latitude; self.longitude = longitude; self.groupConversationId = groupConversationId; self.eventDate = eventDate; self.capacity = capacity }
+    // Real 동네생활 topic chip + AI-generated 모임 summary (2026-08-28) -- see backend
+    // CommunityPost.topic/aiSummary's own doc comments.
+    public let topic: String?
+    public let aiSummary: String?
+    public let aiSummaryGeneratedAt: String?
+    public init(id: String, authorId: String, category: String, title: String, body: String, status: String, likeCount: Int, commentCount: Int, createdAt: String, latitude: Double?, longitude: Double?, groupConversationId: String? = nil, eventDate: String? = nil, capacity: Int? = nil, topic: String? = nil, aiSummary: String? = nil, aiSummaryGeneratedAt: String? = nil) { self.id = id; self.authorId = authorId; self.category = category; self.title = title; self.body = body; self.status = status; self.likeCount = likeCount; self.commentCount = commentCount; self.createdAt = createdAt; self.latitude = latitude; self.longitude = longitude; self.groupConversationId = groupConversationId; self.eventDate = eventDate; self.capacity = capacity; self.topic = topic; self.aiSummary = aiSummary; self.aiSummaryGeneratedAt = aiSummaryGeneratedAt }
 }
 public struct CreateCommunityPostRequest: Encodable {
     public let category: String; public let title: String; public let body: String
     public let latitude: Double?; public let longitude: Double?
-    public let eventDate: String?; public let capacity: Int?
+    public let eventDate: String?; public let capacity: Int?; public let topic: String?
 }
 public struct CommunityPostResponse: Decodable { public let success: Bool; public let post: CommunityPostDto }
 // joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
@@ -3296,6 +3265,10 @@ public struct JobApplicationDto: Decodable, Identifiable {
     public let status: String
     public let submittedAt: String
     public let respondedAt: String?
+    // Real résumé attach at submission time (2026-08-28) -- see backend
+    // JobApplication.resumeSnapshotJson's own doc comment. Only ever checked for
+    // presence to show "Résumé attached" -- never parsed/re-rendered here.
+    public let resumeSnapshotJson: String?
 }
 public struct JobApplicationResponse: Decodable { public let success: Bool; public let application: JobApplicationDto; public let conversation: ConversationDto? }
 public struct JobApplicationsResponse: Decodable { public let success: Bool; public let applications: [JobApplicationDto] }
@@ -3328,6 +3301,10 @@ public struct PropertyListingDto: Decodable, Identifiable {
     // PropertyOwnershipService's own doc comment. Real on Android since that day; found
     // 2026-08-01 via a fresh backend-module sweep with zero iOS client despite that.
     public let ownershipVerificationStatus: String?
+    // Real hyperlocal neighborhood -- the backend has stamped this on every listing
+    // since 2026-07-20 and serializes the entity directly; iOS never had this field.
+    // Needed to key the real 살아본 후기 (neighborhood-lived reviews) section.
+    public let neighborhood: String?
 }
 public struct MarkTakenRequest: Encodable { public let counterpartyPhoneNumber: String? }
 public struct SubmitOwnershipVerificationRequest: Encodable { public let documentUrl: String }
@@ -4673,8 +4650,8 @@ extension NetworkClient {
         }
     }
 
-    public func createListing(title: String, description: String, price: Double, category: String, latitude: Double? = nil, longitude: Double? = nil, meetingPlace: String? = nil, photoUrl: String? = nil) async throws -> ListingResponse {
-        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace, photoUrl: photoUrl))
+    public func createListing(title: String, description: String, price: Double, category: String, latitude: Double? = nil, longitude: Double? = nil, meetingPlace: String? = nil, photoUrl: String? = nil, vehicleMileageKm: Int? = nil, vehicleInsuranceClaimCount: Int? = nil, vehicleIsLeaseTakeover: Bool = false, leaseTotalAcquisitionCost: Double? = nil, leaseRemainingMonths: Int? = nil, leaseTotalMonths: Int? = nil, leaseMonthlyPayment: Double? = nil, leaseSubsidyAmount: Double? = nil, leaseReturnFee: Double? = nil) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace, photoUrl: photoUrl, vehicleMileageKm: vehicleMileageKm, vehicleInsuranceClaimCount: vehicleInsuranceClaimCount, vehicleIsLeaseTakeover: vehicleIsLeaseTakeover, leaseTotalAcquisitionCost: leaseTotalAcquisitionCost, leaseRemainingMonths: leaseRemainingMonths, leaseTotalMonths: leaseTotalMonths, leaseMonthlyPayment: leaseMonthlyPayment, leaseSubsidyAmount: leaseSubsidyAmount, leaseReturnFee: leaseReturnFee))
     }
 
     public func browseListings(category: String? = nil) async throws -> ListingsResponse {
@@ -4843,16 +4820,16 @@ extension NetworkClient {
 
     public func createCommunityPost(
         category: String, title: String, body: String, latitude: Double? = nil, longitude: Double? = nil,
-        eventDate: String? = nil, capacity: Int? = nil
+        eventDate: String? = nil, capacity: Int? = nil, topic: String? = nil
     ) async throws -> CommunityPostResponse {
         try await authenticatedPost(
             "api/v1/community/posts",
-            body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: latitude, longitude: longitude, eventDate: eventDate, capacity: capacity)
+            body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: latitude, longitude: longitude, eventDate: eventDate, capacity: capacity, topic: topic)
         )
     }
 
-    public func browseCommunityPosts(category: String? = nil) async throws -> CommunityPostsResponse {
-        try await get("api/v1/community/posts", query: [URLQueryItem(name: "category", value: category)])
+    public func browseCommunityPosts(category: String? = nil, topic: String? = nil) async throws -> CommunityPostsResponse {
+        try await get("api/v1/community/posts", query: [URLQueryItem(name: "category", value: category), URLQueryItem(name: "topic", value: topic)])
     }
 
     public func getNearbyCommunityPosts(lat: Double, lng: Double, radiusKm: Double = 3) async throws -> CommunityPostsResponse {

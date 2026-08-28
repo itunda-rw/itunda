@@ -271,6 +271,9 @@ struct JobPostCard: View {
                         ForEach(pending) { app in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(app.message).font(.subheadline)
+                                if app.resumeSnapshotJson != nil {
+                                    Text("📄 Résumé attached").font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                                }
                                 HStack(spacing: 10) {
                                     actionButton("Decline", filled: false) { await respond(app, accept: false) }
                                         .disabled(respondingToId == app.id)

@@ -135,6 +135,7 @@ struct ListingCard: View {
                 TrustBadge(score: sellerTrustScore)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            VehicleDetailSection(listing: listing)
             if let meetingPlace = listing.meetingPlace {
                 Text("Suggested hand-off: \(meetingPlace)")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)

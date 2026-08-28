@@ -57,6 +57,21 @@ struct CommunityPostCard: View {
                     Text("🗓️ \(formatMeetupDate(eventDate))\(capacityLabel)")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
+                // Real AI-generated 모임 summary (2026-08-28) -- see backend
+                // HoodAiSummaryService's own doc comment. Never shown without this
+                // visible "AI" disclosure badge, same convention this session's Maps
+                // AI-summary work already established.
+                if let summary = post.aiSummary {
+                    HStack(alignment: .top, spacing: 6) {
+                        Text("AI").font(.caption2).bold().foregroundColor(.white)
+                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .background(IDS.Colors.brand).cornerRadius(4)
+                        Text(summary).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    .padding(10)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(10)
+                }
                 // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
                 // "view" navigation: it adds the tapper to a real GroupConversation
                 // (see backend CommunityService.joinMeetup's own doc comment), shown

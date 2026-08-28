@@ -18,6 +18,11 @@ struct CommunityContent: View {
     @State private var view: CommunityView = .browse
     @State private var categories: [CommunityCategoryDto] = []
     @State private var activeCategory: String?
+    // Real 동네생활 topic-chip filter row (2026-08-28) -- a lifestyle axis independent
+    // of the functional category above, see backend CommunityService.TOPICS' own doc
+    // comment.
+    @State private var topics: [CommunityCategoryDto] = []
+    @State private var activeTopic: String?
     @State private var posts: [CommunityPostDto]?
     // Real 같이해요 (join-together) group join counts (2026-07-24) -- postId -> real
     // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
@@ -61,6 +66,24 @@ struct CommunityContent: View {
                                         .overlay(RoundedRectangle(cornerRadius: 999).stroke(active ? IDS.Colors.brand : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1))
                                         .cornerRadius(999)
                                         .onTapGesture { activeCategory = active ? nil : c.id }
+                                }
+                            }
+                        }
+                    }
+
+                    if view == .browse && !topics.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(topics) { t in
+                                    let active = activeTopic == t.id
+                                    Text(t.label)
+                                        .font(.caption).bold()
+                                        .foregroundColor(active ? .white : IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .background(active ? IDS.Colors.brand : Color.clear)
+                                        .overlay(RoundedRectangle(cornerRadius: 999).stroke(active ? IDS.Colors.brand : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1))
+                                        .cornerRadius(999)
+                                        .onTapGesture { activeTopic = active ? nil : t.id }
                                 }
                             }
                         }
@@ -160,11 +183,15 @@ struct CommunityContent: View {
                 if categories.isEmpty {
                     categories = (try? await NetworkClient.shared.getCommunityCategories().categories) ?? []
                 }
+                if topics.isEmpty {
+                    topics = (try? await NetworkClient.shared.getCommunityTopics().topics) ?? []
+                }
                 locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
                 await load()
             }
             .onChange(of: view) { _ in Task { await load() } }
             .onChange(of: activeCategory) { _ in Task { await load() } }
+            .onChange(of: activeTopic) { _ in Task { await load() } }
             .onChange(of: locationFetcher.errorMessage) { message in
                 guard view == .nearby, let message else { return }
                 error = message + " You can still use Feed or Neighborhood."
@@ -199,7 +226,7 @@ struct CommunityContent: View {
             return
         }
         do {
-            let res = view == .browse ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory) : try await NetworkClient.shared.getMyCommunityPosts()
+            let res = view == .browse ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory, topic: activeTopic) : try await NetworkClient.shared.getMyCommunityPosts()
             posts = res.posts
             joinedCounts = res.joinedCounts ?? [:]
             error = nil

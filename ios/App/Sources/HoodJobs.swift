@@ -11,7 +11,7 @@ struct JobsContent: View {
 
     // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6, see backend JobPostRepository's own doc comment.
-    private enum JobsView { case browse, nearby, neighborhood, mine, worked, applications, wishlist }
+    private enum JobsView { case browse, nearby, neighborhood, mine, worked, applications, wishlist, resume }
 
     @State private var view: JobsView = .browse
     @State private var categories: [JobCategoryDto] = []
@@ -49,6 +49,7 @@ struct JobsContent: View {
                         Text("Jobs I did").tag(JobsView.worked)
                         Text("My applications").tag(JobsView.applications)
                         Text("Saved").tag(JobsView.wishlist)
+                        Text("My résumé").tag(JobsView.resume)
                 }
                 .pickerStyle(.segmented)
 
@@ -146,6 +147,8 @@ struct JobsContent: View {
                             )
                         }
                     }
+                } else if view == .resume {
+                    ResumeBuilderView()
                 } else if view == .applications {
                     MyJobApplicationsView()
                 } else if view == .wishlist {
@@ -211,7 +214,7 @@ struct JobsContent: View {
 
     private func load() async {
         posts = nil
-        if view == .wishlist || view == .applications {
+        if view == .wishlist || view == .applications || view == .resume {
             posts = []
             error = nil
             return

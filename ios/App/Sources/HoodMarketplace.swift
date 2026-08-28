@@ -293,6 +293,7 @@ struct NewListingForm: View {
     @State private var showPhotoPicker = false
     @State private var photoUrl: String?
     @State private var uploadingPhoto = false
+    @StateObject private var vehicleState = VehicleListingState()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -306,6 +307,7 @@ struct NewListingForm: View {
             IdsTextField("Suggested meeting place (optional)", text: $meetingPlace)
             Text("Use a public landmark, not a home address.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            VehicleListingFieldsSection(state: vehicleState)
             Button(action: { showPhotoPicker = true }) {
                 Text(uploadingPhoto ? "Uploading…" : photoUrl != nil ? "✓ Photo uploaded" : "Add a photo (optional)")
                     .font(.caption)
@@ -397,6 +399,15 @@ struct NewListingForm: View {
                 latitude: loc?.latitude, longitude: loc?.longitude,
                 meetingPlace: meetingPlace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : meetingPlace.trimmingCharacters(in: .whitespacesAndNewlines),
                 photoUrl: photoUrl,
+                vehicleMileageKm: vehicleState.isVehicle ? Int(vehicleState.mileageKm) : nil,
+                vehicleInsuranceClaimCount: vehicleState.isVehicle ? Int(vehicleState.insuranceClaimCount) : nil,
+                vehicleIsLeaseTakeover: vehicleState.isVehicle && vehicleState.isLeaseTakeover,
+                leaseTotalAcquisitionCost: vehicleState.isLeaseTakeover ? Double(vehicleState.leaseTotalAcquisitionCost) : nil,
+                leaseRemainingMonths: vehicleState.isLeaseTakeover ? Int(vehicleState.leaseRemainingMonths) : nil,
+                leaseTotalMonths: vehicleState.isLeaseTakeover ? Int(vehicleState.leaseTotalMonths) : nil,
+                leaseMonthlyPayment: vehicleState.isLeaseTakeover ? Double(vehicleState.leaseMonthlyPayment) : nil,
+                leaseSubsidyAmount: vehicleState.isLeaseTakeover ? Double(vehicleState.leaseSubsidyAmount) : nil,
+                leaseReturnFee: vehicleState.isLeaseTakeover ? Double(vehicleState.leaseReturnFee) : nil
             )
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
