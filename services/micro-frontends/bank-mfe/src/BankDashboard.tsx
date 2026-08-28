@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Bot, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, Bike, Bot, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, Megaphone, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
 import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
@@ -135,6 +135,7 @@ import {
   type CallSession, type ConversationSummaryWithFavorite,
 } from './lib/talk';
 import { TalkAiChatThread, TalkServiceChannelThread } from './TalkThreads';
+import { TalkGroupAnnouncementPoll } from './TalkGroupAnnouncementPoll';
 import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   sendGroupEmoticon,
@@ -8963,6 +8964,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   // zero UI anywhere) -- toggles a sibling view over this same thread.
   const [showSplitBills, setShowSplitBills] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
+  // Real group 공지/투표 (announcement/poll) (itunda Talk redesign, 2026-08-28) --
+  // toggles a sibling view over this same thread, same pattern as split-bill above.
+  const [showAnnouncementPoll, setShowAnnouncementPoll] = useState(false);
   // Real attach ("+") menu + photo send/gallery -- ports Android TalkScreen.kt's own
   // identical addition (2026-08-04) to bank-mfe. Reuses lib/upload.ts's own uploadFile,
   // already real since 2026-08-01; this is just the Talk-composer wiring.
@@ -9202,6 +9206,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       />
     );
   }
+  if (showAnnouncementPoll) {
+    return <TalkGroupAnnouncementPoll groupId={group.groupId} onBack={() => setShowAnnouncementPoll(false)} />;
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
@@ -9221,6 +9228,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           </button>
           <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Manage members">
             <Users size={20} />
+          </button>
+          <button type="button" onClick={() => setShowAnnouncementPoll(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Announcement and polls">
+            <Megaphone size={20} />
           </button>
           <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Split a bill">
             <Receipt size={20} />
