@@ -1,0 +1,124 @@
+# Real self-hosted LLM (itunda Maps redesign, 2026-08-28, direct user instruction:
+# "for AI let's find high quality open-source AI online we can download and customize
+# to serve our needs") -- llama.cpp's own real `llama-server`, running Llama 3.2
+# 1B-Instruct (quantized, ~1.3GB RAM, the smallest viable option for this
+# severely resource-constrained single-node private cloud). Backs
+# rw.itunda.core.ai.AiSummaryClient (Maps place summaries, Hood meetup summaries,
+# and, as of the itunda Talk redesign, the real AI chatbot channel).
+#
+# Real infra-as-code gap closed here (2026-08-28): this deployment previously only
+# ever existed as a live `kubectl apply`, documented in prose
+# (docs/DESIGN_REFERENCES.md §276) -- never a checked-in manifest. This file is that
+# real manifest, matching the exact deployment already proven live.
+#
+# The real GGUF model file itself is NOT bundled in this manifest or in git (a
+# ~1.3GB binary has no place in this repo) -- provisioned out-of-band onto the host
+# at /var/lib/itunda-llama/models, same "secrets/large binaries live outside the
+# repo, only their real mount point is committed" convention
+# infra/k8s/production/backend.yaml already establishes for DB/JWT/Firebase
+# credentials. hostPath (not a PVC) for the same reason uploads-storage in that same
+# file uses one: this cluster genuinely has only the one node (itunda-dc-a).
+#
+# Internal-only -- ClusterIP, never a NodePort. AiSummaryClient is the one and only
+# real caller; nothing else should ever reach this directly.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-server
+  namespace: itunda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llama-server
+  template:
+    metadata:
+      labels:
+        app: llama-server
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: itunda-dc-a
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      containers:
+      - name: llama-server
+        image: ghcr.io/ggml-org/llama.cpp:server
+        imagePullPolicy: IfNotPresent
+        args:
+        - "-m"
+        - "/models/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+        - "--host"
+        - "0.0.0.0"
+        - "--port"
+        - "8080"
+        # Real, deliberate CPU-only inference -- this node has no GPU, and a 1B
+        # quantized model is small enough to run at real, if modest, CPU throughput.
+        - "--threads"
+        - "2"
+        - "--ctx-size"
+        - "2048"
+        ports:
+        - containerPort: 8080
+        # Cold model load can genuinely take a while on this node's own real CPU
+        # ceiling -- same "give it real time to boot before liveness/readiness ever
+        # get evaluated" lesson production/backend.yaml's own startupProbe doc
+        # comment already learned the hard way.
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 5
+          failureThreshold: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 15
+          # Real fix applied from the start this time (see registry-rehearsal.yaml's
+          # own 2026-08-28 doc comment for the incident this avoids repeating): a
+          # bare, genuinely-healthy request can still take longer than the
+          # Kubernetes-default 1s under this node's real contention.
+          timeoutSeconds: 8
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 20
+          timeoutSeconds: 8
+          failureThreshold: 3
+        resources:
+          # Real, conservative sizing against the model's own documented ~1.3GB
+          # footprint plus llama.cpp's own runtime overhead -- deliberately no swap
+          # workaround (a prior swap-for-AI-headroom fix already broke kubelet
+          # outright once this session, see [[feedback_kubelet_swap_incompatible]]).
+          requests:
+            memory: "1536Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: llama-models
+          mountPath: /models
+          readOnly: true
+      volumes:
+      - name: llama-models
+        hostPath:
+          path: /var/lib/itunda-llama/models
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama-server
+  namespace: itunda
+spec:
+  selector:
+    app: llama-server
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
