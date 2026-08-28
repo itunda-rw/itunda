@@ -69,4 +69,30 @@ class AiSummaryClient(
             null
         }
     }
+
+    /** Real multi-turn chat completion (itunda Talk redesign, 2026-08-28) -- a small,
+     * additive sibling to [complete]: `llama-server`'s `/v1/chat/completions` already
+     * natively accepts a full OpenAI-style message array, [complete] just never built
+     * one. `messages` is the full real prior turn history (already persisted by the
+     * caller -- this client itself stays stateless, same as [complete]). Same
+     * never-fail convention: null on any failure, never a fabricated reply. */
+    fun completeChat(messages: List<Map<String, String>>, maxTokens: Int = 300): String? {
+        val client = restClient ?: return null
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val response = client.post()
+                .uri("/v1/chat/completions")
+                .body(mapOf("model" to model, "messages" to messages, "max_tokens" to maxTokens, "temperature" to 0.3))
+                .retrieve()
+                .body(Map::class.java) as Map<String, Any?>?
+            @Suppress("UNCHECKED_CAST")
+            val choices = response?.get("choices") as? List<Map<String, Any?>>
+            @Suppress("UNCHECKED_CAST")
+            val message = choices?.firstOrNull()?.get("message") as? Map<String, Any?>
+            (message?.get("content") as? String)?.trim()?.ifBlank { null }
+        } catch (e: RestClientException) {
+            logger.warn("Self-hosted AI chat request failed: {}", e.message)
+            null
+        }
+    }
 }
