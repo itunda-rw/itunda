@@ -33,7 +33,12 @@ import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
 import rw.itunda.messaging.GroupPhotoUrlTooLongException
 import rw.itunda.messaging.GroupDescriptionTooLongException
+import rw.itunda.messaging.GroupPollAnnouncementService
+import rw.itunda.messaging.GroupPollNotFoundException
+import rw.itunda.messaging.GroupPollOptionNotFoundException
 import rw.itunda.messaging.InvalidForwardDestinationException
+import rw.itunda.messaging.InvalidGroupAnnouncementException
+import rw.itunda.messaging.InvalidGroupPollException
 import rw.itunda.messaging.InvalidGroupReactionException
 import rw.itunda.messaging.InvalidGroupJoinCodeException
 import rw.itunda.messaging.InvalidGroupMessageImageException
@@ -42,6 +47,7 @@ import rw.itunda.messaging.MessageForwardService
 import rw.itunda.messaging.MessageNotFoundException
 import rw.itunda.messaging.MessageTooLongException
 import rw.itunda.messaging.UserBlockedException
+import java.time.Instant
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
@@ -58,6 +64,11 @@ data class ForwardGroupMessageRequest(val destinationType: String, val destinati
 // .setGroupPhotoUrl/setGroupDescription's own doc comments.
 data class SetGroupPhotoUrlRequest(val photoUrl: String)
 data class SetGroupDescriptionRequest(val description: String)
+// Real group 공지/투표 (announcement/poll) (itunda Talk redesign, 2026-08-28) -- see
+// GroupPollAnnouncementService's own doc comment.
+data class PostGroupAnnouncementRequest(val body: String)
+data class CreateGroupPollRequest(val question: String, val options: List<String>, val allowMultiple: Boolean = false, val closesAt: Instant? = null)
+data class VoteGroupPollRequest(val optionId: String)
 
 // Real group chat -- see GroupMessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate, same as every other user-facing feature in this backend.
@@ -66,6 +77,7 @@ data class SetGroupDescriptionRequest(val description: String)
 class GroupMessagingController(
     private val groupMessagingService: GroupMessagingService,
     private val messageForwardService: MessageForwardService,
+    private val groupPollAnnouncementService: GroupPollAnnouncementService,
 ) {
 
     @PostMapping
@@ -286,6 +298,48 @@ class GroupMessagingController(
         return ResponseEntity.ok(mapOf("success" to true, "group" to group))
     }
 
+    // Real group 공지 (announcement) -- see GroupPollAnnouncementService's own doc
+    // comment. One active announcement at a time; posting a new one replaces the old.
+    @PostMapping("/{groupId}/announcement")
+    fun postAnnouncement(
+        @PathVariable groupId: String,
+        @RequestBody request: PostGroupAnnouncementRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val announcement = groupPollAnnouncementService.postAnnouncement(currentUser.userId, groupId, request.body)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "announcement" to announcement))
+    }
+
+    @GetMapping("/{groupId}/announcement")
+    fun getAnnouncement(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "announcement" to groupPollAnnouncementService.getAnnouncement(currentUser.userId, groupId)))
+
+    // Real group 투표 (poll) -- see GroupPollAnnouncementService's own doc comment.
+    @PostMapping("/{groupId}/polls")
+    fun createPoll(
+        @PathVariable groupId: String,
+        @RequestBody request: CreateGroupPollRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val poll = groupPollAnnouncementService.createPoll(currentUser.userId, groupId, request.question, request.options, request.allowMultiple, request.closesAt)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "poll" to poll))
+    }
+
+    @GetMapping("/{groupId}/polls")
+    fun getPolls(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "polls" to groupPollAnnouncementService.getPolls(currentUser.userId, groupId)))
+
+    @PostMapping("/{groupId}/polls/{pollId}/vote")
+    fun votePoll(
+        @PathVariable groupId: String,
+        @PathVariable pollId: String,
+        @RequestBody request: VoteGroupPollRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val poll = groupPollAnnouncementService.vote(currentUser.userId, groupId, pollId, request.optionId)
+        return ResponseEntity.ok(mapOf("success" to true, "poll" to poll))
+    }
+
     @DeleteMapping("/{groupId}/members/me")
     fun leaveGroup(
         @PathVariable groupId: String,
@@ -386,4 +440,20 @@ class GroupMessagingController(
     @ExceptionHandler(MessageTooLongException::class)
     fun handleMessageTooLong(ex: MessageTooLongException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupAnnouncementException::class)
+    fun handleInvalidAnnouncement(ex: InvalidGroupAnnouncementException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_ANNOUNCEMENT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupPollException::class)
+    fun handleInvalidPoll(ex: InvalidGroupPollException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_POLL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupPollNotFoundException::class)
+    fun handlePollNotFound(ex: GroupPollNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLL_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(GroupPollOptionNotFoundException::class)
+    fun handlePollOptionNotFound(ex: GroupPollOptionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLL_OPTION_NOT_FOUND", ex.message ?: "Not found"))
 }
