@@ -8,6 +8,7 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.eats.EatsReviewService
 import rw.itunda.eats.RatingSummary
 import rw.itunda.merchant.MerchantNotFoundException
+import rw.itunda.merchant.MerchantProfileViewService
 import rw.itunda.merchant.MerchantUpdateService
 
 data class MapsPlaceDetail(
@@ -46,9 +47,15 @@ class MapsPlaceDetailService(
     private val merchantProductRepository: MerchantProductRepository,
     private val eatsReviewService: EatsReviewService,
     private val merchantUpdateService: MerchantUpdateService,
+    private val merchantProfileViewService: MerchantProfileViewService,
 ) {
     fun getPlaceDetail(merchantId: String): MapsPlaceDetail {
         val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
+        // Real 비즈프로필 (Karrot Business Profile) visitor-count tracking (itunda Hood
+        // redesign, 2026-08-28) -- every real consumer open of this place-detail counts
+        // as one real visit. Best-effort: never blocks the real place-detail response
+        // itself if the write somehow fails.
+        try { merchantProfileViewService.recordView(merchantId) } catch (e: Exception) { /* honest best-effort, see doc comment */ }
         return MapsPlaceDetail(
             merchantId = merchant.id,
             businessName = merchant.businessName,

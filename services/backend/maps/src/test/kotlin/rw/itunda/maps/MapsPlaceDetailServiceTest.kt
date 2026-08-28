@@ -25,7 +25,7 @@ class MapsPlaceDetailServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val eatsReviewService = mockk<EatsReviewService>()
         val merchantUpdateService = mockk<MerchantUpdateService>()
-        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService)
+        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true))
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", accountId = "account_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE, category = "Rwandan")
         merchant.photoUrls = "https://a.jpg,https://b.jpg"
@@ -60,7 +60,7 @@ class MapsPlaceDetailServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val eatsReviewService = mockk<EatsReviewService>()
         val merchantUpdateService = mockk<MerchantUpdateService>()
-        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService)
+        val service = MapsPlaceDetailService(merchantRepository, merchantProductRepository, eatsReviewService, merchantUpdateService, mockk(relaxed = true))
         every { merchantRepository.findById("does_not_exist") } returns Optional.empty()
 
         When("fetching its place detail") {
