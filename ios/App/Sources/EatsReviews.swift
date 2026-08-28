@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
+import FeatureMaps
 
 // Real post-delivery ratings & reviews (2026-07-18) -- itunda's own self-hosted rating
 // system, ported from bank-mfe's own review UI (the template for this iOS version).
@@ -35,6 +36,9 @@ struct RestaurantRatingBadge: View {
     @State private var rating: EatsRatingResponse?
     @State private var open = false
     @State private var reviews: [EatsReviewDto]?
+    // Real tag-based good points (itunda Maps redesign, 2026-08-28) -- aggregate counts
+    // alongside the star rating, same as Android/web's own port.
+    @State private var goodPointCounts: [String: Int] = [:]
 
     var body: some View {
         Group {
@@ -46,6 +50,10 @@ struct RestaurantRatingBadge: View {
                             Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
+                    }
+                    if !goodPointCounts.isEmpty {
+                        Text(goodPointCounts.sorted { $0.value > $1.value }.prefix(2).map { "\(eatsGoodPointLabels[$0.key] ?? $0.key) \($0.value)" }.joined(separator: " · "))
+                            .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                     }
                     if open {
                         if let reviews {
@@ -83,6 +91,9 @@ struct RestaurantRatingBadge: View {
                 // the menu.
             }
         }
+        .task {
+            goodPointCounts = (try? await NetworkClient.shared.getRestaurantGoodPoints(restaurantId).counts) ?? [:]
+        }
     }
 
     private func toggle() {
@@ -111,6 +122,9 @@ struct ReviewOrderCard: View {
     // upload/storage layer (see backend Merchant.kt's own doc comment), so this is a
     // "bring your own URL" field, matching RestaurantPhotoThumb's own convention.
     @State private var photoUrl = ""
+    // Real tag-based good points (itunda Maps redesign, 2026-08-28) -- ports the same
+    // preset-tag pattern already shipped for Hood marketplace reviews (HoodReviewForm).
+    @State private var selectedGoodPoints: Set<String> = []
     @State private var submitting = false
     @State private var error: String?
 
@@ -140,6 +154,23 @@ struct ReviewOrderCard: View {
                 TextField("Photo URL (optional)", text: $photoUrl)
                     .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
                     .keyboardType(.URL).autocapitalization(.none)
+                Text("What went well?").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(eatsGoodPointOptions, id: \.0) { id, label in
+                            let selected = selectedGoodPoints.contains(id)
+                            Text(label)
+                                .font(.caption).bold()
+                                .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                                .cornerRadius(999)
+                                .onTapGesture {
+                                    if selected { selectedGoodPoints.remove(id) } else { selectedGoodPoints.insert(id) }
+                                }
+                        }
+                    }
+                }
                 if let error {
                     Text(error).font(.caption).foregroundColor(.red)
                 }
@@ -176,7 +207,8 @@ struct ReviewOrderCard: View {
                 restaurantComment: restaurantComment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : restaurantComment,
                 riderRating: riderRating,
                 riderComment: riderComment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : riderComment,
-                photoUrl: trimmedPhotoUrl.isEmpty ? nil : trimmedPhotoUrl
+                photoUrl: trimmedPhotoUrl.isEmpty ? nil : trimmedPhotoUrl,
+                goodPoints: Array(selectedGoodPoints)
             )
             done = true
         } catch let NetworkError.httpError(statusCode) {

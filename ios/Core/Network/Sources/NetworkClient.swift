@@ -4229,6 +4229,9 @@ public struct SubmitEatsReviewRequest: Encodable {
     // EatsReviewDto.photoUrl's own doc comment. itunda has no upload/storage
     // pipeline, so this is a real "paste your own already-hosted URL" field.
     public let photoUrl: String?
+    // Real tag-based good points (itunda Maps redesign, 2026-08-28) -- ports the same
+    // preset-tag pattern already shipped for Hood marketplace reviews.
+    public let goodPoints: [String]
 }
 public struct EatsReviewDto: Decodable {
     public let id: String
@@ -5651,10 +5654,10 @@ extension NetworkClient {
     /// doc comment. Uses URLComponents (not appendingPathComponent) so the query string
     /// is encoded correctly -- the first query-param GET in this client.
     // Real post-delivery ratings & reviews (2026-07-18) -- see EatsController.submitReview.
-    public func submitEatsReview(orderId: String, restaurantRating: Int, restaurantComment: String?, riderRating: Int, riderComment: String?, photoUrl: String? = nil) async throws -> EatsReviewResponse {
+    public func submitEatsReview(orderId: String, restaurantRating: Int, restaurantComment: String?, riderRating: Int, riderComment: String?, photoUrl: String? = nil, goodPoints: [String] = []) async throws -> EatsReviewResponse {
         try await authenticatedPost(
             "api/v1/eats/orders/\(orderId)/review",
-            body: SubmitEatsReviewRequest(restaurantRating: restaurantRating, restaurantComment: restaurantComment, riderRating: riderRating, riderComment: riderComment, photoUrl: photoUrl)
+            body: SubmitEatsReviewRequest(restaurantRating: restaurantRating, restaurantComment: restaurantComment, riderRating: riderRating, riderComment: riderComment, photoUrl: photoUrl, goodPoints: goodPoints)
         )
     }
 

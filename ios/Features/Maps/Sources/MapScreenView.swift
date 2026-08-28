@@ -240,6 +240,15 @@ public struct MapScreenView: View {
     // "Scheduled", never implying live tracking.
     @State private var busTrips: [BusTripDto]?
     @State private var busSearching = false
+    @State private var transitJourneys: [TransitJourneyDto]? // real Kigali GTFS journeys, separate from the intercity-bus tab above
+    @State private var transitSearching = false
+    // Real consolidated place-detail (2026-08-28) -- see MapPlaceDetailPanel's own doc
+    // comment. Fetched once per selected merchant; feeds Home/Menu/Reviews/Photos/News/Info.
+    @State private var placeDetail: MapPlaceDetailDto?
+    @State private var placeTab: MapPlaceTab = .home
+    // Real, free, keyless Kigali weather (2026-08-28) -- see KigaliWeatherClient's own doc
+    // comment on the backend. Stays nil (chip doesn't render) if unreachable -- never fabricated.
+    @State private var weather: KigaliWeatherDto?
     @State private var showSteps = false
     @State private var routing = false
     @State private var error: String?
@@ -583,6 +592,13 @@ public struct MapScreenView: View {
                                     if let savingToFolder, savingToFolder.latitude == place.latitude, savingToFolder.longitude == place.longitude {
                                         folderPicker()
                                     }
+                                    // Real Naver Map-style Home/Menu/Reviews/Photos/News/
+                                    // Info tabs (2026-08-28) -- see MapPlaceDetailPanel's
+                                    // own doc comment. Nothing renders for a place with no
+                                    // real itunda merchant match (placeDetail stays nil).
+                                    if let placeDetail {
+                                        MapPlaceDetailPanel(detail: placeDetail, selectedTab: $placeTab)
+                                    }
                                     VStack(alignment: .leading, spacing: 6) {
                                         Button(itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) ? "Already in itinerary" : "＋ Add stop to itinerary") {
                                             guard itineraryStops.count < 7, !itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) else { return }
@@ -598,53 +614,28 @@ public struct MapScreenView: View {
                                     if let selectedMerchant { // real booking, moved from App/Sources, see MapsBooking.swift
                                         MerchantBookableServicesSection(merchantId: selectedMerchant.merchantId) { bookingService = $0 }
                                     }
-                                    // Real driving/walking mode toggle (2026-07-22) --
-                                    // same real Naver/Kakao Maps convention of picking a
-                                    // travel mode before/after a route is drawn. Extracted
-                                    // into its own @ViewBuilder function (not inlined) --
-                                    // inlined here, the combined nesting made the Swift
-                                    // type-checker time out ("unable to type-check this
-                                    // expression in reasonable time").
-                                    travelModeToggle(placeName: place.displayName)
-                                    if travelMode == "BUS" {
-                                        busResultsView(placeName: place.displayName)
-                                    } else if let route {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("\(travelMode == "DRIVING" ? "🚗" : "🚶") \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
-                                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                            // Real alternative-route picker (2026-07-22) --
-                                            // only shown when OSRM genuinely offered more
-                                            // than one real route for this trip. Same
-                                            // type-checker-timeout reasoning as above for
-                                            // why this is its own function, not inlined.
-                                            if let alternatives = routeAlternatives, alternatives.count > 1 {
-                                                routeAlternativesPicker(alternatives)
-                                            }
-                                            if !route.steps.isEmpty {
-                                                Button(action: { showSteps.toggle() }) {
-                                                    Text(showSteps ? "Hide turn-by-turn directions" : "Show turn-by-turn directions (\(route.steps.count) steps)")
-                                                        .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                                                }
-                                                if showSteps {
-                                                    VStack(alignment: .leading, spacing: 4) {
-                                                        ForEach(Array(route.steps.enumerated()), id: \.offset) { i, step in
-                                                            Text("\(i + 1). \(step.instruction)" + (step.distanceMeters >= 10 ? " (\(Int(step.distanceMeters)) m)" : ""))
-                                                                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                                        }
-                                                    }
-                                                    .padding(.top, 4)
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        Button(action: { Task { await getDirections() } }) {
-                                            Text(routing ? "Finding real route…" : "Directions")
-                                                .font(.subheadline).bold().foregroundColor(.white)
-                                                .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                                .background(IDS.Colors.brand).cornerRadius(12)
-                                        }
-                                        .disabled(routing)
-                                    }
+                                    // Real driving/walking/bike/transit mode toggle
+                                    // (2026-07-22, extended 2026-08-28) -- see
+                                    // MapRoutePlanningView's own doc comment for why this
+                                    // whole block is its own file, not inlined.
+                                    MapRoutePlanningView(
+                                        placeName: place.displayName,
+                                        route: route,
+                                        travelMode: $travelMode,
+                                        routing: routing,
+                                        busSearching: busSearching,
+                                        busTrips: busTrips,
+                                        transitSearching: transitSearching,
+                                        transitJourneys: transitJourneys,
+                                        routeAlternatives: routeAlternatives,
+                                        selectedRouteIndex: selectedRouteIndex,
+                                        showSteps: $showSteps,
+                                        onFetchDirections: { mode in Task { await getDirections(mode: mode) } },
+                                        onSearchBus: { Task { await searchBus(destination: place.displayName) } },
+                                        onSearchTransit: { Task { await searchTransit(to: place) } },
+                                        onGetDirections: { Task { await getDirections() } },
+                                        onSelectAlternative: { i, alt in selectedRouteIndex = i; route = alt }
+                                    )
                                 } else {
                                     // Real default "around me" state (2026-07-21) --
                                     // Naver Map's own Smart Around sheet keeps a
@@ -655,7 +646,16 @@ public struct MapScreenView: View {
                                     // curate, so this surfaces real data it already
                                     // has: the active category's real results, a real
                                     // merchant count, and real saved places.
-                                    Text("Around you").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    HStack {
+                                        Text("Around you").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        Spacer()
+                                        // Real, free, keyless Kigali weather (2026-08-28) -- nothing
+                                        // renders when the real upstream is unreachable, never fabricated.
+                                        if let weather {
+                                            Text("\(Int(weather.temperatureCelsius))° \(weather.condition)" + (weather.pm2_5.map { " · PM2.5 \(Int($0))" } ?? ""))
+                                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        }
+                                    }
                                     let home = bookmarks.first { $0.folderName.caseInsensitiveCompare("Home") == .orderedSame }
                                     let work = bookmarks.first { $0.folderName.caseInsensitiveCompare("Work") == .orderedSame }
                                     if home != nil || work != nil {
@@ -799,6 +799,17 @@ public struct MapScreenView: View {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { sheetY = target }
                         sheetSettledY = target
                     }
+                    // Real consolidated place-detail fetch (2026-08-28) -- see
+                    // MapPlaceDetailPanel's own doc comment. Reset first so a stale
+                    // previous merchant's detail never flashes for a newly-selected place.
+                    .onChange(of: selectedMerchant?.merchantId) { merchantId in
+                        placeTab = .home
+                        placeDetail = nil
+                        guard let merchantId else { return }
+                        Task {
+                            placeDetail = try? await NetworkClient.shared.getMapPlaceDetail(merchantId: merchantId).place
+                        }
+                    }
                 }
             }
             .navigationTitle("Map")
@@ -825,6 +836,9 @@ public struct MapScreenView: View {
                     // Honest partial failure -- bookmarks are a real-nice-to-have, never
                     // block the rest of the Maps feature set from loading.
                 }
+            }
+            .task {
+                weather = try? await NetworkClient.shared.getKigaliWeather().weather
             }
             .onChange(of: locationFetcher.errorMessage) { newValue in
                 if let newValue { error = newValue }
@@ -983,6 +997,23 @@ public struct MapScreenView: View {
         }
     }
 
+    // Real Kigali GTFS-based transit journeys (2026-08-28, itunda Maps redesign) --
+    // deliberately separate from the intercity-bus tab above.
+    private func searchTransit(to destination: PlaceSearchResultDto) async {
+        let origin = locationFetcher.coordinate ?? CLLocationCoordinate2D(latitude: rwandaCenterLat, longitude: rwandaCenterLng)
+        transitSearching = true
+        transitJourneys = nil
+        defer { transitSearching = false }
+        do {
+            let response = try await NetworkClient.shared.getTransitDirections(
+                fromLat: origin.latitude, fromLng: origin.longitude, toLat: destination.latitude, toLng: destination.longitude,
+            )
+            transitJourneys = response.journeys
+        } catch {
+            transitJourneys = []
+        }
+    }
+
     private func getItineraryDirections() async {
         guard itineraryStops.count >= 2 else { return }
         routing = true; error = nil; defer { routing = false }
@@ -1082,91 +1113,6 @@ public struct MapScreenView: View {
         .padding(8)
         .background(Color(red: 0.976, green: 0.980, blue: 0.988))
         .cornerRadius(8)
-    }
-
-    // Real driving/walking mode toggle (2026-07-22) -- extracted into its own
-    // @ViewBuilder function (see the call site's own comment for why: inlined directly
-    // into the surrounding view hierarchy, the combined nesting made the Swift
-    // type-checker time out).
-    @ViewBuilder
-    private func travelModeToggle(placeName: String) -> some View {
-        HStack(spacing: 6) {
-            ForEach([("DRIVING", "🚗 Driving"), ("WALKING", "🚶 Walking"), ("BUS", "🚌 Bus")], id: \.0) { mode, label in
-                let active = travelMode == mode
-                Button(action: {
-                    guard mode != travelMode else { return }
-                    if mode == "BUS" {
-                        travelMode = "BUS"
-                        Task { await searchBus(destination: placeName) }
-                    } else if route != nil {
-                        Task { await getDirections(mode: mode) }
-                    } else {
-                        travelMode = mode
-                    }
-                }) {
-                    Text(label)
-                        .font(.caption2).bold()
-                        .foregroundColor(active ? .white : IDS.Colors.textSecondary)
-                        .frame(maxWidth: .infinity).padding(.vertical, 6)
-                        .background(active ? IDS.Colors.brand : Color(red: 0.949, green: 0.957, blue: 0.965))
-                        .cornerRadius(8)
-                }
-                .disabled(routing || busSearching)
-            }
-        }
-    }
-
-    // Real scheduled bus trips (BusService.kt) -- its own @ViewBuilder function, same
-    // type-checker-timeout lesson travelModeToggle/routeAlternativesPicker already
-    // established. Honest "Scheduled" labeling, no live-tracking claim; no OSRM route
-    // line since there's no real road-route concept for a peer-posted coach trip.
-    @ViewBuilder
-    private func busResultsView(placeName: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if busSearching {
-                Text("Searching real scheduled trips to \(placeName)…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            } else if let trips = busTrips, !trips.isEmpty {
-                ForEach(trips) { trip in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(trip.origin) → \(trip.destination)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                        Text("Scheduled · \(String(trip.departureTime.prefix(16)).replacingOccurrences(of: "T", with: " ")) · \(trip.availableSeats) seat(s) left · \(String(format: "%.0f", trip.farePerSeat)) RWF/seat")
-                            .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 0.949, green: 0.957, blue: 0.965))
-                    .cornerRadius(10)
-                }
-            } else {
-                Text("No scheduled bus trips found to \(placeName) right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            }
-        }
-    }
-
-    // Real alternative-route picker (2026-07-22) -- see travelModeToggle's own comment
-    // for why this is its own function rather than inlined.
-    @ViewBuilder
-    private func routeAlternativesPicker(_ alternatives: [RouteResultDto]) -> some View {
-        HStack(spacing: 6) {
-            ForEach(Array(alternatives.enumerated()), id: \.offset) { i, alt in
-                let active = selectedRouteIndex == i
-                let altKm: String = String(format: "%.1f", alt.distanceKm)
-                let altMin: Int = Int(alt.durationMinutes)
-                let altLabel: String = "Route \(i + 1) · \(altKm)km · \(altMin)min"
-                Button(action: {
-                    selectedRouteIndex = i
-                    route = alt
-                }) {
-                    Text(altLabel)
-                        .font(.caption2).bold()
-                        .foregroundColor(active ? .white : IDS.Colors.textSecondary)
-                        .frame(maxWidth: .infinity).padding(.vertical, 5)
-                        .background(active ? IDS.Colors.brand : Color(red: 0.949, green: 0.957, blue: 0.965))
-                        .cornerRadius(8)
-                }
-            }
-        }
-        .padding(.top, 6)
     }
 
     private func searchNearbyCategory(_ categoryId: String) async {
