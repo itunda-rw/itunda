@@ -79,7 +79,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with a zero price") {
             Then("it throws InvalidPropertyListingException") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal.ZERO)
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal.ZERO)
                     error("expected InvalidPropertyListingException")
                 } catch (e: InvalidPropertyListingException) {
                     // expected
@@ -90,7 +90,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with a title longer than the real 200-char DB column bound") {
             Then("it throws InvalidPropertyListingException rather than risking a raw DB insert failure") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "x".repeat(201), "D", BigDecimal("1000"))
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "x".repeat(201), "D", BigDecimal("1000"))
                     error("expected InvalidPropertyListingException")
                 } catch (e: InvalidPropertyListingException) {
                     // expected
@@ -101,7 +101,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with negative bedrooms") {
             Then("it throws InvalidPropertyListingException") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal("1000"), bedrooms = -1)
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal("1000"), bedrooms = -1)
                     error("expected InvalidPropertyListingException")
                 } catch (e: InvalidPropertyListingException) {
                     // expected
@@ -113,7 +113,7 @@ class PropertyListingServiceTest : BehaviorSpec({
             Then("it throws InvalidPropertyCoordinatesException") {
                 try {
                     service.createListing(
-                        "lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal("1000"),
+                        "lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal("1000"),
                         latitude = -1.9441, longitude = null,
                     )
                     error("expected InvalidPropertyCoordinatesException")
@@ -129,7 +129,7 @@ class PropertyListingServiceTest : BehaviorSpec({
 
             Then("it real-propagates RateLimitExceededException") {
                 try {
-                    service.createListing("lister_1", PropertyListingType.SALE, "house", "T", "D", BigDecimal("1000"))
+                    service.createListing("lister_1", PropertyListingType.SALE, "apartment", "T", "D", BigDecimal("1000"))
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
                     // expected
@@ -284,16 +284,16 @@ class PropertyListingServiceTest : BehaviorSpec({
             val page = PageImpl(listOf<PropertyListing>())
             every {
                 propertyListingRepository.findByStatusAndListingTypeAndPropertyTypeOrderByCreatedAtDesc(
-                    PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "house", any(),
+                    PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "apartment", any(),
                 )
             } returns page
 
-            service.browse(PageRequest.of(0, 20), PropertyListingType.SALE, "house")
+            service.browse(PageRequest.of(0, 20), PropertyListingType.SALE, "apartment")
 
             Then("it filters by both real filters combined") {
                 verify {
                     propertyListingRepository.findByStatusAndListingTypeAndPropertyTypeOrderByCreatedAtDesc(
-                        PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "house", any(),
+                        PropertyListingStatus.AVAILABLE, PropertyListingType.SALE, "apartment", any(),
                     )
                 }
             }
@@ -316,11 +316,11 @@ class PropertyListingServiceTest : BehaviorSpec({
         )
 
         val near = PropertyListing(
-            id = "property_near", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "house",
+            id = "property_near", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "apartment",
             title = "T", description = "D", price = BigDecimal("100000"), latitude = -1.9500, longitude = 30.0619,
         )
         val far = PropertyListing(
-            id = "property_far", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "house",
+            id = "property_far", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "apartment",
             title = "T", description = "D", price = BigDecimal("100000"), latitude = -1.5, longitude = 30.0619,
         )
 
@@ -362,7 +362,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         )
 
         fun comp(id: String, price: String, sizeSqm: Double, lat: Double = -1.9500, lng: Double = 30.0619) = PropertyListing(
-            id = id, listerId = "a", listingType = PropertyListingType.SALE, propertyType = "house",
+            id = id, listerId = "a", listingType = PropertyListingType.SALE, propertyType = "apartment",
             title = "T", description = "D", price = BigDecimal(price), sizeSqm = sizeSqm, latitude = lat, longitude = lng,
         )
 
@@ -370,7 +370,7 @@ class PropertyListingServiceTest : BehaviorSpec({
             val comps = listOf(comp("c1", "10000000", 100.0), comp("c2", "12000000", 120.0), comp("c3", "9000000", 90.0))
             every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
 
-            val estimate = service.estimateValue(-1.9441, 30.0619, "house", PropertyListingType.SALE, 100.0, 5.0)
+            val estimate = service.estimateValue(-1.9441, 30.0619, "apartment", PropertyListingType.SALE, 100.0, 5.0)
 
             Then("a real estimate is computed from their real average price-per-sqm") {
                 // Each comp is exactly 100,000/sqm, so the average is exact and the
@@ -386,7 +386,7 @@ class PropertyListingServiceTest : BehaviorSpec({
 
             Then("it throws InsufficientComparablesException rather than a fabricated number") {
                 try {
-                    service.estimateValue(-1.9441, 30.0619, "house", PropertyListingType.SALE, 100.0, 5.0)
+                    service.estimateValue(-1.9441, 30.0619, "apartment", PropertyListingType.SALE, 100.0, 5.0)
                     error("expected InsufficientComparablesException")
                 } catch (e: InsufficientComparablesException) {
                     // expected
@@ -402,7 +402,7 @@ class PropertyListingServiceTest : BehaviorSpec({
 
             Then("they're correctly excluded by the real radius filter, real-422ing") {
                 try {
-                    service.estimateValue(-1.9441, 30.0619, "house", PropertyListingType.SALE, 100.0, 5.0)
+                    service.estimateValue(-1.9441, 30.0619, "apartment", PropertyListingType.SALE, 100.0, 5.0)
                     error("expected InsufficientComparablesException")
                 } catch (e: InsufficientComparablesException) {
                     // expected
@@ -472,7 +472,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         )
 
         fun listing(price: String, status: PropertyListingStatus = PropertyListingStatus.AVAILABLE) = PropertyListing(
-            id = "property_1", listerId = "lister_1", listingType = PropertyListingType.SALE, propertyType = "house",
+            id = "property_1", listerId = "lister_1", listingType = PropertyListingType.SALE, propertyType = "apartment",
             title = "Nice house", description = "D", price = BigDecimal(price), status = status,
         )
         val favorites = listOf(

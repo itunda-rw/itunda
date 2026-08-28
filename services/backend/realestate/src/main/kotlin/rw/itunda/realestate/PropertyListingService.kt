@@ -78,13 +78,17 @@ class PropertyListingService(
     private val log = LoggerFactory.getLogger(PropertyListingService::class.java)
 
     companion object {
+        // Real 당근부동산 (Karrot Real Estate) category picker (itunda Hood redesign,
+        // 2026-08-28, direct user reference: the real category-picker screenshot).
+        // Matches the reference's own real 5 categories exactly rather than itunda's
+        // earlier invented set -- "house"/"land" dropped (not in the real reference),
+        // "room"/"other" replaced by "studio"/"two_room_plus"/"officetel".
         val PROPERTY_TYPES = listOf(
             PropertyType("apartment", "Apartment"),
-            PropertyType("house", "House"),
-            PropertyType("room", "Room"),
-            PropertyType("land", "Land"),
+            PropertyType("studio", "Studio"),
+            PropertyType("two_room_plus", "Two rooms+"),
+            PropertyType("officetel", "Officetel"),
             PropertyType("commercial", "Commercial"),
-            PropertyType("other", "Other"),
         )
         private val PROPERTY_TYPE_IDS = PROPERTY_TYPES.map { it.id }.toSet()
         // itunda's own honest choice -- real comps-based estimators (Zillow's own

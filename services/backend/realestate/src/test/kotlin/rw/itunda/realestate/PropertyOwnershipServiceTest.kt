@@ -26,7 +26,7 @@ class PropertyOwnershipServiceTest : BehaviorSpec({
 
     fun listing() = PropertyListing(
         id = "prop_1", listerId = "user_1", listingType = PropertyListingType.SALE,
-        propertyType = "house", title = "Nice house in Kigali", description = "desc",
+        propertyType = "apartment", title = "Nice house in Kigali", description = "desc",
         price = BigDecimal("50000000"),
     )
 
