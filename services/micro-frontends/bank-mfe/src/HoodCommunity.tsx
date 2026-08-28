@@ -1,0 +1,299 @@
+import { useEffect, useState } from 'react';
+import { EmptyState, ErrorCard } from './EmptyState';
+import { useI18n } from './i18n/I18nContext';
+import { WishlistHeart } from './icons/ItundaFaceHearts';
+import { ApiError, getStoredUser } from './lib/api';
+import { addCommunityComment, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost, fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, joinCommunityMeetup, toggleCommunityLike, type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts } from './lib/community';
+import { fetchProfile } from './lib/neighborhood';
+import { NewCommunityPostCard, CommentNotificationToggle, CommunityPostCard, MeetupSessionsSection, GroupBuyFinalizeSection } from './HoodCommunityCards';
+import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
+
+export function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
+  const { t } = useI18n();
+  const [post, setPost] = useState<CommunityPost | null>(null);
+  const [authorName, setAuthorName] = useState('');
+  const [likedByMe, setLikedByMe] = useState(false);
+  const [comments, setComments] = useState<{ comment: CommunityComment; authorName: string }[] | null>(null);
+  const [commentBody, setCommentBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [liking, setLiking] = useState(false);
+  const [commenting, setCommenting] = useState(false);
+  const currentUser = getStoredUser();
+
+  const load = () => {
+    setError(null);
+    fetchCommunityPost(postId)
+      .then((r) => { setPost(r.post); setAuthorName(r.authorName); setLikedByMe(r.likedByMe); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchCommunityComments(postId)
+      .then(setComments)
+      .catch(() => { /* non-critical -- the post itself still renders */ });
+  };
+
+  useEffect(load, [postId]);
+
+  const handleLike = async () => {
+    setLiking(true);
+    try {
+      const liked = await toggleCommunityLike(postId);
+      setLikedByMe(liked);
+      setPost((p) => (p ? { ...p, likeCount: p.likeCount + (liked ? 1 : -1) } : p));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const handleComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentBody.trim()) return;
+    setCommenting(true);
+    setError(null);
+    try {
+      await addCommunityComment(postId, commentBody);
+      setCommentBody('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setCommenting(false);
+    }
+  };
+
+  return (
+    <div>
+      <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
+      {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {!post && !error && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {post && (
+        <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{post.title}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>by {authorName}</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-700)', whiteSpace: 'pre-wrap' }}>{post.body}</p>
+          <button
+            className="itunda-btn itunda-btn-secondary"
+            disabled={liking}
+            onClick={handleLike}
+            style={{ alignSelf: 'flex-start', fontSize: 'var(--itunda-type-scale-13-size)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <WishlistHeart favorited={likedByMe} size={16} /> {post.likeCount}
+          </button>
+        </div>
+      )}
+      {post && post.category === 'meetup' && <MeetupSessionsSection post={post} currentUserId={currentUser?.id} />}
+      {post && post.category === 'group_buy' && <GroupBuyFinalizeSection post={post} currentUserId={currentUser?.id} />}
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
+      {comments === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {comments !== null && comments.length === 0 && (
+        <EmptyState message="No comments yet -- be the first to reply." />
+      )}
+      {comments !== null && comments.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px' }}>
+          {comments.map(({ comment, authorName: name }) => (
+            <div key={comment.id} className="itunda-flat-section">
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{name}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-900)' }}>{comment.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={handleComment} style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Add a comment"
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
+        />
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={commenting || !commentBody.trim()}>
+          {commenting ? '…' : 'Send'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string) => void }) {
+  const { t } = useI18n();
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
+  const [categories, setCategories] = useState<CommunityCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [posts, setPosts] = useState<CommunityPost[] | null>(null);
+  // Real 같이해요 (join-together) group join counts (2026-07-24) -- see TrustBadge's
+  // sibling doc comments; closes docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
+  const [joinedCounts, setJoinedCounts] = useState<JoinedCounts>({});
+  const [joiningPostId, setJoiningPostId] = useState<string | null>(null);
+  const [openPostId, setOpenPostId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [secondNeighborhoodName, setSecondNeighborhoodName] = useState<string | null>(null);
+  const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
+  const currentUser = getStoredUser();
+
+  useEffect(() => {
+    fetchCommunityCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
+  }, []);
+
+  const load = () => {
+    setError(null);
+    setPosts(null);
+    if (view === 'NEIGHBORHOOD') {
+      Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
+        .then(([profile, result]) => {
+          setNeighborhoodName(profile.neighborhood);
+          setSecondNeighborhoodName(profile.secondNeighborhood);
+          setPosts(result.posts);
+          setJoinedCounts(result.joinedCounts);
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
+            setNeighborhoodName(null);
+            setPosts([]);
+          } else {
+            setError(err instanceof ApiError ? err.message : t('common.loadError'));
+          }
+        });
+      return;
+    }
+    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
+    fetcher
+      .then((result) => { setPosts(result.posts); setJoinedCounts(result.joinedCounts); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+  };
+
+  useEffect(load, [view, activeCategory]);
+
+  // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see backend
+  // CommunityService.joinMeetup's own doc comment.
+  const joinMeetup = async (postId: string) => {
+    setJoiningPostId(postId);
+    try {
+      const groupId = await joinCommunityMeetup(postId);
+      setJoinedCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }));
+      onOpenGroupChat(groupId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setJoiningPostId(null);
+    }
+  };
+
+  if (openPostId) {
+    return <CommunityPostDetailView postId={openPostId} onBack={() => { setOpenPostId(null); load(); }} />;
+  }
+
+  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700,
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
+            }}
+          >
+            {v === 'BROWSE' ? 'Feed' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
+          </button>
+        ))}
+      </div>
+
+      {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
+              style={{
+                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+                border: `1px solid ${activeCategory === c.id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
+                color: activeCategory === c.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: activeCategory === c.id ? 'var(--itunda-indigo)' : 'transparent',
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === 'MINE' && <CommentNotificationToggle />}
+      {view === 'MINE' && <NewCommunityPostCard categories={categories} onCreated={load} />}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+        <NeighborhoodSetupPrompt onDone={() => load()} />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <NeighborhoodSwitcherRow
+          secondNeighborhoodName={secondNeighborhoodName}
+          onAddTapped={() => setShowSecondNeighborhoodPrompt(true)}
+          onRemoved={(next) => setSecondNeighborhoodName(next)}
+        />
+      )}
+
+      {view === 'NEIGHBORHOOD' && showSecondNeighborhoodPrompt && (
+        <NeighborhoodSetupPrompt
+          isSecond
+          onDone={(name) => { setSecondNeighborhoodName(name); setShowSecondNeighborhoodPrompt(false); }}
+        />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+          Your neighborhood: <strong style={{ color: 'var(--itunda-grey-900)' }}>{neighborhoodName}</strong>
+        </p>
+      )}
+
+      {error && (
+        <ErrorCard message={error} onRetry={load} />
+      )}
+      {!error && posts === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
+        // Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
+        // from the same-day Android/iOS fix): say what's missing AND what fixes
+        // it, per this screen's own real "+ Write a post" button above in MINE.
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
+          {view === 'BROWSE' ? 'No posts yet — be the first to share something with your neighbors.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet — try Browse to see posts from everywhere.' : 'You haven\'t posted anything yet — tap "+ Write a post" above to share your first one.'}
+        </p>
+      )}
+      {!error && posts !== null && posts.length > 0 && (() => {
+        // Real 같이해요 (join-together) pinned mid-feed slot (2026-07-24) -- Karrot's
+        // real board gives meetup posts a dedicated slot instead of mixing them purely
+        // chronologically (docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My
+        // posts" stays plain chronological.
+        const meetups = view !== 'MINE' ? posts.filter((p) => p.category === 'meetup') : [];
+        const regular = view !== 'MINE' ? posts.filter((p) => p.category !== 'meetup') : posts;
+        const renderCard = (post: CommunityPost) => (
+          <CommunityPostCard
+            key={post.id}
+            post={post}
+            categoryLabel={categoryLabel(post.category)}
+            isMine={view === 'MINE' || post.authorId === currentUser?.id}
+            onOpen={() => setOpenPostId(post.id)}
+            onChanged={load}
+            joinedCount={joinedCounts[post.id] ?? 0}
+            joining={joiningPostId === post.id}
+            onJoin={() => joinMeetup(post.id)}
+          />
+        );
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {meetups.length > 0 && (
+              <>
+                <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>🎉 Meetups</p>
+                {meetups.map(renderCard)}
+              </>
+            )}
+            {regular.map(renderCard)}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ============================== JOBS (당근알바) ==============================
+
