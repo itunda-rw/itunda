@@ -17328,3 +17328,120 @@ file-size-lint; backend `:eats:test` re-run after the AI-summary fix; every new
 endpoint (weather, transit directions, place-detail, good-points, all 4 travel
 modes) curl-verified live against the real deployed cluster with a real auth
 token, not just unit-tested.
+
+## 277. Real Karrot (당근마켓) Hood redesign -- vehicles, résumé builder, community topics/AI-summaries, neighborhood reviews, business-profile analytics, all 4 platforms
+
+Direct user ask (2026-08-28): ~27 real Karrot screenshots across marketplace,
+jobs, real estate, vehicles, groups/meetups, community board, chat,
+neighborhood verification, and business profile, sent across several messages
+with an explicit "wait I will send other screenshots" mid-way, then "yup itunda
+hood should look like that." Research (fork + 3 parallel `Explore` passes)
+found itunda's Hood backend already far more built than the reference implies
+it needs to be -- most of this pass was a real UI redesign layered onto
+already-shipped Marketplace/Jobs/Property/Community machinery, not new
+infrastructure. Confirmed via 2 rounds of `AskUserQuestion`: build every
+genuinely-new backend piece rather than skip any; full redesign now, all 4
+platforms in one continuous pass; business-profile analytics lives in itunda's
+existing separate Merchant apps, not consumer Hood; Groups/모임 stays embedded
+in Community via the existing `category=meetup` filter rather than becoming a
+new top-level tab.
+
+**Backend, 8 real pieces + 1 addendum, each its own commit**: real estate
+`PROPERTY_TYPES` retaxonomized to match the reference (아파트/원룸/투룸+/오피스텔/상가);
+a new `CommunityPost.topic` lifestyle-chip axis, independent of the existing
+functional `category`; a full 이력서 (résumé) builder (`Resume` +
+`ResumeExperience`/`ResumeEducation`/`ResumeCertification`, flat FK entities,
+no `@OneToMany`, matching this codebase's own repo-wide convention); 당근카
+vehicle listings as 9 new nullable fields directly on `Listing` (mileage,
+insurance-claim count, and a lease-takeover cost breakdown) rather than a
+parallel entity, reusing every existing Marketplace favorite/escrow/report/
+review mechanism; 살아본 후기 neighborhood-lived reviews (`NeighborhoodReview`,
+one per user per neighborhood, DB-unique-constraint-backed); AI-generated 모임
+summaries reusing the exact self-hosted `llama-server`/`AiSummaryClient`
+already deployed for Maps, with the descriptive-fact honesty gate (`MIN_BODY_
+LENGTH`) designed in from the start rather than bolted on after a live
+fabrication bug, applying the lesson Maps' own `AiSummaryService` learned live
+one pass earlier; and real Business Profile visitor-count analytics
+(`MerchantProfileView`, one row per merchant per day, atomic native-SQL
+upsert), triggered from the same `MapsPlaceDetailService.getPlaceDetail` call
+this session's Maps pass already built, landed in the Merchant apps only. The
+addendum: `JobApplication.resumeSnapshotJson`, a real JSON snapshot of the
+applicant's résumé captured at submission time (not a live `resumeId`
+reference) so a later résumé edit never retroactively changes what a poster
+already saw -- caught as a real gap versus the approved plan and closed in its
+own follow-up commit, not silently dropped.
+
+**Two research corrections caught by direct verification, not trusted at face
+value**: the research fork's claim that `PropertyListing.propertyType` had "no
+validation" was incomplete -- `PropertyListingService` already validated it
+against a real list, narrowing that piece to a retaxonomy, not new validation.
+The same fork never surfaced that `MerchantCoupon`/`MerchantCouponService`
+already existed as a complete real feature -- discovered instead via an unused-
+variable compiler warning during a routine full-project compile sweep,
+narrowing the business-profile piece to just visitor-count tracking.
+
+**Clients, all 4 platforms, matching Android's own build field-for-field**:
+당근카 create-listing toggle (mileage/insurance claims, a nested lease-takeover
+sub-section) plus a real lease-cost-breakdown detail card; a full résumé-
+builder screen (self-intro, preset strength chips, add/remove experience/
+education/certification, a completion-percent bar rendering the backend's own
+value directly, never re-derived client-side) reachable from a new "My résumé"
+entry; a second, independent topic-chip filter row in Community plus a
+visibly AI-disclosed summary card on meetup posts (never shown without the
+badge); a 살아본 후기 list+submit section on every property listing's detail
+card, scoped to that listing's own neighborhood. The existing "Meetup"
+category chip already satisfied the 모임-filter requirement everywhere --
+confirmed, not rebuilt. Business-profile visitor analytics shipped as a new
+"Visitors" tab (line chart/bar chart + daily breakdown) in all 3 Merchant
+surfaces (Android `merchantapp`, iOS `MerchantApp`, `merchant-mfe` web).
+
+**Extraction discipline, hit hardest this pass**: bank-mfe's `BankDashboard.tsx`
+had only ~55 lines of headroom against its 24,708-line baseline before any new
+Hood UI could land -- a dedicated extraction pass split it into 10 new
+per-domain files (`HoodMarketplace(Cards)?.tsx`, `HoodCommunity(Cards)?.tsx`,
+`HoodJobs(Cards)?.tsx`, `HoodProperty(ListingCard)?.tsx`), recovering ~3.6k
+lines of headroom, mirroring iOS's own already-proven per-domain split. Both
+Android's `ApiService.kt` (zero headroom) and iOS's `NetworkClient.swift`
+(zero headroom) got new `HoodApi.kt`/`NetworkClient+Hood.swift` files rather
+than growing further, mirroring the existing `AuthApi`/`NetworkClient+Maps.swift`
+precedents; several new UI files (`MarketplaceVehicleFields.kt`,
+`ResumeBuilderScreen.kt`, `PropertyNeighborhoodReviews.kt` on Android;
+`HoodMarketplaceVehicleFields.swift`, `HoodResumeBuilder.swift`,
+`HoodPropertyNeighborhoodReviews.swift` on iOS) landed as new files for the
+same reason.
+
+**Real bugs caught by insisting on the full build, not a narrower substitute**:
+the iOS pass's own `HoodMarketplaceVehicleFields.swift` referenced `ListingDto`
+(`CoreNetwork`) and `IDS.Colors` (`CoreDesignSystem`) with neither import --
+never caught during that pass's own verification because a genuinely
+pre-existing, unrelated `FeatureMaps`/MapLibre CocoaPods-integration gap (fixed
+by re-running `pod install` after this session's own `tuist generate` calls --
+`tuist generate` regenerates the Xcode project and silently drops CocoaPods'
+own target integration) meant the full `ItundaApp` scheme's own compile phase
+was never actually reached during that verification. Confirmed via direct
+reproduction, both fixed, full scheme build re-verified green.
+
+**Live-deploy incident, same root cause as this session's own registry-flake
+memory, now actually fixed**: mid-deploy, the in-cluster image registry
+crash-looped (61 restarts) under real load 40-60+ -- `kubectl describe pod`
+showed liveness/readiness probes failing on `context deadline exceeded`, not a
+real registry fault. Root cause: `registry-rehearsal.yaml`'s probes had no
+`timeoutSeconds`, silently defaulting to 1s -- the same probe-timeout bug
+class already documented from an earlier incident, now fixed for real
+(`timeoutSeconds: 8`) instead of just waited around. The registry settled to a
+stable 1/1 Ready pod within under a minute of the fix; the backend/bank-mfe/
+merchant-mfe image pushes that had been failing with connection-refused/
+timeout errors all succeeded on the very next retry.
+
+**Verification**: Kotest per new backend piece + `python3 scripts/file-size-
+lint.py` after every commit; Android `:app:compileDebugKotlin` + feature-module
+compiles + `:jobs:test`; full `ItundaApp` xcodebuild scheme (not a narrower
+target) after `tuist generate && pod install`; bank-mfe `tsc -b && vite build`
++ `oxlint` + `accessibility-lint.py`. Live: backend deployed with all 7 new
+Flyway migrations (V304-V310) applied cleanly on a real running cluster;
+registered a real fresh test user and curl-verified property-types
+(retaxonomized values), community topics, résumé strengths, a real résumé
+write+completion-percent roundtrip, the new "Vehicles" Marketplace category,
+and end-to-end vehicle-listing creation with real lease fields -- all against
+the live deployed backend, not mocked. bank-mfe and merchant-mfe both
+confirmed serving 200 OK from their real NodePorts post-rollout.
