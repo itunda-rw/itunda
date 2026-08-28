@@ -1,0 +1,1 @@
+ALTER TABLE community_posts ADD COLUMN topic VARCHAR(32) NULL;

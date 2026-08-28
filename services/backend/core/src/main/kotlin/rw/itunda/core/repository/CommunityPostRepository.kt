@@ -17,6 +17,17 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
     fun findByStatusAndCategoryOrderByCreatedAtDesc(status: CommunityPostStatus, category: String, pageable: Pageable): Page<CommunityPost>
     fun findByAuthorIdOrderByCreatedAtDesc(authorId: String, pageable: Pageable): Page<CommunityPost>
 
+    // Real 동네생활 topic-chip filter (see CommunityPost.topic's own doc comment) --
+    // a real, separate axis from category, same query-shape precedent as the
+    // category filters above.
+    fun findByStatusAndTopicOrderByCreatedAtDesc(status: CommunityPostStatus, topic: String, pageable: Pageable): Page<CommunityPost>
+    fun findByStatusAndCategoryAndTopicOrderByCreatedAtDesc(
+        status: CommunityPostStatus,
+        category: String,
+        topic: String,
+        pageable: Pageable,
+    ): Page<CommunityPost>
+
     // Real proximity "near me" browse (see CommunityPost's own doc comment) -- same
     // bounded-candidate-set-then-Haversine-in-app shape ListingRepository's own note
     // already established, not a real geospatial DB index.

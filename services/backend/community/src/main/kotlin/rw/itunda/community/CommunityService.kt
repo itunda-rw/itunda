@@ -100,6 +100,21 @@ class CommunityService(
         )
         private val CATEGORY_IDS = CATEGORIES.map { it.id }.toSet()
 
+        // Real 동네생활 topic-chip filter row (itunda Hood redesign, 2026-08-28, direct
+        // user reference) -- a lifestyle taxonomy, genuinely separate from CATEGORIES
+        // above (functional: question/news/lost-found/...). Optional on a post -- see
+        // CommunityPost.topic's own doc comment.
+        val TOPICS = listOf(
+            CommunityCategory("hobby", "Hobbies & leisure"),
+            CommunityCategory("sports", "Sports"),
+            CommunityCategory("food", "Food & restaurants"),
+            CommunityCategory("tips", "Tips & know-how"),
+            CommunityCategory("parenting", "Pregnancy & parenting"),
+            CommunityCategory("pets", "Pets"),
+            CommunityCategory("lost_pet", "Lost & missing"),
+        )
+        private val TOPIC_IDS = TOPICS.map { it.id }.toSet()
+
         // Real 당근모임 (Karrot Meetups) own sourced cap -- a real recurring series is
         // limited to this many fixed sessions in one action.
         const val MAX_MEETUP_SESSIONS = 6
@@ -132,6 +147,7 @@ class CommunityService(
         longitude: Double? = null,
         eventDate: Instant? = null,
         capacity: Int? = null,
+        topic: String? = null,
     ): CommunityPost {
         val trimmedTitle = title.trim()
         val trimmedBody = body.trim()
@@ -148,6 +164,9 @@ class CommunityService(
         }
         if (category !in CATEGORY_IDS) {
             throw InvalidCommunityPostException("Unknown category")
+        }
+        if (topic != null && topic !in TOPIC_IDS) {
+            throw InvalidCommunityPostException("Unknown topic")
         }
         // Real 당근모임-style mandatory date-setting (2026-07-25) -- Karrot's own real
         // product made this mandatory specifically when it spun 모임 out of the
@@ -201,6 +220,7 @@ class CommunityService(
                 title = trimmedTitle, body = trimmedBody, latitude = latitude, longitude = longitude,
                 neighborhood = neighborhood, eventDate = if (category == "meetup") eventDate else null,
                 capacity = if (category == "meetup" || category == "group_buy") capacity else null,
+                topic = topic,
             ),
         )
     }
@@ -221,12 +241,15 @@ class CommunityService(
         }
     }
 
-    fun browse(pageable: Pageable, category: String?): Page<CommunityPost> =
-        if (category.isNullOrBlank()) {
-            postRepository.findByStatusOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, pageable)
-        } else {
+    fun browse(pageable: Pageable, category: String?, topic: String? = null): Page<CommunityPost> = when {
+        !category.isNullOrBlank() && !topic.isNullOrBlank() ->
+            postRepository.findByStatusAndCategoryAndTopicOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, category, topic, pageable)
+        !category.isNullOrBlank() ->
             postRepository.findByStatusAndCategoryOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, category, pageable)
-        }
+        !topic.isNullOrBlank() ->
+            postRepository.findByStatusAndTopicOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, topic, pageable)
+        else -> postRepository.findByStatusOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, pageable)
+    }
 
     fun getMyPosts(authorId: String, pageable: Pageable): Page<CommunityPost> =
         postRepository.findByAuthorIdOrderByCreatedAtDesc(authorId, pageable)

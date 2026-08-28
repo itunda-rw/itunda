@@ -89,6 +89,29 @@ class CommunityServiceTest : BehaviorSpec({
             }
         }
 
+        When("posting with an unknown topic") {
+            Then("it throws InvalidCommunityPostException") {
+                try {
+                    service.createPost("author_1", "question", "Title", "Body", topic = "not_a_real_topic")
+                    error("expected InvalidCommunityPostException")
+                } catch (e: InvalidCommunityPostException) {
+                    // expected
+                }
+            }
+        }
+
+        When("posting with a real topic") {
+            val savedSlot = slot<CommunityPost>()
+            every { postRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { userRepository.findById("author_1") } returns java.util.Optional.empty()
+
+            val post = service.createPost("author_1", "question", "Title", "Body", topic = "food")
+
+            Then("it real-persists the topic") {
+                post.topic shouldBe "food"
+            }
+        }
+
         When("posting with a blank title") {
             Then("it throws InvalidCommunityPostException") {
                 try {
@@ -351,6 +374,30 @@ class CommunityServiceTest : BehaviorSpec({
 
             Then("it filters by that real category") {
                 verify { postRepository.findByStatusAndCategoryOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "meetup", any()) }
+            }
+        }
+
+        When("a topic filter is given") {
+            val page = PageImpl(listOf<CommunityPost>())
+            every { postRepository.findByStatusAndTopicOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "food", any()) } returns page
+
+            service.browse(PageRequest.of(0, 20), category = null, topic = "food")
+
+            Then("it filters by that real topic") {
+                verify { postRepository.findByStatusAndTopicOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "food", any()) }
+            }
+        }
+
+        When("both a category and a topic filter are given") {
+            val page = PageImpl(listOf<CommunityPost>())
+            every {
+                postRepository.findByStatusAndCategoryAndTopicOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "free", "food", any())
+            } returns page
+
+            service.browse(PageRequest.of(0, 20), category = "free", topic = "food")
+
+            Then("it filters by both real axes together") {
+                verify { postRepository.findByStatusAndCategoryAndTopicOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "free", "food", any()) }
             }
         }
     }

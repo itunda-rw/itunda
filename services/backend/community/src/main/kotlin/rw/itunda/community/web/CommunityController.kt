@@ -53,6 +53,8 @@ data class CreateCommunityPostRequest(
     // category == "meetup"; see CommunityService.createPost's own doc comment.
     val eventDate: Instant? = null,
     val capacity: Int? = null,
+    // Real 동네생활 topic chip -- see CommunityPost.topic's own doc comment.
+    val topic: String? = null,
 )
 data class AddCommunityCommentRequest(val body: String)
 // Real 당근모임 (Karrot Meetups) recurring schedule -- see
@@ -73,6 +75,11 @@ class CommunityController(private val communityService: CommunityService, privat
     fun categories(): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "categories" to CommunityService.CATEGORIES))
 
+    // Real 동네생활 topic-chip filter row -- see CommunityService.TOPICS' own doc comment.
+    @GetMapping("/topics")
+    fun topics(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "topics" to CommunityService.TOPICS))
+
     @PostMapping("/posts")
     fun createPost(
         @RequestBody request: CreateCommunityPostRequest,
@@ -80,7 +87,7 @@ class CommunityController(private val communityService: CommunityService, privat
     ): ResponseEntity<Map<String, Any?>> {
         val post = communityService.createPost(
             currentUser.userId, request.category, request.title, request.body, request.latitude, request.longitude,
-            request.eventDate, request.capacity,
+            request.eventDate, request.capacity, request.topic,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "post" to post))
     }
@@ -97,9 +104,10 @@ class CommunityController(private val communityService: CommunityService, privat
     @GetMapping("/posts")
     fun browse(
         @RequestParam(required = false) category: String?,
+        @RequestParam(required = false) topic: String?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = communityService.browse(pageable, category)
+        val page = communityService.browse(pageable, category, topic)
         val joinedCounts = communityService.joinedCounts(page.content)
         return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }

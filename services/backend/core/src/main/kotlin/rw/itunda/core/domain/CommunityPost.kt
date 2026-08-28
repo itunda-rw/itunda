@@ -46,6 +46,15 @@ class CommunityPost(
     @Column(nullable = false, length = 32)
     var category: String,
 
+    // Real 동네생활 topic chip (itunda Hood redesign, 2026-08-28, direct user
+    // reference) -- a genuinely different axis from `category` above: `category` is
+    // functional (question/news/lost-found/meetup/group-buy/free-talk), this is a
+    // lifestyle topic (취미/여가, 운동/스포츠, 맛집/음식, ...) matching the real
+    // reference's own separate topic-chip filter row. Optional -- a post can carry
+    // no topic, same as it could always carry no location.
+    @Column(nullable = true, length = 32)
+    var topic: String? = null,
+
     @Column(nullable = false, length = 200)
     var title: String,
 
