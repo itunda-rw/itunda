@@ -73,6 +73,12 @@ class EatsReviewService(
         // report can never silently hide a legitimate review, but low enough that a real
         // problem review doesn't stay visible for long.
         private const val REPORT_THRESHOLD = 3
+
+        // Real preset checklist (itunda Maps redesign, 2026-08-28), ported from
+        // HoodReviewService.GOOD_POINTS' own exact convention -- not free text, adapted
+        // to a restaurant/eats context to match the reference's own 5 tags directly
+        // (커피가 맛있어요/디저트가 맛있어요/인테리어가 멋져요/음료가 맛있어요/대화하기 좋아요).
+        val EATS_GOOD_POINTS = listOf("GREAT_FOOD", "GREAT_DESSERT", "NICE_INTERIOR", "GREAT_DRINKS", "GOOD_FOR_CONVERSATION")
     }
 
     @Transactional
@@ -84,6 +90,7 @@ class EatsReviewService(
         riderRating: Int?,
         riderComment: String?,
         photoUrl: String? = null,
+        goodPoints: List<String> = emptyList(),
     ): EatsReview {
         if (restaurantRating !in 1..5) {
             throw InvalidEatsRatingException("Restaurant rating must be between 1 and 5")
@@ -132,12 +139,25 @@ class EatsReviewService(
                 // fix) -- same STRICT_TRANS_TABLES over-length-insert gotcha as the
                 // comment fields above.
                 photoUrl = photoUrl?.trim()?.take(500)?.ifBlank { null },
+                goodPoints = goodPoints.filter { it in EATS_GOOD_POINTS }.distinct().joinToString("|").ifBlank { null },
             ),
         )
     }
 
     fun getRestaurantReviews(restaurantId: String, pageable: Pageable): Page<EatsReview> =
         eatsReviewRepository.findByRestaurantIdAndHiddenFalseOrderByCreatedAtDesc(restaurantId, pageable)
+
+    // Real public tag-count aggregate (itunda Maps redesign, 2026-08-28) -- same
+    // unpaged-iterate-and-count shape as HoodReviewService.publicGoodPointCounts, real
+    // counts from real submitted tags only, never fabricated. Backs the place-detail
+    // panel's "이런 점이 좋았어요" section.
+    fun restaurantGoodPointCounts(restaurantId: String): Map<String, Int> {
+        val counts = mutableMapOf<String, Int>()
+        eatsReviewRepository.findByRestaurantIdAndHiddenFalse(restaurantId).forEach { review ->
+            review.goodPointList().forEach { point -> counts[point] = (counts[point] ?: 0) + 1 }
+        }
+        return counts
+    }
 
     fun getRestaurantRating(restaurantId: String): RatingSummary {
         val summary = eatsReviewRepository.getRestaurantRatingSummary(restaurantId)

@@ -125,6 +125,9 @@ data class SubmitEatsReviewRequest(
     // Real optional review photo (2026-08-04) -- see EatsReview.photoUrl's own doc
     // comment.
     val photoUrl: String? = null,
+    // Real preset-tag checklist (2026-08-28) -- see EatsReview.goodPoints' own doc
+    // comment; invalid/unknown tag ids are silently filtered server-side, not rejected.
+    val goodPoints: List<String> = emptyList(),
 )
 data class ReplyToEatsReviewRequest(val reply: String)
 
@@ -530,7 +533,7 @@ class EatsController(
     ): ResponseEntity<Map<String, Any?>> {
         val review = eatsReviewService.submitReview(
             currentUser.userId, orderId, request.restaurantRating, request.restaurantComment,
-            request.riderRating, request.riderComment, request.photoUrl,
+            request.riderRating, request.riderComment, request.photoUrl, request.goodPoints,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review))
     }
@@ -583,6 +586,21 @@ class EatsController(
     fun getRestaurantRating(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> {
         val rating = eatsReviewService.getRestaurantRating(restaurantId)
         return ResponseEntity.ok(mapOf("success" to true, "average" to rating.average, "count" to rating.count))
+    }
+
+    // Real preset-tag aggregate (itunda Maps redesign, 2026-08-28) -- see
+    // EatsReviewService.restaurantGoodPointCounts' own doc comment. goodPointOptions is
+    // the real, fixed vocab clients render the pill-picker from at review-submission
+    // time -- never invented client-side.
+    @GetMapping("/restaurants/{restaurantId}/good-points")
+    fun getRestaurantGoodPoints(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> {
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "counts" to eatsReviewService.restaurantGoodPointCounts(restaurantId),
+                "goodPointOptions" to EatsReviewService.EATS_GOOD_POINTS,
+            ),
+        )
     }
 
     @GetMapping("/riders/{riderId}/rating")

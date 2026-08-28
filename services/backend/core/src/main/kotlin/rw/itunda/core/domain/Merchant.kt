@@ -270,8 +270,20 @@ class Merchant(
     // ProductDiscount.discountPercent's own real convention elsewhere in this codebase.
     @Column(name = "pickup_discount_percent", nullable = true)
     var pickupDiscountPercent: Int? = null,
+
+    // Real photo gallery (itunda Maps redesign, 2026-08-28, direct Naver Map reference:
+    // the place-detail Photos tab) -- comma-separated real merchant-supplied URLs, same
+    // "plain field over a second JPA table for a small, rarely-multi-valued property"
+    // convention closedWeekdays above already establishes (no @OneToMany/
+    // @ElementCollection exists anywhere in this codebase). `photoUrl` above stays the
+    // untouched real "cover" photo for every existing caller; this is the additional
+    // gallery, never a replacement.
+    @Column(name = "photo_urls", length = 2000)
+    var photoUrls: String? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", accountId = "", businessName = "")
+
+    fun photoUrlList(): List<String> = photoUrls?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
 
     // Single real source of truth for "is this restaurant closed on its own recurring
     // schedule right now" -- shared by EatsOrderService.placeOrder's own server-side

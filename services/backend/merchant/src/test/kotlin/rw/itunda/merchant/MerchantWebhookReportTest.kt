@@ -71,14 +71,17 @@ class MerchantWebhookReportTest : BehaviorSpec({
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
         val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, accountRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService, mockk(relaxed = true))
+        // setWebhookUrl now lives on MerchantProfileService (itunda Maps redesign,
+        // 2026-08-28), see that class's own doc comment -- this Given block no longer
+        // needs a real MerchantService instance at all.
+        val profileService = MerchantProfileService(merchantRepository)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", accountId = "account_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
         every { merchantRepository.save(any()) } answers { firstArg() }
 
         When("registering a webhook URL") {
-            val updated = service.setWebhookUrl("owner_3", "https://myshop.example/webhooks/itunda")
+            val updated = profileService.setWebhookUrl("owner_3", "https://myshop.example/webhooks/itunda")
 
             Then("it's saved onto the real merchant record") {
                 updated.webhookUrl shouldBe "https://myshop.example/webhooks/itunda"
@@ -89,7 +92,7 @@ class MerchantWebhookReportTest : BehaviorSpec({
         When("registering a webhook URL longer than the real 500-char DB column bound") {
             Then("it throws InvalidWebhookUrlException rather than risking a raw DB insert failure") {
                 try {
-                    service.setWebhookUrl("owner_3", "https://example.com/" + "x".repeat(500))
+                    profileService.setWebhookUrl("owner_3", "https://example.com/" + "x".repeat(500))
                     error("expected InvalidWebhookUrlException")
                 } catch (e: InvalidWebhookUrlException) {
                     // expected

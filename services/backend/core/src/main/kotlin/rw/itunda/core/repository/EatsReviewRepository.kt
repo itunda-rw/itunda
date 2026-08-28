@@ -28,6 +28,12 @@ interface EatsReviewRepository : JpaRepository<EatsReview, String> {
     // this is a real behavior fix, not a widening of the method's contract.
     fun findByRestaurantIdAndHiddenFalseOrderByCreatedAtDesc(restaurantId: String, pageable: Pageable): Page<EatsReview>
 
+    // Real unpaged variant (itunda Maps redesign, 2026-08-28) -- backs
+    // EatsReviewService.restaurantGoodPointCounts' real tag aggregation, same
+    // "unpaged for a whole-restaurant aggregate, not a page of results" shape
+    // HoodReviewService.publicGoodPointCounts' own findByRevieweeId already uses.
+    fun findByRestaurantIdAndHiddenFalse(restaurantId: String): List<EatsReview>
+
     @Query("SELECT AVG(r.restaurantRating) as average, COUNT(r) as count FROM EatsReview r WHERE r.restaurantId = :restaurantId AND r.hidden = false")
     fun getRestaurantRatingSummary(@Param("restaurantId") restaurantId: String): RatingSummaryProjection
 

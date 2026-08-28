@@ -28,6 +28,7 @@ import java.time.format.DateTimeParseException
 @RequestMapping("/api/v1/merchant")
 class MerchantController(
     private val merchantService: MerchantService,
+    private val merchantProfileService: MerchantProfileService,
     private val idempotencyService: IdempotencyService,
     private val webhookDeliveryService: WebhookDeliveryService,
     private val merchantStaticQrService: MerchantStaticQrService,
@@ -96,7 +97,7 @@ class MerchantController(
         @RequestBody request: SetWebhookUrlRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setWebhookUrl(currentUser.userId, request.webhookUrl)
+        val merchant = merchantProfileService.setWebhookUrl(currentUser.userId, request.webhookUrl)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -124,7 +125,7 @@ class MerchantController(
         @RequestBody request: SetLocationRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setLocation(currentUser.userId, request.latitude, request.longitude)
+        val merchant = merchantProfileService.setLocation(currentUser.userId, request.latitude, request.longitude)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -135,7 +136,7 @@ class MerchantController(
         @RequestBody request: SetCategoryRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setCategory(currentUser.userId, request.category)
+        val merchant = merchantProfileService.setCategory(currentUser.userId, request.category)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -146,7 +147,7 @@ class MerchantController(
         @RequestBody request: SetCashbackRateRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setCashbackRate(currentUser.userId, request.rate)
+        val merchant = merchantProfileService.setCashbackRate(currentUser.userId, request.rate)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -157,7 +158,7 @@ class MerchantController(
         @RequestBody request: SetParticipatesInEatsMembershipRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setParticipatesInEatsMembership(currentUser.userId, request.participates)
+        val merchant = merchantProfileService.setParticipatesInEatsMembership(currentUser.userId, request.participates)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -168,7 +169,7 @@ class MerchantController(
         @RequestBody request: SetAcceptsScheduledOrdersRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setAcceptsScheduledOrders(currentUser.userId, request.accepts)
+        val merchant = merchantProfileService.setAcceptsScheduledOrders(currentUser.userId, request.accepts)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -179,7 +180,7 @@ class MerchantController(
         @RequestBody request: SetAcceptingOrdersRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setAcceptingOrders(currentUser.userId, request.accepting)
+        val merchant = merchantProfileService.setAcceptingOrders(currentUser.userId, request.accepting)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -190,7 +191,7 @@ class MerchantController(
         @RequestBody request: SetClosedWeekdaysRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setClosedWeekdays(currentUser.userId, request.weekdays)
+        val merchant = merchantProfileService.setClosedWeekdays(currentUser.userId, request.weekdays)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -201,7 +202,18 @@ class MerchantController(
         @RequestBody request: SetPhotoUrlRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setPhotoUrl(currentUser.userId, request.photoUrl)
+        val merchant = merchantProfileService.setPhotoUrl(currentUser.userId, request.photoUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real photo gallery (itunda Maps redesign, 2026-08-28) -- see
+    // MerchantService.setPhotoUrls' own doc comment.
+    @PostMapping("/photos")
+    fun setPhotoUrls(
+        @RequestBody request: SetPhotoUrlsRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantProfileService.setPhotoUrls(currentUser.userId, request.photoUrls)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -212,7 +224,7 @@ class MerchantController(
         @RequestBody request: SetMinOrderAmountRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setMinOrderAmount(currentUser.userId, request.minOrderAmount)
+        val merchant = merchantProfileService.setMinOrderAmount(currentUser.userId, request.minOrderAmount)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -223,7 +235,7 @@ class MerchantController(
         @RequestBody request: SetPhoneNumberRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setPhoneNumber(currentUser.userId, request.phoneNumber)
+        val merchant = merchantProfileService.setPhoneNumber(currentUser.userId, request.phoneNumber)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -232,7 +244,7 @@ class MerchantController(
         @RequestBody request: SetOpeningHoursRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setOpeningHours(currentUser.userId, request.openingHours)
+        val merchant = merchantProfileService.setOpeningHours(currentUser.userId, request.openingHours)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -243,7 +255,7 @@ class MerchantController(
         @RequestBody request: SetAvgPrepTimeMinutesRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setAvgPrepTimeMinutes(currentUser.userId, request.avgPrepTimeMinutes)
+        val merchant = merchantProfileService.setAvgPrepTimeMinutes(currentUser.userId, request.avgPrepTimeMinutes)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -254,7 +266,7 @@ class MerchantController(
         @RequestBody request: SetPickupDiscountRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val merchant = merchantService.setPickupDiscount(currentUser.userId, request.pickupDiscountPercent)
+        val merchant = merchantProfileService.setPickupDiscount(currentUser.userId, request.pickupDiscountPercent)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 

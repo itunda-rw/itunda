@@ -52,6 +52,14 @@ import java.time.Instant
  * `helpfulCount` (migration V264, 2026-08-17) -- a real Baemin/Coupang-style "도움돼요"
  * vote other buyers can cast on a review, distinct from the restaurant-owner `ownerReply`
  * above. See `EatsReviewService.toggleHelpful`'s own doc comment for the full account.
+ *
+ * `goodPoints` (migration V299, 2026-08-28) -- real preset-tag review checklist (itunda
+ * Maps redesign, direct Naver Map reference: "이런 점이 좋았어요"), ported from
+ * `HoodTransactionReview.goodPoints`'s own exact pipe-separated-preset-tags convention
+ * (see that class's own doc comment) rather than inventing a second mechanism -- same
+ * "plain VARCHAR over a join table for a small enumerated set" discipline. Nullable: a
+ * review submitted with no tags selected is still a complete, honest review, same as
+ * every other optional field on this entity.
  */
 @Entity
 @Table(name = "eats_reviews")
@@ -104,6 +112,9 @@ class EatsReview(
     @Column(name = "hidden", nullable = false)
     var hidden: Boolean = false,
 
+    @Column(name = "good_points", length = 500)
+    val goodPoints: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
@@ -111,4 +122,6 @@ class EatsReview(
         id = "", orderId = "", buyerId = "", restaurantId = "", riderId = "",
         restaurantRating = 0, restaurantComment = null, riderRating = 0, riderComment = null,
     )
+
+    fun goodPointList(): List<String> = goodPoints?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
 }
