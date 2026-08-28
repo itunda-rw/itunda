@@ -740,7 +740,7 @@ final class MerchantNetworkClient {
 
     // MARK: - Helpers
 
-    private func get<Response: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> Response {
+    func get<Response: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> Response {
         guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false) else {
             throw NetworkError.invalidResponse
         }

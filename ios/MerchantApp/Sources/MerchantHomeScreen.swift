@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads, booking, billing, cashAdvance }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads, booking, billing, cashAdvance, visitors }
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -34,11 +34,9 @@ struct MerchantHomeScreen: View {
             .padding(16)
 
             Picker("", selection: $tab) {
-                // Wrapped in Group (2026-08-01): this Picker just grew past 10 items,
-                // the max the ViewBuilder overload set on this project's toolchain
-                // supports directly -- see BenefitsShopAllScreens.swift's own header
-                // for why (Group is purely a ViewBuilder child-count workaround, it
-                // doesn't change the Picker's rendered options at all).
+                // Wrapped in Group (2026-08-01): past 10 items, this project's
+                // ViewBuilder overload set needs the split -- see
+                // BenefitsShopAllScreens.swift (purely a child-count workaround).
                 Group {
                     Text("Orders").tag(MerchantTab.orders)
                     Text("Catalog").tag(MerchantTab.catalog)
@@ -55,6 +53,7 @@ struct MerchantHomeScreen: View {
                 Text("Booking").tag(MerchantTab.booking)
                 Text("Billing").tag(MerchantTab.billing)
                 Text("Cash advance").tag(MerchantTab.cashAdvance)
+                Text("Visitors").tag(MerchantTab.visitors)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -75,6 +74,7 @@ struct MerchantHomeScreen: View {
             case .booking: BookingTab()
             case .billing: BillingTab()
             case .cashAdvance: VendorCashAdvanceTab(merchantId: merchant.id)
+            case .visitors: VisitorAnalyticsTab()
             }
         }
     }
