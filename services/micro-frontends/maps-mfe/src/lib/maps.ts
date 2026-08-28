@@ -81,7 +81,16 @@ export interface RouteResult {
 // comment on the backend for the full account of the real, separately-deployed
 // foot-profile OSRM instance this now reaches. Defaults to 'DRIVING', matching the
 // backend's own default and every pre-existing caller's unchanged behavior.
-export type TravelMode = 'DRIVING' | 'WALKING';
+// BIKING added 2026-08-28 (itunda Maps redesign, direct Naver Map reference + explicit
+// user instruction to build it) -- see OsrmRoutingClient.kt's own doc comment on the
+// backend for the full account of reversing this project's own prior "no bicycle mode"
+// decision. TRANSIT is a genuinely separate real journey planner (TransitRoutingService,
+// real Kigali GTFS schedule data), not another OSRM profile -- see fetchTransitDirections
+// below, not getDirections.
+export type TravelMode = 'DRIVING' | 'WALKING' | 'BIKING';
+
+const TRAVEL_MODE_ICONS: Record<TravelMode, string> = { DRIVING: '🚗', WALKING: '🚶', BIKING: '🚴' };
+export const travelModeIcon = (mode: TravelMode): string => TRAVEL_MODE_ICONS[mode];
 
 export const getDirections = (fromLat: number, fromLng: number, toLat: number, toLng: number, mode: TravelMode = 'DRIVING') =>
   apiFetch<{ success: boolean; route: RouteResult }>(
@@ -276,3 +285,76 @@ export const fetchLocationSharesWithMe = () =>
 // watching a share to see the sharer's latest pushed position.
 export const fetchLocationShare = (shareId: string) =>
   apiFetch<{ success: boolean; share: LiveLocationShare }>(`/api/v1/maps/location-share/${encodeURIComponent(shareId)}`).then((r) => r.share);
+
+// Real Kigali GTFS-based transit journeys (2026-08-28, itunda Maps redesign) -- see
+// TransitRoutingService's own doc comment on the backend for the honest, explicitly
+// scoped v1 (direct routes only, real schedule-based departure times, never live GPS).
+// A real empty array means no real direct transit option was found, not an error.
+export interface TransitJourney {
+  originStop: { id: string; name: string; latitude: number; longitude: number };
+  destinationStop: { id: string; name: string; latitude: number; longitude: number };
+  route: { id: string; shortName: string | null; longName: string | null };
+  departureSecondsAfterMidnight: number;
+  arrivalSecondsAfterMidnight: number;
+  walkToOriginStopKm: number;
+  walkFromDestinationStopKm: number;
+}
+
+export const fetchTransitDirections = (fromLat: number, fromLng: number, toLat: number, toLng: number) =>
+  apiFetch<{ success: boolean; journeys: TransitJourney[] }>(
+    `/api/v1/maps/directions/transit?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`,
+  ).then((r) => r.journeys);
+
+// Real consolidated place-detail (2026-08-28, itunda Maps redesign) -- see
+// MapsPlaceDetailService's own doc comment on the backend. The one real source the
+// tabbed place-detail panel reads from, replacing the old per-field ad hoc lookups.
+export interface MapPlaceDetail {
+  merchantId: string;
+  businessName: string;
+  category: string | null;
+  photoUrl: string | null;
+  photoUrls: string[];
+  openingHours: string | null;
+  phoneNumber: string | null;
+  aiSummary: string | null;
+  rating: { average: number | null; count: number };
+  goodPointCounts: Record<string, number>;
+  menu: { id: string; name: string; price: number; imageUrl: string | null; active: boolean }[];
+  updates: {
+    id: string;
+    label: 'NOTICE' | 'EVENT' | 'PROMO';
+    title: string;
+    body: string;
+    periodStart: string | null;
+    periodEnd: string | null;
+    likeCount: number;
+    createdAt: string;
+  }[];
+}
+
+export const fetchMapPlaceDetail = (merchantId: string) =>
+  apiFetch<{ success: boolean; place: MapPlaceDetail }>(`/api/v1/maps/places/${encodeURIComponent(merchantId)}`).then((r) => r.place);
+
+// Real, free, keyless Kigali weather (2026-08-28, itunda Maps redesign) -- see
+// KigaliWeatherClient's own doc comment on the backend. `weather` is null when the
+// real upstream is unreachable and there's no still-fresh cache -- never fabricated.
+export interface KigaliWeather {
+  temperatureCelsius: number;
+  condition: string;
+  pm2_5: number | null;
+}
+
+export const fetchKigaliWeather = () =>
+  apiFetch<{ success: boolean; weather: KigaliWeather | null }>('/api/v1/maps/weather').then((r) => r.weather);
+
+// Real preset-tag display labels (2026-08-28, itunda Maps redesign) -- mirrors
+// EatsReviewService.EATS_GOOD_POINTS' own real vocab on the backend. Display-only
+// here (this view renders the real aggregate counts on MapPlaceDetail.goodPointCounts,
+// it doesn't collect tags itself -- that's bank-mfe's ReviewOrderCard).
+export const EATS_GOOD_POINT_LABELS: Record<string, string> = {
+  GREAT_FOOD: '🍽️ Great food',
+  GREAT_DESSERT: '🍰 Great dessert',
+  NICE_INTERIOR: '🛋️ Nice interior',
+  GREAT_DRINKS: '🥤 Great drinks',
+  GOOD_FOR_CONVERSATION: '💬 Good for conversation',
+};
