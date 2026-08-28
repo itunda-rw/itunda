@@ -4,20 +4,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.IdsAvatar
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import rw.itunda.core.designsystem.components.TabHeader
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.GroupSummaryDto
@@ -45,6 +57,11 @@ fun TalkTab(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
 ) {
     var view by remember { mutableStateOf(TalkView.DIRECT) }
+    // Real KakaoTalk 전체/안읽음/통화 filter (itunda Talk redesign, 2026-08-28) -- see
+    // TalkFilterTabs.kt's own doc comment.
+    var directFilter by remember { mutableStateOf(TalkDirectFilter.ALL) }
+    var showServiceChannel by remember { mutableStateOf(false) }
+    var showAiChat by remember { mutableStateOf(false) }
     var conversations by remember { mutableStateOf<List<ConversationSummaryDto>?>(null) }
     var conversationsError by remember { mutableStateOf<String?>(null) }
     // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
@@ -130,6 +147,25 @@ fun TalkTab(
         }
     }
 
+    // Real itunda service channel + AI chatbot channel (itunda Talk redesign,
+    // 2026-08-28) -- both are client-side-synthesized entries (no real backend
+    // conversation row exists for either, see ServiceChannelService.kt's own doc
+    // comment), so they're gated here rather than matched against `conversations`.
+    if (showServiceChannel) {
+        // onNavigate is a real, deliberate no-op for now -- this app has no generic
+        // route-string navigator anywhere yet (ItundaTab is a fixed 5-tab enum with
+        // no "Bank" tab at all; see project_itunda_tabs_as_access_points memory), and
+        // a real ctaRoute like "/bank/transactions" doesn't map onto it. Building a
+        // real app-wide deep-link router is a separate, larger piece of work, not
+        // something to fake here as a side effect of the service channel.
+        ServiceChannelThreadView(onBack = { showServiceChannel = false }, onNavigate = {})
+        return
+    }
+    if (showAiChat) {
+        AiChatThreadView(onBack = { showAiChat = false })
+        return
+    }
+
     val openConversation = conversations?.find { it.conversationId == openConversationId }
     if (openConversation != null) {
         ChatThreadView(conversation = openConversation, onBack = { openConversationId = null; loadConversations() }, deviceStepUpHost = deviceStepUpHost)
@@ -162,16 +198,28 @@ fun TalkTab(
                 },
             )
         } else if (view == TalkView.DIRECT) {
-            DirectMessagesList(
-                conversations = conversations,
-                archivedConversations = archivedConversations,
-                error = conversationsError,
-                presence = presence,
-                onRetry = ::loadConversations,
-                onStarted = { conversationId -> loadConversations(); openConversationId = conversationId },
-                onOpen = { openConversationId = it },
-                onArchiveChanged = { loadConversations(); loadArchivedConversations() },
-            )
+            // Real client-side-synthesized itunda service channel + AI chatbot rows
+            // (itunda Talk redesign, 2026-08-28) -- pinned above the filter tabs so
+            // they're always reachable regardless of the current filter. Neither is a
+            // real conversation row (see ServiceChannelService.kt's own doc comment),
+            // so they're rendered here rather than injected into `conversations`.
+            SyntheticTalkChannelRow("itunda", "Payments, security, and account updates", onClick = { showServiceChannel = true })
+            SyntheticTalkChannelRow("itunda AI", "Ask anything -- powered by a self-hosted model", onClick = { showAiChat = true })
+            TalkFilterTabsRow(selected = directFilter, onSelect = { directFilter = it })
+            if (directFilter == TalkDirectFilter.CALLS) {
+                CallHistoryList(conversations = conversations)
+            } else {
+                DirectMessagesList(
+                    conversations = if (directFilter == TalkDirectFilter.UNREAD) conversations?.filter { it.unreadCount > 0 } else conversations,
+                    archivedConversations = archivedConversations,
+                    error = conversationsError,
+                    presence = presence,
+                    onRetry = ::loadConversations,
+                    onStarted = { conversationId -> loadConversations(); openConversationId = conversationId },
+                    onOpen = { openConversationId = it },
+                    onArchiveChanged = { loadConversations(); loadArchivedConversations() },
+                )
+            }
         } else {
             GroupsList(
                 groups = groups,
@@ -184,3 +232,24 @@ fun TalkTab(
     }
 }
 
+// Real client-side-synthesized channel row (itunda service channel + AI chatbot,
+// itunda Talk redesign, 2026-08-28) -- a lighter version of ConversationRow
+// (TalkLists.kt) without online/unread/pin state, since neither channel has any of
+// that real state to show.
+@Composable
+private fun SyntheticTalkChannelRow(name: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .pressScaleClickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IdsAvatar(name = name)
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            Text(subtitle, color = Ids.colors.textSecondary, fontSize = 13.sp, maxLines = 1)
+        }
+    }
+}
