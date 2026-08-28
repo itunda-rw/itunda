@@ -377,6 +377,10 @@ export const submitEatsReview = (
   // URL" bar as Merchant.photoUrl elsewhere in this codebase -- itunda has no
   // image-upload/storage pipeline to invent one.
   photoUrl?: string,
+  // Real preset-tag checklist (itunda Maps redesign, 2026-08-28, direct Naver Map
+  // reference: "이런 점이 좋았어요") -- see EatsReview.goodPoints' own doc comment on
+  // the backend, ported from HoodTransactionReview's own exact preset-tag convention.
+  goodPoints: string[] = [],
 ) =>
   apiFetch<{ success: boolean; review: EatsReview }>(`/api/v1/eats/orders/${orderId}/review`, {
     method: 'POST',
@@ -386,12 +390,25 @@ export const submitEatsReview = (
       riderRating,
       riderComment: riderRating == null ? null : riderComment.trim() || null,
       photoUrl: photoUrl?.trim() || null,
+      goodPoints,
     }),
   }).then((r) => r.review);
 
 export const fetchRestaurantRating = (restaurantId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/eats/restaurants/${restaurantId}/rating`).then(
     (r) => ({ average: r.average, count: r.count }) as RatingSummary,
+  );
+
+// Real preset-tag aggregate (itunda Maps redesign, 2026-08-28) -- see
+// EatsReviewService.restaurantGoodPointCounts' own doc comment on the backend.
+export const EATS_GOOD_POINT_LABELS: [string, string][] = [
+  ['GREAT_FOOD', '🍽️ Great food'], ['GREAT_DESSERT', '🍰 Great dessert'], ['NICE_INTERIOR', '🛋️ Nice interior'],
+  ['GREAT_DRINKS', '🥤 Great drinks'], ['GOOD_FOR_CONVERSATION', '💬 Good for conversation'],
+];
+
+export const fetchRestaurantGoodPoints = (restaurantId: string) =>
+  apiFetch<{ success: boolean; counts: Record<string, number>; goodPointOptions: string[] }>(
+    `/api/v1/eats/restaurants/${restaurantId}/good-points`,
   );
 
 export const fetchRestaurantReviews = (restaurantId: string) =>

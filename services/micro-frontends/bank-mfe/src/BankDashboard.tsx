@@ -172,8 +172,8 @@ import { uploadFile } from './lib/upload';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, cancelEatsOrder, completePickupOrder, contactRestaurant,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, placeEatsOrder,
-  removeFavoriteRestaurant, replyToRestaurantReview, reportEatsReview, searchDeliveryAddress, shareFavoritesToConversation, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantGoodPoints, fetchRestaurantReviews, placeEatsOrder,
+  removeFavoriteRestaurant, replyToRestaurantReview, reportEatsReview, searchDeliveryAddress, shareFavoritesToConversation, submitEatsReview, tipEatsOrderRider, toggleReviewHelpful, EATS_GOOD_POINT_LABELS,
   type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type EatsReview, type EatsReviewReportReason, type FavoriteRestaurant, type MenuItem, type RatingSummary, type RestaurantSortMode,
 } from './lib/eats';
 import {
@@ -14435,6 +14435,9 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
   const [reviews, setReviews] = useState<EatsReview[] | null>(null);
   // Real "도움돼요" (helpful) toggle -- see lib/eats.ts's own doc comment.
   const [helpfulVoted, setHelpfulVoted] = useState<Set<string>>(new Set());
+  // Real preset-tag aggregate (itunda Maps redesign, 2026-08-28) -- see
+  // EatsReviewService.restaurantGoodPointCounts' own doc comment on the backend.
+  const [goodPointCounts, setGoodPointCounts] = useState<Record<string, number> | null>(null);
 
   const handleToggleHelpful = async (reviewId: string) => {
     try {
@@ -14453,6 +14456,9 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
   useEffect(() => {
     fetchRestaurantRating(restaurantId).then(setRating).catch(() => {
       // Real, non-critical -- a rating fetch failure shouldn't block browsing the menu.
+    });
+    fetchRestaurantGoodPoints(restaurantId).then((r) => setGoodPointCounts(r.counts)).catch(() => {
+      // Real, non-critical -- same bar as the rating fetch above.
     });
   }, [restaurantId]);
 
@@ -14477,6 +14483,26 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
       </button>
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+          {/* Real preset-tag aggregate (itunda Maps redesign, 2026-08-28, direct Naver
+              Map reference: "이런 점이 좋았어요") -- real counts from real submitted
+              tags only, never fabricated. */}
+          {goodPointCounts && Object.keys(goodPointCounts).length > 0 && (
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}>
+              {Object.entries(goodPointCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([id, count]) => (
+                  <span
+                    key={id}
+                    style={{
+                      fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '4px 10px', borderRadius: '999px',
+                      color: 'var(--itunda-grey-900)', backgroundColor: 'var(--itunda-grey-100)',
+                    }}
+                  >
+                    {EATS_GOOD_POINT_LABELS.find(([pid]) => pid === id)?.[1] ?? id} {count}
+                  </span>
+                ))}
+            </div>
+          )}
           {reviews === null ? (
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
@@ -14678,9 +14704,21 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   // pipeline, so this is a real "paste your own already-hosted photo URL" field,
   // same honest bar as Merchant.photoUrl elsewhere in this codebase.
   const [photoUrl, setPhotoUrl] = useState('');
+  // Real preset-tag checklist (itunda Maps redesign, 2026-08-28, direct Naver Map
+  // reference: "이런 점이 좋았어요") -- see EatsReview.goodPoints' own doc comment on
+  // the backend, ported from HoodReviewForm's own exact pill-picker pattern above.
+  const [selectedGoodPoints, setSelectedGoodPoints] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+
+  const toggleGoodPoint = (id: string) => {
+    setSelectedGoodPoints((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   // Real bug fix (2026-07-26): a PICKUP order has riderId: null for its whole
   // lifecycle -- there's genuinely no rider to rate, so the rider star row is hidden
@@ -14696,7 +14734,7 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
     setSubmitting(true);
     setError(null);
     try {
-      await submitEatsReview(order.id, restaurantRating, restaurantComment, hasRider ? riderRating : null, riderComment, photoUrl);
+      await submitEatsReview(order.id, restaurantRating, restaurantComment, hasRider ? riderRating : null, riderComment, photoUrl, Array.from(selectedGoodPoints));
       setDone(true);
       onSubmitted();
     } catch (err) {
@@ -14741,6 +14779,25 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
           placeholder="Photo URL (optional)"
           style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
         />
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+          {EATS_GOOD_POINT_LABELS.map(([id, label]) => {
+            const selected = selectedGoodPoints.has(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggleGoodPoint(id)}
+                style={{
+                  fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
+                  color: selected ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
+                  backgroundColor: selected ? 'var(--itunda-indigo)' : 'var(--itunda-grey-100)',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
       {hasRider && (
         <div>
