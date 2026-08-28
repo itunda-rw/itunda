@@ -6,6 +6,7 @@ import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { ApiError, getStoredUser } from './lib/api';
 import { confirmEscrowReceipt, contactSeller, disputeEscrow, fetchListingDetail, fetchListingReviews, getEscrow, hideListing, makeOffer, markListingSold, payEscrow, removeListing, submitListingReview, type HoodReview, type Listing, type MarketplaceEscrow, updateListingPrice } from './lib/marketplace';
 import { HoodReportButton, HoodReviewForm, HoodReviewResultView, TrustBadge, WishlistButton } from './BankDashboard';
+import { VehicleDetailSection } from './HoodVehicleFields';
 
 export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, favoriteBusy, onToggleFavorite, sellerTrustScore }: {
   listing: Listing;
@@ -20,9 +21,8 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Real Karrot "이 글 숨기기" (hide this post) -- see lib/marketplace.ts's own doc
-  // comment. Backend excludes this listing from browse, so a plain onChanged() refetch
-  // is what makes it disappear -- no separate local optimistic-removal state needed.
+  // Real Karrot "이 글 숨기기" (hide this post) -- backend excludes this listing from
+  // browse, so a plain onChanged() refetch is what makes it disappear.
   const [hiding, setHiding] = useState(false);
   const handleHide = async () => {
     setHiding(true);
@@ -64,9 +64,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
     getEscrow(listing.id).then(setEscrow).catch(() => {}).finally(() => setLoadedEscrow(true));
   }, [isMyEscrowTrade, loadedEscrow, listing.id]);
 
-  // Real 당근마켓 조회수 (view count) -- a "view" here is a non-owner seeing this card at
-  // all (no separate detail-page nav in bank-mfe). Falls back to the stale prop value
-  // if the fresh fetch fails, same non-critical discipline as the review read-back below.
+  // Real 당근마켓 조회수 (view count) -- a "view" is a non-owner seeing this card at all.
   const [freshViewCount, setFreshViewCount] = useState<number | null>(null);
   useEffect(() => {
     if (isMine) return;
@@ -302,6 +300,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
           shown for someone else's listing. */}
       {!isMine && sellerTrustScore != null && <TrustBadge score={sellerTrustScore} />}
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>{listing.description}</p>
+      <VehicleDetailSection listing={listing} />
       {listing.meetingPlace && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', margin: 0 }}>Suggested hand-off: {listing.meetingPlace}</p>
       )}

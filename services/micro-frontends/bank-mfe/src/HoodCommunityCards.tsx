@@ -235,6 +235,16 @@ export function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChang
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)', display: 'flex', alignItems: 'center', gap: '4px' }}>
         <HeartFilled size={12} /> {post.likeCount} · 💬 {post.commentCount}
       </p>
+      {/* Real AI-generated 모임 summary (2026-08-28) -- see backend
+          HoodAiSummaryService's own doc comment. Never shown without this visible "AI"
+          disclosure badge, same convention this session's Maps AI-summary work
+          established. */}
+      {post.aiSummary && (
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', padding: '10px', borderRadius: '10px', background: 'var(--itunda-grey-50)' }}>
+          <span style={{ fontSize: 'var(--itunda-type-scale-10-size)', fontWeight: 700, color: '#fff', background: 'var(--itunda-brand)', borderRadius: '4px', padding: '2px 5px' }}>AI</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)' }}>{post.aiSummary}</span>
+        </div>
+      )}
       {/* Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a "view"
           navigation: it adds the tapper to a real GroupConversation (see backend
           CommunityService.joinMeetup's own doc comment), shown with a real "N joined"

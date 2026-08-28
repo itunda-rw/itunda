@@ -8,12 +8,13 @@ import { type TrustScores } from './lib/marketplace';
 import { fetchProfile } from './lib/neighborhood';
 import { NewJobPostCard, JobPostCard, MyJobApplicationsView, JobPostWishlistView } from './HoodJobsCards';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
+import { ResumeBuilderView } from './HoodResumeBuilder';
 
 export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
   const { t } = useI18n();
   // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend JobPostRepository's own doc comment.
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'WORKED' | 'NEIGHBORHOOD' | 'WISHLIST' | 'APPLICATIONS'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'WORKED' | 'NEIGHBORHOOD' | 'WISHLIST' | 'APPLICATIONS' | 'RESUME'>('BROWSE');
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
@@ -77,7 +78,7 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
         });
       return;
     }
-    if (view === 'WISHLIST' || view === 'APPLICATIONS') return;
+    if (view === 'WISHLIST' || view === 'APPLICATIONS' || view === 'RESUME') return;
     const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : view === 'WORKED' ? fetchMyWorkedJobPosts() : fetchMyJobPosts();
     fetcher
       .then((result) => { setPosts(result.posts); setTrustScores(result.trustScores); })
@@ -119,7 +120,7 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'APPLICATIONS', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'APPLICATIONS', 'WISHLIST', 'RESUME'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -129,7 +130,7 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
               backgroundColor: view === v ? 'var(--itunda-indigo)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : <><HeartOutline size={12} /> Wishlist</>}
+            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : v === 'RESUME' ? 'My résumé' : <><HeartOutline size={12} /> Wishlist</>}
           </button>
         ))}
       </div>
@@ -138,6 +139,8 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
         <JobPostWishlistView />
       ) : view === 'APPLICATIONS' ? (
         <MyJobApplicationsView />
+      ) : view === 'RESUME' ? (
+        <ResumeBuilderView />
       ) : (
         <>
           {view === 'BROWSE' && (

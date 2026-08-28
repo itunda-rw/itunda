@@ -40,6 +40,75 @@ export interface Listing {
   // detail page; optional since older cached listing objects (e.g. a browse-list item
   // fetched before this field existed) may not carry it.
   viewCount?: number;
+  // Real 당근카 (Karrot Vehicles) fields (itunda Hood redesign, 2026-08-28) -- see
+  // backend Listing.vehicleIsLeaseTakeover's own doc comment. A vehicle is still a
+  // regular Listing; these stay undefined for every non-vehicle listing (the
+  // overwhelming majority).
+  vehicleMileageKm?: number | null;
+  vehicleInsuranceClaimCount?: number | null;
+  vehicleIsLeaseTakeover?: boolean;
+  leaseTotalAcquisitionCost?: number | null;
+  leaseRemainingMonths?: number | null;
+  leaseTotalMonths?: number | null;
+  leaseMonthlyPayment?: number | null;
+  leaseSubsidyAmount?: number | null;
+  leaseReturnFee?: number | null;
+}
+
+// Real 당근카 vehicle-listing fields a seller optionally supplies at creation time --
+// see Listing's own doc comment above.
+export interface VehicleListingFields {
+  vehicleMileageKm?: number;
+  vehicleInsuranceClaimCount?: number;
+  vehicleIsLeaseTakeover?: boolean;
+  leaseTotalAcquisitionCost?: number;
+  leaseRemainingMonths?: number;
+  leaseTotalMonths?: number;
+  leaseMonthlyPayment?: number;
+  leaseSubsidyAmount?: number;
+  leaseReturnFee?: number;
+}
+
+// String-valued create-listing form state for the fields above (kept here, a plain
+// .ts file, rather than in the HoodVehicleFields.tsx component file, so that file can
+// stay component-only for React Fast Refresh).
+export interface VehicleFieldsState {
+  isVehicle: boolean;
+  mileageKm: string;
+  insuranceClaimCount: string;
+  isLeaseTakeover: boolean;
+  leaseTotalAcquisitionCost: string;
+  leaseRemainingMonths: string;
+  leaseTotalMonths: string;
+  leaseMonthlyPayment: string;
+  leaseSubsidyAmount: string;
+  leaseReturnFee: string;
+}
+
+export const emptyVehicleFieldsState: VehicleFieldsState = {
+  isVehicle: false, mileageKm: '', insuranceClaimCount: '', isLeaseTakeover: false,
+  leaseTotalAcquisitionCost: '', leaseRemainingMonths: '', leaseTotalMonths: '',
+  leaseMonthlyPayment: '', leaseSubsidyAmount: '', leaseReturnFee: '',
+};
+
+export function vehicleFieldsToRequest(s: VehicleFieldsState): VehicleListingFields | undefined {
+  if (!s.isVehicle) return undefined;
+  const num = (v: string) => (v.trim() ? Number(v) : undefined);
+  return {
+    vehicleMileageKm: num(s.mileageKm),
+    vehicleInsuranceClaimCount: num(s.insuranceClaimCount),
+    vehicleIsLeaseTakeover: s.isLeaseTakeover,
+    ...(s.isLeaseTakeover
+      ? {
+          leaseTotalAcquisitionCost: num(s.leaseTotalAcquisitionCost),
+          leaseRemainingMonths: num(s.leaseRemainingMonths),
+          leaseTotalMonths: num(s.leaseTotalMonths),
+          leaseMonthlyPayment: num(s.leaseMonthlyPayment),
+          leaseSubsidyAmount: num(s.leaseSubsidyAmount),
+          leaseReturnFee: num(s.leaseReturnFee),
+        }
+      : {}),
+  };
 }
 
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
@@ -112,10 +181,11 @@ export const createListing = (
   longitude?: number,
   meetingPlace?: string,
   photoUrl?: string,
+  vehicle?: VehicleListingFields,
 ) =>
   apiFetch<{ success: boolean; listing: Listing }>('/api/v1/marketplace/listings', {
     method: 'POST',
-    body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace, photoUrl }),
+    body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace, photoUrl, ...vehicle }),
   }).then((r) => r.listing);
 
 export const markListingSold = (listingId: string, buyerPhoneNumber?: string) =>

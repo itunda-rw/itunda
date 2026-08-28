@@ -26,6 +26,14 @@ export interface CommunityPost {
   // CommunityPost.kt's own doc comment. Only ever set for category === 'meetup' posts
   // that have had at least one real join.
   groupConversationId?: string | null;
+  // Real 동네생활 topic chip (2026-08-28) -- a lifestyle axis independent of the
+  // functional category above, see backend CommunityPost.topic's own doc comment.
+  topic?: string | null;
+  // Real AI-generated 모임 summary (2026-08-28) -- see backend HoodAiSummaryService's
+  // own doc comment. Null means either not a meetup post or the honesty gate declined
+  // (thin body) -- never fabricate a summary client-side when this is null.
+  aiSummary?: string | null;
+  aiSummaryGeneratedAt?: string | null;
 }
 
 export interface CommunityComment {
@@ -44,15 +52,25 @@ export interface CommunityCategory {
 export const fetchCommunityCategories = () =>
   apiFetch<{ success: boolean; categories: CommunityCategory[] }>('/api/v1/community/categories').then((r) => r.categories);
 
+// Real 동네생활 topic-chip filter row (2026-08-28) -- see backend
+// CommunityService.TOPICS' own doc comment. Same {id,label} shape as categories above.
+export const fetchCommunityTopics = () =>
+  apiFetch<{ success: boolean; topics: CommunityCategory[] }>('/api/v1/community/topics').then((r) => r.topics);
+
 // Real 같이해요 (join-together) group join counts (2026-07-24) -- postId -> real
 // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
 // Section 4 recommendation #4.
 export type JoinedCounts = Record<string, number>;
 
-export const fetchCommunityPosts = (category?: string) =>
-  apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>(
-    `/api/v1/community/posts${category ? `?category=${encodeURIComponent(category)}` : ''}`,
+export const fetchCommunityPosts = (category?: string, topic?: string) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (topic) params.set('topic', topic);
+  const qs = params.toString();
+  return apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>(
+    `/api/v1/community/posts${qs ? `?${qs}` : ''}`,
   ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
+};
 
 export const fetchMyCommunityPosts = () =>
   apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>('/api/v1/community/my-posts')
@@ -81,10 +99,11 @@ export const createCommunityPost = (
   longitude?: number,
   eventDate?: string,
   capacity?: number,
+  topic?: string,
 ) =>
   apiFetch<{ success: boolean; post: CommunityPost }>('/api/v1/community/posts', {
     method: 'POST',
-    body: JSON.stringify({ category, title, body, latitude, longitude, eventDate, capacity }),
+    body: JSON.stringify({ category, title, body, latitude, longitude, eventDate, capacity, topic }),
   }).then((r) => r.post);
 
 export const fetchCommunityPost = (postId: string) =>
@@ -179,3 +198,27 @@ export const setCommentNotificationsEnabled = (enabled: boolean) =>
     method: 'POST',
     body: JSON.stringify({ enabled }),
   }).then((r) => r.commentNotificationsEnabled);
+
+// Real 살아본 후기 (Karrot "lived here" neighborhood reviews), itunda Hood redesign
+// 2026-08-28 -- see backend NeighborhoodReview.kt's own doc comment. Distinct from
+// HoodReview (a buyer/seller transaction review) -- this is a public review of an
+// area, shown on every property listing in that neighborhood.
+export interface NeighborhoodReview {
+  id: string;
+  userId: string;
+  neighborhood: string;
+  residencyYears?: number | null;
+  body: string;
+  createdAt: string;
+}
+
+export const fetchNeighborhoodReviews = (neighborhood: string) =>
+  apiFetch<{ success: boolean; reviews: NeighborhoodReview[] }>(
+    `/api/v1/community/neighborhoods/${encodeURIComponent(neighborhood)}/reviews`,
+  ).then((r) => r.reviews);
+
+export const submitNeighborhoodReview = (neighborhood: string, body: string, residencyYears?: number) =>
+  apiFetch<{ success: boolean; review: NeighborhoodReview }>(
+    `/api/v1/community/neighborhoods/${encodeURIComponent(neighborhood)}/reviews`,
+    { method: 'POST', body: JSON.stringify({ body, residencyYears }) },
+  ).then((r) => r.review);

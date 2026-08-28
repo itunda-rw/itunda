@@ -347,6 +347,9 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
               applications.filter((a) => a.status === 'PENDING').map((app) => (
                 <div key={app.id} style={{ backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{app.message}</p>
+                  {app.resumeSnapshotJson && (
+                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-brand)', fontWeight: 600 }}>📄 Résumé attached</p>
+                  )}
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, false)}>
                       Decline

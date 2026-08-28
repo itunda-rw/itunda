@@ -3,7 +3,7 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { useI18n } from './i18n/I18nContext';
 import { WishlistHeart } from './icons/ItundaFaceHearts';
 import { ApiError, getStoredUser } from './lib/api';
-import { addCommunityComment, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost, fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, joinCommunityMeetup, toggleCommunityLike, type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts } from './lib/community';
+import { addCommunityComment, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost, fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchCommunityTopics, fetchMyCommunityPosts, joinCommunityMeetup, toggleCommunityLike, type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts } from './lib/community';
 import { fetchProfile } from './lib/neighborhood';
 import { NewCommunityPostCard, CommentNotificationToggle, CommunityPostCard, MeetupSessionsSection, GroupBuyFinalizeSection } from './HoodCommunityCards';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
@@ -116,6 +116,10 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [categories, setCategories] = useState<CommunityCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Real 동네생활 topic-chip filter row (2026-08-28) -- a lifestyle axis independent of
+  // the functional category above, see backend CommunityService.TOPICS' own doc comment.
+  const [topics, setTopics] = useState<CommunityCategory[]>([]);
+  const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
   // Real 같이해요 (join-together) group join counts (2026-07-24) -- see TrustBadge's
   // sibling doc comments; closes docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
@@ -130,6 +134,7 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
 
   useEffect(() => {
     fetchCommunityCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
+    fetchCommunityTopics().then(setTopics).catch(() => { /* chips just won't render, browse still works */ });
   }, []);
 
   const load = () => {
@@ -153,13 +158,13 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
         });
       return;
     }
-    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
+    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined, activeTopic ?? undefined) : fetchMyCommunityPosts();
     fetcher
       .then((result) => { setPosts(result.posts); setJoinedCounts(result.joinedCounts); })
       .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
-  useEffect(load, [view, activeCategory]);
+  useEffect(load, [view, activeCategory, activeTopic]);
 
   // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see backend
   // CommunityService.joinMeetup's own doc comment.
@@ -214,6 +219,25 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
               }}
             >
               {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === 'BROWSE' && topics.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
+          {topics.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTopic(activeTopic === t.id ? null : t.id)}
+              style={{
+                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700,
+                border: `1px solid ${activeTopic === t.id ? 'var(--itunda-indigo)' : 'var(--itunda-grey-200)'}`,
+                color: activeTopic === t.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: activeTopic === t.id ? 'var(--itunda-indigo)' : 'transparent',
+              }}
+            >
+              {t.label}
             </button>
           ))}
         </div>

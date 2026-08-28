@@ -3,8 +3,9 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { showToast } from './Toast';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
-import { addKeywordAlert, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchMyFavoriteListings, removeKeywordAlert, removeListingFavorite, setKeywordAlertQuietHours, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours } from './lib/marketplace';
+import { addKeywordAlert, createListing, emptyVehicleFieldsState, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchMyFavoriteListings, removeKeywordAlert, removeListingFavorite, setKeywordAlertQuietHours, vehicleFieldsToRequest, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours, type VehicleFieldsState } from './lib/marketplace';
 import { uploadFile } from './lib/upload';
+import { VehicleListingFieldsForm } from './HoodVehicleFields';
 
 export function NewListingCard({ onCreated }: { onCreated: () => void }) {
   const { t } = useI18n();
@@ -28,6 +29,7 @@ export function NewListingCard({ onCreated }: { onCreated: () => void }) {
   // pickPhoto flow); bank-mfe never had a photo field at all until now.
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [vehicle, setVehicle] = useState<VehicleFieldsState>(emptyVehicleFieldsState);
 
   const handlePhotoSelected = async (file: File | undefined) => {
     if (!file) return;
@@ -75,7 +77,7 @@ export function NewListingCard({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     try {
       const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
-      await createListing(title, description, Number(price), category, lat, lng, meetingPlace.trim() || undefined, photoUrl ?? undefined);
+      await createListing(title, description, Number(price), category, lat, lng, meetingPlace.trim() || undefined, photoUrl ?? undefined, vehicleFieldsToRequest(vehicle));
       setTitle('');
       setDescription('');
       setPrice('');
@@ -84,6 +86,7 @@ export function NewListingCard({ onCreated }: { onCreated: () => void }) {
       setShareLocation(false);
       setMyLocation(null);
       setPhotoUrl(null);
+      setVehicle(emptyVehicleFieldsState);
       setOpen(false);
       showToast('Listing posted.');
       onCreated();
@@ -130,6 +133,7 @@ export function NewListingCard({ onCreated }: { onCreated: () => void }) {
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
       />
       <small id="meeting-place-help" style={{ color: 'var(--itunda-grey-600)' }}>Use a public landmark, not a home address.</small>
+      <VehicleListingFieldsForm state={vehicle} onChange={setVehicle} />
       <input
         type="file"
         accept="image/jpeg,image/png,image/webp"

@@ -164,6 +164,10 @@ export interface JobApplication {
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
   submittedAt: string;
   respondedAt?: string | null;
+  // Real résumé attach at submission time (2026-08-28) -- see backend
+  // JobApplication.resumeSnapshotJson's own doc comment. A raw JSON string; only ever
+  // used to show "Résumé attached" -- never re-rendered field-by-field here.
+  resumeSnapshotJson?: string | null;
 }
 
 export const applyToJob = (jobPostId: string, message: string) =>

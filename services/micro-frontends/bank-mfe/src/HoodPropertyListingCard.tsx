@@ -4,6 +4,7 @@ import { ApiError, getStoredUser } from './lib/api';
 import { type HoodReview } from './lib/marketplace';
 import { fetchPropertyListingReviews, makePropertyOffer, markPropertyListingTaken, removePropertyListing, submitPropertyListingReview, submitPropertyOwnershipVerification, type PropertyListing, updatePropertyListingPrice } from './lib/realestate';
 import { uploadFile } from './lib/upload';
+import { fetchNeighborhoodReviews, submitNeighborhoodReview, type NeighborhoodReview } from './lib/community';
 import { HoodReportButton, HoodReviewForm, HoodReviewResultView, TrustBadge, WishlistButton } from './BankDashboard';
 
 export function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister, favorited, favoriteBusy, onToggleFavorite, listerTrustScore }: {
@@ -196,6 +197,7 @@ export function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChan
         </span>
       )}
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{listing.description}</p>
+      {listing.neighborhood && <NeighborhoodReviewsSection neighborhood={listing.neighborhood} />}
       {offering && (
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
@@ -359,6 +361,70 @@ export function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChan
         )}
       </div>
       {!isMine && <HoodReportButton targetType="PROPERTY_LISTING" targetId={listing.id} />}
+    </div>
+  );
+}
+
+// Real 살아본 후기 (Karrot "lived here" neighborhood reviews), itunda Hood redesign
+// 2026-08-28 -- see backend NeighborhoodReview.kt's own doc comment. Distinct from
+// HoodReview (a buyer/seller transaction review) -- this is a public review of an
+// area, shown on every property listing in that neighborhood.
+function NeighborhoodReviewsSection({ neighborhood }: { neighborhood: string }) {
+  const [reviews, setReviews] = useState<NeighborhoodReview[] | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [body, setBody] = useState('');
+  const [years, setYears] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = () => { fetchNeighborhoodReviews(neighborhood).then(setReviews).catch(() => setReviews([])); };
+  useEffect(load, [neighborhood]);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await submitNeighborhoodReview(neighborhood, body.trim(), years ? Number(years) : undefined);
+      setBody(''); setYears(''); setShowForm(false); setError(null);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save your review.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>살아본 후기 · {neighborhood}</p>
+      {reviews === null ? (
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+      ) : reviews.length === 0 ? (
+        <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>No reviews yet — be the first to share what it's like living here.</p>
+      ) : (
+        reviews.map((r) => (
+          <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {r.residencyYears != null && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 600, color: 'var(--itunda-grey-600)' }}>{r.residencyYears} years living here</p>}
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{r.body}</p>
+          </div>
+        ))
+      )}
+      {!showForm ? (
+        <button className="itunda-btn itunda-btn-secondary" style={{ width: 'fit-content' }} onClick={() => setShowForm(true)}>+ Write a review</button>
+      ) : (
+        <>
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="What's it like living here?" rows={3}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'vertical' }} />
+          <input type="number" value={years} onChange={(e) => setYears(e.target.value)} placeholder="Years living here (optional)"
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }} />
+          {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); setError(null); }}>Cancel</button>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting || !body.trim()} onClick={handleSubmit}>
+              {submitting ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
