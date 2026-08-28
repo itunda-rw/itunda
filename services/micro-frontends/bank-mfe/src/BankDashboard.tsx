@@ -4,7 +4,7 @@ import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-mo
 import { itundaSpring } from './lib/motion';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, Bike, Camera, Car, Check, Clock, Image as ImageIcon, Landmark, LogOut, MessageCircle, Phone, Pin, PinOff, QrCode, Receipt, Settings, ShoppingBag, SmilePlus, Sprout, Star, Store, TrendingDown, TrendingUp, Users, Utensils, Wallet as AccountIcon, Zap } from 'lucide-react';
 import { BankCardChip, CardContactlessGlyph } from './BankCardChip';import { IconAdd, IconBack, IconChevronRight, IconClose, IconSearch } from './icons/ItundaIcons';
 import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/ItundaIcons';
 import { ReactionGlyph } from './icons/ItundaFace';
@@ -130,6 +130,10 @@ import {
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
+import {
+  fetchCallHistory, setConversationFavorite,
+  type CallSession, type ConversationSummaryWithFavorite,
+} from './lib/talk';
 import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   sendGroupEmoticon,
@@ -9583,6 +9587,12 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
   );
 }
 
+function emptyConversationsMessage(showArchived: boolean, filterTab: 'all' | 'unread' | 'calls'): string {
+  if (showArchived) return "You haven't archived any chats.";
+  if (filterTab === 'unread') return 'No unread chats.';
+  return 'No conversations yet — start one from Friends, or say hi to someone you already know.';
+}
+
 function DirectMessagesList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
   const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
@@ -9601,6 +9611,12 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   // only silences notifications, it never hides a room); this toggle now shows the
   // real archived list.
   const [showArchived, setShowArchived] = useState(false);
+  // Real KakaoTalk chat-list filter tabs (전체/안읽음/통화) (itunda Talk redesign,
+  // 2026-08-28) -- 전체/안읽음 are pure client-side filters over the already-fetched
+  // list (no backend change needed); 통화 shows the real call log instead of the
+  // conversation list, fetched only when that tab is actually selected.
+  const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'calls'>('all');
+  const [callHistory, setCallHistory] = useState<CallSession[] | null>(null);
 
   const load = () => {
     setError(null);
@@ -9623,7 +9639,19 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     setConversationPinnedToTop(conversationId, pinned).then(load).catch(() => {});
   };
 
+  // Real KakaoTalk 즐겨찾기 (favorite) toggle -- see backend MessagingService
+  // .setConversationFavorite's own doc comment, mirrors togglePinnedToTop exactly.
+  const toggleFavorite = (conversationId: string, favorite: boolean) => {
+    setConversationFavorite(conversationId, favorite).then(load).catch(() => {});
+  };
+
   useEffect(load, []);
+
+  useEffect(() => {
+    if (filterTab === 'calls' && callHistory === null) {
+      fetchCallHistory().then(setCallHistory).catch(() => setCallHistory([]));
+    }
+  }, [filterTab, callHistory]);
 
   // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
   // check for every listed contact, refreshed on a 10s cadence (a real, coarser-grained
@@ -9677,22 +9705,46 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
 
   // Pinned rooms float to the top of the active list, same as real KakaoTalk --
   // a stable sort so unpinned rooms keep their existing most-recent-first order.
-  const activeConversations = showArchived
+  const activeConversations = (showArchived
     ? (archivedConversations ?? [])
-    : [...conversations].sort((a, b) => Number(b.pinnedToTop) - Number(a.pinnedToTop));
-  const visibleConversations = activeConversations;
+    : [...conversations].sort((a, b) => Number(b.pinnedToTop) - Number(a.pinnedToTop))) as ConversationSummaryWithFavorite[];
+  const visibleConversations = filterTab === 'unread' ? activeConversations.filter((c) => c.unreadCount > 0) : activeConversations;
   const archivedCount = archivedConversations?.length ?? 0;
 
   return (
     <div>
       <NewChatCard onStarted={(id) => { load(); setOpenConversationId(id); }} />
+      {/* Real KakaoTalk chat-list filter tabs (전체/안읽음/통화) -- a flat row of
+          text tabs, matching this codebase's own flat-design-over-cards convention
+          for new screens rather than a pill/segmented-control card. */}
+      <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--itunda-grey-100)', marginBottom: '14px' }}>
+        {([['all', '전체'], ['unread', '안읽음'], ['calls', '통화']] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilterTab(key)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '10px 2px',
+              fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700,
+              color: filterTab === key ? 'var(--itunda-grey-900)' : 'var(--itunda-grey-400)',
+              borderBottom: filterTab === key ? '2px solid var(--itunda-indigo)' : '2px solid transparent',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {filterTab === 'calls' ? (
+        <TalkCallLog calls={callHistory} currentUserId={getStoredUser()?.id ?? null} />
+      ) : (
+        <>
       {archivedCount > 0 && (
         <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setShowArchived((value) => !value)} style={{ marginBottom: '10px' }}>
           {showArchived ? 'Show active chats' : `Archived (${archivedCount})`}
         </button>
       )}
       {visibleConversations.length === 0 ? (
-        <EmptyState message={showArchived ? "You haven't archived any chats." : "No conversations yet — start one from Friends, or say hi to someone you already know."} />
+        <EmptyState message={emptyConversationsMessage(showArchived, filterTab)} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {visibleConversations.map((c) => (
@@ -9731,6 +9783,18 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
                   </span>
                 )}
               </button>
+              {/* Real KakaoTalk 즐겨찾기 (favorite) -- only offered on the active
+                  list, same reasoning as pin-to-top below. */}
+              {!showArchived && (
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(c.conversationId, !c.favorite)}
+                  title={c.favorite ? 'Remove from favorites' : 'Add to favorites'}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: c.favorite ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }}
+                >
+                  <Star size={18} fill={c.favorite ? 'var(--itunda-indigo)' : 'none'} />
+                </button>
+              )}
               {/* Real KakaoTalk 채팅방 상단 고정 (pin room to top) -- only offered on
                   the active list, not the archived one (pinning an archived room to
                   the top of a list it isn't shown in doesn't mean anything). */}
@@ -9762,6 +9826,47 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
           ))}
         </div>
       )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Real 1:1 voice/video calling log (itunda Talk redesign, 2026-08-28) -- the 통화
+// filter tab's content. Read-only: shows real call history from CallService's own
+// persisted CallSession rows. No "place a call" affordance yet -- that's a separate,
+// later piece once the calling UI itself (WebRTC/dial screen) is built.
+function TalkCallLog({ calls, currentUserId }: { calls: CallSession[] | null; currentUserId: string | null }) {
+  if (calls === null) {
+    return <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  }
+  if (calls.length === 0) {
+    return <EmptyState message="No calls yet." />;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {calls.map((call) => {
+        const outgoing = call.callerId === currentUserId;
+        const missed = call.endReason === 'MISSED' || call.endReason === 'DECLINED';
+        let direction = 'Incoming';
+        if (outgoing) direction = 'Outgoing';
+        else if (missed) direction = 'Missed call';
+        return (
+          <div key={call.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 0' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-indigo-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Phone size={20} color="var(--itunda-indigo)" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, color: missed ? 'var(--itunda-red)' : 'var(--itunda-grey-900)' }}>
+                {direction} {call.callType === 'VIDEO' ? 'video' : 'voice'} call
+              </p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+                {new Date(call.startedAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
