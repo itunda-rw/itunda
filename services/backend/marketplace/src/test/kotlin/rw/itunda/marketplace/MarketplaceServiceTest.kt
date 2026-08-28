@@ -109,6 +109,7 @@ class MarketplaceServiceTest : BehaviorSpec({
                 }
             }
         }
+
     }
 
     Given("an existing real listing") {

@@ -16,6 +16,17 @@ data class CreateListingRequest(
     val longitude: Double? = null,
     val meetingPlace: String? = null,
     val photoUrl: String? = null,
+    // Real 당근카 (Karrot Vehicles) fields -- see Listing.vehicleIsLeaseTakeover's own
+    // doc comment.
+    val vehicleMileageKm: Int? = null,
+    val vehicleInsuranceClaimCount: Int? = null,
+    val vehicleIsLeaseTakeover: Boolean = false,
+    val leaseTotalAcquisitionCost: BigDecimal? = null,
+    val leaseRemainingMonths: Int? = null,
+    val leaseTotalMonths: Int? = null,
+    val leaseMonthlyPayment: BigDecimal? = null,
+    val leaseSubsidyAmount: BigDecimal? = null,
+    val leaseReturnFee: BigDecimal? = BigDecimal.ZERO,
 )
 
 data class MakeOfferRequest(val amount: BigDecimal)

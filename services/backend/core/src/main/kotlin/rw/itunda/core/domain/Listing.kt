@@ -153,6 +153,46 @@ class Listing(
     // doesn't have), same scoping choice as a plain page-view counter.
     @Column(name = "view_count", nullable = false)
     var viewCount: Long = 0,
+
+    // Real 당근카 (Karrot Vehicles) fields (itunda Hood redesign, 2026-08-28, direct
+    // user reference) -- extends `Listing` rather than a parallel entity: a vehicle
+    // is structurally "an item for sale" like everything else here, and reusing
+    // Marketplace's already-built favorites/escrow/report/review machinery is
+    // strictly better than rebuilding it for a 4th vertical (see MarketplaceService.
+    // createListing's own doc comment for the full account). All nullable -- a
+    // non-vehicle listing (the overwhelming majority) leaves every one of these
+    // null, forever.
+    @Column(name = "vehicle_mileage_km", nullable = true)
+    var vehicleMileageKm: Int? = null,
+
+    @Column(name = "vehicle_insurance_claim_count", nullable = true)
+    var vehicleInsuranceClaimCount: Int? = null,
+
+    // Real 렌트 승계 (lease/rent takeover) -- Karrot's own real, distinctive vehicle-
+    // listing shape (the reference's own screenshot: 총 인수비용/남은 개월수/승계 후 총
+    // 납입금/승계 지원금/만기후 반납). Only meaningful when true; the lease* fields
+    // below stay null for a normal (non-takeover) vehicle sale, same "only meaningful
+    // for one sub-case" convention CommunityPost.eventDate/capacity already established.
+    @Column(name = "vehicle_is_lease_takeover", nullable = false)
+    var vehicleIsLeaseTakeover: Boolean = false,
+
+    @Column(name = "lease_total_acquisition_cost", nullable = true, precision = 18, scale = 2)
+    var leaseTotalAcquisitionCost: BigDecimal? = null,
+
+    @Column(name = "lease_remaining_months", nullable = true)
+    var leaseRemainingMonths: Int? = null,
+
+    @Column(name = "lease_total_months", nullable = true)
+    var leaseTotalMonths: Int? = null,
+
+    @Column(name = "lease_monthly_payment", nullable = true, precision = 18, scale = 2)
+    var leaseMonthlyPayment: BigDecimal? = null,
+
+    @Column(name = "lease_subsidy_amount", nullable = true, precision = 18, scale = 2)
+    var leaseSubsidyAmount: BigDecimal? = null,
+
+    @Column(name = "lease_return_fee", nullable = true, precision = 18, scale = 2)
+    var leaseReturnFee: BigDecimal? = BigDecimal.ZERO,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

@@ -175,6 +175,16 @@ class MarketplaceService(
         longitude: Double? = null,
         meetingPlace: String? = null,
         photoUrl: String? = null,
+        // Real 당근카 fields -- see Listing.vehicleIsLeaseTakeover's own doc comment.
+        vehicleMileageKm: Int? = null,
+        vehicleInsuranceClaimCount: Int? = null,
+        vehicleIsLeaseTakeover: Boolean = false,
+        leaseTotalAcquisitionCost: BigDecimal? = null,
+        leaseRemainingMonths: Int? = null,
+        leaseTotalMonths: Int? = null,
+        leaseMonthlyPayment: BigDecimal? = null,
+        leaseSubsidyAmount: BigDecimal? = null,
+        leaseReturnFee: BigDecimal? = BigDecimal.ZERO,
     ): Listing {
         val trimmedTitle = title.trim()
         val trimmedDescription = description.trim()
@@ -208,6 +218,20 @@ class MarketplaceService(
         if (trimmedPhotoUrl != null && trimmedPhotoUrl.length > 500) {
             throw InvalidListingException("Photo URL must be 500 characters or fewer")
         }
+        if (vehicleMileageKm != null && vehicleMileageKm < 0) throw InvalidListingException("Vehicle mileage cannot be negative")
+        if (vehicleInsuranceClaimCount != null && vehicleInsuranceClaimCount < 0) throw InvalidListingException("Insurance claim count cannot be negative")
+        // Real all-or-nothing lease-takeover breakdown, never a half-filled one.
+        if (vehicleIsLeaseTakeover) {
+            if (leaseTotalAcquisitionCost == null || leaseTotalAcquisitionCost <= BigDecimal.ZERO) {
+                throw InvalidListingException("A lease takeover needs a real total acquisition cost")
+            }
+            if (leaseRemainingMonths == null || leaseTotalMonths == null || leaseRemainingMonths <= 0 || leaseTotalMonths <= 0 || leaseRemainingMonths > leaseTotalMonths) {
+                throw InvalidListingException("A lease takeover needs real, consistent remaining/total months")
+            }
+            if (leaseMonthlyPayment == null || leaseMonthlyPayment <= BigDecimal.ZERO) {
+                throw InvalidListingException("A lease takeover needs a real monthly payment")
+            }
+        }
         // Real anti-spam limit on user-generated listings -- same convention this
         // session's own security review already established for every other
         // content/money-creation endpoint (Partner SDK, Certificate, chargeCard,
@@ -233,6 +257,11 @@ class MarketplaceService(
                 description = trimmedDescription, price = price, category = trimmedCategory,
                 latitude = latitude, longitude = longitude, neighborhood = neighborhood,
                 meetingPlace = trimmedMeetingPlace, photoUrl = trimmedPhotoUrl,
+                vehicleMileageKm = vehicleMileageKm, vehicleInsuranceClaimCount = vehicleInsuranceClaimCount,
+                vehicleIsLeaseTakeover = vehicleIsLeaseTakeover, leaseTotalAcquisitionCost = leaseTotalAcquisitionCost,
+                leaseRemainingMonths = leaseRemainingMonths, leaseTotalMonths = leaseTotalMonths,
+                leaseMonthlyPayment = leaseMonthlyPayment, leaseSubsidyAmount = leaseSubsidyAmount,
+                leaseReturnFee = leaseReturnFee,
             ),
         )
     }
