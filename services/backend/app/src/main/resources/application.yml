@@ -153,6 +153,13 @@ itunda:
   # original flat delivery fee, exactly as before this integration existed.
   nominatim:
     base-url: ${NOMINATIM_BASE_URL:}
+  # Real self-hosted LLM place-summary generation (2026-08-28, itunda Maps redesign)
+  # -- see AiSummaryClient's own doc comment. Empty by default: without a configured
+  # base-url, AiSummaryService's batch job is a real, safe no-op, same never-required
+  # convention as every other optional external client above.
+  ai-summary:
+    base-url: ${AI_SUMMARY_BASE_URL:}
+    model: ${AI_SUMMARY_MODEL:llama-3.2-1b-instruct}
   # Real external-checkout hosted page (2026-07-21) -- see PaymentsApiController's own
   # doc comment. Where a customer's browser lands after a `requestPayment()` widget
   # call, matching Toss Payments' own hosted-checkout-page shape.

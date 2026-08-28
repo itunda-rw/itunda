@@ -280,6 +280,19 @@ class Merchant(
     // gallery, never a replacement.
     @Column(name = "photo_urls", length = 2000)
     var photoUrls: String? = null,
+
+    // Real self-hosted AI place summary (itunda Maps redesign, 2026-08-28, direct
+    // Naver Map reference: the place-detail "AI 요약" tag) -- see AiSummaryClient's own
+    // doc comment. Generated offline/in-batch (never live per-request), from real
+    // structured fields only (rating, real review tags, category, hours) with an
+    // explicit no-invented-facts prompt constraint -- always rendered with a visible
+    // "AI" disclosure badge client-side, never presented as human-written.
+    // `aiSummaryGeneratedAt` backs the batch job's own "regenerate if stale" check.
+    @Column(name = "ai_summary", length = 500)
+    var aiSummary: String? = null,
+
+    @Column(name = "ai_summary_generated_at")
+    var aiSummaryGeneratedAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", accountId = "", businessName = "")
 
