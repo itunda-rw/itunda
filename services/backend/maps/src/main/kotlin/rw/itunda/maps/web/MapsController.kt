@@ -78,6 +78,20 @@ class MapsController(private val mapsService: MapsService, private val liveLocat
         mapOf("success" to true, "route" to mapsService.getDirections(currentUser.userId, fromLat, fromLng, toLat, toLng, mode)),
     )
 
+    // Real Kigali GTFS-based transit journeys -- see MapsService.getTransitDirections'
+    // own doc comment. A real empty list (never an error) means no real direct transit
+    // option was found.
+    @GetMapping("/directions/transit")
+    fun transitDirections(
+        @RequestParam fromLat: Double,
+        @RequestParam fromLng: Double,
+        @RequestParam toLat: Double,
+        @RequestParam toLng: Double,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "journeys" to mapsService.getTransitDirections(currentUser.userId, fromLat, fromLng, toLat, toLng)),
+    )
+
     // POST rather than encoding an arbitrary ordered array into query parameters. The
     // server accepts a deliberately bounded itinerary (2–7 stops) and returns the same
     // `route` shape as ordinary directions, so clients can reuse their route renderer.

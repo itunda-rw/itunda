@@ -26,7 +26,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
 
         When("a real query matches real places") {
             val suggestions = listOf(GeocodeSuggestion("Kigali International Airport, Rwanda", -1.9686, 30.1395))
@@ -59,7 +59,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
 
         // Kigali city center -> near the airport, the same real coordinate pair this
         // project's own Maps live-verification passes have used before.
@@ -225,7 +225,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
 
         val lat = -1.9441
         val lng = 30.0619
@@ -265,7 +265,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
 
         val lat = -1.9441
         val lng = 30.0619
@@ -299,7 +299,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>()
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
 
         When("a real place has been saved by multiple real distinct users") {
             val projection = mockk<rw.itunda.core.repository.TrendingBookmarkProjection>()
@@ -322,7 +322,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>()
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
         // Default: no existing bookmarks in whatever folder these tests use, so a new
         // bookmark doesn't inherit isPublic=true from a folder-publicity check that has
         // nothing to do with what any of these specific tests are asserting.
@@ -491,7 +491,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>()
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
 
         When("making a real non-empty folder public") {
             val bookmarks = listOf(
@@ -632,7 +632,7 @@ class MapsServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true))
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository, mockk(relaxed = true), mockk(relaxed = true))
         val latitude = -1.9441; val longitude = 30.0619
 
         When("self-hosted Nominatim resolves the selected point") {

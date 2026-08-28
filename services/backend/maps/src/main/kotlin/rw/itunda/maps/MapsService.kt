@@ -47,6 +47,7 @@ class MapsService(
     private val rateLimiter: RateLimiter,
     private val mapBookmarkRepository: MapBookmarkRepository,
     private val kigaliWeatherClient: KigaliWeatherClient,
+    private val transitRoutingService: TransitRoutingService,
 ) {
     /** An ordered stop in an itinerary, using itunda's `[lat, lng]` convention. */
     data class ItineraryWaypoint(val latitude: Double, val longitude: Double)
@@ -98,6 +99,18 @@ class MapsService(
         }
         return osrmRoutingClient.route(fromLat, fromLng, toLat, toLng, mode)
             ?: throw RouteNotFoundException("No route could be found between these two points")
+    }
+
+    // Real Kigali GTFS-based transit journeys -- see TransitRoutingService's own doc
+    // comment for the honest, explicitly-scoped v1 (direct routes only). An empty list
+    // is a real, valid answer (no transit option found), not an error -- unlike
+    // getDirections above, this never throws RouteNotFoundException.
+    fun getTransitDirections(userId: String, fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): List<TransitJourney> {
+        if (!GeoUtils.isValidCoordinate(fromLat, fromLng) || !GeoUtils.isValidCoordinate(toLat, toLng)) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        rateLimiter.checkLimit("maps:directions:$userId", limit = 60, window = Duration.ofMinutes(1))
+        return transitRoutingService.findDirectJourneys(fromLat, fromLng, toLat, toLng)
     }
 
     /**
