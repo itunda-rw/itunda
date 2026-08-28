@@ -502,7 +502,7 @@ internal fun HoodSectionScreen(
                         Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 4.dp))
                     }
                     if (mode == HoodMode.JOBS) {
-                        listOf("My posts" to "MINE", "Jobs I did" to "WORKED", "My applications" to "APPLICATIONS", "Saved" to "SAVED").forEach { (label, key) ->
+                        listOf("My posts" to "MINE", "Jobs I did" to "WORKED", "My applications" to "APPLICATIONS", "Saved" to "SAVED", "My résumé" to "RESUME").forEach { (label, key) ->
                             Text(
                                 label,
                                 color = Ids.colors.textPrimary,

@@ -92,7 +92,7 @@ import java.io.IOException
 
 // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
 // recommendation #6, see backend JobPostRepository's own doc comment.
-private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WORKED, SAVED, APPLICATIONS }
+private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WORKED, SAVED, APPLICATIONS, RESUME }
 
 @Composable
 fun JobsContent(
@@ -159,6 +159,7 @@ fun JobsContent(
                 "WORKED" -> JobsView.WORKED
                 "APPLICATIONS" -> JobsView.APPLICATIONS
                 "SAVED" -> JobsView.SAVED
+                "RESUME" -> JobsView.RESUME
                 else -> view
             }
         }
@@ -182,6 +183,7 @@ fun JobsContent(
         posts = null
         if (view == JobsView.SAVED) { posts = emptyList(); error = null; return }
         if (view == JobsView.APPLICATIONS) { posts = emptyList(); error = null; return }
+        if (view == JobsView.RESUME) { posts = emptyList(); error = null; return }
         if (view == JobsView.NEARBY) {
             requestNearbyLocation()
             return
@@ -361,7 +363,9 @@ fun JobsContent(
         if (view == JobsView.NEIGHBORHOOD && neighborhoodName != null) {
             item { Text("Your neighborhood: $neighborhoodName", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         }
-        if (view == JobsView.APPLICATIONS) {
+        if (view == JobsView.RESUME) {
+            item { ResumeBuilderView() }
+        } else if (view == JobsView.APPLICATIONS) {
             item { MyJobApplicationsView() }
         } else if (view == JobsView.SAVED) {
             item { JobPostWishlistView(onRemoved = { coroutineScope.launch { favoriteIds = NetworkClient.apiService.getMyFavoriteJobPosts().favorites.map { it.jobPostId }.toSet() } }) }
@@ -383,6 +387,7 @@ fun JobsContent(
                         JobsView.WORKED -> "No completed jobs recorded yet — jobs you complete will show up here."
                         JobsView.SAVED -> ""
                         JobsView.APPLICATIONS -> ""
+                        JobsView.RESUME -> ""
                     },
                     icon = Icons.Outlined.Work,
                     // Real fix (2026-08-15): the copy above told the user to "try
@@ -692,6 +697,9 @@ private fun JobPostCard(
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Text(app.message, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                                if (app.resumeSnapshotJson != null) {
+                                    Text("📄 Résumé attached", color = Ids.colors.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     ListingActionButton("Decline", respondingToId == app.id) {
                                         respondingToId = app.id

@@ -1071,6 +1071,10 @@ data class ApplyToJobRequest(val message: String)
 data class JobApplicationDto(
     val id: String, val jobPostId: String, val applicantId: String, val message: String,
     val status: String, val submittedAt: String, val respondedAt: String? = null,
+    // Real résumé attach at submission time (2026-08-28) -- see backend
+    // JobApplication.resumeSnapshotJson's own doc comment. A raw JSON string; only
+    // ever parsed to show "Résumé attached" -- never re-rendered field-by-field here.
+    val resumeSnapshotJson: String? = null,
 )
 data class JobApplicationResponse(val success: Boolean, val application: JobApplicationDto, val conversation: ConversationDto? = null)
 data class JobApplicationsResponse(val success: Boolean, val applications: List<JobApplicationDto>)
