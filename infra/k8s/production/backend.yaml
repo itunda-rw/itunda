@@ -225,20 +225,32 @@ spec:
           failureThreshold: 30
           periodSeconds: 10
           timeoutSeconds: 5
+        # Real third occurrence of the same root-cause class (2026-08-28, itunda Talk
+        # redesign deploy): a real, single-flight-limited AI chatbot completion
+        # (AiChatService, see its own doc comment) genuinely competes for this node's
+        # real CPU with the separate llama-server container during active inference --
+        # long enough that even timeoutSeconds: 5 wasn't consistently enough for
+        # /actuator/health to answer, and kubelet killed a genuinely healthy,
+        # already-Ready pod mid-request ("Liveness probe failed... context deadline
+        # exceeded"). Paired with a real fix on the request side too
+        # (AiSummaryClient's own new bounded 45s read timeout, so a single completion
+        # can no longer tie up a worker thread indefinitely) -- this bump alone isn't
+        # a full guarantee under arbitrarily bad contention, but is a real, evidence-
+        # based increase proportionate to what was actually observed live.
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
-          timeoutSeconds: 5
+          timeoutSeconds: 10
       volumes:
       - name: firebase-credentials
         secret:

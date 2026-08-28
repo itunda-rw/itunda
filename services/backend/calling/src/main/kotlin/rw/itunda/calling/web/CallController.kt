@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.calling.CallAlreadyEndedException
+import rw.itunda.calling.CallConversationNotFoundException
 import rw.itunda.calling.CallNotFoundException
 import rw.itunda.calling.CallNotParticipantException
 import rw.itunda.calling.CallService
@@ -22,7 +23,6 @@ import rw.itunda.core.domain.CallType
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
-import rw.itunda.messaging.ConversationNotFoundException
 
 data class InitiateCallRequest(val conversationId: String, val callType: CallType)
 data class EndCallRequest(val reason: CallEndReason)
@@ -80,8 +80,8 @@ class CallController(private val callService: CallService) {
     fun handleAlreadyEnded(ex: CallAlreadyEndedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CALL_ALREADY_ENDED", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(ConversationNotFoundException::class)
-    fun handleConversationNotFound(ex: ConversationNotFoundException) =
+    @ExceptionHandler(CallConversationNotFoundException::class)
+    fun handleConversationNotFound(ex: CallConversationNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CONVERSATION_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RateLimitExceededException::class)

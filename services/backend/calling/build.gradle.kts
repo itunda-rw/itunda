@@ -15,10 +15,11 @@ dependencies {
     // For RateLimiter -- real anti-spam limit on call initiation, same convention as
     // every other real-time-abuse-prone endpoint in this codebase.
     implementation(project(":auth"))
-    // For MessagingService.getConversationForParticipant -- a call is always scoped to
-    // a real, existing 1:1 Conversation between exactly two real participants, reusing
-    // that IDOR check rather than inventing a second one.
-    implementation(project(":messaging"))
+    // Deliberately NOT :messaging -- see CallService's own doc comment on the real
+    // circular Spring bean dependency that created (MessagingWebSocketHandler needs
+    // CallService, MessagingService needs RealtimeMessagePublisher, which
+    // MessagingWebSocketHandler implements). CallService depends on
+    // ConversationRepository (:core) directly instead.
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

@@ -2,9 +2,12 @@ package rw.itunda.core.ai
 
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.web.client.ClientHttpRequestFactorySettings
+import org.springframework.boot.web.client.ClientHttpRequestFactories
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
+import java.time.Duration
 
 /**
  * A real, self-hosted, open-source LLM client (itunda Maps redesign, 2026-08-28,
@@ -32,7 +35,22 @@ class AiSummaryClient(
     @Value("\${itunda.ai-summary.model:llama-3.2-1b-instruct}") private val model: String,
 ) {
     private val logger = LoggerFactory.getLogger(AiSummaryClient::class.java)
-    private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.create(baseUrl) else null
+
+    // Real bounded connect/read timeout (itunda Talk redesign, 2026-08-28) -- found
+    // live: an unbounded RestClient call ties up a real Tomcat worker thread for the
+    // whole real inference duration, and under genuine CPU contention from
+    // llama-server's own (separate-process) inference work, that duration was long
+    // enough to make this backend's own /actuator/health probe -- served by a
+    // DIFFERENT thread, but starved by the same real node-wide CPU pressure -- time
+    // out and get killed by kubelet as if it had hung, even though it hadn't. 30s is
+    // generous for a CPU-only 1B model under real contention, but real and bounded --
+    // a request that's genuinely stuck no longer blocks a worker thread forever.
+    private val requestFactory = ClientHttpRequestFactories.get(
+        ClientHttpRequestFactorySettings.DEFAULTS
+            .withConnectTimeout(Duration.ofSeconds(5))
+            .withReadTimeout(Duration.ofSeconds(45)),
+    )
+    private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build() else null
 
     val isConfigured: Boolean get() = restClient != null
 

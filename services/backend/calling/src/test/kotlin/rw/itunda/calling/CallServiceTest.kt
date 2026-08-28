@@ -14,31 +14,31 @@ import rw.itunda.core.domain.CallType
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.CallSessionRepository
-import rw.itunda.messaging.MessagingService
+import rw.itunda.core.repository.ConversationRepository
 import java.util.Optional
 
 class CallServiceTest : BehaviorSpec({
 
     fun newService(): Pair<CallService, CallSessionRepository> {
         val callSessionRepository = mockk<CallSessionRepository>()
-        val messagingService = mockk<MessagingService>()
+        val conversationRepository = mockk<ConversationRepository>()
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         every { callSessionRepository.save(any()) } answers { firstArg() }
-        val service = CallService(callSessionRepository, messagingService, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
+        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
         return service to callSessionRepository
     }
 
     Given("a real caller and a real 1:1 conversation with user_b") {
         val callSessionRepository = mockk<CallSessionRepository>()
-        val messagingService = mockk<MessagingService>()
+        val conversationRepository = mockk<ConversationRepository>()
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         every { callSessionRepository.save(any()) } answers { firstArg() }
-        val service = CallService(callSessionRepository, messagingService, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
+        val service = CallService(callSessionRepository, conversationRepository, realtimeMessagePublisher, rateLimiter, "test-turn-secret")
 
         val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
-        every { messagingService.getConversationForParticipant("user_a", "conversation_1") } returns conversation
+        every { conversationRepository.findById("conversation_1") } returns Optional.of(conversation)
 
         When("user_a initiates a real call") {
             val call = service.initiateCall("user_a", "conversation_1", CallType.VOICE)

@@ -42,7 +42,13 @@ class AiChatService(
     private val rateLimiter: RateLimiter,
 ) {
     companion object {
-        private const val MAX_TOKENS = 300
+        // Real, right-sized bound (2026-08-28, adjusted after a live deploy incident
+        // -- see AiSummaryClient's own doc comment on the real read-timeout fix this
+        // pairs with): this node's own real CPU-only inference throughput for a 1B
+        // model is genuinely slow, and 300 tokens risked outrunning even a generous
+        // read timeout. 150 keeps a real completion's total generation time bounded
+        // well under that timeout under normal contention.
+        private const val MAX_TOKENS = 150
         private const val CONTEXT_TURNS = 10
         private val COOLDOWN = Duration.ofSeconds(10)
         private const val SYSTEM_PROMPT =
