@@ -137,6 +137,8 @@ import {
 import { TalkAiChatThread, TalkServiceChannelThread } from './TalkThreads';
 import { TalkGroupAnnouncementPoll } from './TalkGroupAnnouncementPoll';
 import { TalkLinksModal } from './TalkLinksTab';
+import { TalkRoomSettings } from './TalkRoomSettings';
+import { getRoomTheme, isRoomLocked, ROOM_THEMES } from './lib/roomSettings';
 import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   sendGroupEmoticon,
@@ -8199,6 +8201,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   // Real 1:1-chat split-bill (2026-08-09) -- see DirectSplitBillsView's own doc
   // comment; mirrors GroupThread's own identical showSplitBills toggle.
   const [showSplitBills, setShowSplitBills] = useState(false);
+  // Real per-room settings (itunda Talk redesign, 2026-08-28) -- see
+  // TalkRoomSettings.tsx's own doc comment.
+  const [showRoomSettings, setShowRoomSettings] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [blocking, setBlocking] = useState(false);
   // Real unblock (item 193) -- the "Block" button had no way back: blockConversationParticipant's
@@ -8582,6 +8587,16 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       />
     );
   }
+  if (showRoomSettings) {
+    return (
+      <TalkRoomSettings
+        conversationId={conversation.conversationId}
+        otherUserName={conversation.otherUserName}
+        messages={messages ?? []}
+        onBack={() => setShowRoomSettings(false)}
+      />
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
@@ -8605,6 +8620,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </button>
         <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)' }} aria-label="Split a bill">
           <Receipt size={20} />
+        </button>
+        <button type="button" onClick={() => setShowRoomSettings(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)' }} aria-label="Room settings">
+          <Settings size={20} />
         </button>
         <button
           type="button"
@@ -8644,7 +8662,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </div>
       )}
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px', backgroundColor: roomThemeColor(conversation.conversationId), borderRadius: 'var(--itunda-radius-md)' }}>
         {messages === null && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages !== null && messages.length === 0 && (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
@@ -9637,6 +9655,14 @@ function TalkVirtualRow({ icon, name, preview, onClick }: { icon: ReactElement; 
   );
 }
 
+// Real per-room theme lookup (see lib/roomSettings.ts's own doc comment) -- reads
+// fresh from localStorage on every call, no reactive store needed since a normal
+// React re-render already re-evaluates this in JSX.
+function roomThemeColor(conversationId: string): string | undefined {
+  const id = getRoomTheme(conversationId);
+  return ROOM_THEMES.find((t) => t.id === id)?.color ?? undefined;
+}
+
 function emptyConversationsMessage(showArchived: boolean, filterTab: 'all' | 'unread' | 'calls'): string {
   if (showArchived) return "You haven't archived any chats.";
   if (filterTab === 'unread') return 'No unread chats.';
@@ -9667,6 +9693,11 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   // conversation list, fetched only when that tab is actually selected.
   const [filterTab, setFilterTab] = useState<'all' | 'unread' | 'calls'>('all');
   const [callHistory, setCallHistory] = useState<CallSession[] | null>(null);
+  // Real room-lock gate (itunda Talk redesign, 2026-08-28) -- see
+  // TalkRoomSettings.tsx's own doc comment. Session-local: unlocking a room once
+  // keeps it open for the rest of this tab session, matching real KakaoTalk's own
+  // per-app-open (not per-message) lock behavior.
+  const [unlockedRoomIds, setUnlockedRoomIds] = useState<Set<string>>(new Set());
 
   const load = () => {
     setError(null);
@@ -9740,6 +9771,16 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
 
   const openConversation = conversations?.find((c) => c.conversationId === openConversationId);
   if (openConversation) {
+    if (isRoomLocked(openConversation.conversationId) && !unlockedRoomIds.has(openConversation.conversationId)) {
+      return (
+        <div style={{ maxWidth: '360px', margin: '40px auto' }}>
+          <DeviceStepUpPrompt
+            onVerified={() => setUnlockedRoomIds((prev) => new Set(prev).add(openConversation.conversationId))}
+            onCancel={() => setOpenConversationId(null)}
+          />
+        </div>
+      );
+    }
     return (
       <ConversationThread
         conversation={openConversation}
