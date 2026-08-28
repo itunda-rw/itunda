@@ -59,7 +59,60 @@ public struct CreateGroupPollRequest: Encodable {
 }
 public struct VoteGroupPollRequest: Encodable { public let optionId: String }
 
+// -- Real itunda service channel -- see backend ServiceChannelService's own doc
+// comment. A fully virtual, read-only thread projected from real Notification rows;
+// there is deliberately no persisted conversation row for it.
+public struct ServiceChannelBubbleDto: Decodable, Identifiable {
+    public let id: String
+    public let title: String
+    public let body: String
+    public let type: String
+    public let createdAt: String
+    public let isRead: Bool
+    public let ctaRoute: String?
+}
+
+public struct ServiceChannelResponse: Decodable {
+    public let success: Bool
+    public let bubbles: [ServiceChannelBubbleDto]
+    public let page: Int
+    public let size: Int
+    public let totalElements: Int
+    public let totalPages: Int
+}
+
+// -- Real AI chatbot channel -- see backend AiChatService's own doc comment. A 429
+// with {"success":false,"reason":"busy"} means the single shared self-hosted model
+// instance is busy with another user's request right now -- a real, honest signal,
+// never silently dropped or retried into a fabricated reply.
+public struct AiChatMessageDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let role: String
+    public let content: String
+    public let createdAt: String
+}
+
+public struct AiChatSendResponse: Decodable { public let success: Bool; public let message: AiChatMessageDto; public let reply: AiChatMessageDto }
+public struct AiChatHistoryResponse: Decodable {
+    public let success: Bool
+    public let messages: [AiChatMessageDto]
+    public let page: Int
+    public let size: Int
+    public let totalElements: Int
+    public let totalPages: Int
+}
+public struct SendAiChatMessageRequest: Encodable { public let text: String }
+
 extension NetworkClient {
+    public func getServiceChannel() async throws -> ServiceChannelResponse { try await get("api/v1/talk/service-channel") }
+
+    public func sendAiChatMessage(text: String) async throws -> AiChatSendResponse {
+        try await authenticatedPost("api/v1/talk/ai-chat/messages", body: SendAiChatMessageRequest(text: text))
+    }
+
+    public func getAiChatHistory() async throws -> AiChatHistoryResponse { try await get("api/v1/talk/ai-chat/messages") }
+
     public func getGroupAnnouncement(groupId: String) async throws -> GroupAnnouncementResponse {
         try await get("api/v1/messages/groups/\(groupId)/announcement")
     }

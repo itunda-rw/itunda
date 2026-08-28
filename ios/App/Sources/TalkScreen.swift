@@ -29,8 +29,17 @@ struct TalkScreen: View {
     /// it shows up in this screen's own real conversation list, it opens directly,
     /// mirroring Android's initialConversationId/onConsumedInitial pair exactly.
     @Binding var pendingConversationId: String?
+    // Real service-channel ctaRoute navigation (itunda Talk redesign, 2026-08-28) --
+    // see ContentView.swift's own doc comment on the honest partial-router scope.
+    var onNavigateRoute: (String) -> Void = { _ in }
 
     @State private var view: TalkView = .direct
+    // Real itunda service channel + AI chatbot channel (itunda Talk redesign,
+    // 2026-08-28) -- see TalkServiceChannelThread.swift/TalkAiChatThread.swift's own
+    // doc comments. Client-side-synthesized rows, not real conversations -- neither
+    // has a persisted conversation row on the backend.
+    @State private var openServiceChannel = false
+    @State private var openAiChat = false
     @State private var conversations: [ConversationSummaryDto]?
     @State private var conversationsError: String?
     // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
@@ -67,6 +76,10 @@ struct TalkScreen: View {
                         Task { await loadGroups() }
                     })
                 }
+            } else if openServiceChannel {
+                TalkServiceChannelThread(onBack: { openServiceChannel = false }, onNavigate: onNavigateRoute)
+            } else if openAiChat {
+                TalkAiChatThread(onBack: { openAiChat = false })
             } else {
                 listBody
             }
@@ -119,6 +132,12 @@ struct TalkScreen: View {
                 })
             } else if view == .direct {
                 TalkFilterTabsBar(selection: $listFilter)
+                if listFilter == .all {
+                    ServiceChannelRow(onOpen: { openServiceChannel = true })
+                        .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    AiChatRow(onOpen: { openAiChat = true })
+                        .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
                 if listFilter == .calls {
                     CallHistoryList(calls: calls, error: callsError, onRetry: { Task { await loadCalls() } })
                         .task { await loadCalls() }

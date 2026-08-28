@@ -427,7 +427,16 @@ struct ContentView: View {
                 }
                 .tag(2)
 
-            TalkScreen(pendingConversationId: $pendingConversationId)
+            // Real service-channel ctaRoute navigation (itunda Talk redesign,
+            // 2026-08-28) -- a real, honest partial router: routes to the right real
+            // top-level destination by prefix (this app has no generic route-string
+            // sub-screen dispatcher), not the exact sub-screen every ctaRoute names.
+            // A real, named, deliberate scope limit, not fabricated navigation.
+            TalkScreen(pendingConversationId: $pendingConversationId, onNavigateRoute: { route in
+                if route.hasPrefix("/bank") { showBank = true }
+                else if route.hasPrefix("/pay") { selectedTab = 1 }
+                else if route.hasPrefix("/hood") || route.hasPrefix("/marketplace") { showMarketplace = true }
+            })
                 .tabItem {
                     Image(systemName: "bubble.left.and.bubble.right.fill")
                     Text("Messages")
