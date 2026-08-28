@@ -674,6 +674,9 @@ data class ConversationSummaryDto(
     // for it (Section 165) but Android never read this field back. Same
     // defined-but-uncalled shape as archived above.
     val pinnedToTop: Boolean = false,
+    // Real KakaoTalk favorite chat toggle (itunda Talk redesign, 2026-08-28) -- see
+    // TalkApi.kt's own doc comment.
+    val favorite: Boolean = false,
 )
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc

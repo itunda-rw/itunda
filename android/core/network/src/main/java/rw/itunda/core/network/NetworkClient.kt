@@ -221,6 +221,7 @@ object NetworkClient {
     val apiService: ApiService by lazy { retrofit.create(ApiService::class.java) }
     val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
     val hoodApi: HoodApi by lazy { retrofit.create(HoodApi::class.java) }
+    val talkApi: TalkApi by lazy { retrofit.create(TalkApi::class.java) }
 
     // Real WebSocket live-transport (2026-07-18) -- see
     // rw.itunda.app.websocket.MessagingWebSocketHandler's own doc comment for the real
