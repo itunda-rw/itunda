@@ -2640,6 +2640,10 @@ public struct ConversationSummaryDto: Decodable, Identifiable {
     // for it (Section 165) but iOS never read this field back until now. Same
     // defined-but-uncalled shape as archived above.
     public let pinnedToTop: Bool?
+    // Real KakaoTalk-style "favorite" chat toggle (itunda Talk redesign, 2026-08-28)
+    // -- see backend ConversationPreference.favorite's own doc comment. Already
+    // returned by GET /conversations for every summary.
+    public let favorite: Bool?
     public var id: String { conversationId }
 }
 
@@ -2810,6 +2814,8 @@ public struct SetConversationArchivedRequest: Encodable { public let archived: B
 // lib/messaging.ts already established for this endpoint.
 public struct ConversationPinnedToTopResponse: Decodable { public let success: Bool; public let pinned: Bool }
 public struct SetConversationPinnedToTopRequest: Encodable { public let pinned: Bool }
+public struct ConversationFavoriteResponse: Decodable { public let success: Bool; public let favorite: Bool }
+public struct SetConversationFavoriteRequest: Encodable { public let favorite: Bool }
 public struct CreateChatReportRequest: Encodable { public let messageId: String; public let reason: String }
 public struct SetConversationQuietRequest: Encodable { public let quiet: Bool }
 public struct EmptyRequest: Encodable {}
@@ -4492,6 +4498,15 @@ extension NetworkClient {
 
     public func setConversationPinnedToTop(conversationId: String, pinned: Bool) async throws -> ConversationPinnedToTopResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/pin-to-top", body: SetConversationPinnedToTopRequest(pinned: pinned))
+    }
+
+    // Real KakaoTalk-style "favorite" chat toggle (itunda Talk redesign, 2026-08-28).
+    public func getConversationFavorite(conversationId: String) async throws -> ConversationFavoriteResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/favorite")
+    }
+
+    public func setConversationFavorite(conversationId: String, favorite: Bool) async throws -> ConversationFavoriteResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/favorite", body: SetConversationFavoriteRequest(favorite: favorite))
     }
 
     public func reportChatMessage(messageId: String, reason: String) async throws -> SuccessResponse {

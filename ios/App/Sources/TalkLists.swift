@@ -175,6 +175,20 @@ struct DirectMessagesList: View {
                                 }
                             }
                             .tint(IDS.Colors.brand)
+                            // Real KakaoTalk-style "favorite" chat toggle (itunda Talk
+                            // redesign, 2026-08-28) -- see ConversationSummaryDto
+                            // .favorite's own doc comment. Second leading swipe action,
+                            // closing the gap the pin-to-top comment above named.
+                            let favorite = conversation.favorite ?? false
+                            Button(favorite ? "Unfavorite" : "Favorite") {
+                                Task {
+                                    _ = try? await NetworkClient.shared.setConversationFavorite(
+                                        conversationId: conversation.conversationId, favorite: !favorite
+                                    )
+                                    onArchiveChanged()
+                                }
+                            }
+                            .tint(Color(red: 0.96, green: 0.65, blue: 0.14))
                         }
                     }
                 }
@@ -256,6 +270,13 @@ struct ConversationRow: View {
                         Image(systemName: "pin.fill")
                             .font(IDS.scaledFont(size: 10, weight: .regular, relativeTo: .caption2))
                             .foregroundColor(IDS.Colors.brand)
+                    }
+                    // Real KakaoTalk-style "favorite" chat toggle (itunda Talk redesign,
+                    // 2026-08-28) -- see ConversationSummaryDto.favorite's own doc comment.
+                    if conversation.favorite == true {
+                        Image(systemName: "star.fill")
+                            .font(IDS.scaledFont(size: 10, weight: .regular, relativeTo: .caption2))
+                            .foregroundColor(Color(red: 0.96, green: 0.65, blue: 0.14))
                     }
                 }
                 Text(conversation.lastMessagePreview ?? "No messages yet")
