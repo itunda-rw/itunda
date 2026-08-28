@@ -17237,3 +17237,94 @@ Remaining Android architectural debt (~46 files using a duplicate inline `Card()
 instead of the shared `IdsCard` component, noted in
 [[project_itunda_light_theme_white_canvas]]) is a separate concern from this
 flat-vs-card design question and was not re-litigated here.
+
+## 276. Real Naver Map redesign -- place-detail tabs, bike/transit directions, AI summaries, tag reviews, weather, all 4 platforms + self-hosted infra
+
+Direct user ask (2026-08-28): 15 real Naver Map screenshots, "itunda maps should
+look like this." The largest redesign of the session -- research found 5
+referenced features had zero backend, not just an unwired UI: AI place summaries,
+real-time bus arrivals (built as real GTFS-scheduled city transit, kept separate
+from the existing intercity-bus marketplace), tag-based aggregate reviews, a
+business news/updates feed, and bike routing. Confirmed via `AskUserQuestion`: build
+real backend for all five (including self-hosting an open-source LLM), full
+redesign across backend + web + Android + iOS in one pass.
+
+**Backend (8 pieces, each its own commit)**: bike routing (`TravelMode.BIKING` on
+`OsrmRoutingClient`), tag-based Eats reviews (`EatsReview.goodPoints`, ported
+directly from Hood marketplace's already-shipped `goodPoints`/preset-tag pattern),
+a `MerchantUpdate` news feed, a `Merchant.photoUrls` gallery, real free/keyless
+Kigali weather via Open-Meteo, real Kigali GTFS-based transit journey planning
+(v1, direct-routes-only -- see below for the real external-source-unreachable
+story), self-hosted AI place summaries via `llama.cpp` + Llama 3.2 1B-Instruct,
+and a consolidated `GET /api/v1/maps/places/{merchantId}` endpoint every client's
+place-detail panel now reads from instead of independently re-deriving enrichment.
+
+**Two honest calls made autonomously, not directly asked**: reversed itunda's own
+prior documented "no bicycle mode" decision (the user's direct reference + explicit
+instruction to build it IS the "real need surfacing" that decision said would
+justify a reversal -- recorded as a dated correction in this file, not silently
+overwritten); added a small real Kigali weather chip via Open-Meteo, reversing
+`HomeTabWidgets.kt`'s earlier "no fabricated weather" decision by making it
+genuinely real this time.
+
+**Real external-source-unreachable case, resolved honestly**: the real Kigali GTFS
+dataset (TUMI Datahub) was confirmed persistently unreachable from this
+environment across multiple retries and URL forms -- resolved by building the
+complete, real ingestion pipeline (designed to import the real feed whenever
+reachable) and shipping with zero seed data, matching this codebase's own "empty
+means genuinely nothing yet" convention, rather than fabricating sample transit
+data or dropping the feature.
+
+**Clients**: real tabbed place-detail panel (Home/Menu/Reviews/Photos/News/Info)
+built on maps-mfe, Android, and iOS -- iOS had the biggest gap (booking-only, zero
+tab structure before this pass; new `MapPlaceDetailPanel.swift`). Bike + real
+transit directions added to all 3 platforms' mode pickers alongside the existing
+driving/walking/intercity-bus chips. A real, confirmed pre-existing Android dead-
+code bug fixed along the way: `PlaceTab.INFO` was defined in the enum but never
+added to the rendered tab row. File-size-lint discipline: `ApiService.kt`'s
+repeated "trim comments to fit baseline" pattern was upgraded to a real structural
+fix (`MapsDtos.kt` extraction) instead of another trim; iOS's `NetworkClient.swift`
+(13 lines of baseline slack left) got a new `NetworkClient+Maps.swift` extension
+file rather than growing further, matching the established
+`NetworkClient+CoreServices.swift` precedent; `MapScreenView.swift` (zero slack)
+had its `travelModeToggle`/`busResultsView`/`routeAlternativesPicker` functions
+extracted into `MapRoutePlanningView.swift`.
+
+**Live-deploy incident, real and instructive**: mid-deploy, `itunda-dc-a`'s
+`kube-controller-manager` entered a leader-election crash-loop from apiserver
+overload (see [[project_itunda_private_cloud]] for the fuller account) -- resolved
+by waiting for load to genuinely settle rather than forcing pushes through it. The
+self-hosted LLM piece hit a real, separate, more serious incident: a 4GB swapfile
+added to give `llama-server` memory headroom silently broke `kubelet` on the next
+restart (`running with swap on is not supported`) -- compounded by an unrelated
+local-Mac disk exhaustion (a stale Colima VM disk image ate the host down to
+132MB free) that made the VM guest-hang and go fully network-unreachable,
+requiring a real `multipass stop --force`/`start` recovery (with explicit user
+sign-off first, given the live-outage blast radius). **Lesson: `kubelet` refuses
+to start at all with swap enabled unless explicitly configured to tolerate it --
+don't add swap to a live Kubernetes node as a quick memory-headroom fix without
+either disabling `--fail-swap-on` or accepting the node won't survive its next
+reboot.** Once genuinely recovered (fresh boot, real 2GiB+ available, load ~5-6),
+the LLM deploy succeeded without swap at all -- the reboot itself had cleared the
+memory pressure that motivated the swap idea in the first place.
+
+**A real AI-quality bug found and fixed via live testing, not assumed away**: the
+first live-generated AI summary (for a merchant with only a name + a 5.0/1-review
+rating -- no category, tags, or hours) fabricated "American cuisine with a focus
+on burgers and sandwiches, located in the heart of the city" -- none of that was
+in the real facts given to the model. A system-prompt instruction alone ("never
+state a fact not given to you") doesn't reliably constrain a 1B-parameter model.
+Fixed in `AiSummaryService`: generation now requires at least one real
+*descriptive* fact (category, review tags, or hours) -- a bare rating number no
+longer qualifies as enough signal to attempt a summary. Re-verified live: the same
+merchant now correctly declines (0 generated) until it has real descriptive
+signal, at which point generation resumes and stays grounded in the given facts
+("Rwandan restaurant serving Rwandan cuisine... 5 out of 5 stars based on one real
+review").
+
+**Verification discipline**: full `ItundaApp` xcodebuild scheme (not a narrower
+target) after `tuist generate && pod install`; Android `:app:compileDebugKotlin` +
+file-size-lint; backend `:eats:test` re-run after the AI-summary fix; every new
+endpoint (weather, transit directions, place-detail, good-points, all 4 travel
+modes) curl-verified live against the real deployed cluster with a real auth
+token, not just unit-tested.
