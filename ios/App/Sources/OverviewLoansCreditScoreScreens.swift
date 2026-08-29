@@ -586,25 +586,27 @@ private struct LoanOfferCard: View {
     let busy: Bool
     let onApply: (Double) -> Void
     @State private var amountText: String
-
     init(offer: LoanOfferDto, busy: Bool, onApply: @escaping (Double) -> Void) {
         self.offer = offer; self.busy = busy; self.onApply = onApply
         _amountText = State(initialValue: String(Int(offer.maxAmount)))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(offer.name).bold()
-            Text(offer.lenderName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            Text("Up to \(Int(offer.maxAmount)) RWF · \(offer.interestRate)% · \(offer.term)").font(.subheadline)
-            Text(offer.requirements).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            IdsTextField("Amount (RWF)", text: $amountText, keyboardType: .numberPad)
-            Button(action: { if let n = Double(amountText), n > 0 { onApply(n) } }) {
-                Text(busy ? "Applying…" : "Apply").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+        if busy {
+            LoanApplyProgress()
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(offer.name).bold()
+                Text(offer.lenderName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Text("Up to \(Int(offer.maxAmount)) RWF · \(offer.interestRate)% · \(offer.term)").font(.subheadline)
+                Text(offer.requirements).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                IdsTextField("Amount (RWF)", text: $amountText, keyboardType: .numberPad)
+                Button(action: { if let n = Double(amountText), n > 0 { onApply(n) } }) {
+                    Text("Apply").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                }
             }
-            .disabled(busy)
+            .padding(.vertical, 10)
         }
-        .padding(.vertical, 10)
     }
 }
 
