@@ -2016,6 +2016,26 @@ private fun HomeTab(
         if (primaryAccount != null || stocks.isNotEmpty()) {
             item { HomeMarketWidgetRow(primaryAccount, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
         }
+        // Real Toss/Kakao/Naver hub-organization fix (2026-08-29, direct user
+        // reference: real Naver/Toss/Kakao hub screenshots showing dense, always-
+        // explained content -- "a hub screen should never show emptiness without
+        // explanation"). Found live on a physical device: an account with no
+        // neighborhood set (the profile?.neighborhood gate above, line ~1776,
+        // added 2026-08-26 to avoid 4 guaranteed 400s) silently left the entire
+        // bottom two-thirds of Home blank -- no trending grid, no feed, and no
+        // hint why. Real, established EmptyState pattern (already used by every
+        // other neighborhood-gated screen in this app) closes it here too, with a
+        // real action into Hood/Community where neighborhood is actually set.
+        if (trendingListings.isEmpty() && feedEntries.isEmpty() && profile?.neighborhood == null) {
+            item {
+                EmptyState(
+                    "Set your neighborhood to see local marketplace, community, jobs, and property listings here.",
+                    icon = Icons.Outlined.LocationOn,
+                    actionLabel = "Set neighborhood",
+                    onAction = onOpenCommunity,
+                )
+            }
+        }
         if (trendingListings.isNotEmpty()) {
             item { HomeTrendingGrid(trendingListings, onOpenMarketplace = onOpenMarketplace) }
         }
