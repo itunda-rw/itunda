@@ -340,6 +340,8 @@ internal fun GroupSplitBillsView(
                                         try {
                                             NetworkClient.apiService.paySplitBillShare(entry.splitBill.id, UUID.randomUUID().toString())
                                             refresh()
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = superAppErrorMessage(e)
                                         } catch (_: Exception) {
                                             error = "That payment could not be completed."
                                         } finally { busyId = null }
