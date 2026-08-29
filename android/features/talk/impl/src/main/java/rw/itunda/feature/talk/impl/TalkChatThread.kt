@@ -437,6 +437,12 @@ internal fun ChatThreadView(
                                             catch (_: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
                                         }
                                         needsDeviceVerification = true
+                                    } else if (rw.itunda.core.network.apiErrorCode(e) == "GIFT_ALREADY_RESOLVED") {
+                                        // Real gap found live (Toss-style error-handling
+                                        // audit, 2026-08-30): a double-tap or an already-
+                                        // opened-on-another-device gift isn't really a
+                                        // failure -- resolve forward.
+                                        loadGifts()
                                     } else {
                                         error = superAppErrorMessage(e)
                                     }

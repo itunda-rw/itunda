@@ -5477,7 +5477,15 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
       await (kind === 'email' ? requestEmailVerification() : requestPhoneVerification());
       setSent(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : `Could not send a ${kind} verification code.`);
+      // Real gap found live (Toss-style error-handling audit, 2026-08-30): only
+      // reachable via stale client state (verified on another device/tab between
+      // this row rendering and the tap) -- not really a failure, resolve forward by
+      // refreshing so this row correctly disappears.
+      if (err instanceof ApiError && (err.code === 'EMAIL_ALREADY_VERIFIED' || err.code === 'PHONE_ALREADY_VERIFIED')) {
+        onVerified();
+      } else {
+        setError(err instanceof ApiError ? err.message : `Could not send a ${kind} verification code.`);
+      }
     } finally {
       setBusy(false);
     }
@@ -8598,6 +8606,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         pendingDeviceRetryRef.current = () => handleClaimGift(giftId);
         setNeedsDeviceVerification(true);
+      } else if (err instanceof ApiError && err.code === 'GIFT_ALREADY_RESOLVED') {
+        // Real gap found live (Toss-style error-handling audit, 2026-08-30): a
+        // double-tap or an already-opened-on-another-device gift isn't really a
+        // failure -- resolve forward by refreshing to show the real, already-opened
+        // gift instead of a generic error.
+        loadGifts();
       } else {
         setError(err instanceof ApiError ? err.message : t('common.actionError'));
       }

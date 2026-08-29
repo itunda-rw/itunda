@@ -1209,6 +1209,13 @@ private struct VerificationRow: View {
                 _ = try await NetworkClient.shared.requestPhoneVerification()
             }
             sent = true
+        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            // Real gap found live (Toss-style error-handling audit, 2026-08-30): only
+            // reachable via stale client state (verified on another device/tab between
+            // this row rendering and the tap) -- not really a failure, resolve forward.
+            // 409 is unambiguous for this specific call: EMAIL_ALREADY_VERIFIED/
+            // PHONE_ALREADY_VERIFIED are the only 409s either endpoint can return.
+            onVerified()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
         } catch {

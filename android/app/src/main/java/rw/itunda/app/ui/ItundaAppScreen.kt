@@ -4531,7 +4531,16 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                                     if (kind == "email") rw.itunda.core.network.NetworkClient.authApi.requestEmailVerification() else rw.itunda.core.network.NetworkClient.authApi.requestPhoneVerification()
                                     sent = true
                                 } catch (e: retrofit2.HttpException) {
-                                    error = rw.itunda.core.network.superAppErrorMessage(e)
+                                    // Real gap found live (Toss-style error-handling
+                                    // audit, 2026-08-30): only reachable via stale
+                                    // client state -- resolve forward so this row
+                                    // correctly disappears instead of showing an error.
+                                    val code = rw.itunda.core.network.apiErrorCode(e)
+                                    if (code == "EMAIL_ALREADY_VERIFIED" || code == "PHONE_ALREADY_VERIFIED") {
+                                        onVerified()
+                                    } else {
+                                        error = rw.itunda.core.network.superAppErrorMessage(e)
+                                    }
                                 } catch (e: java.io.IOException) {
                                     error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally {
