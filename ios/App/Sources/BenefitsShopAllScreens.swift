@@ -1110,6 +1110,10 @@ private struct VerificationRow: View {
     @State private var verified = false
     @State private var checkScale: CGFloat = 0.3
     @State private var shakeOffset: CGFloat = 0
+    // Real Toss "Verification Code Shimmer Animation" equivalent (web/Android's own
+    // VerificationRow got this same session -- closing the parity gap now): a
+    // subtle pulse on the input while the submitted code is being verified.
+    @State private var inputOpacity: Double = 1
 
     var body: some View {
         if kind == "email" && !hasEmail {
@@ -1142,6 +1146,14 @@ private struct VerificationRow: View {
                             .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                             .keyboardType(.numberPad)
                             .focused($codeFieldFocused)
+                            .opacity(inputOpacity)
+                            .onChange(of: busy) { isBusy in
+                                if isBusy {
+                                    withAnimation(.easeInOut(duration: 0.45).repeatForever(autoreverses: true)) { inputOpacity = 0.55 }
+                                } else {
+                                    withAnimation(.linear(duration: 0.15)) { inputOpacity = 1 }
+                                }
+                            }
                             // Real "Minimum Input" simplicity fix, closing
                             // docs/DESIGN_REFERENCES.md §11 recommendation #2's iOS gap
                             // (rule #4: auto-focus so the keyboard appears without an extra
