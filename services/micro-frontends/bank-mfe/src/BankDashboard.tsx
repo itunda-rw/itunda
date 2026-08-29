@@ -1248,6 +1248,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
   // balance, promoted out of MyPaymentCodeCard's embedded row into a real top-level
   // row matching AccountSummaryRow's exact shape.
   const animatedPayBalance = useCountUp(account?.balance ?? 0);
+  const mainAccount = accounts.find((a) => a.type === 'MAIN');
 
   const handleFacePayToggle = async () => {
     setFacePayBusy(true);
@@ -1329,7 +1330,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
       {account && (
         <button
           onClick={() => setOpenAccountDetail(account)}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0 20px', textAlign: 'left' }}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0 4px', textAlign: 'left' }}
         >
           <div>
             <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Pay money</p>
@@ -1338,6 +1339,23 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
             </p>
           </div>
           <IconChevronRight size={20} color="var(--itunda-grey-400)" />
+        </button>
+      )}
+      {/* Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+          last open item): symmetric secondary "itunda Bank" line, matching the one
+          added to AccountSummaryRow.tsx for the Bank hub -- `accounts` already
+          includes MAIN (fetched above for the carousel), just never surfaced as its
+          own line here. Flat, not a card, tappable straight to the Bank hub. */}
+      {mainAccount && (
+        <button
+          onClick={() => onNavigateToTab('SAVINGS')}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0 20px', textAlign: 'left', color: 'var(--itunda-grey-500)' }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>itunda Bank</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>
+            {mainAccount.balance.toLocaleString()} {mainAccount.currency}
+            <IconChevronRight size={14} color="var(--itunda-grey-400)" style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+          </span>
         </button>
       )}
       {/* Real embedded nearby-merchants map, paired with an explicit "Find store"
@@ -20791,7 +20809,7 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
   return (
     <div>
       <ProductPageHeader title="itunda Bank" subtitle="Savings, SACCO, Ikimina, loans & investments" />
-      <AccountSummaryRow onOpen={setOpenAccountDetail} />
+      <AccountSummaryRow onOpen={setOpenAccountDetail} onNavigateToPay={onNavigateToTab ? () => onNavigateToTab('PAY') : undefined} />
       {openAccountDetail && (
         <AccountDetailScreen
           account={openAccountDetail}
