@@ -4,6 +4,11 @@ const http = require('node:http');
 // Make the proxy failure deterministic: no local service can bind privileged
 // port 1, so the test exercises the gateway's bounded 504/error-metric path.
 process.env.PAYMENT_SERVICE_URL = 'http://127.0.0.1:1';
+// Low, explicit circuit-breaker thresholds so the test can open the breaker with a
+// handful of requests instead of the real default of 5, and confirm short-circuit
+// state without waiting out a real 30s cooldown.
+process.env.CIRCUIT_FAILURE_THRESHOLD = '3';
+process.env.CIRCUIT_OPEN_DURATION_MS = '60000';
 
 function request(port, path, headers = {}) {
     return new Promise((resolve, reject) => {
@@ -99,6 +104,26 @@ async function main() {
         assert.equal(failedProxy.status, 503);
         assert.match(failedProxy.body, /UPSTREAM_UNAVAILABLE/);
         assert.equal(failedProxy.headers['retry-after'], '5');
+
+        // Circuit breaker (2026-08-29): CIRCUIT_FAILURE_THRESHOLD=3 above, and the
+        // request just above already counts as the 1st consecutive failure. Two more
+        // real (still-attempted, still-503-UPSTREAM_UNAVAILABLE) failures open it.
+        for (let i = 0; i < 2; i += 1) {
+            const stillAttempted = await request(port, '/api/v1/payments/health');
+            assert.equal(stillAttempted.status, 503);
+            assert.match(stillAttempted.body, /UPSTREAM_UNAVAILABLE/);
+        }
+        // The breaker is now open: this request must be rejected immediately, never
+        // reaching for the (still-unreachable) upstream at all.
+        const shortCircuited = await request(port, '/api/v1/payments/health');
+        assert.equal(shortCircuited.status, 503);
+        assert.match(shortCircuited.body, /UPSTREAM_CIRCUIT_OPEN/);
+        assert.equal(shortCircuited.headers['retry-after'], '60');
+
+        const metricsAfterOpen = await request(port, '/metrics');
+        assert.match(metricsAfterOpen.body, /itunda_gateway_circuit_state\{target="http:\/\/127\.0\.0\.1:1"\} 1/);
+        assert.match(metricsAfterOpen.body, /itunda_gateway_circuit_short_circuited_total\{target="http:\/\/127\.0\.0\.1:1"\} 1/);
+
         const proxiedApi = await request(port, '/api/v1/profile');
         assert.equal(proxiedApi.status, 200);
         assert.equal(proxiedApi.headers['cache-control'], 'no-store, private');
@@ -110,7 +135,10 @@ async function main() {
 
         const metrics = await request(port, '/metrics');
         assert.equal(metrics.status, 200);
-        assert.match(metrics.body, /itunda_gateway_upstream_failures_total\{route="\/api\/v1\/payments",error_code="ECONNREFUSED"\} 1/);
+        // 3, not 1: failedProxy plus the 2-request circuit-opening loop above are each
+        // a real attempted (and failed) proxy call; the short-circuited 4th request
+        // never reaches onError at all, so it does not add a 4th.
+        assert.match(metrics.body, /itunda_gateway_upstream_failures_total\{route="\/api\/v1\/payments",error_code="ECONNREFUSED"\} 3/);
     } finally {
         await new Promise((resolve) => server.close(resolve));
         await new Promise((resolve) => backend.close(resolve));

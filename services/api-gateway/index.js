@@ -203,9 +203,92 @@ function upstreamFailureResponse(error) {
     return { status: 503, error: 'UPSTREAM_UNAVAILABLE', retryAfterSeconds: 5 };
 }
 
+// App-layer circuit breaker (2026-08-29). Toss's own real Gateway architecture runs
+// circuit breaking at two layers -- infra (Istio) and app (Resilience4j) -- kept
+// deliberately separate because Istio's own granularity alone was judged too coarse
+// (docs/TOSS_ARCHITECTURE_FACTS.md §8). This gateway already has the infra layer (an
+// Istio sidecar sits in front of it -- see the `trust proxy` CIDR comment above) but
+// had no app layer at all: every request to a downed upstream burned the full
+// UPSTREAM_TIMEOUT_MS one at a time, forever, instead of failing fast once the
+// upstream is known to be down. Scoped per upstream target (there are few enough of
+// them that target-level granularity is the right size), not per route.
+function parsePositiveCount(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
+}
+const CIRCUIT_FAILURE_THRESHOLD = parsePositiveCount(process.env.CIRCUIT_FAILURE_THRESHOLD, 5);
+const CIRCUIT_OPEN_DURATION_MS = parsePositiveTimeout(process.env.CIRCUIT_OPEN_DURATION_MS, 30000);
+
+const circuits = new Map(); // target -> { state, consecutiveFailures, openedAt }
+function circuitFor(target) {
+    let circuit = circuits.get(target);
+    if (!circuit) {
+        circuit = { state: 'CLOSED', consecutiveFailures: 0, openedAt: 0 };
+        circuits.set(target, circuit);
+    }
+    return circuit;
+}
+
+const circuitStateGauge = new promClient.Gauge({
+    name: 'itunda_gateway_circuit_state',
+    help: 'Circuit breaker state per upstream target (0=closed, 1=open, 2=half-open)',
+    labelNames: ['target'],
+    registers: [metricsRegistry],
+});
+const circuitShortCircuits = new promClient.Counter({
+    name: 'itunda_gateway_circuit_short_circuited_total',
+    help: "Requests rejected immediately because the target upstream's circuit was open",
+    labelNames: ['target'],
+    registers: [metricsRegistry],
+});
+
+function setCircuitState(target, circuit, state) {
+    circuit.state = state;
+    circuitStateGauge.set({ target }, state === 'OPEN' ? 1 : state === 'HALF_OPEN' ? 2 : 0);
+}
+
+// Only connection-level failures count against the breaker -- the same
+// onError-vs-onProxyRes distinction upstreamFailures already draws. A real HTTP
+// 4xx/5xx business response from a healthy, reachable upstream must never trip it.
+function recordCircuitFailure(target) {
+    const circuit = circuitFor(target);
+    circuit.consecutiveFailures += 1;
+    if (circuit.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
+        circuit.openedAt = Date.now();
+        setCircuitState(target, circuit, 'OPEN');
+    }
+}
+
+function recordCircuitSuccess(target) {
+    const circuit = circuitFor(target);
+    circuit.consecutiveFailures = 0;
+    if (circuit.state !== 'CLOSED') setCircuitState(target, circuit, 'CLOSED');
+}
+
+// Gate placed in front of the real proxy middleware for a given target. When open,
+// rejects the request without the upstream ever being attempted.
+function circuitGate(target) {
+    return (req, res, next) => {
+        const circuit = circuitFor(target);
+        if (circuit.state === 'OPEN') {
+            if (Date.now() - circuit.openedAt < CIRCUIT_OPEN_DURATION_MS) {
+                circuitShortCircuits.inc({ target });
+                res.set('Retry-After', String(Math.ceil(CIRCUIT_OPEN_DURATION_MS / 1000)));
+                res.status(503).json({ success: false, error: 'UPSTREAM_CIRCUIT_OPEN' });
+                return;
+            }
+            // Cooldown elapsed -- let exactly one trial request through rather than
+            // resetting straight to CLOSED, so a still-down upstream re-opens on that
+            // single trial instead of needing a whole new failure streak to notice.
+            setCircuitState(target, circuit, 'HALF_OPEN');
+        }
+        next();
+    };
+}
+
 function upstreamProxy(target, options = {}) {
     const { onProxyReq: userOnProxyReq, onProxyRes: userOnProxyRes, ...proxyOptions } = options;
-    return createProxyMiddleware({
+    const proxyMiddleware = createProxyMiddleware({
         target,
         changeOrigin: true,
         // Keep the caller/gateway timeout bounded and consistent. Payment state is
@@ -218,6 +301,7 @@ function upstreamProxy(target, options = {}) {
                 route: metricRoute(req.path),
                 error_code: upstreamErrorCode(error),
             });
+            recordCircuitFailure(target);
             if (!res.headersSent) {
                 const failure = upstreamFailureResponse(error);
                 if (failure.retryAfterSeconds) res.set('Retry-After', String(failure.retryAfterSeconds));
@@ -229,6 +313,8 @@ function upstreamProxy(target, options = {}) {
             if (userOnProxyReq) userOnProxyReq(proxyReq, req, res);
         },
         onProxyRes: (proxyRes, req, res) => {
+            // A response of any status code proves the upstream is reachable.
+            recordCircuitSuccess(target);
             // Proxy response headers can replace Express's pre-set values, so enforce
             // the invariant on the upstream response itself as well.
             setSecurityHeaders(proxyRes);
@@ -237,6 +323,7 @@ function upstreamProxy(target, options = {}) {
         },
         ...proxyOptions,
     });
+    return [circuitGate(target), proxyMiddleware];
 }
 
 function isMessagingWebSocketUpgrade(url) {
@@ -247,6 +334,10 @@ function isMessagingWebSocketUpgrade(url) {
 // cannot carry the real-time messaging path. Keep a dedicated proxy and attach
 // it directly to the Node HTTP server below; this also preserves the path for
 // Spring's /ws/messaging handler instead of rewriting it as an API request.
+// Deliberately not behind the circuitGate above: each call is one long-lived
+// connection rather than a repeated request/response, so a per-request breaker
+// model doesn't fit it -- a downed backend still fails each upgrade attempt on
+// its own bounded timeout via onError below.
 const messagingWebSocketProxy = createProxyMiddleware({
     target: BACKEND_URL,
     changeOrigin: true,
