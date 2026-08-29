@@ -232,6 +232,7 @@ import rw.itunda.feature.talk.impl.TravelCar
 import rw.itunda.feature.talk.impl.NatureStar
 import rw.itunda.feature.talk.impl.NatureGlowingStar
 import rw.itunda.feature.talk.impl.ObjectPen
+import rw.itunda.feature.talk.impl.HandshakeGlyph
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
 // theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
@@ -3691,7 +3692,7 @@ private fun MenuScreen(
         // TransitScreen.kt's own doc comment for the full sourced account.
         FlatRow("Transit", subtitle = "Top up and tap to pay your real Kigali bus fare", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenTransit),
         FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", glyph = { BarChartGlyph(size = 28.dp) }, onClick = onOpenSpending),
-        FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
+        FlatRow("Group account", subtitle = "Shared account with dues and split expenses", glyph = { HandshakeGlyph(size = 28.dp) }, onClick = onOpenGroupAccounts),
         FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", glyph = { FamilyGlyph(size = 28.dp) }, onClick = onOpenFamilyLink),
         FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
         FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", glyph = { CalendarGlyph(size = 28.dp) }, onClick = onOpenSubscriptions),
@@ -3719,7 +3720,7 @@ private fun MenuScreen(
         FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
         FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", glyph = { LockGlyph(size = 28.dp) }, onClick = onOpenUpfrontDeposit),
         FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", glyph = { ChildGlyph(size = 28.dp) }, onClick = onOpenYouthAccount),
-        FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Groups, iconColor = AccentTeal, onClick = onOpenIkimina),
+        FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", glyph = { HandshakeGlyph(size = 28.dp) }, onClick = onOpenIkimina),
         FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenSacco),
     )
     // Same real gap, same fix shape, same BankHubScreen (Section 193) mapping reused

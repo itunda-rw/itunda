@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Dp
 import androidx.core.graphics.PathParser
@@ -71,6 +72,15 @@ sealed interface Shape2D {
      * canvas center (real case: Noto Emoji's real safe-zone-padded glyphs,
      * see ItundaFacePeople.kt's own doc comment). */
     data class ScaledGroup(val scale: Float, val fromCenterX: Float, val fromCenterY: Float, val toCenterX: Float, val toCenterY: Float, val shapes: List<Shape2D>) : Shape2D
+    /** Real SVG `<clipPath>` equivalent -- restricts `shapes` to the region
+     * inside `clipPathD` (same "d" path-data grammar every other shape here
+     * already uses). Added 2026-08-29 for Noto Emoji's Handshake glyph
+     * (ItundaFacePeople.kt's own doc comment), the first itundaface source
+     * asset that genuinely needs it -- Noto's own real construction clips
+     * several internal shading-detail path groups to the base hand
+     * silhouette. Uses Compose's own real `DrawScope.clipPath`, not an
+     * approximation. */
+    data class ClippedGroup(val clipPathD: String, val shapes: List<Shape2D>) : Shape2D
 }
 
 fun DrawScope.drawItundaFaceShape(shape: Shape2D) {
@@ -128,6 +138,10 @@ fun DrawScope.drawItundaFaceShape(shape: Shape2D) {
                 scale(shape.scale, shape.scale, pivot = Offset.Zero)
                 translate(-shape.fromCenterX, -shape.fromCenterY)
             }) {
+                shape.shapes.forEach { drawItundaFaceShape(it) }
+            }
+        is Shape2D.ClippedGroup ->
+            clipPath(PathParser.createPathFromPathData(shape.clipPathD).asComposePath()) {
                 shape.shapes.forEach { drawItundaFaceShape(it) }
             }
     }
