@@ -286,7 +286,17 @@ private fun GroupAccountDetailContent(id: String) {
                 error = null
                 load()
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                // Real gap found live (Toss-style error-handling audit, 2026-08-30):
+                // inviting a phone number already in the group isn't really a failure
+                // -- the desired end state (that person being a member) is already
+                // true. Resolve forward the same way a self-registration retry would.
+                if (rw.itunda.core.network.apiErrorCode(e) == "ALREADY_MEMBER") {
+                    phoneNumber = ""
+                    error = null
+                    load()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

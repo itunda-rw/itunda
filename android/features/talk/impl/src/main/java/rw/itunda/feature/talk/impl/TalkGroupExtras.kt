@@ -57,6 +57,7 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.chatMessageTime
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddGroupMemberRequest
+import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.GroupMessageResponse
 import rw.itunda.core.network.SetGroupDescriptionRequest
 import rw.itunda.core.network.SetGroupPhotoUrlRequest
@@ -212,6 +213,15 @@ internal fun GroupManageMembersView(
                                     try {
                                         NetworkClient.apiService.addGroupMember(group.groupId, AddGroupMemberRequest(contact.userId))
                                         onMembersChanged()
+                                    } catch (e: retrofit2.HttpException) {
+                                        // Real gap found live (Toss-style error-handling
+                                        // audit, 2026-08-30): adding a contact already in
+                                        // the group isn't really a failure -- resolve forward.
+                                        if (apiErrorCode(e) == "ALREADY_MEMBER") {
+                                            onMembersChanged()
+                                        } else {
+                                            error = "Could not add ${contact.name}."
+                                        }
                                     } catch (_: Exception) {
                                         error = "Could not add ${contact.name}."
                                     } finally { busyUserId = null }

@@ -309,7 +309,15 @@ private fun IkiminaDetailContent(id: String) {
                 error = null
                 load()
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                // Real gap found live (Toss-style error-handling audit, 2026-08-30):
+                // same resolve-forward as the identical GroupAccount invite shape.
+                if (rw.itunda.core.network.apiErrorCode(e) == "ALREADY_MEMBER") {
+                    phoneNumber = ""
+                    error = null
+                    load()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

@@ -183,6 +183,12 @@ struct GroupManageMembersView: View {
         do {
             _ = try await NetworkClient.shared.addGroupMember(groupId: group.groupId, userId: contact.userId)
             onMembersChanged()
+        } catch NetworkError.httpErrorWithMessage(let statusCode, _) where statusCode == 409 {
+            // Real gap found live (Toss-style error-handling audit, 2026-08-30): adding
+            // a contact already in the group isn't really a failure -- resolve forward.
+            // 409 is unambiguous on this specific endpoint (ALREADY_MEMBER is the only
+            // exception this controller maps to 409).
+            onMembersChanged()
         } catch {
             self.error = "Could not add \(contact.name)."
         }

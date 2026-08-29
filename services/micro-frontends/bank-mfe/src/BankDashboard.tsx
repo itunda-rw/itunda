@@ -10665,7 +10665,13 @@ function GroupManageMembersView({
       await addGroupMember(group.groupId, contact.userId);
       onMembersChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : `Could not add ${contact.name}.`);
+      // Real gap found live (Toss-style error-handling audit, 2026-08-30): adding a
+      // contact already in the group isn't really a failure -- resolve forward.
+      if (err instanceof ApiError && err.code === 'ALREADY_MEMBER') {
+        onMembersChanged();
+      } else {
+        setError(err instanceof ApiError ? err.message : `Could not add ${contact.name}.`);
+      }
     } finally {
       setBusyUserId(null);
     }
@@ -19223,7 +19229,16 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       setPhoneNumber('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      // Real gap found live (Toss-style error-handling audit, 2026-08-30): the
+      // organizer inviting a phone number already in the group isn't really a
+      // failure -- the desired end state (that person being a member) is already
+      // true. Resolve forward the same way a self-registration retry would.
+      if (err instanceof ApiError && err.code === 'ALREADY_MEMBER') {
+        setPhoneNumber('');
+        load();
+      } else {
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      }
     } finally {
       setBusy(false);
     }
@@ -19704,7 +19719,14 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       setPhoneNumber('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      // Real gap found live (Toss-style error-handling audit, 2026-08-30): same
+      // resolve-forward as the identical GroupAccount invite shape.
+      if (err instanceof ApiError && err.code === 'ALREADY_MEMBER') {
+        setPhoneNumber('');
+        load();
+      } else {
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      }
     } finally {
       setBusy(false);
     }
