@@ -35,7 +35,7 @@ private let travelKeys: [String] = ["🚗", "✈️", "🏠", "🚀", "🚲", "�
 private let activitiesKeys: [String] = ["⚽", "🏀", "🎮", "🎨", "🎵", "🎉", "🏆", "🎯"]
 private let objectsKeys: [String] = ["💳", "📱", "⌚", "🔑", "💡", "🎧", "📎", "🖊️"]
 private let symbolsKeys: [String] = ["✅", "❌", "❗", "❓", "💯", "⚠️", "🚫", "♻️"]
-private let flagsKeys: [String] = ["🇷🇼", "🇰🇪", "🇺🇬", "🇹🇿", "🇧🇮", "🇨🇩", "🇺🇸", "🇬🇧", "🇪🇺"]
+private let flagsKeys: [String] = ["🇷🇼", "🇰🇪", "🇺🇬", "🇹🇿", "🇧🇮", "🇨🇩", "🇺🇸", "🇬🇧", "🇪🇺", "🇸🇸", "🇸🇴", "🇨🇳", "🇮🇳", "🇧🇪", "🇩🇪", "🇫🇷", "🇿🇦", "🇳🇬", "🇪🇹"]
 
 let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys + symbolsKeys + flagsKeys
 let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
@@ -131,6 +131,16 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "🇺🇸": FlagUnitedStates(size: size)
     case "🇬🇧": FlagUnitedKingdom(size: size)
     case "🇪🇺": FlagEuropeanUnion(size: size)
+    case "🇸🇸": FlagSouthSudan(size: size)
+    case "🇸🇴": FlagSomalia(size: size)
+    case "🇨🇳": FlagChina(size: size)
+    case "🇮🇳": FlagIndia(size: size)
+    case "🇧🇪": FlagBelgium(size: size)
+    case "🇩🇪": FlagGermany(size: size)
+    case "🇫🇷": FlagFrance(size: size)
+    case "🇿🇦": FlagSouthAfrica(size: size)
+    case "🇳🇬": FlagNigeria(size: size)
+    case "🇪🇹": FlagEthiopia(size: size)
     default: EmptyView()
     }
 }
