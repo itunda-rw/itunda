@@ -13,7 +13,8 @@ import { SmileySlight } from './icons/ItundaFaceSmileys';
 import { GiftGlyph, DiceGlyph, VoucherTicket, GiftBox } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
-import { FlameGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, PriceDropGlyph, BikeGlyph } from './icons/ItundaFaceMisc';
+import { FlameGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, PriceDropGlyph, BikeGlyph, SpeechBubbleGlyph } from './icons/ItundaFaceMisc';
+import { PlaceRestaurant, PlaceMarket, PlaceBusStop, PlaceItundaAgent } from './icons/ItundaFacePlaces';
 // Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
 // "(c)" open item) -- reuses the exact same glyph choices Android's MenuScreen already
 // made and live-verified against real Toss reference screenshots, not new choices.
@@ -295,31 +296,38 @@ type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SH
 // actual per-row icons in the first place"). ExploreHub's pill buttons had no icon of
 // any kind, unlike Android/iOS's real, live-verified illustrated MenuScreen/
 // EntireMenuScreen rows -- reuses the EXACT SAME glyph choice already made and
-// verified there for each concept, not a new choice invented for web. Deliberately
-// partial: 16 of 24 real Explore tabs covered here (every one with an already-ported
-// web glyph); EATS/MARKETPLACE/COMMUNITY/BUS/KNOWLEDGE/AGENT need Android's
-// features/maps/impl/ItundaFacePlaces.kt "Place*" glyphs and a "speech bubble" glyph
-// that were ported to Android/iOS but never to web -- a real, disclosed follow-up
-// (porting new SVG path data), not silently skipped. INSURANCE (Android uses a bespoke
-// IdsIcons.ShieldCheck, not an itundaface glyph) and USSD (no established Android
-// choice exists at all) are left on the plain pill deliberately, not guessed.
+// verified there for each concept, not a new choice invented for web.
+// 22 of 24 real Explore tabs now covered (EATS/MARKETPLACE/COMMUNITY/BUS/KNOWLEDGE/
+// AGENT closed same day by porting the missing "Place*"/speech-bubble glyphs from
+// Android's features/maps/impl/ItundaFacePlaces.kt + core/designsystem/itundaface/
+// ItundaFaceMisc.kt -- see icons/ItundaFacePlaces.tsx's own doc comment for why the
+// port source was Android/iOS's byte-identical shape data, not the disputed
+// bank-mfe-origin citation in those files' own headers). Only INSURANCE (Android uses
+// a bespoke IdsIcons.ShieldCheck, not an itundaface glyph) and USSD (no established
+// Android choice exists at all) are left on the plain pill deliberately, not guessed.
 const EXPLORE_TAB_ICONS: Partial<Record<Tab, ComponentType<{ size?: number }>>> = {
   SHOP: ShoppingBagGlyph,
+  EATS: PlaceRestaurant,
   RIDES: TravelCar,
   MAP: PinGlyph,
+  MARKETPLACE: PlaceMarket,
+  COMMUNITY: SpeechBubbleGlyph,
   JOBS: BriefcaseGlyph,
   PROPERTY: TravelHouse,
   DESIGNATED_DRIVER: ObjectKey,
   BIKESHARE: BikeGlyph,
   PARKING: ParkingGlyph,
+  BUS: PlaceBusStop,
   SAVINGS: MoneyBagGlyph,
   STOCKS: ChartIncreasingGlyph,
   LOANS: MoneyBagGlyph,
   CREDIT_SCORE: NatureGlowingStar,
   FOREIGN_CURRENCY: GlobeGlyph,
   TRUST_SCORE: NatureStar,
+  KNOWLEDGE: SpeechBubbleGlyph,
   REWARDS: GiftBox,
   CERTIFICATE: ObjectPen,
+  AGENT: PlaceItundaAgent,
 };
 
 // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 6):

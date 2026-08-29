@@ -217,3 +217,19 @@ export function PriceDropGlyph({ size = 16, ...rest }: MiscIconProps) {
     </svg>
   );
 }
+
+// Ported from Android's core/designsystem/itundaface/ItundaFaceMisc.kt
+// SpeechBubbleGlyph (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
+// disclosed follow-up) -- a distinct shape from this file's own ChatGlyph above,
+// which is already a different, established icon (used for the real "Message
+// restaurant" action). Same coordinates/colors as Android, not a new design.
+export function SpeechBubbleGlyph({ size = 16, ...rest }: MiscIconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" {...rest}>
+      <path d="M10,14 H62 C64.2,14 66,15.8 66,18 V46 C66,48.2 64.2,50 62,50 H32 L18,62 V50 H10 C7.8,50 6,48.2 6,46 V18 C6,15.8 7.8,14 10,14 Z" fill="#483EB6" />
+      <circle cx="24" cy="32" r="3.4" fill="#C0C6FF" />
+      <circle cx="36" cy="32" r="3.4" fill="#C0C6FF" />
+      <circle cx="48" cy="32" r="3.4" fill="#C0C6FF" />
+    </svg>
+  );
+}
