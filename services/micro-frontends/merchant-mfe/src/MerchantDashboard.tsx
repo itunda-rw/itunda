@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, Newspaper, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
@@ -18,11 +18,12 @@ import PosScreen from './screens/PosScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import ReviewsScreen from './screens/ReviewsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import UpdatesScreen from './screens/UpdatesScreen';
 import VendorCashAdvanceScreen from './screens/VendorCashAdvanceScreen';
 import VisitorAnalyticsScreen from './screens/VisitorAnalyticsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'updates' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
 // Real 2nd-localization-pass (2026-08-15): labelKey replaces a literal string so the
 // nav renders in the merchant's own chosen language -- see i18n/translations.ts's own
@@ -45,6 +46,11 @@ const TABS: { id: Tab; labelKey: TranslationKey; icon: typeof QrCode }[] = [
   { id: 'booking', labelKey: 'tabs.bookings', icon: CalendarClock },
   { id: 'reports', labelKey: 'tabs.reports', icon: CircleDollarSign },
   { id: 'reviews', labelKey: 'tabs.reviews', icon: Star },
+  // Real gap found live (uncalled-endpoint sweep, 2026-08-29) -- see
+  // screens/UpdatesScreen.tsx's own doc comment: the backend feed this posts to has
+  // been displayed live on Android/iOS's customer-facing Maps News tab since
+  // 2026-08-28, with no merchant client anywhere able to post to it until now.
+  { id: 'updates', labelKey: 'tabs.updates', icon: Newspaper },
   { id: 'billing', labelKey: 'tabs.billing', icon: CreditCard },
   { id: 'coupons', labelKey: 'tabs.coupons', icon: Tag },
   { id: 'visitors', labelKey: 'tabs.visitors', icon: Users2 },
@@ -189,6 +195,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'booking' && <BookingScreen />}
         {tab === 'reports' && <ReportsScreen />}
         {tab === 'reviews' && <ReviewsScreen merchant={merchant} />}
+        {tab === 'updates' && <UpdatesScreen merchant={merchant} />}
         {tab === 'billing' && <BillingScreen />}
         {tab === 'coupons' && <CouponsScreen />}
         {tab === 'visitors' && <VisitorAnalyticsScreen />}

@@ -46,6 +46,7 @@ export type TranslationKey =
   | 'tabs.bookings'
   | 'tabs.reports'
   | 'tabs.reviews'
+  | 'tabs.updates'
   | 'tabs.billing'
   | 'tabs.coupons'
   | 'tabs.visitors'
@@ -360,6 +361,19 @@ export type TranslationKey =
   | 'reviews.cancel'
   | 'reviews.editReply'
   | 'reviews.reply'
+  | 'updates.title'
+  | 'updates.subtitle'
+  | 'updates.labelNotice'
+  | 'updates.labelEvent'
+  | 'updates.labelPromo'
+  | 'updates.titlePlaceholder'
+  | 'updates.bodyPlaceholder'
+  | 'updates.postButton'
+  | 'updates.posting'
+  | 'updates.postError'
+  | 'updates.loadError'
+  | 'updates.empty'
+  | 'updates.likes'
   // Real 14th-localization-pass additions (2026-08-15): PosScreen -- the real
   // cash-register/POS UI (Register + Catalog modes, with Options/Pricing/Time-deal
   // sub-panels per product), merchant-mfe's largest and highest-daily-traffic screen.
@@ -615,6 +629,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.bookings': 'Bookings',
     'tabs.reports': 'Reports',
     'tabs.reviews': 'Reviews',
+    'tabs.updates': 'Updates',
     'tabs.billing': 'Billing',
     'tabs.coupons': 'Coupons',
     'tabs.visitors': 'Visitors',
@@ -902,6 +917,19 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reviews.cancel': 'Cancel',
     'reviews.editReply': 'Edit reply',
     'reviews.reply': 'Reply',
+    'updates.title': 'Business updates',
+    'updates.subtitle': 'Post a notice, event, or promo — customers see this on your Maps page.',
+    'updates.labelNotice': 'Notice',
+    'updates.labelEvent': 'Event',
+    'updates.labelPromo': 'Promo',
+    'updates.titlePlaceholder': 'Title',
+    'updates.bodyPlaceholder': "What's the update?",
+    'updates.postButton': 'Post update',
+    'updates.posting': 'Posting…',
+    'updates.postError': 'Could not post your update.',
+    'updates.loadError': 'Could not load your updates.',
+    'updates.empty': 'No updates yet — post one and it shows up on your Maps page right away.',
+    'updates.likes': '{{count}} likes',
     'pos.modeRegister': 'Register',
     'pos.modeCatalog': 'Catalog',
     'pos.catalogLoadError': 'Could not load the catalog.',
@@ -1147,6 +1175,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.bookings': 'Gahunda',
     'tabs.reports': 'Raporo',
     'tabs.reviews': 'Ibitekerezo',
+    'tabs.updates': 'Amakuru',
     'tabs.billing': 'Kwishyura',
     'tabs.coupons': 'Amakuponi',
     'tabs.visitors': 'Abasuye',
@@ -1434,6 +1463,19 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reviews.cancel': 'Hagarika',
     'reviews.editReply': 'Hindura igisubizo',
     'reviews.reply': 'Subiza',
+    'updates.title': "Amakuru y'ubucuruzi",
+    'updates.subtitle': "Tanga itangazo, ikintu, cyangwa promo — abakiriya babibona ku rupapuro rwawe rwa Amakarita.",
+    'updates.labelNotice': 'Itangazo',
+    'updates.labelEvent': 'Ikintu',
+    'updates.labelPromo': 'Promo',
+    'updates.titlePlaceholder': 'Umutwe',
+    'updates.bodyPlaceholder': 'Amakuru ni iki?',
+    'updates.postButton': 'Tanga amakuru',
+    'updates.posting': 'Kohereza…',
+    'updates.postError': 'Ntibishoboka gutanga amakuru yawe.',
+    'updates.loadError': 'Ntibishoboka gushakisha amakuru yawe.',
+    'updates.empty': 'Nta makuru urafite — tanga amwe azahita agaragara ku rupapuro rwawe rwa Amakarita.',
+    'updates.likes': 'Bakunda {{count}}',
     'pos.modeRegister': 'Igurisha',
     'pos.modeCatalog': 'Ibicuruzwa',
     'pos.catalogLoadError': 'Ntibishoboka gushakisha ibicuruzwa.',
@@ -1679,6 +1721,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'tabs.bookings': 'Réservations',
     'tabs.reports': 'Rapports',
     'tabs.reviews': 'Avis',
+    'tabs.updates': 'Actualités',
     'tabs.billing': 'Facturation',
     'tabs.coupons': 'Coupons',
     'tabs.visitors': 'Visiteurs',
@@ -1966,6 +2009,19 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reviews.cancel': 'Annuler',
     'reviews.editReply': 'Modifier la réponse',
     'reviews.reply': 'Répondre',
+    'updates.title': "Actualités de l'entreprise",
+    'updates.subtitle': 'Publiez un avis, un événement ou une promo — les clients le voient sur votre page Maps.',
+    'updates.labelNotice': 'Avis',
+    'updates.labelEvent': 'Événement',
+    'updates.labelPromo': 'Promo',
+    'updates.titlePlaceholder': 'Titre',
+    'updates.bodyPlaceholder': "Quelle est l'actualité ?",
+    'updates.postButton': 'Publier',
+    'updates.posting': 'Publication en cours…',
+    'updates.postError': 'Impossible de publier votre actualité.',
+    'updates.loadError': 'Impossible de charger vos actualités.',
+    'updates.empty': 'Aucune actualité pour le moment — publiez-en une, elle apparaîtra aussitôt sur votre page Maps.',
+    'updates.likes': "{{count}} mentions J'aime",
     'pos.modeRegister': 'Caisse',
     'pos.modeCatalog': 'Catalogue',
     'pos.catalogLoadError': 'Impossible de charger le catalogue.',
