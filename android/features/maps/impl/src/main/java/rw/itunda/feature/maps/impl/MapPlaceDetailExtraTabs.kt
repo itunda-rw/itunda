@@ -14,14 +14,23 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MapPlaceDetailDto
+import rw.itunda.core.network.MapPlaceUpdateDto
+import rw.itunda.core.network.NetworkClient
 
 // Real Photos/News tabs + AI-summary/tag-aggregate cards (itunda Maps redesign,
 // 2026-08-28, direct Naver Map reference: the place-detail Photos/News tabs) --
@@ -132,8 +141,42 @@ internal fun PlaceNewsTab(detail: MapPlaceDetailDto?) {
                 if (period.isNotEmpty()) {
                     Text(period, fontSize = 11.sp, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp))
                 }
-                Text("♡ ${update.likeCount}", fontSize = 11.sp, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp))
+                UpdateLikeRow(update)
             }
         }
     }
+}
+
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the like count above
+// was static text -- MerchantUpdateController.toggleLike had zero caller anywhere.
+// The list endpoint doesn't say whether the CURRENT user already liked a given
+// update (no such field exists on the backend DTO), so `liked` only tracks whether
+// THIS session tapped it, not true prior state after a fresh load -- an honest,
+// disclosed limitation, not a bug.
+@Composable
+private fun UpdateLikeRow(update: MapPlaceUpdateDto) {
+    var likeCount by remember(update.id) { mutableStateOf(update.likeCount) }
+    var liked by remember(update.id) { mutableStateOf(false) }
+    var busy by remember(update.id) { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Text(
+        "${if (liked) "♥" else "♡"} $likeCount",
+        fontSize = 11.sp,
+        color = if (liked) Ids.colors.danger else Ids.colors.textTertiary,
+        modifier = Modifier.padding(top = 2.dp).pressScaleClickable(enabled = !busy) {
+            busy = true
+            coroutineScope.launch {
+                try {
+                    val result = NetworkClient.apiService.toggleMerchantUpdateLike(update.id)
+                    liked = result.liked
+                    likeCount += if (result.liked) 1 else -1
+                } catch (_: Exception) {
+                    // Non-critical -- the count just stays at its last-known value.
+                } finally {
+                    busy = false
+                }
+            }
+        },
+    )
 }

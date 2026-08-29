@@ -74,6 +74,12 @@ data class MapPlaceDetailDto(
 )
 data class MapPlaceDetailResponse(val success: Boolean, val place: MapPlaceDetailDto)
 
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the News tab above
+// already renders each update's real likeCount, but the like toggle itself
+// (MerchantUpdateController.toggleLike) had zero caller anywhere -- the count was
+// static text, not tappable.
+data class ToggleMerchantUpdateLikeResponse(val success: Boolean, val liked: Boolean)
+
 // Real, free, keyless Kigali weather (2026-08-28, itunda Maps redesign) -- see
 // KigaliWeatherClient's own doc comment on the backend. `weather` is null when the
 // real upstream is unreachable and there's no still-fresh cache -- never fabricated.

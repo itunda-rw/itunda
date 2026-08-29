@@ -184,10 +184,45 @@ func MapPlaceNewsTab(detail: MapPlaceDetailDto) -> some View {
                     if !period.isEmpty {
                         Text(period).font(.caption2).foregroundColor(IDS.Colors.textTertiary)
                     }
-                    Text("♡ \(update.likeCount)").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                    MapPlaceUpdateLikeRow(update: update)
                 }
             }
         }
         .padding(.top, 4)
+    }
+}
+
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the like count above
+// was static text -- MerchantUpdateController.toggleLike had zero caller anywhere.
+// The list endpoint doesn't say whether the CURRENT user already liked a given
+// update (no such field exists on the backend DTO), so `liked` only tracks whether
+// THIS session tapped it, not true prior state after a fresh load -- an honest,
+// disclosed limitation, matching Android's identical PlaceNewsTab fix.
+private struct MapPlaceUpdateLikeRow: View {
+    let update: MapPlaceUpdateDto
+    @State private var likeCount: Int
+    @State private var liked = false
+    @State private var busy = false
+
+    init(update: MapPlaceUpdateDto) {
+        self.update = update
+        _likeCount = State(initialValue: update.likeCount)
+    }
+
+    var body: some View {
+        Text("\(liked ? "♥" : "♡") \(likeCount)")
+            .font(.caption2)
+            .foregroundColor(liked ? IDS.Colors.danger : IDS.Colors.textTertiary)
+            .onTapGesture {
+                guard !busy else { return }
+                busy = true
+                Task {
+                    if let result = try? await NetworkClient.shared.toggleMerchantUpdateLike(updateId: update.id) {
+                        liked = result.liked
+                        likeCount += result.liked ? 1 : -1
+                    }
+                    busy = false
+                }
+            }
     }
 }

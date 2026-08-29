@@ -56,6 +56,12 @@ public struct MapPlaceDetailDto: Decodable {
 }
 public struct MapPlaceDetailResponse: Decodable { public let success: Bool; public let place: MapPlaceDetailDto }
 
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the News tab already
+// renders each update's real likeCount, but the like toggle itself
+// (MerchantUpdateController.toggleLike) had zero caller anywhere -- the count was
+// static text, not tappable.
+public struct ToggleMerchantUpdateLikeResponse: Decodable { public let success: Bool; public let liked: Bool }
+
 // Real, free, keyless Kigali weather (2026-08-28) -- see KigaliWeatherClient's own doc
 // comment on the backend. `weather` is null when the real upstream is unreachable and
 // there's no still-fresh cache -- never fabricated.
@@ -76,6 +82,10 @@ extension NetworkClient {
 
     public func getMapPlaceDetail(merchantId: String) async throws -> MapPlaceDetailResponse {
         try await get("api/v1/maps/places/\(merchantId)")
+    }
+
+    public func toggleMerchantUpdateLike(updateId: String) async throws -> ToggleMerchantUpdateLikeResponse {
+        try await authenticatedPost("api/v1/merchant/updates/\(updateId)/like", body: EmptyRequest())
     }
 
     public func getKigaliWeather() async throws -> MapsWeatherResponse {

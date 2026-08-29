@@ -3373,6 +3373,11 @@ interface ApiService {
     @GET("api/v1/maps/places/{merchantId}")
     suspend fun getMapPlaceDetail(@Path("merchantId") merchantId: String): MapPlaceDetailResponse
 
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-29) -- see
+    // ToggleMerchantUpdateLikeResponse's own doc comment.
+    @POST("api/v1/merchant/updates/{updateId}/like")
+    suspend fun toggleMerchantUpdateLike(@Path("updateId") updateId: String): ToggleMerchantUpdateLikeResponse
+
     // Real, free, keyless Kigali weather (2026-08-28) -- see KigaliWeatherDto's own doc comment.
     @GET("api/v1/maps/weather")
     suspend fun getKigaliWeather(): MapsWeatherResponse
