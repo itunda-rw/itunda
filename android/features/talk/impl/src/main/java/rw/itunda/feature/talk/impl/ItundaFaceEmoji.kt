@@ -54,8 +54,9 @@ private val travelKeys = listOf("🚗", "✈️", "🏠", "🚀", "🚲", "🌍"
 private val activitiesKeys = listOf("⚽", "🏀", "🎮", "🎨", "🎵", "🎉", "🏆", "🎯")
 private val objectsKeys = listOf("💳", "📱", "⌚", "🔑", "💡", "🎧", "📎", "🖊️")
 private val symbolsKeys = listOf("✅", "❌", "❗", "❓", "💯", "⚠️", "🚫", "♻️")
+private val flagsKeys = listOf("🇷🇼", "🇰🇪", "🇺🇬", "🇹🇿", "🇧🇮", "🇨🇩", "🇺🇸", "🇬🇧", "🇪🇺")
 
-val ITUNDAFACE_EMOJI_ALL_KEYS: List<String> = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys + symbolsKeys
+val ITUNDAFACE_EMOJI_ALL_KEYS: List<String> = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys + symbolsKeys + flagsKeys
 val ITUNDAFACE_EMOJI_CATEGORIES: List<Pair<String, List<String>>> = listOf(
     "Smileys & Emotion" to smileysKeys,
     "People & Body" to peopleKeys,
@@ -65,6 +66,7 @@ val ITUNDAFACE_EMOJI_CATEGORIES: List<Pair<String, List<String>>> = listOf(
     "Activities" to activitiesKeys,
     "Objects" to objectsKeys,
     "Symbols" to symbolsKeys,
+    "Flags" to flagsKeys,
 )
 
 @Composable
@@ -139,6 +141,15 @@ fun ItundaFaceEmojiGlyph(emoji: String, size: Dp) {
         "⚠️" -> SymbolWarning(size)
         "🚫" -> SymbolProhibited(size)
         "♻️" -> SymbolRecycling(size)
+        "🇷🇼" -> FlagRwanda(size)
+        "🇰🇪" -> FlagKenya(size)
+        "🇺🇬" -> FlagUganda(size)
+        "🇹🇿" -> FlagTanzania(size)
+        "🇧🇮" -> FlagBurundi(size)
+        "🇨🇩" -> FlagCongo(size)
+        "🇺🇸" -> FlagUnitedStates(size)
+        "🇬🇧" -> FlagUnitedKingdom(size)
+        "🇪🇺" -> FlagEuropeanUnion(size)
     }
 }
 
