@@ -1,5 +1,5 @@
 {
-  "android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt": 961,
+  "android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt": 966,
   "android/app/src/main/java/rw/itunda/app/ui/DesignatedDriverScreen.kt": 528,
   "android/app/src/main/java/rw/itunda/app/ui/GroupAccountScreen.kt": 518,
   "android/app/src/main/java/rw/itunda/app/ui/Grow31SavingsScreen.kt": 511,
@@ -33,7 +33,7 @@
   "ios/App/Sources/InvestScreenView.swift": 655,
   "ios/App/Sources/OverviewLoansCreditScoreScreens.swift": 1032,
   "ios/App/Sources/RideScreenView.swift": 805,
-  "ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift": 641,
+  "ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift": 645,
   "ios/App/Sources/ShopScreen.swift": 600,
   "ios/App/Sources/TalkChatThread.swift": 669,
   "ios/App/Sources/WeeklySavingsScreenView.swift": 538,

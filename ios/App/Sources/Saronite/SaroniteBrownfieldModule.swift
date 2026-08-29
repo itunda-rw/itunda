@@ -627,8 +627,12 @@ final class SaroniteBrownfieldModule: NSObject {
                 return
             }
             guard (200..<300).contains(http.statusCode) else {
+                // Real gap (2026-08-30, see Android's SaroniteBridge.kt sibling fix) --
+                // every mini-app error surfaced the raw JSON dump instead of ApiError.message.
                 let bodyString = String(data: data, encoding: .utf8) ?? ""
-                reject("SARONITE_HTTP_ERROR", "itunda API returned \(http.statusCode): \(bodyString)", nil)
+                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                let message = (json ?? nil)?["message"] as? String
+                reject("SARONITE_HTTP_ERROR", message ?? "itunda API returned \(http.statusCode): \(bodyString)", nil)
                 return
             }
             guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {

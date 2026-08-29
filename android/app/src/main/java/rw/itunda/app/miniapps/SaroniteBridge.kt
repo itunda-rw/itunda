@@ -473,7 +473,12 @@ class SaroniteBrownfieldModule(
                 response.use {
                     val body = it.body?.string()
                     if (!it.isSuccessful || body == null) {
-                        promise.reject("SARONITE_HTTP_ERROR", "itunda API returned ${it.code}: ${body ?: ""}")
+                        // Real gap (2026-08-30): every mini-app error surfaced the raw
+                        // "itunda API returned 409: {...}" dump instead of ApiError.message.
+                        val message = body?.let { b ->
+                            try { JsonParser.parseString(b).asJsonObject.get("message")?.asString } catch (_: Exception) { null }
+                        } ?: "itunda API returned ${it.code}: ${body ?: ""}"
+                        promise.reject("SARONITE_HTTP_ERROR", message)
                         return
                     }
                     try {
