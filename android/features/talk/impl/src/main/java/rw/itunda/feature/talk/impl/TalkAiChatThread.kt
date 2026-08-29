@@ -66,7 +66,16 @@ internal fun AiChatThreadView(onBack: () -> Unit) {
     suspend fun loadHistory() {
         try {
             val res = NetworkClient.talkApi.getAiChatHistory()
-            if (res.success) messages = res.messages
+            // Real fix, found live on a physical device (2026-08-29): the backend
+            // returns history newest-first (a real pagination convention), but this
+            // screen renders top-down in chronological reading order like every
+            // other Talk thread, and appends new sends to the END of the list --
+            // rendering the raw newest-first response put the most recent exchange
+            // at the TOP of the screen instead of the bottom, backwards from every
+            // real chat convention (and inconsistent with the order right after a
+            // send, which appends and therefore reads correctly). Reverse once here
+            // so `messages` is always oldest-first, matching send()'s own append.
+            if (res.success) messages = res.messages.reversed()
         } catch (_: Exception) {
             messages = emptyList()
         }
