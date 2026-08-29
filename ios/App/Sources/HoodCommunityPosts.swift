@@ -344,6 +344,8 @@ struct MeetupSessionsSection: View {
         do {
             _ = try await NetworkClient.shared.checkIntoMeetupSession(sessionId)
             checkedInIds.insert(sessionId)
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            checkedInIds.insert(sessionId)
         } catch {
             self.error = "Could not check in to this session."
         }
