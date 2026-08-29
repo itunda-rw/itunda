@@ -321,6 +321,8 @@ struct EmoticonStoreView: View {
         do {
             _ = try await NetworkClient.shared.purchaseEmoticonPack(packId: packId)
             await load()
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            await load()
         } catch {
             self.error = "Could not purchase this pack."
         }

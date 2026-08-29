@@ -307,6 +307,8 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                                         try {
                                             NetworkClient.apiService.purchaseEmoticonPack(pack.id)
                                             load()
+                                        } catch (e: retrofit2.HttpException) {
+                                            if (e.code() == 409) load() else error = "Could not purchase this pack."
                                         } catch (_: Exception) {
                                             error = "Could not purchase this pack."
                                         } finally {
