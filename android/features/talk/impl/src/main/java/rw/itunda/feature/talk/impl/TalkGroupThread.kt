@@ -230,9 +230,22 @@ internal fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        // Real fix, found live on a physical device (2026-08-29): BackTopBar itself is
+        // Modifier.fillMaxWidth() (a shared component, also used standalone elsewhere --
+        // see its own definition), so nesting it in a Row(SpaceBetween) alongside a
+        // sibling icon Row left the icons zero width to lay out in -- Photos/Manage
+        // members/Split a bill (and therefore Announcement & polls, reachable only
+        // through Manage members) were all completely invisible and unreachable on this
+        // screen. This predates the itunda Talk redesign (the header itself is unchanged
+        // since an earlier session's TalkScreen.kt decomposition) but blocked verifying
+        // the new group announcement/poll feature, so fixed here. Same Box-overlay
+        // technique TalkScreen.kt's own 1:1-thread Links/Settings entry point already
+        // uses for the identical reason (see its own doc comment) -- BackTopBar keeps its
+        // real fillMaxWidth, the icon row is absolutely positioned into the empty space
+        // to its right instead of competing for width in the same Row.
+        Box(modifier = Modifier.fillMaxWidth()) {
             BackTopBar(group.name, onBack)
-            Row {
+            Row(modifier = Modifier.align(Alignment.TopEnd)) {
                 IconButton(onClick = { showMediaGallery = true }) {
                     Icon(Icons.Outlined.Photo, contentDescription = "Shared photos")
                 }
