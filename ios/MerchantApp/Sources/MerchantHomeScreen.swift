@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads, booking, billing, cashAdvance, visitors }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads, booking, billing, cashAdvance, visitors, updates, photos }
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -54,6 +54,10 @@ struct MerchantHomeScreen: View {
                 Text("Billing").tag(MerchantTab.billing)
                 Text("Cash advance").tag(MerchantTab.cashAdvance)
                 Text("Visitors").tag(MerchantTab.visitors)
+                // Real gaps found live (uncalled-endpoint sweep, 2026-08-29/30) -- see
+                // UpdatesTab.swift/PhotosTab.swift's own doc comments.
+                Text("Updates").tag(MerchantTab.updates)
+                Text("Photos").tag(MerchantTab.photos)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -75,6 +79,8 @@ struct MerchantHomeScreen: View {
             case .billing: BillingTab()
             case .cashAdvance: VendorCashAdvanceTab(merchantId: merchant.id)
             case .visitors: VisitorAnalyticsTab()
+            case .updates: UpdatesTab(merchantId: merchant.id)
+            case .photos: PhotosTab()
             }
         }
     }
@@ -413,65 +419,8 @@ private struct ProductReviewReplyCard: View {
     }
 }
 
-/// Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
-/// broadcast-to-followers (item 118) -- the merchant-owner-facing half of
-/// MerchantFollowService; the customer-facing follow/unfollow toggle already shipped
-/// on bank-mfe/Android app/iOS app. merchant-mfe already has this; this is the first
-/// native-merchant-app client, mirroring its FollowersCard field-for-field.
-private struct FollowersTab: View {
-    @State private var count: Int?
-    @State private var title = ""
-    @State private var body_ = ""
-    @State private var sending = false
-    @State private var sentCount: Int?
-    @State private var error: String?
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(count == nil ? "Loading…" : "\(count!) customer\(count == 1 ? "" : "s") following your store")
-                    .font(.subheadline).foregroundColor(.secondary)
-                IdsTextField("Title", text: $title)
-                IdsTextField("Tell your followers what's new.", text: $body_)
-                if let error { Text(error).font(.caption).foregroundColor(.red) }
-                let hasFollowers = (count ?? 0) > 0
-                Button(action: { Task { await send() } }) {
-                    Text(sending ? "Sending…" : "Broadcast to followers").bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(hasFollowers ? Color.accentColor : Color.gray).cornerRadius(10)
-                }
-                .disabled(sending || !hasFollowers || title.trimmingCharacters(in: .whitespaces).isEmpty || body_.trimmingCharacters(in: .whitespaces).isEmpty)
-                if !hasFollowers {
-                    Text("You need at least one follower to send a broadcast.").font(.caption).foregroundColor(.secondary)
-                }
-                if let sentCount {
-                    Text("Sent to \(sentCount) follower\(sentCount == 1 ? "" : "s").").font(.caption).foregroundColor(.accentColor)
-                }
-            }
-            .padding(16)
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        count = (try? await MerchantNetworkClient.shared.getFollowerCount())?.count ?? 0
-    }
-
-    private func send() async {
-        sending = true
-        error = nil
-        sentCount = nil
-        do {
-            let res = try await MerchantNetworkClient.shared.broadcastToFollowers(title: title.trimmingCharacters(in: .whitespaces), body: body_.trimmingCharacters(in: .whitespaces))
-            sentCount = res.recipientCount
-            title = ""
-            body_ = ""
-        } catch {
-            self.error = "Could not send this broadcast."
-        }
-        sending = false
-    }
-}
+// FollowersTab moved to its own file, FollowersTab.swift, 2026-08-30 -- see that
+// file's own doc comment for why.
 
 struct MerchantStatusBadge: View {
     let status: String

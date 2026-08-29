@@ -38,6 +38,10 @@ struct MerchantDto: Decodable {
     // sweep): real on the backend since 2026-07-21/07-26, zero client anywhere (not
     // even merchant-mfe) until now.
     let photoUrl: String?
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-29/30) -- see
+    // NetworkClient+MerchantExtras.swift's own doc comment. Comma-joined string on
+    // the wire, not a JSON array (matching the raw JPA column) -- split client-side.
+    let photoUrls: String?
     let minOrderAmount: Double?
     let cashbackRate: Double?
     let acceptsScheduledOrders: Bool
@@ -133,50 +137,9 @@ struct MerchantCouponDto: Decodable, Identifiable {
 struct MerchantCouponResponse: Decodable { let success: Bool; let coupon: MerchantCouponDto }
 struct MerchantCouponsResponse: Decodable { let success: Bool; let coupons: [MerchantCouponDto] }
 
-// Real B2B payroll -- real account-to-account money movement (see PayrollController.kt's
-// own doc comment), real on merchant-mfe/web + Android only until now -- zero iOS UI.
-struct AddPayrollEmployeeRequest: Encodable { let phoneNumber: String; let salaryAmount: Double }
-struct PayrollEmployeeDto: Decodable, Identifiable {
-    let id: String
-    let merchantId: String
-    let employeeUserId: String
-    let employeeName: String
-    let salaryAmount: Double
-    let active: Bool
-    let createdAt: String
-}
-struct PayrollEmployeeResponse: Decodable { let success: Bool; let employee: PayrollEmployeeDto }
-struct PayrollRosterResponse: Decodable { let success: Bool; let employees: [PayrollEmployeeDto] }
-struct PayslipDto: Decodable, Identifiable {
-    let id: String
-    let payrollRunId: String
-    let employeeUserId: String
-    let employeeName: String
-    let amount: Double
-    let transactionId: String
-    let createdAt: String
-}
-// PayrollService.runPayroll's own response returns a lighter line-item shape than the
-// full Payslip entity (no id/payrollRunId/employeeUserId/createdAt).
-struct RunPayslipDto: Decodable, Identifiable { let employeeName: String; let amount: Double; let transactionId: String; var id: String { transactionId } }
-struct PayrollRunResponse: Decodable {
-    let success: Bool
-    let payrollRunId: String
-    let totalAmount: Double
-    let employeeCount: Int
-    let completedAt: String
-    let payslips: [RunPayslipDto]
-}
-struct PayrollRunDto: Decodable, Identifiable {
-    let id: String
-    let merchantId: String
-    let ledgerTransactionId: String
-    let totalAmount: Double
-    let employeeCount: Int
-    let createdAt: String
-}
-struct PayrollHistoryResponse: Decodable { let success: Bool; let runs: [PayrollRunDto] }
-struct PayslipsResponse: Decodable { let success: Bool; let payslips: [PayslipDto] }
+// Real B2B payroll DTOs + methods moved to NetworkClient+Payroll.swift, 2026-08-30
+// (see that file's own doc comment) -- same "extract instead of growing a baselined
+// file" split as NetworkClient+VisitorAnalytics.swift already established.
 
 // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing (item 144)
 // -- see MerchantBillingController.kt's own doc comment. merchant-mfe already has this;
@@ -646,20 +609,11 @@ final class MerchantNetworkClient {
         try await post("api/v1/merchant/coupons/\(couponId)/deactivate", body: EmptyBody())
     }
 
-    // Real B2B payroll -- see PayrollController.kt's own doc comment. merchant-mfe/
-    // Android already have this; this is the first iOS client.
-    func addPayrollEmployee(_ request: AddPayrollEmployeeRequest) async throws -> PayrollEmployeeResponse {
-        try await post("api/v1/merchant/payroll/employees", body: request)
-    }
-    func getPayrollRoster() async throws -> PayrollRosterResponse { try await get("api/v1/merchant/payroll/employees") }
-    func removePayrollEmployee(_ employeeId: String) async throws -> PayrollEmployeeResponse {
-        try await delete("api/v1/merchant/payroll/employees/\(employeeId)")
-    }
-    func runPayroll() async throws -> PayrollRunResponse {
-        try await postWithHeader("api/v1/merchant/payroll/run", body: EmptyBody(), header: ("Idempotency-Key", UUID().uuidString))
-    }
-    func getPayrollHistory() async throws -> PayrollHistoryResponse { try await get("api/v1/merchant/payroll/runs") }
-    func getPayslips(_ runId: String) async throws -> PayslipsResponse { try await get("api/v1/merchant/payroll/runs/\(runId)/payslips") }
+    // Real B2B payroll methods moved to NetworkClient+Payroll.swift, 2026-08-30 -- see
+    // that file's own doc comment. postWithHeader/delete widened from private to
+    // internal (zero line-count change here) so that extension can reuse them,
+    // matching NetworkClient+VisitorAnalytics.swift's own established precedent for
+    // `get`/`post`.
 
     // Real recurring merchant billing (item 144) -- see MerchantBillingController.kt's
     // own doc comment. merchant-mfe already has this; this is the first iOS client.
@@ -757,17 +711,17 @@ final class MerchantNetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
-    private func post<Body: Encodable, Response: Decodable>(_ path: String, body: Body, authenticated: Bool = true) async throws -> Response {
+    func post<Body: Encodable, Response: Decodable>(_ path: String, body: Body, authenticated: Bool = true) async throws -> Response {
         let data = try await sendRequest(method: "POST", path: path, body: body, authenticated: authenticated)
         return try decoder.decode(Response.self, from: data)
     }
 
-    private func postWithHeader<Body: Encodable, Response: Decodable>(_ path: String, body: Body, header: (String, String)) async throws -> Response {
+    func postWithHeader<Body: Encodable, Response: Decodable>(_ path: String, body: Body, header: (String, String)) async throws -> Response {
         let data = try await sendRequest(method: "POST", path: path, body: body, extraHeader: header)
         return try decoder.decode(Response.self, from: data)
     }
 
-    private func delete<Response: Decodable>(_ path: String) async throws -> Response {
+    func delete<Response: Decodable>(_ path: String) async throws -> Response {
         let data = try await sendRequest(method: "DELETE", path: path, body: EmptyBody())
         return try decoder.decode(Response.self, from: data)
     }
@@ -800,7 +754,7 @@ final class MerchantNetworkClient {
     }
 }
 
-private struct EmptyBody: Encodable {}
+struct EmptyBody: Encodable {}
 
 /// itunda's real custom URL scheme for a customer's own app to resolve into a real
 /// POST /api/v1/merchant/collect/{intentId} call -- the same client-side encoding
