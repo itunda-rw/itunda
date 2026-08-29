@@ -35,6 +35,7 @@ import rw.itunda.agent.network.CashOutRequest
 import rw.itunda.agent.network.NetworkClient
 import rw.itunda.agent.network.TillCountRequest
 import rw.itunda.agent.network.TillDto
+import rw.itunda.agent.network.apiErrorCode
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.theme.Ids
@@ -177,6 +178,21 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
                         TransactionMode.COUNT_TILL -> "Till count submitted for supervisor review."
                     }
                     account = ""; amount = ""; receipt = ""; code = ""; payoutChecked = false; onCompleted()
+                } catch (e: retrofit2.HttpException) {
+                    // Real gap found live (Toss-style error-handling audit, 2026-08-30):
+                    // a duplicate receipt means an EARLIER attempt already succeeded and
+                    // moved real money -- "do not give cash" is actively backwards advice
+                    // for this specific case, unlike a genuine validation/network failure
+                    // where withholding cash is correct.
+                    message = when (apiErrorCode(e)) {
+                        "CASH_RECEIPT_ALREADY_USED" -> when (mode) {
+                            TransactionMode.CASH_IN -> "This receipt was already processed -- the customer's balance was already updated."
+                            TransactionMode.CASH_OUT -> "This receipt was already processed -- the cash-out already went through. If you haven't handed over the cash yet, you may do so now."
+                            TransactionMode.COUNT_TILL -> "This receipt was already processed."
+                        }
+                        "TILL_COUNT_ALREADY_SUBMITTED" -> "A till count has already been submitted for today."
+                        else -> "Transaction was not completed. Check the details; do not give cash until confirmation succeeds."
+                    }
                 } catch (_: Exception) { message = "Transaction was not completed. Check the details; do not give cash until confirmation succeeds." }
                 finally { busy = false }
             }

@@ -63,7 +63,17 @@ struct SuccessResponse: Decodable { let success: Bool }
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
+    // Real gap found live (Toss-style error-handling audit, 2026-08-30): a duplicate
+    // receipt means an EARLIER attempt already succeeded and moved real money -- this
+    // app's own blanket "do not give cash until confirmation succeeds" is actively
+    // backwards advice for that specific case. `httpError` alone can't distinguish it
+    // from AgentSuspendedException/idempotency conflicts, which also map to 409 --
+    // same real-code-needed gap this codebase has hit before (see
+    // NetworkClient+Calling.swift's own httpErrorWithMessage precedent elsewhere).
+    case httpErrorWithCode(statusCode: Int, code: String?)
 }
+
+private struct AgentApiErrorBody: Decodable { let code: String?; let message: String? }
 
 private struct EmptyBody: Encodable {}
 
@@ -150,7 +160,10 @@ final class AgentNetworkClient {
         }
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let code = try? decoder.decode(AgentApiErrorBody.self, from: data).code
+            throw NetworkError.httpErrorWithCode(statusCode: httpResponse.statusCode, code: code)
+        }
         return data
     }
 }

@@ -85,3 +85,17 @@ fun apiErrorMessage(e: retrofit2.HttpException): String? = try {
 } catch (_: Exception) {
     null
 }
+
+// Real gap found live (Toss-style error-handling audit, 2026-08-30): this app's own
+// blanket "Transaction was not completed... do not give cash until confirmation
+// succeeds" is actively WRONG advice specifically when the real cause is
+// CASH_RECEIPT_ALREADY_USED/TILL_COUNT_ALREADY_SUBMITTED -- a receipt already being
+// used means an earlier attempt (this device's own retry after a dropped response,
+// or a genuine double-tap) already succeeded and moved real money; telling the
+// operator to withhold cash on a cash-out that already went through is backwards.
+fun apiErrorCode(e: retrofit2.HttpException): String? = try {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString
+} catch (_: Exception) {
+    null
+}

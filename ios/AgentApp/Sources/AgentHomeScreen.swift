@@ -282,6 +282,21 @@ private struct CashOperationScreen: View {
             }()
             account = ""; amount = ""; receipt = ""; code = ""; payoutChecked = false
             onCompleted()
+        } catch NetworkError.httpErrorWithCode(_, let errorCode) {
+            // Real gap found live (Toss-style error-handling audit, 2026-08-30): see
+            // NetworkError.httpErrorWithCode's own doc comment.
+            switch errorCode {
+            case "CASH_RECEIPT_ALREADY_USED":
+                switch mode {
+                case .cashIn: message = "This receipt was already processed -- the customer's balance was already updated."
+                case .cashOut: message = "This receipt was already processed -- the cash-out already went through. If you haven't handed over the cash yet, you may do so now."
+                case .countTill: message = "This receipt was already processed."
+                }
+            case "TILL_COUNT_ALREADY_SUBMITTED":
+                message = "A till count has already been submitted for today."
+            default:
+                message = "Transaction was not completed. Check the details; do not give cash until confirmation succeeds."
+            }
         } catch {
             message = "Transaction was not completed. Check the details; do not give cash until confirmation succeeds."
         }
