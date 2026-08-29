@@ -7920,6 +7920,12 @@ function GiftVoucherBubble({
   voucher: GiftVoucher; isMine: boolean; onExtend: (voucherId: string) => void;
 }) {
   const [extending, setExtending] = useState(false);
+  // Real gap found live (Toss-style error-handling audit, 2026-08-30): this had NO
+  // catch block at all -- a real 409 GIFT_VOUCHER_ALREADY_EXTENDED (the other real
+  // party to the transaction extended it first, a genuine race given either side can
+  // trigger this per the backend's own doc comment) was an unhandled promise
+  // rejection, reading to the customer as the page silently breaking.
+  const [extendError, setExtendError] = useState<string | null>(null);
   const statusLabel: Record<GiftVoucherStatus, string> = {
     ACTIVE: 'Present this at the store to redeem',
     REDEEMED: 'Redeemed',
@@ -7942,6 +7948,9 @@ function GiftVoucherBubble({
       {voucher.status === 'ACTIVE' && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.7 }}>Expires {new Date(voucher.expiresAt).toLocaleDateString()}</p>
       )}
+      {extendError && (
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: isMine ? 'var(--itunda-white)' : 'var(--itunda-red)', opacity: isMine ? 0.9 : 1 }} role="alert">{extendError}</p>
+      )}
       {canExtend && (
         <button
           className="itunda-btn itunda-btn-secondary"
@@ -7949,9 +7958,20 @@ function GiftVoucherBubble({
           disabled={extending}
           onClick={async () => {
             setExtending(true);
+            setExtendError(null);
             try {
               await extendGiftVoucherExpiry(voucher.id);
               onExtend(voucher.id);
+            } catch (err) {
+              if (err instanceof ApiError && err.code === 'GIFT_VOUCHER_ALREADY_EXTENDED') {
+                // The other real party to the transaction already extended it --
+                // resolve forward by refreshing to show the real, already-extended
+                // expiry, matching this codebase's own established pattern for an
+                // "already done" conflict that isn't really a failure.
+                onExtend(voucher.id);
+              } else {
+                setExtendError(err instanceof ApiError ? err.message : 'Could not extend this voucher.');
+              }
             } finally {
               setExtending(false);
             }
