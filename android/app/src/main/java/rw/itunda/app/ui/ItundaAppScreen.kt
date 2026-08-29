@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -4424,6 +4425,21 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
     // onVerified()/red-text-only this had before.
     val checkScale = remember { Animatable(0f) }
     val shakeOffset = remember { Animatable(0f) }
+    // Real Toss "Verification Code Shimmer Animation" equivalent (web's own
+    // VerificationRow got this same session, commit 385c96e1 -- Android/iOS missed
+    // it, closing the parity gap now): a subtle pulse on the input while the
+    // submitted code is being verified.
+    val inputAlpha = remember { Animatable(1f) }
+    LaunchedEffect(busy) {
+        if (busy) {
+            while (true) {
+                inputAlpha.animateTo(0.55f, animationSpec = tween(450, easing = LinearEasing))
+                inputAlpha.animateTo(1f, animationSpec = tween(450, easing = LinearEasing))
+            }
+        } else {
+            inputAlpha.animateTo(1f, animationSpec = tween(150))
+        }
+    }
 
     if (kind == "email" && !hasEmail) {
         Text("No email address on file to verify.", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -4516,7 +4532,7 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 // recommendation #2: IdsTextField now supports autoFocus (rule #4, same
                 // research as this screen's own auto-confirm fix), matching web's already-
                 // shipped autoFocus on this exact field.
-                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, autoFocus = true, modifier = Modifier.weight(1f))
+                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, autoFocus = true, modifier = Modifier.weight(1f).alpha(inputAlpha.value))
                 // Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11 --
                 // same web fix as BankDashboard.tsx's VerificationRow, commit 58d58259): a
                 // bare "Confirm" doesn't state the outcome, per Toss's own dark-pattern-
