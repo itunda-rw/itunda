@@ -357,7 +357,9 @@ struct ContentView: View {
                             onSend: { showTransferFlow = true },
                             onOpenTransactionHistory: { showTransactionHistory = true },
                             onOpenNotifications: { showBankSettings = true },
-                            onOpenProfile: { showBankSettings = true }
+                            onOpenProfile: { showBankSettings = true },
+                            payBalanceText: bankViewModel.payBalanceText,
+                            onOpenPay: { showBank = false; selectedTab = 1 }
                         )
                             .toolbar {
                                 ToolbarItem(placement: .navigationBarLeading) {

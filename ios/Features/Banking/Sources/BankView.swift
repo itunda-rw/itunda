@@ -332,6 +332,8 @@ public struct BankView: View {
     private let onOpenTransactionHistory: () -> Void
     private let onOpenNotifications: () -> Void
     private let onOpenProfile: () -> Void
+    private let payBalanceText: String?
+    private let onOpenPay: () -> Void
 
     /// Real data (2026-07-11) -- balanceText/savingsRows previously didn't exist;
     /// every number here was hardcoded ("RWF 1,284,350" etc). Defaults preserve the
@@ -351,7 +353,11 @@ public struct BankView: View {
         onSend: @escaping () -> Void = {},
         onOpenTransactionHistory: @escaping () -> Void = {},
         onOpenNotifications: @escaping () -> Void = {},
-        onOpenProfile: @escaping () -> Void = {}
+        onOpenProfile: @escaping () -> Void = {},
+        // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+        // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix).
+        payBalanceText: String? = nil,
+        onOpenPay: @escaping () -> Void = {}
     ) {
         self.balanceText = balanceText
         self.accountNumber = accountNumber
@@ -363,6 +369,8 @@ public struct BankView: View {
         self.onOpenTransactionHistory = onOpenTransactionHistory
         self.onOpenNotifications = onOpenNotifications
         self.onOpenProfile = onOpenProfile
+        self.payBalanceText = payBalanceText
+        self.onOpenPay = onOpenPay
     }
 
     public var body: some View {
@@ -378,7 +386,7 @@ public struct BankView: View {
                 // its own separate screen, reached by a tap on the balance, not folded
                 // into this catalog/home screen. AccountSummaryCard is now that tap
                 // target; AccountLedgerDetailView (below) is the real drill-in.
-                AccountSummaryCard(balanceText: balanceText, accountNumber: accountNumber, onSend: onSend, onOpenDetail: { showAccountDetail = true }, locale: locale)
+                AccountSummaryCard(balanceText: balanceText, accountNumber: accountNumber, onSend: onSend, onOpenDetail: { showAccountDetail = true }, locale: locale, payBalanceText: payBalanceText, onOpenPay: onOpenPay)
                 QuickActionsRow(locale: locale)
                 if !coopRows.isEmpty {
                     HomeSectionCard(

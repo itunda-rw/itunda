@@ -97,6 +97,11 @@ struct AccountSummaryCard: View {
     // correction that moved the ledger off this home screen.
     let onOpenDetail: () -> Void
     let locale: BankingLocale
+    // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+    // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix).
+    // nil when the account genuinely doesn't exist yet, not just still loading.
+    let payBalanceText: String?
+    let onOpenPay: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: IDS.Layout.cardGap) {
@@ -131,6 +136,28 @@ struct AccountSummaryCard: View {
             HStack(spacing: IDS.Layout.inlineGap) {
                 BalanceTile(title: bt("mainAccount", locale: locale), amount: balanceText)
                 BalanceTile(title: bt("spendToday", locale: locale), amount: "RWF 18,200")
+            }
+
+            // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+            // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix):
+            // a small secondary "itunda Pay" line, tappable straight to the Pay tab.
+            if let payBalanceText {
+                Button(action: onOpenPay) {
+                    HStack {
+                        Text("itunda Pay")
+                            .font(IDS.Typography.caption)
+                            .foregroundColor(IDS.Colors.textSecondary)
+                        Spacer()
+                        Text(payBalanceText)
+                            .font(IDS.Typography.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(IDS.Colors.textSecondary)
+                        Image(systemName: "chevron.right")
+                            .font(IDS.scaledFont(size: 10, weight: .regular, relativeTo: .caption2))
+                            .foregroundColor(IDS.Colors.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
             }
 
             Button(action: onSend) {

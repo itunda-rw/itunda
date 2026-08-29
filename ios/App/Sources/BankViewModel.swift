@@ -29,6 +29,10 @@ final class BankViewModel: ObservableObject {
     @Published private(set) var interestJar: InterestJar?
     @Published private(set) var transactions: [TransactionDto] = []
     @Published private(set) var currentUserId: String?
+    // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+    // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix):
+    // nil when the account genuinely doesn't exist yet, not just still loading.
+    @Published private(set) var payBalanceText: String?
 
     // Real offline queue + connectivity signal (2026-07-13) -- see
     // docs/TOSS_PARITY_MATRIX.md's Offline row. Started once, from init(), matching
@@ -130,6 +134,9 @@ final class BankViewModel: ObservableObject {
                 availableBalance = account.availableBalance
                 balance = account.balance
                 currentUserId = account.userId
+            }
+            if accountsRes.success, let payAccount = accountsRes.accounts.first(where: { $0.type == "PAY" }) {
+                payBalanceText = formatAmount(payAccount.balance, currency: payAccount.currency)
             }
 
             let transactionsRes = try await NetworkClient.shared.getTransactionHistory()
