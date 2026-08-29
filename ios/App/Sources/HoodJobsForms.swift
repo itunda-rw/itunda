@@ -399,6 +399,8 @@ struct JobPostCard: View {
             _ = try await NetworkClient.shared.applyToJob(post.id, message: applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines))
             applying = false
             applicationSubmitted = true
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
