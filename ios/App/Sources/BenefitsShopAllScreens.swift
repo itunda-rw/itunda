@@ -1102,13 +1102,30 @@ private struct VerificationRow: View {
     @State private var busy = false
     @State private var error: String?
     @FocusState private var codeFieldFocused: Bool
+    // Real Toss-style "OTP Successful Animation" + wrong-code shake (60fps.design's
+    // own real catalog of Toss's named interactions, 2026-08-29) -- reuses
+    // IdsCelebrationScreen's exact spring/haptic checkmark language and
+    // AccountPinPad's exact shake sequence, matching Android's identical fix same
+    // session.
+    @State private var verified = false
+    @State private var checkScale: CGFloat = 0.3
+    @State private var shakeOffset: CGFloat = 0
 
     var body: some View {
         if kind == "email" && !hasEmail {
             Text("No email address on file to verify.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                if !sent {
+                if verified {
+                    HStack(spacing: 8) {
+                        ZStack {
+                            Circle().fill(IDS.Colors.success).frame(width: 22, height: 22)
+                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
+                        }
+                        .scaleEffect(checkScale)
+                        Text(kind == "email" ? "Email verified" : "Phone number verified").font(.caption).bold().foregroundColor(IDS.Colors.success)
+                    }
+                } else if !sent {
                     HStack {
                         Text(kind == "email" ? "Email not verified" : "Phone number not verified").font(.caption).foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
@@ -1159,6 +1176,7 @@ private struct VerificationRow: View {
                         }
                         .disabled(busy || code.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                    .offset(x: shakeOffset)
                 }
                 if let error {
                     Text(error).font(.caption).foregroundColor(.red)
@@ -1196,11 +1214,27 @@ private struct VerificationRow: View {
             } else {
                 _ = try await NetworkClient.shared.confirmPhoneVerification(code: code.trimmingCharacters(in: .whitespaces))
             }
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            verified = true
+            withAnimation(IDS.Motion.springMedium) { checkScale = 1 }
+            try? await Task.sleep(nanoseconds: 500_000_000)
             onVerified()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
+            shake()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+            shake()
+        }
+    }
+
+    private func shake() {
+        withAnimation(.linear(duration: 0.06)) { shakeOffset = 16 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            withAnimation(.linear(duration: 0.06)) { shakeOffset = -16 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                withAnimation(.linear(duration: 0.06)) { shakeOffset = 0 }
+            }
         }
     }
 }

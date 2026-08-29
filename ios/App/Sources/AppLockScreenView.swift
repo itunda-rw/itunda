@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import LocalAuthentication
 import CoreDesignSystem
 import CoreNetwork
@@ -22,15 +23,28 @@ struct AppLockScreenView: View {
 
     @State private var error: String?
     @State private var checking = false
+    // Real Toss-style success moment (60fps.design's own real catalog names this
+    // "3D Face ID Morph Animation" for Toss's biometric-auth confirmation -- itunda
+    // has no 3D rendering pipeline anywhere, so this is the honest 2D equivalent
+    // with this project's own real spring vocabulary: the Face ID icon morphs into
+    // a checkmark and its circle flips to itunda-green, matching Android's identical
+    // AppLockScreen.kt fix same session). Before this, a successful scan navigated
+    // away in the exact same instant with literally zero acknowledgment -- not even
+    // a haptic, unlike Android's own (weaker) prior state.
+    @State private var unlocked = false
+    @State private var iconScale: CGFloat = 1
 
     var body: some View {
         ZStack {
             IDS.Colors.backgroundPrimary.ignoresSafeArea()
             VStack(spacing: 16) {
                 ZStack {
-                    Circle().fill(Color(.tertiarySystemBackground)).frame(width: 76, height: 76)
-                    Image(systemName: "faceid").font(IDS.scaledFont(size: 32, weight: .regular, relativeTo: .title1)).foregroundColor(IDS.Colors.brand)
+                    Circle().fill(unlocked ? IDS.Colors.success : Color(.tertiarySystemBackground)).frame(width: 76, height: 76)
+                    Image(systemName: unlocked ? "checkmark" : "faceid")
+                        .font(IDS.scaledFont(size: 32, weight: .regular, relativeTo: .title1))
+                        .foregroundColor(unlocked ? .white : IDS.Colors.brand)
                 }
+                .scaleEffect(iconScale)
                 Text("Itunda is locked").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                 if let error {
                     Text(error).font(.subheadline).foregroundColor(.red)
@@ -61,7 +75,10 @@ struct AppLockScreenView: View {
             DispatchQueue.main.async {
                 checking = false
                 if success {
-                    onUnlocked()
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    unlocked = true
+                    withAnimation(IDS.Motion.springMedium) { iconScale = 1.25 }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { onUnlocked() }
                 } else {
                     error = evalError?.localizedDescription ?? "Could not verify your identity."
                 }

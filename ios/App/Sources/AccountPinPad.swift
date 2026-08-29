@@ -23,6 +23,11 @@ struct AccountPinPad: View {
 
     @State private var pin = ""
     @State private var shakeOffset: CGFloat = 0
+    // Real Toss-style "confirming" pulse (60fps.design's own real catalog of Toss's
+    // named interactions, 2026-08-29) -- the dots had zero feedback the instant the
+    // 6th digit landed; matches Android's own identical AccountPinPad.kt fix same
+    // session.
+    @State private var dotsScale: CGFloat = 1
 
     private let pinLength = 6
 
@@ -52,6 +57,7 @@ struct AccountPinPad: View {
                     }
                 }
                 .offset(x: shakeOffset)
+                .scaleEffect(dotsScale)
             }
 
             Spacer(minLength: 32)
@@ -78,7 +84,13 @@ struct AccountPinPad: View {
     private func onDigit(_ digit: String) {
         guard !busy, pin.count < pinLength else { return }
         pin += digit
-        if pin.count == pinLength { onComplete(pin) }
+        if pin.count == pinLength {
+            withAnimation(.linear(duration: 0.12)) { dotsScale = 1.15 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.linear(duration: 0.12)) { dotsScale = 1 }
+            }
+            onComplete(pin)
+        }
     }
 
     private var keypad: some View {
