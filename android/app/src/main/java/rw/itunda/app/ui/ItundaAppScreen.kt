@@ -1348,6 +1348,7 @@ fun ItundaAppScreen(
                 autoTransferCount = autoTransferCount,
                 onOpenAutoTransfers = { showAutoTransfers = true },
                 onOpenCreditScore = { showCreditScore = true },
+                onOpenPay = { showBank = false; selectedTab = ItundaTab.Pay },
                 // Real ordering fix: showSpending is checked AFTER showBank in this
                 // same sequential if-chain below (unlike showCreditScore, which is
                 // checked before it) -- without clearing showBank here first, tapping
@@ -2148,6 +2149,10 @@ private fun BankHubScreen(
     // full story: this is Bank's real home for the account-account ledger view, not
     // Home's account switcher.
     onOpenAccountDetail: () -> Unit = {},
+    // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+    // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix):
+    // jumps to the real Pay tab from the new secondary "itunda Pay" line below.
+    onOpenPay: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val primaryAccount by viewModel.primaryAccount.collectAsState()
@@ -2167,6 +2172,17 @@ private fun BankHubScreen(
             depositProtection = rw.itunda.core.network.NetworkClient.apiService.getDepositProtectionStatus().status
         } catch (_: Exception) {
             // Non-critical -- the disclosure copy below still renders without it.
+        }
+    }
+    // Dual-balance UI (2026-08-29) -- same "each screen fetches its own minimal real
+    // data" precedent as depositProtection/creditScore above, not a MainViewModel
+    // field, matching bank-mfe's identical AccountSummaryRow.tsx fix.
+    var payAccount by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            payAccount = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.firstOrNull { it.type == "PAY" }
+        } catch (_: Exception) {
+            // Non-critical -- the secondary line below just won't render without it.
         }
     }
     // Real architectural fix (2026-08-13, direct user directive): credit score and
@@ -2218,6 +2234,31 @@ private fun BankHubScreen(
                             )
                         }
                         Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                    }
+                }
+            }
+            // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
+            // last open item): a small flat secondary "itunda Pay" line, matching
+            // bank-mfe's identical AccountSummaryRow.tsx fix -- not a headline balance
+            // of its own (Android's real Pay tab deliberately has no headline balance
+            // card, per PayTab's own sourced Toss Pay reference doc comment; this is
+            // purely additive on the Bank side, giving visibility without reintroducing
+            // that already-removed pattern).
+            if (payAccount != null) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenPay).padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.pay_title), fontSize = 14.sp, color = Ids.colors.textSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "%,.0f ${payAccount!!.currency}".format(payAccount!!.balance),
+                                fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textSecondary,
+                            )
+                            Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(14.dp))
+                        }
                     }
                 }
             }

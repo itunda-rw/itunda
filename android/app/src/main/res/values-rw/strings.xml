@@ -222,6 +222,7 @@
     <string name="bank_save_grow">Bika hanyuma witezimbere</string>
     <string name="bank_status_disclosure">itunda si banki yemewe, kandi ibi si ubwishingizi bw\'ubwizigame nyabwo bwa Leta. \"itunda Bank\" ni izina ry\'ibicuruzwa bya itunda ku bijyanye no kubika amafaranga, SACCO/Ikimina, inguzanyo, n\'ishoramari -- ntabwo ari urwego rw\'ubucuruzi bw\'ibanki rwihariye rwemewe.</string>
     <string name="bank_title">itunda Bank</string>
+    <string name="pay_title">itunda Pay</string>
     <string name="bank_total_saved">Igiteranyo cy\'ubwizigame</string>
     <string name="bank_account_account">Account ya itunda</string>
     <string name="home_account_switcher">Hindura konti</string>
