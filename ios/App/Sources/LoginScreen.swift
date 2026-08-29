@@ -222,15 +222,28 @@ struct LoginScreen: View {
                             // nameContext/phoneContext. Toss's own real finding:
                             // explaining WHY before asking for personal info
                             // measurably reduces signup drop-off.
-                            Text(t("nameContext"))
-                                .font(IDS.Typography.caption)
-                                .foregroundColor(IDS.Colors.textSecondary)
-                            IdsTextField(t("firstName"), text: $firstName, autoFocus: true)
-                            IdsTextField(t("lastName"), text: $lastName)
-                            IdsTextField(t("referralCode"), text: $referralCode)
-                            Text(t("phoneContext"))
-                                .font(IDS.Typography.caption)
-                                .foregroundColor(IDS.Colors.textSecondary)
+                            //
+                            // Real Toss-sourced transition (2026-08-29, matching
+                            // Android's own already-real LoginScreen.kt
+                            // AnimatedContent -- "a subtle fade/rise, not a
+                            // horizontal slide, since this isn't a page
+                            // navigation") -- this whole block used to
+                            // appear/disappear in the same frame as the
+                            // login/register toggle tap, iOS's only real gap
+                            // versus Android's identical flow (found via an
+                            // audit fork this session).
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(t("nameContext"))
+                                    .font(IDS.Typography.caption)
+                                    .foregroundColor(IDS.Colors.textSecondary)
+                                IdsTextField(t("firstName"), text: $firstName, autoFocus: true)
+                                IdsTextField(t("lastName"), text: $lastName)
+                                IdsTextField(t("referralCode"), text: $referralCode)
+                                Text(t("phoneContext"))
+                                    .font(IDS.Typography.caption)
+                                    .foregroundColor(IDS.Colors.textSecondary)
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
                         IdsTextField(t("phoneNumber"), text: $phoneNumber, keyboardType: .phonePad, autoFocus: !isRegisterMode)
@@ -242,32 +255,35 @@ struct LoginScreen: View {
                         // Log in/Create account button below is gone entirely --
                         // register does a real create-then-confirm pair first.
                         if isRegisterMode {
-                            if pinFirstEntry == nil {
-                                AccountPinPad(
-                                    headline: t("pinCreateHeadline"),
-                                    subtitle: t("pinCreateSubtitle"),
-                                    errorMessage: errorMessage,
-                                    onComplete: { entered in
-                                        errorMessage = nil
-                                        pinFirstEntry = entered
-                                    }
-                                )
-                            } else {
-                                AccountPinPad(
-                                    headline: t("pinConfirmHeadline"),
-                                    errorMessage: errorMessage,
-                                    busy: isSubmitting,
-                                    onComplete: { entered in
-                                        if entered == pinFirstEntry {
-                                            password = entered
-                                            submit()
-                                        } else {
-                                            pinFirstEntry = nil
-                                            errorMessage = t("pinMismatch")
+                            Group {
+                                if pinFirstEntry == nil {
+                                    AccountPinPad(
+                                        headline: t("pinCreateHeadline"),
+                                        subtitle: t("pinCreateSubtitle"),
+                                        errorMessage: errorMessage,
+                                        onComplete: { entered in
+                                            errorMessage = nil
+                                            withAnimation(.easeInOut(duration: 0.2)) { pinFirstEntry = entered }
                                         }
-                                    }
-                                )
+                                    )
+                                } else {
+                                    AccountPinPad(
+                                        headline: t("pinConfirmHeadline"),
+                                        errorMessage: errorMessage,
+                                        busy: isSubmitting,
+                                        onComplete: { entered in
+                                            if entered == pinFirstEntry {
+                                                password = entered
+                                                submit()
+                                            } else {
+                                                withAnimation(.easeInOut(duration: 0.2)) { pinFirstEntry = nil }
+                                                errorMessage = t("pinMismatch")
+                                            }
+                                        }
+                                    )
+                                }
                             }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                         } else {
                             AccountPinPad(
                                 headline: t("pinLoginHeadline"),
@@ -286,7 +302,11 @@ struct LoginScreen: View {
 
                 Group {
                     if !attemptingPasswordless {
-                        Button(action: { isRegisterMode.toggle(); errorMessage = nil; pinFirstEntry = nil }) {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) { isRegisterMode.toggle() }
+                            errorMessage = nil
+                            pinFirstEntry = nil
+                        }) {
                             Text(isRegisterMode ? t("switchToLogin") : t("switchToRegister"))
                                 .font(IDS.Typography.bodyMedium)
                                 .foregroundColor(IDS.Colors.textBrand)

@@ -205,7 +205,15 @@ struct TalkScreen: View {
     private func loadConversations() async {
         do {
             let res = try await NetworkClient.shared.getConversations()
-            conversations = res.conversations
+            // Real Toss-sourced "layering illusion" reorder animation (2026-08-29,
+            // toss.tech/article/interaction's own real "Account Organization
+            // Animation" example -- reordering a list should animate the move, not
+            // jump). Pinning a conversation to the top used to snap the whole list
+            // to its new order on the next reload with zero motion -- web/Android's
+            // identical gap closed the same session. SwiftUI's List/ForEach diffing
+            // animates row moves automatically once the state change itself is
+            // wrapped in withAnimation.
+            withAnimation(.easeInOut(duration: 0.25)) { conversations = res.conversations }
             conversationsError = nil
         } catch {
             conversationsError = "Couldn't reach itunda. Check your connection and try again."
