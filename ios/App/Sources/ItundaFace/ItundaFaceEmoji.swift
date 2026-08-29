@@ -35,8 +35,9 @@ private let travelKeys: [String] = ["🚗", "✈️", "🏠", "🚀", "🚲", "�
 private let activitiesKeys: [String] = ["⚽", "🏀", "🎮", "🎨", "🎵", "🎉", "🏆", "🎯"]
 private let objectsKeys: [String] = ["💳", "📱", "⌚", "🔑", "💡", "🎧", "📎", "🖊️"]
 private let symbolsKeys: [String] = ["✅", "❌", "❗", "❓", "💯", "⚠️", "🚫", "♻️"]
+private let flagsKeys: [String] = ["🇷🇼", "🇰🇪", "🇺🇬", "🇹🇿", "🇧🇮", "🇨🇩", "🇺🇸", "🇬🇧", "🇪🇺"]
 
-let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys + symbolsKeys
+let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys + symbolsKeys + flagsKeys
 let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Smileys & Emotion", smileysKeys),
     ("People & Body", peopleKeys),
@@ -46,6 +47,7 @@ let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Activities", activitiesKeys),
     ("Objects", objectsKeys),
     ("Symbols", symbolsKeys),
+    ("Flags", flagsKeys),
 ]
 
 @ViewBuilder
@@ -120,6 +122,15 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "⚠️": SymbolWarning(size: size)
     case "🚫": SymbolProhibited(size: size)
     case "♻️": SymbolRecycling(size: size)
+    case "🇷🇼": FlagRwanda(size: size)
+    case "🇰🇪": FlagKenya(size: size)
+    case "🇺🇬": FlagUganda(size: size)
+    case "🇹🇿": FlagTanzania(size: size)
+    case "🇧🇮": FlagBurundi(size: size)
+    case "🇨🇩": FlagCongo(size: size)
+    case "🇺🇸": FlagUnitedStates(size: size)
+    case "🇬🇧": FlagUnitedKingdom(size: size)
+    case "🇪🇺": FlagEuropeanUnion(size: size)
     default: EmptyView()
     }
 }
