@@ -9923,7 +9923,14 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {visibleConversations.map((c) => (
-            <div key={c.conversationId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 0' }}>
+            // Real Toss-sourced "layering illusion" reorder animation (2026-08-29,
+            // toss.tech/article/interaction's own real "Account Organization
+            // Animation" example -- reordering a list should animate the move, not
+            // jump). Pinning/unpinning a conversation used to snap it to its new
+            // position on the next render with zero motion; framer-motion's `layout`
+            // prop auto-animates each row's position change via FLIP, no other logic
+            // change needed since `key` was already stable.
+            <motion.div layout key={c.conversationId} transition={{ type: 'spring', ...itundaSpring.medium }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 0' }}>
               <button
                 onClick={() => setOpenConversationId(c.conversationId)}
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
@@ -9997,7 +10004,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
               >
                 {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
               </button>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
