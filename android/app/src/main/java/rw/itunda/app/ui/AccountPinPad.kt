@@ -65,6 +65,13 @@ fun AccountPinPad(
 ) {
     var pin by remember { mutableStateOf("") }
     val shakeOffset = remember { Animatable(0f) }
+    // Real Toss-style "confirming" pulse (60fps.design's own real catalog of Toss's
+    // named interactions, 2026-08-29) -- the dots had zero feedback the instant the
+    // 6th digit landed; this pulses them while the real network round trip below is
+    // in flight, resolving into either the existing shake (wrong PIN) or the caller
+    // simply navigating away (correct PIN).
+    val dotsScale = remember { Animatable(1f) }
+    var completedTick by remember { mutableStateOf(0) }
 
     // Real gap this closes vs. a purely local PIN check (PinScreen.kt's own
     // PinEntryScreen): submission here is a network round trip, so the pad can't know
@@ -79,11 +86,20 @@ fun AccountPinPad(
             pin = ""
         }
     }
+    LaunchedEffect(completedTick) {
+        if (completedTick > 0) {
+            dotsScale.animateTo(1.15f, animationSpec = tween(120))
+            dotsScale.animateTo(1f, animationSpec = tween(120))
+        }
+    }
 
     fun onDigit(digit: String) {
         if (busy || pin.length >= ACCOUNT_PIN_LENGTH) return
         pin += digit
-        if (pin.length == ACCOUNT_PIN_LENGTH) onComplete(pin)
+        if (pin.length == ACCOUNT_PIN_LENGTH) {
+            completedTick++
+            onComplete(pin)
+        }
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -100,7 +116,7 @@ fun AccountPinPad(
         if (busy) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Ids.colors.brand, strokeWidth = 3.dp)
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.offset(x = shakeOffset.value.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.offset(x = shakeOffset.value.dp).scale(dotsScale.value)) {
                 repeat(ACCOUNT_PIN_LENGTH) { index ->
                     Box(
                         modifier = Modifier

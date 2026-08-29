@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -4413,7 +4414,16 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
     var code by rememberSaveable { mutableStateOf("") }
     var busy by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var verified by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
+    // Real Toss-style "OTP Successful Animation" + wrong-code shake (60fps.design's
+    // own real catalog of Toss's named interactions, 2026-08-29) -- reuses
+    // IdsCelebrationScreen's exact spring/haptic checkmark language and
+    // AccountPinPad's exact shake tween, rather than the instant, zero-feedback
+    // onVerified()/red-text-only this had before.
+    val checkScale = remember { Animatable(0f) }
+    val shakeOffset = remember { Animatable(0f) }
 
     if (kind == "email" && !hasEmail) {
         Text("No email address on file to verify.", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -4421,7 +4431,15 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
     }
 
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
-        if (!sent) {
+        if (verified) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier.size(22.dp).scale(checkScale.value).clip(CircleShape).background(Ids.colors.success),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp)) }
+                Text(if (kind == "email") "Email verified" else "Phone number verified", color = Ids.colors.success, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        } else if (!sent) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(if (kind == "email") "Email not verified" else "Phone number not verified", color = Ids.colors.textPrimary, fontSize = 13.sp)
                 Box(
@@ -4466,11 +4484,21 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                         } else {
                             rw.itunda.core.network.NetworkClient.authApi.confirmPhoneVerification(rw.itunda.core.network.ConfirmPhoneVerificationRequest(code.trim()))
                         }
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        verified = true
+                        checkScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+                        kotlinx.coroutines.delay(500)
                         onVerified()
                     } catch (e: retrofit2.HttpException) {
                         error = rw.itunda.core.network.superAppErrorMessage(e)
+                        shakeOffset.animateTo(16f, animationSpec = tween(60))
+                        shakeOffset.animateTo(-16f, animationSpec = tween(60))
+                        shakeOffset.animateTo(0f, animationSpec = tween(60))
                     } catch (e: java.io.IOException) {
                         error = "Couldn't reach itunda. Check your connection and try again."
+                        shakeOffset.animateTo(16f, animationSpec = tween(60))
+                        shakeOffset.animateTo(-16f, animationSpec = tween(60))
+                        shakeOffset.animateTo(0f, animationSpec = tween(60))
                     } finally {
                         busy = false
                     }
@@ -4479,7 +4507,11 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
             LaunchedEffect(code) {
                 if (code.trim().length == 6 && code.trim().all { it.isDigit() } && !busy) confirm()
             }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth().offset(x = shakeOffset.value.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 // Real "Minimum Input" simplicity fix, closing docs/DESIGN_REFERENCES.md §11
                 // recommendation #2: IdsTextField now supports autoFocus (rule #4, same
                 // research as this screen's own auto-confirm fix), matching web's already-
