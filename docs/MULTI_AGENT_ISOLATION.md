@@ -20,6 +20,14 @@ release process) that let the whole company move as one.
 This repo's own `android/settings.gradle.kts` already cites the same lineage —
 its Microfeatures module graph (`:core:*` / `:features:<name>:{api,impl,testing}`)
 is modeled on Toss's real published architecture (`toss.tech/article/slash23-iOS`).
+**Correction, 2026-08-29**: that source is Toss's real, named **iOS** "Microfeatures"
+architecture (Tuist + Stencil, 5-way Feature/Interface/Testing/Tests/Example split) —
+no primary Toss source describes an Android-specific equivalent, so Android's own
+module graph here is a cross-platform extrapolation of the iOS pattern, not a
+directly Toss-Android-sourced one (see `docs/TOSS_ARCHITECTURE_FACTS.md` §8). Worth
+noting: Toss's real iOS version also has a per-feature **Example** mini-app for a
+~5x-faster build/design-review loop — not yet confirmed present in itunda's own
+`ios/Features/<Name>` split.
 This doc extends that same silo boundary to the whole repo and to how agents work,
 not just how Android code is organized.
 

@@ -263,6 +263,71 @@ If itunda ever needs the real thing, Cluster API + a cloud-agnostic infrastructu
 (not necessarily CAPO/OpenStack specifically) is the correct pattern to converge on, matching
 what's actually sourced here rather than a guess.
 
+## 8. Gateway, resilience engineering, and paved-road tooling (found 2026-08-29)
+
+Source: [토스는 Gateway 이렇게 씁니다](https://toss.tech/article/22910), [은행 최초 코어뱅킹 MSA 전환기](https://toss.im/career/article/tossbank-system) / SLASH23 session A1-8, [20년 레거시를 넘어](https://toss.tech/article/payments-legacy-1), [토스페이먼츠의 Open API 생태계](https://toss.tech/article/payments-legacy-4), [서버 증설 없이 처리하는 대규모 트래픽](https://toss.tech/article/monitoring-traffic), [캐시 문제 해결 가이드](https://toss.tech/article/cache-traffic-tip), [Kafka 데이터센터 이중화 #1](https://toss.tech/article/kafka-distribution-1)/[#2](https://toss.tech/article/kafka-distribution-2)/[#3](https://toss.tech/article/33121), [유연하고 안전하게 배포 Pipeline 운영하기](https://toss.tech/article/slash23-devops), [토스의 속도와 품질, 상용 도구로 충분한가 — 토션](https://toss.tech/article/tossion), [레고처럼 조립하는 토스 앱](https://toss.tech/article/slash23-iOS), [200여개 서비스 모노레포의 파이프라인 최적화](https://toss.tech/article/monorepo-pipeline) (all primary toss.tech/toss.im).
+
+- **Gateway is a real shared cross-cutting-concern layer, not just a router.** Spring Cloud
+  Gateway on Reactor-Netty + Kotlin coroutines centralizes auth, request/response encryption,
+  anti-tampering signature checks, and **mTLS (X.509 SANs) between services**, plus a
+  **"Passport" token** that carries resolved user/device context downstream so services don't
+  each independently call a user-info API. Circuit breaking runs at **two layers**: Istio
+  (infra) and Resilience4j (app, per-route) — kept deliberately separate because Istio's
+  granularity alone was judged too coarse.
+- **Core-banking MSA extraction is phased by traffic percentage**, not a big-bang cutover
+  (internal → employees → % of users → 100%), and uses **Redis global locks + JPA `@Lock`
+  pessimistic row locks together** to prevent lost updates on concurrently-touched accounts,
+  with async/eventual-consistency accounting work split out through Kafka with a DLQ.
+- **Toss Payments' legacy modernization is "Two-Track"**: new cloud-native work never touches
+  the legacy system, legacy is hardened in place without downtime — explicitly not a rewrite.
+  Real scale reached: 150+ microservices, migrations validated via 1%-increment canary shifts
+  plus 450,000+ regression tests before cutover.
+- **Rate limiting is framed as "the last line of defense"** against traffic spikes/attacks, not
+  just throughput shaping; **traffic spikes are absorbed by Redis+Kafka write-buffering and
+  local-node caching of non-user-specific data (invalidated via Redis Pub/Sub) before adding
+  hardware** — a real incident (unplanned viral traffic on a live-shopping feature) was resolved
+  this way, plus consolidating 3 duplicate endpoints into 1 (cut peak traffic 50%).
+- **Cache-stampede protection**: jittered TTLs (randomized 0-10s spread), null-object caching
+  against cache-penetration, Redis Redlock for hot-key distributed locking, and an explicit
+  "essential vs. non-essential feature" split so a cache outage can't take down core paths.
+- **Deployment safety net**: Toss Bank's backend runs GoCD (not custom-built) with
+  Pipeline-as-Code across 400+ pipelines, and a CI check that re-renders every pipeline on
+  template change specifically to catch blast radius before merge — the CI-enforcement
+  equivalent of itunda's own `.dependency-cruiser.cjs`/Konsist/`ios-silo-boundary-check.py`
+  boundary checks, at a much larger scale.
+- **iOS "Microfeatures"** (the real Toss-published name) is Tuist + custom Stencil templates,
+  splitting each feature into 5: Feature (impl), **Interface** (the only cross-feature-importable
+  surface), Testing, Tests, and **Example** — a standalone per-feature mini-app that builds ~5x
+  faster than the full app, usable by design/PM for review without a full build. This is the
+  real source `android/settings.gradle.kts` and `docs/MULTI_AGENT_ISOLATION.md` already cite —
+  **correction**: it is an iOS-specific SLASH23 talk; no primary Toss source describes an
+  Android-specific equivalent module system, so itunda's own Android Microfeatures graph is a
+  cross-platform extrapolation of the iOS pattern, not a directly Toss-Android-sourced one. Also
+  not yet confirmed present in itunda's own iOS `Features/<Name>` split: the **Example**
+  sub-app pattern specifically (fast per-feature build/design-review loop) — worth checking for.
+- **Web is NOT Module Federation.** Toss's real web architecture is a **single monorepo housing
+  200+ frontend services** (50-60 contributors, ~60 PRs/day, 40GB+ repo needing
+  `git clone --filter=blob:none`), a 5-minute push-to-deploy via CircleCI Dynamic Config running
+  isolated per-service jobs, a daily-rebuilt Docker base image with the monorepo pre-baked
+  (36min → 22sec checkout), and Yarn PnP + a custom bundler shrinking SSR images ~4GB → ~200MB.
+  Directly relevant: itunda's `host-app` module-federation shell is **not** the Toss-aligned
+  direction (no primary source describes Toss using Module Federation for this) — the
+  Toss-aligned direction is what `bank-mfe` already is (one real deployed app), with the actual
+  open problem being *internal* decomposition of that one app (already tracked in
+  `docs/ARCHITECTURE_GUIDELINES.md` §2's `BankDashboard.tsx` finding), not splitting into more
+  federated apps.
+- **Named paved-road tooling**: **Tossion** (real internal QA/TCM platform — beyond test-case
+  management, it flags PRs touching files with prior-incident history as higher risk, and
+  AI-generates test cases) and **Nebula** (a named real device farm for on-device test
+  execution) are Toss's equivalent of itunda's own `scripts/accessibility-lint.py`/
+  `scripts/file-size-lint.py`/`scripts/uncalled-endpoint-sweep.py` habit — same philosophy
+  (turn a recurring problem into an enforced tool), different scale.
+- **Explicitly searched for and NOT found** (don't claim these as Toss-sourced without a new
+  primary source): a named chaos-engineering practice; a named feature-flag platform; on-call
+  rotation/paging tooling specifics; a Toss-published article on double-entry ledger schema
+  mechanics beyond the locking/saga behavior above; a Toss-published article on Android-specific
+  multi-module architecture.
+
 ## Update Rule
 
 Same rule as `FACT_CHECKED_TOSS_RWANDA_MAP.md`: update this file when new public Toss

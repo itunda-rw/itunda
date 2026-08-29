@@ -22,14 +22,29 @@
 
 `services/backend` is the canonical backend, on Toss's real documented stack: Kotlin + Spring
 Boot + Spring Data JPA/Hibernate + **MySQL** (not Postgres — Flyway-managed schema,
-`ddl-auto: validate`) + Spring Security (JWT), 13 domain modules (`auth`, `wallet`, `bills`,
-`loans`, `stocks`, `savings`, `insurance`, `notifications`, `discover`, `contacts`, `system`,
-`merchant`) plus `core`. `services/microservices` (`payment-service`, `ledger-service`) is a
-real, separate, smaller-coverage MSA prototype closer to Toss's actual documented per-service
-split (facts doc §1) — a deliberate, decided-and-acted-on architectural fork, not dead code; see
-`docs/ARCHITECTURE.md` §1's "Reconciliation decided and acted on" note for the full reasoning
-(the validated pattern, a transactional outbox, was ported into `services/backend`; the
-codebases themselves were not merged).
+`ddl-auto: validate`) + Spring Security (JWT). **Corrected 2026-08-29** — this section had said
+"13 domain modules" since 2026-07-13; the real current count (`services/backend/settings.gradle.kts`)
+is **43 Gradle modules** (`:core` plus 42 domains spanning auth/account/bills/loans/stocks/savings/
+insurance/notifications/discover/contacts/system/merchant/identity/certificate/eats/marketplace/
+maps/transit/vehicle/rideshare/community/jobs/realestate/messaging/calling/p2p/gift/splitbill/
+family/support/knowledge/agents/analytics/partners/trustscore/creditscore/rewards/ussd/offline/
+overview/card/app) — a since-stale claim, not a correction of fact; the domain list itself grew
+for real, this doc just never kept pace. `services/microservices` (`payment-service`,
+`ledger-service`, `core-libs`) is a real, separate, smaller-coverage (2 of the 42 domains) MSA
+prototype closer to Toss's actual documented per-service split (facts doc §1) — a deliberate,
+decided-and-acted-on architectural fork, not dead code; see `docs/ARCHITECTURE.md` §1's
+"Reconciliation decided and acted on" note for the full reasoning (the validated pattern, a
+transactional outbox, was ported into `services/backend`; the codebases themselves were not
+merged). `services/api-gateway` is **also stale as described in `docs/ARCHITECTURE.md`**
+("essentially just index.js... not a real gateway yet") — it has since grown real teeth (316
+lines: global + stricter money-movement rate limiting, `X-Request-ID` propagation, security
+headers, no-store cache policy on `/api/v1/*`, Prometheus metrics, a bounded upstream timeout
+with a fail-fast 503/504, `trust proxy` scoped to the real Istio/pod CIDR range implying a real
+mesh sits in front of it) — still genuinely missing an app-layer circuit breaker (Toss's own
+real Gateway article names Resilience4j for exactly this; itunda's gateway times out per-request
+but never trips open during a sustained upstream outage) and any Passport-style normalized
+user-context propagation to downstream services (see chat analysis 2026-08-29 for the full
+Toss-vs-itunda architecture comparison this correction came from).
 
 ## Product Area Matrix
 
