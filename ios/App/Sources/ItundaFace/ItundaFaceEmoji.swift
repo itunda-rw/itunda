@@ -34,8 +34,9 @@ private let foodKeys: [String] = ["🍕", "🍔", "☕", "🍰", "🍩", "🍓",
 private let travelKeys: [String] = ["🚗", "✈️", "🏠", "🚀", "🚲", "🌍"]
 private let activitiesKeys: [String] = ["⚽", "🏀", "🎮", "🎨", "🎵", "🎉", "🏆", "🎯"]
 private let objectsKeys: [String] = ["💳", "📱", "⌚", "🔑", "💡", "🎧", "📎", "🖊️"]
+private let symbolsKeys: [String] = ["✅", "❌", "❗", "❓", "💯", "⚠️", "🚫", "♻️"]
 
-let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys
+let itundaFaceEmojiKeys: [String] = smileysKeys + peopleKeys + natureKeys + foodKeys + travelKeys + activitiesKeys + objectsKeys + symbolsKeys
 let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Smileys & Emotion", smileysKeys),
     ("People & Body", peopleKeys),
@@ -44,6 +45,7 @@ let itundaFaceEmojiCategories: [(name: String, keys: [String])] = [
     ("Travel & Places", travelKeys),
     ("Activities", activitiesKeys),
     ("Objects", objectsKeys),
+    ("Symbols", symbolsKeys),
 ]
 
 @ViewBuilder
@@ -110,6 +112,14 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "🎧": ObjectHeadphones(size: size)
     case "📎": ObjectPaperclip(size: size)
     case "🖊️": ObjectPen(size: size)
+    case "✅": SymbolCheckMarkButton(size: size)
+    case "❌": SymbolCrossMark(size: size)
+    case "❗": SymbolExclamationMark(size: size)
+    case "❓": SymbolQuestionMark(size: size)
+    case "💯": SymbolHundred(size: size)
+    case "⚠️": SymbolWarning(size: size)
+    case "🚫": SymbolProhibited(size: size)
+    case "♻️": SymbolRecycling(size: size)
     default: EmptyView()
     }
 }
