@@ -595,7 +595,15 @@ private fun RideDriverContent() {
             try {
                 driver = NetworkClient.apiService.registerAsRideDriver().driver
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                // Real gap found live (Toss-style error-handling audit, 2026-08-30):
+                // same register-once shape as Eats' own RIDER_ALREADY_REGISTERED,
+                // apparently missed when that one was fixed -- a double-tap or a
+                // second device registering first isn't really a failure.
+                if (rw.itunda.core.network.apiErrorCode(e) == "RIDE_DRIVER_ALREADY_REGISTERED") {
+                    loadDriver()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

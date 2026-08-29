@@ -13849,7 +13849,15 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
     try {
       setDriver(await registerAsDriver());
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
+      // Real gap found live (Toss-style error-handling audit, 2026-08-30): same
+      // register-once shape as Eats' own RIDER_ALREADY_REGISTERED, apparently missed
+      // when that one was fixed -- a double-tap or a second device registering first
+      // isn't really a failure, resolve forward into the real existing profile.
+      if (err instanceof ApiError && err.code === 'RIDE_DRIVER_ALREADY_REGISTERED') {
+        loadDriver();
+      } else {
+        setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
+      }
     } finally {
       setRegisteringDriver(false);
     }
@@ -14421,7 +14429,14 @@ function DesignatedDriverView() {
       setDriver(await registerAsDesignatedDriver(licenseNumber.trim()));
       setLicenseNumber('');
     } catch (err) {
-      setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
+      // Real gap found live (Toss-style error-handling audit, 2026-08-30): this
+      // resolve-forward fix already shipped on Android/iOS but bank-mfe never got it
+      // -- a double-tap or a second device registering first isn't really a failure.
+      if (err instanceof ApiError && err.code === 'DESIGNATED_DRIVER_ALREADY_REGISTERED') {
+        loadDriver();
+      } else {
+        setDriverError(err instanceof ApiError ? err.message : t('common.actionError'));
+      }
     } finally {
       setRegisteringDriver(false);
     }
