@@ -347,6 +347,10 @@ private struct GroupAccountDetailContent: View {
             phoneNumber = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "ALREADY_MEMBER" {
+            phoneNumber = ""
+            error = nil
+            await load()
         } catch {
             self.error = "Could not invite this member."
         }

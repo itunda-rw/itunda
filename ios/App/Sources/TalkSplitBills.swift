@@ -188,6 +188,8 @@ struct GroupSplitBillsView: View {
         do {
             _ = try await NetworkClient.shared.paySplitBillShare(splitBillId: splitBillId)
             await refresh()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "SPLIT_BILL_SHARE_ALREADY_PAID" {
+            await refresh()
         } catch { self.error = "That payment could not be completed." }
     }
 
@@ -378,6 +380,8 @@ struct DirectSplitBillsView: View {
         defer { busyId = nil }
         do {
             _ = try await NetworkClient.shared.paySplitBillShare(splitBillId: splitBillId)
+            await refresh()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "SPLIT_BILL_SHARE_ALREADY_PAID" {
             await refresh()
         } catch { self.error = "That payment could not be completed." }
     }

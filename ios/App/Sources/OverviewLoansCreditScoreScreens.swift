@@ -564,6 +564,9 @@ struct LoansScreenView: View {
             repayAmounts[loan.id] = nil
             payoffMessage = result.remaining <= 0 ? "You paid off this loan in full — one less thing to carry." : nil
             await refresh()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "LOAN_ALREADY_PAID" {
+            repayAmounts[loan.id] = nil
+            await refresh()
         } catch { self.error = "That repayment could not be completed." }
     }
 

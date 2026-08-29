@@ -405,6 +405,12 @@ private struct RidePassengerContent: View {
             addContactPhone = ""
             addContactName = ""
             await loadTrustedContacts()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "TRUSTED_CONTACT_ALREADY_ADDED" {
+            addContactPhone = ""
+            addContactName = ""
+            await loadTrustedContacts()
+        } catch let NetworkError.httpErrorWithCode(_, code, message) where code == "TOO_MANY_TRUSTED_CONTACTS" {
+            contactError = message ?? "You can have at most 5 trusted contacts."
         } catch {
             contactError = "Could not add this trusted contact. Make sure they have an itunda account."
         }

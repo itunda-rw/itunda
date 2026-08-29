@@ -522,6 +522,8 @@ struct ChatThreadScreen: View {
         } catch NetworkError.deviceNotVerified {
             pendingGiftRetry = { await claimGift(giftId) }
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "GIFT_ALREADY_RESOLVED" {
+            await loadGifts()
         } catch {
             self.error = "Couldn't open this gift. Check your connection and try again."
         }
@@ -534,6 +536,8 @@ struct ChatThreadScreen: View {
     private func extendVoucher(_ voucherId: String) async {
         do {
             _ = try await NetworkClient.shared.extendGiftVoucherExpiry(voucherId: voucherId)
+            await loadVouchers()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "GIFT_VOUCHER_ALREADY_EXTENDED" {
             await loadVouchers()
         } catch {
             self.error = "Couldn't extend this voucher. Try again."

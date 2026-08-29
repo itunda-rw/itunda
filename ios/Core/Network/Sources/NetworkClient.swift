@@ -384,6 +384,17 @@ public enum NetworkError: Error {
     // exactly the "broader networking-layer change" TalkScreen.swift's own errorMessage
     // doc comment already named and deliberately deferred.
     case httpErrorWithMessage(statusCode: Int, message: String?)
+    // Real gap found 2026-08-30 (Toss-style error-handling sweep): several endpoints
+    // can return the SAME HTTP status for two or more distinct, unrelated backend
+    // exceptions (e.g. loan-repay's LOAN_ALREADY_PAID vs IDEMPOTENCY_KEY_CONFLICT,
+    // split-bill-pay's SPLIT_BILL_SHARE_ALREADY_PAID vs the same, ride-trusted-contact's
+    // TRUSTED_CONTACT_ALREADY_ADDED vs TOO_MANY_TRUSTED_CONTACTS) -- a bare statusCode
+    // check would misreport one as the other, and neither httpError nor
+    // httpErrorWithMessage carries the real ApiError.code needed to branch correctly.
+    // Purely additive, same rationale as every case above; thrown only from
+    // authenticatedPostWithCode below, not from the shared authenticatedPost every
+    // other endpoint still uses.
+    case httpErrorWithCode(statusCode: Int, code: String?, message: String?)
 }
 
 /// Real login/session flow (2026-07-11) -- this app previously had no networking
@@ -1472,7 +1483,7 @@ extension NetworkClient {
     public func getRideTrustedContacts() async throws -> RideTrustedContactsResponse { try await get("api/v1/rides/trusted-contacts") }
 
     public func addRideTrustedContact(phoneNumber: String, name: String) async throws -> RideTrustedContactResponse {
-        try await authenticatedPost("api/v1/rides/trusted-contacts", body: AddRideTrustedContactRequest(phoneNumber: phoneNumber, name: name))
+        try await authenticatedPostWithCode("api/v1/rides/trusted-contacts", body: AddRideTrustedContactRequest(phoneNumber: phoneNumber, name: name))
     }
 
     public func removeRideTrustedContact(contactId: String) async throws -> SuccessResponse {
@@ -1859,7 +1870,7 @@ extension NetworkClient {
     }
 
     public func inviteGroupAccountMember(id: String, phoneNumber: String) async throws -> InviteMemberResponse {
-        try await authenticatedPost("api/v1/group-accounts/\(id)/members", body: InviteMemberRequest(phoneNumber: phoneNumber))
+        try await authenticatedPostWithCode("api/v1/group-accounts/\(id)/members", body: InviteMemberRequest(phoneNumber: phoneNumber))
     }
 
     public func depositToGroupAccount(id: String, amount: Double) async throws -> GroupAccountDetailResponse {
@@ -1898,7 +1909,7 @@ extension NetworkClient {
     public func getIkimina(id: String) async throws -> IkiminaDetailResponse { try await get("api/v1/ikiminas/\(id)") }
 
     public func inviteIkiminaMember(id: String, phoneNumber: String) async throws -> InviteIkiminaMemberResponse {
-        try await authenticatedPost("api/v1/ikiminas/\(id)/members", body: InviteIkiminaMemberRequest(phoneNumber: phoneNumber))
+        try await authenticatedPostWithCode("api/v1/ikiminas/\(id)/members", body: InviteIkiminaMemberRequest(phoneNumber: phoneNumber))
     }
 
     public func startIkiminaCycle(id: String) async throws -> CreateIkiminaResponse {
@@ -1906,7 +1917,7 @@ extension NetworkClient {
     }
 
     public func contributeToIkimina(id: String) async throws -> CreateIkiminaResponse {
-        try await authenticatedPost("api/v1/ikiminas/\(id)/contribute", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await authenticatedPostWithCode("api/v1/ikiminas/\(id)/contribute", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func triggerIkiminaPayout(id: String) async throws -> IkiminaPayoutResponse {
@@ -2148,6 +2159,40 @@ extension NetworkClient {
                 throw NetworkError.deviceNotVerified
             }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
+    // See NetworkError.httpErrorWithCode's own doc comment -- a dedicated function for
+    // the handful of endpoints whose 409s are genuinely ambiguous without the real
+    // code, same "additive, narrow-scoped" precedent as authenticatedPutWithMessage/
+    // postP2p rather than widening authenticatedPost for every caller.
+    func authenticatedPostWithCode<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body,
+        idempotencyKey: String? = nil
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = try? decoder.decode(ApiErrorBody.self, from: data)
+            // Same real device-binding check as authenticatedPost above -- claimGift
+            // (the one caller of this function that also carries an Idempotency-Key)
+            // still needs it, so this mustn't regress that flow.
+            if idempotencyKey != nil, httpResponse.statusCode == 403, errorBody?.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
+            throw NetworkError.httpErrorWithCode(statusCode: httpResponse.statusCode, code: errorBody?.code, message: errorBody?.message)
         }
         return try decoder.decode(Response.self, from: data)
     }
@@ -4799,7 +4844,7 @@ extension NetworkClient {
     }
 
     public func claimGift(giftId: String) async throws -> GiftResponse {
-        try await authenticatedPost("api/v1/gifts/\(giftId)/claim", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await authenticatedPostWithCode("api/v1/gifts/\(giftId)/claim", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func getGiftsForConversation(conversationId: String) async throws -> GiftsResponse {
@@ -5419,7 +5464,7 @@ extension NetworkClient {
     }
 
     public func extendGiftVoucherExpiry(voucherId: String) async throws -> GiftVoucherResponse {
-        try await authenticatedPost("api/v1/gift-vouchers/\(voucherId)/extend", body: EmptyBody())
+        try await authenticatedPostWithCode("api/v1/gift-vouchers/\(voucherId)/extend", body: EmptyBody())
     }
 
     // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client for

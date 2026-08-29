@@ -51,7 +51,7 @@ extension NetworkClient {
     }
 
     public func repayLoan(loanId: String, amount: Double) async throws -> RepayLoanResponse {
-        try await authenticatedPost("api/v1/loans/repay", body: RepayLoanRequest(loanId: loanId, amount: amount), idempotencyKey: UUID().uuidString)
+        try await authenticatedPostWithCode("api/v1/loans/repay", body: RepayLoanRequest(loanId: loanId, amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func refinanceLoan(loanId: String) async throws -> RefinanceResult {
@@ -279,7 +279,7 @@ extension NetworkClient {
     }
 
     public func paySplitBillShare(splitBillId: String) async throws -> PaySplitBillShareResponse {
-        try await authenticatedPost("api/v1/split-bills/\(splitBillId)/pay", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
+        try await authenticatedPostWithCode("api/v1/split-bills/\(splitBillId)/pay", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
     }
 
     public func attachSplitBillReceipt(splitBillId: String, imageUrl: String) async throws -> SplitBillOnlyResponse {

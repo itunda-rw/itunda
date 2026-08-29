@@ -352,6 +352,10 @@ private struct IkiminaDetailContent: View {
             phoneNumber = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "ALREADY_MEMBER" {
+            phoneNumber = ""
+            error = nil
+            await load()
         } catch {
             self.error = "Could not invite this member."
         }
@@ -374,6 +378,9 @@ private struct IkiminaDetailContent: View {
         busy = true
         do {
             _ = try await NetworkClient.shared.contributeToIkimina(id: id)
+            error = nil
+            await load()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "ALREADY_CONTRIBUTED" {
             error = nil
             await load()
         } catch {
