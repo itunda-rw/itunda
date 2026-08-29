@@ -188,6 +188,8 @@ private struct ParkingFindContent: View {
         do {
             _ = try await NetworkClient.shared.endParkingSession(sessionId: sessionId)
             await loadHistory()
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            await loadHistory()
         } catch {
             self.error = "Could not end this session."
         }
