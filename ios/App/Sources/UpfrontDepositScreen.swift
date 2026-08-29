@@ -136,6 +136,8 @@ private struct UpfrontDepositRow: View {
         do {
             _ = try await NetworkClient.shared.withdrawUpfrontDeposit(id: deposit.id)
             onChanged()
+        } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "UPFRONT_DEPOSIT_ALREADY_WITHDRAWN" {
+            onChanged()
         } catch {
             self.error = "Could not withdraw this deposit."
         }

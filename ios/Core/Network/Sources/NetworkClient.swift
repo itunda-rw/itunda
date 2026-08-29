@@ -1352,7 +1352,7 @@ extension NetworkClient {
     }
 
     public func withdrawUpfrontDeposit(id: String) async throws -> OpenUpfrontDepositResponse {
-        try await authenticatedPost("api/v1/upfront-deposits/\(id)/withdraw", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await authenticatedPostWithCode("api/v1/upfront-deposits/\(id)/withdraw", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.account.

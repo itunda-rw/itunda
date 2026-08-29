@@ -161,6 +161,8 @@ private struct BusRideContent: View {
         do {
             _ = try await NetworkClient.shared.cancelBusBooking(bookingId: bookingId)
             await loadBookings()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Could not cancel this booking."
         }

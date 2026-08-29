@@ -195,6 +195,8 @@ private struct BikeRentContent: View {
         do {
             _ = try await NetworkClient.shared.endBikeRental(sessionId: sessionId, endLatitude: coordinate.latitude, endLongitude: coordinate.longitude)
             await loadHistory()
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            await loadHistory()
         } catch {
             self.error = "Could not end this rental."
         }
