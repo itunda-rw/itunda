@@ -374,6 +374,15 @@ export type TranslationKey =
   | 'updates.loadError'
   | 'updates.empty'
   | 'updates.likes'
+  | 'photos.title'
+  | 'photos.subtitle'
+  | 'photos.saveError'
+  | 'photos.saved'
+  | 'photos.removePhoto'
+  | 'photos.addPhoto'
+  | 'photos.saving'
+  | 'photos.save'
+  | 'tabs.photos'
   // Real 14th-localization-pass additions (2026-08-15): PosScreen -- the real
   // cash-register/POS UI (Register + Catalog modes, with Options/Pricing/Time-deal
   // sub-panels per product), merchant-mfe's largest and highest-daily-traffic screen.
@@ -930,6 +939,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'updates.loadError': 'Could not load your updates.',
     'updates.empty': 'No updates yet — post one and it shows up on your Maps page right away.',
     'updates.likes': '{{count}} likes',
+    'photos.title': 'Photo gallery',
+    'photos.subtitle': 'Up to 20 photos — customers see these on your Maps page.',
+    'photos.saveError': 'Could not save your photos.',
+    'photos.saved': 'Saved.',
+    'photos.removePhoto': 'Remove',
+    'photos.addPhoto': 'Add photo',
+    'photos.saving': 'Saving…',
+    'photos.save': 'Save',
+    'tabs.photos': 'Photos',
     'pos.modeRegister': 'Register',
     'pos.modeCatalog': 'Catalog',
     'pos.catalogLoadError': 'Could not load the catalog.',
@@ -1476,6 +1494,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'updates.loadError': 'Ntibishoboka gushakisha amakuru yawe.',
     'updates.empty': 'Nta makuru urafite — tanga amwe azahita agaragara ku rupapuro rwawe rwa Amakarita.',
     'updates.likes': 'Bakunda {{count}}',
+    'photos.title': 'Amafoto',
+    'photos.subtitle': 'Amafoto agera kuri 20 — abakiriya barayabona ku rupapuro rwawe rwa Amakarita.',
+    'photos.saveError': 'Ntibishoboka kubika amafoto yawe.',
+    'photos.saved': 'Byabitswe.',
+    'photos.removePhoto': 'Siba',
+    'photos.addPhoto': 'Ongeraho ifoto',
+    'photos.saving': 'Kubika…',
+    'photos.save': 'Bika',
+    'tabs.photos': 'Amafoto',
     'pos.modeRegister': 'Igurisha',
     'pos.modeCatalog': 'Ibicuruzwa',
     'pos.catalogLoadError': 'Ntibishoboka gushakisha ibicuruzwa.',
@@ -2022,6 +2049,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'updates.loadError': 'Impossible de charger vos actualités.',
     'updates.empty': 'Aucune actualité pour le moment — publiez-en une, elle apparaîtra aussitôt sur votre page Maps.',
     'updates.likes': "{{count}} mentions J'aime",
+    'photos.title': 'Galerie photo',
+    'photos.subtitle': "Jusqu'à 20 photos — les clients les voient sur votre page Maps.",
+    'photos.saveError': 'Impossible d\'enregistrer vos photos.',
+    'photos.saved': 'Enregistré.',
+    'photos.removePhoto': 'Supprimer',
+    'photos.addPhoto': 'Ajouter une photo',
+    'photos.saving': 'Enregistrement…',
+    'photos.save': 'Enregistrer',
+    'tabs.photos': 'Photos',
     'pos.modeRegister': 'Caisse',
     'pos.modeCatalog': 'Catalogue',
     'pos.catalogLoadError': 'Impossible de charger le catalogue.',

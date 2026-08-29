@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, Newspaper, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, Images, LogOut, Megaphone, Newspaper, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users2, Utensils, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
+import type { MerchantWithPhotos } from './lib/merchantPhotos';
 import RegisterScreen from './RegisterScreen';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -14,6 +15,7 @@ import CouponsScreen from './screens/CouponsScreen';
 import DineInScreen from './screens/DineInScreen';
 import EatsOrdersScreen from './screens/EatsOrdersScreen';
 import PayrollScreen from './screens/PayrollScreen';
+import PhotoGalleryScreen from './screens/PhotoGalleryScreen';
 import PosScreen from './screens/PosScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import ReviewsScreen from './screens/ReviewsScreen';
@@ -23,7 +25,7 @@ import VendorCashAdvanceScreen from './screens/VendorCashAdvanceScreen';
 import VisitorAnalyticsScreen from './screens/VisitorAnalyticsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'updates' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'updates' | 'photos' | 'billing' | 'coupons' | 'visitors' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
 // Real 2nd-localization-pass (2026-08-15): labelKey replaces a literal string so the
 // nav renders in the merchant's own chosen language -- see i18n/translations.ts's own
@@ -51,6 +53,12 @@ const TABS: { id: Tab; labelKey: TranslationKey; icon: typeof QrCode }[] = [
   // been displayed live on Android/iOS's customer-facing Maps News tab since
   // 2026-08-28, with no merchant client anywhere able to post to it until now.
   { id: 'updates', labelKey: 'tabs.updates', icon: Newspaper },
+  // Real gap found live (uncalled-endpoint sweep, 2026-08-29) -- see
+  // screens/PhotoGalleryScreen.tsx's own doc comment: the gallery this posts to has
+  // been displayed live on Android/iOS's customer-facing Maps Photos tab since
+  // 2026-08-28, with no merchant client anywhere able to populate more than the one
+  // existing cover photo (Settings' own StoreSettingsCard) until now.
+  { id: 'photos', labelKey: 'tabs.photos', icon: Images },
   { id: 'billing', labelKey: 'tabs.billing', icon: CreditCard },
   { id: 'coupons', labelKey: 'tabs.coupons', icon: Tag },
   { id: 'visitors', labelKey: 'tabs.visitors', icon: Users2 },
@@ -196,6 +204,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'reports' && <ReportsScreen />}
         {tab === 'reviews' && <ReviewsScreen merchant={merchant} />}
         {tab === 'updates' && <UpdatesScreen merchant={merchant} />}
+        {tab === 'photos' && <PhotoGalleryScreen merchant={merchant as MerchantWithPhotos} onUpdated={setMerchant} />}
         {tab === 'billing' && <BillingScreen />}
         {tab === 'coupons' && <CouponsScreen />}
         {tab === 'visitors' && <VisitorAnalyticsScreen />}
