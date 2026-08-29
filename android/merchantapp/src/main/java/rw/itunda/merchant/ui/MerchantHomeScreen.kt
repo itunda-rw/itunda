@@ -46,7 +46,7 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, VISITORS, FOLLOWERS, PAYROLL, ADS, BILLING, CASH_ADVANCE }
+private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, VISITORS, FOLLOWERS, UPDATES, PHOTOS, PAYROLL, ADS, BILLING, CASH_ADVANCE }
 
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
@@ -87,6 +87,8 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
                 MerchantTab.COUPONS to "Coupons",
                 MerchantTab.VISITORS to "Visitors",
                 MerchantTab.FOLLOWERS to "Followers",
+                MerchantTab.UPDATES to "Updates",
+                MerchantTab.PHOTOS to "Photos",
                 MerchantTab.PAYROLL to "Payroll",
                 MerchantTab.ADS to "Ads",
                 MerchantTab.BILLING to "Billing",
@@ -114,6 +116,8 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             MerchantTab.COUPONS -> CouponsTab()
             MerchantTab.VISITORS -> VisitorAnalyticsTab()
             MerchantTab.FOLLOWERS -> FollowersTab()
+            MerchantTab.UPDATES -> UpdatesTab(merchantId = merchant.id)
+            MerchantTab.PHOTOS -> PhotosTab()
             MerchantTab.PAYROLL -> PayrollTab()
             MerchantTab.ADS -> AdsTab()
             MerchantTab.BILLING -> BillingTab()
@@ -496,74 +500,8 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
 // MerchantFollowService; the customer-facing follow/unfollow toggle already shipped
 // on bank-mfe/Android app/iOS app. merchant-mfe already has this; this is the first
 // native-merchant-app client, mirroring its FollowersCard field-for-field.
-@Composable
-private fun FollowersTab() {
-    var count by remember { mutableStateOf<Int?>(null) }
-    var title by remember { mutableStateOf("") }
-    var body by remember { mutableStateOf("") }
-    var sending by remember { mutableStateOf(false) }
-    var sentCount by remember { mutableStateOf<Int?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        try {
-            count = rw.itunda.merchant.network.NetworkClient.apiService.getFollowerCount().count
-        } catch (e: Exception) {
-            count = 0
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Followers", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(
-            if (count == null) "Loading…" else "${count} customer${if (count == 1) "" else "s"} following your store",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
-        IdsTextField(value = body, onValueChange = { body = it }, label = "Tell your followers what's new.", modifier = Modifier.fillMaxWidth())
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        val hasFollowers = (count ?: 0) > 0
-        IdsButton(
-            text = if (sending) "Sending…" else "Broadcast to followers",
-            enabled = !sending && hasFollowers && title.isNotBlank() && body.isNotBlank(),
-            onClick = {
-                sending = true
-                error = null
-                sentCount = null
-                scope.launch {
-                    try {
-                        val recipients = rw.itunda.merchant.network.NetworkClient.apiService.broadcastToFollowers(
-                            rw.itunda.merchant.network.BroadcastToFollowersRequest(title.trim(), body.trim()),
-                        ).recipientCount
-                        sentCount = recipients
-                        title = ""
-                        body = ""
-                    } catch (e: Exception) {
-                        error = "Could not send this broadcast."
-                    } finally {
-                        sending = false
-                    }
-                }
-            },
-        )
-        if (!hasFollowers) {
-            Text(
-                "You need at least one follower to send a broadcast.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        sentCount?.let {
-            Text(
-                "Sent to $it follower${if (it == 1) "" else "s"}.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
-}
+// Moved to its own file, FollowersTab.kt, 2026-08-30 -- see that file's own doc
+// comment for why.
 
 @Composable
 internal fun StatusBadge(status: String) {

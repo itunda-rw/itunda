@@ -96,6 +96,10 @@ data class MerchantDto(
     // opt-in -- see MerchantService.setPhotoUrl/etc.'s own doc comments (found in the
     // 2026-08-01 dead-field sweep, zero client anywhere until then).
     val photoUrl: String? = null,
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-29/30) -- see
+    // MerchantExtrasDtos.kt's own doc comment. Comma-joined string on the wire, not a
+    // JSON array (matching the raw JPA column) -- split client-side where needed.
+    val photoUrls: String? = null,
     val minOrderAmount: Double? = null,
     val cashbackRate: Double? = null,
     val acceptsScheduledOrders: Boolean = false,
@@ -138,34 +142,9 @@ data class MerchantCouponsResponse(val success: Boolean, val coupons: List<Merch
 data class MerchantProfileViewDto(val id: String, val merchantId: String, val viewDate: String, val viewCount: Long)
 data class MerchantProfileViewTrendResponse(val success: Boolean, val trend: List<MerchantProfileViewDto>)
 
-// Real B2B payroll -- real account-to-account money movement (see PayrollController.kt's
-// own doc comment), real on merchant-mfe/web only until now -- zero native UI on
-// either merchantapp or ItundaMerchantApp despite the backend being mature.
-data class AddPayrollEmployeeRequest(val phoneNumber: String, val salaryAmount: java.math.BigDecimal)
-data class PayrollEmployeeDto(
-    val id: String, val merchantId: String, val employeeUserId: String, val employeeName: String,
-    val salaryAmount: java.math.BigDecimal, val active: Boolean, val createdAt: String,
-)
-data class PayrollEmployeeResponse(val success: Boolean, val employee: PayrollEmployeeDto)
-data class PayrollRosterResponse(val success: Boolean, val employees: List<PayrollEmployeeDto>)
-data class PayslipDto(
-    val id: String, val payrollRunId: String, val employeeUserId: String, val employeeName: String,
-    val amount: java.math.BigDecimal, val transactionId: String, val createdAt: String,
-)
-// PayrollService.runPayroll's own response returns a lighter line-item shape than the
-// full Payslip entity (no id/payrollRunId/employeeUserId/createdAt) -- distinct from
-// PayslipDto above, which mirrors getPayslips()'s real entity-backed response.
-data class RunPayslipDto(val employeeName: String, val amount: java.math.BigDecimal, val transactionId: String)
-data class PayrollRunResponse(
-    val success: Boolean, val payrollRunId: String, val totalAmount: java.math.BigDecimal,
-    val employeeCount: Int, val completedAt: String, val payslips: List<RunPayslipDto>,
-)
-data class PayrollRunDto(
-    val id: String, val merchantId: String, val ledgerTransactionId: String,
-    val totalAmount: java.math.BigDecimal, val employeeCount: Int, val createdAt: String,
-)
-data class PayrollHistoryResponse(val success: Boolean, val runs: List<PayrollRunDto>)
-data class PayslipsResponse(val success: Boolean, val payslips: List<PayslipDto>)
+// Real B2B payroll DTOs -- moved to PayrollDtos.kt, 2026-08-30 (see that file's own
+// doc comment for why). Interface methods below still reference them unqualified via
+// same-package visibility.
 
 // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing (item 144)
 // -- see MerchantBillingController.kt's own doc comment. merchant-mfe already has this
@@ -610,6 +589,17 @@ interface ApiService {
 
     @POST("api/v1/merchant/photo")
     suspend fun setMerchantPhotoUrl(@Body request: SetMerchantPhotoUrlRequest): MerchantResponse
+
+    // Real gaps found live (uncalled-endpoint sweep, 2026-08-29/30) -- see
+    // MerchantExtrasDtos.kt's own doc comment.
+    @POST("api/v1/merchant/photos")
+    suspend fun setMerchantPhotoUrls(@Body request: SetMerchantPhotoUrlsRequest): MerchantResponse
+
+    @POST("api/v1/merchant/updates")
+    suspend fun postMerchantUpdate(@Body request: PostMerchantUpdateRequest): MerchantUpdateResponse
+
+    @GET("api/v1/merchant/{merchantId}/updates")
+    suspend fun getMerchantUpdates(@Path("merchantId") merchantId: String): MerchantUpdatesResponse
 
     @POST("api/v1/merchant/min-order")
     suspend fun setMinOrderAmount(@Body request: SetMinOrderAmountRequest): MerchantResponse
