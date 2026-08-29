@@ -632,6 +632,8 @@ struct ChatThreadScreen: View {
         do {
             _ = try await NetworkClient.shared.reportChatMessage(messageId: messageId, reason: reason)
             error = "Thanks. Your report was sent for review."
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            error = "You already reported this message."
         } catch {
             self.error = "Couldn't send this report. Check your connection and try again."
         }
