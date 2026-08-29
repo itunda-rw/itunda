@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ComponentType, type ReactElement } from 'react';
 import { IconBell, IconEye, IconEyeOff, IconSend, IconShieldCheck, IconStar } from './icons/ItundaIcons';
 import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-motion';
 import { itundaSpring } from './lib/motion';
@@ -10,10 +10,18 @@ import { IconHome, IconPay, IconExplore, IconMessages, IconYou } from './icons/I
 import { ReactionGlyph } from './icons/ItundaFace';
 import { renderTextWithEmoji, EmojiPicker } from './icons/ItundaFaceEmoji';
 import { SmileySlight } from './icons/ItundaFaceSmileys';
-import { GiftGlyph, DiceGlyph, VoucherTicket } from './icons/ItundaFaceGifts';
+import { GiftGlyph, DiceGlyph, VoucherTicket, GiftBox } from './icons/ItundaFaceGifts';
 import { WishlistHeart, HeartFilled, HeartOutline } from './icons/ItundaFaceHearts';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
-import { FlameGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, PriceDropGlyph } from './icons/ItundaFaceMisc';
+import { FlameGlyph, PinGlyph, SoldOutGlyph, LinkGlyph, ChatGlyph, ClockGlyph, GlobeGlyph, CameraGlyph, CakeGlyph, MoneyBagGlyph, ShoppingBagGlyph, PriceDropGlyph, BikeGlyph } from './icons/ItundaFaceMisc';
+// Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
+// "(c)" open item) -- reuses the exact same glyph choices Android's MenuScreen already
+// made and live-verified against real Toss reference screenshots, not new choices.
+import { ParkingGlyph } from './icons/ItundaFaceHome';
+import { TravelCar, TravelHouse } from './icons/ItundaFaceTravel';
+import { BriefcaseGlyph, ChartIncreasingGlyph } from './icons/ItundaFaceWork';
+import { NatureStar, NatureGlowingStar } from './icons/ItundaFaceNature';
+import { ObjectKey, ObjectPen } from './icons/ItundaFaceObjects';
 import { averageCashbackRatePercent, FacePayStatusRow, GetHelpLinks, NearbyMerchantsDialog, NearbyMerchantsMap, PayHubOtherServicesRail, RewardsPreviewSection, RewardsSummaryRow } from './PayHomeExtras';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { PinSetupCard } from './PinSetupCard';
@@ -281,6 +289,38 @@ import { useCountUp } from './hooks/useCountUp';
 // retired; ShopView/EatsView/MarketplaceView/CommunityView/JobsView/PropertyView
 // render directly, exactly as they did before either hub existed.
 type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'TRANSIT' | 'TRANSIT_COLLECT' | 'MOTO_FARE_COLLECT' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
+
+// Real Explore-tab icons (2026-08-29, closing [[project_itunda_pure_tossface_icons]]'s
+// "(c)" open item: "the real, larger, unscoped redesign: giving web's Explore screen
+// actual per-row icons in the first place"). ExploreHub's pill buttons had no icon of
+// any kind, unlike Android/iOS's real, live-verified illustrated MenuScreen/
+// EntireMenuScreen rows -- reuses the EXACT SAME glyph choice already made and
+// verified there for each concept, not a new choice invented for web. Deliberately
+// partial: 16 of 24 real Explore tabs covered here (every one with an already-ported
+// web glyph); EATS/MARKETPLACE/COMMUNITY/BUS/KNOWLEDGE/AGENT need Android's
+// features/maps/impl/ItundaFacePlaces.kt "Place*" glyphs and a "speech bubble" glyph
+// that were ported to Android/iOS but never to web -- a real, disclosed follow-up
+// (porting new SVG path data), not silently skipped. INSURANCE (Android uses a bespoke
+// IdsIcons.ShieldCheck, not an itundaface glyph) and USSD (no established Android
+// choice exists at all) are left on the plain pill deliberately, not guessed.
+const EXPLORE_TAB_ICONS: Partial<Record<Tab, ComponentType<{ size?: number }>>> = {
+  SHOP: ShoppingBagGlyph,
+  RIDES: TravelCar,
+  MAP: PinGlyph,
+  JOBS: BriefcaseGlyph,
+  PROPERTY: TravelHouse,
+  DESIGNATED_DRIVER: ObjectKey,
+  BIKESHARE: BikeGlyph,
+  PARKING: ParkingGlyph,
+  SAVINGS: MoneyBagGlyph,
+  STOCKS: ChartIncreasingGlyph,
+  LOANS: MoneyBagGlyph,
+  CREDIT_SCORE: NatureGlowingStar,
+  FOREIGN_CURRENCY: GlobeGlyph,
+  TRUST_SCORE: NatureStar,
+  REWARDS: GiftBox,
+  CERTIFICATE: ObjectPen,
+};
 
 // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 6):
 // `tab` lived only in local useState, never in the URL -- refreshing the page or
@@ -1481,9 +1521,26 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 // convention instead. groups/tabLabel/recentTabs/onSelect all come from one
 // EXPLORE_TAB_GROUPS source of truth shared by both browsing and search, so a
 // service can't land in one category when browsed and a different one when searched.
-function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, onConsumedAutoFocus }: {
+// Real Explore-tab pill, now with an optional leading itundaface icon (2026-08-29) --
+// see EXPLORE_TAB_ICONS's own doc comment. Extracted since all 3 ExploreHub render
+// sites (search matches, recently used, grouped catalog) render the exact same pill.
+function ExploreTabPill({ id, label, icon: Icon, onSelect }: { id: Tab; label: string; icon?: ComponentType<{ size?: number }>; onSelect: (id: Tab) => void }) {
+  return (
+    <button
+      className="itunda-btn itunda-btn-secondary"
+      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 12px', borderRadius: '999px' }}
+      onClick={() => onSelect(id)}
+    >
+      {Icon && <Icon size={16} />}
+      {label}
+    </button>
+  );
+}
+
+function ExploreHub({ groups, tabLabel, tabIcon, recentTabs, onSelect, autoFocusSearch, onConsumedAutoFocus }: {
   groups: { title: string; ids: Tab[] }[];
   tabLabel: (id: Tab) => string;
+  tabIcon?: (id: Tab) => ComponentType<{ size?: number }> | undefined;
   recentTabs: Tab[];
   onSelect: (id: Tab) => void;
   autoFocusSearch?: boolean;
@@ -1532,9 +1589,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
         matches.length > 0 ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {matches.map((id) => (
-              <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
-                {tabLabel(id)}
-              </button>
+              <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
             ))}
           </div>
         ) : (
@@ -1549,9 +1604,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {recentTabs.map((id) => (
-                  <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
-                    {tabLabel(id)}
-                  </button>
+                  <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
                 ))}
               </div>
             </section>
@@ -1570,9 +1623,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, o
               </h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {group.ids.map((id) => (
-                  <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: 'var(--itunda-type-scale-13-size)', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
-                    {tabLabel(id)}
-                  </button>
+                  <ExploreTabPill key={id} id={id} label={tabLabel(id)} icon={tabIcon?.(id)} onSelect={onSelect} />
                 ))}
               </div>
             </section>
@@ -21172,6 +21223,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { title: 'More', ids: ['CERTIFICATE', 'AGENT', 'USSD'] },
   ];
   const tabLabel = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
+  const tabIcon = (id: Tab) => EXPLORE_TAB_ICONS[id];
   const [recentMoreTabs, setRecentMoreTabs] = useState<Tab[]>([]);
   useEffect(() => { setRecentMoreTabs(loadRecentTabs()); }, []);
   const navigateFromExplore = (id: Tab) => {
@@ -21261,6 +21313,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         <ExploreHub
           groups={EXPLORE_TAB_GROUPS}
           tabLabel={tabLabel}
+          tabIcon={tabIcon}
           recentTabs={recentMoreTabs}
           onSelect={navigateFromExplore}
           autoFocusSearch={focusExploreSearch}
