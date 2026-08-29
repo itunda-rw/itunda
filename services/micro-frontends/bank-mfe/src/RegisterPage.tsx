@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { IconShieldCheck } from './icons/ItundaIcons';
 import { ChevronDown, ChevronUp } from 'lucide-react';import { ApiError, getTerms, register, type TermsDocument } from './lib/api';
 import { PinPad } from './PinPad';
@@ -252,7 +253,18 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
                 fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', cursor: 'pointer',
               }}
             >
-              <input type="checkbox" checked={allAccepted} onChange={toggleAll} style={{ width: '18px', height: '18px' }} />
+              {/* Real Toss-style "Accept Terms Check Interaction" (60fps.design's own
+                  real catalog of Toss's named animations, 2026-08-29) -- a satisfying
+                  scale-bounce the instant a box is checked. The native <input> and its
+                  `checked` state/dark-pattern-compliant toggle logic above are entirely
+                  unchanged -- this only adds a spring pulse driven by that same state,
+                  so accessibility/keyboard/screen-reader behavior stays identical. */}
+              <motion.input
+                type="checkbox" checked={allAccepted} onChange={toggleAll}
+                animate={allAccepted ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+                style={{ width: '18px', height: '18px' }}
+              />
               Agree to all
             </label>
             {/* Required terms grouped before optional ones -- see this file's own top
@@ -261,10 +273,12 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
               <div key={term.id} style={{ borderTop: '1px solid var(--itunda-grey-100)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 4px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', cursor: 'pointer' }}>
-                    <input
+                    <motion.input
                       type="checkbox"
                       checked={acceptedTermsIds.has(term.id)}
                       onChange={() => toggleTerm(term.id)}
+                      animate={acceptedTermsIds.has(term.id) ? { scale: [1, 1.3, 1] } : { scale: 1 }}
+                      transition={{ duration: 0.3 }}
                       style={{ width: '16px', height: '16px' }}
                     />
                     <span

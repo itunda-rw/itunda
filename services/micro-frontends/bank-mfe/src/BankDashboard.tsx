@@ -5349,6 +5349,8 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
+  const shakeControls = useAnimation();
 
   const handleSend = async () => {
     setBusy(true);
@@ -5370,9 +5372,20 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
     setError(null);
     try {
       await (kind === 'email' ? confirmEmailVerification(code.trim()) : confirmPhoneVerification(code.trim()));
-      onVerified();
+      // Real Toss-style "OTP Successful Animation" (60fps.design's own real
+      // catalog of Toss's named interactions) -- a brief green checkmark moment
+      // before navigating away, reusing TransferFlow's own established success-
+      // checkmark language (itunda-green circle + white Check, spring scale-in)
+      // rather than calling onVerified() instantly with zero feedback, which is
+      // what every platform did before this pass.
+      setVerified(true);
+      setTimeout(onVerified, 650);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      // Real Toss-style wrong-code shake, matching PinPad's own already-
+      // established error-shake pattern (itunda had it on the PIN pad but never
+      // on this OTP field).
+      shakeControls.start({ x: [0, -8, 8, -8, 8, 0], transition: { duration: 0.4 } });
     } finally {
       setBusy(false);
     }
@@ -5397,7 +5410,21 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
 
   return (
     <div style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
-      {!sent ? (
+      {verified ? (
+        <motion.div
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', ...itundaSpring.medium }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <span style={{ width: '22px', height: '22px', borderRadius: '11px', backgroundColor: 'var(--itunda-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Check size={14} color="#ffffff" />
+          </span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-green)' }}>
+            {kind === 'email' ? 'Email verified' : 'Phone number verified'}
+          </span>
+        </motion.div>
+      ) : !sent ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{kind === 'email' ? 'Email' : 'Phone number'} not verified</span>
           <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSend} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}>
@@ -5405,9 +5432,11 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
           </button>
         </div>
       ) : (
-        <form onSubmit={handleConfirm} style={{ display: 'flex', gap: '8px' }}>
-          <input
+        <motion.form onSubmit={handleConfirm} animate={shakeControls} style={{ display: 'flex', gap: '8px' }}>
+          <motion.input
             type="text" inputMode="numeric" pattern="[0-9]*" autoFocus placeholder="Enter code" value={code} onChange={(e) => setCode(e.target.value)} required
+            animate={busy ? { opacity: [1, 0.55, 1] } : { opacity: 1 }}
+            transition={busy ? { duration: 0.9, repeat: Infinity, ease: 'easeInOut' } : undefined}
             style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
           />
           {/* Real CTA-label-clarity fix (2026-08-24, docs/DESIGN_REFERENCES.md §11 --
@@ -5419,7 +5448,7 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy} style={{ fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px 12px' }}>
             {busy ? '…' : kind === 'email' ? 'Verify email' : 'Verify phone number'}
           </button>
-        </form>
+        </motion.form>
       )}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>

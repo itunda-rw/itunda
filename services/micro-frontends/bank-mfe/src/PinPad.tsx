@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion, useAnimation } from 'framer-motion';
 import { Delete } from 'lucide-react';
 
 // Real Toss-sourced 6-digit PIN pad (2026-08-24) -- see backend AuthService's own doc
@@ -9,12 +10,19 @@ import { Delete } from 'lucide-react';
 // dots track progress; onComplete fires exactly once per 6 real digits entered.
 export function PinPad({ label, onComplete, error, disabled }: { label: string; onComplete: (pin: string) => void; error?: string | null; disabled?: boolean }) {
   const [digits, setDigits] = useState('');
+  const shakeControls = useAnimation();
 
   // Real reset-on-error (2026-08-24): a wrong PIN should let the user immediately
   // retry from a blank pad, not stare at 6 already-filled dots with no way back
-  // except tapping delete 6 times.
+  // except tapping delete 6 times. Real Toss-style shake added on top (2026-08-29,
+  // 60fps.design's own real catalog of Toss's named interactions) -- matches the
+  // shake Android/iOS's own PinPad ports already had; web never did until now.
   useEffect(() => {
-    if (error) setDigits('');
+    if (error) {
+      setDigits('');
+      shakeControls.start({ x: [0, -8, 8, -8, 8, 0], transition: { duration: 0.4 } });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error]);
 
   const press = (digit: string) => {
@@ -23,7 +31,10 @@ export function PinPad({ label, onComplete, error, disabled }: { label: string; 
     setDigits(next);
     if (next.length === 6) {
       onComplete(next);
-      setDigits('');
+      // Real Toss-style brief "confirming" pulse (see the dots' own scale
+      // animation below) before clearing -- previously cleared in the same
+      // synchronous tick, so the 6th filled dot was never actually visible.
+      setTimeout(() => setDigits(''), 180);
     }
   };
 
@@ -35,7 +46,12 @@ export function PinPad({ label, onComplete, error, disabled }: { label: string; 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 600, color: 'var(--itunda-grey-700)', margin: 0 }}>{label}</p>
-      <div style={{ display: 'flex', gap: '14px' }} role="status" aria-label={`${digits.length} of 6 digits entered`}>
+      <motion.div
+        animate={digits.length === 6 ? { scale: [1, 1.15, 1] } : shakeControls}
+        transition={digits.length === 6 ? { duration: 0.25 } : undefined}
+        style={{ display: 'flex', gap: '14px' }}
+        role="status" aria-label={`${digits.length} of 6 digits entered`}
+      >
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
@@ -46,7 +62,7 @@ export function PinPad({ label, onComplete, error, disabled }: { label: string; 
             }}
           />
         ))}
-      </div>
+      </motion.div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 64px)', gap: '12px', marginTop: '8px' }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
