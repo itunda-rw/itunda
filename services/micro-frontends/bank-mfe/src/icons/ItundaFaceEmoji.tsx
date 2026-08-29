@@ -34,6 +34,7 @@ import { ITUNDAFACE_TRAVEL } from './ItundaFaceTravel';
 import { ITUNDAFACE_ACTIVITIES } from './ItundaFaceActivities';
 import { ITUNDAFACE_OBJECTS } from './ItundaFaceObjects';
 import { SymbolCheckMarkButton, SymbolCrossMark, SymbolExclamationMark, SymbolQuestionMark, SymbolHundred, SymbolProhibited, SymbolRecycling, SymbolWarning } from './ItundaFaceSymbols';
+import { FlagRwanda, FlagKenya, FlagUganda, FlagTanzania, FlagBurundi, FlagCongo, FlagUnitedStates, FlagUnitedKingdom, FlagEuropeanUnion } from './ItundaFaceFlags';
 
 type GlyphFn = (props: { size?: number }) => React.ReactElement;
 
@@ -58,14 +59,24 @@ export const ITUNDAFACE_EMOJI: Record<string, GlyphFn> = {
   '⚠️': SymbolWarning,
   '🚫': SymbolProhibited,
   '♻️': SymbolRecycling,
+  '🇷🇼': FlagRwanda,
+  '🇰🇪': FlagKenya,
+  '🇺🇬': FlagUganda,
+  '🇹🇿': FlagTanzania,
+  '🇧🇮': FlagBurundi,
+  '🇨🇩': FlagCongo,
+  '🇺🇸': FlagUnitedStates,
+  '🇬🇧': FlagUnitedKingdom,
+  '🇪🇺': FlagEuropeanUnion,
 };
 
 /** Real category grouping for the picker -- Unicode's own official emoji group
- * names (the same ones TossFace itself organizes by), not invented. Phases 1-8
+ * names (the same ones TossFace itself organizes by), not invented. Phases 1-9
  * (Smileys & Emotion, People & Body, Animals & Nature, Food & Drink, Travel &
- * Places, Activities, Objects, Symbols) have real itundaface glyphs today; the
- * array shape is deliberately ready for Flags to be appended in a later
- * session without restructuring the picker UI itself. */
+ * Places, Activities, Objects, Symbols, Flags) have real itundaface glyphs
+ * today -- Flags is a first batch of 9 (Rwanda + EAC neighbors + itunda's 3
+ * real foreign-currency-account countries), not the whole category; hundreds
+ * of country flags remain, likely spanning several more sessions. */
 export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = [
   { name: 'Smileys & Emotion', emoji: ['👍', '❤️', '😂', '😮', '😢', ...Object.keys(ITUNDAFACE_SMILEYS)] },
   { name: 'People & Body', emoji: Object.keys(ITUNDAFACE_PEOPLE) },
@@ -75,6 +86,7 @@ export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = 
   { name: 'Activities', emoji: Object.keys(ITUNDAFACE_ACTIVITIES) },
   { name: 'Objects', emoji: Object.keys(ITUNDAFACE_OBJECTS) },
   { name: 'Symbols', emoji: ['✅', '❌', '❗', '❓', '💯', '⚠️', '🚫', '♻️'] },
+  { name: 'Flags', emoji: ['🇷🇼', '🇰🇪', '🇺🇬', '🇹🇿', '🇧🇮', '🇨🇩', '🇺🇸', '🇬🇧', '🇪🇺'] },
 ];
 
 // Matches one emoji "unit": an Extended_Pictographic codepoint (the real Unicode
@@ -82,8 +94,15 @@ export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = 
 // like \p{Emoji} also match digits/#/* which aren't wanted here) optionally
 // followed by the U+FE0F emoji-presentation variation selector (needed: '❤' alone
 // is Extended_Pictographic but itunda's real stored/registry key is '❤️', the
-// 2-codepoint heart+VS16 sequence -- dropping this would silently never match).
-const EMOJI_UNIT = /\p{Extended_Pictographic}️?/gu;
+// 2-codepoint heart+VS16 sequence -- dropping this would silently never match),
+// OR a real flag sequence: exactly 2 consecutive Regional_Indicator codepoints
+// (a categorically SEPARATE Unicode property from Extended_Pictographic --
+// confirmed directly, not assumed: Unicode's own emoji-data.txt lists Regional
+// Indicators as Emoji=Yes but Extended_Pictographic=No, precisely because
+// text-segmentation treats them as their own grapheme-cluster-breaking class,
+// UAX29/UTS51 -- so this phase's flag glyphs would silently never match without
+// this second alternative, even though they're correctly registered above).
+const EMOJI_UNIT = /\p{Extended_Pictographic}️?|\p{Regional_Indicator}{2}/gu;
 
 /** Renders a message body with any REGISTERED emoji swapped for itundaface's own
  * glyph inline, leaving everything else (including unregistered emoji -- the
