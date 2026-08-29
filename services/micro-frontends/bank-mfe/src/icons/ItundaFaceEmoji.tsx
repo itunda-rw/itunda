@@ -37,6 +37,7 @@ import { SymbolCheckMarkButton, SymbolCrossMark, SymbolExclamationMark, SymbolQu
 import { FlagRwanda, FlagKenya, FlagUganda, FlagTanzania, FlagBurundi, FlagCongo, FlagUnitedStates, FlagUnitedKingdom, FlagEuropeanUnion } from './ItundaFaceFlags';
 import { FlagSouthSudan, FlagSomalia, FlagChina, FlagIndia, FlagBelgium, FlagGermany, FlagFrance, FlagSouthAfrica, FlagNigeria, FlagEthiopia } from './ItundaFaceFlags2';
 import { FlagSouthKorea, FlagJapan, FlagUnitedArabEmirates, FlagSwitzerland, FlagNetherlands, FlagGhana, FlagMorocco, FlagEgypt, FlagZambia, FlagMozambique } from './ItundaFaceFlags3';
+import { FlagSweden, FlagCanada, FlagAustralia, FlagSenegal, FlagIvoryCoast, FlagCameroon, FlagAngola, FlagZimbabwe, FlagBotswana, FlagMalawi } from './ItundaFaceFlags4';
 
 type GlyphFn = (props: { size?: number }) => React.ReactElement;
 
@@ -90,6 +91,16 @@ export const ITUNDAFACE_EMOJI: Record<string, GlyphFn> = {
   '🇪🇬': FlagEgypt,
   '🇿🇲': FlagZambia,
   '🇲🇿': FlagMozambique,
+  '🇸🇪': FlagSweden,
+  '🇨🇦': FlagCanada,
+  '🇦🇺': FlagAustralia,
+  '🇸🇳': FlagSenegal,
+  '🇨🇮': FlagIvoryCoast,
+  '🇨🇲': FlagCameroon,
+  '🇦🇴': FlagAngola,
+  '🇿🇼': FlagZimbabwe,
+  '🇧🇼': FlagBotswana,
+  '🇲🇼': FlagMalawi,
 };
 
 /** Real category grouping for the picker -- Unicode's own official emoji group
@@ -108,7 +119,7 @@ export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = 
   { name: 'Activities', emoji: Object.keys(ITUNDAFACE_ACTIVITIES) },
   { name: 'Objects', emoji: Object.keys(ITUNDAFACE_OBJECTS) },
   { name: 'Symbols', emoji: ['✅', '❌', '❗', '❓', '💯', '⚠️', '🚫', '♻️'] },
-  { name: 'Flags', emoji: ['🇷🇼', '🇰🇪', '🇺🇬', '🇹🇿', '🇧🇮', '🇨🇩', '🇺🇸', '🇬🇧', '🇪🇺', '🇸🇸', '🇸🇴', '🇨🇳', '🇮🇳', '🇧🇪', '🇩🇪', '🇫🇷', '🇿🇦', '🇳🇬', '🇪🇹', '🇰🇷', '🇯🇵', '🇦🇪', '🇨🇭', '🇳🇱', '🇬🇭', '🇲🇦', '🇪🇬', '🇿🇲', '🇲🇿'] },
+  { name: 'Flags', emoji: ['🇷🇼', '🇰🇪', '🇺🇬', '🇹🇿', '🇧🇮', '🇨🇩', '🇺🇸', '🇬🇧', '🇪🇺', '🇸🇸', '🇸🇴', '🇨🇳', '🇮🇳', '🇧🇪', '🇩🇪', '🇫🇷', '🇿🇦', '🇳🇬', '🇪🇹', '🇰🇷', '🇯🇵', '🇦🇪', '🇨🇭', '🇳🇱', '🇬🇭', '🇲🇦', '🇪🇬', '🇿🇲', '🇲🇿', '🇸🇪', '🇨🇦', '🇦🇺', '🇸🇳', '🇨🇮', '🇨🇲', '🇦🇴', '🇿🇼', '🇧🇼', '🇲🇼'] },
 ];
 
 // Matches one emoji "unit": an Extended_Pictographic codepoint (the real Unicode
