@@ -47,6 +47,7 @@ import rw.itunda.core.network.LenderDto
 import rw.itunda.core.network.LoanAccountDto
 import rw.itunda.core.network.LoanOfferDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.OpenOverdraftRequest
 import rw.itunda.core.network.OverdraftAccountDto
 import rw.itunda.core.network.OverdraftAmountRequest
@@ -206,6 +207,13 @@ fun LoansScreen(onBack: () -> Unit) {
                                         "You paid off this loan in full — one less thing to carry."
                                     } else null
                                     refresh()
+                                } catch (e: retrofit2.HttpException) {
+                                    if (apiErrorCode(e) == "LOAN_ALREADY_PAID") {
+                                        repayAmounts = repayAmounts - loan.id
+                                        refresh()
+                                    } else {
+                                        error = "That repayment could not be completed."
+                                    }
                                 } catch (_: Exception) {
                                     error = "That repayment could not be completed."
                                 } finally { busyId = null }
