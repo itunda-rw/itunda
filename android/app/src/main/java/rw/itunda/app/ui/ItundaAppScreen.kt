@@ -3440,6 +3440,16 @@ private fun PayTab(
                 val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
                 rewardTasks = result.tasks
                 rewardsTotal = result.rewardsTotal
+            } catch (e: retrofit2.HttpException) {
+                // Real gap found 2026-08-30: on REWARD_TASK_ALREADY_CLAIMED this used to be
+                // a silent no-op, which could leave the row stuck showing "claimable"
+                // forever if an earlier tap actually succeeded -- refresh so it reflects
+                // reality. Every other error is still non-critical/retryable on next tap.
+                if (rw.itunda.core.network.apiErrorCode(e) == "REWARD_TASK_ALREADY_CLAIMED") {
+                    val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
+                    rewardTasks = result.tasks
+                    rewardsTotal = result.rewardsTotal
+                }
             } catch (e: Exception) {
                 // Non-critical -- the row just stays claimable, retryable on next tap.
             } finally {
