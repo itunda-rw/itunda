@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -4771,6 +4773,16 @@ private fun AllTopBar(onOpenAuthentication: () -> Unit = {}, onOpenHelp: () -> U
 // showed as plain letters M/G/B/P). Real icons per item now; this is the
 // single biggest reason the app read as a wireframe rather than Toss.
 @Composable
+// Real Toss/Baemin/Karrot hub-organization fix (2026-08-29, direct user reference:
+// real Baemin "요기더적립/포장/할인랭킹/선물" + "전체/치킨/버거/족발보쌈/..." rows and
+// Karrot's "전체/중고차/중고거래/알바/부동산" row -- one compact, single-row
+// horizontally-scrolling strip per category set, never a multi-row grid that eats
+// vertical space before real content even starts). This previously wrapped to
+// multiple fixed rows via `items.chunked(4)` -- "Shortcuts"' 6 items became 2 rows,
+// the trailing row's 2 items spaced awkwardly far apart by SpaceBetween -- exactly
+// the "noisy page, not enough room for content" pattern the user's own reference
+// screenshots were pointing at. A horizontal scroller keeps every section to one
+// compact row regardless of item count.
 private fun IconGridSection(
     title: String,
     items: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>>,
@@ -4778,20 +4790,20 @@ private fun IconGridSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(title, color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-        val chunked = items.chunked(4)
-        chunked.forEach { rowItems ->
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                rowItems.forEach { (label, icon) ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f).pressScaleClickable { onItemClick(label) },
-                    ) {
-                        Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(label, color = Ids.colors.textSecondary, fontSize = 13.sp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        ) {
+            items.forEach { (label, icon) ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(64.dp).pressScaleClickable { onItemClick(label) },
+                ) {
+                    Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(label, color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
                 }
             }
         }
