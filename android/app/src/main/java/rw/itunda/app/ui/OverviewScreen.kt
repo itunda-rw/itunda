@@ -49,6 +49,7 @@ import rw.itunda.app.miniapps.RewardTasksMiniAppActivity
 import rw.itunda.core.network.LinkAccountRequest
 import rw.itunda.core.network.LinkedAccountEntityDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.network.OverviewResponse
 
 // Real "My assets" tab-by-tab redesign (2026-08-27, direct user reference: 3 real
@@ -245,6 +246,7 @@ fun OverviewScreen(
                         busy = true
                         scope.launch {
                             try { NetworkClient.apiService.unlinkAccount(account.id); refresh() }
+                            catch (e: retrofit2.HttpException) { error = superAppErrorMessage(e) }
                             catch (_: Exception) { error = context.getString(R.string.overview_unlink_error) }
                             finally { busy = false }
                         }

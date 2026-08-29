@@ -298,6 +298,8 @@ struct OverviewScreenView: View {
         do {
             _ = try await NetworkClient.shared.unlinkAccount(accountId: accountId)
             await refresh()
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            await refresh()
         } catch { self.error = t("unlinkError") }
     }
 
