@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.core.network.KycSubmissionDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.network.SubmitIdentityRequest
 
@@ -132,6 +133,8 @@ fun IdentityScreen(onBack: () -> Unit) {
                                         )
                                         documentNumber = ""; documentReference = ""
                                         refresh()
+                                    } catch (e: retrofit2.HttpException) {
+                                        error = superAppErrorMessage(e)
                                     } catch (_: Exception) {
                                         error = "That submission could not be completed."
                                     } finally { busy = false }

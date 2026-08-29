@@ -917,6 +917,9 @@ struct IdentityScreenView: View {
             _ = try await NetworkClient.shared.submitIdentity(documentType: documentType, documentNumber: documentNumber, documentReference: documentReference)
             documentNumber = ""; documentReference = ""
             await refresh()
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            documentNumber = ""; documentReference = ""
+            await refresh()
         } catch { self.error = "That submission could not be completed." }
     }
 }
