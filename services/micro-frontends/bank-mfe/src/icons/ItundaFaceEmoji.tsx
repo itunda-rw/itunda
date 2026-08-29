@@ -33,6 +33,7 @@ import { ITUNDAFACE_FOOD } from './ItundaFaceFood';
 import { ITUNDAFACE_TRAVEL } from './ItundaFaceTravel';
 import { ITUNDAFACE_ACTIVITIES } from './ItundaFaceActivities';
 import { ITUNDAFACE_OBJECTS } from './ItundaFaceObjects';
+import { SymbolCheckMarkButton, SymbolCrossMark, SymbolExclamationMark, SymbolQuestionMark, SymbolHundred, SymbolProhibited, SymbolRecycling, SymbolWarning } from './ItundaFaceSymbols';
 
 type GlyphFn = (props: { size?: number }) => React.ReactElement;
 
@@ -49,14 +50,22 @@ export const ITUNDAFACE_EMOJI: Record<string, GlyphFn> = {
   ...ITUNDAFACE_TRAVEL,
   ...ITUNDAFACE_ACTIVITIES,
   ...ITUNDAFACE_OBJECTS,
+  '✅': SymbolCheckMarkButton,
+  '❌': SymbolCrossMark,
+  '❗': SymbolExclamationMark,
+  '❓': SymbolQuestionMark,
+  '💯': SymbolHundred,
+  '⚠️': SymbolWarning,
+  '🚫': SymbolProhibited,
+  '♻️': SymbolRecycling,
 };
 
 /** Real category grouping for the picker -- Unicode's own official emoji group
- * names (the same ones TossFace itself organizes by), not invented. Phases 1-7
+ * names (the same ones TossFace itself organizes by), not invented. Phases 1-8
  * (Smileys & Emotion, People & Body, Animals & Nature, Food & Drink, Travel &
- * Places, Activities, Objects) have real itundaface glyphs today; the array
- * shape is deliberately ready for Symbols / Flags to be appended in later
- * sessions without restructuring the picker UI itself. */
+ * Places, Activities, Objects, Symbols) have real itundaface glyphs today; the
+ * array shape is deliberately ready for Flags to be appended in a later
+ * session without restructuring the picker UI itself. */
 export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = [
   { name: 'Smileys & Emotion', emoji: ['👍', '❤️', '😂', '😮', '😢', ...Object.keys(ITUNDAFACE_SMILEYS)] },
   { name: 'People & Body', emoji: Object.keys(ITUNDAFACE_PEOPLE) },
@@ -65,6 +74,7 @@ export const ITUNDAFACE_EMOJI_CATEGORIES: { name: string; emoji: string[] }[] = 
   { name: 'Travel & Places', emoji: Object.keys(ITUNDAFACE_TRAVEL) },
   { name: 'Activities', emoji: Object.keys(ITUNDAFACE_ACTIVITIES) },
   { name: 'Objects', emoji: Object.keys(ITUNDAFACE_OBJECTS) },
+  { name: 'Symbols', emoji: ['✅', '❌', '❗', '❓', '💯', '⚠️', '🚫', '♻️'] },
 ];
 
 // Matches one emoji "unit": an Extended_Pictographic codepoint (the real Unicode
