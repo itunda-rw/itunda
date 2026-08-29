@@ -31,3 +31,22 @@ export const collectMotoFare = (code: string, fare: number) =>
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ code, fare }),
   }).then((r) => r.collected);
+
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the collect flow above
+// existed with zero way for a driver to ever see what they'd collected -- the backend's
+// own MotoFareController.getMyTripsAsDriver ("/earnings") had zero caller anywhere on
+// any platform since the feature shipped 2026-08-27. Same real shape as MotoFareTrip
+// on the backend, not re-declared: driverUserId/riderUserId are real user ids, not
+// display names -- no name-lookup endpoint exists for either role on this feature.
+export interface MotoFareTrip {
+  id: string;
+  riderUserId: string;
+  driverUserId: string;
+  fare: number;
+  createdAt: string;
+}
+
+export const fetchMyMotoFareEarnings = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; trips: MotoFareTrip[]; totalElements: number; totalPages: number }>(
+    `/api/v1/moto-fare/earnings?page=${page}&size=${size}`,
+  );

@@ -6131,6 +6131,12 @@ public struct TapFareByCodeResponse: Decodable { public let success: Bool; publi
 public struct CollectMotoFareRequest: Encodable { public let code: String; public let fare: Double }
 public struct MotoFareCollectResultDto: Decodable { public let fare: Double; public let collectedAt: String }
 public struct CollectMotoFareResponse: Decodable { public let success: Bool; public let collected: MotoFareCollectResultDto }
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the collect flow above
+// existed with zero way for a driver to ever see what they'd collected -- the
+// backend's own MotoFareController.getMyTripsAsDriver ("/earnings") had zero caller
+// anywhere on any platform since the feature shipped 2026-08-27.
+public struct MotoFareTripDto: Decodable, Identifiable { public let id: String; public let riderUserId: String; public let driverUserId: String; public let fare: Double; public let createdAt: String }
+public struct MotoFareEarningsResponse: Decodable { public let success: Bool; public let trips: [MotoFareTripDto]; public let totalElements: Int; public let totalPages: Int }
 
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }

@@ -5,10 +5,42 @@
 // individual, not a fixed-route company the way Kigali Bus Services/Royal Express
 // are), and a different, real sourced fare range (400-6000 RWF vs transit's 200-500).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError } from './lib/api';
 import { QrScanCamera } from './QrScanCamera';
-import { collectMotoFare, MOTO_FARE_MAX, MOTO_FARE_MIN, MOTO_FARE_STEP, type MotoFareCollectResult } from './lib/motoFare';
+import { collectMotoFare, fetchMyMotoFareEarnings, MOTO_FARE_MAX, MOTO_FARE_MIN, MOTO_FARE_STEP, type MotoFareCollectResult, type MotoFareTrip } from './lib/motoFare';
+
+// Real driver earnings summary (uncalled-endpoint sweep, 2026-08-29) -- mirrors
+// ride-hailing's own "This week" card (BankDashboard.tsx's DRIVE sub-tab) in shape,
+// but moto-fare's /earnings endpoint returns a flat trip list, not day-bucketed
+// totals, so the aggregate is summed client-side over whatever page is fetched.
+function MotoFareEarningsSummary({ trips, totalElements }: { trips: MotoFareTrip[]; totalElements: number }) {
+  if (trips.length === 0) return null;
+  const totalFare = trips.reduce((sum, t) => sum + t.fare, 0);
+  return (
+    <div className="itunda-flat-section" style={{ marginBottom: '16px' }}>
+      <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Your fares</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Fares collected</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{totalElements}</p>
+        </div>
+        <div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Total (last {trips.length})</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{totalFare.toLocaleString()} RWF</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {trips.slice(0, 5).map((trip) => (
+          <div key={trip.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-12-size)' }}>
+            <span style={{ color: 'var(--itunda-grey-500)' }}>{new Date(trip.createdAt).toLocaleString()}</span>
+            <span style={{ fontWeight: 600 }}>{trip.fare.toLocaleString()} RWF</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function MotoFareCollectScreen() {
   const [code, setCode] = useState<string | null>(null);
@@ -18,6 +50,12 @@ export function MotoFareCollectScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collected, setCollected] = useState<MotoFareCollectResult | null>(null);
+  const [earnings, setEarnings] = useState<{ trips: MotoFareTrip[]; totalElements: number } | null>(null);
+
+  const loadEarnings = () => {
+    fetchMyMotoFareEarnings().then((r) => setEarnings({ trips: r.trips, totalElements: r.totalElements })).catch(() => {});
+  };
+  useEffect(loadEarnings, []);
 
   const reset = () => {
     setCode(null);
@@ -33,6 +71,7 @@ export function MotoFareCollectScreen() {
     try {
       const result = await collectMotoFare(code, fare);
       setCollected(result);
+      loadEarnings();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not collect this fare.');
     } finally {
@@ -55,6 +94,7 @@ export function MotoFareCollectScreen() {
   if (!code) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {earnings && <MotoFareEarningsSummary trips={earnings.trips} totalElements={earnings.totalElements} />}
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Scan the rider&apos;s payment code</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
           Ask the rider to open itunda and tap to show their payment code, then point your camera at it.

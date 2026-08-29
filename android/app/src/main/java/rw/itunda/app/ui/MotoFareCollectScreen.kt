@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.app.nfc.TransitNfcListener
@@ -36,6 +39,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CollectMotoFareRequest
 import rw.itunda.core.network.MotoFareCollectResultDto
+import rw.itunda.core.network.MotoFareTripDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -54,6 +58,36 @@ import java.util.UUID
 private val MIN_FARE = BigDecimal("400")
 private val MAX_FARE = BigDecimal("6000")
 
+// Real driver earnings summary (uncalled-endpoint sweep, 2026-08-29) -- mirrors
+// ride-hailing's own "This week" earnings card in shape, but moto-fare's /earnings
+// endpoint returns a flat trip list, not day-bucketed totals, so the aggregate is
+// summed client-side over whatever page is fetched.
+@Composable
+private fun MotoFareEarningsSummary(trips: List<MotoFareTripDto>, totalElements: Long) {
+    val totalFare = trips.sumOf { it.fare.toDouble() }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text("Your fares", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("Fares collected", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                Text("$totalElements", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            Column {
+                Text("Total (last ${trips.size})", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                Text("${totalFare.toLong()} RWF", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ids.colors.success)
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        trips.take(5).forEach { trip ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(trip.createdAt, fontSize = 12.sp, color = Ids.colors.textSecondary)
+                Text("${trip.fare.toPlainString()} RWF", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
 @Composable
 fun MotoFareCollectScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
@@ -63,7 +97,24 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var collected by remember { mutableStateOf<MotoFareCollectResultDto?>(null) }
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-29): this collect flow
+    // existed with zero way for a driver to ever see what they'd collected.
+    var earnings by remember { mutableStateOf<List<MotoFareTripDto>?>(null) }
+    var earningsTotal by remember { mutableStateOf(0L) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun loadEarnings() {
+        coroutineScope.launch {
+            try {
+                val result = NetworkClient.apiService.getMyMotoFareEarnings()
+                earnings = result.trips
+                earningsTotal = result.totalElements
+            } catch (_: Exception) {
+                // Non-critical -- the summary just won't render without it.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadEarnings() }
 
     fun reset() {
         code = null
@@ -81,6 +132,7 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
                     UUID.randomUUID().toString(),
                     CollectMotoFareRequest(c, BigDecimal.valueOf(fare.toLong())),
                 ).collected
+                loadEarnings()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
@@ -116,6 +168,10 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
                     }
                     code == null -> {
                         Column {
+                            earnings?.takeIf { it.isNotEmpty() }?.let { trips ->
+                                MotoFareEarningsSummary(trips = trips, totalElements = earningsTotal)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
                             Text("Scan the rider's payment code", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Text(
                                 "Ask the rider to open itunda and tap to show their payment code, then hold your phones back-to-back. No NFC? Point your camera at their QR instead. Fares go straight into your own itunda account -- no fee.",

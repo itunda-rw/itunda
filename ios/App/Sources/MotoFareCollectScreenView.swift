@@ -23,6 +23,10 @@ struct MotoFareCollectScreenView: View {
     @State private var error: String?
     @State private var collected: MotoFareCollectResultDto?
     @State private var nfcReader = TransitNfcReader()
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-29): this collect flow
+    // existed with zero way for a driver to ever see what they'd collected.
+    @State private var earningsTrips: [MotoFareTripDto] = []
+    @State private var earningsTotal = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +51,9 @@ struct MotoFareCollectScreenView: View {
                     } else if let code {
                         collectFormView(code)
                     } else {
+                        if !earningsTrips.isEmpty {
+                            earningsSummaryView
+                        }
                         scanView
                     }
                 }
@@ -58,8 +65,46 @@ struct MotoFareCollectScreenView: View {
             nfcReader.onCodeRead = { code = $0 }
             nfcReader.onUnavailable = { nfcUnavailable = true }
             nfcReader.start()
+            loadEarnings()
         }
         .onDisappear { nfcReader.stop() }
+    }
+
+    private func loadEarnings() {
+        Task {
+            if let result = try? await NetworkClient.shared.getMyMotoFareEarnings() {
+                earningsTrips = result.trips
+                earningsTotal = result.totalElements
+            }
+        }
+    }
+
+    // Mirrors ride-hailing's own "This week" earnings card in shape, but
+    // moto-fare's /earnings endpoint returns a flat trip list, not day-bucketed
+    // totals, so the aggregate is summed client-side over whatever page is fetched.
+    private var earningsSummaryView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your fares").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("Fares collected").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                    Text("\(earningsTotal)").font(.headline)
+                }
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text("Total (last \(earningsTrips.count))").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                    Text("\(formatMoney(earningsTrips.reduce(0) { $0 + $1.fare })) RWF").font(.headline).foregroundColor(.green)
+                }
+            }
+            ForEach(earningsTrips.prefix(5)) { trip in
+                HStack {
+                    Text(trip.createdAt).font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                    Spacer()
+                    Text("\(formatMoney(trip.fare)) RWF").font(.caption).bold()
+                }
+            }
+        }
+        .padding(.bottom, 8)
     }
 
     private var scanView: some View {
@@ -118,6 +163,7 @@ struct MotoFareCollectScreenView: View {
         Task {
             do {
                 collected = try await NetworkClient.shared.collectMotoFare(code: code, fare: fare).collected
+                loadEarnings()
             } catch {
                 self.error = "Could not collect this fare."
             }

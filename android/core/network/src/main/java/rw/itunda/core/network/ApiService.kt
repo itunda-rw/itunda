@@ -2133,6 +2133,13 @@ data class CollectMotoFareRequest(val code: String, val fare: java.math.BigDecim
 data class MotoFareCollectResultDto(val fare: java.math.BigDecimal, val collectedAt: String)
 data class CollectMotoFareResponse(val success: Boolean, val collected: MotoFareCollectResultDto)
 
+// Real gap found live (uncalled-endpoint sweep, 2026-08-29): the collect flow above
+// existed with zero way for a driver to ever see what they'd collected -- the
+// backend's own MotoFareController.getMyTripsAsDriver ("/earnings") had zero caller
+// anywhere on any platform since the feature shipped 2026-08-27.
+data class MotoFareTripDto(val id: String, val riderUserId: String, val driverUserId: String, val fare: java.math.BigDecimal, val createdAt: String)
+data class MotoFareEarningsResponse(val success: Boolean, val trips: List<MotoFareTripDto>, val totalElements: Long, val totalPages: Int)
+
 // Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere; the
 // "Support" section in this app was five static rows (FAQ/Live chat/...) with no
@@ -4043,6 +4050,9 @@ interface ApiService {
 
     @POST("api/v1/moto-fare/collect")
     suspend fun collectMotoFare(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CollectMotoFareRequest): CollectMotoFareResponse
+
+    @GET("api/v1/moto-fare/earnings")
+    suspend fun getMyMotoFareEarnings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): MotoFareEarningsResponse
 
     @POST("api/v1/support/tickets")
     suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse
