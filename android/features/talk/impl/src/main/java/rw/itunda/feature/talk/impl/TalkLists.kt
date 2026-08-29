@@ -71,6 +71,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun DirectMessagesList(
     conversations: List<ConversationSummaryDto>?,
@@ -255,6 +256,13 @@ internal fun DirectMessagesList(
             }
         } else {
             items(visibleList, key = { it.conversationId }) { c ->
+                // Real Toss-sourced "layering illusion" reorder animation
+                // (2026-08-29, toss.tech/article/interaction's own real "Account
+                // Organization Animation" example -- reordering a list should
+                // animate the move, not jump). Pinning/unpinning used to snap this
+                // row to its new position with zero motion; animateItemPlacement()
+                // auto-animates the position change since `key` above was already
+                // stable, no other logic change needed.
                 SwipeableConversationRow(
                     conversation = c,
                     online = presence[c.otherUserId] == true,
@@ -263,6 +271,7 @@ internal fun DirectMessagesList(
                     onArchiveToggle = { setArchived(c.conversationId, !showArchived) },
                     onPinToggle = { togglePinnedToTop(c.conversationId, !c.pinnedToTop) },
                     onFavoriteToggle = { toggleFavorite(c.conversationId, !c.favorite) },
+                    modifier = Modifier.animateItemPlacement(),
                 )
             }
         }
@@ -286,6 +295,7 @@ internal fun SwipeableConversationRow(
     onArchiveToggle: () -> Unit,
     onPinToggle: () -> Unit,
     onFavoriteToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -298,6 +308,7 @@ internal fun SwipeableConversationRow(
         },
     )
     SwipeToDismissBox(
+        modifier = modifier,
         state = dismissState,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
