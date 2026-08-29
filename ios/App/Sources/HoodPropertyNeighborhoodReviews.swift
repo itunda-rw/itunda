@@ -64,6 +64,8 @@ struct NeighborhoodReviewsSection: View {
             _ = try await NetworkClient.shared.submitNeighborhoodReview(neighborhood: neighborhood, residencyYears: Int(years), body: body_.trimmingCharacters(in: .whitespacesAndNewlines))
             body_ = ""; years = ""; showForm = false; error = nil
             await load()
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            error = "You've already reviewed this neighborhood."
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
