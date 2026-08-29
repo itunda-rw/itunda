@@ -28,7 +28,7 @@ import SwiftUI
 import CoreDesignSystem
 
 private let smileysKeys: [String] = ["👍", "❤️", "😂", "😮", "😢", "😀", "😄", "🙂", "😉", "😍", "😘", "😴", "😭", "😡", "😎"]
-private let peopleKeys: [String] = ["👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏"]
+private let peopleKeys: [String] = ["👀", "✊", "👋", "✌️", "👌", "💪", "🙏", "👏", "🤝"]
 private let natureKeys: [String] = ["🐶", "🐱", "⭐", "🌟", "🌈", "🌸", "🐦"]
 private let foodKeys: [String] = ["🍕", "🍔", "☕", "🍰", "🍩", "🍓", "🍉", "🍎"]
 private let travelKeys: [String] = ["🚗", "✈️", "🏠", "🚀", "🚲", "🌍"]
@@ -72,6 +72,7 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "💪": PeopleMuscle(size: size)
     case "🙏": PeoplePray(size: size)
     case "👏": PeopleClappingHands(size: size)
+    case "🤝": HandshakeGlyph(size: size)
     case "🐶": NatureDog(size: size)
     case "🐱": NatureCat(size: size)
     case "⭐": NatureStar(size: size)

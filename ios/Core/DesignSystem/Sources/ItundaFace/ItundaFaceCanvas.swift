@@ -41,6 +41,14 @@ public enum ItundaFaceShape {
     /// ItundaFacePeople.swift's own doc comment). Mirrors Android's
     /// Shape2D.ScaledGroup exactly.
     indirect case scaledGroup(scale: CGFloat, fromCenterX: CGFloat, fromCenterY: CGFloat, toCenterX: CGFloat, toCenterY: CGFloat, shapes: [ItundaFaceShape])
+    /// Real SVG `<clipPath>` equivalent -- restricts `shapes` to the region
+    /// inside `clipPathD` (same "d" path-data grammar every other case here
+    /// already uses, parsed via the same `svgPath(_:)`). Added 2026-08-29
+    /// for Noto Emoji's Handshake glyph (ItundaFacePeople.swift's own doc
+    /// comment), the first itundaface source asset that genuinely needs it.
+    /// Mirrors Android's Shape2D.ClippedGroup exactly, using SwiftUI
+    /// GraphicsContext's own real `clip(to:)`, not an approximation.
+    indirect case clippedGroup(clipPathD: String, shapes: [ItundaFaceShape])
 }
 
 /// Parses a real SVG path-data string into a SwiftUI `Path`. Supports both
@@ -364,6 +372,10 @@ private func drawShape(_ shape: ItundaFaceShape, context: inout GraphicsContext)
         scaled.scaleBy(x: scale, y: scale)
         scaled.translateBy(x: -fromCenterX, y: -fromCenterY)
         for s in shapes { drawShape(s, context: &scaled) }
+    case .clippedGroup(let clipPathD, let shapes):
+        var clipped = context
+        clipped.clip(to: svgPath(clipPathD))
+        for s in shapes { drawShape(s, context: &clipped) }
     }
 }
 

@@ -257,8 +257,8 @@ struct EntireMenuScreen: View {
                 // Real Kigali public-transit stored-value balance (2026-08-27) -- see
                 // TransitScreenView.swift's own doc comment for the full sourced account.
                 FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
-                FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
-                FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
+                FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showGroupAccounts = true }),
+                FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showIkimina = true }),
                 FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
                 FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", glyph: { AnyView(SeedlingGlyph(size: 28)) }, action: { showHarvestAdvance = true }),
                 // Real icon-clash fix (2026-08-24), same bug class as the Android
@@ -434,8 +434,8 @@ struct EntireMenuScreen: View {
                 // Real Kigali public-transit stored-value balance (2026-08-27) -- see
                 // TransitScreenView.swift's own doc comment for the full sourced account.
                 FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
-                        FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
-                        FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
+                        FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showGroupAccounts = true }),
+                        FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showIkimina = true }),
                         FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
                         FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", glyph: { AnyView(SeedlingGlyph(size: 28)) }, action: { showHarvestAdvance = true }),
                         // Same icon-clash fix as this file's first FlatRow list above --
