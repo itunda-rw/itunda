@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from './i18n/I18nContext';
 import { EmptyState } from './EmptyState';
 import { ApiError } from './lib/api';
+import { QrScanCamera } from './QrScanCamera';
 import {
   fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
   isNotAgentOperatorError, type AgentTillSnapshot, type AgentActivityItem,
@@ -39,6 +40,7 @@ export function AgentOperatorView() {
   const [cashOutAmount, setCashOutAmount] = useState('');
   const [cashOutReceipt, setCashOutReceipt] = useState('');
   const [cashOutCode, setCashOutCode] = useState('');
+  const [cashOutScanUnavailable, setCashOutScanUnavailable] = useState(false);
   const [countedCash, setCountedCash] = useState('');
 
   const load = () => {
@@ -178,8 +180,19 @@ export function AgentOperatorView() {
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
         <input type="text" placeholder="Receipt number" value={cashOutReceipt} onChange={(e) => setCashOutReceipt(e.target.value)}
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
-        <input type="text" placeholder="Customer's withdrawal code" value={cashOutCode} onChange={(e) => setCashOutCode(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
+        {/* Real fix (2026-08-30, no-manual-code-UX sweep) -- was 100% typed entry
+            with no scan option, unlike TransitCollectScreen.tsx's own identical
+            "agent scans a customer's code" flow. Scan-first, manual fallback only
+            when the camera is unavailable -- same convention, never a default
+            "type this code" box. */}
+        {!cashOutScanUnavailable && !cashOutCode ? (
+          <div style={{ marginBottom: '8px' }}>
+            <QrScanCamera onDetect={setCashOutCode} onUnavailable={() => setCashOutScanUnavailable(true)} />
+          </div>
+        ) : (
+          <input type="text" placeholder="Customer's withdrawal code" value={cashOutCode} onChange={(e) => setCashOutCode(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', width: '100%', marginBottom: '8px' }} />
+        )}
         <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleCashOut}>{busy ? 'Working…' : 'Pay cash-out'}</button>
       </div>
 

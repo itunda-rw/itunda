@@ -167,6 +167,8 @@ private struct CashOperationScreen: View {
     @State private var amount = ""
     @State private var receipt = ""
     @State private var code = ""
+    @State private var manualCodeEntry = false
+    @State private var scanUnavailable = false
     @State private var payoutChecked = false
     @State private var message: String?
     @State private var successMessage: String?
@@ -195,9 +197,34 @@ private struct CashOperationScreen: View {
                 IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
                 IdsTextField("Store receipt number", text: $receipt)
                 if mode == .cashOut {
-                    IdsTextField("Customer withdrawal code", text: $code)
-                        .textInputAutocapitalization(.characters)
-                        .onChange(of: code) { code = $0.uppercased() }
+                    // Real fix (2026-08-30, no-manual-code-UX sweep) -- was 100% typed
+                    // entry with no scan option. Mirrors the main app's identical fix
+                    // in AgentOperatorScreenView.swift, via AgentQrScanCamera.swift
+                    // (this target's own duplicated scanner -- see its doc comment).
+                    if !manualCodeEntry {
+                        Text("Scan customer's QR").font(.subheadline).bold()
+                        if !scanUnavailable {
+                            QrScanCameraView(onDetect: { code = $0.uppercased(); manualCodeEntry = true }, onUnavailable: { scanUnavailable = true })
+                                .frame(height: 220).cornerRadius(12).clipped()
+                        }
+                        Button(action: { manualCodeEntry = true }) {
+                            Text(scanUnavailable ? "Enter code manually" : "No camera? Enter code instead")
+                                .bold().foregroundColor(IDS.Colors.textPrimary)
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                        }
+                    } else {
+                        IdsTextField("Customer withdrawal code", text: $code)
+                            .textInputAutocapitalization(.characters)
+                            .onChange(of: code) { code = $0.uppercased() }
+                        if !scanUnavailable {
+                            Button(action: { code = ""; manualCodeEntry = false }) {
+                                Text("Scan a QR code instead").bold().foregroundColor(IDS.Colors.textPrimary)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                    .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                            }
+                        }
+                    }
                     HStack(alignment: .top, spacing: 6) {
                         Button(action: { payoutChecked.toggle() }) {
                             Image(systemName: payoutChecked ? "checkmark.square.fill" : "square")

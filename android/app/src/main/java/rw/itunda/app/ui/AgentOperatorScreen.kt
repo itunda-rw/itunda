@@ -5,12 +5,16 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import rw.itunda.core.designsystem.components.CameraQrScanner
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -23,7 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import rw.itunda.core.network.AgentActivityItemDto
 import rw.itunda.core.network.AgentCashInRequest
@@ -234,6 +241,7 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
     var amount by remember { mutableStateOf("") }
     var receipt by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
+    var manualEntry by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -243,7 +251,25 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
             IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = code, onValueChange = { code = it }, label = "Customer's withdrawal code", modifier = Modifier.fillMaxWidth())
+            // Real fix (2026-08-30, no-manual-code-UX sweep) -- this card was 100%
+            // typed entry with no scan option at all, unlike every other code-based
+            // flow in the app (Pay/Talk join). The customer's own withdrawal code is
+            // now also shown as a QR (see AgentCashScreen.kt) so the agent can point
+            // their camera at the customer's phone instead of retyping a 12-char code.
+            if (!manualEntry) {
+                Text("Scan customer's QR", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp))) {
+                    CameraQrScanner(onScanned = { code = it; manualEntry = true }, modifier = Modifier.fillMaxSize())
+                }
+                IdsButton(
+                    text = "No camera? Enter code instead",
+                    variant = IdsButtonVariant.Tinted,
+                    onClick = { manualEntry = true },
+                )
+            } else {
+                IdsTextField(value = code, onValueChange = { code = it }, label = "Customer's withdrawal code", modifier = Modifier.fillMaxWidth())
+                IdsButton(text = "Scan a QR code instead", variant = IdsButtonVariant.Tinted, onClick = { code = ""; manualEntry = false })
+            }
             IdsButton(
                 text = if (busy) "Working…" else "Pay cash-out",
                 enabled = !busy,

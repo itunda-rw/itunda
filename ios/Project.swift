@@ -342,6 +342,9 @@ allTargets.append(
             "NSAppTransportSecurity": [
                 "NSAllowsArbitraryLoads": true,
             ],
+            // Added 2026-08-30 (no-manual-code-UX sweep) alongside AgentApp's first
+            // camera capability -- CashOperationScreen's own QrScanCameraView.
+            "NSCameraUsageDescription": "itunda Agent uses your camera to scan a customer's withdrawal code QR.",
         ]),
         sources: ["AgentApp/Sources/**"],
         dependencies: [

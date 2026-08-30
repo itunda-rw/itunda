@@ -130,6 +130,15 @@ private fun AuthorizationCard(
         if (authorization.status == "ACTIVE") {
             Text("Withdrawal code", style = MaterialTheme.typography.labelMedium)
             Text(authorization.code, style = MaterialTheme.typography.headlineSmall)
+            // Real fix (2026-08-30, no-manual-code-UX sweep) -- was code-only, forcing
+            // the agent to retype a 12-char code by hand. A QR (same generatePayQrBitmap
+            // this app's own "My code" screen uses) lets the agent scan it instead;
+            // AgentOperatorScreen.kt's CashOutCard now scans this by default.
+            androidx.compose.foundation.Image(
+                bitmap = generatePayQrBitmap(authorization.code),
+                contentDescription = "QR code for withdrawal code ${authorization.code}",
+                modifier = Modifier.height(160.dp).padding(vertical = 8.dp),
+            )
             Text("Show it only when the agent is ready to give you cash.", style = MaterialTheme.typography.bodySmall)
             IdsButton(
                 text = if (copied) "Code copied" else "Copy code",

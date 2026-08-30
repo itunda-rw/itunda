@@ -169,6 +169,8 @@ private struct CashOutCard: View {
     @State private var amount = ""
     @State private var receipt = ""
     @State private var code = ""
+    @State private var manualEntry = false
+    @State private var scanUnavailable = false
     @State private var busy = false
 
     var body: some View {
@@ -177,7 +179,31 @@ private struct CashOutCard: View {
             IdsTextField("Customer account number", text: $account)
             IdsTextField("Amount (RWF)", text: $amount, keyboardType: .decimalPad)
             IdsTextField("Receipt number", text: $receipt)
-            IdsTextField("Customer's withdrawal code", text: $code)
+            // Real fix (2026-08-30, no-manual-code-UX sweep) -- this card was 100%
+            // typed entry with no scan option, unlike every other code-based flow in
+            // the app (Pay/Talk join). Mirrors ShopPay.swift's own scan/manual toggle.
+            if !manualEntry {
+                Text("Scan customer's QR").font(.subheadline).bold()
+                if !scanUnavailable {
+                    QrScanCameraView(onDetect: { code = $0; manualEntry = true }, onUnavailable: { scanUnavailable = true })
+                        .frame(height: 220).cornerRadius(12).clipped()
+                }
+                Button(action: { manualEntry = true }) {
+                    Text(scanUnavailable ? "Enter code manually" : "No camera? Enter code instead")
+                        .bold().foregroundColor(IDS.Colors.textPrimary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                }
+            } else {
+                IdsTextField("Customer's withdrawal code", text: $code)
+                if !scanUnavailable {
+                    Button(action: { code = ""; manualEntry = false }) {
+                        Text("Scan a QR code instead").bold().foregroundColor(IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    }
+                }
+            }
             Button(action: { Task { await submit() } }) {
                 Text(busy ? "Working…" : "Pay cash-out").bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
