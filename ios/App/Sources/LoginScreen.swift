@@ -22,13 +22,12 @@ import CoreIdentity
 // packages/design-tokens already established for this codebase, not speculative reuse.
 //
 // Widened to French (2026-08-15), matching the identical fix made the same day to
-// Android's own AppLocale/AppLocalePreference (see LoginScreen.kt's LanguageSwitcher
-// doc comment) -- Rwanda's three official languages, not just two. `.fr` case added
-// rather than a separate enum, so every existing `[AppLocale: [String: String]]`
-// dictionary and every `locale ==` comparison across both files keeps working
-// unchanged; only the dictionaries themselves and the switcher's cycle logic below
-// needed new entries.
-enum AppLocale: String { case en, rw, fr }
+// AppLocale/localeStorageKey/loadStoredLocale moved to CoreDesignSystem's own
+// AppLocale.swift (2026-08-30) -- see that file's doc comment. `.fr` case
+// added rather than a separate enum, so every existing
+// `[AppLocale: [String: String]]` dictionary and every `locale ==` comparison
+// across both files keeps working unchanged; only the dictionaries
+// themselves and the switcher's cycle logic below needed new entries.
 
 private let loginStrings: [AppLocale: [String: String]] = [
     .en: [
@@ -110,19 +109,7 @@ private let loginStrings: [AppLocale: [String: String]] = [
     ],
 ]
 
-let localeStorageKey = "itunda.locale"
-
 private let supportedLocales: [AppLocale] = [.en, .rw, .fr]
-
-func loadStoredLocale() -> AppLocale {
-    if let raw = UserDefaults.standard.string(forKey: localeStorageKey), let locale = AppLocale(rawValue: raw) {
-        return locale
-    }
-    let preferred = Locale.preferredLanguages.first ?? "en"
-    if preferred.hasPrefix("rw") { return .rw }
-    if preferred.hasPrefix("fr") { return .fr }
-    return .en
-}
 
 /// The login/register screen this app never had (see SessionManager.swift) --
 /// gates ContentView in ItundaApp.swift behind a real authenticated session

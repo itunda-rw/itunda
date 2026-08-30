@@ -32,6 +32,7 @@ import CoreDesignSystem
 import CoreNetwork
 import FeatureCredit
 import FeatureMaps
+import FeatureAssets
 
 // Real fix (2026-08-13, matching the identical Android fix same day, direct user
 // report: "entire app is still messy... give me something real"): BenefitsScreen/

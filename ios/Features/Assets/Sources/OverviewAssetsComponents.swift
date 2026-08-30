@@ -4,10 +4,9 @@ import CoreDesignSystem
 // Real "My assets" tab-by-tab redesign shared pieces -- extracted from
 // OverviewLoansCreditScoreScreens.swift (2026-08-28) to keep that file under its
 // file-size-lint baseline, same convention CardExplainer.tsx/OverviewAssetsView.tsx
-// already established on web for the identical constraint. Used only by
-// OverviewScreenView in that file -- not `private` since a private declaration
-// can't be referenced from a different file, but not intended as a general-purpose
-// public API either.
+// already established on web for the identical constraint. Moved into
+// FeatureAssets (2026-08-30) alongside OverviewScreenView, the only consumer --
+// internal is enough now that both live in the same module target.
 
 enum AssetTab: String, CaseIterable {
     case accounts, cards, loans, investment, insurance, realEstate, car, tax, points
