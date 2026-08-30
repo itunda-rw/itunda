@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real Kigali public-transit stored-value balance (2026-08-27, direct user follow-up
 // after the card-design-picker feature: "after this we will build transit features").
 // See the backend's TransitBalance.kt doc comment for the full sourced account of
@@ -94,11 +105,11 @@ struct TransitScreenView: View {
                                 }
                                 HStack {
                                     Slider(value: $fare, in: minFare...maxFare, step: 50)
-                                    Text("\(Int(fare)) RWF").font(.subheadline).bold().frame(minWidth: 80, alignment: .trailing)
+                                    Text("\(formatAmount(Int(fare))) RWF").font(.subheadline).bold().frame(minWidth: 80, alignment: .trailing)
                                 }
                                 let insufficientBalance = (balance?.balance ?? 0) < fare
                                 CardActionButton(
-                                    title: insufficientBalance ? "Balance too low" : (busy ? "Tapping…" : "Tap \(Int(fare)) RWF"),
+                                    title: insufficientBalance ? "Balance too low" : (busy ? "Tapping…" : "Tap \(formatAmount(Int(fare))) RWF"),
                                     disabled: busy || insufficientBalance,
                                     action: tapFare
                                 )

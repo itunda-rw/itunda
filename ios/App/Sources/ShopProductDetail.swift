@@ -4,6 +4,16 @@ import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 struct ProductDetailView: View {
     let merchant: ShoppingMerchantDto
@@ -206,7 +216,7 @@ struct MultiCartView: View {
                             HStack {
                                 Text("Total (\(groups.count) order\(groups.count == 1 ? "" : "s"))").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                                 Spacer()
-                                Text("\(Int(grandTotal)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                Text("\(formatAmount(Int(grandTotal))) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                             }
                             TextField("Delivery address", text: $address)
                                 .padding(12)
@@ -313,7 +323,7 @@ struct MultiCartResultsView: View {
                         Text(r.businessName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
                         if let order = r.order {
-                            Text("\(Int(order.totalAmount)) RWF — placed").font(.subheadline).foregroundColor(.green)
+                            Text("\(formatAmount(Int(order.totalAmount))) RWF — placed").font(.subheadline).foregroundColor(.green)
                         } else {
                             Text(r.error ?? "Failed").font(.subheadline).foregroundColor(.red)
                         }

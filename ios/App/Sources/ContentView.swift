@@ -7,6 +7,17 @@ import FeatureCredit
 import FeatureMaps
 import FeaturePayments
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --
 // a fixed point size that doesn't grow or shrink with iOS's Dynamic Type
 // accessibility setting. Same bug, same fix as CoreDesignSystem's IDS.swift/
@@ -201,7 +212,7 @@ struct ContentView: View {
             rows.append(SavingsRowData(
                 title: "Interest jar",
                 subtitle: String(format: "%.1f%% annual, accrued daily", jar.rate),
-                trailing: "\(Int(jar.earnedThisMonth)) RWF",
+                trailing: "\(formatAmount(Int(jar.earnedThisMonth))) RWF",
                 onTap: { savingsFlowStep = .claimInterest }
             ))
         }
@@ -214,7 +225,7 @@ struct ContentView: View {
             let completedSuffix = goal.status == "completed" ? " · Completed 🎉" : ""
             rows.append(SavingsRowData(
                 title: goal.name,
-                subtitle: "\(Int(goal.currentAmount)) of \(Int(goal.targetAmount)) RWF\(completedSuffix)",
+                subtitle: "\(Int(goal.currentAmount)) of \(formatAmount(Int(goal.targetAmount))) RWF\(completedSuffix)",
                 trailing: "\(percent)%",
                 onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) }
             ))

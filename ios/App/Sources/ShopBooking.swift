@@ -4,6 +4,16 @@ import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 /// Real Kakao Pay 정기결제/Toss 빌링키-style subscribe/cancel -- subscribing charges the
 /// first cycle immediately (real "인증 + 첫결제"), same as
@@ -23,7 +33,7 @@ struct BillingPlanRow: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(plan.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                    Text("\(Int(plan.amount)) RWF every \(plan.intervalDays) days").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    Text("\(formatAmount(Int(plan.amount))) RWF every \(plan.intervalDays) days").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     if let description = plan.description, !description.isEmpty {
                         Text(description).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                     }

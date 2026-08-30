@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real Naver Map-style tabbed place-detail panel (itunda Maps redesign, 2026-08-28) --
 // closes the biggest cross-platform gap found in this pass's research: iOS's place
 // detail was booking-only, with no Home/Menu/Reviews/Photos/News/Info tab structure at
@@ -106,7 +117,7 @@ struct MapPlaceDetailPanel: View {
                 HStack {
                     Text(item.name).font(.caption).foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
-                    Text("\(Int(item.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("\(formatAmount(Int(item.price))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                 }
                 .opacity(item.active ? 1 : 0.5)
             }

@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real Toss 유스 (Toss Youth)-style guardian-child account link -- see
 /// rw.itunda.family.FamilyLinkService's own doc comment for the full sourced account and
 /// honest scope boundary: real read-only spending oversight only, no new allowance
@@ -107,12 +118,12 @@ struct FamilyLinkScreenView: View {
                                     .disabled(busyId == c.link.id)
                                 }
                                 if openOverviewFor == c.link.childUserId, let overview, overview.childUserId == c.link.childUserId {
-                                    Text("Balance: \(Int(overview.accountBalance)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    Text("Balance: \(formatAmount(Int(overview.accountBalance))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                     if overview.recentTransactions.isEmpty {
                                         Text("No transactions yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     } else {
                                         ForEach(overview.recentTransactions.prefix(5), id: \.id) { t in
-                                            Text("\(t.description) · \(Int(t.amount)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            Text("\(t.description) · \(formatAmount(Int(t.amount))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                         }
                                     }
                                 }

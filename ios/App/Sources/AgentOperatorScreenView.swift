@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
 /// comment: "Store-facing API: the operator's JWT determines the agent; callers never
 /// supply an agent id." Distinct from the customer-facing withdrawal-code creation --
@@ -44,11 +55,11 @@ struct AgentOperatorScreenView: View {
                             // (docs/UI_UX_GUIDELINES.md §10).
                             TillSummaryCard(till: till)
                             Divider().overlay(IDS.Colors.divider)
-                            CashInCard(onSubmitted: { balance in message = "Cash in accepted — new customer balance \(Int(balance)) RWF"; Task { await load() } }, onError: { error = $0 })
+                            CashInCard(onSubmitted: { balance in message = "Cash in accepted — new customer balance \(formatAmount(Int(balance))) RWF"; Task { await load() } }, onError: { error = $0 })
                             Divider().overlay(IDS.Colors.divider)
-                            CashOutCard(onSubmitted: { balance in message = "Cash out paid — new customer balance \(Int(balance)) RWF"; Task { await load() } }, onError: { error = $0 })
+                            CashOutCard(onSubmitted: { balance in message = "Cash out paid — new customer balance \(formatAmount(Int(balance))) RWF"; Task { await load() } }, onError: { error = $0 })
                             Divider().overlay(IDS.Colors.divider)
-                            TillCountCard(onSubmitted: { variance, status in message = "Till count submitted — variance \(Int(variance)) RWF (\(status))"; Task { await load() } }, onError: { error = $0 })
+                            TillCountCard(onSubmitted: { variance, status in message = "Till count submitted — variance \(formatAmount(Int(variance))) RWF (\(status))"; Task { await load() } }, onError: { error = $0 })
                             Divider().overlay(IDS.Colors.divider)
 
                             Text("Recent activity").bold()
@@ -61,7 +72,7 @@ struct AgentOperatorScreenView: View {
                                     HStack {
                                         Text(a.type == "CASH_IN" ? "↓ Cash in · \(a.receiptNumber)" : "↑ Cash out · \(a.receiptNumber)").font(.footnote)
                                         Spacer()
-                                        Text("\(Int(a.amount)) RWF").bold().font(.footnote)
+                                        Text("\(formatAmount(Int(a.amount))) RWF").bold().font(.footnote)
                                     }
                                     .padding(.vertical, 6)
                                     Divider().overlay(IDS.Colors.divider)
@@ -99,10 +110,10 @@ private struct TillSummaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(till.agentName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            Text("\(Int(till.expectedCash)) RWF expected in till").font(.title2).bold()
-            Text("Today: \(Int(till.todayCashIn)) RWF in · \(Int(till.todayCashOut)) RWF out").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            Text("\(formatAmount(Int(till.expectedCash))) RWF expected in till").font(.title2).bold()
+            Text("Today: \(formatAmount(Int(till.todayCashIn))) RWF in · \(formatAmount(Int(till.todayCashOut))) RWF out").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             if let r = till.reconciliation {
-                Text("Last count: \(Int(r.countedCash)) RWF (\(r.status), variance \(Int(r.variance)))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Text("Last count: \(formatAmount(Int(r.countedCash))) RWF (\(r.status), variance \(Int(r.variance)))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

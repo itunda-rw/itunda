@@ -1,6 +1,17 @@
 import SwiftUI
 import CoreDesignSystem
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real merchant coupons + 단골 (regular customer) loyalty gating -- see
 /// rw.itunda.merchant.MerchantCouponService's own doc comment. Merchant-owner-facing
 /// create/list/deactivate half only; a coupon redeems against a real Pay-by-code
@@ -158,7 +169,7 @@ private struct CouponRow: View {
     }
 
     private var discountLabel: String {
-        var label = coupon.discountType == "PERCENT" ? "\(Int(coupon.discountValue))% off" : "\(Int(coupon.discountValue)) RWF off"
+        var label = coupon.discountType == "PERCENT" ? "\(Int(coupon.discountValue))% off" : "\(formatAmount(Int(coupon.discountValue))) RWF off"
         if coupon.regularsOnly { label += " · Regulars only" }
         if let expiresAt = coupon.expiresAt { label += " · Expires \(String(expiresAt.prefix(10)))" }
         return label

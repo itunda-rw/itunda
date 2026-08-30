@@ -3,6 +3,16 @@ import UIKit
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 /// Real "pay a merchant" -- mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard` and
 /// Android's `PayAMerchantSection` exactly. bank-mfe/Android already have both; this
@@ -37,9 +47,9 @@ struct PayAMerchantSection: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Payment complete").font(.headline).bold().foregroundColor(IDS.Colors.textPrimary)
                 Text(result.merchantName).font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
-                Text("\(Int(result.amount)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("\(formatAmount(Int(result.amount))) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                 if result.cashbackEarned > 0 {
-                    Text("+ \(Int(result.cashbackEarned)) RWF cashback").font(.footnote).foregroundColor(IDS.Colors.brand)
+                    Text("+ \(formatAmount(Int(result.cashbackEarned))) RWF cashback").font(.footnote).foregroundColor(IDS.Colors.brand)
                 }
                 Button(action: { paymentResult = nil }) {
                     Text("Done").bold().foregroundColor(.white)
@@ -144,7 +154,7 @@ struct FacePaySettingsCard: View {
 }
 
 func couponDiscountLabel(_ c: MerchantCouponPreviewDto) -> String {
-    c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(Int(c.discountValue)) RWF off"
+    c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(formatAmount(Int(c.discountValue))) RWF off"
 }
 
 // Real Coupang 타임특가 (Time Deal, item 226) countdown -- mirrors bank-mfe/Android's
@@ -212,7 +222,7 @@ struct PayByCodeCard: View {
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             if let preview {
                 Text(preview.businessName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                Text("\(Int(preview.amount)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("\(formatAmount(Int(preview.amount))) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
                 Text("Apply a coupon?").font(.footnote).bold().foregroundColor(IDS.Colors.textPrimary)
                 Button(action: { selectedCouponId = nil }) {
                     HStack {

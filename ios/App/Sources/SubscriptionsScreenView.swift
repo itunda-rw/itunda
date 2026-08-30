@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real recurring-payment ("subscription") detection over a user's own real transaction
 /// history -- see rw.itunda.account.SubscriptionDetectionService's own doc comment. Plus
 /// real Kakao Pay 정기결제/Toss 빌링키-style merchant subscriptions the customer actually
@@ -33,7 +44,7 @@ struct SubscriptionsScreenView: View {
                     if let detected {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Estimated monthly total").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            Text("\(Int(estimatedMonthlyTotal)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(formatAmount(Int(estimatedMonthlyTotal))) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
                             Text("Detected from your own real payment history, not a linked-card feed.")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
@@ -55,9 +66,9 @@ struct SubscriptionsScreenView: View {
                                     }
                                     Spacer()
                                     VStack(alignment: .trailing, spacing: 2) {
-                                        Text("\(Int(s.amount)) RWF").bold().font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+                                        Text("\(formatAmount(Int(s.amount))) RWF").bold().font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
                                         if s.priceIncreased, let previous = s.previousAmount {
-                                            Text("↑ from \(Int(previous)) RWF").font(.caption2).foregroundColor(.red)
+                                            Text("↑ from \(formatAmount(Int(previous))) RWF").font(.caption2).foregroundColor(.red)
                                         }
                                     }
                                 }

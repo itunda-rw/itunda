@@ -4,6 +4,16 @@ import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 struct PropertyWishlistView: View {
     let onRemoved: () -> Void
@@ -16,7 +26,7 @@ struct PropertyWishlistView: View {
             else if favorites!.isEmpty { Text("No saved properties yet — tap ♡ on a property to keep it here.").foregroundColor(IDS.Colors.textSecondary) }
             // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
             // matches ListingWishlistView's identical entity-list conversion, no divider.
-            else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(Int(favorite.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(.vertical, 10) } }
+            else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(formatAmount(Int(favorite.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(.vertical, 10) } }
         }.task { await load() }
     }
     private func load() async { do { favorites = try await NetworkClient.shared.getMyFavoritePropertyListings().favorites; error = nil } catch { self.error = "Couldn't load your saved properties. Check your connection and try again." } }
@@ -119,7 +129,7 @@ struct PropertyListingCard: View {
     }
 
     private var priceLabel: String {
-        let base = "\(Int(listing.price)) RWF"
+        let base = "\(formatAmount(Int(listing.price))) RWF"
         return listing.listingType == "RENT" ? "\(base)/mo" : base
     }
 

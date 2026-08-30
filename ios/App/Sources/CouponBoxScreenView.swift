@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real "Coupon box" (itunda Pay redesign, 2026-08-28, direct user reference: real
 // Toss Pay Coupon box screen) -- see this file's own web sibling (CouponBoxView.tsx)
 // for the full sourced account of what's honestly scoped in vs. out. "Used/expired"
@@ -74,7 +85,7 @@ struct CouponBoxScreenView: View {
                     HStack {
                         Text(String(redemption.redeemedAt.prefix(10))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         Spacer()
-                        Text("-\(Int(redemption.discountAmount)) RWF").font(.subheadline).bold()
+                        Text("-\(formatAmount(Int(redemption.discountAmount))) RWF").font(.subheadline).bold()
                     }
                 }
                 .listStyle(.plain)
@@ -93,6 +104,6 @@ struct CouponBoxScreenView: View {
     }
 
     private func couponDiscountLabel(_ coupon: MerchantCouponPreviewDto) -> String {
-        coupon.discountType == "PERCENT" ? "\(coupon.discountValue)% off" : "\(Int(coupon.discountValue)) RWF off"
+        coupon.discountType == "PERCENT" ? "\(coupon.discountValue)% off" : "\(formatAmount(Int(coupon.discountValue))) RWF off"
     }
 }

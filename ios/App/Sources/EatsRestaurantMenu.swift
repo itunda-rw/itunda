@@ -2,6 +2,16 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 // Real restaurant-photo thumbnail (2026-07-21) -- photoUrl is a merchant-supplied
 // external URL (see backend Merchant.kt's own doc comment: no upload/storage layer
@@ -137,9 +147,9 @@ struct RestaurantMenuView: View {
                             // same real strikethrough-original-price treatment web/Android
                             // already show. bank-mfe/Android already have this.
                             HStack(spacing: 6) {
-                                Text("\(Int(cartSubtotal)) RWF").font(.caption).bold()
+                                Text("\(formatAmount(Int(cartSubtotal))) RWF").font(.caption).bold()
                                 if cartOriginalSubtotal > cartSubtotal {
-                                    Text("\(Int(cartOriginalSubtotal)) RWF").font(.caption2).strikethrough().foregroundColor(.white.opacity(0.7))
+                                    Text("\(formatAmount(Int(cartOriginalSubtotal))) RWF").font(.caption2).strikethrough().foregroundColor(.white.opacity(0.7))
                                 }
                             }
                         }
@@ -186,9 +196,9 @@ struct RestaurantMenuView: View {
                     // originalPrice/discountPercent already flow through the shared
                     // MerchantProduct-backed menu endpoint; this UI never rendered them.
                     HStack(spacing: 6) {
-                        Text("\(Int(item.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text("\(formatAmount(Int(item.price))) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         if let originalPrice = item.originalPrice, originalPrice > item.price {
-                            Text("\(Int(originalPrice)) RWF").font(.caption).strikethrough().foregroundColor(IDS.Colors.textTertiary)
+                            Text("\(formatAmount(Int(originalPrice))) RWF").font(.caption).strikethrough().foregroundColor(IDS.Colors.textTertiary)
                         }
                         if hasOptions {
                             Text("· options available").font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -232,7 +242,7 @@ struct RestaurantMenuView: View {
                                                 ? (selected ? "checkmark.square.fill" : "square")
                                                 : (selected ? "largecircle.fill.circle" : "circle"))
                                                 .foregroundColor(selected ? IDS.Colors.brand : IDS.Colors.textTertiary)
-                                            Text(choice.name + (choice.priceDelta > 0 ? " (+\(Int(choice.priceDelta)) RWF)" : ""))
+                                            Text(choice.name + (choice.priceDelta > 0 ? " (+\(formatAmount(Int(choice.priceDelta))) RWF)" : ""))
                                                 .font(.caption)
                                                 .foregroundColor(IDS.Colors.textPrimary)
                                         }

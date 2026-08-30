@@ -4,6 +4,17 @@ import CoreDesignSystem
 import CoreNetwork
 import FeatureSupport
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
 // "it should look 100% like toss pay UI/UX features everything") -- see PayScreen's
 // own doc comment below. Every section here is real itunda data -- see each type's own
@@ -118,7 +129,7 @@ struct RewardsSummaryRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("Rewards earned").font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary)
-            Text("\(Int(rewardsTotal)) RWF").font(IDS.scaledFont(size: 15, weight: .bold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.textPrimary)
+            Text("\(formatAmount(Int(rewardsTotal))) RWF").font(IDS.scaledFont(size: 15, weight: .bold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.textPrimary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -166,7 +177,7 @@ struct RewardsPreviewSection: View {
                         }
                         Spacer()
                         Button(action: { onClaim(task.id) }) {
-                            Text(claimingId == task.id ? "…" : "+\(Int(task.rewardAmount)) RWF")
+                            Text(claimingId == task.id ? "…" : "+\(formatAmount(Int(task.rewardAmount))) RWF")
                                 .font(IDS.scaledFont(size: 13, weight: .bold, relativeTo: .footnote))
                                 .foregroundColor(IDS.Colors.brand)
                                 .padding(.horizontal, 12).padding(.vertical, 6)

@@ -5,6 +5,17 @@ import CoreNetwork
 import CoreLocation
 import FeaturePayments
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Extracted from ShopPay.swift (2026-08-21) -- that file crossed the 500-line
 // file-size-lint guideline; docs/ARCHITECTURE_GUIDELINES.md §2 says extract rather
 // than keep adding, so MyPaymentCodeCard/AccountCardCarousel/
@@ -231,7 +242,7 @@ struct MyPaymentCodeCard: View {
                     HStack {
                         Text("itunda Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
-                        CountUpText("\(Int(account.balance)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        CountUpText("\(formatAmount(Int(account.balance))) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         Image(systemName: "chevron.right").font(.caption).foregroundColor(IDS.Colors.textTertiary)
                     }
                 }

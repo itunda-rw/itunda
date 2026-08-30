@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real 당근카 (Karrot Vehicles) listing-creation fields (itunda Hood redesign,
 // 2026-08-28) -- a new file since HoodMarketplace.swift/HoodMarketplaceCard.swift are
 // both already near their 500-line new-file cap. A vehicle is still a regular Listing
@@ -94,13 +105,13 @@ struct VehicleDetailSection: View {
                 if let claims = listing.vehicleInsuranceClaimCount { VehicleInfoRow(label: "Insurance claims", value: "\(claims)") }
                 if listing.vehicleIsLeaseTakeover == true {
                     Text("Lease takeover").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).padding(.top, 4)
-                    if let cost = listing.leaseTotalAcquisitionCost { VehicleInfoRow(label: "Total acquisition cost", value: "\(Int(cost)) RWF") }
-                    if let payment = listing.leaseMonthlyPayment { VehicleInfoRow(label: "Monthly payment", value: "\(Int(payment)) RWF") }
+                    if let cost = listing.leaseTotalAcquisitionCost { VehicleInfoRow(label: "Total acquisition cost", value: "\(formatAmount(Int(cost))) RWF") }
+                    if let payment = listing.leaseMonthlyPayment { VehicleInfoRow(label: "Monthly payment", value: "\(formatAmount(Int(payment))) RWF") }
                     if let remaining = listing.leaseRemainingMonths, let total = listing.leaseTotalMonths {
                         VehicleInfoRow(label: "Remaining", value: "\(remaining) / \(total) months")
                     }
-                    if let subsidy = listing.leaseSubsidyAmount { VehicleInfoRow(label: "Subsidy", value: "\(Int(subsidy)) RWF") }
-                    if let returnFee = listing.leaseReturnFee { VehicleInfoRow(label: "Return fee at end", value: "\(Int(returnFee)) RWF") }
+                    if let subsidy = listing.leaseSubsidyAmount { VehicleInfoRow(label: "Subsidy", value: "\(formatAmount(Int(subsidy))) RWF") }
+                    if let returnFee = listing.leaseReturnFee { VehicleInfoRow(label: "Return fee at end", value: "\(formatAmount(Int(returnFee))) RWF") }
                 }
             }
             .padding(12)

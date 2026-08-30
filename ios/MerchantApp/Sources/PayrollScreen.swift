@@ -1,6 +1,17 @@
 import SwiftUI
 import CoreDesignSystem
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real B2B payroll -- see rw.itunda.merchant.PayrollService's own doc comment for why
 /// this is real account-to-account money movement, not a demo. merchant-mfe/Android
 /// already have this; this is the first iOS client.
@@ -179,7 +190,7 @@ private struct EmployeeRow: View {
             HStack {
                 Text(employee.employeeName).bold().font(.subheadline)
                 Spacer()
-                Text("\(Int(employee.salaryAmount)) RWF").font(.subheadline)
+                Text("\(formatAmount(Int(employee.salaryAmount))) RWF").font(.subheadline)
             }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -216,13 +227,13 @@ private struct PayrollRunConfirmation: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Payroll paid").font(.title2).bold()
-                Text("\(Int(result.totalAmount)) RWF").font(.largeTitle).bold()
+                Text("\(formatAmount(Int(result.totalAmount))) RWF").font(.largeTitle).bold()
                 Text("\(result.employeeCount) employees paid").font(.subheadline).foregroundColor(.secondary)
                 ForEach(result.payslips) { p in
                     HStack {
                         Text(p.employeeName).font(.footnote)
                         Spacer()
-                        Text("\(Int(p.amount)) RWF").bold().font(.footnote)
+                        Text("\(formatAmount(Int(p.amount))) RWF").bold().font(.footnote)
                     }
                     Divider()
                 }

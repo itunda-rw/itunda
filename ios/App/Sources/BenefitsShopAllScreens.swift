@@ -37,6 +37,17 @@ import FeatureCertificate
 import FeatureIdentity
 import FeatureSupport
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real fix (2026-08-13, matching the identical Android fix same day, direct user
 // report: "entire app is still messy... give me something real"): BenefitsScreen/
 // PromoBannerCard/BenefitsVisitCard/CashbackChanceCard used to live here -- a full
@@ -988,7 +999,7 @@ struct MyTabView: View {
                 Text(status).font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             Spacer()
-            Text("\(Int(amount)) RWF").foregroundColor(IDS.Colors.textPrimary)
+            Text("\(formatAmount(Int(amount))) RWF").foregroundColor(IDS.Colors.textPrimary)
         }
         .contentShape(Rectangle())
         .onTapGesture(perform: action)

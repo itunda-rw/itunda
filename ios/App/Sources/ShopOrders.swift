@@ -4,6 +4,16 @@ import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 // Real fix (2026-08-24, flat-design sweep): dropped the Card wrapper here and at every
 // other IDS.Colors.card site in this file (docs/UI_UX_GUIDELINES.md §10), matching
@@ -30,7 +40,7 @@ struct CommerceOrderRow<Action: View>: View {
                     Text(order.deliveryAddress).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
                 Spacer()
-                Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                Text("\(formatAmount(Int(order.totalAmount))) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             action()
         }
@@ -76,7 +86,7 @@ struct ProductWishlistView: View {
                         ProductImageThumb(imageUrl: f.imageUrl, side: 48)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(f.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                            Text("\(f.businessName) · \(Int(f.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Text("\(f.businessName) · \(formatAmount(Int(f.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             // Real Naver Shopping price-drop alert (item 227) -- see
                             // FavoriteProductDto's own doc comment.
                             if f.priceDropped {

@@ -3,6 +3,16 @@ import UIKit
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 // Real KakaoPay-style split bill (2026-07-22) -- found fully built on the backend
 // (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself being
@@ -100,7 +110,7 @@ struct GroupSplitBillsView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.splitBill.description).bold()
                                 HStack(spacing: 3) {
-                                    Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)")
+                                    Text("Total \(formatAmount(Int(entry.splitBill.totalAmount))) RWF · \(entry.splitBill.status)")
                                     if entry.splitBill.mode == "LADDER" {
                                         Text("·")
                                         SplitBillDice(size: 10)
@@ -111,7 +121,7 @@ struct GroupSplitBillsView: View {
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 ForEach(entry.participants) { p in
                                     let name = members.first(where: { $0.userId == p.userId })?.name ?? String(p.userId.prefix(8))
-                                    Text("\(name): \(Int(p.shareAmount)) RWF (\(p.status))").font(.caption)
+                                    Text("\(name): \(formatAmount(Int(p.shareAmount))) RWF (\(p.status))").font(.caption)
                                 }
                                 if let url = entry.splitBill.receiptImageUrl {
                                     HStack(spacing: 4) {
@@ -122,7 +132,7 @@ struct GroupSplitBillsView: View {
                                 }
                                 if let myShare, myShare.status == "PENDING" {
                                     Button(action: { Task { await pay(entry.splitBill.id) } }) {
-                                        Text(busyId == entry.splitBill.id ? "Paying…" : "Pay my share (\(Int(myShare.shareAmount)) RWF)")
+                                        Text(busyId == entry.splitBill.id ? "Paying…" : "Pay my share (\(formatAmount(Int(myShare.shareAmount))) RWF)")
                                             .bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                                     }
                                     .disabled(busyId != nil)
@@ -293,7 +303,7 @@ struct DirectSplitBillsView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.splitBill.description).bold()
                                 HStack(spacing: 3) {
-                                    Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)")
+                                    Text("Total \(formatAmount(Int(entry.splitBill.totalAmount))) RWF · \(entry.splitBill.status)")
                                     if entry.splitBill.mode == "LADDER" {
                                         Text("·")
                                         SplitBillDice(size: 10)
@@ -304,7 +314,7 @@ struct DirectSplitBillsView: View {
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 ForEach(entry.participants) { p in
                                     let name = p.userId == otherUserId ? otherUserName : "You"
-                                    Text("\(name): \(Int(p.shareAmount)) RWF (\(p.status))").font(.caption)
+                                    Text("\(name): \(formatAmount(Int(p.shareAmount))) RWF (\(p.status))").font(.caption)
                                 }
                                 if let url = entry.splitBill.receiptImageUrl {
                                     HStack(spacing: 4) {
@@ -315,7 +325,7 @@ struct DirectSplitBillsView: View {
                                 }
                                 if let myShare, myShare.status == "PENDING" {
                                     Button(action: { Task { await pay(entry.splitBill.id) } }) {
-                                        Text(busyId == entry.splitBill.id ? "Paying…" : "Pay my share (\(Int(myShare.shareAmount)) RWF)")
+                                        Text(busyId == entry.splitBill.id ? "Paying…" : "Pay my share (\(formatAmount(Int(myShare.shareAmount))) RWF)")
                                             .bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                                     }
                                     .disabled(busyId != nil)

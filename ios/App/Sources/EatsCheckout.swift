@@ -2,6 +2,16 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 // Real 배민오더-style table/QR in-store ordering (item 162) -- see
 // DineInOrderController.kt's own doc comment on the backend. Same real checkout-mode
@@ -65,7 +75,7 @@ struct EatsCheckoutView: View {
                     HStack {
                         Text("Subtotal").foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
-                        Text("\(Int(subtotal)) RWF").foregroundColor(IDS.Colors.textPrimary)
+                        Text("\(formatAmount(Int(subtotal))) RWF").foregroundColor(IDS.Colors.textPrimary)
                     }
                     Picker("", selection: $checkoutMode) {
                         Text("Delivery").tag(EatsCheckoutMode.delivery)
@@ -204,7 +214,7 @@ struct DineInOrderConfirmationView: View {
             Spacer()
             Image(systemName: "checkmark.seal.fill").font(IDS.scaledFont(size: 44, weight: .regular, relativeTo: .largeTitle)).foregroundColor(.green)
             Text("Order placed").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
-            Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
+            Text("\(formatAmount(Int(order.totalAmount))) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
             Text("Table \(order.tableNumber)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             Spacer()
             Button(action: onDone) {
@@ -227,11 +237,11 @@ struct EatsOrderConfirmationView: View {
         VStack(spacing: 16) {
             Spacer()
             Text("Order placed").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
-            Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
+            Text("\(formatAmount(Int(order.totalAmount))) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
             // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
             // EatsPromotionCalculator's own doc comment on the backend.
             if order.promotionDiscount > 0 {
-                Text("\(Int(order.promotionDiscount)) RWF off, on us").font(.caption).foregroundColor(.green)
+                Text("\(formatAmount(Int(order.promotionDiscount))) RWF off, on us").font(.caption).foregroundColor(.green)
             }
             Text("Delivering to \(order.deliveryAddress)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             Spacer()

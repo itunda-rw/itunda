@@ -3,6 +3,16 @@ import UIKit
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 // Real minimal shape both PriceOfferDto (Marketplace) and PropertyPriceOfferDto (Real
 // Estate) get mapped into for display -- narrowed to just the fields OfferBubble
@@ -51,7 +61,7 @@ struct OfferBubble: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {
                 MoneyBagGlyph(size: 16)
-                Text("\(Int(offer.amount)) RWF")
+                Text("\(formatAmount(Int(offer.amount))) RWF")
             }
             .font(.subheadline).bold().foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
@@ -129,7 +139,7 @@ struct GiftBubble: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 GiftThemeGlyph(theme: gift.theme, size: 18)
-                Text(themePrefixText + "\(Int(gift.amount)) RWF")
+                Text(themePrefixText + "\(formatAmount(Int(gift.amount))) RWF")
             }
             .font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             if let note = gift.note {
@@ -186,7 +196,7 @@ struct GiftVoucherBubble: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 VoucherTicket(size: 18)
-                Text(voucher.productNameSnapshot ?? "\(Int(voucher.amount)) RWF voucher")
+                Text(voucher.productNameSnapshot ?? "\(formatAmount(Int(voucher.amount))) RWF voucher")
             }
             .font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)

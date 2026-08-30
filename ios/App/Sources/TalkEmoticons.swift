@@ -3,6 +3,16 @@ import UIKit
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 // Real emoticon picker (item 136) -- shows the sender's own owned packs only (each
 // tappable emoticon sends immediately); a real "Get more" link opens the full store.
@@ -32,7 +42,7 @@ struct GiftVoucherComposerPanel: View {
 
             if let selected {
                 HStack {
-                    Text("\(selected.name) · \(selected.merchantName) · \(Int(selected.price)) RWF")
+                    Text("\(selected.name) · \(selected.merchantName) · \(formatAmount(Int(selected.price))) RWF")
                         .font(.caption).foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
                     Button("Change") { self.selected = nil }
@@ -62,7 +72,7 @@ struct GiftVoucherComposerPanel: View {
                                 HStack {
                                     Text("\(p.name) · \(p.merchantName)").font(.caption).foregroundColor(IDS.Colors.textPrimary)
                                     Spacer()
-                                    Text("\(Int(p.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                    Text("\(formatAmount(Int(p.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textPrimary)
                                 }
                                 .padding(10)
                                 .background(IDS.Colors.card)
@@ -254,7 +264,7 @@ struct EmoticonStoreView: View {
                                         .frame(width: 48, height: 48)
                                     VStack(alignment: .leading) {
                                         Text(pack.title).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                                        Text("\(pack.artistName) · \(Int(pack.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        Text("\(pack.artistName) · \(formatAmount(Int(pack.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     }
                                     Spacer()
                                     Button(action: { Task { await buy(pack.id) } }) {

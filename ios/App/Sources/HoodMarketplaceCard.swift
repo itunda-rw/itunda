@@ -4,6 +4,16 @@ import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 struct ListingCard: View {
     let listing: ListingDto
@@ -112,7 +122,7 @@ struct ListingCard: View {
                     .disabled(favoriteBusy)
                     .padding(.trailing, 6)
                 }
-                Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                Text("\(formatAmount(Int(listing.price))) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             // Real seller-uploaded photo (2026-08-01) -- see NetworkClient.swift's own
             // doc comment on ListingDto.photoUrl. Android already renders this; iOS
@@ -217,7 +227,7 @@ struct ListingCard: View {
                         Text("Boost this listing to the top of search results").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         HStack(spacing: 8) {
                             ForEach(boostTiers.sorted { (Int($0.key) ?? 0) < (Int($1.key) ?? 0) }, id: \.key) { days, price in
-                                actionButton(boosting ? "…" : "\(days)d · \(Int(price)) RWF", filled: true) { await boost(days: Int(days) ?? 0) }
+                                actionButton(boosting ? "…" : "\(days)d · \(formatAmount(Int(price))) RWF", filled: true) { await boost(days: Int(days) ?? 0) }
                             }
                         }
                         actionButton("Cancel", filled: false) { showBoostPicker = false }

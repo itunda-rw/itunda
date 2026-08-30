@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving (rw.itunda.savings.
 // RoundUpService, real since well before this session) -- first iOS client for this
 // feature (item 113; bank-mfe item 112, Android already had it). Same
@@ -39,7 +50,7 @@ struct RoundUpSettingsView: View {
                         ProgressView().frame(maxWidth: .infinity).padding(40)
                     } else if let current = settings, current.enabled {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Every transfer rounds up to the nearest \(Int(current.roundToNearest)) RWF, saved into your goal.")
+                            Text("Every transfer rounds up to the nearest \(formatAmount(Int(current.roundToNearest))) RWF, saved into your goal.")
                                 .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
                             Button(action: { Task { await toggle(enabled: false) } }) {
                                 Text(busy ? "…" : "Turn off").bold()
@@ -56,7 +67,7 @@ struct RoundUpSettingsView: View {
                             HStack(spacing: 6) {
                                 ForEach(ROUND_UP_INCREMENTS, id: \.self) { value in
                                     Button(action: { increment = value }) {
-                                        Text("\(Int(value)) RWF").font(.caption).bold()
+                                        Text("\(formatAmount(Int(value))) RWF").font(.caption).bold()
                                             .foregroundColor(increment == value ? .white : IDS.Colors.textPrimary)
                                             .frame(maxWidth: .infinity).padding(.vertical, 8)
                                             .background(increment == value ? IDS.Colors.brand : Color(.tertiarySystemBackground))

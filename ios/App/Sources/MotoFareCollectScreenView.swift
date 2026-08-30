@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user follow-up: "now we
 // can make pay for tax and moto as well"). Mirrors TransitCollectScreenView.swift's
 // shape -- same real CustomerPaymentCode primitive, same NFC-first/camera-fallback
@@ -132,9 +143,9 @@ struct MotoFareCollectScreenView: View {
             Text("Collect fare").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
             HStack {
                 Slider(value: $fare, in: minFare...maxFare, step: 100)
-                Text("\(Int(fare)) RWF").font(.subheadline).bold().frame(minWidth: 80, alignment: .trailing)
+                Text("\(formatAmount(Int(fare))) RWF").font(.subheadline).bold().frame(minWidth: 80, alignment: .trailing)
             }
-            CardActionButton(title: busy ? "Collecting…" : "Collect \(Int(fare)) RWF", disabled: busy, action: { collect(code: code) })
+            CardActionButton(title: busy ? "Collecting…" : "Collect \(formatAmount(Int(fare))) RWF", disabled: busy, action: { collect(code: code) })
         }
     }
 

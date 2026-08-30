@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real fix (2026-08-26): split out of ShopScreen.swift once that file grew past its
 // file-size-lint baseline. Both carousels are real, self-contained, mostly-
 // presentational rails only shown on the unfiltered Shop landing state -- extracted
@@ -34,12 +45,12 @@ struct ShopDealsCarousel: View {
                                 Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
                             }
                             HStack(alignment: .lastTextBaseline, spacing: 4) {
-                                Text("\(Int(d.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text("\(formatAmount(Int(d.price))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                 // Real strikethrough original price (2026-08-25, matches the
                                 // Toss Shopping reference) -- same real originalPrice field the
                                 // discount badge above already derives from.
                                 if let originalPrice = d.originalPrice, originalPrice > d.price {
-                                    Text("\(Int(originalPrice)) RWF").font(.caption2).foregroundColor(IDS.Colors.textTertiary).strikethrough()
+                                    Text("\(formatAmount(Int(originalPrice))) RWF").font(.caption2).foregroundColor(IDS.Colors.textTertiary).strikethrough()
                                 }
                             }
                             // rating/reviewCount (2026-08-25) -- real batched ProductReview
@@ -85,7 +96,7 @@ struct ShopTimeDealsCarousel: View {
                         VStack(alignment: .leading, spacing: 6) {
                             ProductImageThumb(imageUrl: v.productImageUrl, side: 96)
                             Text(v.productName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                            Text("\(Int(v.deal.dealPrice)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(formatAmount(Int(v.deal.dealPrice))) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                             // Real Coupang badge system (2026-08-05) -- see IdsBadge's own doc
                             // comment. Matches Android ShopScreen.kt's own identical StatusBadge
                             // treatment (this was plain Text on iOS until now).

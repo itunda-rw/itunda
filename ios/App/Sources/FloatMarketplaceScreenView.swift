@@ -3,6 +3,17 @@ import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real "my location" via Apple's own CLLocationManager -- same technique
 /// DesignatedDriverScreenView.swift's own fetcher already establishes, a separate
 /// private copy per this codebase's established per-file convention.
@@ -142,7 +153,7 @@ struct FloatMarketplaceScreenView: View {
                     HStack {
                         Text("\(n.agentDisplayName) · \(String(format: "%.1f", n.distanceKm)) km").font(.footnote)
                         Spacer()
-                        Text("\(Int(n.remainingAmount)) RWF available").font(.footnote).bold()
+                        Text("\(formatAmount(Int(n.remainingAmount))) RWF available").font(.footnote).bold()
                     }
                     HStack {
                         IdsTextField("Amount to request", text: Binding(
@@ -168,7 +179,7 @@ struct FloatMarketplaceScreenView: View {
             }
             ForEach(myListings) { l in
                 HStack {
-                    Text("\(Int(l.amount)) RWF offered · \(Int(l.claimedAmount)) claimed · \(l.status)").font(.footnote)
+                    Text("\(formatAmount(Int(l.amount))) RWF offered · \(Int(l.claimedAmount)) claimed · \(l.status)").font(.footnote)
                     Spacer()
                     if l.status == "OPEN" {
                         Button("Cancel") { Task { await cancelListing(l.id) } }.disabled(busy)
@@ -188,7 +199,7 @@ struct FloatMarketplaceScreenView: View {
             }
             ForEach(incomingRequests) { r in
                 HStack {
-                    Text("\(Int(r.amount)) RWF · \(r.status)").font(.footnote)
+                    Text("\(formatAmount(Int(r.amount))) RWF · \(r.status)").font(.footnote)
                     Spacer()
                     if r.status == "REQUESTED" {
                         Button("Accept") { Task { await acceptRequest(r.id) } }.disabled(busy)
@@ -209,7 +220,7 @@ struct FloatMarketplaceScreenView: View {
             }
             ForEach(myRequests) { r in
                 HStack {
-                    Text("\(Int(r.amount)) RWF").font(.footnote)
+                    Text("\(formatAmount(Int(r.amount))) RWF").font(.footnote)
                     Spacer()
                     Text(r.status).font(.footnote).bold()
                 }
@@ -264,7 +275,7 @@ struct FloatMarketplaceScreenView: View {
 
     private func requestFloat(listingId: String, remainingAmount: Double) async {
         guard let amount = Double(requestAmounts[listingId] ?? ""), amount > 0, amount <= remainingAmount else {
-            error = "Enter a real amount up to the \(Int(remainingAmount)) RWF still available on this listing."
+            error = "Enter a real amount up to the \(formatAmount(Int(remainingAmount))) RWF still available on this listing."
             return
         }
         busy = true; error = nil; message = nil

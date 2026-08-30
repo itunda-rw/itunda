@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real local-business appointment booking (customer side) -- closes the "business
 /// profile + real booking" gap independently converged on by Naver Smart Place, Kakao
 /// Hair Shop, and Karrot's Business Profile research (docs/DESIGN_REFERENCES.md).
@@ -49,7 +60,7 @@ struct BookingFlowView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("\(service.name) · \(service.durationMinutes ?? 0) min · \(Int(service.price)) RWF")
+                    Text("\(service.name) · \(service.durationMinutes ?? 0) min · \(formatAmount(Int(service.price))) RWF")
                         .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
 
                     MerchantBookingInfoSection(merchantId: merchant.merchantId)
@@ -190,7 +201,7 @@ struct MerchantBookableServicesSection: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(service.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                                Text("\(service.durationMinutes ?? 0) min · \(Int(service.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                Text("\(service.durationMinutes ?? 0) min · \(formatAmount(Int(service.price))) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             }
                             Spacer()
                             Button(action: { onBook(service) }) {
@@ -237,7 +248,7 @@ struct MerchantBookingInfoSection: View {
                                         if let d = c.description { Text(d).font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                                     }
                                     Spacer()
-                                    Text(c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(Int(c.discountValue)) RWF off")
+                                    Text(c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(formatAmount(Int(c.discountValue))) RWF off")
                                         .font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
                                 }
                                 .padding(12)

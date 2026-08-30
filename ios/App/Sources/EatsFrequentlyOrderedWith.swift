@@ -2,6 +2,17 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real "frequently ordered together" cross-sell (itunda Eats redesign, 2026-08-28,
 // direct user reference: real Coupang Eats "다른 고객은 함께 주문했어요" rail). See
 // backend OrderItemRepository.getFrequentlyOrderedWith's own doc comment: a real,
@@ -25,7 +36,7 @@ struct EatsFrequentlyOrderedWith: View {
                                 VStack(alignment: .leading, spacing: 6) {
                                     RestaurantPhotoThumb(imageUrl: item.imageUrl, side: 80)
                                     Text(item.name).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                                    Text("\(Int(item.price)) RWF").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    Text("\(formatAmount(Int(item.price))) RWF").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                     Button(action: { onAdd(item) }) {
                                         Text(item.stockQuantity == 0 ? "Out of stock" : "+ Add")
                                             .font(.caption2).bold()

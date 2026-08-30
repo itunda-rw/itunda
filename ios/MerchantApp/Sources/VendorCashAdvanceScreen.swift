@@ -1,6 +1,17 @@
 import SwiftUI
 import CoreDesignSystem
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see
 /// VendorCashAdvanceDto's own doc comment for the full sourced account.
 /// merchant-mfe shipped first, Android's native merchantapp ported it
@@ -65,7 +76,7 @@ struct VendorCashAdvanceTab: View {
 
                     if let advance, advance.status == "REQUESTED" {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Your \(Int(advance.principalAmount)) RWF advance was approved and is ready to disburse to your account.")
+                            Text("Your \(formatAmount(Int(advance.principalAmount))) RWF advance was approved and is ready to disburse to your account.")
                                 .font(.footnote).foregroundColor(.secondary)
                             Button(action: { Task { await disburse(advance.id) } }) {
                                 Text(busy ? "Disbursing…" : "Disburse to my account")
@@ -82,7 +93,7 @@ struct VendorCashAdvanceTab: View {
                     if let advance, advance.status == "DISBURSED" {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Remaining owed").font(.footnote).foregroundColor(.secondary)
-                            Text("\(Int(advance.remainingOwed)) RWF").font(.title2).bold()
+                            Text("\(formatAmount(Int(advance.remainingOwed))) RWF").font(.title2).bold()
                             GeometryReader { geo in
                                 let progress = advance.totalOwed > 0 ? min(1, max(0, (advance.totalOwed - advance.remainingOwed) / advance.totalOwed)) : 0
                                 ZStack(alignment: .leading) {
@@ -91,7 +102,7 @@ struct VendorCashAdvanceTab: View {
                                 }
                             }
                             .frame(height: 8)
-                            Text("of \(Int(advance.totalOwed)) RWF total owed -- \(Int(advance.collectionRatePercent))% of your real daily itunda sales is collected automatically" + (advance.lastCollectionAt.map { ", last collected \(String($0.prefix(10)))" } ?? "") + ".")
+                            Text("of \(formatAmount(Int(advance.totalOwed))) RWF total owed -- \(Int(advance.collectionRatePercent))% of your real daily itunda sales is collected automatically" + (advance.lastCollectionAt.map { ", last collected \(String($0.prefix(10)))" } ?? "") + ".")
                                 .font(.footnote).foregroundColor(.secondary)
                         }
                         .padding(16).frame(maxWidth: .infinity, alignment: .leading)

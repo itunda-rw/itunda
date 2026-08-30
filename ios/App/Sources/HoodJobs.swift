@@ -4,6 +4,16 @@ import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 struct JobsContent: View {
     @Binding var pendingConversationId: String?
@@ -344,7 +354,7 @@ struct JobPostWishlistView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(favorite.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                            Text("\(favorite.category) · \(Int(favorite.payAmount)) RWF")
+                            Text("\(favorite.category) · \(formatAmount(Int(favorite.payAmount))) RWF")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
                         Spacer()
