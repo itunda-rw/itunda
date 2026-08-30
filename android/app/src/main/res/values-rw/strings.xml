@@ -71,6 +71,7 @@
     <string name="overview_tab_tax">Imisoro</string>
     <string name="overview_tab_points">Amanota</string>
     <string name="overview_manage">Gucunga</string>
+    <string name="overview_send">Kohereza</string>
     <string name="overview_view_all_accounts">Reba konti zose %1$d</string>
     <string name="overview_show_fewer_accounts">Kwerekana nke</string>
     <string name="overview_card_number">Ikarita •••• %1$s</string>

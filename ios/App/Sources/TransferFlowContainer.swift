@@ -4,6 +4,21 @@ import CoreDesignSystem
 import CoreIdentity
 import CoreNetwork
 
+// Real gap found live (2026-08-31, direct user reference of their own Toss app's
+// "which account should the money come from" picker) -- previously
+// TransferAmountScreen always debited the sender's MAIN account
+// (TransferFlowContainer.availableBalance below) with no way to choose another one,
+// even though a real itunda user can hold more than one debit-capable Account row.
+// Mirrors Android's TransferFromAccount the same day. nil `fromAccount` on
+// TransferFlowContainer keeps every existing entry point (Home's "Send", TransferHub)
+// behaving exactly as before; only OverviewScreenView's new per-account Send button
+// sets it.
+struct TransferFromAccount: Equatable {
+    let id: String
+    let name: String
+    let balance: Double
+}
+
 private enum TransferStep: Equatable {
     case recipient
     case amount(accountNumber: String)
@@ -102,6 +117,7 @@ struct TransferFlowContainer: View {
     // check above it -- a failed lookup falls back to the account number on Success.
     @State private var recipientDisplayName: String?
     let availableBalance: Double
+    var fromAccount: TransferFromAccount? = nil
     let onDone: () -> Void
 
     private func loadContacts() {
@@ -145,13 +161,14 @@ struct TransferFlowContainer: View {
             case .amount(let accountNumber):
                 TransferAmountScreen(
                     recipientAccountNumber: accountNumber,
-                    availableBalance: availableBalance,
+                    availableBalance: fromAccount?.balance ?? availableBalance,
                     isSubmitting: isSubmitting,
                     scamWarning: scamReportCount.map { ScamWarningUi(reportCount: $0) },
                     scamReported: scamReported,
                     onReportScam: { showScamReportSheet = true },
                     onBack: { step = .recipient },
-                    onConfirm: { amountRwf, isGift, note, theme in confirm(accountNumber: accountNumber, amountRwf: amountRwf, isGift: isGift, note: note, theme: theme) }
+                    onConfirm: { amountRwf, isGift, note, theme in confirm(accountNumber: accountNumber, amountRwf: amountRwf, isGift: isGift, note: note, theme: theme) },
+                    fromAccountName: fromAccount?.name
                 )
                 .task(id: accountNumber) { await checkScamStatus(accountNumber) }
                 .task(id: accountNumber) { await resolveRecipientName(accountNumber) }
@@ -268,7 +285,7 @@ struct TransferFlowContainer: View {
                     isSubmitting = true
                     let retryResult = pendingIsGift
                         ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: pendingAmountRwf, note: pendingGiftNote, theme: pendingGiftTheme)
-                        : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf, memo: pendingGiftNote ?? "")
+                        : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf, memo: pendingGiftNote ?? "", fromAccountId: fromAccount?.id)
                     isSubmitting = false
                     if case .success = retryResult { step = .success(amountRwf: pendingAmountRwf, recipientLabel: recipientDisplayName ?? accountNumber) }
                     else if case .failure(let message) = retryResult { errorMessage = message }
@@ -303,7 +320,7 @@ struct TransferFlowContainer: View {
                 isSubmitting = true
                 let result = isGift
                     ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: amountRwf, note: note, theme: theme)
-                    : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf, memo: note ?? "")
+                    : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf, memo: note ?? "", fromAccountId: fromAccount?.id)
                 isSubmitting = false
                 switch result {
                 case .success:

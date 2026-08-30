@@ -122,6 +122,14 @@ struct EntireMenuScreen: View {
     // -- every one of these was found fully built on the backend with zero client UI
     // anywhere until the same-day Android/bank-mfe ports that preceded this one.
     @State private var showOverview = false
+    // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+    // "My accounts" screen: every account row carries a "Send" action) -- this
+    // EntireMenuScreen already hosts OverviewScreenView (FeatureAssets can't own
+    // TransferFlowContainer itself, same App-target-only constraint SavingsFlowContainer's
+    // own doc comment names), so it owns this local transfer flow, mirroring
+    // TransferFlowContainer's existing single instance in ContentView.swift.
+    @State private var showOverviewTransfer = false
+    @State private var overviewTransferAccount: TransferFromAccount?
     @State private var showLoans = false
     @State private var showCreditScore = false
     @State private var showCertificate = false
@@ -773,6 +781,17 @@ struct EntireMenuScreen: View {
                 onOpenInsurance: { showOverview = false; showInsuranceMiniApp = true },
                 onOpenBills: { showOverview = false; showPayBillsMiniApp = true },
                 onOpenRewards: { showOverview = false; showRewardTasksMiniApp = true },
+                onSend: { accountId, accountName, balance in
+                    overviewTransferAccount = TransferFromAccount(id: accountId, name: accountName, balance: balance)
+                    showOverviewTransfer = true
+                }
+            )
+        }
+        .fullScreenCover(isPresented: $showOverviewTransfer) {
+            TransferFlowContainer(
+                availableBalance: overviewTransferAccount?.balance ?? 0,
+                fromAccount: overviewTransferAccount,
+                onDone: { showOverviewTransfer = false; overviewTransferAccount = nil }
             )
         }
         .sheet(isPresented: $showLoans) {

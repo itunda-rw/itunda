@@ -72,6 +72,7 @@
     <string name="overview_tab_tax">Impôts</string>
     <string name="overview_tab_points">Points</string>
     <string name="overview_manage">Gérer</string>
+    <string name="overview_send">Envoyer</string>
     <string name="overview_view_all_accounts">Voir les %1$d comptes</string>
     <string name="overview_show_fewer_accounts">Afficher moins</string>
     <string name="overview_card_number">Carte •••• %1$s</string>

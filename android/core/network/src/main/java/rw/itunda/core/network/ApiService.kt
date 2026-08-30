@@ -501,7 +501,7 @@ data class ConfirmTransferResponse(val success: Boolean, val message: String, va
 // when the recipient is a real itunda account (confirmed via a direct MySQL check while
 // building this on the backend/bank-mfe side one day earlier). This is the real one --
 // no quote step needed, since there's no external rail decision to quote.
-data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "")
+data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "", val fromAccountId: String? = null)
 data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
 
 // Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant

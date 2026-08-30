@@ -359,6 +359,12 @@ fun TransferAmountScreen(
     scamWarning: ScamWarningUi? = null,
     scamReported: Boolean = false,
     onReportScam: () -> Unit = {},
+    // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+    // "which account should the money come from" picker): null keeps the existing
+    // generic "From Itunda Account" label (the sender's MAIN account, unchanged
+    // default), set only when the caller opened this screen from a specific
+    // non-default account (e.g. OverviewScreen's new per-account Send button).
+    fromAccountName: String? = null,
 ) {
     // rememberSaveable (2026-07-12), same reasoning as ItundaAppScreen.kt's
     // TransferStep -- confirmed live on-device that without this, a process kill
@@ -386,7 +392,7 @@ fun TransferAmountScreen(
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(
-                label = stringResource(R.string.transfer_from_account),
+                label = fromAccountName ?: stringResource(R.string.transfer_from_account),
                 sublabel = stringResource(R.string.transfer_available_balance, rwfFormatter.format(availableBalanceLong)),
                 icon = Icons.Outlined.AccountBalanceWallet
             )

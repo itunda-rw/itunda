@@ -362,11 +362,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun sendTransfer(recipientIdentifier: String, amountRwf: Long, memo: String = ""): MoneyActionResult {
+    // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+    // "which account should the money come from" picker) -- fromAccountId is optional
+    // and defaults to null (backend resolves the sender's MAIN account, same as
+    // before) so every pre-existing call site is unaffected. See bank-mfe's identical
+    // fix the same day (P2pService.sendDirect's own doc comment on the backend).
+    suspend fun sendTransfer(recipientIdentifier: String, amountRwf: Long, memo: String = "", fromAccountId: String? = null): MoneyActionResult {
         return try {
             val res = NetworkClient.apiService.sendDirect(
                 idempotencyKey = UUID.randomUUID().toString(),
-                request = SendDirectP2pRequest(recipient = normalizeRecipientIdentifier(recipientIdentifier), amount = BigDecimal(amountRwf), description = memo),
+                request = SendDirectP2pRequest(recipient = normalizeRecipientIdentifier(recipientIdentifier), amount = BigDecimal(amountRwf), description = memo, fromAccountId = fromAccountId),
             )
             fetchData()
             MoneyActionResult.Success(res.message)

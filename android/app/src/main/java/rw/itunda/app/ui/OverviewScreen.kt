@@ -71,6 +71,15 @@ private val MOMO_LINK_PROVIDERS = setOf("MTN Mobile Money", "Airtel Money")
 
 private enum class AssetTab { ACCOUNTS, CARDS, LOANS, INVESTMENT, INSURANCE, REAL_ESTATE, CAR, TAX, POINTS }
 
+// Real itunda-owned, freely-spendable wallet types -- distinct from locked-purpose
+// product ledgers (SAVINGS/INVESTMENT/LOAN/GROUP/WEEKLY_SAVINGS/UPFRONT_DEPOSIT/
+// GROW31_SAVINGS, each with its own dedicated withdraw/close flow) and from PAY (kept
+// asymmetric from Bank on purpose, see project_itunda_bank_pay_separation) -- only
+// these can realistically fund an arbitrary P2P send the way a real Toss checking/
+// foreign-currency/business account can. Mirrors bank-mfe's identical
+// SENDABLE_ACCOUNT_TYPES the same day.
+private val SENDABLE_ACCOUNT_TYPES = setOf("MAIN", "FOREIGN_CURRENCY", "BUSINESS", "MINI")
+
 @Composable
 fun OverviewScreen(
     onBack: () -> Unit,
@@ -79,6 +88,14 @@ fun OverviewScreen(
     onOpenInvest: () -> Unit,
     onOpenProperty: () -> Unit,
     onOpenVehicleValuation: () -> Unit,
+    // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+    // "My accounts" screen: every account row -- checking, savings pockets, even a
+    // linked external bank account -- carries a "Send" action). This screen's own
+    // account rows previously had no action at all. Linked external accounts
+    // deliberately get no equivalent below: itunda only ever shows a real, honest
+    // simulated demoBalance for those, it has no real access to move money out of an
+    // account it doesn't control.
+    onSend: (accountId: String, accountName: String, balance: Double) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
@@ -143,12 +160,22 @@ fun OverviewScreen(
                 when (activeTab) {
                     AssetTab.ACCOUNTS -> items(current.accounts, key = { it.id }) { account ->
                         Card(Modifier.fillMaxWidth()) {
-                            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                 Column {
                                     Text(account.name, style = MaterialTheme.typography.bodyLarge)
                                     Text(account.type, style = MaterialTheme.typography.bodySmall)
                                 }
-                                Text("${account.currency} ${account.balance}", style = MaterialTheme.typography.bodyLarge)
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text("${account.currency} ${account.balance}", style = MaterialTheme.typography.bodyLarge)
+                                    if (account.type in SENDABLE_ACCOUNT_TYPES) {
+                                        IdsButton(
+                                            text = stringResource(R.string.overview_send),
+                                            variant = IdsButtonVariant.Tinted,
+                                            size = IdsButtonSize.Small,
+                                            onClick = { onSend(account.id, account.name, account.balance.toDouble()) },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

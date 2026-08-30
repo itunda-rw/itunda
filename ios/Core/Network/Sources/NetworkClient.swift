@@ -2371,7 +2371,10 @@ public struct ConfirmTransferResponse: Decodable {
 // a direct MySQL check while building the real fix on the backend one day earlier). This
 // is the real one -- no quote step needed, since there's no external rail decision to
 // quote.
-public struct SendDirectP2pRequest: Encodable { public let recipient: String; public let amount: Double; public let description: String }
+// fromAccountId added 2026-08-31 (direct user reference of their own Toss app's
+// "which account should the money come from" picker) -- nil keeps the existing
+// default-to-MAIN backend behavior for every pre-existing caller unchanged.
+public struct SendDirectP2pRequest: Encodable { public let recipient: String; public let amount: Double; public let description: String; public let fromAccountId: String? }
 
 // Real fixed-amount person-to-person payment request (item 171) -- the P2P
 // counterpart to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's
@@ -2626,10 +2629,10 @@ extension NetworkClient {
     // Real direct P2P push-transfer (2026-07-20) -- see SendDirectP2pRequest's own doc
     // comment for why this replaces quoteTransfer/confirmTransfer above in
     // TransferViewModel.sendTransfer.
-    public func sendDirect(recipient: String, amount: Double, memo: String = "") async throws -> SendDirectP2pResponse {
+    public func sendDirect(recipient: String, amount: Double, memo: String = "", fromAccountId: String? = nil) async throws -> SendDirectP2pResponse {
         try await postP2p(
             "api/v1/p2p/send",
-            body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: memo),
+            body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: memo, fromAccountId: fromAccountId),
             idempotencyKey: UUID().uuidString
         )
     }

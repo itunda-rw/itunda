@@ -29,12 +29,17 @@ enum MoneyActionResult {
 /// needed here, since there's no external rail decision to quote.
 @MainActor
 final class TransferViewModel: ObservableObject {
-    func sendTransfer(recipientAccountNumber: String, amountRwf: Int, memo: String = "") async -> MoneyActionResult {
+    // fromAccountId added 2026-08-31 (direct user reference of their own Toss app's
+    // "which account should the money come from" picker) -- nil default keeps every
+    // pre-existing caller sending from the sender's MAIN account, unchanged. See
+    // NetworkClient.sendDirect's own doc comment.
+    func sendTransfer(recipientAccountNumber: String, amountRwf: Int, memo: String = "", fromAccountId: String? = nil) async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.sendDirect(
                 recipient: Self.normalizeRecipientIdentifier(recipientAccountNumber),
                 amount: Double(amountRwf),
-                memo: memo
+                memo: memo,
+                fromAccountId: fromAccountId
             )
             return .success(response.message)
         } catch NetworkError.deviceNotVerified {

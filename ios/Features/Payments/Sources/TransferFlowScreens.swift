@@ -323,6 +323,12 @@ public struct TransferAmountScreen: View {
     let onReportScam: () -> Void
     let onBack: () -> Void
     let onConfirm: (Int, Bool, String?, String?) -> Void
+    // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+    // "which account should the money come from" picker): nil keeps the existing
+    // generic "From Itunda Account" label (the sender's MAIN account, unchanged
+    // default), set only when the caller opened this screen from a specific
+    // non-default account (e.g. OverviewScreenView's new per-account Send button).
+    let fromAccountName: String?
 
     public init(
         recipientAccountNumber: String,
@@ -332,7 +338,8 @@ public struct TransferAmountScreen: View {
         scamReported: Bool = false,
         onReportScam: @escaping () -> Void = {},
         onBack: @escaping () -> Void,
-        onConfirm: @escaping (Int, Bool, String?, String?) -> Void
+        onConfirm: @escaping (Int, Bool, String?, String?) -> Void,
+        fromAccountName: String? = nil
     ) {
         self.recipientAccountNumber = recipientAccountNumber
         self.availableBalance = availableBalance
@@ -342,6 +349,7 @@ public struct TransferAmountScreen: View {
         self.onReportScam = onReportScam
         self.onBack = onBack
         self.onConfirm = onConfirm
+        self.fromAccountName = fromAccountName
     }
 
     private var amount: Int { Int(digits) ?? 0 }
@@ -352,7 +360,7 @@ public struct TransferAmountScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: pt("fromAccount"), sublabel: pt("availableBalance", transferFormatAmount(Int(availableBalance))), symbol: "creditcard")
+                TransferPartyRow(label: fromAccountName ?? pt("fromAccount"), sublabel: pt("availableBalance", transferFormatAmount(Int(availableBalance))), symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
                 TransferPartyRow(label: pt("toAccount", recipientAccountNumber), sublabel: pt("newRecipient"), symbol: "leaf")
 

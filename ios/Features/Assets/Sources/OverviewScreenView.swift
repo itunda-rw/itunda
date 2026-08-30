@@ -16,6 +16,15 @@ private let linkProviders = ["MTN Mobile Money", "Airtel Money", "Bank of Kigali
 // real, already-known answer, the exact shape that session's own title names.
 private let momoLinkProviders: Set<String> = ["MTN Mobile Money", "Airtel Money"]
 
+// Real itunda-owned, freely-spendable wallet types -- distinct from locked-purpose
+// product ledgers (SAVINGS/INVESTMENT/LOAN/GROUP/WEEKLY_SAVINGS/UPFRONT_DEPOSIT/
+// GROW31_SAVINGS, each with its own dedicated withdraw/close flow) and from PAY (kept
+// asymmetric from Bank on purpose, see project_itunda_bank_pay_separation) -- only
+// these can realistically fund an arbitrary P2P send the way a real Toss checking/
+// foreign-currency/business account can. Mirrors bank-mfe/Android's identical
+// SENDABLE_ACCOUNT_TYPES the same day.
+private let sendableAccountTypes: Set<String> = ["MAIN", "FOREIGN_CURRENCY", "BUSINESS", "MINI"]
+
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
 // never actually reached this file, which predates that sweep's own file list).
@@ -50,6 +59,7 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "linkedAccounts": "Linked accounts",
         "demoBalance": "Demo balance: %@ %@",
         "unlink": "Unlink",
+        "send": "Send",
         "linkPrompt": "Link a bank or mobile money account",
         "providerNamePlaceholder": "Provider name",
         "accountPhonePlaceholder": "Account / phone number",
@@ -85,6 +95,7 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "linkedAccounts": "Konti zihujwe",
         "demoBalance": "Amafaranga y'ikitegererezo: %@ %@",
         "unlink": "Kuraho ihuza",
+        "send": "Kohereza",
         "linkPrompt": "Huza konti ya banki cyangwa Mobile Money",
         "providerNamePlaceholder": "Izina ry'ikigo",
         "accountPhonePlaceholder": "Numero ya konti / telefoni",
@@ -124,6 +135,7 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "linkedAccounts": "Comptes liés",
         "demoBalance": "Solde de démonstration : %@ %@",
         "unlink": "Dissocier",
+        "send": "Envoyer",
         "linkPrompt": "Lier un compte bancaire ou mobile money",
         "providerNamePlaceholder": "Nom du fournisseur",
         "accountPhonePlaceholder": "Compte / numéro de téléphone",
@@ -159,6 +171,14 @@ public struct OverviewScreenView: View {
     public var onOpenInsurance: () -> Void
     public var onOpenBills: () -> Void
     public var onOpenRewards: () -> Void
+    // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+    // "My accounts" screen: every account row -- checking, savings pockets, even a
+    // linked external bank account -- carries a "Send" action). This screen's own
+    // account rows previously had no action at all. Linked external accounts
+    // deliberately get no equivalent: itunda only ever shows a real, honest simulated
+    // demoBalance for those, it has no real access to move money out of an account it
+    // doesn't control.
+    public var onSend: (String, String, Double) -> Void
 
     public init(
         onBack: @escaping () -> Void = {},
@@ -169,7 +189,8 @@ public struct OverviewScreenView: View {
         onOpenVehicleValuation: @escaping () -> Void = {},
         onOpenInsurance: @escaping () -> Void = {},
         onOpenBills: @escaping () -> Void = {},
-        onOpenRewards: @escaping () -> Void = {}
+        onOpenRewards: @escaping () -> Void = {},
+        onSend: @escaping (String, String, Double) -> Void = { _, _, _ in }
     ) {
         self.onBack = onBack
         self.onOpenCard = onOpenCard
@@ -180,6 +201,7 @@ public struct OverviewScreenView: View {
         self.onOpenInsurance = onOpenInsurance
         self.onOpenBills = onOpenBills
         self.onOpenRewards = onOpenRewards
+        self.onSend = onSend
     }
 
     @State private var locale: AppLocale = loadStoredLocale()
@@ -355,7 +377,20 @@ public struct OverviewScreenView: View {
         case .accounts:
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(overview.accounts) { a in
-                    HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(formatAmount(Int(a.balance)))") }.font(.subheadline)
+                    HStack {
+                        Text("\(a.name) (\(a.type))")
+                        Spacer()
+                        Text("\(a.currency) \(formatAmount(Int(a.balance)))")
+                        if sendableAccountTypes.contains(a.type) {
+                            Button(action: { onSend(a.id, a.name, a.balance) }) {
+                                Text(t("send"))
+                                    .font(.caption).bold()
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(IDS.Colors.chipBackground)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }.font(.subheadline)
                 }
             }
         case .cards:

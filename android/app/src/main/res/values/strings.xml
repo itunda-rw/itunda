@@ -97,6 +97,7 @@
     <string name="overview_tab_tax">Tax</string>
     <string name="overview_tab_points">Points</string>
     <string name="overview_manage">Manage</string>
+    <string name="overview_send">Send</string>
     <string name="overview_view_all_accounts">View all %1$d accounts</string>
     <string name="overview_show_fewer_accounts">Show fewer</string>
     <string name="overview_card_number">Card •••• %1$s</string>

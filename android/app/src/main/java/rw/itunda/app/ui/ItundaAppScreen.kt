@@ -311,6 +311,13 @@ private sealed class TransferStep : java.io.Serializable {
     data class Success(val message: String, val amountRwf: Long, val recipientLabel: String) : TransferStep()
 }
 
+// Real gap found live (2026-08-31, direct user reference of their own Toss app's
+// "which account should the money come from" picker) -- see transferFromAccount's own
+// call-site doc comment. A separate, sibling state to TransferStep rather than a new
+// TransferStep.Amount field, since TransferStep.Recipient is a data object (no fields)
+// and this needs to survive that step too.
+private data class TransferFromAccount(val accountId: String, val accountName: String, val balance: Double) : java.io.Serializable
+
 // Real Toss motion research (2026-08-11) -- see TransferStep.Success's own doc comment
 // for the exact gap this closes: a real transfer's own success acknowledgment was
 // previously nonexistent, not just under-designed. Deliberately pure Compose animation
@@ -386,6 +393,15 @@ fun ItundaAppScreen(
         rw.itunda.app.push.NotificationPermissionPrompt()
         var selectedTab by rememberSaveable { mutableStateOf(ItundaTab.Home) }
         var transferStep by rememberSaveable { mutableStateOf<TransferStep?>(null) }
+        // Real gap found live (2026-08-31, direct user reference of their own Toss
+        // app's "which account should the money come from" picker) -- previously
+        // TransferAmountScreen always debited the sender's MAIN account
+        // (primaryAccountForTransfer below) with no way to choose another one, even
+        // though a real itunda user can hold more than one debit-capable Account row.
+        // Null keeps every existing entry point (Home's "Send", the account-detail
+        // screen's onSend, TransferHub) behaving exactly as before; only
+        // OverviewScreen's new per-account Send button sets this.
+        var transferFromAccount by rememberSaveable { mutableStateOf<TransferFromAccount?>(null) }
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -662,7 +678,7 @@ fun ItundaAppScreen(
             }
             when (step) {
                 is TransferStep.Recipient -> rw.itunda.feature.payments.impl.RecipientEntryScreen(
-                    onBack = { transferStep = null },
+                    onBack = { transferStep = null; transferFromAccount = null },
                     onNext = { accountNumber -> transferStep = TransferStep.Amount(accountNumber) },
                     contacts = contacts.map { rw.itunda.feature.payments.impl.ContactUi(it.name, it.phoneNumber, it.bank, it.color, it.letter) },
                     onAddContact = { name, phoneNumber ->
@@ -682,7 +698,8 @@ fun ItundaAppScreen(
                 is TransferStep.Amount -> {
                     rw.itunda.feature.payments.impl.TransferAmountScreen(
                         recipientAccountNumber = step.accountNumber,
-                        availableBalance = primaryAccountForTransfer?.availableBalance ?: 0.0,
+                        availableBalance = transferFromAccount?.balance ?: primaryAccountForTransfer?.availableBalance ?: 0.0,
+                        fromAccountName = transferFromAccount?.accountName,
                         isSubmitting = isSendingTransfer,
                         scamWarning = scamReportCount?.let { rw.itunda.feature.payments.impl.ScamWarningUi(it) },
                         scamReported = scamReported,
@@ -705,7 +722,7 @@ fun ItundaAppScreen(
                                         suspend fun doSend() = if (isGift) {
                                             viewModel.sendGift(step.accountNumber, amountRwf, giftNote, giftTheme)
                                         } else {
-                                            viewModel.sendTransfer(step.accountNumber, amountRwf, memo = giftNote ?: "")
+                                            viewModel.sendTransfer(step.accountNumber, amountRwf, memo = giftNote ?: "", fromAccountId = transferFromAccount?.accountId)
                                         }
                                         when (val result = doSend()) {
                                             is rw.itunda.app.ui.MoneyActionResult.Success -> {
@@ -720,6 +737,7 @@ fun ItundaAppScreen(
                                             is rw.itunda.app.ui.MoneyActionResult.Queued -> {
                                                 isSendingTransfer = false
                                                 transferStep = null
+                                                transferFromAccount = null
                                             }
                                             is rw.itunda.app.ui.MoneyActionResult.Failure -> {
                                                 isSendingTransfer = false
@@ -756,7 +774,7 @@ fun ItundaAppScreen(
                 is TransferStep.Success -> TransferSuccessScreen(
                     amountRwf = step.amountRwf,
                     recipientLabel = step.recipientLabel,
-                    onDone = { transferStep = null },
+                    onDone = { transferStep = null; transferFromAccount = null },
                 )
             }
             if (showDeviceStepUp) {
@@ -1235,6 +1253,11 @@ fun ItundaAppScreen(
                 onOpenInvest = { showOverview = false; showInvest = true },
                 onOpenProperty = { showOverview = false; showProperty = true },
                 onOpenVehicleValuation = { showOverview = false; showVehicleValuation = true },
+                onSend = { accountId, accountName, balance ->
+                    showOverview = false
+                    transferFromAccount = TransferFromAccount(accountId, accountName, balance)
+                    transferStep = TransferStep.Recipient
+                },
             )
             return@IdsTheme
         }
@@ -1425,7 +1448,7 @@ fun ItundaAppScreen(
                 onOpenCard = { showAccountDetail = false; showCard = true },
                 onOpenManage = { showAccountDetail = false; showSettings = true },
                 onTopUp = { showAccountDetail = false; showAgentCash = true },
-                onSend = { showAccountDetail = false; transferStep = TransferStep.Recipient },
+                onSend = { showAccountDetail = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                 onClaimInterest = { showAccountDetail = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
             )
             return@IdsTheme
@@ -1528,7 +1551,7 @@ fun ItundaAppScreen(
                 TransferHubScreen(
                     autoTransferCount = autoTransferCount,
                     onBack = { showTransferHub = false },
-                    onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient },
+                    onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                     onOpenAutoTransfers = { showAutoTransfers = true },
                     onOpenScheduledTransfers = { showScheduledTransfers = true },
                     onSplitBill = { showTransferHub = false; selectedTab = ItundaTab.Messages },
@@ -1595,7 +1618,7 @@ fun ItundaAppScreen(
                     // not a screen pushed on top of one.
                     ItundaTab.Pay -> PayTab(
                         viewModel,
-                        onSend = { transferStep = TransferStep.Recipient },
+                        onSend = { transferStep = TransferStep.Recipient; transferFromAccount = null },
                         onCashOutAtAgent = { showAgentCash = true },
                         onSwitchTab = { selectedTab = it },
                         onOpenSupport = { showSupport = true },
