@@ -75,7 +75,7 @@ class RideTripEarningsAndConversationTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val driver = RideDriver(id = "driver_earnings", userId = "driver_user_earnings", accountId = "account_earnings")
+        val driver = RideDriver(id = "driver_earnings", userId = "driver_user_earnings", accountId = "account_earnings", licenseNumber = "LIC-TEST")
         every { rideDriverRepository.findByUserId("driver_user_earnings") } returns driver
 
         fun trip(id: String, day: java.time.LocalDate, fare: String, fee: String) = RideTrip(
@@ -172,7 +172,7 @@ class RideTripEarningsAndConversationTest : BehaviorSpec({
         )
         val driver = RideDriver(
             id = "driver_share", userId = "driver_user_share", accountId = "account_share",
-            currentLatitude = -1.9600, currentLongitude = 30.0500,
+            currentLatitude = -1.9600, currentLongitude = 30.0500, licenseNumber = "LIC-TEST",
         )
         every { rideTripRepository.findById("ride_trip_share_1") } returns Optional.of(trip)
         every { rideDriverRepository.findById("driver_share") } returns Optional.of(driver)
@@ -233,7 +233,7 @@ class RideTripEarningsAndConversationTest : BehaviorSpec({
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_tip", userId = "driver_user_tip", accountId = "account_driver_tip")
+        val driver = RideDriver(id = "driver_tip", userId = "driver_user_tip", accountId = "account_driver_tip", licenseNumber = "LIC-TEST")
         val driverAccount = Account(
             id = "account_driver_tip", userId = "driver_user_tip", accountNumber = "1000000002", accountName = "Driver",
             type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),

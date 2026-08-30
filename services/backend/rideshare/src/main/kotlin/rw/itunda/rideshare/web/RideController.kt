@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -25,6 +24,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.rideshare.InvalidEarningsRangeException
+import rw.itunda.rideshare.InvalidRideDriverLicenseException
 import rw.itunda.rideshare.InvalidRideDriverLocationException
 import rw.itunda.rideshare.InvalidRideLocationException
 import rw.itunda.rideshare.InvalidRideRatingException
@@ -42,20 +42,16 @@ import rw.itunda.rideshare.RidePinMismatchException
 import rw.itunda.rideshare.RideSelfTripException
 import rw.itunda.rideshare.RideStopInput
 import rw.itunda.rideshare.RideTooManyStopsException
-import rw.itunda.rideshare.RideTooManyTrustedContactsException
 import rw.itunda.rideshare.RideTripAlreadyClaimedException
 import rw.itunda.rideshare.RideTripAlreadyReviewedException
 import rw.itunda.rideshare.RideTripNotFoundException
 import rw.itunda.rideshare.RideTripNotYetCompletedException
 import rw.itunda.rideshare.RideTripReviewService
 import rw.itunda.rideshare.RideTripService
-import rw.itunda.rideshare.RideTrustedContactAlreadyAddedException
-import rw.itunda.rideshare.RideTrustedContactNotFoundException
-import rw.itunda.rideshare.RideTrustedContactRecipientNotFoundException
-import rw.itunda.rideshare.RideTrustedContactSelfException
 import rw.itunda.rideshare.RideTrustedContactService
 
 data class SetDriverAvailabilityRequest(val available: Boolean)
+data class RegisterRideDriverRequest(val licenseNumber: String)
 data class UpdateDriverLocationRequest(val latitude: Double, val longitude: Double)
 // Real Uber "Destination Filter" -- see RideDriverService.setDestination's own doc
 // comment.
@@ -84,8 +80,6 @@ data class RequestTripRequest(
 // the driver, told to them verbally by the passenger right before pickup.
 data class StartTripRequest(val pin: String)
 data class ShareTripStatusRequest(val conversationId: String)
-// Real Uber Safety "Trusted Contacts" -- see RideTrustedContact.kt's own doc comment.
-data class AddTrustedContactRequest(val phoneNumber: String, val name: String)
 // Real Uber post-trip tipping -- see RideTripService.tipDriver's own doc comment.
 data class TipTripRequest(val amount: java.math.BigDecimal)
 
@@ -101,8 +95,11 @@ class RideController(
     private val idempotencyService: IdempotencyService,
 ) {
     @PostMapping("/drivers/register")
-    fun registerDriver(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val driver = rideDriverService.register(currentUser.userId)
+    fun registerDriver(
+        @RequestBody request: RegisterRideDriverRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val driver = rideDriverService.register(currentUser.userId, request.licenseNumber)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "driver" to driver))
     }
 
@@ -250,28 +247,9 @@ class RideController(
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
-    // Real Uber Safety "Trusted Contacts" -- see RideTrustedContact.kt's own doc
-    // comment. A persistent contact list set up once, distinct from shareTripStatus's
-    // per-share conversation pick above.
-    @GetMapping("/trusted-contacts")
-    fun listTrustedContacts(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "contacts" to rideTrustedContactService.list(currentUser.userId)))
-
-    @PostMapping("/trusted-contacts")
-    fun addTrustedContact(
-        @RequestBody request: AddTrustedContactRequest,
-        @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> {
-        val contact = rideTrustedContactService.add(currentUser.userId, request.phoneNumber, request.name)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "contact" to contact))
-    }
-
-    @DeleteMapping("/trusted-contacts/{contactId}")
-    fun removeTrustedContact(@PathVariable contactId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        rideTrustedContactService.remove(currentUser.userId, contactId)
-        return ResponseEntity.ok(mapOf("success" to true))
-    }
-
+    // Real Uber Safety "Trusted Contacts" list/add/remove endpoints moved to
+    // RideTrustedContactController.kt (2026-08-31) -- see that file's own doc comment.
+    //
     // Real Uber "Send Status" -- one tap fans a trip's live status out to every trusted
     // contact at once. See RideTrustedContactService.sendStatusToTrustedContacts's own
     // doc comment.
@@ -361,6 +339,10 @@ class RideController(
     fun handleInvalidDriverLocation(ex: InvalidRideDriverLocationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LOCATION", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(InvalidRideDriverLicenseException::class)
+    fun handleInvalidDriverLicense(ex: InvalidRideDriverLicenseException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LICENSE_NUMBER", ex.message ?: "Bad request"))
+
     @ExceptionHandler(rw.itunda.rideshare.DestinationFilterLimitExceededException::class)
     fun handleDestinationFilterLimitExceeded(ex: rw.itunda.rideshare.DestinationFilterLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("DESTINATION_FILTER_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))
@@ -448,26 +430,6 @@ class RideController(
     @ExceptionHandler(rw.itunda.rideshare.InvalidTipAmountException::class)
     fun handleInvalidTipAmount(ex: rw.itunda.rideshare.InvalidTipAmountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_TIP_AMOUNT", ex.message ?: "Bad request"))
-
-    @ExceptionHandler(RideTrustedContactNotFoundException::class)
-    fun handleTrustedContactNotFound(ex: RideTrustedContactNotFoundException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("TRUSTED_CONTACT_NOT_FOUND", ex.message ?: "Not found"))
-
-    @ExceptionHandler(RideTrustedContactRecipientNotFoundException::class)
-    fun handleTrustedContactRecipientNotFound(ex: RideTrustedContactRecipientNotFoundException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("TRUSTED_CONTACT_RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
-
-    @ExceptionHandler(RideTrustedContactSelfException::class)
-    fun handleTrustedContactSelf(ex: RideTrustedContactSelfException) =
-        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("CANNOT_ADD_SELF_AS_TRUSTED_CONTACT", ex.message ?: "Bad request"))
-
-    @ExceptionHandler(RideTrustedContactAlreadyAddedException::class)
-    fun handleTrustedContactAlreadyAdded(ex: RideTrustedContactAlreadyAddedException) =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("TRUSTED_CONTACT_ALREADY_ADDED", ex.message ?: "Conflict"))
-
-    @ExceptionHandler(RideTooManyTrustedContactsException::class)
-    fun handleTooManyTrustedContacts(ex: RideTooManyTrustedContactsException) =
-        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("TOO_MANY_TRUSTED_CONTACTS", ex.message ?: "Conflict"))
 
     @ExceptionHandler(java.time.format.DateTimeParseException::class)
     fun handleBadDate(ex: java.time.format.DateTimeParseException) =

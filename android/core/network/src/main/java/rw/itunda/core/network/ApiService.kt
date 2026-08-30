@@ -4301,7 +4301,7 @@ interface ApiService {
     // bank-mfe has had it since the same day, Android/iOS never did). Mirrors
     // bank-mfe's lib/rideshare.ts exactly.
     @POST("api/v1/rides/drivers/register")
-    suspend fun registerAsRideDriver(): RideDriverResponse
+    suspend fun registerAsRideDriver(@Body request: RegisterRideDriverRequest): RideDriverResponse
 
     @GET("api/v1/rides/drivers/me")
     suspend fun getMyRideDriverProfile(): RideDriverResponse
@@ -4862,8 +4862,17 @@ data class RideDriverDto(
     // Real Uber "Destination Filter" (item 246) -- see ApiService's own
     // setRideDriverDestination doc comment.
     val destinationLatitude: Double? = null, val destinationLongitude: Double? = null,
+    // Real gap found live (2026-08-31, market-readiness audit) -- see
+    // RegisterRideDriverRequest's own doc comment.
+    val licenseNumber: String = "",
 )
 data class RideDriverResponse(val success: Boolean, val driver: RideDriverDto)
+// Real gap found live (2026-08-31, market-readiness audit): this, the biggest and most
+// central driver-role registration in the backend, had zero identity/license info at
+// all -- see backend RideDriverService.kt's own doc comment for the full account. An
+// honest, self-declared informational text field, not a real license-verification gate
+// this backend has no path to check.
+data class RegisterRideDriverRequest(val licenseNumber: String)
 data class SetRideDriverAvailabilityRequest(val available: Boolean)
 data class SetRideDriverDestinationRequest(val latitude: Double, val longitude: Double)
 data class RideDailyEarnings(val date: String, val tripCount: Int, val grossFare: java.math.BigDecimal, val platformFees: java.math.BigDecimal, val netEarnings: java.math.BigDecimal)

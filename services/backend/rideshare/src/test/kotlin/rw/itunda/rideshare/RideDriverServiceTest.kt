@@ -29,7 +29,7 @@ class RideDriverServiceTest : BehaviorSpec({
     Given("a real registered driver with no active Destination Filter") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository)
-        val driver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_1")
+        val driver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_1", licenseNumber = "LIC-TEST")
         every { rideDriverRepository.findByUserId("driver_user_1") } returns driver
         every { rideDriverRepository.save(any()) } answers { firstArg() }
 
@@ -77,6 +77,7 @@ class RideDriverServiceTest : BehaviorSpec({
         val driver = RideDriver(
             id = "driver_2", userId = "driver_user_2", accountId = "account_2",
             destinationUsesToday = 2, destinationUsesResetDate = LocalDate.now(ZoneId.of("Africa/Kigali")),
+            licenseNumber = "LIC-TEST",
         )
         every { rideDriverRepository.findByUserId("driver_user_2") } returns driver
 
@@ -98,6 +99,7 @@ class RideDriverServiceTest : BehaviorSpec({
         val driver = RideDriver(
             id = "driver_3", userId = "driver_user_3", accountId = "account_3",
             destinationUsesToday = 2, destinationUsesResetDate = LocalDate.now(ZoneId.of("Africa/Kigali")).minusDays(1),
+            licenseNumber = "LIC-TEST",
         )
         every { rideDriverRepository.findByUserId("driver_user_3") } returns driver
         every { rideDriverRepository.save(any()) } answers { firstArg() }

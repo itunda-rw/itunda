@@ -69,10 +69,21 @@ export interface RideDriver {
   // that direction, matching Uber's own real published feature.
   destinationLatitude: number | null;
   destinationLongitude: number | null;
+  // Real gap found live (2026-08-31, market-readiness audit) -- see
+  // registerAsDriver's own doc comment.
+  licenseNumber: string;
 }
 
-export const registerAsDriver = () =>
-  apiFetch<{ success: boolean; driver: RideDriver }>('/api/v1/rides/drivers/register', { method: 'POST' }).then((r) => r.driver);
+// Real gap found live (2026-08-31, market-readiness audit): this, the biggest and most
+// central driver-role registration in the backend, had zero identity/license info at
+// all -- see backend RideDriverService.kt's own doc comment for the full account. An
+// honest, self-declared informational text field, not a real license-verification gate
+// this backend has no path to check.
+export const registerAsDriver = (licenseNumber: string) =>
+  apiFetch<{ success: boolean; driver: RideDriver }>('/api/v1/rides/drivers/register', {
+    method: 'POST',
+    body: JSON.stringify({ licenseNumber }),
+  }).then((r) => r.driver);
 
 export const fetchMyDriverProfile = () =>
   apiFetch<{ success: boolean; driver: RideDriver }>('/api/v1/rides/drivers/me').then((r) => r.driver);

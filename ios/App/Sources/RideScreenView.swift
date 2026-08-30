@@ -466,6 +466,11 @@ private struct RideDriverContent: View {
     @State private var destinationLng = ""
     @State private var destinationBusy = false
     @State private var earnings: [RideDailyEarnings]?
+    // Real gap found live (2026-08-31, market-readiness audit) -- see backend
+    // RideDriverService.kt's own doc comment. An honest, self-declared informational
+    // text field, not a real license-verification gate this backend has no path to
+    // check.
+    @State private var licenseNumberInput = ""
 
     private var activeDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" } }
     private var pastDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
@@ -483,12 +488,14 @@ private struct RideDriverContent: View {
                         Text("Drive with Itunda").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                         Text("Earn a real fare for every trip you complete, paid straight to your account.")
                             .font(.footnote).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
+                        IdsTextField("Driver's license number", text: $licenseNumberInput)
                         Button(action: { Task { await register() } }) {
                             Text(registering ? "Registering…" : "Become a driver").bold().foregroundColor(.white)
                                 .padding(.horizontal, 24).padding(.vertical, 14)
-                                .background(IDS.Colors.brand).cornerRadius(10)
+                                .background(licenseNumberInput.trimmingCharacters(in: .whitespaces).isEmpty ? IDS.Colors.divider : IDS.Colors.brand)
+                                .cornerRadius(10)
                         }
-                        .disabled(registering)
+                        .disabled(registering || licenseNumberInput.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     .frame(maxWidth: .infinity).padding(24).background(IDS.Colors.card).cornerRadius(12)
                 } else if let current = driver {
@@ -689,7 +696,7 @@ private struct RideDriverContent: View {
     private func register() async {
         registering = true
         do {
-            driver = try await NetworkClient.shared.registerAsRideDriver().driver
+            driver = try await NetworkClient.shared.registerAsRideDriver(licenseNumber: licenseNumberInput).driver
         } catch NetworkError.httpErrorWithMessage(let statusCode, _) where statusCode == 409 {
             // Real gap found live (Toss-style error-handling audit, 2026-08-30): same
             // register-once shape as Eats' own RIDER_ALREADY_REGISTERED, apparently

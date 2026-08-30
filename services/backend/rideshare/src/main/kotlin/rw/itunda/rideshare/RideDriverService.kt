@@ -15,6 +15,7 @@ class RideDriverNoAccountException(message: String) : RuntimeException(message)
 class RideDriverAlreadyRegisteredException(message: String) : RuntimeException(message)
 class RideDriverNotRegisteredException(message: String) : RuntimeException(message)
 class InvalidRideDriverLocationException(message: String) : RuntimeException(message)
+class InvalidRideDriverLicenseException(message: String) : RuntimeException(message)
 class DestinationFilterLimitExceededException(message: String) : RuntimeException(message)
 
 /**
@@ -23,6 +24,15 @@ class DestinationFilterLimitExceededException(message: String) : RuntimeExceptio
  * (`RiderService.register`, marketplace listing creation). Reuses the driver's own
  * existing MAIN account as their payout destination, no new account type or external
  * payout rail needed.
+ *
+ * Real gap found live (2026-08-31, market-readiness audit): this, the biggest and most
+ * central driver-role registration in the backend (dispatched to strangers' real trip
+ * requests, unlike a single booked designated-driver job), had zero identity/license
+ * info at all -- a smaller, adjacent feature in this exact module,
+ * `DesignatedDriverService.register`, already required a real license number. See
+ * `RideDriver.licenseNumber`'s own doc comment for the honest scope: a self-declared
+ * informational text field, not a real license-verification gate this backend has no
+ * path to check.
  */
 @Service
 class RideDriverService(
@@ -30,13 +40,16 @@ class RideDriverService(
     private val accountRepository: AccountRepository,
     private val rateLimiter: RateLimiter,
 ) {
-    fun register(userId: String): RideDriver {
+    fun register(userId: String, licenseNumber: String): RideDriver {
         if (rideDriverRepository.findByUserId(userId) != null) {
             throw RideDriverAlreadyRegisteredException("This account is already registered as a driver")
         }
+        val trimmedLicense = licenseNumber.trim().ifEmpty { throw InvalidRideDriverLicenseException("License number is required") }.take(100)
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw RideDriverNoAccountException("No account found for this account")
-        return rideDriverRepository.save(RideDriver(id = "ride_driver_${UUID.randomUUID()}", userId = userId, accountId = account.id))
+        return rideDriverRepository.save(
+            RideDriver(id = "ride_driver_${UUID.randomUUID()}", userId = userId, accountId = account.id, licenseNumber = trimmedLicense),
+        )
     }
 
     fun getMyDriverProfile(userId: String): RideDriver =

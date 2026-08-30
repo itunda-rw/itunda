@@ -88,7 +88,7 @@ class RideTripServiceTest : BehaviorSpec({
             id = "account_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
             type = AccountType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
         )
-        val nearbyDriver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_driver", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val nearbyDriver = RideDriver(id = "driver_1", userId = "driver_user_1", accountId = "account_driver", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, licenseNumber = "LIC-TEST")
 
         every { accountRepository.findByUserIdAndType("passenger_1", AccountType.MAIN) } returns passengerAccount
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nearbyDriver)
@@ -258,7 +258,7 @@ class RideTripServiceTest : BehaviorSpec({
         val filteredDriver = RideDriver(
             id = "driver_filtered", userId = "driver_user_filtered", accountId = "account_driver_filtered",
             available = true, currentLatitude = -1.9536, currentLongitude = 30.0605,
-            destinationLatitude = -1.9300, destinationLongitude = 30.1300,
+            destinationLatitude = -1.9300, destinationLongitude = 30.1300, licenseNumber = "LIC-TEST",
         )
 
         every { accountRepository.findByUserIdAndType("passenger_1", AccountType.MAIN) } returns passengerAccount
@@ -382,7 +382,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripStopRepository = mockk<RideTripStopRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository, rideTripStopRepository = rideTripStopRepository)
 
-        val driver = RideDriver(id = "driver_6", userId = "driver_user_6", accountId = "account_driver_6", available = true)
+        val driver = RideDriver(id = "driver_6", userId = "driver_user_6", accountId = "account_driver_6", available = true, licenseNumber = "LIC-TEST")
         val trip = RideTrip(
             id = "ride_trip_multistop_1", passengerId = "passenger_7", driverId = "driver_6", pickupAddress = "A",
             pickupLatitude = -1.95, pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
@@ -493,7 +493,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val nearbyDriver = RideDriver(id = "driver_5", userId = "driver_user_5", accountId = "account_driver_5", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val nearbyDriver = RideDriver(id = "driver_5", userId = "driver_user_5", accountId = "account_driver_5", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, licenseNumber = "LIC-TEST")
         val dueTrip = RideTrip(
             id = "ride_trip_due", passengerId = "passenger_5", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
             dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
@@ -529,7 +529,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val nearbyDriver = RideDriver(id = "driver_6", userId = "driver_user_6", accountId = "account_driver_6", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val nearbyDriver = RideDriver(id = "driver_6", userId = "driver_user_6", accountId = "account_driver_6", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, licenseNumber = "LIC-TEST")
         val expiredTrip = RideTrip(
             id = "ride_trip_expired", passengerId = "passenger_6", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
             dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
@@ -591,7 +591,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val driver = RideDriver(id = "driver_2", userId = "driver_user_2", accountId = "account_driver_2", available = true)
+        val driver = RideDriver(id = "driver_2", userId = "driver_user_2", accountId = "account_driver_2", available = true, licenseNumber = "LIC-TEST")
         val trip = RideTrip(
             id = "ride_trip_1", passengerId = "passenger_3", pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
             dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("3.5"),
@@ -627,7 +627,7 @@ class RideTripServiceTest : BehaviorSpec({
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_3", userId = "driver_user_3", accountId = "account_driver_3", available = true)
+        val driver = RideDriver(id = "driver_3", userId = "driver_user_3", accountId = "account_driver_3", available = true, licenseNumber = "LIC-TEST")
         val driverAccount = Account(
             id = "account_driver_3", userId = "driver_user_3", accountNumber = "1000000003", accountName = "Driver",
             type = AccountType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"),
@@ -662,7 +662,7 @@ class RideTripServiceTest : BehaviorSpec({
         val rideTripRepository = mockk<RideTripRepository>()
         val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
 
-        val driver = RideDriver(id = "driver_4", userId = "driver_user_4", accountId = "account_driver_4", available = true)
+        val driver = RideDriver(id = "driver_4", userId = "driver_user_4", accountId = "account_driver_4", available = true, licenseNumber = "LIC-TEST")
         fun freshTrip() = RideTrip(
             id = "ride_trip_3", passengerId = "passenger_5", driverId = "driver_4", pickupAddress = "A", pickupLatitude = -1.95,
             pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
@@ -750,7 +750,7 @@ class RideTripServiceTest : BehaviorSpec({
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_cancel_1", userId = "driver_user_cancel_1", accountId = "account_driver_cancel_1")
+        val driver = RideDriver(id = "driver_cancel_1", userId = "driver_user_cancel_1", accountId = "account_driver_cancel_1", licenseNumber = "LIC-TEST")
         val driverAccount = Account(
             id = "account_driver_cancel_1", userId = "driver_user_cancel_1", accountNumber = "1000000010", accountName = "Driver",
             type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
@@ -806,7 +806,7 @@ class RideTripServiceTest : BehaviorSpec({
             pushNotificationService = pushNotificationService,
         )
 
-        val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", accountId = "account_driver_cancel_2")
+        val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", accountId = "account_driver_cancel_2", licenseNumber = "LIC-TEST")
         val driverAccount = Account(
             id = "account_driver_cancel_2", userId = "driver_user_cancel_2", accountNumber = "1000000012", accountName = "Driver",
             type = AccountType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
@@ -870,8 +870,8 @@ class RideTripServiceTest : BehaviorSpec({
         )
         // Real acceptance rate 1/10 = 10%, well under the real 30% floor, with a real
         // statistically meaningful sample (10 >= MIN_OFFERS_FOR_ACCEPTANCE_FILTER).
-        val flakyCloseDriver = RideDriver(id = "driver_flaky", userId = "driver_user_flaky", accountId = "account_flaky", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, totalOffers = 10, totalAccepted = 1)
-        val reliableFarDriver = RideDriver(id = "driver_reliable", userId = "driver_user_reliable", accountId = "account_reliable", available = true, currentLatitude = -1.9600, currentLongitude = 30.0900, totalOffers = 10, totalAccepted = 9)
+        val flakyCloseDriver = RideDriver(id = "driver_flaky", userId = "driver_user_flaky", accountId = "account_flaky", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605, totalOffers = 10, totalAccepted = 1, licenseNumber = "LIC-TEST")
+        val reliableFarDriver = RideDriver(id = "driver_reliable", userId = "driver_user_reliable", accountId = "account_reliable", available = true, currentLatitude = -1.9600, currentLongitude = 30.0900, totalOffers = 10, totalAccepted = 9, licenseNumber = "LIC-TEST")
 
         every { accountRepository.findByUserIdAndType("passenger_6", AccountType.MAIN) } returns passengerAccount
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(flakyCloseDriver, reliableFarDriver)

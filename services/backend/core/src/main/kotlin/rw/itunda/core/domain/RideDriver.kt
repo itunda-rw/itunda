@@ -41,6 +41,15 @@ class RideDriver(
     @Column(name = "account_id", nullable = false, length = 64)
     val accountId: String,
 
+    // Real gap found live (2026-08-31, market-readiness audit) -- this driver-facing
+    // registration had zero identity/license info at all, unlike the smaller, adjacent
+    // DesignatedDriver.licenseNumber (rw.itunda.core.domain), which already required
+    // one. An honest, self-declared informational text field, not a real
+    // license-verification gate this backend has no path to check -- same discipline
+    // DesignatedDriver.licenseNumber's own doc comment already establishes.
+    @Column(name = "license_number", nullable = false, length = 100)
+    val licenseNumber: String,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     var status: RideDriverStatus = RideDriverStatus.ACTIVE,
@@ -86,5 +95,5 @@ class RideDriver(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
-    protected constructor() : this(id = "", userId = "", accountId = "")
+    protected constructor() : this(id = "", userId = "", accountId = "", licenseNumber = "")
 }

@@ -6502,6 +6502,10 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   // Driver side
   const [driver, setDriver] = useState<RideDriver | null | undefined>(undefined);
   const [registeringDriver, setRegisteringDriver] = useState(false);
+  // Real gap found live (2026-08-31, market-readiness audit) -- see lib/rideshare.ts's
+  // own registerAsDriver doc comment. Same real self-declared field
+  // DesignatedDriverView's own licenseNumber input already establishes below.
+  const [driverLicenseNumber, setDriverLicenseNumber] = useState('');
   const [availableTrips, setAvailableTrips] = useState<RideTrip[] | null>(null);
   const [myDriverTrips, setMyDriverTrips] = useState<RideTrip[] | null>(null);
   const [driverError, setDriverError] = useState<string | null>(null);
@@ -6588,10 +6592,11 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   };
 
   const handleRegisterDriver = async () => {
+    if (!driverLicenseNumber.trim()) return;
     setRegisteringDriver(true);
     setDriverError(null);
     try {
-      setDriver(await registerAsDriver());
+      setDriver(await registerAsDriver(driverLicenseNumber.trim()));
     } catch (err) {
       // Real gap found live (Toss-style error-handling audit, 2026-08-30): same
       // register-once shape as Eats' own RIDER_ALREADY_REGISTERED, apparently missed
@@ -6850,7 +6855,11 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
                 Earn a real fare for every trip you complete, paid straight to your account.
               </p>
-              <button className="itunda-btn itunda-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver}>
+              <input
+                type="text" value={driverLicenseNumber} placeholder="Driver's license number" onChange={(e) => setDriverLicenseNumber(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', marginBottom: '12px' }}
+              />
+              <button className="itunda-btn itunda-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver || !driverLicenseNumber.trim()}>
                 {registeringDriver ? 'Registering…' : 'Become a driver'}
               </button>
               {driverError && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{driverError}</p>}

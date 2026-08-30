@@ -828,8 +828,17 @@ public struct RideDriverDto: Decodable {
     // setRideDriverDestination doc comment.
     public let destinationLatitude: Double?
     public let destinationLongitude: Double?
+    // Real gap found live (2026-08-31, market-readiness audit) -- see
+    // RegisterRideDriverRequest's own doc comment.
+    public let licenseNumber: String?
 }
 public struct RideDriverResponse: Decodable { public let success: Bool; public let driver: RideDriverDto }
+// Real gap found live (2026-08-31, market-readiness audit): this, the biggest and most
+// central driver-role registration in the backend, had zero identity/license info at
+// all -- see backend RideDriverService.kt's own doc comment for the full account. An
+// honest, self-declared informational text field, not a real license-verification gate
+// this backend has no path to check.
+public struct RegisterRideDriverRequest: Encodable { public let licenseNumber: String; public init(licenseNumber: String) { self.licenseNumber = licenseNumber } }
 public struct SetRideDriverAvailabilityRequest: Encodable { public let available: Bool }
 public struct UpdateRideDriverLocationRequest: Encodable { public let latitude: Double; public let longitude: Double }
 public struct SetRideDriverDestinationRequest: Encodable { public let latitude: Double; public let longitude: Double }
@@ -1425,8 +1434,8 @@ extension NetworkClient {
     // first iOS client for this feature (item 110, found via a fresh matrix scan;
     // bank-mfe has had it since the same day, Android ported it the same day as item
     // 109). Mirrors bank-mfe's lib/rideshare.ts and Android's ApiService.kt exactly.
-    public func registerAsRideDriver() async throws -> RideDriverResponse {
-        try await authenticatedPost("api/v1/rides/drivers/register", body: EmptyBody())
+    public func registerAsRideDriver(licenseNumber: String) async throws -> RideDriverResponse {
+        try await authenticatedPost("api/v1/rides/drivers/register", body: RegisterRideDriverRequest(licenseNumber: licenseNumber))
     }
 
     public func getMyRideDriverProfile() async throws -> RideDriverResponse { try await get("api/v1/rides/drivers/me") }

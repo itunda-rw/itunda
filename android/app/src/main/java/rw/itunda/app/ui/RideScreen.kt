@@ -502,6 +502,11 @@ private fun RideDriverContent() {
     var driverRating by remember { mutableStateOf<RideDriverRatingResponse?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var registering by remember { mutableStateOf(false) }
+    // Real gap found live (2026-08-31, market-readiness audit) -- see backend
+    // RideDriverService.kt's own doc comment. An honest, self-declared informational
+    // text field, not a real license-verification gate this backend has no path to
+    // check.
+    var licenseNumberInput by remember { mutableStateOf("") }
     var availableTrips by remember { mutableStateOf<List<RideTripDto>>(emptyList()) }
     var myDriverTrips by remember { mutableStateOf<List<RideTripDto>>(emptyList()) }
     var activeTripStops by remember { mutableStateOf<Map<String, List<RideTripStopDto>>>(emptyMap()) }
@@ -593,7 +598,9 @@ private fun RideDriverContent() {
         registering = true
         coroutineScope.launch {
             try {
-                driver = NetworkClient.apiService.registerAsRideDriver().driver
+                driver = NetworkClient.apiService.registerAsRideDriver(
+                    rw.itunda.core.network.RegisterRideDriverRequest(licenseNumberInput),
+                ).driver
             } catch (e: HttpException) {
                 // Real gap found live (Toss-style error-handling audit, 2026-08-30):
                 // same register-once shape as Eats' own RIDER_ALREADY_REGISTERED,
@@ -726,9 +733,18 @@ private fun RideDriverContent() {
                             color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
+                        IdsTextField(
+                            value = licenseNumberInput,
+                            onValueChange = { licenseNumberInput = it },
+                            label = "Driver's license number",
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                .pressScaleClickable(enabled = !registering) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                .background(if (licenseNumberInput.isNotBlank()) Ids.colors.brand else Ids.colors.divider)
+                                .pressScaleClickable(enabled = !registering && licenseNumberInput.isNotBlank()) { register() }
+                                .padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Become a driver", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
             }
