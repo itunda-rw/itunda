@@ -3733,13 +3733,26 @@ private fun MenuScreen(
     // lives in HoodSectionScreen, parameterized per section instead of switchable --
     // see that composable's own doc comment. Pay's own row removed since Pay is now
     // a primary tab itself, not something Explore needs to surface.
-    val quickLinksRows = listOf(
+    // Real IA fix (2026-08-30, simplification-adoption thread, toss.tech/article/
+    // uxresearcher-cardsorting-core): Toss's own card-sorting research found users
+    // reject a flat list of many services, grouping instead by real-world context --
+    // this exact 10-row "Quick links" list was the flat-list anti-pattern the
+    // article's research replaced, while bank-mfe's own EXPLORE_TAB_GROUPS had
+    // already solved the identical problem for the identical features (never ported
+    // to native). Split into 3 sub-lists reusing web's own already-validated
+    // category names/membership verbatim, not a newly-invented taxonomy.
+    val quickLinksEverydayRows = listOf(
         FlatRow("Shop", subtitle = "Coupang-style commerce", glyph = { ShoppingBagGlyph(size = 28.dp) }, onClick = onOpenShop),
         FlatRow("Eats", subtitle = "Food delivery, order or deliver", glyph = { PlaceRestaurant(size = 28.dp) }, onClick = onOpenEats),
+        FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", glyph = { PinGlyph(size = 28.dp) }, onClick = onOpenMap),
+    )
+    val quickLinksNeighbourhoodRows = listOf(
         FlatRow("Marketplace", subtitle = "당근마켓-style neighborhood buy/sell", glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenMarketplace),
         FlatRow("Community", subtitle = "Neighborhood life, local questions and posts", glyph = { SpeechBubbleGlyph(size = 28.dp) }, onClick = onOpenCommunity),
         FlatRow("Jobs", subtitle = "Neighborhood gigs and part-time work", glyph = { BriefcaseGlyph(size = 28.dp) }, onClick = onOpenJobs),
         FlatRow("Property", subtitle = "Neighborhood rentals and sales", glyph = { TravelHouse(size = 28.dp) }, onClick = onOpenProperty),
+    )
+    val quickLinksMoneyRows = listOf(
         // Real fix (2026-08-13, direct user report: "entire app is still messy...
         // give me something real"): used to open BenefitsTab, a full screen of
         // entirely fabricated content -- a fake "P 137" points pill, a fake "🎁
@@ -3757,7 +3770,6 @@ private fun MenuScreen(
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
         FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenWeeklySavings),
         FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
-        FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", glyph = { PinGlyph(size = 28.dp) }, onClick = onOpenMap),
     )
     val accountsRows = listOf(
         FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenOverview),
@@ -3901,7 +3913,9 @@ private fun MenuScreen(
     // place, for the full account of Switch & save/Cards/Services/Foreign
     // currency/Grow your money/Pension/Loans/Notifications & consent/Support).
     val allMenuSectionsForSearch = listOf(
-        "Quick links" to quickLinksRows,
+        "Everyday" to quickLinksEverydayRows,
+        "Your neighbourhood" to quickLinksNeighbourhoodRows,
+        "Money tools" to quickLinksMoneyRows,
         "Accounts & cards" to accountsRows,
         "Send & pay" to sendPayRows,
         "Save & grow" to saveGrowRows,
@@ -4013,10 +4027,17 @@ private fun MenuScreen(
             // reachable as a real row instead of being dropped. Mini apps' own 4 rows
             // (Account balance/Pay bills/Reward tasks/Insurance) merged in here too
             // (2026-08-12), not kept as their own separate "Mini apps" header.
+            // Real IA fix (2026-08-30): was one flat "Quick links" section with these
+            // 4 rows appended -- now 3 context-grouped sections (see
+            // quickLinksEverydayRows's own doc comment above), with the 4 financial
+            // mini-app shortcuts folded into "Money tools" alongside Benefits/Invest/
+            // Savings rather than a separate flat list.
+            item { FlatSection("Everyday", quickLinksEverydayRows) }
+            item { FlatSection("Your neighbourhood", quickLinksNeighbourhoodRows) }
             item {
                 FlatSection(
-                    "Quick links",
-                    quickLinksRows + listOf(
+                    "Money tools",
+                    quickLinksMoneyRows + listOf(
                         FlatRow("Account balance", onClick = {
                             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.AccountBalanceMiniAppActivity::class.java))
                         }),

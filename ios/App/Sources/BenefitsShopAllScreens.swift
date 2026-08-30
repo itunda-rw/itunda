@@ -247,13 +247,30 @@ struct EntireMenuScreen: View {
     // matching row two Groups down; if one changes, the other must too.
     private var searchableMenuSections: [(title: String, rows: [FlatRow])] {
         [
-            ("Quick links", [
+            // Real IA fix (2026-08-30, simplification-adoption thread, toss.tech/
+            // article/uxresearcher-cardsorting-core): Toss's own card-sorting research
+            // found users reject a flat list of many services, grouping instead by
+            // real-world context -- this exact 17-row "Quick links" list was the
+            // flat-list anti-pattern the article's research replaced, while bank-mfe's
+            // own EXPLORE_TAB_GROUPS had already solved the identical problem for the
+            // identical features (never ported to native, matching the Android fix
+            // same day). Split into 3 sub-lists reusing web's own already-validated
+            // category names/membership, not a newly-invented taxonomy.
+            ("Everyday", [
                 FlatRow(title: "Shop", subtitle: "Coupang-style commerce", glyph: { AnyView(ShoppingBagGlyph(size: 28)) }, action: { showShop = true }),
                 FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", glyph: { AnyView(PlaceGlyph(category: "RESTAURANT", size: 28)) }, action: { showEats = true }),
+                // Real Kigali public-transit stored-value balance (2026-08-27) -- see
+                // TransitScreenView.swift's own doc comment for the full sourced account.
+                FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
+                FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", glyph: { AnyView(PinGlyph(size: 28)) }, action: { showMap = true }),
+            ]),
+            ("Your neighbourhood", [
                 FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: onOpenMarketplace),
                 FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }, action: onOpenCommunity),
                 FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", glyph: { AnyView(BriefcaseGlyph(size: 28)) }, action: onOpenJobs),
                 FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", glyph: { AnyView(TravelHouse(size: 28)) }, action: onOpenProperty),
+            ]),
+            ("Money tools", [
                 // Real fix (2026-08-13, matching the identical Android fix same day, direct
                 // user report: "entire app is still messy... give me something
                 // real"): used to open BenefitsShopAllScreens' own BenefitsView, a
@@ -269,9 +286,6 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
                 FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
                 FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
-                // Real Kigali public-transit stored-value balance (2026-08-27) -- see
-                // TransitScreenView.swift's own doc comment for the full sourced account.
-                FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showGroupAccounts = true }),
                 FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showIkimina = true }),
                 FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
@@ -285,7 +299,6 @@ struct EntireMenuScreen: View {
                 // verified program), without widening FlatRow's `symbol: String?` API
                 // to accept a custom Shape -- a bigger, separately-scoped change.
                 FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", glyph: { AnyView(ShieldEmojiGlyph(size: 28)) }, action: { showVupLoan = true }),
-                FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", glyph: { AnyView(PinGlyph(size: 28)) }, action: { showMap = true }),
             ]),
             ("Mini apps", [
                 FlatRow(title: "Account balance", showChevron: true, action: { showAccountBalanceMiniApp = true }),
@@ -424,13 +437,22 @@ struct EntireMenuScreen: View {
                     // there's nothing to back out to. My's own real content is its own
                     // primary tab now (ItundaTab.You), not reached from here.
                     IdsAllTopBar(onOpenSettings: onOpenSettings)
-                    FlatSection(title: "Quick links", rows: [
+                    // Real IA fix (2026-08-30) -- see searchableMenuSections's own doc
+                    // comment above (this Group's literal duplicate) for the full
+                    // account; keep both copies in lockstep.
+                    FlatSection(title: "Everyday", rows: [
                         FlatRow(title: "Shop", subtitle: "Coupang-style commerce", glyph: { AnyView(ShoppingBagGlyph(size: 28)) }, action: { showShop = true }),
                         FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", glyph: { AnyView(PlaceGlyph(category: "RESTAURANT", size: 28)) }, action: { showEats = true }),
+                        FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
+                        FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", glyph: { AnyView(PinGlyph(size: 28)) }, action: { showMap = true }),
+                    ])
+                    FlatSection(title: "Your neighbourhood", rows: [
                         FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", glyph: { AnyView(PlaceGlyph(category: "MARKET", size: 28)) }, action: onOpenMarketplace),
                         FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", glyph: { AnyView(SpeechBubbleGlyph(size: 28)) }, action: onOpenCommunity),
                         FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", glyph: { AnyView(BriefcaseGlyph(size: 28)) }, action: onOpenJobs),
                         FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", glyph: { AnyView(TravelHouse(size: 28)) }, action: onOpenProperty),
+                    ])
+                    FlatSection(title: "Money tools", rows: [
                         // Real fix (2026-08-13, matching the identical Android fix same day, direct
                 // user report: "entire app is still messy... give me something
                 // real"): used to open BenefitsShopAllScreens' own BenefitsView, a
@@ -446,9 +468,6 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
                         FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
-                // Real Kigali public-transit stored-value balance (2026-08-27) -- see
-                // TransitScreenView.swift's own doc comment for the full sourced account.
-                FlatRow(title: "Transit", subtitle: "Top up and tap to pay your real Kigali bus fare", symbol: "bus.fill", tint: Color(hex: 0x2F8F5B), action: { showTransit = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showGroupAccounts = true }),
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showIkimina = true }),
                         FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", glyph: { AnyView(PlaceGlyph(category: "BANK", size: 28)) }, action: { showSacco = true }),
@@ -456,7 +475,6 @@ struct EntireMenuScreen: View {
                         // Same icon-clash fix as this file's first FlatRow list above --
                         // shared banknote.fill with "Youth account", now differentiated.
                         FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", glyph: { AnyView(ShieldEmojiGlyph(size: 28)) }, action: { showVupLoan = true }),
-                        FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", glyph: { AnyView(PinGlyph(size: 28)) }, action: { showMap = true }),
                     ])
                     IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
                     IconGridSection(
