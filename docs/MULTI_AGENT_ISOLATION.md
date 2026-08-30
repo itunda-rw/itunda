@@ -1,6 +1,8 @@
 # Multi-Agent Isolation: the Silo Model
 
-Last updated: 2026-07-23
+Last updated: 2026-07-23 (backend module count and iOS silo status corrected 2026-08-31 —
+see inline notes below; found stale during a doc-staleness sweep after the same pattern
+hit `docs/PAYMENTS.md` and `docs/API_SPECIFICATION.md` the same week)
 
 Multiple Claude Code agents work on this repo in parallel, each in its own git
 worktree (`git log` shows the real pattern: `worktree-agent-*` branches merging
@@ -69,19 +71,34 @@ runner: `tuist generate` + `pod install` + `xcodebuild ... ItundaApp`) — not
 just a paper structure. `CoreNetwork` now holds the real `NetworkClient`/
 `KeychainTokenStore` (promoted from `App`, mirroring Android's own
 `:core:network` relocation), so a Feature module can call the backend
-directly. Most feature targets are still `Dummy.swift` placeholders content-
-wise — Banking, Payments, and now Credit (`CreditScoreScreenView`) have real
-code — but the module graph itself compiles and links for all of them.
-Reminder for whoever extracts the rest: iOS's 9 Feature modules don't map
-1:1 to Android's 8, and at least Bills/Insurance are intentionally Saronite
-(React Native) mini-apps, not native gaps — trace `BenefitsShopAllScreens.swift`
-(the iOS equivalent of `SuperAppTabs.kt`) before assuming there's native code
-to move for any given feature.
+directly.
+
+**Stale as of 2026-08-31** — the paragraph below described the state as of
+2026-07-23 ("most feature targets are still `Dummy.swift`"); a month-plus of
+decomposition work (tracked in memory as `project_itunda_feature_isolation`)
+substantially changed this. Current real state, checked directly via
+`find ios/Features/*/Sources -iname "*.swift"`: `ios/Features/` now has 13
+module directories (not 9), and 8 of them have real, non-`Dummy.swift`
+content — Assets, Banking, Certificate, Credit, Identity, Maps, Payments,
+Support. Only Bills, Engagement, Insurance, Merchant, and Wealth remain
+`Dummy.swift`-only, and per that same memory thread, Bills/Insurance are
+correctly empty by design (Saronite React Native mini-apps, not native gaps
+— trace `BenefitsShopAllScreens.swift`, the iOS equivalent of
+`SuperAppTabs.kt`, before assuming there's native code to move), while
+Merchant/Wealth/Engagement are empty because they have no mapped screen on
+either platform yet and need a product decision, not architecture work, to
+proceed. Re-verify this list directly rather than trusting either date if
+it's been a while since 2026-08-31 either.
 
 ### Backend (`services/backend/<module>`)
 
-33 Gradle modules (`:auth`, `:wallet`, `:bills`, `:loans`, `:marketplace`, `:eats`,
-…) in a mostly-clean star topology — nearly everything depends only on `:core`.
+**Stale count corrected 2026-08-31** (was "33 Gradle modules" as of 2026-07-23; actual
+count checked directly via `find services/backend -maxdepth 1 -type d`): 44 Gradle
+modules. Also stale: `:wallet` was renamed to `:account` 2026-08-21 (`5bc9d1ea`, "real
+Toss Bank/Toss Pay separation") — the example list below is illustrative, not
+exhaustive, so check `ls services/backend` directly rather than trusting either list
+(`:auth`, `:account`, `:bills`, `:loans`, `:marketplace`, `:eats`, …) in a mostly-clean
+star topology — nearly everything depends only on `:core`.
 A bounded set also depend on `:auth` and/or `:messaging`: community, certificate,
 insurance, eats, gift, jobs, marketplace, maps, messaging, merchant, realestate,
 partners, splitbill, p2p, overview, savings. `:core` is tightly-aligned.
