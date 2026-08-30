@@ -20,6 +20,11 @@
     <string name="login_subtitle_name">C\'est ainsi que vous apparaîtrez auprès de vos amis et des commerçants.</string>
     <string name="login_label_first_name">Prénom</string>
     <string name="login_label_last_name">Nom</string>
+    <string name="login_headline_terms">Acceptez les conditions d\'itunda</string>
+    <string name="login_subtitle_terms">Veuillez les consulter et les accepter avant de créer votre compte.</string>
+    <string name="login_terms_agree_all">Tout accepter</string>
+    <string name="login_terms_required">Obligatoire</string>
+    <string name="login_terms_optional">Facultatif</string>
     <string name="login_headline_password_register">Créez un code PIN à 6 chiffres</string>
     <string name="login_headline_password_login">Entrez votre code PIN</string>
     <string name="login_subtitle_password_register">Vous utiliserez ce code PIN pour vous connecter la prochaine fois.</string>

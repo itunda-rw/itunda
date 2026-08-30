@@ -23,7 +23,30 @@ public struct RegisterRequest: Encodable {
     // AuthService.register's own doc comment on the backend for
     // DeviceService.registerKeyDuringAuth.
     public let devicePublicKey: String?
-    public init(phoneNumber: String, email: String?, firstName: String, lastName: String, password: String, referralCode: String?, deviceId: String?, deviceName: String?, devicePublicKey: String? = nil) { self.phoneNumber = phoneNumber; self.email = email; self.firstName = firstName; self.lastName = lastName; self.password = password; self.referralCode = referralCode; self.deviceId = deviceId; self.deviceName = deviceName; self.devicePublicKey = devicePublicKey }
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) enforcement, added to
+    // the backend/bank-mfe 2026-08-18 but never ported to this struct -- found
+    // 2026-08-30 during a market-readiness audit: AuthService.register real-400s
+    // (RequiredTermsNotAcceptedException) whenever the required terms ids are
+    // missing, and this field's absence meant every native registration silently
+    // sent an empty list, so registration on this platform has been completely
+    // broken since that date. See TermsCatalog.kt's own doc comment for the full
+    // sourced account.
+    public let acceptedTermsIds: [String]
+    public init(phoneNumber: String, email: String?, firstName: String, lastName: String, password: String, referralCode: String?, deviceId: String?, deviceName: String?, devicePublicKey: String? = nil, acceptedTermsIds: [String] = []) { self.phoneNumber = phoneNumber; self.email = email; self.firstName = firstName; self.lastName = lastName; self.password = password; self.referralCode = referralCode; self.deviceId = deviceId; self.deviceName = deviceName; self.devicePublicKey = devicePublicKey; self.acceptedTermsIds = acceptedTermsIds }
+}
+
+// Mirrors services/backend/core/.../TermsDocument.kt exactly -- see RegisterRequest
+// .acceptedTermsIds' own doc comment for why this exists on this platform now.
+public struct TermsDocument: Decodable, Identifiable {
+    public let id: String
+    public let title: String
+    public let version: String
+    public let required: Bool
+    public let summary: String
+}
+private struct TermsResponse: Decodable {
+    let success: Bool
+    let terms: [TermsDocument]
 }
 
 // deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding
@@ -501,6 +524,14 @@ public final class NetworkClient {
 
     public func register(_ request: RegisterRequest) async throws -> AuthResponse {
         try await post("api/v1/auth/register", body: request, authToken: nil)
+    }
+
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) catalog -- see
+    // RegisterRequest.acceptedTermsIds' own doc comment for why this is only being
+    // added now. Public (SecurityConfig permitAll), called before registration.
+    public func getTerms() async throws -> [TermsDocument] {
+        let response: TermsResponse = try await get("api/v1/auth/terms")
+        return response.terms
     }
 
     public func login(_ request: LoginRequest) async throws -> AuthResponse {

@@ -68,7 +68,8 @@ final class SessionManager: ObservableObject {
 
     func register(
         phoneNumber: String, password: String, firstName: String, lastName: String,
-        email: String? = nil, referralCode: String? = nil, devicePublicKey: String? = nil
+        email: String? = nil, referralCode: String? = nil, devicePublicKey: String? = nil,
+        acceptedTermsIds: [String] = []
     ) async -> AuthResult {
         await runAuthCall(phoneNumber: phoneNumber) {
             try await NetworkClient.shared.register(
@@ -76,10 +77,18 @@ final class SessionManager: ObservableObject {
                     phoneNumber: phoneNumber, email: email, firstName: firstName, lastName: lastName,
                     password: password, referralCode: referralCode,
                     deviceId: DeviceStore.shared.getOrCreateDeviceId(), deviceName: DeviceStore.shared.getDeviceName(),
-                    devicePublicKey: devicePublicKey
+                    devicePublicKey: devicePublicKey, acceptedTermsIds: acceptedTermsIds
                 )
             )
         }
+    }
+
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) catalog -- see
+    // RegisterRequest.acceptedTermsIds' own doc comment. Best-effort: LoginScreen.swift
+    // fails toward MORE friction (a still-enforced-server-side, un-skippable gate) if
+    // this throws, not less, same discipline bank-mfe's RegisterPage.tsx already uses.
+    func getTerms() async -> [TermsDocument] {
+        (try? await NetworkClient.shared.getTerms()) ?? []
     }
 
     // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see

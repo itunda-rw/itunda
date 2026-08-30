@@ -21,6 +21,14 @@ data class RegisterRequest(
     val lastName: String,
     val password: String,
     val referralCode: String? = null,
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) enforcement, added to
+    // the backend/bank-mfe 2026-08-18 but never ported to this DTO -- found 2026-08-30
+    // during a market-readiness audit: AuthService.register real-400s
+    // (RequiredTermsNotAcceptedException) whenever the required terms ids are missing,
+    // and this field's absence meant every single native registration silently sent an
+    // empty list, so registration on this platform has been completely broken since
+    // that date. See TermsCatalog.kt's own doc comment for the full sourced account.
+    val acceptedTermsIds: List<String> = emptyList(),
     // Added 2026-07-21, same reasoning as LoginRequest's deviceId/deviceName -- the
     // device that registers proves password ownership in the same request, so it's
     // auto-trusted server-side (DeviceService.recordRegistrationDevice) with no
@@ -51,6 +59,17 @@ data class LoginRequest(
 
 data class PhoneCheckRequest(val phoneNumber: String)
 data class PhoneCheckResponse(val exists: Boolean)
+
+// Mirrors services/backend/core/.../TermsDocument.kt exactly -- see RegisterRequest
+// .acceptedTermsIds' own doc comment for why this exists on this platform now.
+data class TermsDocument(val id: String, val title: String, val version: String, val required: Boolean, val summary: String)
+data class TermsResponse(val success: Boolean, val terms: List<TermsDocument>)
+
+// Mirrors services/backend/core/.../LegalDocumentCatalog.kt exactly -- real
+// itunda-branded Terms of Service/Privacy Policy/Credit Data Policy full text,
+// closing SettingsScreen.kt's own long-documented "nowhere real to link to" gap.
+data class LegalDocument(val id: String, val title: String, val version: String, val bodyMarkdown: String)
+data class LegalDocumentsResponse(val success: Boolean, val documents: List<LegalDocument>)
 data class RefreshRequest(val refreshToken: String)
 data class LogoutRequest(val refreshToken: String?)
 
@@ -111,6 +130,18 @@ interface AuthApi {
     // has picked "log in" or "sign up" at all; the response drives which one happens.
     @POST("api/v1/auth/check-phone")
     suspend fun checkPhone(@Body request: PhoneCheckRequest): PhoneCheckResponse
+
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) catalog -- see
+    // RegisterRequest.acceptedTermsIds' own doc comment for why this is only being
+    // added now. Public (SecurityConfig permitAll), called before registration.
+    @GET("api/v1/auth/terms")
+    suspend fun getTerms(): TermsResponse
+
+    // Real itunda-branded legal document bodies -- see LegalDocument's own doc
+    // comment. Public (SecurityConfig permitAll), reference material, not a
+    // registration consent gate.
+    @GET("api/v1/auth/legal-documents")
+    suspend fun getLegalDocuments(): LegalDocumentsResponse
 
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): AuthResponse

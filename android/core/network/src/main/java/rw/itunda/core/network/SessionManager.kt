@@ -94,16 +94,32 @@ object SessionManager {
         email: String? = null,
         referralCode: String? = null,
         devicePublicKey: String? = null,
+        acceptedTermsIds: List<String> = emptyList(),
     ): AuthResult {
         val deviceStore = NetworkClient.currentDeviceStore()
         return runAuthCall {
             NetworkClient.authApi.register(
                 RegisterRequest(
                     phoneNumber, email, firstName, lastName, password, referralCode,
+                    acceptedTermsIds,
                     deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName(), devicePublicKey,
                 ),
             )
         }
+    }
+
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) catalog -- see
+    // RegisterRequest.acceptedTermsIds' own doc comment. Best-effort: LoginScreen.kt
+    // fails toward MORE friction (a still-enforced-server-side, un-skippable gate) if
+    // this throws, not less, same discipline bank-mfe's RegisterPage.tsx already uses.
+    suspend fun getTerms(): List<TermsDocument> = NetworkClient.authApi.getTerms().terms
+
+    // Real itunda-branded legal document bodies -- see LegalDocument's own doc
+    // comment. Best-effort, same discipline as getTerms above.
+    suspend fun getLegalDocuments(): List<LegalDocument> = try {
+        NetworkClient.authApi.getLegalDocuments().documents
+    } catch (_: Exception) {
+        emptyList()
     }
 
     // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see AuthApi

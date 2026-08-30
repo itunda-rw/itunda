@@ -26,6 +26,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -58,6 +62,7 @@ import rw.itunda.core.identity.DeviceKeyManager
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.AuthResult
 import rw.itunda.core.network.SessionManager
+import rw.itunda.core.network.TermsDocument
 import rw.itunda.core.designsystem.components.IdsKeyboardDockedButton
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
@@ -239,6 +244,81 @@ internal fun NameStep(
             onValueChange = onLastNameChange,
             label = stringResource(R.string.login_label_last_name),
         )
+    }
+}
+
+// Real Toss/Korean-fintech-style 약관 동의 (terms consent) step -- see
+// RegisterRequest.acceptedTermsIds' own doc comment for why this only exists now
+// (bank-mfe's RegisterPage.tsx has carried the identical UX since 2026-08-18; this
+// app's registration has been silently 400ing without it since that date). Every
+// checkbox starts unchecked -- never pre-ticked, the exact dark pattern Korea's real
+// 2025-02-14 전자상거래법 amendment bans -- and required terms are grouped before
+// optional ones, mirroring the web version field-for-field.
+@Composable
+internal fun TermsStep(
+    terms: List<TermsDocument>,
+    acceptedTermsIds: Set<String>,
+    onToggleTerm: (String) -> Unit,
+    onToggleAll: () -> Unit,
+) {
+    var expandedTermsId by remember { mutableStateOf<String?>(null) }
+    val orderedTerms = remember(terms) { terms.filter { it.required } + terms.filter { !it.required } }
+    val allAccepted = terms.isNotEmpty() && terms.all { acceptedTermsIds.contains(it.id) }
+
+    Column {
+        StepHeadline(stringResource(R.string.login_headline_terms), stringResource(R.string.login_subtitle_terms))
+        Row(
+            modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onToggleAll).padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = allAccepted, onCheckedChange = { onToggleAll() }, colors = CheckboxDefaults.colors(checkedColor = Ids.colors.brand))
+            Text(stringResource(R.string.login_terms_agree_all), style = IdsTypography.Body1.copy(fontWeight = FontWeight.Bold), color = Ids.colors.textPrimary)
+        }
+        orderedTerms.forEach { term ->
+            val expanded = expandedTermsId == term.id
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = acceptedTermsIds.contains(term.id),
+                        onCheckedChange = { onToggleTerm(term.id) },
+                        colors = CheckboxDefaults.colors(checkedColor = Ids.colors.brand),
+                    )
+                    Text(
+                        text = if (term.required) stringResource(R.string.login_terms_required) else stringResource(R.string.login_terms_optional),
+                        style = IdsTypography.Typography7.copy(fontWeight = FontWeight.Bold),
+                        color = if (term.required) Ids.colors.danger else Ids.colors.textTertiary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (term.required) Ids.colors.dangerTint else Ids.colors.surfaceSoft)
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = term.title,
+                        style = IdsTypography.Body2,
+                        color = Ids.colors.textPrimary,
+                        modifier = Modifier.weight(1f).pressScaleClickable { expandedTermsId = if (expanded) null else term.id },
+                    )
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = Ids.colors.textTertiary,
+                        modifier = Modifier.pressScaleClickable { expandedTermsId = if (expanded) null else term.id },
+                    )
+                }
+                if (expanded) {
+                    Text(
+                        text = term.summary,
+                        style = IdsTypography.Typography7,
+                        color = Ids.colors.textSecondary,
+                        modifier = Modifier.padding(start = 40.dp, bottom = 8.dp),
+                    )
+                }
+            }
+        }
     }
 }
 

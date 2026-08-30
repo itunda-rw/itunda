@@ -32,6 +32,14 @@
     <string name="login_subtitle_name">This is how you\'ll appear to friends and merchants.</string>
     <string name="login_label_first_name">First name</string>
     <string name="login_label_last_name">Last name</string>
+    <!-- Real Toss/Korean-fintech-style 약관 동의 (terms consent), added to backend/bank-mfe
+         2026-08-18 but never ported to this app until 2026-08-30, see
+         RegisterRequest.acceptedTermsIds' own doc comment. -->
+    <string name="login_headline_terms">Agree to itunda\'s terms</string>
+    <string name="login_subtitle_terms">Please review and accept before we create your account.</string>
+    <string name="login_terms_agree_all">Agree to all</string>
+    <string name="login_terms_required">Required</string>
+    <string name="login_terms_optional">Optional</string>
     <!-- Real Toss-sourced passwordless-login rollout (2026-08-23), see
          AccountPinPad.kt's own doc comment. -->
     <string name="login_headline_password_register">Create a 6-digit PIN</string>

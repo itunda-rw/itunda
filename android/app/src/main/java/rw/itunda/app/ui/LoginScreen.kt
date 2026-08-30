@@ -120,7 +120,7 @@ import java.util.Base64
  * drives. NOT_FOUND is a real interstitial (not a data-entry step): the account
  * lookup came back negative and the user is being told that honestly, with a clear
  * path forward, rather than either a dead end or silently assuming signup intent. */
-private enum class AuthStage { PHONE, NOT_FOUND, NAME, PASSWORD }
+private enum class AuthStage { PHONE, NOT_FOUND, NAME, TERMS, PASSWORD }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -151,6 +151,18 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         var errorMessage by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
         val checkingPhoneError = stringResource(R.string.login_checking_phone_error)
+
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) -- see
+        // RegisterRequest.acceptedTermsIds' own doc comment. Fetched once on first
+        // entry to register mode; starts empty on purpose (see TermsStep's own doc
+        // comment -- never pre-ticked).
+        var terms by remember { mutableStateOf<List<rw.itunda.core.network.TermsDocument>>(emptyList()) }
+        var acceptedTermsIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+        LaunchedEffect(isRegisterMode) {
+            if (isRegisterMode && terms.isEmpty()) {
+                terms = try { SessionManager.getTerms() } catch (_: Exception) { emptyList() }
+            }
+        }
 
         // Real Toss-sourced passwordless-login rollout (2026-08-23) -- see
         // AccountPinPad's own doc comment for the full sourced account. `pinFirstEntry`
@@ -196,9 +208,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         val stepIndex = when (stage) {
             AuthStage.PHONE, AuthStage.NOT_FOUND -> 0
             AuthStage.NAME -> 1
-            AuthStage.PASSWORD -> if (isRegisterMode) 2 else 1
+            AuthStage.TERMS -> 2
+            AuthStage.PASSWORD -> if (isRegisterMode) 3 else 1
         }
-        val stepCount = if (isRegisterMode) 3 else 2
+        val stepCount = if (isRegisterMode) 4 else 2
 
         fun submit() {
             errorMessage = null
@@ -216,6 +229,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         phoneNumber, password, firstName, lastName,
                         referralCode = referralCode.trim().ifBlank { null },
                         devicePublicKey = devicePublicKey,
+                        acceptedTermsIds = acceptedTermsIds.toList(),
                     )
                 } else {
                     SessionManager.login(phoneNumber, password, devicePublicKey = devicePublicKey)
@@ -253,7 +267,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     isRegisterMode = true
                     stage = AuthStage.NAME
                 }
-                AuthStage.NAME -> stage = AuthStage.PASSWORD
+                AuthStage.NAME -> stage = AuthStage.TERMS
+                AuthStage.TERMS -> stage = AuthStage.PASSWORD
                 AuthStage.PASSWORD -> submit()
             }
         }
@@ -266,14 +281,17 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 AuthStage.PHONE -> AuthStage.PHONE
                 AuthStage.NOT_FOUND -> AuthStage.PHONE
                 AuthStage.NAME -> AuthStage.PHONE
-                AuthStage.PASSWORD -> if (isRegisterMode) AuthStage.NAME else AuthStage.PHONE
+                AuthStage.TERMS -> AuthStage.NAME
+                AuthStage.PASSWORD -> if (isRegisterMode) AuthStage.TERMS else AuthStage.PHONE
             }
         }
 
+        val requiredTermsAccepted = terms.filter { it.required }.let { it.isNotEmpty() && it.all { t -> acceptedTermsIds.contains(t.id) } }
         val currentStepValid = when (stage) {
             AuthStage.PHONE -> phoneNumber.isNotBlank()
             AuthStage.NOT_FOUND -> true
             AuthStage.NAME -> firstName.isNotBlank() && lastName.isNotBlank()
+            AuthStage.TERMS -> requiredTermsAccepted
             AuthStage.PASSWORD -> password.isNotBlank()
         }
 
@@ -384,6 +402,17 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                     lastName = lastName,
                                     onLastNameChange = { lastName = it },
                                 )
+                                AuthStage.TERMS -> TermsStep(
+                                    terms = terms,
+                                    acceptedTermsIds = acceptedTermsIds,
+                                    onToggleTerm = { id ->
+                                        acceptedTermsIds = if (acceptedTermsIds.contains(id)) acceptedTermsIds - id else acceptedTermsIds + id
+                                    },
+                                    onToggleAll = {
+                                        val allAccepted = terms.isNotEmpty() && terms.all { acceptedTermsIds.contains(it.id) }
+                                        acceptedTermsIds = if (allAccepted) emptySet() else terms.map { it.id }.toSet()
+                                    },
+                                )
                                 AuthStage.PASSWORD -> PasswordStep(
                                     isRegisterMode = isRegisterMode,
                                     pinFirstEntry = pinFirstEntry,
@@ -419,10 +448,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // an earlier answer without restarting the whole flow).
                     val phoneLabel = stringResource(R.string.login_label_phone_number)
                     val nameLabel = stringResource(R.string.login_headline_name)
-                    if (stage == AuthStage.NAME || stage == AuthStage.PASSWORD) {
+                    if (stage == AuthStage.NAME || stage == AuthStage.TERMS || stage == AuthStage.PASSWORD) {
                         Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
                         Column(verticalArrangement = Arrangement.spacedBy(Ids.layout.inlineGap)) {
-                            if (isRegisterMode && stage == AuthStage.PASSWORD) {
+                            if (isRegisterMode && (stage == AuthStage.TERMS || stage == AuthStage.PASSWORD)) {
                                 CompletedFieldRow(label = nameLabel, value = "$firstName $lastName", onClick = { stage = AuthStage.NAME })
                             }
                             CompletedFieldRow(label = phoneLabel, value = phoneNumber, onClick = { stage = AuthStage.PHONE })
@@ -462,7 +491,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                     } else {
                         val buttonLabel = when (stage) {
-                            AuthStage.PHONE, AuthStage.NAME -> stringResource(R.string.login_button_next)
+                            AuthStage.PHONE, AuthStage.NAME, AuthStage.TERMS -> stringResource(R.string.login_button_next)
                             AuthStage.NOT_FOUND -> stringResource(R.string.login_button_create_account)
                             AuthStage.PASSWORD -> ""
                         }

@@ -19,6 +19,11 @@
     <string name="login_subtitle_name">Ni ko uzagaragara ku ncuti n\'abacuruzi.</string>
     <string name="login_label_first_name">Izina rya mbere</string>
     <string name="login_label_last_name">Izina rya nyuma</string>
+    <string name="login_headline_terms">Emeza amabwiriza ya itunda</string>
+    <string name="login_subtitle_terms">Nyamuneka soma hanyuma wemeze mbere yo gufungura konti yawe.</string>
+    <string name="login_terms_agree_all">Emeza byose</string>
+    <string name="login_terms_required">Bisabwa</string>
+    <string name="login_terms_optional">Si ngombwa</string>
     <string name="login_headline_password_register">Shyiraho PIN y\'imibare 6</string>
     <string name="login_headline_password_login">Andika PIN yawe</string>
     <string name="login_subtitle_password_register">Uzakoresha iyi PIN igihe uzongera kwinjira.</string>
