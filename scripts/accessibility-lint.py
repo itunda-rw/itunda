@@ -24,6 +24,12 @@ Checks:
 
 Pure text/brace-matching scan, no build tooling needed -- runs on a plain Linux CI
 runner, matching ios-silo-boundary-check.py's own established pattern in this repo.
+
+Usage: `python3 scripts/accessibility-lint.py` scans the whole repo (this is what
+CI runs). `python3 scripts/accessibility-lint.py <file> [<file> ...]` scopes the
+same checks to just the given file(s) -- real as of 2026-08-30; earlier versions
+of this script silently ignored file arguments and always ran the full sweep
+regardless (see main()'s own doc comment for the full account).
 """
 import re
 import sys
@@ -65,10 +71,12 @@ ANDROID_CONTENT_DESC_NULL_RE = re.compile(r"contentDescription\s*=\s*null\b")
 ANDROID_TEXT_RE = re.compile(r"\bText\s*\(")
 
 
-def check_android(root: Path) -> list[str]:
+def check_android(root: Path, only_files: set[Path] | None = None) -> list[str]:
     violations = []
     for kt_file in sorted(root.rglob("*.kt")):
         if "/build/" in str(kt_file):
+            continue
+        if only_files is not None and kt_file.resolve() not in only_files:
             continue
         text = kt_file.read_text(errors="replace")
         for match in ANDROID_ICON_BUTTON_RE.finditer(text):
@@ -106,10 +114,12 @@ def strip_line_comments(text: str) -> str:
     return IOS_LINE_COMMENT_RE.sub("", text)
 
 
-def check_ios(root: Path) -> list[str]:
+def check_ios(root: Path, only_files: set[Path] | None = None) -> list[str]:
     violations = []
     for swift_file in sorted(root.rglob("*.swift")):
         if "/build/" in str(swift_file) or "/Tests/" in str(swift_file):
+            continue
+        if only_files is not None and swift_file.resolve() not in only_files:
             continue
         text = swift_file.read_text(errors="replace")
         for match in IOS_BUTTON_RE.finditer(text):
@@ -164,11 +174,13 @@ def blank_comments(text: str) -> str:
     return text
 
 
-def check_web(root: Path) -> list[str]:
+def check_web(root: Path, only_files: set[Path] | None = None) -> list[str]:
     violations = []
     for ext in ("*.tsx", "*.jsx"):
         for web_file in sorted(root.rglob(ext)):
             if "/node_modules/" in str(web_file) or "/dist/" in str(web_file) or "/build/" in str(web_file):
+                continue
+            if only_files is not None and web_file.resolve() not in only_files:
                 continue
             text = web_file.read_text(errors="replace")
             scan_text = blank_comments(text)
@@ -186,11 +198,24 @@ def check_web(root: Path) -> list[str]:
 
 
 def main() -> int:
+    # Real gap found 2026-08-30: this script has been invoked with specific file
+    # paths throughout this repo's own history (CLAUDE.md itself documents
+    # `python3 scripts/accessibility-lint.py <file>`), but `main()` never actually
+    # read `sys.argv` -- every "scoped" invocation silently ran the exact same
+    # full three-platform sweep as a bare call, discarding the file argument
+    # entirely. Harmless in that a full sweep is a superset of any scoped one
+    # (nothing was ever missed), but genuinely misleading: a caller passing one
+    # file and seeing "No accessibility violations found" would reasonably read
+    # that as "this file is clean," when it was actually "the whole repo is
+    # clean" -- a much stronger and slower-to-produce claim. Now genuinely scopes
+    # to the given paths when any are passed; a bare call (CI's own usage, and
+    # this file's own module doctring) keeps doing the full repo sweep.
+    only_files = {Path(p).resolve() for p in sys.argv[1:]} if len(sys.argv) > 1 else None
     violations = (
-        check_android(REPO_ROOT / "android")
-        + check_ios(REPO_ROOT / "ios")
-        + check_web(REPO_ROOT / "services")
-        + check_web(REPO_ROOT / "packages")
+        check_android(REPO_ROOT / "android", only_files)
+        + check_ios(REPO_ROOT / "ios", only_files)
+        + check_web(REPO_ROOT / "services", only_files)
+        + check_web(REPO_ROOT / "packages", only_files)
     )
     if violations:
         print(f"Found {len(violations)} accessibility violation(s):\n")
