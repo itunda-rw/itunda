@@ -379,6 +379,40 @@ public struct VupLoanEligibilityResponse: Decodable {
     public let maxAmount: Double
 }
 
+// Real gap found live (2026-08-31, market-readiness audit) -- itunda Bank iOS had zero
+// client for the real BRD (Development Bank of Rwanda) higher-education student loan
+// (backend + bank-mfe + Android all shipped 2026-08-04, iOS never got one). See
+// StudentLoanService.kt's own doc comment for the full sourced account. Mirrors
+// bank-mfe's lib/studentLoan.ts exactly. Honest v1 limitation: declaredAnnualHouseholdIncome
+// is self-declared, not verified against BRD's real Financial Means Testing (FMT)
+// process, and the real 8%-of-income payroll deduction is only ever a SUGGESTED
+// amount here -- itunda has no payroll/RRA-integration path to enforce it.
+public struct StudentLoanDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let level: String
+    public let declaredAnnualHouseholdIncome: Double
+    public let principalAmount: Double
+    public let outstandingBalance: Double
+    public let interestRate: Double
+    public let status: String
+    public let appliedAt: String
+    public let disbursedAt: String?
+    public let expectedGraduationDate: String
+    public let graceEndsAt: String?
+}
+public struct ApplyForStudentLoanRequest: Encodable { public let level: String; public let declaredAnnualHouseholdIncome: Double; public let amount: Double; public let expectedGraduationDate: String }
+public struct RepayStudentLoanRequest: Encodable { public let amount: Double }
+public struct StudentLoanResponse: Decodable { public let success: Bool; public let loan: StudentLoanDto }
+public struct StudentLoansResponse: Decodable { public let success: Bool; public let loans: [StudentLoanDto] }
+public struct StudentLoanSuggestedPaymentResponse: Decodable {
+    public let success: Bool
+    public let loanId: String
+    public let outstandingBalance: Double
+    public let suggestedMonthlyPayment: Double
+    public let note: String
+}
+
 public struct AuthResponse: Decodable {
     public let message: String
     public let user: PublicUser
@@ -2052,6 +2086,30 @@ extension NetworkClient {
     public func getMyVupLoans() async throws -> VupLoansResponse { try await get("api/v1/loans/vup/my") }
 
     public func getVupLoanEligibility() async throws -> VupLoanEligibilityResponse { try await get("api/v1/loans/vup/eligibility") }
+
+    // Real BRD higher-education student loan -- see StudentLoanDto's own doc comment.
+    // No Idempotency-Key on apply/declareGraduated (neither is money movement itself,
+    // matching the backend's own contract); disburse/repay both require one, same
+    // convention as every other money-moving call in this file.
+    public func applyForStudentLoan(level: String, declaredAnnualHouseholdIncome: Double, amount: Double, expectedGraduationDate: String) async throws -> StudentLoanResponse {
+        try await authenticatedPost("api/v1/loans/student/apply", body: ApplyForStudentLoanRequest(level: level, declaredAnnualHouseholdIncome: declaredAnnualHouseholdIncome, amount: amount, expectedGraduationDate: expectedGraduationDate))
+    }
+
+    public func disburseStudentLoan(loanId: String) async throws -> StudentLoanResponse {
+        try await authenticatedPost("api/v1/loans/student/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func declareStudentLoanGraduated(loanId: String) async throws -> StudentLoanResponse {
+        try await authenticatedPost("api/v1/loans/student/\(loanId)/declare-graduated", body: EmptyBody())
+    }
+
+    public func repayStudentLoan(loanId: String, amount: Double) async throws -> StudentLoanResponse {
+        try await authenticatedPost("api/v1/loans/student/\(loanId)/repay", body: RepayStudentLoanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyStudentLoans() async throws -> StudentLoansResponse { try await get("api/v1/loans/student/my") }
+
+    public func getStudentLoanSuggestedPayment(loanId: String) async throws -> StudentLoanSuggestedPaymentResponse { try await get("api/v1/loans/student/\(loanId)/suggested-payment") }
 
     public func getVupLoan(loanId: String) async throws -> VupLoanResponse { try await get("api/v1/loans/vup/\(loanId)") }
 

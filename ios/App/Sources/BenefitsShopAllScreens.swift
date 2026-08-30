@@ -225,6 +225,10 @@ struct EntireMenuScreen: View {
     // microloan -- see VupLoanScreenView.swift's own doc comment for the full sourced
     // account. bank-mfe shipped first; this is the first native client.
     @State private var showVupLoan = false
+    // Real gap found live (2026-08-31, market-readiness audit): itunda Bank iOS had
+    // zero entry point for the real BRD student loan, already shipped on bank-mfe and
+    // Android since 2026-08-04.
+    @State private var showStudentLoan = false
     // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
     // MotoOwnershipScreenView.swift's own doc comment for the full sourced account.
     // bank-mfe shipped first (commits cf9d72fe/808a7ce4); this is the first native
@@ -321,6 +325,10 @@ struct EntireMenuScreen: View {
                 // verified program), without widening FlatRow's `symbol: String?` API
                 // to accept a custom Shape -- a bigger, separately-scoped change.
                 FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", glyph: { AnyView(ShieldEmojiGlyph(size: 28)) }, action: { showVupLoan = true }),
+                // No real itundaface glyph for this row yet -- SF Symbol fallback,
+                // matching FlatRow's own established "keep the fallback rather than a
+                // fabricated glyph" convention.
+                FlatRow(title: "BRD Student Loan", subtitle: "Higher-education loan, real BRD 11%/12% rates", symbol: "graduationcap.fill", action: { showStudentLoan = true }),
             ]),
             ("Mini apps", [
                 FlatRow(title: "Account balance", showChevron: true, action: { showAccountBalanceMiniApp = true }),
@@ -497,6 +505,10 @@ struct EntireMenuScreen: View {
                         // Same icon-clash fix as this file's first FlatRow list above --
                         // shared banknote.fill with "Youth account", now differentiated.
                         FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", glyph: { AnyView(ShieldEmojiGlyph(size: 28)) }, action: { showVupLoan = true }),
+                // No real itundaface glyph for this row yet -- SF Symbol fallback,
+                // matching FlatRow's own established "keep the fallback rather than a
+                // fabricated glyph" convention.
+                FlatRow(title: "BRD Student Loan", subtitle: "Higher-education loan, real BRD 11%/12% rates", symbol: "graduationcap.fill", action: { showStudentLoan = true }),
                     ])
                     IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
                     IconGridSection(
@@ -811,6 +823,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showVupLoan) {
             VupLoanScreenView(onBack: { showVupLoan = false })
+        }
+        .sheet(isPresented: $showStudentLoan) {
+            StudentLoanScreenView(onBack: { showStudentLoan = false })
         }
         .sheet(isPresented: $showMotoOwnership) {
             MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
