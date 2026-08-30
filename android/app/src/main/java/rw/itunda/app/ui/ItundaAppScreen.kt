@@ -3714,6 +3714,22 @@ private fun MenuScreen(
     // every real onClick below is completely unchanged; only how it's found and
     // shown changed: a real, working search over all of it.
     var menuSearchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    // Real fix (2026-08-30, simplification-adoption thread, toss.tech/article/
+    // Marketing_Writing principle 5: Toss measured a real 4x conversion increase
+    // replacing vague copy ("missions") with a concrete count ("4 financial
+    // missions available")) -- the "Benefits" row's subtitle below was the exact
+    // same vague shape ("Points, coupons, rewards"), never stating how many tasks
+    // are actually available. Own, independent fetch (same call PayTab's own
+    // rewardsTotal already makes, just for this screen -- MenuScreen has no shared
+    // state with PayTab to reuse) so this doesn't add a real screen-load
+    // dependency to anything else on this tab.
+    var availableTaskCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        try {
+            val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
+            availableTaskCount = result.tasks.count { it.eligible && !it.claimed }
+        } catch (_: Exception) { /* keep the generic fallback subtitle */ }
+    }
     // CORRECTED 2026-08-12: the 16 heavier categories below used to collapse behind a
     // tap-to-expand accordion (added 2026-08-10 on a Hick's Law/decision-overload
     // theory). A real, direct user-provided screenshot batch of the actual Toss app's
@@ -3764,7 +3780,13 @@ private fun MenuScreen(
         // section does (rw.itunda.rewards, real tasks/steps/referral, real RWF
         // payouts) -- points there instead of a second, fake destination.
         FlatRow(
-            "Benefits", subtitle = "Points, coupons, rewards", glyph = { GiftBox(size = 28.dp) },
+            "Benefits",
+            subtitle = when (val count = availableTaskCount) {
+                null, 0 -> "Points, coupons, rewards"
+                1 -> "1 reward task available"
+                else -> "$count reward tasks available"
+            },
+            glyph = { GiftBox(size = 28.dp) },
             onClick = { context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
         ),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),

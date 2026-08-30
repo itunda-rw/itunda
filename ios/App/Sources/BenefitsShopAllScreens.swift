@@ -225,6 +225,20 @@ struct EntireMenuScreen: View {
     // Real fix (2026-08-10) -- see IdsSearchBar's own doc comment for the full
     // account of the fake-search-bar bug this closes.
     @State private var menuSearchQuery: String = ""
+    // Real fix (2026-08-30, simplification-adoption thread, toss.tech/article/
+    // Marketing_Writing principle 5: Toss measured a real 4x conversion increase
+    // replacing vague copy ("missions") with a concrete count ("4 financial
+    // missions available")) -- matches Android's identical same-day fix. Own,
+    // independent fetch (this screen has no shared state with PayHomeExtras'
+    // own rewardsTotal fetch to reuse).
+    @State private var availableTaskCount: Int? = nil
+    private var benefitsSubtitle: String {
+        switch availableTaskCount {
+        case nil, 0: return "Points, coupons, rewards"
+        case 1: return "1 reward task available"
+        case let count?: return "\(count) reward tasks available"
+        }
+    }
     // Real fix (2026-08-10): matches Android/web's identical collapse-by-default fix
     // (see CollapsibleFlatSection's own doc comment for the full Hick's Law account).
     // "Quick links"/"Mini apps" stay always-visible; only the 16 heavier categories
@@ -280,7 +294,7 @@ struct EntireMenuScreen: View {
                 // TUYIZERE Eric" card. This row's own subtitle ("Points, coupons,
                 // rewards") already describes exactly what the real "Reward tasks"
                 // mini-app does -- points there instead of a second, fake destination.
-                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
+                FlatRow(title: "Benefits", subtitle: benefitsSubtitle, glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
                 FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
@@ -462,7 +476,7 @@ struct EntireMenuScreen: View {
                 // TUYIZERE Eric" card. This row's own subtitle ("Points, coupons,
                 // rewards") already describes exactly what the real "Reward tasks"
                 // mini-app does -- points there instead of a second, fake destination.
-                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
+                FlatRow(title: "Benefits", subtitle: benefitsSubtitle, glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
                 FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
@@ -719,6 +733,11 @@ struct EntireMenuScreen: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task {
+            if let result = try? await NetworkClient.shared.getRewardTasks() {
+                availableTaskCount = result.tasks.filter { $0.eligible && !$0.claimed }.count
+            }
+        }
         .sheet(isPresented: $showPayBillsMiniApp) {
             SaronitePayBillsView()
         }
