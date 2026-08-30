@@ -10,6 +10,15 @@ import CoreNetwork
 
 private enum LoansMode: String, CaseIterable { case offers = "Offers", myLoans = "My loans", overdraft = "Overdraft", postpaidCredit = "Postpaid credit" }
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention never reached this file, which predates that sweep's file list).
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 public struct LoansScreenView: View {
     public var onBack: () -> Void
     public init(onBack: @escaping () -> Void = {}) { self.onBack = onBack }
@@ -83,8 +92,8 @@ public struct LoansScreenView: View {
                             // convention (docs/DESIGN_REFERENCES.md §274).
                             ForEach(myLoans) { loan in
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text("\(Int(loan.principal)) RWF loan").bold()
-                                    Text("Outstanding: \(Int(loan.outstanding)) RWF").font(.subheadline)
+                                    Text("\(formatAmount(Int(loan.principal))) RWF loan").bold()
+                                    Text("Outstanding: \(formatAmount(Int(loan.outstanding))) RWF").font(.subheadline)
                                     Text("Status: \(loan.status) · \(loan.interestRate)%").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     if loan.status == "ACTIVE" {
                                         IdsTextField("Repay amount (RWF)", text: Binding(
@@ -207,7 +216,7 @@ private struct LoanOfferCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(offer.name).bold()
                 Text(offer.lenderName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                Text("Up to \(Int(offer.maxAmount)) RWF · \(offer.interestRate)% · \(offer.term)").font(.subheadline)
+                Text("Up to \(formatAmount(Int(offer.maxAmount))) RWF · \(offer.interestRate)% · \(offer.term)").font(.subheadline)
                 Text(offer.requirements).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 IdsTextField("Amount (RWF)", text: $amountText, keyboardType: .numberPad)
                 Button(action: { if let n = Double(amountText), n > 0 { onApply(n) } }) {

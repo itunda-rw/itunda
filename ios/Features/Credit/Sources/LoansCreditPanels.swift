@@ -2,6 +2,15 @@ import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention never reached this file, which predates that sweep's file list).
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real fix (2026-08-26): split out of OverviewLoansCreditScoreScreens.swift once
 // that file grew past its file-size-lint baseline. Overdraft and postpaid-credit
 // are both real, self-contained credit-line panels only rendered inside
@@ -29,8 +38,8 @@ struct OverdraftPanel: View {
                 let availableCredit = account.creditLimit - account.drawnBalance
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Overdraft line").bold()
-                    Text("Drawn: \(Int(account.drawnBalance)) RWF of \(Int(account.creditLimit)) RWF").font(.subheadline)
-                    Text("Available to draw: \(Int(availableCredit)) RWF · \(account.interestRate, specifier: "%.1f")% annual, interest only on what's drawn")
+                    Text("Drawn: \(formatAmount(Int(account.drawnBalance))) RWF of \(formatAmount(Int(account.creditLimit))) RWF").font(.subheadline)
+                    Text("Available to draw: \(formatAmount(Int(availableCredit))) RWF · \(account.interestRate, specifier: "%.1f")% annual, interest only on what's drawn")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     if let notice { Text(notice).font(.caption).foregroundColor(IDS.Colors.brand) }
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
@@ -86,7 +95,7 @@ struct OverdraftPanel: View {
             let res = try await NetworkClient.shared.drawOverdraft(amount: amount)
             if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
             drawAmount = ""
-            notice = "Drew \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF still available."
+            notice = "Drew \(formatAmount(Int(res.amount))) RWF — \(formatAmount(Int(res.availableCredit))) RWF still available."
         } catch {
             self.error = "Could not draw from your overdraft."
         }
@@ -100,7 +109,7 @@ struct OverdraftPanel: View {
             let res = try await NetworkClient.shared.repayOverdraft(amount: amount)
             if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
             repayAmount = ""
-            notice = "Repaid \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF now available."
+            notice = "Repaid \(formatAmount(Int(res.amount))) RWF — \(formatAmount(Int(res.availableCredit))) RWF now available."
         } catch {
             self.error = "Could not repay your overdraft."
         }
@@ -131,8 +140,8 @@ struct PostpaidCreditPanel: View {
                 let suspended = line.status == "SUSPENDED"
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Postpaid credit").bold()
-                    Text("Owed: \(Int(line.currentBalance)) RWF of \(Int(line.creditLimit)) RWF").font(.subheadline)
-                    Text("Available: \(Int(availableCredit)) RWF · interest-free if repaid within 30 days")
+                    Text("Owed: \(formatAmount(Int(line.currentBalance))) RWF of \(formatAmount(Int(line.creditLimit))) RWF").font(.subheadline)
+                    Text("Available: \(formatAmount(Int(availableCredit))) RWF · interest-free if repaid within 30 days")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     if suspended {
                         Text("Suspended — repay your overdue balance to keep spending.").font(.caption).foregroundColor(.red)
@@ -189,7 +198,7 @@ struct PostpaidCreditPanel: View {
             let res = try await NetworkClient.shared.spendPostpaidCredit(amount: amount)
             if var current = line { current = PostpaidCreditLineDto(id: current.id, userId: current.userId, accountId: current.accountId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: current.status, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt); line = current }
             spendAmount = ""
-            notice = "Added \(Int(res.amount)) RWF to your account — \(Int(res.availableCredit)) RWF still available."
+            notice = "Added \(formatAmount(Int(res.amount))) RWF to your account — \(formatAmount(Int(res.availableCredit))) RWF still available."
         } catch {
             self.error = "Could not spend from your postpaid credit line."
         }
@@ -207,7 +216,7 @@ struct PostpaidCreditPanel: View {
                 line = current
             }
             repayAmount = ""
-            notice = "Repaid \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF now available."
+            notice = "Repaid \(formatAmount(Int(res.amount))) RWF — \(formatAmount(Int(res.availableCredit))) RWF now available."
         } catch {
             self.error = "Could not repay your postpaid credit line."
         }

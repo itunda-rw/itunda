@@ -12,6 +12,15 @@ import CoreNetwork
 // Certificate/Identity's own extraction (toss.tech/article/slash23-iOS).
 private let supportCategories = ["GENERAL", "PAYMENT_DISPUTE", "ACCOUNT_TAKEOVER"]
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention never reached this file, which predates that sweep's file list).
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 public struct SupportScreenView: View {
     public var onBack: () -> Void
     public init(onBack: @escaping () -> Void = {}) { self.onBack = onBack }
@@ -48,7 +57,7 @@ public struct SupportScreenView: View {
                             Text("Which transaction?").font(.caption).bold()
                             ForEach(transactions.prefix(10), id: \.id) { tx in
                                 HStack {
-                                    Text("\(tx.description) · \(tx.currency) \(Int(tx.amount))").font(.subheadline)
+                                    Text("\(tx.description) · \(tx.currency) \(formatAmount(Int(tx.amount)))").font(.subheadline)
                                     Spacer()
                                     Image(systemName: selectedTransactionId == tx.id ? "largecircle.fill.circle" : "circle")
                                 }

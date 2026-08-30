@@ -16,6 +16,19 @@ private let linkProviders = ["MTN Mobile Money", "Airtel Money", "Bank of Kigali
 // real, already-known answer, the exact shape that session's own title names.
 private let momoLinkProviders: Set<String> = ["MTN Mobile Money", "Airtel Money"]
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never actually reached this file, which predates that sweep's own file list).
+// Same per-file `formatAmount` shape TransactionHistoryScreen.swift already uses,
+// not deduped into one shared helper, matching this sweep's own established
+// "19+1 Android / 21 iOS... this project's own naming-dedup discipline" choice.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 // Real second iOS screen localized (2026-08-08), following web/Android's own identical
 // "phase content outward from login into account overview" step (docs/DESIGN_REFERENCES.md
 // Section 19). Reuses AppLocale/loadStoredLocale, promoted into CoreDesignSystem's own
@@ -31,11 +44,11 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "netWorth": "Net worth",
         "accounts": "Accounts",
         "savings": "Savings: %d RWF across %d goal(s)",
-        "loans": "Loans: %d RWF outstanding, %d active",
-        "investments": "Investments: %d RWF cost basis, %d holding(s)",
-        "insurance": "Insurance: %d active plan(s), %d RWF/month",
+        "loans": "Loans: %@ RWF outstanding, %d active",
+        "investments": "Investments: %@ RWF cost basis, %d holding(s)",
+        "insurance": "Insurance: %d active plan(s), %@ RWF/month",
         "linkedAccounts": "Linked accounts",
-        "demoBalance": "Demo balance: %@ %d",
+        "demoBalance": "Demo balance: %@ %@",
         "unlink": "Unlink",
         "linkPrompt": "Link a bank or mobile money account",
         "providerNamePlaceholder": "Provider name",
@@ -49,10 +62,10 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "tabRealEstate": "Real estate", "tabCar": "Car", "tabTax": "Tax", "tabPoints": "Points",
         "manage": "Manage",
         "cardNumber": "Card •••• %@", "cardActive": "Active", "cardFrozen": "Frozen",
-        "carSummary": "%d vehicle(s), %d RWF purchase price",
-        "taxSummary": "%d tax payment(s), %d RWF paid",
-        "pointsSummary": "%d RWF rewards earned",
-        "payMoneyBalance": "Pay Money balance: %d RWF",
+        "carSummary": "%d vehicle(s), %@ RWF purchase price",
+        "taxSummary": "%d tax payment(s), %@ RWF paid",
+        "pointsSummary": "%@ RWF rewards earned",
+        "payMoneyBalance": "Pay Money balance: %@ RWF",
         "teaserCards": "No card yet", "teaserCardsCta": "Get a card",
         "teaserLoans": "No loans yet", "teaserLoansCta": "Browse loan offers",
         "teaserInvestment": "No investments yet", "teaserInvestmentCta": "Start investing",
@@ -66,11 +79,11 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "netWorth": "Umutungo wose",
         "accounts": "Konti",
         "savings": "Ubwizigame: RWF %d mu migambi %d",
-        "loans": "Inguzanyo: RWF %d zisigaye, %d zikoreshwa",
-        "investments": "Ishoramari: RWF %d yatanzwe, ibintu %d",
-        "insurance": "Ubwishingizi: gahunda %d zikora, RWF %d ku kwezi",
+        "loans": "Inguzanyo: RWF %@ zisigaye, %d zikoreshwa",
+        "investments": "Ishoramari: RWF %@ yatanzwe, ibintu %d",
+        "insurance": "Ubwishingizi: gahunda %d zikora, RWF %@ ku kwezi",
         "linkedAccounts": "Konti zihujwe",
-        "demoBalance": "Amafaranga y'ikitegererezo: %@ %d",
+        "demoBalance": "Amafaranga y'ikitegererezo: %@ %@",
         "unlink": "Kuraho ihuza",
         "linkPrompt": "Huza konti ya banki cyangwa Mobile Money",
         "providerNamePlaceholder": "Izina ry'ikigo",
@@ -84,10 +97,10 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "tabRealEstate": "Imitungo itimukanwa", "tabCar": "Imodoka", "tabTax": "Imisoro", "tabPoints": "Amanota",
         "manage": "Gucunga",
         "cardNumber": "Ikarita •••• %@", "cardActive": "Irakora", "cardFrozen": "Yahagaritswe",
-        "carSummary": "Imodoka %d, RWF %d y'igiciro cyo kugura",
-        "taxSummary": "Kwishyura umusoro %d, RWF %d yishyuwe",
-        "pointsSummary": "RWF %d y'ibihembo byabonetse",
-        "payMoneyBalance": "Amafaranga ya Pay Money: RWF %d",
+        "carSummary": "Imodoka %d, RWF %@ y'igiciro cyo kugura",
+        "taxSummary": "Kwishyura umusoro %d, RWF %@ yishyuwe",
+        "pointsSummary": "RWF %@ y'ibihembo byabonetse",
+        "payMoneyBalance": "Amafaranga ya Pay Money: RWF %@",
         "teaserCards": "Nta karita ufite", "teaserCardsCta": "Bona ikarita",
         "teaserLoans": "Nta nguzanyo ufite", "teaserLoansCta": "Reba inguzanyo zihari",
         "teaserInvestment": "Nta shoramari ufite", "teaserInvestmentCta": "Tangira gushora imari",
@@ -105,11 +118,11 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "netWorth": "Valeur nette",
         "accounts": "Comptes",
         "savings": "Épargne : RWF %d sur %d objectif(s)",
-        "loans": "Prêts : RWF %d restant, %d actif(s)",
-        "investments": "Investissements : RWF %d de valeur d'acquisition, %d position(s)",
-        "insurance": "Assurance : %d plan(s) actif(s), RWF %d/mois",
+        "loans": "Prêts : RWF %@ restant, %d actif(s)",
+        "investments": "Investissements : RWF %@ de valeur d'acquisition, %d position(s)",
+        "insurance": "Assurance : %d plan(s) actif(s), RWF %@/mois",
         "linkedAccounts": "Comptes liés",
-        "demoBalance": "Solde de démonstration : %@ %d",
+        "demoBalance": "Solde de démonstration : %@ %@",
         "unlink": "Dissocier",
         "linkPrompt": "Lier un compte bancaire ou mobile money",
         "providerNamePlaceholder": "Nom du fournisseur",
@@ -123,10 +136,10 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "tabRealEstate": "Immobilier", "tabCar": "Voiture", "tabTax": "Impôts", "tabPoints": "Points",
         "manage": "Gérer",
         "cardNumber": "Carte •••• %@", "cardActive": "Active", "cardFrozen": "Bloquée",
-        "carSummary": "%d véhicule(s), %d RWF de prix d'achat",
-        "taxSummary": "%d paiement(s) d'impôt, %d RWF payés",
-        "pointsSummary": "%d RWF de récompenses gagnées",
-        "payMoneyBalance": "Solde Pay Money : %d RWF",
+        "carSummary": "%d véhicule(s), %@ RWF de prix d'achat",
+        "taxSummary": "%d paiement(s) d'impôt, %@ RWF payés",
+        "pointsSummary": "%@ RWF de récompenses gagnées",
+        "payMoneyBalance": "Solde Pay Money : %@ RWF",
         "teaserCards": "Pas encore de carte", "teaserCardsCta": "Obtenir une carte",
         "teaserLoans": "Pas encore de prêt", "teaserLoansCta": "Voir les offres de prêt",
         "teaserInvestment": "Pas encore de placement", "teaserInvestmentCta": "Commencer à investir",
@@ -206,7 +219,7 @@ public struct OverviewScreenView: View {
                         // is card-based (confirmed with them before starting).
                         VStack(alignment: .leading, spacing: 4) {
                             Text(t("netWorth")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            Text("\(Int(overview.netWorth)) RWF").font(.title).bold()
+                            Text("\(formatAmount(Int(overview.netWorth))) RWF").font(.title).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -229,7 +242,7 @@ public struct OverviewScreenView: View {
                                     Text(account.provider).bold()
                                     Text("\(account.externalAccountNumberMasked) · \(account.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     if let demoBalance = account.demoBalance {
-                                        Text(String(format: t("demoBalance"), account.demoBalanceCurrency ?? "", Int(demoBalance))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        Text(String(format: t("demoBalance"), account.demoBalanceCurrency ?? "", formatAmount(Int(demoBalance)))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     }
                                     if account.status == "LINKED" {
                                         Button(action: { Task { await unlink(account.id) } }) {
@@ -342,7 +355,7 @@ public struct OverviewScreenView: View {
         case .accounts:
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(overview.accounts) { a in
-                    HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(Int(a.balance))") }.font(.subheadline)
+                    HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(formatAmount(Int(a.balance)))") }.font(.subheadline)
                 }
             }
         case .cards:
@@ -359,7 +372,7 @@ public struct OverviewScreenView: View {
             if overview.loans.activeCount > 0 {
                 AssetSummaryCard(
                     title: t("tabLoans"),
-                    value: String(format: t("loans"), Int(overview.loans.totalOutstanding), overview.loans.activeCount),
+                    value: String(format: t("loans"), formatAmount(Int(overview.loans.totalOutstanding)), overview.loans.activeCount),
                     ctaLabel: t("manage"), onCta: onOpenLoans,
                 )
             } else {
@@ -369,7 +382,7 @@ public struct OverviewScreenView: View {
             if overview.investments.holdingCount > 0 {
                 AssetSummaryCard(
                     title: t("tabInvestment"),
-                    value: String(format: t("investments"), Int(overview.investments.totalCostBasis), overview.investments.holdingCount),
+                    value: String(format: t("investments"), formatAmount(Int(overview.investments.totalCostBasis)), overview.investments.holdingCount),
                     ctaLabel: t("manage"), onCta: onOpenInvest,
                 )
             } else {
@@ -379,7 +392,7 @@ public struct OverviewScreenView: View {
             if overview.insurance.activePolicyCount > 0 {
                 AssetSummaryCard(
                     title: t("tabInsurance"),
-                    value: String(format: t("insurance"), overview.insurance.activePolicyCount, Int(overview.insurance.totalMonthlyPremium)),
+                    value: String(format: t("insurance"), overview.insurance.activePolicyCount, formatAmount(Int(overview.insurance.totalMonthlyPremium))),
                     ctaLabel: t("manage"), onCta: onOpenInsurance,
                 )
             } else {
@@ -395,7 +408,7 @@ public struct OverviewScreenView: View {
             if overview.vehicles.vehicleCount > 0 {
                 AssetSummaryCard(
                     title: t("tabCar"),
-                    value: String(format: t("carSummary"), overview.vehicles.vehicleCount, Int(overview.vehicles.totalPurchasePrice)),
+                    value: String(format: t("carSummary"), overview.vehicles.vehicleCount, formatAmount(Int(overview.vehicles.totalPurchasePrice))),
                     ctaLabel: t("manage"), onCta: onOpenVehicleValuation,
                 )
             } else {
@@ -407,13 +420,13 @@ public struct OverviewScreenView: View {
             // real RRA bill through Bills IS the real activity this reflects).
             AssetSummaryCard(
                 title: t("tabTax"),
-                value: String(format: t("taxSummary"), overview.tax.paymentCount, Int(overview.tax.totalPaid)),
+                value: String(format: t("taxSummary"), overview.tax.paymentCount, formatAmount(Int(overview.tax.totalPaid))),
                 ctaLabel: t("manage"), onCta: onOpenBills,
             )
         case .points:
             VStack(alignment: .leading, spacing: 6) {
-                Text(String(format: t("pointsSummary"), Int(overview.points.rewardsTotal))).font(.subheadline)
-                Text(String(format: t("payMoneyBalance"), Int(overview.points.payMoneyBalance))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                Text(String(format: t("pointsSummary"), formatAmount(Int(overview.points.rewardsTotal)))).font(.subheadline)
+                Text(String(format: t("payMoneyBalance"), formatAmount(Int(overview.points.payMoneyBalance)))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 Button(action: onOpenRewards) { Text(t("manage")).font(.caption).bold() }
             }
             .padding(16)
