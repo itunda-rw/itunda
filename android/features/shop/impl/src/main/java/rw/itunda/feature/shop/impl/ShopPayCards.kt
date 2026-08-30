@@ -75,6 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.CameraQrScanner
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.StatusBadge
@@ -240,12 +241,12 @@ internal fun PayByCodeCard(
                 Text(currentPreview.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Text("%,.0f RWF".format(currentPreview.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Text("Apply a coupon?", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().pressScaleClickable { selectedCouponId = null }) {
                     RadioButton(selected = selectedCouponId == null, onClick = { selectedCouponId = null })
                     Text("No coupon", color = Ids.colors.textPrimary, fontSize = 13.sp)
                 }
                 eligibleCoupons.forEach { c ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().pressScaleClickable { selectedCouponId = c.coupon.id }) {
                         RadioButton(selected = selectedCouponId == c.coupon.id, onClick = { selectedCouponId = c.coupon.id })
                         Text("${c.coupon.title} -- ${couponDiscountLabel(c.coupon)}", color = Ids.colors.textPrimary, fontSize = 13.sp)
                     }
@@ -380,12 +381,12 @@ internal fun PayByScanCard(
                     Text(currentPreview.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Text("%,.0f RWF".format(currentPreview.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Text("Apply a coupon?", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().pressScaleClickable { selectedCouponId = null }) {
                         RadioButton(selected = selectedCouponId == null, onClick = { selectedCouponId = null })
                         Text("No coupon", color = Ids.colors.textPrimary, fontSize = 13.sp)
                     }
                     eligibleCoupons.forEach { c ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().pressScaleClickable { selectedCouponId = c.coupon.id }) {
                             RadioButton(selected = selectedCouponId == c.coupon.id, onClick = { selectedCouponId = c.coupon.id })
                             Text("${c.coupon.title} -- ${couponDiscountLabel(c.coupon)}", color = Ids.colors.textPrimary, fontSize = 13.sp)
                         }
