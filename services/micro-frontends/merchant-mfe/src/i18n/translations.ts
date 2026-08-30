@@ -530,6 +530,10 @@ export type TranslationKey =
   | 'settings.broadcastSentPlural'
   | 'settings.webhookDeliveriesLoadError'
   | 'settings.apiKeyGenerateError'
+  | 'settings.webhookSecretLabel'
+  | 'settings.webhookSecretBody'
+  | 'settings.generateWebhookSecretButton'
+  | 'settings.webhookSecretGenerateError'
   | 'settings.replayError'
   | 'settings.apiIntegrationTitle'
   | 'settings.apiIntegrationBody'
@@ -1090,6 +1094,10 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.broadcastSentPlural': 'Sent to {{count}} followers.',
     'settings.webhookDeliveriesLoadError': 'Could not load webhook deliveries.',
     'settings.apiKeyGenerateError': 'Could not generate an API key.',
+    'settings.webhookSecretLabel': 'Webhook signature secret',
+    'settings.webhookSecretBody': 'Used to verify a webhook delivery genuinely came from itunda — check the X-Itunda-Signature header against an HMAC-SHA256 of the raw request body using this secret.',
+    'settings.generateWebhookSecretButton': 'Generate a new webhook secret',
+    'settings.webhookSecretGenerateError': 'Could not generate a webhook secret.',
     'settings.replayError': 'Could not replay this delivery.',
     'settings.apiIntegrationTitle': 'API integration',
     'settings.apiIntegrationBody': 'For merchants integrating their own systems with itunda.',
@@ -1645,6 +1653,10 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.broadcastSentPlural': 'Byoherejwe ku bakurikira {{count}}.',
     'settings.webhookDeliveriesLoadError': 'Ntibishoboka gushakisha amakuru ya webhook.',
     'settings.apiKeyGenerateError': 'Ntibishoboka gukora API key.',
+    'settings.webhookSecretLabel': 'Ibanga ryo kwemeza webhook',
+    'settings.webhookSecretBody': 'Rikoreshwa mu kwemeza ko webhook yohererejwe n\'itunda koko — reba umutwe X-Itunda-Signature ugereranyije na HMAC-SHA256 y\'ubutumwa ukoresheje iri banga.',
+    'settings.generateWebhookSecretButton': 'Kora ibanga rishya rya webhook',
+    'settings.webhookSecretGenerateError': 'Ntibishoboka gukora ibanga rya webhook.',
     'settings.replayError': 'Ntibishoboka kongera kohereza iyi porogaramu.',
     'settings.apiIntegrationTitle': 'Guhuza na API',
     'settings.apiIntegrationBody': 'Ku bacuruza bahuza ibikoresho byabo na itunda.',
@@ -2200,6 +2212,10 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.broadcastSentPlural': 'Envoyé à {{count}} abonnés.',
     'settings.webhookDeliveriesLoadError': 'Impossible de charger les livraisons du webhook.',
     'settings.apiKeyGenerateError': 'Impossible de générer une clé API.',
+    'settings.webhookSecretLabel': 'Secret de signature du webhook',
+    'settings.webhookSecretBody': 'Utilisé pour vérifier qu\'une livraison de webhook provient bien d\'itunda — comparez l\'en-tête X-Itunda-Signature à un HMAC-SHA256 du corps brut de la requête avec ce secret.',
+    'settings.generateWebhookSecretButton': 'Générer un nouveau secret de webhook',
+    'settings.webhookSecretGenerateError': 'Impossible de générer un secret de webhook.',
     'settings.replayError': 'Impossible de relancer cette livraison.',
     'settings.apiIntegrationTitle': 'Intégration API',
     'settings.apiIntegrationBody': 'Pour les commerçants intégrant leurs propres systèmes à itunda.',

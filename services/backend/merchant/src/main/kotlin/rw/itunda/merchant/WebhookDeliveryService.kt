@@ -13,6 +13,8 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Real webhook delivery -- see docs/TOSS_PARITY_MATRIX.md's Merchant row. Payload shape
@@ -49,7 +51,8 @@ class WebhookDeliveryService(
         const val MAX_ATTEMPTS = 7
     }
 
-    fun deliverPaymentStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>) = deliver("PAYMENT_STATUS_CHANGED", merchantId, webhookUrl, data)
+    fun deliverPaymentStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =
+        deliver("PAYMENT_STATUS_CHANGED", merchantId, webhookUrl, data, webhookSecret)
 
     // Real cancel/refund webhook event (2026-07-21) -- Toss Payments' own real webhooks
     // distinguish CANCEL_STATUS_CHANGED from PAYMENT_STATUS_CHANGED as a genuinely
@@ -57,7 +60,8 @@ class WebhookDeliveryService(
     // reused with a different status field -- so a merchant's webhook receiver can
     // dispatch on `eventType` alone without inspecting `data` first. See
     // MerchantService.cancelPayment.
-    fun deliverCancelStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>) = deliver("CANCEL_STATUS_CHANGED", merchantId, webhookUrl, data)
+    fun deliverCancelStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =
+        deliver("CANCEL_STATUS_CHANGED", merchantId, webhookUrl, data, webhookSecret)
 
     fun deliveryHistory(merchantId: String): List<Map<String, Any?>> =
         webhookDeliveryRepository.findTop100ByMerchantIdOrderByCreatedAtDesc(merchantId).map { delivery ->
@@ -85,12 +89,18 @@ class WebhookDeliveryService(
                 webhookUrl = currentWebhookUrl,
                 payload = original.payload,
                 nextAttemptAt = Instant.now(),
+                // Real webhook signature verification (2026-08-30) -- reuses the
+                // ORIGINAL delivery's signature unchanged, same "sign once, resend
+                // unchanged" reasoning as a normal retry (see this class's own
+                // WebhookDelivery.signature doc comment) -- a replay is conceptually
+                // the same event being resent, not a new one to re-sign.
+                signature = original.signature,
             ),
         )
         return mapOf("id" to replay.id, "status" to replay.status.name, "replayOf" to original.id)
     }
 
-    private fun deliver(eventType: String, merchantId: String, webhookUrl: String?, data: Map<String, Any?>) {
+    private fun deliver(eventType: String, merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String?) {
         if (webhookUrl.isNullOrBlank()) return
 
         // Generate this before constructing the immutable payload, so every receiver
@@ -113,13 +123,29 @@ class WebhookDeliveryService(
             // A scheduler worker sees this row only after the enclosing transaction
             // commits, so delivery is both asynchronous and transactionally ordered.
             nextAttemptAt = Instant.now(),
+            // Real webhook signature verification (2026-08-30) -- see this class's own
+            // WebhookDelivery.signature doc comment: computed once here, against
+            // whichever secret is current at creation time, and resent unchanged on
+            // every retry. Null (no header sent at all) for a merchant who never
+            // generated a webhook secret -- fully backward-compatible.
+            signature = webhookSecret?.let { sign(payloadJson, it) },
         )
         persist(delivery)
     }
 
+    /** Real HMAC-SHA256 over the exact raw payload bytes -- the same primitive every
+     * real payment gateway's webhook-signing scheme (Stripe, Toss Payments) uses, so a
+     * merchant's receiver can verify authenticity with one standard library call rather
+     * than a bespoke itunda-specific algorithm. */
+    private fun sign(payloadJson: String, secret: String): String {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(secret.toByteArray(), "HmacSHA256"))
+        return mac.doFinal(payloadJson.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
     /** Retries an already-queued delivery. Called only by [WebhookRetryScheduler]. */
     fun retry(delivery: WebhookDelivery) {
-        val (success, error) = attempt(delivery.webhookUrl, delivery.payload, delivery.id, delivery.eventType)
+        val (success, error) = attempt(delivery.webhookUrl, delivery.payload, delivery.id, delivery.eventType, delivery.signature)
         delivery.attemptCount += 1
         if (success) {
             delivery.status = WebhookDeliveryStatus.DELIVERED
@@ -158,9 +184,10 @@ class WebhookDeliveryService(
         payloadJson: String,
         deliveryId: String,
         eventType: String?,
+        signature: String?,
     ): Pair<Boolean, String?> {
         return try {
-            val request = buildRequest(WebhookUrlPolicy.parseForDelivery(webhookUrl), payloadJson, deliveryId, eventType)
+            val request = buildRequest(WebhookUrlPolicy.parseForDelivery(webhookUrl), payloadJson, deliveryId, eventType, signature)
             val response = httpClient.send(request, HttpResponse.BodyHandlers.discarding())
             if (response.statusCode() in 200..299) {
                 true to null
@@ -172,7 +199,7 @@ class WebhookDeliveryService(
         }
     }
 
-    internal fun buildRequest(target: URI, payloadJson: String, deliveryId: String, eventType: String?): HttpRequest {
+    internal fun buildRequest(target: URI, payloadJson: String, deliveryId: String, eventType: String?, signature: String? = null): HttpRequest {
         val builder = HttpRequest.newBuilder()
             .uri(target)
             .header("Content-Type", "application/json")
@@ -180,6 +207,14 @@ class WebhookDeliveryService(
             .timeout(Duration.ofSeconds(5))
         if (!eventType.isNullOrBlank()) {
             builder.header("X-Itunda-Event-Type", eventType)
+        }
+        // Real webhook signature verification (2026-08-30) -- see WebhookDelivery
+        // .signature's own doc comment. A merchant's receiver recomputes
+        // HMAC-SHA256(rawBody, theirWebhookSecret) and compares it to this header to
+        // confirm the request genuinely came from itunda, not a forged POST to a
+        // guessed/leaked webhook URL.
+        if (!signature.isNullOrBlank()) {
+            builder.header("X-Itunda-Signature", signature)
         }
         return builder.POST(HttpRequest.BodyPublishers.ofString(payloadJson)).build()
     }

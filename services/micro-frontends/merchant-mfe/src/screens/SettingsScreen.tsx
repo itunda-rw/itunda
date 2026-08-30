@@ -4,7 +4,7 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptingOrders, setAcceptsScheduledOrders, setCashbackRate, setCategory, setClosedWeekdays, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMerchantPickupDiscount, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, generateWebhookSecret, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptingOrders, setAcceptsScheduledOrders, setCashbackRate, setCategory, setClosedWeekdays, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMerchantPickupDiscount, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 
@@ -178,6 +178,9 @@ function ApiIntegrationCard() {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+  const [generatingSecret, setGeneratingSecret] = useState(false);
+  const [generateSecretError, setGenerateSecretError] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDelivery[] | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
@@ -198,6 +201,20 @@ function ApiIntegrationCard() {
       setGenerateError(err instanceof ApiError ? err.message : t('settings.apiKeyGenerateError'));
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Real webhook signature verification (2026-08-30) -- see lib/merchant.ts's own doc
+  // comment. Same "show the raw secret exactly once" pattern as handleGenerate above.
+  const handleGenerateSecret = async () => {
+    setGeneratingSecret(true);
+    setGenerateSecretError(null);
+    try {
+      setWebhookSecret(await generateWebhookSecret());
+    } catch (err) {
+      setGenerateSecretError(err instanceof ApiError ? err.message : t('settings.webhookSecretGenerateError'));
+    } finally {
+      setGeneratingSecret(false);
     }
   };
 
@@ -243,6 +260,30 @@ function ApiIntegrationCard() {
         )}
         {generateError && (
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{generateError}</p>
+        )}
+      </div>
+
+      {/* Real webhook signature verification (2026-08-30) -- see lib/merchant.ts's own
+          doc comment. Lets a merchant's own server verify a PAYMENT_STATUS_CHANGED POST
+          genuinely came from itunda (HMAC-SHA256 over the raw body, X-Itunda-Signature
+          header) rather than a forged request to a guessed/leaked webhook URL. */}
+      <div style={{ marginBottom: '20px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '6px' }}>
+          {t('settings.webhookSecretLabel')}
+        </p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+          {t('settings.webhookSecretBody')}
+        </p>
+        <button type="button" className="itunda-btn itunda-btn-secondary" disabled={generatingSecret} onClick={handleGenerateSecret}>
+          {generatingSecret ? t('settings.generating') : t('settings.generateWebhookSecretButton')}
+        </button>
+        {webhookSecret && (
+          <p style={{ fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '10px', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
+            {webhookSecret}
+          </p>
+        )}
+        {generateSecretError && (
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{generateSecretError}</p>
         )}
       </div>
 

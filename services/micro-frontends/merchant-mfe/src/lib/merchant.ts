@@ -225,6 +225,12 @@ export const setWebhookUrl = (webhookUrl: string) =>
 export const generateApiKey = () =>
   apiFetch<{ success: boolean; apiKey: string }>('/api/v1/merchant/api-key/generate', { method: 'POST' }).then((r) => r.apiKey);
 
+// Real webhook signature verification (2026-08-30) -- see backend WebhookDeliveryService's
+// own doc comment for the full sourced account of the gap this closes (a forgeable
+// PAYMENT_STATUS_CHANGED POST with no way to verify it genuinely came from itunda).
+export const generateWebhookSecret = () =>
+  apiFetch<{ success: boolean; webhookSecret: string }>('/api/v1/merchant/webhook-secret/generate', { method: 'POST' }).then((r) => r.webhookSecret);
+
 export type WebhookDeliveryStatus = 'PENDING' | 'DELIVERED' | 'EXHAUSTED';
 
 export interface WebhookDelivery {

@@ -167,6 +167,12 @@ data class SetWebhookUrlRequest(val webhookUrl: String)
 // real Toss Payments-sourced 7-attempt/4096-minute retry schedule this delivery log
 // reflects.
 data class GenerateApiKeyResponse(val success: Boolean, val apiKey: String)
+
+// Real webhook signature verification (2026-08-30) -- see backend
+// WebhookDeliveryService's own doc comment for the full sourced account of the gap
+// this closes (a forgeable PAYMENT_STATUS_CHANGED POST with no way to verify it
+// genuinely came from itunda).
+data class GenerateWebhookSecretResponse(val success: Boolean, val webhookSecret: String)
 data class WebhookDeliveryDto(
     val id: String, val eventType: String, val status: String, val attemptCount: Int,
     val createdAt: String, val nextAttemptAt: String, val deliveredAt: String? = null, val lastError: String? = null,
@@ -587,6 +593,9 @@ interface ApiService {
 
     @POST("api/v1/merchant/api-key/generate")
     suspend fun generateApiKey(): GenerateApiKeyResponse
+
+    @POST("api/v1/merchant/webhook-secret/generate")
+    suspend fun generateWebhookSecret(): GenerateWebhookSecretResponse
 
     @GET("api/v1/merchant/webhook-deliveries")
     suspend fun getWebhookDeliveries(): WebhookDeliveriesResponse

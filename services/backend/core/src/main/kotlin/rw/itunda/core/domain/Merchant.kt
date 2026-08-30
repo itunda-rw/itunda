@@ -169,6 +169,16 @@ class Merchant(
     @Column(name = "previous_api_key_expires_at", nullable = true)
     var previousApiKeyExpiresAt: Instant? = null,
 
+    // Real webhook signature verification (2026-08-30) -- see WebhookDeliveryService's
+    // own doc comment for the full sourced account of why this is stored in plaintext
+    // (unlike apiKeyHash above): itunda is the SIGNER re-using this secret on every
+    // future delivery, not a one-time-verified inbound credential. Nullable: unset means
+    // this merchant hasn't generated one yet, and outgoing webhooks carry no signature
+    // header at all for them -- fully backward-compatible with every existing receiver
+    // that doesn't check for one.
+    @Column(name = "webhook_secret", length = 64, nullable = true)
+    var webhookSecret: String? = null,
+
     // Real Naver Pay-style boosted merchant cashback opt-in (2026-07-26) -- Naver Pay's
     // own real membership program pays "최대 5%" (up to 5%) back on real "N Pay+"-marked
     // purchases, well above the flat 1% every itunda QR payment already earns via

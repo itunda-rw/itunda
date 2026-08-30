@@ -432,6 +432,9 @@ private fun ApiIntegrationCard() {
     var apiKey by remember { mutableStateOf<String?>(null) }
     var generating by remember { mutableStateOf(false) }
     var generateError by remember { mutableStateOf<String?>(null) }
+    var webhookSecret by remember { mutableStateOf<String?>(null) }
+    var generatingSecret by remember { mutableStateOf(false) }
+    var generateSecretError by remember { mutableStateOf<String?>(null) }
     var deliveries by remember { mutableStateOf<List<rw.itunda.merchant.network.WebhookDeliveryDto>?>(null) }
     var replayingId by remember { mutableStateOf<String?>(null) }
     var deliveriesError by remember { mutableStateOf<String?>(null) }
@@ -477,6 +480,36 @@ private fun ApiIntegrationCard() {
                 Text(key, style = MaterialTheme.typography.bodySmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
             }
             generateError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+
+            // Real webhook signature verification (2026-08-30) -- see backend
+            // WebhookDeliveryService's own doc comment. Lets a merchant's own server
+            // verify a PAYMENT_STATUS_CHANGED POST genuinely came from itunda
+            // (HMAC-SHA256 over the raw body, X-Itunda-Signature header).
+            Text(
+                "Used to verify a webhook delivery genuinely came from itunda — check the X-Itunda-Signature header against an HMAC-SHA256 of the raw request body using this secret.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            IdsButton(
+                text = if (generatingSecret) "Generating…" else "Generate a new webhook secret",
+                enabled = !generatingSecret,
+                onClick = {
+                    generatingSecret = true
+                    generateSecretError = null
+                    scope.launch {
+                        try {
+                            webhookSecret = NetworkClient.apiService.generateWebhookSecret().webhookSecret
+                        } catch (e: Exception) {
+                            generateSecretError = "Could not generate a webhook secret."
+                        } finally {
+                            generatingSecret = false
+                        }
+                    }
+                },
+            )
+            webhookSecret?.let { secret ->
+                Text(secret, style = MaterialTheme.typography.bodySmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            }
+            generateSecretError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
             Text("Recent webhook deliveries", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             deliveriesError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

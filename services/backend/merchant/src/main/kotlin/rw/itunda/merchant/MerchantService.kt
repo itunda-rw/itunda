@@ -416,7 +416,7 @@ class MerchantService(
         // Same "never let a slow/unreachable webhook block real money movement" discipline
         // as collect()/chargeCard -- called last, after the refund ledger transaction and
         // intent are already saved.
-        webhookDeliveryService.deliverCancelStatusChanged(merchant.id, merchant.webhookUrl, resultMap)
+        webhookDeliveryService.deliverCancelStatusChanged(merchant.id, merchant.webhookUrl, resultMap, merchant.webhookSecret)
         return resultMap
     }
 
@@ -429,6 +429,23 @@ class MerchantService(
 
     private fun hashApiKey(rawKey: String): String =
         MessageDigest.getInstance("SHA-256").digest(rawKey.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    // Real webhook signature verification (2026-08-30) -- see WebhookDeliveryService's
+    // own doc comment for the full sourced account of the gap this closes. Stored in
+    // plaintext (unlike apiKeyHash) since itunda must re-use this exact value to sign
+    // every future delivery, not just verify an inbound credential once. Reissuing
+    // immediately invalidates the OLD secret for any future signature -- unlike the API
+    // key, there's no grace-period rotation here yet, since a merchant's own receiver
+    // verification code is expected to just swap the constant, not run two versions
+    // concurrently the way a live server fleet rotating an auth credential would.
+    @Transactional
+    fun generateWebhookSecret(ownerUserId: String): String {
+        val merchant = getMyMerchant(ownerUserId)
+        val secret = "whsec_" + SecureRandom().let { rng -> ByteArray(24).also(rng::nextBytes) }.joinToString("") { "%02x".format(it) }
+        merchant.webhookSecret = secret
+        merchantRepository.save(merchant)
+        return secret
+    }
 
     // Real read-only intent preview (item 149) -- lets a payer see which merchant/amount
     // a payment code resolves to, and that merchant's own real coupon eligibility, BEFORE
@@ -692,6 +709,7 @@ class MerchantService(
             merchant.id,
             merchant.webhookUrl,
             resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId) + ("orderId" to intent.orderId),
+            merchant.webhookSecret,
         )
         return resultMap
     }
@@ -866,6 +884,7 @@ class MerchantService(
             merchant.id,
             merchant.webhookUrl,
             resultMap + ("payerId" to payerUserId),
+            merchant.webhookSecret,
         )
         return resultMap
     }
@@ -978,7 +997,7 @@ class MerchantService(
             "cardLast4" to authResult.last4,
             "completedAt" to Instant.now().toString(),
         )
-        webhookDeliveryService.deliverPaymentStatusChanged(merchant.id, merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"))
+        webhookDeliveryService.deliverPaymentStatusChanged(merchant.id, merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"), merchant.webhookSecret)
         return resultMap
     }
 

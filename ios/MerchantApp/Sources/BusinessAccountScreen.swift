@@ -320,6 +320,9 @@ private struct ApiIntegrationCard: View {
     @State private var apiKey: String?
     @State private var generating = false
     @State private var generateError: String?
+    @State private var webhookSecret: String?
+    @State private var generatingSecret = false
+    @State private var generateSecretError: String?
     @State private var deliveries: [WebhookDeliveryDto]?
     @State private var replayingId: String?
     @State private var deliveriesError: String?
@@ -343,6 +346,27 @@ private struct ApiIntegrationCard: View {
             }
             if let generateError {
                 Text(generateError).font(.footnote).foregroundColor(.red)
+            }
+
+            // Real webhook signature verification (2026-08-30) -- see backend
+            // WebhookDeliveryService's own doc comment. Lets a merchant's own server
+            // verify a PAYMENT_STATUS_CHANGED POST genuinely came from itunda
+            // (HMAC-SHA256 over the raw body, X-Itunda-Signature header).
+            Text("Used to verify a webhook delivery genuinely came from itunda — check the X-Itunda-Signature header against an HMAC-SHA256 of the raw request body using this secret.")
+                .font(.footnote).foregroundColor(.secondary)
+            Button(action: { Task { await generateSecret() } }) {
+                Text(generatingSecret ? "Generating…" : "Generate a new webhook secret")
+                    .bold().foregroundColor(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(IDS.Colors.brand).cornerRadius(8)
+            }
+            .disabled(generatingSecret)
+            if let webhookSecret {
+                Text(webhookSecret).font(.system(.footnote, design: .monospaced))
+                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+            }
+            if let generateSecretError {
+                Text(generateSecretError).font(.footnote).foregroundColor(.red)
             }
 
             Text("Recent webhook deliveries").bold().font(.subheadline).padding(.top, 8)
@@ -401,6 +425,17 @@ private struct ApiIntegrationCard: View {
             apiKey = try await MerchantNetworkClient.shared.generateApiKey().apiKey
         } catch {
             generateError = "Could not generate an API key."
+        }
+    }
+
+    private func generateSecret() async {
+        generatingSecret = true
+        generateSecretError = nil
+        defer { generatingSecret = false }
+        do {
+            webhookSecret = try await MerchantNetworkClient.shared.generateWebhookSecret().webhookSecret
+        } catch {
+            generateSecretError = "Could not generate a webhook secret."
         }
     }
 

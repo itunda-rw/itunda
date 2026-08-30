@@ -57,6 +57,14 @@ class WebhookDelivery(
 
     @Column(name = "delivered_at")
     var deliveredAt: Instant? = null,
+
+    // Real webhook signature verification (2026-08-30) -- see WebhookDeliveryService's
+    // own doc comment. Computed once at creation time (using the merchant's
+    // webhookSecret at that moment) and resent unchanged on every retry -- a merchant
+    // rotating their secret mid-retry-window can never invalidate an already-queued
+    // delivery's signature. Null when the merchant never generated a webhook secret.
+    @Column(length = 64)
+    val signature: String? = null,
 ) {
     protected constructor() : this(
         id = "", merchantId = null, eventType = null, webhookUrl = "", payload = "", nextAttemptAt = Instant.now(),

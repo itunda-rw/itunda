@@ -53,6 +53,11 @@ struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDt
 // real Toss Payments-sourced 7-attempt/4096-minute retry schedule this delivery log
 // reflects.
 struct GenerateApiKeyResponse: Decodable { let success: Bool; let apiKey: String }
+// Real webhook signature verification (2026-08-30) -- see backend
+// WebhookDeliveryService's own doc comment for the full sourced account of the gap
+// this closes (a forgeable PAYMENT_STATUS_CHANGED POST with no way to verify it
+// genuinely came from itunda).
+struct GenerateWebhookSecretResponse: Decodable { let success: Bool; let webhookSecret: String }
 struct WebhookDeliveryDto: Decodable, Identifiable {
     let id: String; let eventType: String; let status: String; let attemptCount: Int
     let createdAt: String; let nextAttemptAt: String; let deliveredAt: String?; let lastError: String?
@@ -653,6 +658,10 @@ final class MerchantNetworkClient {
 
     func generateApiKey() async throws -> GenerateApiKeyResponse {
         try await post("api/v1/merchant/api-key/generate", body: EmptyBody())
+    }
+
+    func generateWebhookSecret() async throws -> GenerateWebhookSecretResponse {
+        try await post("api/v1/merchant/webhook-secret/generate", body: EmptyBody())
     }
 
     func getWebhookDeliveries() async throws -> WebhookDeliveriesResponse { try await get("api/v1/merchant/webhook-deliveries") }

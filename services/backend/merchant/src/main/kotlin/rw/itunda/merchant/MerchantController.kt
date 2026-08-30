@@ -101,6 +101,16 @@ class MerchantController(
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
+    // Real webhook signature verification (2026-08-30) -- see WebhookDeliveryService's
+    // own doc comment for the full sourced account of the gap this closes (a forgeable
+    // PAYMENT_STATUS_CHANGED POST with no way for a merchant's receiver to verify it
+    // genuinely came from itunda). The raw secret is returned exactly once, here, and
+    // never again -- same convention as generateApiKey above, except this one IS stored
+    // in plaintext (itunda re-uses it to sign every future delivery), not hashed.
+    @PostMapping("/webhook-secret/generate")
+    fun generateWebhookSecret(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "webhookSecret" to merchantService.generateWebhookSecret(currentUser.userId)))
+
     @GetMapping("/webhook-deliveries")
     fun webhookDeliveries(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.getMyMerchant(currentUser.userId)
