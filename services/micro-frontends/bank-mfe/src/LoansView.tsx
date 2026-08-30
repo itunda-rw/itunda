@@ -187,9 +187,18 @@ export function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?
           )}
           {offers === null ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> :
            offers.length === 0 ? <EmptyState message="No offers right now — check back later or explore another lender." /> :
-           offers.map((offer) => (
-            <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
-          ))}
+           (() => {
+             // Real Toss finding (2026-08-30, toss.tech/article/recommend-just-one):
+             // a ranked/flat list of options caused decision paralysis; highlighting
+             // ONE best pick (not removing the rest -- itunda's own users may still
+             // want to compare, unlike Toss's single-card variant) measurably raised
+             // conversion. interestRate is real, already-fetched data, not an
+             // invented "best" metric.
+             const bestRate = Math.min(...offers.map((o) => o.interestRate));
+             return offers.map((offer) => (
+               <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} isBestRate={offer.interestRate === bestRate} onApply={(amount) => handleApply(offer, amount)} />
+             ));
+           })()}
         </>
       )}
       {mode === 'MY_LOANS' && (
@@ -263,11 +272,16 @@ function LoanApplyProgress() {
   );
 }
 
-function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boolean; onApply: (amount: number) => void }) {
+function LoanOfferCard({ offer, busy, isBestRate, onApply }: { offer: LoanOffer; busy: boolean; isBestRate?: boolean; onApply: (amount: number) => void }) {
   const [amount, setAmount] = useState(String(offer.maxAmount));
   if (busy) return <LoanApplyProgress />;
   return (
-    <div style={{ padding: '12px 0' }}>
+    <div style={{ padding: '12px 0', ...(isBestRate ? { borderLeft: '3px solid var(--itunda-indigo)', paddingLeft: '10px' } : {}) }}>
+      {isBestRate && (
+        <span style={{ display: 'inline-block', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)', backgroundColor: 'var(--itunda-indigo-light)', padding: '2px 8px', borderRadius: '999px', marginBottom: '4px' }}>
+            Best rate
+          </span>
+      )}
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{offer.name}</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{offer.lenderName}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Up to {offer.maxAmount.toLocaleString()} RWF · {offer.interestRate}% · {offer.term}</p>

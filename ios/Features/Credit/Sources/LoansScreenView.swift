@@ -81,8 +81,20 @@ public struct LoansScreenView: View {
                             }
                         }
                         if let offers {
-                            EmptyStateView("No offers from this lender right now.")
-                            ForEach(offers) { offer in LoanOfferCard(offer: offer, busy: busyId == offer.id, onApply: { amount in Task { await apply(offer, amount) } }) }
+                            if offers.isEmpty {
+                                EmptyStateView("No offers from this lender right now.")
+                            } else {
+                                // Real Toss finding (2026-08-30, toss.tech/article/
+                                // recommend-just-one): a flat list of options caused
+                                // decision paralysis; highlighting ONE best pick (not
+                                // removing the rest) measurably raised conversion.
+                                // interestRate is real, already-fetched data, not an
+                                // invented metric.
+                                let bestRate = offers.map(\.interestRate).min()
+                                ForEach(offers) { offer in
+                                    LoanOfferCard(offer: offer, busy: busyId == offer.id, isBestRate: offer.interestRate == bestRate, onApply: { amount in Task { await apply(offer, amount) } })
+                                }
+                            }
                         } else { ProgressView() }
                     } else if mode == .myLoans {
                         if let myLoans {
@@ -202,10 +214,11 @@ public struct LoansScreenView: View {
 private struct LoanOfferCard: View {
     let offer: LoanOfferDto
     let busy: Bool
+    var isBestRate: Bool = false
     let onApply: (Double) -> Void
     @State private var amountText: String
-    init(offer: LoanOfferDto, busy: Bool, onApply: @escaping (Double) -> Void) {
-        self.offer = offer; self.busy = busy; self.onApply = onApply
+    init(offer: LoanOfferDto, busy: Bool, isBestRate: Bool = false, onApply: @escaping (Double) -> Void) {
+        self.offer = offer; self.busy = busy; self.isBestRate = isBestRate; self.onApply = onApply
         _amountText = State(initialValue: String(Int(offer.maxAmount)))
     }
 
@@ -214,6 +227,13 @@ private struct LoanOfferCard: View {
             LoanApplyProgress()
         } else {
             VStack(alignment: .leading, spacing: 6) {
+                if isBestRate {
+                    Text("Best rate")
+                        .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(IDS.Colors.brand.opacity(0.1))
+                        .clipShape(Capsule())
+                }
                 Text(offer.name).bold()
                 Text(offer.lenderName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 Text("Up to \(formatAmount(Int(offer.maxAmount))) RWF · \(offer.interestRate)% · \(offer.term)").font(.subheadline)

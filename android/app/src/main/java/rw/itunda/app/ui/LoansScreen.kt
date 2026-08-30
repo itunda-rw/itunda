@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -163,8 +164,14 @@ fun LoansScreen(onBack: () -> Unit) {
                 val currentOffers = offers
                 if (currentOffers == null) item { SkeletonBlock() }
                 else if (currentOffers.isEmpty()) item { Text("No offers from this lender right now.") }
-                else items(currentOffers, key = { it.id }) { offer ->
-                    OfferCard(offer, busyId == offer.id) { amount ->
+                else {
+                    // Real Toss finding (2026-08-30, toss.tech/article/recommend-just-one):
+                    // a flat list of options caused decision paralysis; highlighting ONE
+                    // best pick (not removing the rest) measurably raised conversion.
+                    // interestRate is real, already-fetched data, not an invented metric.
+                    val bestRate = currentOffers.minOf { it.interestRate }
+                    items(currentOffers, key = { it.id }) { offer ->
+                    OfferCard(offer, busyId == offer.id, isBestRate = offer.interestRate == bestRate) { amount ->
                         busyId = offer.id
                         scope.launch {
                             try {
@@ -178,6 +185,7 @@ fun LoansScreen(onBack: () -> Unit) {
                                 error = "That loan application could not be completed."
                             } finally { busyId = null }
                         }
+                    }
                     }
                 }
             } else if (mode == LoansMode.OVERDRAFT) {
@@ -271,7 +279,7 @@ private fun LoanApplyProgress() {
 }
 
 @Composable
-private fun OfferCard(offer: LoanOfferDto, busy: Boolean, onApply: (BigDecimal) -> Unit) {
+private fun OfferCard(offer: LoanOfferDto, busy: Boolean, isBestRate: Boolean = false, onApply: (BigDecimal) -> Unit) {
     var amountText by remember { mutableStateOf(offer.maxAmount.toPlainString()) }
     Card(Modifier.fillMaxWidth()) {
         if (busy) {
@@ -279,6 +287,18 @@ private fun OfferCard(offer: LoanOfferDto, busy: Boolean, onApply: (BigDecimal) 
             return@Card
         }
         Column(Modifier.padding(16.dp)) {
+            if (isBestRate) {
+                Text(
+                    "Best rate",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Ids.colors.brand,
+                    modifier = Modifier
+                        .background(Ids.colors.brand.copy(alpha = 0.1f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+                Spacer(Modifier.height(4.dp))
+            }
             Text(offer.name, style = MaterialTheme.typography.titleMedium)
             Text(offer.lenderName, style = MaterialTheme.typography.bodySmall)
             Text("Up to ${formatMoneyLoans(offer.maxAmount)} RWF · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
