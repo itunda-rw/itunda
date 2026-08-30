@@ -73,6 +73,19 @@ class WebhookDeliveryService(
     fun deliverOrderStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =
         deliver("ORDER_STATUS_CHANGED", merchantId, webhookUrl, data, webhookSecret)
 
+    // Real Eats order-status webhook (2026-08-30, same market-readiness audit that
+    // added ORDER_STATUS_CHANGED for Commerce right above) -- a restaurant's own
+    // Merchant row (same real entity Commerce/QR payments already use) integrating
+    // their own kitchen-display/POS system had the identical gap: no way to learn about
+    // a new order or a status change except polling GET /orders/restaurant-orders.
+    // Genuinely separate event type from ORDER_STATUS_CHANGED (Eats' own richer status
+    // set -- ACCEPTED/PREPARING/READY_FOR_PICKUP/RIDER_ASSIGNED/PICKED_UP -- is not the
+    // same domain as Commerce's PLACED/PACKED/SHIPPED/DELIVERED), same reasoning
+    // PAYMENT_STATUS_CHANGED vs CANCEL_STATUS_CHANGED already established for staying
+    // genuinely distinct rather than reusing one event with a different status field.
+    fun deliverEatsOrderStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =
+        deliver("EATS_ORDER_STATUS_CHANGED", merchantId, webhookUrl, data, webhookSecret)
+
     fun deliveryHistory(merchantId: String): List<Map<String, Any?>> =
         webhookDeliveryRepository.findTop100ByMerchantIdOrderByCreatedAtDesc(merchantId).map { delivery ->
             mapOf(

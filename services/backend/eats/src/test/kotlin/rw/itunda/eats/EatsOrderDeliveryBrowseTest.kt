@@ -105,6 +105,7 @@ class EatsOrderDeliveryBrowseTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -118,7 +119,7 @@ class EatsOrderDeliveryBrowseTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
 
         // Kigali city center vs. Huye (real Rwandan towns, ~135km apart) -- a rider
@@ -240,6 +241,7 @@ class EatsOrderDeliveryBrowseTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -247,7 +249,7 @@ class EatsOrderDeliveryBrowseTest : BehaviorSpec({
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val riderAccount = account("account_rider", "rider_user_1")

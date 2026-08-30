@@ -97,6 +97,7 @@ class EatsOrderService(
     private val platformMembershipService: PlatformMembershipService,
     private val pushNotificationService: PushNotificationService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
+    private val webhookDeliveryService: rw.itunda.merchant.WebhookDeliveryService,
 ) {
     private val logger = LoggerFactory.getLogger(EatsOrderService::class.java)
 
@@ -608,8 +609,35 @@ class EatsOrderService(
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
         }
+        notifyRestaurantWebhook(order, restaurant)
 
         return EatsOrderDetail(order, orderItems)
+    }
+
+    // Real Eats order-status webhook (2026-08-30) -- see WebhookDeliveryService
+    // .deliverEatsOrderStatusChanged's own doc comment. Best-effort, same "auxiliary
+    // side-effect can't block the real operation" discipline as the new-order push
+    // above -- a restaurant's unreachable/unconfigured webhook endpoint must never fail
+    // an already-completed real order operation.
+    private fun notifyRestaurantWebhook(order: EatsOrder, restaurant: Merchant?) {
+        if (restaurant?.webhookUrl.isNullOrBlank()) return
+        try {
+            webhookDeliveryService.deliverEatsOrderStatusChanged(
+                restaurant!!.id,
+                restaurant.webhookUrl,
+                mapOf(
+                    "orderId" to order.id,
+                    "restaurantName" to restaurant.businessName,
+                    "buyerId" to order.buyerId,
+                    "status" to order.status.name,
+                    "totalAmount" to order.totalAmount,
+                    "updatedAt" to order.updatedAt.toString(),
+                ),
+                restaurant.webhookSecret,
+            )
+        } catch (e: Exception) {
+            logger.warn("Could not deliver order-status webhook for eats order {}", order.id, e)
+        }
     }
 
     /** Restaurant operations must not receive an order alert until its payment and order rows commit. */
@@ -920,6 +948,7 @@ class EatsOrderService(
                 dispatchToNextCandidate(saved, restaurant)
             }
         }
+        notifyRestaurantWebhook(saved, restaurant)
         return saved
     }
 
@@ -950,6 +979,7 @@ class EatsOrderService(
         order.updatedAt = Instant.now()
         val saved = eatsOrderRepository.save(order)
         notifyBuyer(saved, "Order completed", "Thanks for picking up your order from ${restaurant.businessName}!")
+        notifyRestaurantWebhook(saved, restaurant)
         return saved
     }
 
@@ -1219,7 +1249,9 @@ class EatsOrderService(
         order.status = EatsOrderStatus.CANCELLED
         order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
-        return eatsOrderRepository.save(order)
+        val saved = eatsOrderRepository.save(order)
+        notifyRestaurantWebhook(saved, merchantRepository.findById(saved.restaurantId).orElse(null))
+        return saved
     }
 
     /**
@@ -1418,6 +1450,7 @@ class EatsOrderService(
                 ),
             )
         }
+        notifyRestaurantWebhook(saved, merchantRepository.findById(saved.restaurantId).orElse(null))
         return saved
     }
 
@@ -1473,6 +1506,7 @@ class EatsOrderService(
         order.updatedAt = Instant.now()
         val saved = eatsOrderRepository.save(order)
         notifyBuyer(saved, "Rider on the way", "A rider has been assigned to your order and is heading to the restaurant.")
+        notifyRestaurantWebhook(saved, merchantRepository.findById(saved.restaurantId).orElse(null))
         return saved
     }
 
@@ -1527,6 +1561,7 @@ class EatsOrderService(
             EatsOrderStatus.DELIVERED -> notifyBuyer(saved, "Order delivered", "Your order has arrived. Enjoy your meal!")
             else -> {}
         }
+        notifyRestaurantWebhook(saved, merchantRepository.findById(saved.restaurantId).orElse(null))
         return saved
     }
 

@@ -62,6 +62,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real restaurant with a real menu") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -112,11 +120,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val platformMembershipService = mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
-            eatsMembershipService, platformMembershipService, pushNotificationService, autoTopUpService,
+            eatsMembershipService, platformMembershipService, pushNotificationService, autoTopUpService, webhookDeliveryService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -863,6 +872,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real restaurant advancing a real placed order") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -900,6 +917,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -913,7 +931,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -1416,6 +1434,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real restaurant marking a real item unavailable on a real accepted order") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -1441,6 +1467,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1448,7 +1475,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -1570,6 +1597,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real available rider and a real order ready for pickup") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -1607,6 +1642,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1620,7 +1656,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val readyOrder = EatsOrder(
@@ -1775,6 +1811,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real rider with an active dispatch offer, deciding whether to accept it") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -1810,6 +1854,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1823,7 +1868,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
@@ -1874,6 +1919,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("real dispatch offers that expired without a response") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -1909,6 +1962,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1922,7 +1976,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
 
@@ -2018,6 +2072,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real rider assigned to a real delivery") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -2055,6 +2117,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2068,7 +2131,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
         val riderAccount = account("account_rider", "rider_user_1")
@@ -2174,6 +2237,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real buyer checking their rider's real live location") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -2209,6 +2280,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2222,7 +2294,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Test Spot", status = MerchantStatus.ACTIVE)
@@ -2319,6 +2391,14 @@ class EatsOrderServiceTest : BehaviorSpec({
 
     Given("a real buyer searching for a real delivery address") {
         val merchantRepository = mockk<MerchantRepository>()
+        // Real Eats order-status webhook (2026-08-30) -- notifyRestaurantWebhook's own
+        // merchantRepository.findById lookup needs a safe default across every test in
+        // this file, most of which never cared about that call before this feature
+        // existed. A more specific findById stub registered later in a given When block
+        // still correctly takes precedence for its own exact id (MockK checks
+        // most-recently-registered stubs first) -- this is purely a fallback for every
+        // other id/test that never stubbed it at all.
+        every { merchantRepository.findById(any<String>()) } returns Optional.empty()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
@@ -2354,6 +2434,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, accountRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -2367,7 +2448,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // relaxed, no-active-member-by-default convention as EatsMembershipService above.
             mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
-            autoTopUpService,
+            autoTopUpService, webhookDeliveryService,
         )
 
         When("a real query matches real Nominatim suggestions") {

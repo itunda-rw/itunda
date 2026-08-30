@@ -27,6 +27,11 @@ dependencies {
     // MerchantService.collect()'s own QR-payment treatment. No circular
     // dependency: :account only depends on :core.
     implementation(project(":account"))
+    // Real EATS_ORDER_STATUS_CHANGED webhooks (2026-08-30, market-readiness audit) --
+    // reuses the exact same WebhookDeliveryService infrastructure Commerce/Pay already
+    // established, rather than a second bespoke mechanism. No circular dependency:
+    // :merchant depends on :core/:auth/:account/:messaging only, never :eats.
+    implementation(project(":merchant"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

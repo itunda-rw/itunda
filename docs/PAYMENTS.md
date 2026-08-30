@@ -100,12 +100,20 @@ a durable-outbox row per delivery, so a multi-hour retry window survives a proce
 Fires `PAYMENT_STATUS_CHANGED` on completion and `CANCEL_STATUS_CHANGED` on a cancel/refund
 (two genuinely separate event types, matching Toss Payments' own real convention, so a
 receiver can dispatch on `eventType` alone). The same mechanism and `webhookUrl`/
-`webhookSecret` also carry a third, genuinely different event, `ORDER_STATUS_CHANGED` --
-fired by `services/backend/commerce/OrderService` on every Commerce order lifecycle
-transition (placed/packed/shipped/delivered/cancelled), added 2026-08-30 so a merchant
-integrating their own inventory/fulfillment system isn't limited to polling
-`GET /api/v1/commerce/merchant-orders`. itunda Pay and itunda Shop are two different
-money-moving products sharing one honest webhook infrastructure, not two bespoke ones. Envelope: `{ eventId, eventType, createdAt,
+`webhookSecret` also carry two more genuinely different events, added 2026-08-30 so an
+integrating business isn't limited to polling:
+- `ORDER_STATUS_CHANGED` -- fired by `services/backend/commerce/OrderService` on every
+  Commerce order lifecycle transition (placed/packed/shipped/delivered/cancelled).
+- `EATS_ORDER_STATUS_CHANGED` -- fired by `services/backend/eats/EatsOrderService` on
+  every Eats order transition (a genuinely richer status set than Commerce's --
+  accepted/preparing/ready-for-pickup/rider-assigned/picked-up/delivered/cancelled --
+  kept as its own event type rather than reusing `ORDER_STATUS_CHANGED` with a different
+  status field, so a receiver can dispatch on `eventType` alone).
+
+itunda Pay, itunda Shop, and itunda Eats are three different money-moving products
+sharing one honest webhook infrastructure (`Merchant.webhookUrl`/`webhookSecret`,
+`WebhookDeliveryService`), not three bespoke ones -- a restaurant is the same real
+`Merchant` entity a Commerce seller or a Pay integrator is. Envelope: `{ eventId, eventType, createdAt,
 data }`. Retry schedule matches Toss's own documented scheme exactly: up to 7 attempts,
 intervals 1, 4, 16, 64, 256, 1024, 4096 minutes (each 4× the last), a ~2.8-day window.
 `orderId` is included in every payment webhook so a receiver can correlate back to its own
