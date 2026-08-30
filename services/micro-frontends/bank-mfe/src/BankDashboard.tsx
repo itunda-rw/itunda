@@ -4179,7 +4179,7 @@ function RewardsView() {
     setMessage(null);
     try {
       const result = await claimRewardTask(taskId);
-      setMessage(`${result.message} (+${result.rewardAmount} RWF)`);
+      setMessage(`${result.message} (+${result.rewardAmount.toLocaleString()} RWF)`);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -4203,9 +4203,9 @@ function RewardsView() {
         // Real lottery-style bonus win (item 248) -- always named separately from the
         // guaranteed reward, never folded into one number, so it's clear which part was
         // guaranteed and which was the real, disclosed-odds bonus.
-        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount} RWF — plus a lottery bonus: +${result.lotteryBonusWonAmount} RWF! 🎉`);
+        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount.toLocaleString()} RWF — plus a lottery bonus: +${result.lotteryBonusWonAmount.toLocaleString()} RWF! 🎉`);
       } else if (result.newlyEarnedAmount > 0) {
-        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount} RWF`);
+        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount.toLocaleString()} RWF`);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -4229,7 +4229,7 @@ function RewardsView() {
       <PetCard />
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total earned</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{tasks.rewardsTotal} RWF</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{tasks.rewardsTotal.toLocaleString()} RWF</h2>
       </div>
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Missions</h3>
@@ -4247,7 +4247,7 @@ function RewardsView() {
                 disabled={!t.eligible || claimingId === t.id}
                 onClick={() => handleClaim(t.id)}
               >
-                {claimingId === t.id ? '...' : `+${t.rewardAmount} RWF`}
+                {claimingId === t.id ? '...' : `+${t.rewardAmount.toLocaleString()} RWF`}
               </button>
             )}
           </div>
@@ -18765,7 +18765,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
                 className={increment === v ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 style={{ flex: 1, fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px' }}
               >
-                {v} RWF
+                {v.toLocaleString()} RWF
               </button>
             ))}
           </div>

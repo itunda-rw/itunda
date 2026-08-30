@@ -264,7 +264,7 @@ export function RewardsPreviewSection({ tasks, onViewAll }: { tasks: RewardTasks
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{t.title}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t.subtitle}</p>
           </div>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{t.rewardAmount} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{t.rewardAmount.toLocaleString()} RWF</span>
         </div>
       ))}
     </div>

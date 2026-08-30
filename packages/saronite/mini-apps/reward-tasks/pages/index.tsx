@@ -139,7 +139,7 @@ export default function RewardTasksPage() {
                   <Text style={styles.taskTitle}>{item.title}</Text>
                   <Text style={styles.subtitle}>{item.subtitle}</Text>
                 </View>
-                <Text style={styles.rewardAmount}>+{item.rewardAmount} RWF</Text>
+                <Text style={styles.rewardAmount}>+{item.rewardAmount.toLocaleString()} RWF</Text>
                 <TouchableOpacity
                   style={[styles.claimButton, item.claimed && styles.claimButtonDone]}
                   disabled={item.claimed || claimingId === item.id}
@@ -236,7 +236,7 @@ function StepsPanel() {
           same disclosed-odds discipline bank-mfe's own identical addition already has. */}
       {nextTier && (
         <Text style={styles.panelHint}>
-          Plus a {Math.round(nextTier.lotteryOdds * 100)}% chance of a +{nextTier.lotteryBonusAmount} RWF bonus
+          Plus a {Math.round(nextTier.lotteryOdds * 100)}% chance of a +{nextTier.lotteryBonusAmount.toLocaleString()} RWF bonus
         </Text>
       )}
       <View style={styles.inlineRow}>
