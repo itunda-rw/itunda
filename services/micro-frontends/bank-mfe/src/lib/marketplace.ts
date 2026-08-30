@@ -53,6 +53,14 @@ export interface Listing {
   leaseMonthlyPayment?: number | null;
   leaseSubsidyAmount?: number | null;
   leaseReturnFee?: number | null;
+  // Real gap found live (2026-08-31, market-readiness audit): bank-mfe had zero client
+  // for either of these, despite both being real, live features on Android (bump+boost)
+  // and iOS (boost) -- see MarketplaceService.bumpListing/boostListing's own doc
+  // comments. bumpedAt (null = never bumped) resorts a listing to the top of browse;
+  // boostedUntil (null/past = not boosted) is a real seller-paid sponsored-placement
+  // window that also ranks a listing first.
+  bumpedAt?: string | null;
+  boostedUntil?: string | null;
 }
 
 // Real 당근카 vehicle-listing fields a seller optionally supplies at creation time --
@@ -202,6 +210,30 @@ export const updateListingPrice = (listingId: string, price: number) =>
   apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/price`, {
     method: 'PATCH',
     body: JSON.stringify({ price }),
+  }).then((r) => r.listing);
+
+// Real 당근마켓 끌어올리기 (bump to top of feed) -- see backend MarketplaceService
+// .bumpListing's own doc comment. Real gap found live (2026-08-31, market-readiness
+// audit): existed on Android since 2026-08-10 with zero web client. Free/self-serve
+// (no real money moves), same simpler discipline updateListingPrice above follows --
+// no Idempotency-Key. Real 24h cooldown enforced server-side (429 BUMP_COOLDOWN).
+export const bumpListing = (listingId: string) =>
+  apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/bump`, {
+    method: 'POST',
+  }).then((r) => r.listing);
+
+// Real seller-paid sponsored placement -- see backend MarketplaceService.boostListing's
+// own doc comment. Real gap found live (2026-08-31, market-readiness audit): existed on
+// Android+iOS since 2026-07-25 with zero web client. Real money movement, so this is
+// the first Idempotency-Key-gated call in this file after payEscrow/confirmEscrowReceipt.
+export const fetchBoostTiers = () =>
+  apiFetch<{ success: boolean; tiers: Record<string, number> }>('/api/v1/marketplace/boost-tiers').then((r) => r.tiers);
+
+export const boostListing = (listingId: string, days: number) =>
+  apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/boost`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ days }),
   }).then((r) => r.listing);
 
 // Real "pay via itunda" Marketplace escrow (backend since 2026-07-25) -- an opt-in

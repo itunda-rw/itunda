@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import RouteMiniMap from './RouteMiniMap';
 import { useI18n } from './i18n/I18nContext';
-import { PackageGlyph } from './icons/ItundaFaceMisc';
 import { LockGlyph } from './icons/ItundaFaceSecurity';
 import { ApiError, getStoredUser } from './lib/api';
-import { confirmEscrowReceipt, contactSeller, disputeEscrow, fetchListingDetail, fetchListingReviews, getEscrow, hideListing, makeOffer, markListingSold, payEscrow, removeListing, submitListingReview, type HoodReview, type Listing, type MarketplaceEscrow, updateListingPrice } from './lib/marketplace';
+import { boostListing, bumpListing, confirmEscrowReceipt, contactSeller, disputeEscrow, fetchBoostTiers, fetchListingDetail, fetchListingReviews, getEscrow, hideListing, makeOffer, markListingSold, payEscrow, removeListing, submitListingReview, type HoodReview, type Listing, type MarketplaceEscrow, updateListingPrice } from './lib/marketplace';
 import { HoodReportButton, HoodReviewForm, HoodReviewResultView, TrustBadge, WishlistButton } from './BankDashboard';
 import { VehicleDetailSection } from './HoodVehicleFields';
+import { HoodListingSellerForms } from './HoodListingSellerForms';
+import { HoodListingEscrowStatus } from './HoodListingEscrowStatus';
 
 export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, favoriteBusy, onToggleFavorite, sellerTrustScore }: {
   listing: Listing;
@@ -48,6 +49,14 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
   // Real 가격 수정 (price edit) -- see lib/marketplace.ts's own doc comment.
   const [editingPrice, setEditingPrice] = useState(false);
   const [newPrice, setNewPrice] = useState('');
+  // Real gap found live (2026-08-31, market-readiness audit): bump/boost had zero web
+  // client despite being real, live features on Android/iOS -- see lib/marketplace.ts's
+  // own doc comments on bumpListing/boostListing.
+  const [bumping, setBumping] = useState(false);
+  const [showBoostPicker, setShowBoostPicker] = useState(false);
+  const [boostTiers, setBoostTiers] = useState<Record<string, number> | null>(null);
+  const [boosting, setBoosting] = useState(false);
+  const isBoosted = listing.boostedUntil != null && new Date(listing.boostedUntil) > new Date();
   // Real "pay via itunda" escrow -- status is fetched for BOTH buyer and seller of a
   // SOLD listing, not buyer-only, so a seller can see the delivery address.
   const [paying, setPaying] = useState(false);
@@ -185,6 +194,49 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
     }
   };
 
+  // Real gap found live (2026-08-31, market-readiness audit): bump/boost had zero web
+  // client despite being real, live features on Android/iOS -- see lib/marketplace.ts's
+  // own doc comments on bumpListing/boostListing.
+  const handleBump = async () => {
+    setBumping(true);
+    setError(null);
+    try {
+      await bumpListing(listing.id);
+      onChanged();
+    } catch (err) {
+      // A real 429 BUMP_COOLDOWN is expected/common here (once-per-24h), not a
+      // failure -- surfaced with the backend's own honest message either way.
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBumping(false);
+    }
+  };
+
+  const handleOpenBoostPicker = async () => {
+    setShowBoostPicker(true);
+    if (!boostTiers) {
+      try {
+        setBoostTiers(await fetchBoostTiers());
+      } catch {
+        // Non-critical -- the picker just shows nothing to pick until a retry works.
+      }
+    }
+  };
+
+  const handleBoost = async (days: number) => {
+    setBoosting(true);
+    setError(null);
+    try {
+      await boostListing(listing.id, days);
+      setShowBoostPicker(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBoosting(false);
+    }
+  };
+
   const handleMessage = async () => {
     setBusy(true);
     setError(null);
@@ -265,6 +317,14 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
                 SOLD
               </span>
             )}
+            {/* Real gap found live (2026-08-31, market-readiness audit): this badge
+                existed on Android/iOS with zero web equivalent -- see
+                Listing.boostedUntil's own doc comment on the backend. */}
+            {isBoosted && (
+              <span style={{ marginLeft: '8px', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)', backgroundColor: 'var(--itunda-indigo-light)', padding: '2px 8px', borderRadius: '8px' }}>
+                BOOSTED
+              </span>
+            )}
           </p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
             {listing.category}
@@ -318,44 +378,11 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
           </button>
         </div>
       )}
-      {editingPrice && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <input
-            type="number" min="1" value={newPrice} onChange={(e) => setNewPrice(e.target.value)}
-            placeholder="New price (RWF)"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-          />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setEditingPrice(false)}>
-              Cancel
-            </button>
-            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy || !(Number(newPrice) > 0)} onClick={handleUpdatePrice}>
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-      {/* Real optional "who bought this?" prompt -- see backend
-          MarketplaceService.markSold's own doc comment. */}
-      {markingSold && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <input
-            type="tel"
-            value={buyerPhone}
-            onChange={(e) => setBuyerPhone(e.target.value)}
-            placeholder="Buyer's phone (optional)"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)' }}
-          />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold()}>
-              Skip
-            </button>
-            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold(buyerPhone.trim())}>
-              Confirm
-            </button>
-          </div>
-        </div>
-      )}
+      <HoodListingSellerForms
+        editingPrice={editingPrice} newPrice={newPrice} setNewPrice={setNewPrice} setEditingPrice={setEditingPrice} handleUpdatePrice={handleUpdatePrice} busy={busy}
+        markingSold={markingSold} buyerPhone={buyerPhone} setBuyerPhone={setBuyerPhone} handleMarkSold={handleMarkSold}
+        showBoostPicker={showBoostPicker} boostTiers={boostTiers} boosting={boosting} handleBoost={handleBoost} setShowBoostPicker={setShowBoostPicker}
+      />
       {/* Real post-transaction review, preset checklist with asymmetric public/private
           visibility -- see backend HoodReviewService's own doc comment. */}
       {isMine && listing.status === 'SOLD' && listing.buyerId && reviewSubmitted && hoodReviews && (
@@ -402,6 +429,19 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
                 Mark sold
               </button>
             )}
+            {/* Real gap found live (2026-08-31, market-readiness audit): Bump/Boost
+                existed on Android/iOS with zero web client -- see lib/marketplace.ts's
+                own doc comments. */}
+            {listing.status === 'ACTIVE' && !markingSold && !editingPrice && !showBoostPicker && (
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={bumping} onClick={handleBump}>
+                {bumping ? '…' : 'Bump'}
+              </button>
+            )}
+            {listing.status === 'ACTIVE' && !markingSold && !editingPrice && !showBoostPicker && !isBoosted && (
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={boosting} onClick={handleOpenBoostPicker}>
+                Boost
+              </button>
+            )}
             {listing.status !== 'REMOVED' && (
               <button className="itunda-btn itunda-btn-danger" style={{ flex: 1 }} disabled={busy} onClick={handleRemove}>
                 Remove
@@ -429,53 +469,12 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
       {/* Real escrow status, shown to BOTH buyer and seller of a SOLD listing, not
           buyer-only. Confirm receipt/Report a problem stay buyer-only. */}
       {isMyEscrowTrade && escrow && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {escrow.deliveryAddress && (
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-600)', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}><PackageGlyph size={13} /> Delivery address: {escrow.deliveryAddress}</p>
-          )}
-          {escrow.status === 'HELD' && (
-            <>
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <LockGlyph size={14} /> {isEscrowBuyer ? 'Payment held by itunda until you confirm receipt' : 'Payment held by itunda until the buyer confirms receipt'}
-              </p>
-              {isEscrowBuyer && (
-                showDispute ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={disputeReason}
-                      onChange={(e) => setDisputeReason(e.target.value)}
-                      placeholder="What went wrong?"
-                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
-                    />
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={resolvingEscrow} onClick={() => setShowDispute(false)}>
-                        Cancel
-                      </button>
-                      <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={resolvingEscrow || !disputeReason.trim()} onClick={handleDisputeEscrow}>
-                        Submit
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={resolvingEscrow} onClick={handleConfirmReceipt}>
-                      {resolvingEscrow ? 'Working…' : 'Confirm receipt'}
-                    </button>
-                    <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={resolvingEscrow} onClick={() => setShowDispute(true)}>
-                      Report a problem
-                    </button>
-                  </div>
-                )
-              )}
-            </>
-          )}
-          {escrow.status === 'DISPUTED' && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', margin: 0 }}>⚠️ Reported -- itunda is reviewing this trade</p>}
-          {escrow.status === 'RELEASED' && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', margin: 0 }}>✅ Payment released to the seller</p>}
-          {escrow.status === 'REFUNDED' && (
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', margin: 0 }}>{isEscrowBuyer ? '↩️ Refunded to you' : '↩️ Refunded to the buyer'}</p>
-          )}
-        </div>
+        <HoodListingEscrowStatus
+          escrow={escrow} isEscrowBuyer={isEscrowBuyer}
+          showDispute={showDispute} setShowDispute={setShowDispute}
+          disputeReason={disputeReason} setDisputeReason={setDisputeReason}
+          resolvingEscrow={resolvingEscrow} handleDisputeEscrow={handleDisputeEscrow} handleConfirmReceipt={handleConfirmReceipt}
+        />
       )}
       {!isMine && <HoodReportButton targetType="MARKETPLACE_LISTING" targetId={listing.id} />}
       {!isMine && listing.status === 'ACTIVE' && listing.latitude != null && listing.longitude != null && (
