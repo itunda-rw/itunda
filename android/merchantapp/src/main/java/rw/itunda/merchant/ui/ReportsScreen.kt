@@ -25,25 +25,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.ReportDayDto
+import rw.itunda.merchant.network.TopSellingProductDto
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
 fun ReportsTab() {
     var days by remember { mutableStateOf<List<ReportDayDto>?>(null) }
+    var topProducts by remember { mutableStateOf<List<TopSellingProductDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var rangeDays by remember { mutableStateOf(7) }
 
     LaunchedEffect(rangeDays) {
         days = null
+        topProducts = null
         error = null
         try {
             val to = LocalDate.now()
             val from = to.minusDays((rangeDays - 1).toLong())
-            days = NetworkClient.apiService.getReport(
-                from = from.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                to = to.format(DateTimeFormatter.ISO_LOCAL_DATE),
-            ).days
+            val fromStr = from.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            val toStr = to.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            days = NetworkClient.apiService.getReport(from = fromStr, to = toStr).days
+            topProducts = NetworkClient.apiService.getTopSellingProducts(from = fromStr, to = toStr).products
         } catch (e: Exception) {
             error = "Couldn't load your reports right now."
         }
@@ -109,6 +112,36 @@ fun ReportsTab() {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+        }
+        // Real Coupang WING-style best-selling-products report -- merchant-mfe's own
+        // ReportsScreen.tsx has had this since 2026-08-16, ported here via the
+        // uncalled-endpoint sweep.
+        item {
+            Text("Top-selling products", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+        }
+        val products = topProducts
+        if (products == null) {
+            item {
+                androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            }
+        } else if (products.isEmpty()) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Text("No products sold in this range.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                }
+            }
+        } else {
+            items(products, key = { it.productId }) { product ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                        Column {
+                            Text(product.productName, fontWeight = FontWeight.Bold)
+                            Text("${product.unitsSold} sold", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("${"%,.0f".format(product.revenue)} RWF", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

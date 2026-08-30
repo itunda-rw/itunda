@@ -24,7 +24,7 @@
   "android/features/property/impl/src/main/java/rw/itunda/feature/property/impl/PropertyScreen.kt": 949,
   "android/features/shop/impl/src/main/java/rw/itunda/feature/shop/impl/ShopScreen.kt": 874,
   "android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/TalkChatThread.kt": 757,
-  "android/merchantapp/src/main/java/rw/itunda/merchant/network/ApiService.kt": 811,
+  "android/merchantapp/src/main/java/rw/itunda/merchant/network/ApiService.kt": 813,
   "android/merchantapp/src/main/java/rw/itunda/merchant/ui/BusinessAccountScreen.kt": 623,
   "android/merchantapp/src/main/java/rw/itunda/merchant/ui/MerchantHomeScreen.kt": 589,
   "ios/App/Sources/BenefitsShopAllScreens.swift": 1467,

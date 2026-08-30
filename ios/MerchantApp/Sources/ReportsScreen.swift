@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReportsTab: View {
     @State private var days: [ReportDayDto]?
+    @State private var topProducts: [TopSellingProductDto]?
     @State private var error: String?
     @State private var rangeDays = 7
 
@@ -58,6 +59,33 @@ struct ReportsTab: View {
                         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color(.secondarySystemBackground)).cornerRadius(12)
                     }
+
+                    // Real Coupang WING-style best-selling-products report --
+                    // merchant-mfe's own ReportsScreen.tsx has had this since
+                    // 2026-08-16, ported here via the uncalled-endpoint sweep.
+                    Text("Top-selling products").font(.headline).padding(.top, 8)
+                    if let topProducts {
+                        if topProducts.isEmpty {
+                            Text("No products sold in this range.").foregroundColor(.secondary)
+                                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.secondarySystemBackground)).cornerRadius(12)
+                        } else {
+                            ForEach(topProducts) { product in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(product.productName).bold()
+                                        Text("\(product.unitsSold) sold").font(.footnote).foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Text("\(formattedRWF(product.revenue)) RWF").bold()
+                                }
+                                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(.secondarySystemBackground)).cornerRadius(12)
+                            }
+                        }
+                    } else {
+                        ProgressView().frame(maxWidth: .infinity).padding(16)
+                    }
                 }.padding(16)
             }
         }
@@ -65,6 +93,7 @@ struct ReportsTab: View {
 
     private func loadReport() async {
         days = nil
+        topProducts = nil
         error = nil
         let calendar = Calendar.current
         let to = Date()
@@ -73,8 +102,11 @@ struct ReportsTab: View {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = calendar
         formatter.dateFormat = "yyyy-MM-dd"
+        let fromStr = formatter.string(from: from)
+        let toStr = formatter.string(from: to)
         do {
-            days = try await MerchantNetworkClient.shared.getReport(from: formatter.string(from: from), to: formatter.string(from: to)).days
+            days = try await MerchantNetworkClient.shared.getReport(from: fromStr, to: toStr).days
+            topProducts = try await MerchantNetworkClient.shared.getTopSellingProducts(from: fromStr, to: toStr).products
         } catch {
             self.error = "Couldn't load your reports right now."
         }

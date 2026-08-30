@@ -311,6 +311,8 @@ data class CardChargeResponse(
 
 data class ReportDayDto(val date: String, val collectionCount: Int, val grossAmount: Double, val fees: Double, val netAmount: Double, val byChannel: Map<String, Double>)
 data class ReportResponse(val success: Boolean, val from: String, val to: String, val days: List<ReportDayDto>)
+data class TopSellingProductDto(val productId: String, val productName: String, val unitsSold: Int, val revenue: Double)
+data class TopSellingProductsResponse(val success: Boolean, val from: String, val to: String, val products: List<TopSellingProductDto>)
 
 // Real incoming Eats orders (restaurant side) -- previously only ever exposed in the
 // consumer app's own bank-mfe (a structural gap for anyone using a dedicated merchant
@@ -490,6 +492,16 @@ interface ApiService {
 
     @GET("api/v1/merchant/reports")
     suspend fun getReport(@Query("from") from: String? = null, @Query("to") to: String? = null): ReportResponse
+
+    // Real Coupang WING-style top-selling-products report -- see backend
+    // MerchantService.getTopSellingProducts's own doc comment. Merchant-mfe has had
+    // this since 2026-08-16; ported here via the uncalled-endpoint sweep.
+    @GET("api/v1/merchant/reports/top-products")
+    suspend fun getTopSellingProducts(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("limit") limit: Int? = null,
+    ): TopSellingProductsResponse
 
     @GET("api/v1/eats/orders/restaurant-orders")
     suspend fun getRestaurantOrders(): EatsOrdersResponse

@@ -258,6 +258,15 @@ struct ReportDayDto: Decodable, Identifiable {
 }
 struct ReportResponse: Decodable { let success: Bool; let from: String; let to: String; let days: [ReportDayDto] }
 
+struct TopSellingProductDto: Decodable, Identifiable {
+    var id: String { productId }
+    let productId: String
+    let productName: String
+    let unitsSold: Int
+    let revenue: Double
+}
+struct TopSellingProductsResponse: Decodable { let success: Bool; let from: String; let to: String; let products: [TopSellingProductDto] }
+
 // Real incoming Eats orders (restaurant side) -- previously only ever exposed in the
 // consumer app's own bank-mfe, reused unmodified here.
 struct EatsOrderDto: Decodable, Identifiable {
@@ -545,6 +554,16 @@ final class MerchantNetworkClient {
         if let from { query.append(URLQueryItem(name: "from", value: from)) }
         if let to { query.append(URLQueryItem(name: "to", value: to)) }
         return try await get("api/v1/merchant/reports", query: query)
+    }
+
+    // Real Coupang WING-style top-selling-products report -- merchant-mfe's own
+    // ReportsScreen.tsx has had this since 2026-08-16, ported here via the
+    // uncalled-endpoint sweep.
+    func getTopSellingProducts(from: String? = nil, to: String? = nil) async throws -> TopSellingProductsResponse {
+        var query: [URLQueryItem] = []
+        if let from { query.append(URLQueryItem(name: "from", value: from)) }
+        if let to { query.append(URLQueryItem(name: "to", value: to)) }
+        return try await get("api/v1/merchant/reports/top-products", query: query)
     }
 
     func openBusinessAccount() async throws -> BusinessAccountResponse {
