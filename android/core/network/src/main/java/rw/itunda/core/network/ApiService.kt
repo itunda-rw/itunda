@@ -614,6 +614,11 @@ data class ResolveRecipientResponse(val success: Boolean, val recipient: P2pReci
 // Mirrors services/backend/savings's SavingsController.kt.
 data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromAccountId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
+// Real gap found live (2026-08-31, direct user re-reference of the real Toss
+// "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+// .withdrawFromGoal's own doc comment for the full account.
+data class WithdrawRequest(val goalId: String, val amount: java.math.BigDecimal, val toAccountId: String? = null)
+data class WithdrawResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
 data class ClaimInterestResponse(val success: Boolean, val message: String, val claimed: Double? = null)
 
 // Real Kakao Pay 머니굴리기 (round-up auto-save) equivalent (2026-07-25) -- see
@@ -2683,6 +2688,9 @@ interface ApiService {
 
     @POST("api/v1/savings/deposit")
     suspend fun depositToGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositRequest): DepositResponse
+
+    @POST("api/v1/savings/withdraw")
+    suspend fun withdrawFromGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: WithdrawRequest): WithdrawResponse
 
     @POST("api/v1/savings/interest-jar/claim")
     suspend fun claimInterest(@Header("Idempotency-Key") idempotencyKey: String): ClaimInterestResponse

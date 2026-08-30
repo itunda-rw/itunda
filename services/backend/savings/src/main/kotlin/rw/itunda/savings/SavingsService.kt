@@ -42,6 +42,7 @@ class NoAccountException(message: String) : RuntimeException(message)
 class NoInterestJarException(message: String) : RuntimeException(message)
 class NoInterestAvailableException(message: String) : RuntimeException(message)
 class GoalAlreadyCompletedException(message: String) : RuntimeException(message)
+class InsufficientGoalBalanceException(message: String) : RuntimeException(message)
 
 /**
  * Port of backend/src/controllers/savings.controller.ts, with the same ownership check
@@ -91,7 +92,8 @@ class SavingsService(
         // unconditionally, but `currentAmount` is capped at `targetAmount`, so the money
         // would leave the user's account and land in the savings_goal_payable ledger
         // account with no corresponding increase anywhere the user can see -- functionally
-        // vanishing, since this module has no withdraw/close-goal endpoint to reclaim it.
+        // vanishing. **Closed 2026-08-31** -- see withdrawFromGoal below, a real
+        // withdraw/close-goal path now exists to reclaim it.
         if (goal.status == SavingsGoalStatus.completed) throw GoalAlreadyCompletedException("This goal has already reached its target")
 
         val sourceAccount = if (fromAccountId != null) {
@@ -116,6 +118,52 @@ class SavingsService(
         val saved = savingsGoalRepository.save(goal)
         if (justCompleted) notifyGoalCompleted(saved)
         return saved
+    }
+
+    // Real gap found live (2026-08-31, direct user reference against Toss's own real
+    // 보관하기/나눠모으기 pockets -- every one supports both 채우기 (fill) and 꺼내기
+    // (withdraw), never a one-way deposit): depositToGoal's own doc comment already
+    // named this exact gap in 2026-08-23 ("functionally vanishing... no withdraw/
+    // close-goal endpoint to reclaim it") but it was never actually built until now.
+    // Real double-entry reversal of the exact deposit legs (flipped direction), same
+    // reasoning OrderService.cancelOrder/EatsOrderService.refundAndCancel already
+    // establish elsewhere in this codebase -- never mutates the goal's own deposit
+    // history, just posts a new, offsetting transaction. A partial withdraw simply
+    // reduces currentAmount; a full withdraw (amount == currentAmount) leaves the goal
+    // at zero, still active, not deleted -- same "closing a pocket doesn't delete its
+    // history" real Toss behavior.
+    @Transactional
+    fun withdrawFromGoal(userId: String, goalId: String, amount: BigDecimal, toAccountId: String?): SavingsGoal {
+        val goal = savingsGoalRepository.findById(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
+        if (amount <= BigDecimal.ZERO) throw InsufficientGoalBalanceException("Amount must be positive")
+        if (amount > goal.currentAmount) {
+            throw InsufficientGoalBalanceException("Cannot withdraw more than this goal's current balance (${goal.currentAmount})")
+        }
+
+        val destinationAccount = if (toAccountId != null) {
+            val account = accountRepository.findById(toAccountId).orElseThrow { NoAccountException("Account not found") }
+            if (account.userId != userId) throw AccountNotOwnedException("That account does not belong to you")
+            account
+        } else {
+            accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
+        }
+
+        ledgerService.postLedgerTransaction(
+            destinationAccount.currency,
+            listOf(
+                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, amount, "Withdraw from ${goal.name}"),
+                LedgerLeg(destinationAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Withdraw from ${goal.name}"),
+            ),
+        )
+
+        goal.currentAmount = goal.currentAmount.subtract(amount)
+        // A completed goal that's had money withdrawn back out is honestly no longer
+        // complete -- matches how a real bank account reopens for contributions the
+        // moment its balance drops below a "goal reached" milestone.
+        if (goal.status == SavingsGoalStatus.completed && goal.currentAmount < goal.targetAmount) {
+            goal.status = SavingsGoalStatus.active
+        }
+        return savingsGoalRepository.save(goal)
     }
 
     // Real recurring auto-save (2026-07-13) -- monthlyContribution was accepted and stored

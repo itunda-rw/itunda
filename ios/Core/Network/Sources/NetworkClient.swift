@@ -2456,6 +2456,11 @@ public struct ResolveRecipientResponse: Decodable { public let success: Bool; pu
 
 public struct DepositRequest: Encodable { public let goalId: String; public let amount: Double }
 public struct DepositResponse: Decodable { public let success: Bool; public let message: String; public let goal: SavingsGoal }
+// Real gap found live (2026-08-31, direct user re-reference of the real Toss
+// "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+// .withdrawFromGoal's own doc comment for the full account.
+public struct WithdrawRequest: Encodable { public let goalId: String; public let amount: Double }
+public struct WithdrawResponse: Decodable { public let success: Bool; public let message: String; public let goal: SavingsGoal }
 public struct ClaimInterestResponse: Decodable { public let success: Bool; public let message: String }
 
 // Real offline-action-queue replay (2026-07-13) -- mirrors
@@ -2690,6 +2695,14 @@ extension NetworkClient {
         try await authenticatedPost(
             "api/v1/savings/deposit",
             body: DepositRequest(goalId: goalId, amount: amount),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    public func withdrawFromGoal(goalId: String, amount: Double) async throws -> WithdrawResponse {
+        try await authenticatedPost(
+            "api/v1/savings/withdraw",
+            body: WithdrawRequest(goalId: goalId, amount: amount),
             idempotencyKey: UUID().uuidString
         )
     }

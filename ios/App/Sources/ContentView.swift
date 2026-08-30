@@ -52,11 +52,16 @@ func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.T
 /// Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
 enum SavingsFlowStep: Identifiable {
     case deposit(goalId: String, goalName: String)
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+    // .withdrawFromGoal's own doc comment for the full account.
+    case withdraw(goalId: String, goalName: String, currentAmount: Double)
     case claimInterest
 
     var id: String {
         switch self {
         case .deposit(let goalId, _): return "deposit-\(goalId)"
+        case .withdraw(let goalId, _, _): return "withdraw-\(goalId)"
         case .claimInterest: return "claim"
         }
     }
@@ -227,7 +232,9 @@ struct ContentView: View {
                 title: goal.name,
                 subtitle: "\(Int(goal.currentAmount)) of \(formatAmount(Int(goal.targetAmount))) RWF\(completedSuffix)",
                 trailing: "\(percent)%",
-                onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) }
+                onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) },
+                secondaryAction: goal.currentAmount > 0 ? "Withdraw" : nil,
+                onSecondaryTap: goal.currentAmount > 0 ? { savingsFlowStep = .withdraw(goalId: goal.id, goalName: goal.name, currentAmount: goal.currentAmount) } : nil
             ))
         }
         return rows

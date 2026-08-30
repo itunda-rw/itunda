@@ -26,6 +26,13 @@ struct HomeRowData: Identifiable {
     // Added 2026-07-12 for the real Savings section's rows (deposit/claim) --
     // default nil preserves every existing purely-promotional row unchanged.
     var onTap: (() -> Void)? = nil
+    // Real gap found live (2026-08-31, direct user re-reference of real Toss
+    // savings-pocket screenshots) -- a second, genuinely distinct action alongside
+    // the row's own tap target (Withdraw next to Deposit). Mirrors Android's
+    // ShellRow.secondaryAction/onSecondaryClick addition exactly; nil preserves
+    // every existing row unchanged.
+    var secondaryAction: String? = nil
+    var onSecondaryTap: (() -> Void)? = nil
 }
 
 struct HomeTopBar: View {
@@ -284,11 +291,31 @@ struct CompactListRow: View {
     let row: HomeRowData
 
     var body: some View {
-        Group {
-            if let onTap = row.onTap {
-                Button(action: onTap) { rowContent }.buttonStyle(.plain)
-            } else {
-                rowContent
+        VStack(alignment: .trailing, spacing: 0) {
+            Group {
+                if let onTap = row.onTap {
+                    Button(action: onTap) { rowContent }.buttonStyle(.plain)
+                } else {
+                    rowContent
+                }
+            }
+            // Real gap found live (2026-08-31): a second, genuinely distinct action
+            // (Withdraw) alongside the row's own tap target (Deposit) -- nested inside
+            // the outer Button above, but SwiftUI hit-tests the inner Button first, so
+            // tapping it never also fires the row's own onTap. Mirrors Android's
+            // ShellRow secondary-action rendering.
+            if let secondaryAction = row.secondaryAction, let onSecondaryTap = row.onSecondaryTap {
+                Button(action: onSecondaryTap) {
+                    Text(secondaryAction)
+                        .font(IDS.Typography.caption)
+                        .foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(IDS.Layout.iconCornerRadius)
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, IDS.Layout.tightGap)
             }
         }
     }

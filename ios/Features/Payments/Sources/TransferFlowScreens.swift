@@ -475,17 +475,21 @@ public struct TransferAmountScreen: View {
 
 public enum SavingsAmountMode {
     case deposit
+    case withdraw
     case claimInterest
 }
 
-/// Real savings deposit/claim amount screens, matching the two real Toss reference
-/// screenshots (user-provided, 2026-07-12): "얼마나 채울까요?" (deposit) and "얼마나
-/// 꺼낼까요?" (withdraw). Same visual shape as TransferAmountScreen above, reusing
-/// its private FlowTopBar/TransferPartyRow-equivalent pieces directly since they
-/// live in this same file. itunda has no real withdraw-from-goal endpoint (only
-/// deposit + interest-jar claim, see SavingsController.kt) -- a withdraw mode is
-/// deliberately not offered here rather than faked against an endpoint that
-/// doesn't exist, same reasoning as Android's SavingsAmountScreen.kt.
+/// Real savings deposit/withdraw/claim amount screens, matching the two real Toss
+/// reference screenshots (user-provided, 2026-07-12, re-referenced 2026-08-31): "얼마나
+/// 채울까요?" (deposit) and "얼마나 꺼낼까요?" (withdraw). Same visual shape as
+/// TransferAmountScreen above, reusing its private FlowTopBar/TransferPartyRow-
+/// equivalent pieces directly since they live in this same file.
+///
+/// Real gap found live (2026-08-31): a withdraw endpoint now exists
+/// (SavingsController.kt's real POST /api/v1/savings/withdraw, closing
+/// SavingsService.depositToGoal's own 2026-08-23 doc comment naming this exact gap)
+/// -- .withdraw is no longer faked against a nonexistent endpoint, it's real. Same
+/// fix on Android's SavingsAmountScreen.kt the same day.
 public struct SavingsAmountScreen: View {
     @State private var digits = ""
     let goalName: String
@@ -512,16 +516,25 @@ public struct SavingsAmountScreen: View {
     }
 
     private var amount: Int { Int(digits) ?? 0 }
-    private var insufficientBalance: Bool { mode == .deposit && amount > 0 && Double(amount) > availableBalance }
+    // For withdraw, `availableBalance` is the GOAL's own current balance (the real cap
+    // on this action), not the destination account's balance -- see this screen's own
+    // call site in SavingsFlowContainer.swift.
+    private var insufficientBalance: Bool { mode != .claimInterest && amount > 0 && Double(amount) > availableBalance }
 
     public var body: some View {
         VStack(spacing: 0) {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: "From Itunda Account", sublabel: "Available RWF \(transferFormatAmount(Int(availableBalance)))", symbol: "creditcard")
-                Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
-                TransferPartyRow(label: "To \(goalName)", sublabel: mode == .deposit ? "Savings goal" : "Interest jar", symbol: "leaf")
+                if mode == .withdraw {
+                    TransferPartyRow(label: "From \(goalName)", sublabel: "Available RWF \(transferFormatAmount(Int(availableBalance)))", symbol: "leaf")
+                    Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
+                    TransferPartyRow(label: "To Itunda Account", sublabel: "", symbol: "creditcard")
+                } else {
+                    TransferPartyRow(label: "From Itunda Account", sublabel: "Available RWF \(transferFormatAmount(Int(availableBalance)))", symbol: "creditcard")
+                    Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
+                    TransferPartyRow(label: "To \(goalName)", sublabel: mode == .deposit ? "Savings goal" : "Interest jar", symbol: "leaf")
+                }
             }
             .padding(.horizontal, 24)
 
@@ -533,16 +546,16 @@ public struct SavingsAmountScreen: View {
                 // doc comment, matching real Toss Bank passbook interest) -- this
                 // screen no longer moves money, it just acknowledges what already
                 // arrived. Same fix on Android's SavingsAmountScreen the same day.
-                Text(mode == .deposit ? "How much to save?" : "Interest already added to your balance")
+                Text(mode == .deposit ? "How much to save?" : mode == .withdraw ? "How much to withdraw?" : "Interest already added to your balance")
                     .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .callout))
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text(digits.isEmpty ? "0 RWF" : "\(transferFormatAmount(amount)) RWF")
                     .font(IDS.scaledFont(size: digits.isEmpty ? 32 : 42, weight: .bold, relativeTo: .largeTitle))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
                 // Same "the best error is one that never occurs" fix (2026-08-10) as
-                // TransferAmountScreen above -- a deposit larger than the real account
-                // balance (already known here) previously only surfaced after a
-                // wasted round trip to the backend's 422.
+                // TransferAmountScreen above -- a deposit/withdraw larger than the real
+                // available balance (already known here) previously only surfaced
+                // after a wasted round trip to the backend's 422.
                 if insufficientBalance {
                     Text("Not enough balance -- you have RWF \(transferFormatAmount(Int(availableBalance)))")
                         .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
@@ -552,10 +565,10 @@ public struct SavingsAmountScreen: View {
             .frame(maxWidth: .infinity)
             .frame(maxHeight: .infinity)
 
-            if mode == .deposit {
+            if mode == .deposit || mode == .withdraw {
                 HStack(spacing: 10) {
-                    QuickAmountChip(label: "+10,000") { digits = String((Int(digits) ?? 0) + 10_000) }
-                    QuickAmountChip(label: "+100,000") { digits = String((Int(digits) ?? 0) + 100_000) }
+                    QuickAmountChip(label: "+10,000") { digits = String(min((Int(digits) ?? 0) + 10_000, Int(availableBalance))) }
+                    QuickAmountChip(label: "+100,000") { digits = String(min((Int(digits) ?? 0) + 100_000, Int(availableBalance))) }
                     QuickAmountChip(label: "Max") { digits = String(Int(availableBalance)) }
                 }
                 .padding(.horizontal, 24)
@@ -569,7 +582,7 @@ public struct SavingsAmountScreen: View {
             } else if mode == .claimInterest {
                 FlowNextBar(enabled: true, label: "OK") { onConfirm(0) }
             } else {
-                FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: "Deposit") { onConfirm(amount) }
+                FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: mode == .withdraw ? "Withdraw" : "Deposit") { onConfirm(amount) }
                 NumericKeypad(
                     onDigit: { d in if digits.count < 9 { digits += d } },
                     onDelete: { if !digits.isEmpty { digits.removeLast() } }

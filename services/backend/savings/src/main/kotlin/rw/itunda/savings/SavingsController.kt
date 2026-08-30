@@ -23,6 +23,7 @@ import java.math.BigDecimal
 
 data class CreateGoalRequest(val name: String, val targetAmount: BigDecimal, val monthlyContribution: BigDecimal? = null, val targetDate: String? = null, val category: String? = null)
 data class DepositRequest(val goalId: String, val amount: BigDecimal, val fromAccountId: String? = null)
+data class WithdrawRequest(val goalId: String, val amount: BigDecimal, val toAccountId: String? = null)
 
 @RestController
 @RequestMapping("/api/v1/savings")
@@ -59,6 +60,22 @@ class SavingsController(
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/savings/deposit", idempotencyKey, request) {
             val goal = savingsService.depositToGoal(currentUser.userId, request.goalId, request.amount, request.fromAccountId)
             200 to mapOf("success" to true, "message" to "Deposited ${request.amount} RWF to \"${goal.name}\"", "goal" to goal)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    // Real gap found live (2026-08-31, direct user reference against Toss's own real
+    // 보관하기/나눠모으기 pockets) -- see SavingsService.withdrawFromGoal's own doc
+    // comment for the full account of the gap this closes.
+    @PostMapping("/withdraw")
+    fun withdraw(
+        @RequestBody request: WithdrawRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/savings/withdraw", idempotencyKey, request) {
+            val goal = savingsService.withdrawFromGoal(currentUser.userId, request.goalId, request.amount, request.toAccountId)
+            200 to mapOf("success" to true, "message" to "Withdrew ${request.amount} RWF from \"${goal.name}\"", "goal" to goal)
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -132,6 +149,9 @@ class SavingsController(
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(InsufficientGoalBalanceException::class)
+    fun handleInsufficientGoalBalance(ex: InsufficientGoalBalanceException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_GOAL_BALANCE", ex.message ?: "Insufficient goal balance"))
 
     @ExceptionHandler(AccountFrozenException::class)
     fun handleAccountFrozen(ex: AccountFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("ACCOUNT_FROZEN", ex.message ?: "Account is frozen"))

@@ -354,6 +354,10 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, onDon
 /** Real savings deposit/claim flow (2026-07-12) -- see SavingsAmountScreen.kt. */
 private sealed class SavingsFlowStep : java.io.Serializable {
     data class Deposit(val goalId: String, val goalName: String) : SavingsFlowStep()
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+    // .withdrawFromGoal's own doc comment for the full account.
+    data class Withdraw(val goalId: String, val goalName: String, val currentAmount: Double) : SavingsFlowStep()
     data object ClaimInterest : SavingsFlowStep()
     // Real acknowledgment moment (2026-08-11) -- see IdsCelebrationScreen's own doc
     // comment: both deposit and claim previously just set savingsFlowStep = null on
@@ -892,6 +896,51 @@ fun ItundaAppScreen(
                         }
                     }
                 )
+                is SavingsFlowStep.Withdraw -> rw.itunda.feature.payments.impl.SavingsAmountScreen(
+                    goalName = savingsStep.goalName,
+                    mode = rw.itunda.feature.payments.impl.SavingsAmountMode.withdraw,
+                    availableBalance = savingsStep.currentAmount,
+                    isSubmitting = isSavingsSubmitting,
+                    onBack = { savingsFlowStep = null },
+                    onConfirm = { amountRwf ->
+                        isSavingsSubmitting = true
+                        coroutineScope.launch {
+                            when (val result = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)) {
+                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                    isSavingsSubmitting = false
+                                    savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), result.message, celebratory = false)
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                    // withdrawFromSavingsGoal never actually returns
+                                    // Queued (unlike depositToSavingsGoal, no offline
+                                    // queue support here) -- handled only because
+                                    // MoneyActionResult is a shared sealed interface.
+                                    isSavingsSubmitting = false
+                                    savingsFlowStep = null
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                    isSavingsSubmitting = false
+                                    savingsError = result.message
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                    isSavingsSubmitting = false
+                                    deviceStepUpError = null
+                                    pendingDeviceRetry = {
+                                        isSavingsSubmitting = true
+                                        val retryResult = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)
+                                        isSavingsSubmitting = false
+                                        when (retryResult) {
+                                            is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.app.ui.MoneyActionResult.Failure -> savingsError = retryResult.message
+                                            else -> {}
+                                        }
+                                    }
+                                    showDeviceStepUp = true
+                                }
+                            }
+                        }
+                    }
+                )
                 is SavingsFlowStep.ClaimInterest -> rw.itunda.feature.payments.impl.SavingsAmountScreen(
                     goalName = "Interest jar",
                     mode = rw.itunda.feature.payments.impl.SavingsAmountMode.claimInterest,
@@ -1332,6 +1381,7 @@ fun ItundaAppScreen(
                 viewModel = viewModel,
                 onBack = { showBank = false },
                 onDepositToGoal = { goalId, goalName -> showBank = false; savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
+                onWithdrawFromGoal = { goalId, goalName, currentAmount -> showBank = false; savingsFlowStep = SavingsFlowStep.Withdraw(goalId, goalName, currentAmount) },
                 onClaimInterest = { showBank = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
                 onOpenSacco = { showSacco = true },
                 onOpenIkimina = { showIkimina = true },
@@ -2121,6 +2171,10 @@ private fun BankHubScreen(
     viewModel: MainViewModel,
     onBack: () -> Unit,
     onDepositToGoal: (goalId: String, goalName: String) -> Unit,
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+    // .withdrawFromGoal's own doc comment for the full account.
+    onWithdrawFromGoal: (goalId: String, goalName: String, currentAmount: Double) -> Unit,
     onClaimInterest: () -> Unit,
     onOpenSacco: () -> Unit,
     onOpenIkimina: () -> Unit,
@@ -2365,6 +2419,14 @@ private fun BankHubScreen(
                                     Icons.Outlined.Savings,
                                     AccentIndigo,
                                     onClick = { onDepositToGoal(goal.id, goal.name) },
+                                    // Real gap found live (2026-08-31, direct user
+                                    // re-reference of the real Toss "얼마나 꺼낼까요?"
+                                    // withdraw screenshot) -- only offered once there's
+                                    // real money in the goal to withdraw.
+                                    secondaryAction = if (goal.currentAmount > 0) "Withdraw" else null,
+                                    onSecondaryClick = if (goal.currentAmount > 0) {
+                                        { onWithdrawFromGoal(goal.id, goal.name, goal.currentAmount) }
+                                    } else null,
                                 )
                             )
                         }
@@ -3214,6 +3276,13 @@ private data class ShellRow(
     // default null preserves every existing purely-promotional ShellRow call site
     // unchanged.
     val onClick: (() -> Unit)? = null,
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // withdraw screenshot) -- a real savings goal needs a second, genuinely distinct
+    // action (Withdraw) alongside its primary one (Deposit), unlike every other
+    // ShellRow in this file, which only ever needed one. Default null preserves every
+    // existing single-action row unchanged.
+    val secondaryAction: String? = null,
+    val onSecondaryClick: (() -> Unit)? = null,
 )
 
 // Flattened 2026-08-22 (direct user directive: "out bank home screen should
@@ -3280,6 +3349,10 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     // obvious CTA (e.g. credit score's "View") silently did
                     // nothing while tapping elsewhere in the same row worked.
                     IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
+                }
+                if (row.secondaryAction != null) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    IdsButton(row.secondaryAction, onClick = row.onSecondaryClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }
             }
         }

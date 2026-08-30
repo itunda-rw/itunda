@@ -121,6 +121,24 @@ final class TransferViewModel: ObservableObject {
         }
     }
 
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+    // .withdrawFromGoal's own doc comment for the full account. Not offline-queued,
+    // unlike depositToSavingsGoal above -- the backend batch endpoint
+    // (ActionsBatchController) has no SAVINGS_WITHDRAW action type yet.
+    func withdrawFromSavingsGoal(goalId: String, amountRwf: Int) async -> MoneyActionResult {
+        do {
+            let response = try await NetworkClient.shared.withdrawFromGoal(goalId: goalId, amount: Double(amountRwf))
+            return .success(response.message)
+        } catch NetworkError.deviceNotVerified {
+            return .deviceNotVerified
+        } catch let NetworkError.httpError(statusCode) {
+            return .failure(Self.errorMessage(statusCode))
+        } catch {
+            return .failure("Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
     func claimInterest() async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.claimInterest()

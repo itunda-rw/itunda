@@ -45,6 +45,30 @@ struct SavingsFlowContainer: View {
                         }
                     }
                 )
+            // Real gap found live (2026-08-31, direct user re-reference of the real
+            // Toss "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend
+            // SavingsService.withdrawFromGoal's own doc comment for the full account.
+            // Uses the step's own carried `currentAmount` (the GOAL's real balance,
+            // the actual cap on this action), not the container-level
+            // `availableBalance` (the destination account's balance) .deposit/
+            // .claimInterest use.
+            case .withdraw(let goalId, let goalName, let currentAmount):
+                SavingsAmountScreen(
+                    goalName: goalName,
+                    mode: .withdraw,
+                    availableBalance: currentAmount,
+                    isSubmitting: isSubmitting,
+                    onBack: onDone,
+                    onConfirm: { amountRwf in
+                        pendingAmountRwf = amountRwf
+                        Task { @MainActor in
+                            isSubmitting = true
+                            let result = await viewModel.withdrawFromSavingsGoal(goalId: goalId, amountRwf: amountRwf)
+                            isSubmitting = false
+                            handle(result)
+                        }
+                    }
+                )
             case .claimInterest:
                 SavingsAmountScreen(
                     goalName: "Interest jar",
@@ -124,6 +148,8 @@ struct SavingsFlowContainer: View {
                 switch step {
                 case .deposit(let goalId, _):
                     retryResult = await viewModel.depositToSavingsGoal(goalId: goalId, amountRwf: pendingAmountRwf)
+                case .withdraw(let goalId, _, _):
+                    retryResult = await viewModel.withdrawFromSavingsGoal(goalId: goalId, amountRwf: pendingAmountRwf)
                 case .claimInterest:
                     retryResult = await viewModel.claimInterest()
                 }

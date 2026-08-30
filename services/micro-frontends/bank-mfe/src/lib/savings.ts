@@ -57,6 +57,18 @@ export const depositToGoal = (goalId: string, amount: number, fromAccountId?: st
     body: JSON.stringify({ goalId, amount, fromAccountId }),
   });
 
+// Real gap found live (2026-08-31, direct user reference against Toss's own real
+// 보관하기/나눠모으기 pockets -- every one supports both fill and withdraw, never a
+// one-way deposit): see backend SavingsService.withdrawFromGoal's own doc comment for
+// the full account of the gap this closes -- money deposited into a goal had no way
+// back out at all until now.
+export const withdrawFromGoal = (goalId: string, amount: number, toAccountId?: string) =>
+  apiFetch<{ success: boolean; message: string; goal: SavingsGoal }>('/api/v1/savings/withdraw', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ goalId, amount, toAccountId }),
+  });
+
 export const fetchInterestJar = () =>
   apiFetch<{ success: boolean; jar: InterestJar }>('/api/v1/savings/interest-jar').then((r) => r.jar);
 

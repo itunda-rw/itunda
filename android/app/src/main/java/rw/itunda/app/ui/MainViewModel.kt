@@ -16,6 +16,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SendDirectP2pRequest
 import rw.itunda.core.network.SendGiftRequest
 import rw.itunda.core.network.DepositRequest
+import rw.itunda.core.network.WithdrawRequest
 import rw.itunda.core.network.CreateSavingsGoalRequest
 import rw.itunda.core.network.BatchActionRequest
 import rw.itunda.core.network.BatchRequest
@@ -432,6 +433,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             _pendingActionCount.value = offlineQueue.peekAll().size
             MoneyActionResult.Queued("Saved offline -- this deposit will go through automatically once you're back online.")
+        }
+    }
+
+    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
+    // "얼마나 꺼낼까요?" (withdraw) screenshot) -- see backend SavingsService
+    // .withdrawFromGoal's own doc comment for the full account. Not offline-queued,
+    // unlike depositToSavingsGoal above -- the backend batch endpoint
+    // (ActionsBatchController) has no SAVINGS_WITHDRAW action type yet.
+    suspend fun withdrawFromSavingsGoal(goalId: String, amountRwf: Long): MoneyActionResult {
+        return try {
+            val res = NetworkClient.apiService.withdrawFromGoal(
+                idempotencyKey = UUID.randomUUID().toString(),
+                request = WithdrawRequest(goalId = goalId, amount = BigDecimal(amountRwf))
+            )
+            fetchData()
+            MoneyActionResult.Success(res.message)
+        } catch (e: retrofit2.HttpException) {
+            if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
+        } catch (e: IOException) {
+            MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
         }
     }
 

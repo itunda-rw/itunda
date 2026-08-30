@@ -53,7 +53,7 @@ import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice }
 import { fetchNotifications } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
 import { cardDesign, chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
-import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
+import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, withdrawFromGoal, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
   requestUnpaidGroupAccountDues, setGroupAccountDuesAmount, withdrawFromGroupAccount,
@@ -11645,7 +11645,12 @@ function DepositProtectionCard() {
 
 function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => void }) {
   const { t } = useI18n();
-  const [depositing, setDepositing] = useState(false);
+  // Real gap found live (2026-08-31, direct user reference against Toss's own real
+  // 보관하기/나눠모으기 pockets -- every one supports both 채우기 (fill) and 꺼내기
+  // (withdraw), never a one-way deposit): this card only ever let money go IN, with no
+  // way back out -- see backend SavingsService.withdrawFromGoal's own doc comment for
+  // the full account.
+  const [mode, setMode] = useState<'closed' | 'deposit' | 'withdraw'>('closed');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -11660,7 +11665,28 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
     try {
       await depositToGoal(goal.id, Number(amount));
       setAmount('');
-      setDepositing(false);
+      setMode('closed');
+      onChanged();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : t('common.actionError'));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleWithdraw = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      await withdrawFromGoal(goal.id, Number(amount));
+      setAmount('');
+      setMode('closed');
       onChanged();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
@@ -11683,11 +11709,24 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
             {goal.status === 'completed' && ' · Completed 🎉'}
           </p>
         </div>
-        {goal.status === 'active' && (
-          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }} onClick={() => setDepositing((d) => !d)}>
-            Deposit
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {goal.currentAmount > 0 && (
+            <button
+              className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
+              onClick={() => setMode((m) => (m === 'withdraw' ? 'closed' : 'withdraw'))}
+            >
+              Withdraw
+            </button>
+          )}
+          {goal.status === 'active' && (
+            <button
+              className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: 'var(--itunda-type-scale-12-size)' }}
+              onClick={() => setMode((m) => (m === 'deposit' ? 'closed' : 'deposit'))}
+            >
+              Deposit
+            </button>
+          )}
+        </div>
       </div>
       <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '10px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--itunda-indigo)' }} />
@@ -11697,22 +11736,23 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
           Auto-saves {goal.monthlyContribution.toLocaleString()} RWF/month
         </p>
       )}
-      {depositing && (
+      {mode !== 'closed' && (
         needsDeviceVerification ? (
           <div style={{ marginTop: '10px' }}>
             {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
-                full account. handleDeposit resets needsDeviceVerification itself. */}
-            <DeviceStepUpPrompt onVerified={() => handleDeposit()} onCancel={() => setDepositing(false)} />
+                full account. handleDeposit/handleWithdraw reset needsDeviceVerification
+                themselves. */}
+            <DeviceStepUpPrompt onVerified={() => (mode === 'deposit' ? handleDeposit() : handleWithdraw())} onCancel={() => setMode('closed')} />
           </div>
         ) : (
-          <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+          <form onSubmit={mode === 'deposit' ? handleDeposit : handleWithdraw} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
             <input
-              type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)}
+              type="number" min="1" max={mode === 'withdraw' ? goal.currentAmount : undefined} required value={amount} onChange={(e) => setAmount(e.target.value)}
               placeholder="Amount (RWF)"
               style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)' }}
             />
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy} style={{ padding: '8px 14px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
-              {busy ? '…' : 'Add'}
+              {busy ? '…' : mode === 'deposit' ? 'Add' : 'Withdraw'}
             </button>
           </form>
         )
