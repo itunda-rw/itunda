@@ -519,9 +519,14 @@ class MarketplaceController(
     fun handleReviewNoCounterparty(ex: HoodReviewNoCounterpartyException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REVIEW_NO_COUNTERPARTY", ex.message ?: "Bad request"))
 
+    // Real IDOR fix (2026-08-30, wholesale FORBIDDEN-handler sweep): was
+    // HttpStatus.FORBIDDEN -- a stranger supplying any real transactionId could
+    // distinguish "exists, you weren't a party" (403) from "doesn't exist" (404,
+    // HoodReviewTransactionNotFoundException just above). Same existence-oracle
+    // class as this session's other fixes (Loan/Ikimina/GroupAccount/etc).
     @ExceptionHandler(HoodReviewNotPartyException::class)
     fun handleReviewNotParty(ex: HoodReviewNotPartyException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REVIEW_NOT_PARTY", ex.message ?: "Forbidden"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("REVIEW_NOT_PARTY", ex.message ?: "Not found"))
 
     @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
     fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
