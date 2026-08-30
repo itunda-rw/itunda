@@ -2,6 +2,7 @@ package rw.itunda.gift.web
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.GetMapping
@@ -57,7 +58,14 @@ class GiftVoucherController(
     // SavingsController/InsuranceController/CertificateController already establish, so
     // a real voucher's real expiresAt can be verified without waiting actual wall-clock
     // days for it to enter the reminder window.
+    // Real gap found live (2026-08-31, market-readiness audit): this fires the
+    // reminder job for EVERY user's expiring gift vouchers system-wide, yet had no
+    // ADMIN gate -- any authenticated user could call it. ADMIN-gated the same
+    // @PreAuthorize("hasRole('ADMIN')") way WeeklySavingsController.processDue already
+    // is (this route doesn't live under /api/v1/system/**, so it doesn't inherit
+    // SecurityConfig's blanket ADMIN gate there).
     @PostMapping("/process-expiry-reminders")
+    @PreAuthorize("hasRole('ADMIN')")
     fun processExpiryReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val processed = giftVoucherExpiryReminderScheduler.processDue()
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))

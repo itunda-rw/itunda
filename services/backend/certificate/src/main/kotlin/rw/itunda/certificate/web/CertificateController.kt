@@ -2,6 +2,7 @@ package rw.itunda.certificate.web
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -85,7 +86,14 @@ class CertificateController(
     // .processRenewalReminders already establish, so a real certificate's real
     // expiresAt can be verified without waiting actual wall-clock days for it to enter
     // the reminder window.
+    // Real gap found live (2026-08-31, market-readiness audit): this fires the
+    // reminder job for EVERY user's due certificates system-wide, yet had no ADMIN gate
+    // -- any authenticated user could call it. ADMIN-gated the same
+    // @PreAuthorize("hasRole('ADMIN')") way WeeklySavingsController.processDue already
+    // is (this route doesn't live under /api/v1/system/**, so it doesn't inherit
+    // SecurityConfig's blanket ADMIN gate there).
     @PostMapping("/process-renewal-reminders")
+    @PreAuthorize("hasRole('ADMIN')")
     fun processRenewalReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val processed = certificateRenewalReminderScheduler.processDue()
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))

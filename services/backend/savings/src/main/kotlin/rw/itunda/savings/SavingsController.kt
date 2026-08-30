@@ -2,6 +2,7 @@ package rw.itunda.savings
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -107,7 +108,16 @@ class SavingsController(
     // WeeklySavingsController.processDue already establishes, so a real goal's real
     // targetDate can be verified without waiting actual wall-clock days for it to
     // arrive.
+    // Real gap found live (2026-08-31, market-readiness audit): this fires the
+    // reminder job for EVERY user's due goals system-wide, yet had no ADMIN gate -- any
+    // authenticated user could call it. ADMIN-gated the same
+    // @PreAuthorize("hasRole('ADMIN')") way WeeklySavingsController.processDue already
+    // is (this route doesn't live under /api/v1/system/**, so it doesn't inherit
+    // SecurityConfig's blanket ADMIN gate there). Same fix on
+    // InsuranceController.processRenewalReminders, the identical gap in the identical
+    // convention, same day.
     @PostMapping("/goals/process-maturity-reminders")
+    @PreAuthorize("hasRole('ADMIN')")
     fun processMaturityReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val processed = savingsMaturityReminderScheduler.processDue()
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))

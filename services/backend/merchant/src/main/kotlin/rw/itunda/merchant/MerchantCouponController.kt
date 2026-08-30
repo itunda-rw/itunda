@@ -2,6 +2,7 @@ package rw.itunda.merchant
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
@@ -42,7 +43,14 @@ class MerchantCouponController(
     // SavingsController/InsuranceController/CertificateController/GiftVoucherController
     // already establish, so a real coupon's real expiresAt can be verified without
     // waiting actual wall-clock days for it to enter the reminder window.
+    // Real gap found live (2026-08-31, market-readiness audit): this fires the
+    // reminder job for EVERY merchant's expiring coupons system-wide, yet had no ADMIN
+    // gate -- any authenticated user could call it. ADMIN-gated the same
+    // @PreAuthorize("hasRole('ADMIN')") way WeeklySavingsController.processDue already
+    // is (this route doesn't live under /api/v1/system/**, so it doesn't inherit
+    // SecurityConfig's blanket ADMIN gate there).
     @PostMapping("/coupons/process-expiry-reminders")
+    @PreAuthorize("hasRole('ADMIN')")
     fun processExpiryReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val processed = merchantCouponExpiryReminderScheduler.processDue()
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))

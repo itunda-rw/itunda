@@ -104,15 +104,26 @@ class SavingsService(
             accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
         }
 
+        // Real bug found live (2026-08-31, via InsuranceService.contributeToFund's own
+        // build-time review comment naming this exact bug class here first): this used
+        // to post the FULL requested `amount` to the ledger and only cap the *field*
+        // (currentAmount) at targetAmount afterwards -- an overshooting deposit moved
+        // real money into savings_goal_payable that the capped field then never
+        // accounted for, and withdrawFromGoal can only ever reclaim up to
+        // goal.currentAmount, permanently stranding the excess with no path back to the
+        // user. Clamping the amount actually moved to the real remaining gap BEFORE
+        // touching the ledger keeps every RWF that leaves the account accounted for and
+        // withdrawable.
+        val actualAmount = amount.min(goal.targetAmount.subtract(goal.currentAmount))
         ledgerService.postLedgerTransaction(
             sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Deposit to ${goal.name}"),
-                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, amount, "Deposit to ${goal.name}"),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Deposit to ${goal.name}"),
+                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Deposit to ${goal.name}"),
             ),
         )
 
-        goal.currentAmount = goal.currentAmount.add(amount).min(goal.targetAmount)
+        goal.currentAmount = goal.currentAmount.add(actualAmount).min(goal.targetAmount)
         val justCompleted = goal.status != SavingsGoalStatus.completed && goal.currentAmount >= goal.targetAmount
         if (justCompleted) goal.status = SavingsGoalStatus.completed
         val saved = savingsGoalRepository.save(goal)
@@ -191,15 +202,19 @@ class SavingsService(
             return false
         }
 
+        // Same real overshoot fix as depositToGoal above (2026-08-31) -- a recurring
+        // auto-contribution that would overshoot the goal's target previously still
+        // moved the FULL monthlyContribution into the ledger, stranding the excess.
+        val actualContribution = goal.monthlyContribution.min(goal.targetAmount.subtract(goal.currentAmount))
         ledgerService.postLedgerTransaction(
             sourceAccount.currency,
             listOf(
-                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
-                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
+                LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualContribution, "Auto-save to ${goal.name}"),
+                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualContribution, "Auto-save to ${goal.name}"),
             ),
         )
 
-        goal.currentAmount = goal.currentAmount.add(goal.monthlyContribution).min(goal.targetAmount)
+        goal.currentAmount = goal.currentAmount.add(actualContribution).min(goal.targetAmount)
         // getGoalsDueForAutoContribution already filters to status == active, so this is
         // always a genuine active->completed transition, unlike depositToGoal's own guard.
         val justCompleted = goal.currentAmount >= goal.targetAmount

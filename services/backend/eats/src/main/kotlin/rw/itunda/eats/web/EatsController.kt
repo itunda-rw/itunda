@@ -269,7 +269,15 @@ class EatsController(
     // establish, so a real membership's real activeUntil can be verified without
     // waiting actual wall-clock days for it to enter the reminder window. See
     // MembershipExpiryReminderScheduler's own doc comment.
+    // Real gap found live (2026-08-31, market-readiness audit): this fires the
+    // reminder job for EVERY user's expiring memberships system-wide, yet had no ADMIN
+    // gate -- any authenticated user could call it, unlike this file's own
+    // processAbandonedDeliveries below, which is already ADMIN-gated. ADMIN-gated the
+    // same @PreAuthorize("hasRole('ADMIN')") way (this route doesn't live under
+    // /api/v1/system/**, so it doesn't inherit SecurityConfig's blanket ADMIN gate
+    // there).
     @PostMapping("/membership/process-expiry-reminders")
+    @PreAuthorize("hasRole('ADMIN')")
     fun processMembershipExpiryReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val processed = membershipExpiryReminderScheduler.processDue()
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
