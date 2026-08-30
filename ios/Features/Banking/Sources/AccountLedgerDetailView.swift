@@ -1,6 +1,17 @@
 import SwiftUI
 import CoreDesignSystem
 
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
+
 /// Real Toss Bank reference (20 screenshots, 2026-08-21, direct user instruction:
 /// "should look 100% like in this images pixels by pixels"): the real ledger
 /// drill-in, reached by tapping AccountSummaryCard's balance -- structurally
@@ -124,9 +135,9 @@ private struct TransactionDetailScreen: View {
             ("Type", transactionTypeLabel(tx.type)),
             ("Status", tx.subtitle),
             ("Date & time", ledgerFullDateTime(tx.createdAt)),
-            ("Balance after", "\(tx.currency) \(Int(tx.afterBalance))"),
+            ("Balance after", "\(tx.currency) \(formatAmount(Int(tx.afterBalance)))"),
         ]
-        if tx.fee > 0 { r.append(("Fee", "\(tx.currency) \(Int(tx.fee))")) }
+        if tx.fee > 0 { r.append(("Fee", "\(tx.currency) \(formatAmount(Int(tx.fee)))")) }
         return r
     }
 

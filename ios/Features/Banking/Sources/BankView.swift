@@ -3,7 +3,11 @@
 //  Ported from mobile_clients/ios (2026-07-10) into its correct Tuist module --
 //  see ARCHITECTURE.md §3.
 //
-//  NOT build-verified -- see Core/Risk/Sources/ZeroTrust.swift for why.
+//  Build-verified since 2026-08-30 (real xcodebuild, both the standalone
+//  FeatureBanking scheme and the full ItundaApp) -- the "NOT build-verified" note
+//  here previously was an environment limitation of an earlier session's sandbox
+//  (see Core/Risk/Sources/ZeroTrust.swift's own comment for the same class of
+//  historical caveat), not a property of this file's own code.
 //
 
 import SwiftUI
@@ -29,6 +33,17 @@ import CoreNetwork
 // SettingsScreen.swift/DeviceStepUpView.swift/TransferFlowContainer.swift/
 // TransferFlowScreens.swift.
 enum BankingLocale: String { case en, rw, fr }
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same per-file shape TransactionHistoryScreen.swift
+// already established.
+private func formatAmount(_ value: Int) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = ","
+    return formatter.string(from: NSNumber(value: value)) ?? "0"
+}
 
 private func loadBankingLocale() -> BankingLocale {
     if let raw = UserDefaults.standard.string(forKey: "itunda.locale"), let locale = BankingLocale(rawValue: raw) {
@@ -446,10 +461,10 @@ public struct BankView: View {
                         HStack {
                             Text("Your covered balance").font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote)).foregroundColor(IDS.Colors.textSecondary)
                             Spacer()
-                            Text("\(Int(dp.yourCoveredBalance)) RWF").font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
+                            Text("\(formatAmount(Int(dp.yourCoveredBalance))) RWF").font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                         }
-                        Text("Covered up to \(Int(dp.coverageCapPerUser)) RWF per user").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
-                        Text("itunda's reserve: \(Int(dp.fundReserveBalance)) RWF").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
+                        Text("Covered up to \(formatAmount(Int(dp.coverageCapPerUser))) RWF per user").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
+                        Text("itunda's reserve: \(formatAmount(Int(dp.fundReserveBalance))) RWF").font(IDS.scaledFont(size: 11, weight: .regular, relativeTo: .caption2)).foregroundColor(IDS.Colors.textTertiary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
