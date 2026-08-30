@@ -97,11 +97,17 @@ class IkiminaController(
     @ExceptionHandler(IkiminaNotFoundException::class)
     fun handleNotFound(ex: IkiminaNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("IKIMINA_NOT_FOUND", ex.message ?: "Not found"))
 
+    // Real IDOR fix (2026-08-30, pass 6): both were HttpStatus.FORBIDDEN -- a
+    // stranger probing ikiminaId values could distinguish "exists, not a
+    // member/organizer" (403) from "doesn't exist" (404, IkiminaNotFoundException
+    // just above) across getIkimina/inviteMember/startCycle/contributeThisRound/
+    // checkAndTriggerPayout. Same existence-oracle class as GroupAccountController/
+    // LoansController's own fixes.
     @ExceptionHandler(IkiminaNotOrganizerException::class)
-    fun handleNotOrganizer(ex: IkiminaNotOrganizerException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("IKIMINA_NOT_ORGANIZER", ex.message ?: "Forbidden"))
+    fun handleNotOrganizer(ex: IkiminaNotOrganizerException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("IKIMINA_NOT_ORGANIZER", ex.message ?: "Not found"))
 
     @ExceptionHandler(IkiminaNotMemberException::class)
-    fun handleNotMember(ex: IkiminaNotMemberException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("IKIMINA_NOT_MEMBER", ex.message ?: "Forbidden"))
+    fun handleNotMember(ex: IkiminaNotMemberException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("IKIMINA_NOT_MEMBER", ex.message ?: "Not found"))
 
     @ExceptionHandler(IkiminaMemberNotFoundException::class)
     fun handleMemberNotFound(ex: IkiminaMemberNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
