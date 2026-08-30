@@ -134,7 +134,16 @@ let featureDependencies: [TargetDependency] = [
 // No MainViewModel/AppState/@EnvironmentObject coupling, no injected callback needed
 // (unlike Android's real onOrderDelivery callback for the Delivery pill) -- this
 // extraction is fully self-contained.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps"]
+// "Certificate"/"Identity"/"Support" added 2026-08-30 -- real, sourced Toss precedent
+// (toss.tech/article/slash23-iOS's own example Microfeature list names "본인확인"
+// (identity verification) as its own standalone module, not folded into a generic
+// bucket) -- one module per real feature, matching Toss's own granularity, rather
+// than guessing a shared "Engagement" home for three unrelated concerns. `Identity`
+// here means KYC personal-identity submission, a different concern than
+// `CoreIdentity`'s device/biometric identity -- kept as two separate modules
+// deliberately, same real distinction Toss's own device-binding vs.
+// 본인확인(identity verification) draw.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

@@ -2,6 +2,7 @@ import SwiftUI
 import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
+import FeatureSupport
 
 // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
 // "it should look 100% like toss pay UI/UX features everything") -- see PayScreen's
