@@ -406,7 +406,10 @@ function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; 
 
 type TransferStep = 'recipient' | 'amount' | 'confirm' | 'sending' | 'success';
 
-function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; accountBalance: number }) {
+// Exported (2026-08-31) so OverviewAssetsView.tsx -- a standalone file, see its own
+// header comment on why -- can reuse this exact real send flow for its own per-account
+// "Send" action, rather than duplicating it.
+export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance, fromAccountId, fromAccountName }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; accountBalance: number; fromAccountId?: string; fromAccountName?: string }) {
   const { t } = useI18n();
   const TRANSFER_STEP_LABELS = [t('transfer.stepRecipient'), t('transfer.stepAmount'), t('transfer.stepConfirm')];
   const [step, setStep] = useState<TransferStep>('recipient');
@@ -513,7 +516,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
         setStep('success');
         return;
       }
-      const res = await sendDirect(recipient.trim(), Number(amount), memo.trim());
+      const res = await sendDirect(recipient.trim(), Number(amount), memo.trim(), fromAccountId);
       setResult({ message: res.message, newBalance: res.newBalance });
       // Real fix (2026-08-13, direct live-testing catch): the top-level balance
       // (AccountBalance, rendered above this whole form) previously only refreshed
@@ -748,6 +751,18 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBalance }: 
             {amount === '' ? '0' : Number(amount).toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
           </span>
           <div>
+            {/* Real gap found live (2026-08-31, direct user reference of their own
+                Toss app's "which account should the money come from" picker): a
+                specific non-default source account (passed in from Overview's or the
+                Bank hub's own account detail screen -- see OverviewAssetsView.tsx and
+                SavingsView's onSend) previously had no visible confirmation anywhere
+                on this screen that it, not the sender's MAIN account, is what's about
+                to be debited. */}
+            {fromAccountName && (
+              <p style={{ margin: '0 0 2px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
+                From {fromAccountName}
+              </p>
+            )}
             <button type="button" onClick={() => setAmount(String(accountBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
               {t('transfer.balanceLabel', { amount: accountBalance.toLocaleString() })}
             </button>
@@ -13676,6 +13691,12 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
   const [openAccountDetail, setOpenAccountDetail] = useState<Account | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferAccountBalance, setTransferAccountBalance] = useState(0);
+  // Real gap found live (2026-08-31): capturing which specific account was tapped
+  // into (not just its balance) so TransferFlow can debit THAT account instead of
+  // always defaulting to MAIN -- see P2pService.sendDirect's own new fromAccountId
+  // parameter.
+  const [transferFromAccountId, setTransferFromAccountId] = useState<string | undefined>();
+  const [transferFromAccountName, setTransferFromAccountName] = useState<string | undefined>();
 
   const load = () => {
     setError(null);
@@ -13717,13 +13738,15 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
         <AccountDetailScreen
           account={openAccountDetail}
           onBack={() => setOpenAccountDetail(null)}
-          onSend={(account) => { setOpenAccountDetail(null); setTransferAccountBalance(account.balance); setShowTransfer(true); }}
+          onSend={(account) => { setOpenAccountDetail(null); setTransferAccountBalance(account.balance); setTransferFromAccountId(account.id); setTransferFromAccountName(account.accountName); setShowTransfer(true); }}
           onNavigateToTab={onNavigateToTab ? (tab) => { setOpenAccountDetail(null); onNavigateToTab(tab); } : undefined}
         />
       )}
       {showTransfer && (
         <TransferFlow
           accountBalance={transferAccountBalance}
+          fromAccountId={transferFromAccountId}
+          fromAccountName={transferFromAccountName}
           onClose={() => setShowTransfer(false)}
           onSuccess={() => setShowTransfer(false)}
         />

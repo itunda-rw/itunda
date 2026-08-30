@@ -618,6 +618,77 @@ class P2pServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real sender explicitly choosing a non-MAIN account to send from") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val p2pNotificationService = mockk<P2pNotificationService>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val p2pTransferLimitService = mockk<P2pTransferLimitService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, accountRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, roundUpService, familyLinkService, autoTopUpService,
+            p2pTransferLimitService, p2pNotificationService,
+        )
+
+        every { accountRepository.findById("account_fx1") } returns Optional.of(account("account_fx1", "sender_fx", "5000"))
+        every { userRepository.findByPhoneNumber("+250788000099") } returns
+            User(id = "recipient_fx", phoneNumber = "+250788000099", firstName = "R", lastName = "T", passwordHash = "x")
+        every { accountRepository.findByUserIdAndType("recipient_fx", AccountType.MAIN) } returns
+            account("account_recipient_fx", "recipient_fx", "0")
+        val legsSlot = slot<List<LedgerLeg>>()
+        every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_fx", emptyList())
+        every { transactionRepository.save(any()) } answers { firstArg() }
+
+        When("they pass fromAccountId for a real account they own") {
+            val (transaction, _) = service.sendDirect("sender_fx", "+250788000099", BigDecimal("1000"), "", "account_fx1")
+
+            Then("it debits that specific account, not their MAIN account") {
+                transaction.fromAccountId shouldBe "account_fx1"
+                legsSlot.captured.first { it.direction == LedgerDirection.DEBIT }.accountId shouldBe "account_fx1"
+            }
+        }
+    }
+
+    Given("a real sender passing a fromAccountId that belongs to someone else") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val p2pNotificationService = mockk<P2pNotificationService>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val p2pTransferLimitService = mockk<P2pTransferLimitService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, accountRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, roundUpService, familyLinkService, autoTopUpService,
+            p2pTransferLimitService, p2pNotificationService,
+        )
+
+        every { accountRepository.findById("account_not_mine") } returns Optional.of(account("account_not_mine", "someone_else", "5000"))
+
+        When("they try to send from it") {
+            Then("it throws P2pNoAccountException -- never lets a sender debit an account they don't own") {
+                try {
+                    service.sendDirect("sender_fx2", "+250788000099", BigDecimal("1000"), "", "account_not_mine")
+                    error("expected P2pNoAccountException")
+                } catch (e: P2pNoAccountException) {
+                    e.message shouldBe "No account found for this account"
+                }
+            }
+        }
+    }
+
     Given("a real sender sending to an identifier that matches no real itunda account") {
         val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
         val accountRepository = mockk<AccountRepository>()

@@ -36,7 +36,7 @@ import rw.itunda.p2p.P2pTransferLimitExceededException
 import java.math.BigDecimal
 
 data class GenerateP2pRequest(val amount: BigDecimal, val description: String)
-data class SendDirectP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "")
+data class SendDirectP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "", val fromAccountId: String? = null)
 data class SendToFamilyMemberRequest(val childUserId: String, val amount: BigDecimal, val description: String = "")
 data class SendDelayedP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "")
 
@@ -98,7 +98,7 @@ class P2pController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send", idempotencyKey, request) {
-            val (transaction, newBalance) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description)
+            val (transaction, newBalance) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description, request.fromAccountId)
             200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance)
         }
         return ResponseEntity.status(status).body(body)

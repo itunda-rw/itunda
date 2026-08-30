@@ -249,7 +249,7 @@ class P2pService(
      * that resolves to neither is a real, honest 404, not a silent no-op.
      */
     @Transactional
-    fun sendDirect(senderUserId: String, recipientIdentifier: String, amount: BigDecimal, description: String): Pair<Transaction, BigDecimal> {
+    fun sendDirect(senderUserId: String, recipientIdentifier: String, amount: BigDecimal, description: String, fromAccountId: String? = null): Pair<Transaction, BigDecimal> {
         if (amount <= BigDecimal.ZERO) throw P2pInvalidAmountException("Amount must be greater than zero")
         val trimmedIdentifier = recipientIdentifier.trim()
         if (trimmedIdentifier.isEmpty()) throw P2pRecipientNotFoundException("Recipient is required")
@@ -258,8 +258,20 @@ class P2pService(
         // for a real mutating money-movement endpoint.
         rateLimiter.checkLimit("p2p:send:$senderUserId", limit = 30, window = Duration.ofHours(1))
 
-        var senderAccount = accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
-            ?: throw P2pNoAccountException("No account found for this account")
+        // Real gap found live (2026-08-31, direct user reference of their own Toss app
+        // showing a "which account should the money come from" picker on every send):
+        // this always resolved the sender's MAIN account and nothing else, even though
+        // `Transaction.fromAccountId` already models an arbitrary source account and a
+        // real itunda user can genuinely hold more than one debit-capable Account row
+        // (FOREIGN_CURRENCY, BUSINESS, MINI, GROW31_SAVINGS). `fromAccountId` is optional
+        // and defaults to the existing MAIN lookup, so every pre-existing caller (USSD,
+        // AutoTransfer, ScheduledTransfer) is unaffected.
+        var senderAccount = if (fromAccountId != null) {
+            accountRepository.findById(fromAccountId).filter { it.userId == senderUserId }.orElseThrow { P2pNoAccountException("No account found for this account") }
+        } else {
+            accountRepository.findByUserIdAndType(senderUserId, AccountType.MAIN)
+                ?: throw P2pNoAccountException("No account found for this account")
+        }
 
         val recipientAccount = resolveRecipientAccount(trimmedIdentifier)
 

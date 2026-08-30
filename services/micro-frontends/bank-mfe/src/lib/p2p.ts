@@ -21,11 +21,16 @@ export interface P2pRecipientPreview {
 export const resolveRecipient = (identifier: string) =>
   apiFetch<{ success: boolean; recipient: P2pRecipientPreview }>(`/api/v1/p2p/recipient?identifier=${encodeURIComponent(identifier)}`).then((r) => r.recipient);
 
-export const sendDirect = (recipient: string, amount: number, description: string) =>
+// Real gap found live (2026-08-31, direct user reference of their own Toss app showing
+// a "which account should the money come from" picker on every send): this always sent
+// from the sender's MAIN account with no way to choose another one. `fromAccountId` is
+// optional and omitted entirely (not sent as null) when absent, matching the backend's
+// own default-to-MAIN behavior for every pre-existing caller.
+export const sendDirect = (recipient: string, amount: number, description: string, fromAccountId?: string) =>
   apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>('/api/v1/p2p/send', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ recipient, amount, description }),
+    body: JSON.stringify(fromAccountId ? { recipient, amount, description, fromAccountId } : { recipient, amount, description }),
   });
 
 // Real fixed-amount person-to-person payment request (item 167, found via the

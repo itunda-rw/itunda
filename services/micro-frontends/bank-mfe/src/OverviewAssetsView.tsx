@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, getStoredUser } from './lib/api';
 import { fetchLinkedAccounts, fetchOverview, unlinkAccount, type AccountSummary, type LinkedAccount, type Overview } from './lib/overview';
 import { AccountLinkForm } from './AccountLinkForm';
+import { TransferFlow } from './BankDashboard';
 import { useI18n } from './i18n/I18nContext';
 import { useCountUp } from './hooks/useCountUp';
 
@@ -48,6 +49,15 @@ function TeaserCard({ maskedValue, message, ctaLabel, onPress }: { maskedValue: 
   );
 }
 
+// Real itunda-owned, freely-spendable wallet types -- distinct from locked-purpose
+// product ledgers (SAVINGS/INVESTMENT/LOAN/GROUP/WEEKLY_SAVINGS/UPFRONT_DEPOSIT/
+// GROW31_SAVINGS, each with its own dedicated withdraw/close flow, same as the real
+// savings-goal withdraw shipped the same day) and from PAY (kept asymmetric from Bank
+// on purpose, see [[project_itunda_bank_pay_separation]]) -- only these can realistically
+// fund an arbitrary P2P send the way a real Toss checking/foreign-currency/business
+// account can.
+const SENDABLE_ACCOUNT_TYPES = new Set(['MAIN', 'FOREIGN_CURRENCY', 'BUSINESS', 'MINI']);
+
 export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab: OverviewDestinationTab) => void }) {
   const { t } = useI18n();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -57,6 +67,15 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
   const [activeTab, setActiveTab] = useState<AssetTab>('ACCOUNTS');
   const [showAllAccounts, setShowAllAccounts] = useState(false);
   const myPhoneNumber = getStoredUser()?.phoneNumber ?? '';
+  // Real gap found live (2026-08-31, direct user reference of their own Toss app's
+  // "My accounts" screen: every account row -- checking, savings pockets, even a
+  // linked external bank account -- carries a "Send" action). This screen's own
+  // account rows previously had no action at all. Linked external accounts
+  // deliberately do NOT get one here: itunda only ever shows a real, honest
+  // simulated demoBalance for those, it has no real access to move money out of an
+  // account it doesn't control -- a fake "Send" there would be exactly the kind of
+  // dishonest UX this codebase's own AI_AGENT_SELF_CHECK.md warns against.
+  const [transferAccount, setTransferAccount] = useState<AccountSummary | null>(null);
 
   const refresh = () => {
     setError(null);
@@ -141,7 +160,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
         {activeTab === 'ACCOUNTS' && (
           <div>
             {visibleAccounts.map((a) => (
-              <OverviewAccountRow key={a.id} account={a} />
+              <OverviewAccountRow key={a.id} account={a} onSend={SENDABLE_ACCOUNT_TYPES.has(a.type) ? () => setTransferAccount(a) : undefined} />
             ))}
             {overview.accounts.length > 3 && (
               <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px' }} onClick={() => setShowAllAccounts((v) => !v)}>
@@ -257,6 +276,16 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
         </div>
       </div>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {transferAccount && (
+        <TransferFlow
+          accountBalance={transferAccount.balance}
+          fromAccountId={transferAccount.id}
+          fromAccountName={transferAccount.name}
+          onClose={() => setTransferAccount(null)}
+          onSuccess={() => { setTransferAccount(null); refresh(); }}
+          onBalanceRefresh={refresh}
+        />
+      )}
     </div>
   );
 }
@@ -264,12 +293,24 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
 // Extracted so useCountUp -- see its own doc comment -- can be called once per real
 // row rather than inside the parent's accounts.map() callback, which the Rules of
 // Hooks forbid (same pattern as ForeignCurrencyAccountRow in BankDashboard.tsx).
-function OverviewAccountRow({ account }: { account: AccountSummary }) {
+function OverviewAccountRow({ account, onSend }: { account: AccountSummary; onSend?: () => void }) {
   const animatedBalance = useCountUp(account.balance);
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
       <span>{account.name} ({account.type})</span>
-      <span>{account.currency} {animatedBalance.toLocaleString()}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span>{account.currency} {animatedBalance.toLocaleString()}</span>
+        {onSend && (
+          <button
+            type="button"
+            onClick={onSend}
+            className="itunda-btn itunda-btn-secondary"
+            style={{ padding: '4px 10px', fontSize: 'var(--itunda-type-scale-12-size)' }}
+          >
+            Send
+          </button>
+        )}
+      </div>
     </div>
   );
 }
