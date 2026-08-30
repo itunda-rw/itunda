@@ -6,8 +6,7 @@ import CoreNetwork
 // that file grew past its file-size-lint baseline. Overdraft and postpaid-credit
 // are both real, self-contained credit-line panels only rendered inside
 // LoansScreenView's own mode switch -- same split already done for Android's
-// LoansScreen.kt. Flipped from private to internal since their caller stays
-// behind.
+// LoansScreen.kt. Moved into FeatureCredit (2026-08-30) alongside LoansScreenView.
 
 // Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
 // backend OverdraftAccount.kt's own doc comment. Found 2026-07-29 via a full-backend-
@@ -214,4 +213,3 @@ struct PostpaidCreditPanel: View {
         }
     }
 }
-

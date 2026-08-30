@@ -12,9 +12,8 @@ import CoreDesignSystem
 // the REAL gates LoansService.applyForLoan actually runs in order (credit-score
 // check, account-type check, ledger disbursement) -- not invented filler copy.
 //
-// Extracted into its own file (2026-08-29) rather than added to
-// OverviewLoansCreditScoreScreens.swift directly -- that file was already at its
-// file-size-lint baseline (1030 lines) and this addition would have pushed it past.
+// Moved into FeatureCredit (2026-08-30) alongside LoansScreenView -- see
+// project_itunda_feature_isolation's own memory for the extraction order/rationale.
 let loanApplySteps = ["Checking your credit score", "Confirming loan terms", "Disbursing your funds"]
 
 struct LoanApplyProgress: View {

@@ -3,6 +3,7 @@ import UIKit
 import CoreNetwork
 import CoreDesignSystem
 import FeatureBanking
+import FeatureCredit
 import FeatureMaps
 import FeaturePayments
 
