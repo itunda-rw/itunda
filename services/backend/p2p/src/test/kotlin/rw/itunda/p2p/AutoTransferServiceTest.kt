@@ -73,7 +73,7 @@ class AutoTransferServiceTest : BehaviorSpec({
         }
 
         When("executeOne runs and sendDirect succeeds") {
-            every { p2pService.sendDirect(any(), any(), any(), any()) } returns (mockk<rw.itunda.core.domain.Transaction>() to BigDecimal.ZERO)
+            every { p2pService.sendDirect(any(), any(), any(), any()) } returns Triple(mockk<rw.itunda.core.domain.Transaction>(), BigDecimal.ZERO, emptyList())
 
             val transfer = autoTransfer()
             val succeeded = service.executeOne(transfer)

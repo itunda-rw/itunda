@@ -26,8 +26,16 @@ export const resolveRecipient = (identifier: string) =>
 // from the sender's MAIN account with no way to choose another one. `fromAccountId` is
 // optional and omitted entirely (not sent as null) when absent, matching the backend's
 // own default-to-MAIN behavior for every pre-existing caller.
+// Real gap found live (2026-08-31, Toss security research thread): matches Toss's own
+// real "Fraud Suspicion Siren" (사기의심 사이렌) -- a real, informational warning shown
+// to the sender when a transfer trips a fraud heuristic (new recipient / high value /
+// velocity), never a silent block. Backend FraudRuleEngine.evaluate's result existed
+// since the engine shipped but was discarded at every call site -- see
+// P2pService.sendDirect's own doc comment. fraudWarnings is always present (an empty
+// array for the overwhelming common case of a clean transfer), never undefined, so
+// callers can render it unconditionally.
 export const sendDirect = (recipient: string, amount: number, description: string, fromAccountId?: string) =>
-  apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>('/api/v1/p2p/send', {
+  apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number; fraudWarnings: string[] }>('/api/v1/p2p/send', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify(fromAccountId ? { recipient, amount, description, fromAccountId } : { recipient, amount, description }),

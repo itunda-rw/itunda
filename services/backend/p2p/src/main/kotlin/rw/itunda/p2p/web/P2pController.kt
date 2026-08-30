@@ -17,6 +17,8 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
+import rw.itunda.core.domain.FraudFlag
+import rw.itunda.core.domain.FraudRule
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.AccountFrozenException
 import rw.itunda.core.security.CurrentUser
@@ -98,10 +100,23 @@ class P2pController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send", idempotencyKey, request) {
-            val (transaction, newBalance) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description, request.fromAccountId)
-            200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance)
+            val (transaction, newBalance, fraudFlags) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description, request.fromAccountId)
+            200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance, "fraudWarnings" to fraudFlags.map(::fraudWarningMessage))
         }
         return ResponseEntity.status(status).body(body)
+    }
+
+    // Real Toss "Fraud Suspicion Siren" (사기의심 사이렌) parity -- see
+    // P2pService.sendDirect's own doc comment for the full account. Friendly,
+    // non-technical wording for the sender, deliberately distinct from FraudFlag
+    // .description (written for FraudController's admin review queue, and mentions
+    // internal threshold numbers a sender doesn't need). Purely informational -- the
+    // transfer this warning is attached to has already completed by the time it's
+    // returned.
+    private fun fraudWarningMessage(flag: FraudFlag): String = when (flag.rule) {
+        FraudRule.NEW_RECIPIENT -> "You've never sent money to this recipient before. Make sure you trust them."
+        FraudRule.HIGH_VALUE -> "This is a large transfer. Double-check the recipient before sending again."
+        FraudRule.VELOCITY -> "You've sent several transfers in the last few minutes. If this wasn't you, contact support."
     }
 
     // Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant

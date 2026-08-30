@@ -9,6 +9,8 @@ import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.FraudFlag
+import rw.itunda.core.domain.FraudRule
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.P2pPaymentRequest
@@ -614,6 +616,50 @@ class P2pServiceTest : BehaviorSpec({
             Then("it still resolves the real recipient and defaults the description honestly") {
                 transaction.recipientId shouldBe "recipient_2"
                 transaction.description shouldBe "Transfer - Transfer"
+            }
+        }
+    }
+
+    // Real gap found live (2026-08-31, Toss security research thread, matching Toss's
+    // own real "Fraud Suspicion Siren"): FraudRuleEngine.evaluate's result used to be
+    // discarded at this exact call site -- nothing ever told the sender their transfer
+    // tripped a fraud heuristic. Asserts sendDirect now threads the real flags through
+    // unchanged (P2pController turns them into the sender-facing warning strings).
+    Given("a real sender whose transfer trips a fraud heuristic") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val p2pNotificationService = mockk<P2pNotificationService>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val p2pTransferLimitService = mockk<P2pTransferLimitService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, accountRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, roundUpService, familyLinkService, autoTopUpService,
+            p2pTransferLimitService, p2pNotificationService,
+        )
+
+        every { accountRepository.findByUserIdAndType("sender_flag", AccountType.MAIN) } returns account("account_sender_flag", "sender_flag", "500000")
+        every { accountRepository.findById("account_sender_flag") } returns Optional.of(account("account_sender_flag", "sender_flag", "300000"))
+        every { userRepository.findByPhoneNumber("+250788000555") } returns
+            User(id = "recipient_flag", phoneNumber = "+250788000555", firstName = "R", lastName = "T", passwordHash = "x")
+        every { accountRepository.findByUserIdAndType("recipient_flag", AccountType.MAIN) } returns
+            account("account_recipient_flag", "recipient_flag", "0")
+        val flag = FraudFlag(id = "flag_1", userId = "sender_flag", transactionId = "any", rule = FraudRule.NEW_RECIPIENT, description = "First time sending to this recipient", amount = BigDecimal("200000"))
+        every { fraudRuleEngine.evaluate("sender_flag", "recipient_flag", BigDecimal("200000"), any()) } returns listOf(flag)
+        every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_flag", emptyList())
+        every { transactionRepository.save(any()) } answers { firstArg() }
+
+        When("they send to a genuinely new recipient") {
+            val (_, _, fraudFlags) = service.sendDirect("sender_flag", "+250788000555", BigDecimal("200000"), "")
+
+            Then("the real flag the engine raised is returned, not silently discarded") {
+                fraudFlags shouldBe listOf(flag)
             }
         }
     }

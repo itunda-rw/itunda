@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Account
+import rw.itunda.core.domain.FraudFlag
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.P2pPaymentRequest
@@ -248,8 +249,22 @@ class P2pService(
      * findByAccountNumber`, globally unique) -- never a fabricated match; an identifier
      * that resolves to neither is a real, honest 404, not a silent no-op.
      */
+    // Real gap found live (2026-08-31, Toss security research thread): matches
+    // Toss's own real "Fraud Suspicion Siren" (사기의심 사이렌, toss.im/tossfeed/article/
+    // toss-fraud-detection) -- a real, informational warning shown to the sender when a
+    // transfer trips a fraud heuristic, never a silent block. FraudRuleEngine.evaluate's
+    // own result was computed here since the feature shipped but simply discarded at
+    // every call site; nothing ever told the sender their transfer looked unusual, even
+    // when NEW_RECIPIENT + HIGH_VALUE both fired on the same transfer. Returned here
+    // (not surfaced by the fraud engine itself, which stays review-only/non-blocking per
+    // its own doc comment) so P2pController can turn it into a real, honest,
+    // non-technical warning string for the sender -- the flag itself, and the money
+    // movement, are both already final by the time this returns; this is purely
+    // informational, matching the post-hoc timing FraudRuleEngine.evaluate already has
+    // (see this function's own "evaluated before save" comment above -- fraud detection
+    // here has never been able to block a transfer before it lands, only flag it after).
     @Transactional
-    fun sendDirect(senderUserId: String, recipientIdentifier: String, amount: BigDecimal, description: String, fromAccountId: String? = null): Pair<Transaction, BigDecimal> {
+    fun sendDirect(senderUserId: String, recipientIdentifier: String, amount: BigDecimal, description: String, fromAccountId: String? = null): Triple<Transaction, BigDecimal, List<FraudFlag>> {
         if (amount <= BigDecimal.ZERO) throw P2pInvalidAmountException("Amount must be greater than zero")
         val trimmedIdentifier = recipientIdentifier.trim()
         if (trimmedIdentifier.isEmpty()) throw P2pRecipientNotFoundException("Recipient is required")
@@ -337,7 +352,7 @@ class P2pService(
         // Evaluated before save, same ordering reasoning as payRequest's own inline
         // comment: evaluating after would let this transaction match itself as prior
         // history and permanently mask NEW_RECIPIENT.
-        fraudRuleEngine.evaluate(senderUserId, recipientAccount.userId, amount, transaction.id)
+        val fraudFlags = fraudRuleEngine.evaluate(senderUserId, recipientAccount.userId, amount, transaction.id)
         transactionRepository.save(transaction)
         p2pNotificationService.notifyMoneyReceived(recipientAccount.userId, senderUserId, amount)
         p2pNotificationService.notifyMoneySent(senderUserId, senderAccount, recipientAccount.userId, amount)
@@ -398,7 +413,7 @@ class P2pService(
         }
 
         val updatedSenderAccount = accountRepository.findById(senderAccount.id).orElseThrow { P2pNoAccountException("No account found for this account") }
-        return transaction to updatedSenderAccount.balance
+        return Triple(transaction, updatedSenderAccount.balance, fraudFlags)
     }
 
     /**
@@ -413,7 +428,7 @@ class P2pService(
      * same notification, zero duplicated ledger logic.
      */
     @Transactional
-    fun sendToFamilyMember(guardianUserId: String, childUserId: String, amount: BigDecimal, description: String): Pair<Transaction, BigDecimal> {
+    fun sendToFamilyMember(guardianUserId: String, childUserId: String, amount: BigDecimal, description: String): Triple<Transaction, BigDecimal, List<FraudFlag>> {
         if (!familyLinkService.isActiveGuardianOf(guardianUserId, childUserId)) {
             throw P2pRecipientNotFoundException("No active family link with this account")
         }

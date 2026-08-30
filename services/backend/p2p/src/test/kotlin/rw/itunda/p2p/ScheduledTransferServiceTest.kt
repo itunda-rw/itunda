@@ -149,13 +149,15 @@ class ScheduledTransferServiceTest : BehaviorSpec({
 
         When("its scheduled date arrives and the real transfer succeeds") {
             every { p2pService.sendDirect("sender_1", "+250788000002", BigDecimal("10000"), "Rent") } returns
-                (
+                Triple(
                     Transaction(
                         id = "ledgertxn_1", referenceNumber = "REF1", senderId = "sender_1", recipientId = "recipient_1",
                         fromAccountId = "account_sender", toAccountId = "account_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
                         currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "Transfer - Rent",
-                    ) to BigDecimal("90000")
-                    )
+                    ),
+                    BigDecimal("90000"),
+                    emptyList(),
+                )
 
             val succeeded = service.executeOne(ScheduledTransferFixture.pending())
 
@@ -187,13 +189,15 @@ class ScheduledTransferServiceTest : BehaviorSpec({
 
         When("its scheduled date arrives and the real transfer succeeds a second time") {
             every { p2pService.sendDirect(any(), any(), any(), any()) } returns
-                (
+                Triple(
                     Transaction(
                         id = "ledgertxn_2", referenceNumber = "REF2", senderId = "sender_1", recipientId = "recipient_1",
                         fromAccountId = "account_sender", toAccountId = "account_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
                         currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "Transfer - Rent",
-                    ) to BigDecimal("90000")
-                    )
+                    ),
+                    BigDecimal("90000"),
+                    emptyList(),
+                )
 
             service.executeOne(ScheduledTransferFixture.pending())
 

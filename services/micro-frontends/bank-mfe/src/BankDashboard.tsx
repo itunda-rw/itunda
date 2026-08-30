@@ -417,7 +417,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
   const [recipientPreview, setRecipientPreview] = useState<P2pRecipientPreview | null>(null);
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
-  const [result, setResult] = useState<{ message: string; newBalance: number } | null>(null);
+  const [result, setResult] = useState<{ message: string; newBalance: number; fraudWarnings: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Real device binding (2026-07-20) -- a real 403 DEVICE_NOT_VERIFIED (this device
@@ -517,7 +517,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
         return;
       }
       const res = await sendDirect(recipient.trim(), Number(amount), memo.trim(), fromAccountId);
-      setResult({ message: res.message, newBalance: res.newBalance });
+      setResult({ message: res.message, newBalance: res.newBalance, fraudWarnings: res.fraudWarnings });
       // Real fix (2026-08-13, direct live-testing catch): the top-level balance
       // (AccountBalance, rendered above this whole form) previously only refreshed
       // when onSuccess fired on the "Done" button -- but this confirmation panel
@@ -619,6 +619,19 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)', marginTop: '14px' }}>
               {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })}
             </p>
+            {/* Real Toss "Fraud Suspicion Siren" (사기의심 사이렌) parity -- see
+                lib/p2p.ts's own doc comment. Purely informational: the transfer this
+                warning is attached to has already completed by the time it's shown,
+                same as Toss's own post-payment FDS notice. */}
+            {result.fraudWarnings.length > 0 && (
+              <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px', marginTop: '14px', textAlign: 'left' }}>
+                {result.fraudWarnings.map((warning, i) => (
+                  <p key={i} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', margin: i === 0 ? 0 : '4px 0 0' }}>
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
       </FullScreenFlow>

@@ -147,7 +147,7 @@ class UssdServiceTest : BehaviorSpec({
             amount = BigDecimal("5000"), fee = BigDecimal.ZERO, currency = "RWF",
             type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "USSD transfer",
         )
-        every { p2pService.sendDirect("u1", "+250788222222", BigDecimal("5000"), "USSD transfer") } returns (transaction to BigDecimal("70000"))
+        every { p2pService.sendDirect("u1", "+250788222222", BigDecimal("5000"), "USSD transfer") } returns Triple(transaction, BigDecimal("70000"), emptyList())
 
         When("selecting option 2, entering recipient, amount, then the real correct PIN") {
             service.handleUssdRequest("sess1", "+250788111111", "2") shouldBe "CON Enter recipient phone number"
