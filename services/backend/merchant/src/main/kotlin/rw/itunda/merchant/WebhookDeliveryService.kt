@@ -63,6 +63,16 @@ class WebhookDeliveryService(
     fun deliverCancelStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =
         deliver("CANCEL_STATUS_CHANGED", merchantId, webhookUrl, data, webhookSecret)
 
+    // Real Commerce order-status webhook (2026-08-30, market-readiness audit) -- a
+    // merchant integrating their own inventory/fulfillment system with itunda Shop had
+    // no way to learn about a new order or a status change except polling
+    // GET /api/v1/commerce/merchant-orders. Reuses this exact same real delivery/
+    // retry/signature mechanism PAYMENT_STATUS_CHANGED already established -- itunda
+    // Pay and itunda Shop are two different money-moving products sharing one honest
+    // webhook infrastructure, not two bespoke ones. See OrderService's own call sites.
+    fun deliverOrderStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>, webhookSecret: String? = null) =
+        deliver("ORDER_STATUS_CHANGED", merchantId, webhookUrl, data, webhookSecret)
+
     fun deliveryHistory(merchantId: String): List<Map<String, Any?>> =
         webhookDeliveryRepository.findTop100ByMerchantIdOrderByCreatedAtDesc(merchantId).map { delivery ->
             mapOf(

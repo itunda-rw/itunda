@@ -88,6 +88,7 @@ class OrderService(
     private val timeDealRepository: TimeDealRepository,
     private val affiliateService: AffiliateService,
     private val autoTopUpService: rw.itunda.account.AutoTopUpService,
+    private val webhookDeliveryService: rw.itunda.merchant.WebhookDeliveryService,
 ) {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
 
@@ -334,6 +335,7 @@ class OrderService(
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
         }
+        notifyMerchantWebhook(order, merchant)
 
         // Real 쿠팡파트너스 (Coupang Partners)-style affiliate commission (item 229) --
         // see AffiliateService's own doc comment. Best-effort, same "auxiliary side-
@@ -431,6 +433,7 @@ class OrderService(
             OrderStatus.DELIVERED -> notifyBuyer(saved, "Order delivered", "Your order from ${merchant.businessName} has been delivered.")
             else -> {}
         }
+        notifyMerchantWebhook(saved, merchant)
         return saved
     }
 
@@ -466,6 +469,7 @@ class OrderService(
         val saved = orderRepository.save(order)
         val merchant = merchantRepository.findById(order.merchantId).orElse(null)
         notifyBuyer(saved, "Order shipped", "${merchant?.businessName ?: "Your order"} has been picked up and is on the way.")
+        notifyMerchantWebhook(saved, merchant)
         return saved
     }
 
@@ -485,6 +489,7 @@ class OrderService(
         val saved = orderRepository.save(order)
         val merchant = merchantRepository.findById(order.merchantId).orElse(null)
         notifyBuyer(saved, "Order delivered", "Your order from ${merchant?.businessName ?: "the seller"} has been delivered.")
+        notifyMerchantWebhook(saved, merchant)
         return saved
     }
 
@@ -612,7 +617,35 @@ class OrderService(
         if (isSeller) {
             notifyBuyer(saved, "Order cancelled", "${merchant?.businessName ?: "The seller"} cancelled your order. Your payment has been refunded.")
         }
+        notifyMerchantWebhook(saved, merchant)
         return saved
+    }
+
+    // Real Commerce order-status webhook (2026-08-30) -- see WebhookDeliveryService
+    // .deliverOrderStatusChanged's own doc comment. Best-effort, same "auxiliary
+    // side-effect can't block the real operation" discipline as the new-order push in
+    // placeOrder above -- a merchant's unreachable/unconfigured webhook endpoint must
+    // never fail an already-completed real order operation.
+    private fun notifyMerchantWebhook(order: Order, merchant: rw.itunda.core.domain.Merchant?) {
+        if (merchant?.webhookUrl.isNullOrBlank()) return
+        try {
+            webhookDeliveryService.deliverOrderStatusChanged(
+                merchant!!.id,
+                merchant.webhookUrl,
+                mapOf(
+                    "orderId" to order.id,
+                    "merchantName" to merchant.businessName,
+                    "buyerId" to order.buyerId,
+                    "status" to order.status.name,
+                    "totalAmount" to order.totalAmount,
+                    "fee" to order.fee,
+                    "updatedAt" to order.updatedAt.toString(),
+                ),
+                merchant.webhookSecret,
+            )
+        } catch (e: Exception) {
+            logger.warn("Could not deliver order-status webhook for order {}", order.id, e)
+        }
     }
 
     // Real buyer order-status notifications (2026-07-20) -- the real "your order was

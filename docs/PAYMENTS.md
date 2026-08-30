@@ -99,7 +99,13 @@ Real, persistent, retry-backed delivery (`WebhookDeliveryService`/`WebhookRetryS
 a durable-outbox row per delivery, so a multi-hour retry window survives a process restart.
 Fires `PAYMENT_STATUS_CHANGED` on completion and `CANCEL_STATUS_CHANGED` on a cancel/refund
 (two genuinely separate event types, matching Toss Payments' own real convention, so a
-receiver can dispatch on `eventType` alone). Envelope: `{ eventId, eventType, createdAt,
+receiver can dispatch on `eventType` alone). The same mechanism and `webhookUrl`/
+`webhookSecret` also carry a third, genuinely different event, `ORDER_STATUS_CHANGED` --
+fired by `services/backend/commerce/OrderService` on every Commerce order lifecycle
+transition (placed/packed/shipped/delivered/cancelled), added 2026-08-30 so a merchant
+integrating their own inventory/fulfillment system isn't limited to polling
+`GET /api/v1/commerce/merchant-orders`. itunda Pay and itunda Shop are two different
+money-moving products sharing one honest webhook infrastructure, not two bespoke ones. Envelope: `{ eventId, eventType, createdAt,
 data }`. Retry schedule matches Toss's own documented scheme exactly: up to 7 attempts,
 intervals 1, 4, 16, 64, 256, 1024, 4096 minutes (each 4× the last), a ~2.8-day window.
 `orderId` is included in every payment webhook so a receiver can correlate back to its own

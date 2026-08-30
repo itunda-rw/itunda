@@ -273,7 +273,8 @@ Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 W
 |---|---|---|---|---|
 | POST | `/register` | `{businessName}` | `{success, merchant: {...}}` | No KYB/business verification — accepts any authenticated user |
 | GET | `/me` | — | `{success, merchant: {...}}` | |
-| POST | `/webhook-url` | `{webhookUrl}` | `{success, merchant: {...}}` | Built and live-verified 2026-07-13. Registers the URL `collect` delivers `PAYMENT_STATUS_CHANGED` events to |
+| POST | `/webhook-url` | `{webhookUrl}` | `{success, merchant: {...}}` | Built and live-verified 2026-07-13. Registers the URL `collect`/Commerce order updates/`/api/v1/pay/*` deliver events to |
+| POST | `/webhook-secret/generate` | — | `{success, webhookSecret}` | Real, added 2026-08-30. `whsec_`-prefixed, shown exactly once, stored in plaintext (itunda re-signs every future delivery with it, unlike the one-way-hashed API key). Every webhook delivery to this merchant's `webhookUrl` carries an `X-Itunda-Signature: HMAC-SHA256(rawBody, secret)` header once generated — see `docs/PAYMENTS.md`'s Webhooks section for the full receiver-side verification contract |
 | POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
 | POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST (Toss Payments' documented shape). Real persistent retry as of 2026-07-13 (7 attempts, 1/4/16/64/256/1024/4096-minute schedule, matching Toss's own documented retry policy exactly) — failure never blocks or rolls back the payment, see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row |
 
@@ -532,9 +533,17 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   this document). Profile lives at `GET /api/v1/auth/profile`; there is no spending-analytics
   endpoint at all yet (`docs/TOSS_PARITY_MATRIX.md`'s Spending row: `demo`, categorization is
   still target).
-- **Webhooks for anything other than merchant collection.** `POST /api/v1/merchant/webhook-url` +
-  `PAYMENT_STATUS_CHANGED` delivery on collection are real (built 2026-07-13, see the Merchant
-  section) — no other module emits webhooks of any kind.
+- ~~Webhooks for anything other than merchant collection.~~ **Stale as of 2026-08-30** — real
+  as of 2026-07-13 was `POST /api/v1/merchant/webhook-url` + `PAYMENT_STATUS_CHANGED`/
+  `CANCEL_STATUS_CHANGED` delivery on collection/cancel (Merchant section). Since then, the
+  external "Pay with itunda" checkout API (`/api/v1/pay/*`, see `docs/PAYMENTS.md`) reuses
+  the identical mechanism, and Commerce order lifecycle (`OrderService.placeOrder`/
+  `updateOrderStatus`/`claimDelivery`/`completeDelivery`/`cancelOrder`) now fires a real
+  `ORDER_STATUS_CHANGED` event on the same `webhookUrl` — one shared
+  `WebhookDeliveryService`, not a second bespoke mechanism. Also new 2026-08-30: real
+  `X-Itunda-Signature` HMAC-SHA256 verification (`POST /api/v1/merchant/webhook-secret/
+  generate`) on every event type, closing the "any attacker who learns a webhook URL can
+  forge a delivery" gap this document itself never flagged as a risk until now.
 
 ## What Changed Since the Last Version of This Document
 

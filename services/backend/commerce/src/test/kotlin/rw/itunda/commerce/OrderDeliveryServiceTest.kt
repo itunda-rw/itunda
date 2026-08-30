@@ -67,11 +67,12 @@ class OrderDeliveryServiceTest : BehaviorSpec({
         every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val autoTopUpService = mockk<rw.itunda.account.AutoTopUpService>(relaxed = true)
         every { autoTopUpService.ensureSufficientPayBalance(any(), any(), any()) } answers { secondArg() }
+        val webhookDeliveryService = mockk<rw.itunda.merchant.WebhookDeliveryService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             accountRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository, affiliateService, autoTopUpService,
+            timeDealRepository, affiliateService, autoTopUpService, webhookDeliveryService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", accountId = "account_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", accountId = "account_rider", available = true)
