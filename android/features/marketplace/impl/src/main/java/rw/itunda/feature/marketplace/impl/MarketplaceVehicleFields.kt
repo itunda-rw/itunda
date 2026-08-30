@@ -102,13 +102,13 @@ internal fun VehicleDetailSection(listing: ListingDto) {
         listing.vehicleInsuranceClaimCount?.let { VehicleInfoRow("Insurance claims", it.toString()) }
         if (listing.vehicleIsLeaseTakeover) {
             Text("Lease takeover", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-            listing.leaseTotalAcquisitionCost?.let { VehicleInfoRow("Total acquisition cost", "${it.toLong()} RWF") }
-            listing.leaseMonthlyPayment?.let { VehicleInfoRow("Monthly payment", "${it.toLong()} RWF") }
+            listing.leaseTotalAcquisitionCost?.let { VehicleInfoRow("Total acquisition cost", "${formatMoneyVehicle(it)} RWF") }
+            listing.leaseMonthlyPayment?.let { VehicleInfoRow("Monthly payment", "${formatMoneyVehicle(it)} RWF") }
             if (listing.leaseRemainingMonths != null && listing.leaseTotalMonths != null) {
                 VehicleInfoRow("Remaining", "${listing.leaseRemainingMonths} / ${listing.leaseTotalMonths} months")
             }
-            listing.leaseSubsidyAmount?.let { VehicleInfoRow("Subsidy", "${it.toLong()} RWF") }
-            listing.leaseReturnFee?.let { VehicleInfoRow("Return fee at end", "${it.toLong()} RWF") }
+            listing.leaseSubsidyAmount?.let { VehicleInfoRow("Subsidy", "${formatMoneyVehicle(it)} RWF") }
+            listing.leaseReturnFee?.let { VehicleInfoRow("Return fee at end", "${formatMoneyVehicle(it)} RWF") }
         }
     }
 }
@@ -120,3 +120,8 @@ private fun VehicleInfoRow(label: String, value: String) {
         Text(value, color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
+private fun formatMoneyVehicle(value: Number): String = "%,d".format(value.toLong())

@@ -122,7 +122,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
             try {
                 val result = NetworkClient.apiService.tapTransitFare(UUID.randomUUID().toString(), TapFareRequest(operator, fareAmount))
                 balance = result.balance
-                tapMessage = "Tapped ${result.trip.fare.toPlainString()} RWF at ${result.trip.operator}"
+                tapMessage = "Tapped ${formatMoneyTransit(result.trip.fare)} RWF at ${result.trip.operator}"
                 load()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -149,7 +149,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                         Column {
                             Text("itunda Transit balance", fontSize = 13.sp, color = Ids.colors.textSecondary)
                             Text(
-                                "${(balance?.balance ?: BigDecimal.ZERO).toPlainString()} RWF",
+                                "${formatMoneyTransit(balance?.balance ?: BigDecimal.ZERO)} RWF",
                                 fontSize = 28.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
                             )
                         }
@@ -224,7 +224,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                         valueRange = MIN_FARE.toFloat()..MAX_FARE.toFloat(), steps = 5,
                                         modifier = Modifier.weight(1f),
                                     )
-                                    Text("${fare.toLong()} RWF", fontSize = 14.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Text("${formatMoneyTransit(fare)} RWF", fontSize = 14.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                 }
                                 val insufficientBalance = (balance?.balance ?: BigDecimal.ZERO) < BigDecimal.valueOf(fare.toLong())
                                 Row(
@@ -235,7 +235,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                     horizontalArrangement = Arrangement.Center,
                                 ) {
                                     Text(
-                                        if (insufficientBalance) "Balance too low" else if (busy) "Tapping…" else "Tap ${fare.toLong()} RWF",
+                                        if (insufficientBalance) "Balance too low" else if (busy) "Tapping…" else "Tap ${formatMoneyTransit(fare)} RWF",
                                         color = if (insufficientBalance) Ids.colors.textSecondary else androidx.compose.ui.graphics.Color.White,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     )
@@ -252,7 +252,7 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
                                         Text(trip.operator, fontSize = 13.sp)
                                         Text(trip.createdAt, fontSize = 11.sp, color = Ids.colors.textSecondary)
                                     }
-                                    Text("${trip.fare.toPlainString()} RWF", fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    Text("${formatMoneyTransit(trip.fare)} RWF", fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                 }
                             }
                         }
@@ -262,3 +262,8 @@ fun TransitScreen(onBack: () -> Unit, onOpenCollect: () -> Unit) {
         }
     }
 }
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
+private fun formatMoneyTransit(value: Number): String = "%,d".format(value.toLong())

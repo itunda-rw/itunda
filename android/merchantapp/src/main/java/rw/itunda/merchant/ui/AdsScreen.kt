@@ -166,12 +166,12 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
                 onSelect = { days = it },
             )
             Text(
-                "${selectedTier.price} RWF will be charged from your account. If you already have an active ad, this extends it.",
+                "${formatMoneyAds(selectedTier.price)} RWF will be charged from your account. If you already have an active ad, this extends it.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             IdsButton(
-                text = if (submitting) "Starting…" else "Pay ${selectedTier.price} RWF & run ad",
+                text = if (submitting) "Starting…" else "Pay ${formatMoneyAds(selectedTier.price)} RWF & run ad",
                 enabled = !submitting,
                 onClick = {
                     if (title.isBlank()) {
@@ -198,3 +198,8 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
         }
     }
 }
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached the merchantapp module at all).
+private fun formatMoneyAds(value: Int): String = "%,d".format(value)

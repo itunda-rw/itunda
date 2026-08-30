@@ -179,7 +179,7 @@ fun CardScreen(onBack: () -> Unit) {
                     ChargeCardRequest(parsedAmount, merchantName.trim()),
                 )
                 card = result.card
-                chargeMessage = "Paid ${result.transaction.amount.toPlainString()} RWF at ${result.transaction.merchantName}"
+                chargeMessage = "Paid ${formatMoneyCard(result.transaction.amount)} RWF at ${result.transaction.merchantName}"
                 merchantName = ""
                 chargeAmount = ""
                 load()

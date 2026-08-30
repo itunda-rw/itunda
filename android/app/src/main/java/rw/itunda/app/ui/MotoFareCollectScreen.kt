@@ -75,14 +75,14 @@ private fun MotoFareEarningsSummary(trips: List<MotoFareTripDto>, totalElements:
             }
             Column {
                 Text("Total (last ${trips.size})", fontSize = 11.sp, color = Ids.colors.textSecondary)
-                Text("${totalFare.toLong()} RWF", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ids.colors.success)
+                Text("${formatMoneyMotoFare(totalFare)} RWF", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ids.colors.success)
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
         trips.take(5).forEach { trip ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(trip.createdAt, fontSize = 12.sp, color = Ids.colors.textSecondary)
-                Text("${trip.fare.toPlainString()} RWF", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text("${formatMoneyMotoFare(trip.fare)} RWF", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -156,7 +156,7 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
                         val result = collected!!
                         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Collected", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.success)
-                            Text("${result.fare.toPlainString()} RWF", fontSize = 16.sp)
+                            Text("${formatMoneyMotoFare(result.fare)} RWF", fontSize = 16.sp)
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(10.dp))
                                     .background(Ids.colors.brand).pressScaleClickable(onClick = ::reset).padding(vertical = 14.dp),
@@ -195,7 +195,7 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
                                     valueRange = MIN_FARE.toFloat()..MAX_FARE.toFloat(), steps = 55,
                                     modifier = Modifier.weight(1f),
                                 )
-                                Text("${fare.toLong()} RWF", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("${formatMoneyMotoFare(fare)} RWF", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -203,7 +203,7 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
                                     .padding(vertical = 14.dp),
                                 horizontalArrangement = Arrangement.Center,
                             ) {
-                                Text(if (busy) "Collecting…" else "Collect ${fare.toLong()} RWF", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(if (busy) "Collecting…" else "Collect ${formatMoneyMotoFare(fare)} RWF", color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -212,3 +212,8 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
         }
     }
 }
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
+private fun formatMoneyMotoFare(value: Number): String = "%,d".format(value.toLong())

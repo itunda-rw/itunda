@@ -109,7 +109,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                         val result = collected!!
                         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Collected", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.success)
-                            Text("${result.fare.toPlainString()} RWF · ${result.operator}", fontSize = 16.sp)
+                            Text("${formatMoneyTransitCollect(result.fare)} RWF · ${result.operator}", fontSize = 16.sp)
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(10.dp))
                                     .background(Ids.colors.brand).pressScaleClickable(onClick = ::reset).padding(vertical = 14.dp),
@@ -158,7 +158,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                     valueRange = MIN_FARE.toFloat()..MAX_FARE.toFloat(), steps = 5,
                                     modifier = Modifier.weight(1f),
                                 )
-                                Text("${fare.toLong()} RWF", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("${formatMoneyTransitCollect(fare)} RWF", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -166,7 +166,7 @@ fun TransitCollectScreen(onBack: () -> Unit) {
                                     .padding(vertical = 14.dp),
                                 horizontalArrangement = Arrangement.Center,
                             ) {
-                                Text(if (busy) "Collecting…" else "Collect ${fare.toLong()} RWF", color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(if (busy) "Collecting…" else "Collect ${formatMoneyTransitCollect(fare)} RWF", color = Color.White, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -175,3 +175,8 @@ fun TransitCollectScreen(onBack: () -> Unit) {
         }
     }
 }
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
+private fun formatMoneyTransitCollect(value: Number): String = "%,d".format(value.toLong())

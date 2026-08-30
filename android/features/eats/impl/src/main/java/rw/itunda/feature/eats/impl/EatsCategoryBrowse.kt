@@ -203,7 +203,7 @@ internal fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorit
                             listOfNotNull(
                                 m.distanceKm?.let { "%.1f km".format(it) },
                                 m.deliveryTimeMinutes?.let { "~$it min" },
-                                m.minOrderAmount?.let { "Min ${it.toLong()} RWF" },
+                                m.minOrderAmount?.let { "Min ${formatMoneyEatsCategory(it)} RWF" },
                             ).joinToString(" · "),
                             color = Ids.colors.textSecondary,
                             fontSize = 12.sp,
@@ -325,3 +325,8 @@ internal fun eatsLineUnitPrice(item: MerchantProductDto, choiceIds: List<String>
     return item.price + delta
 }
 
+
+// Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
+// convention -- comma thousands-separator for every whole-number RWF amount --
+// never reached this file). Same shape BikeRentalScreen.kt/BusScreen.kt already use.
+private fun formatMoneyEatsCategory(value: Number): String = "%,d".format(value.toLong())
