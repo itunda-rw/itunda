@@ -212,13 +212,25 @@ struct MessageBodyWithEmoji: View {
     var color: Color = .primary
     var fontSize: CGFloat = 14
 
+    // Real Dynamic Type fix (2026-08-30) -- both branches below now share one
+    // UIFontMetrics-scaled size (see IDS.scaledUIFont's own doc comment) instead of
+    // the raw `fontSize` point value, so a message that happens to contain an
+    // itundaface emoji scales identically to one that doesn't. `.subheadline` is the
+    // real closest Apple HIG text style to this type's only real call sites'
+    // literal size (15pt, TalkChatBubbles.swift/TalkGroupExtras.swift), same
+    // "match the literal to the closest real style" convention the rest of this
+    // sweep already used.
+    private var scaledFont: UIFont { IDS.scaledUIFont(size: fontSize, weight: .regular, relativeTo: .subheadline) }
+
     var body: some View {
         let ns = messageText as NSString
         let matches = itundaFaceEmojiRegex.matches(in: messageText, range: NSRange(location: 0, length: ns.length))
+        let font = scaledFont
         guard !matches.isEmpty else {
-            return AnyView(Text(messageText).foregroundColor(color).font(.system(size: fontSize)))
+            return AnyView(Text(messageText).foregroundColor(color).font(Font(font)))
         }
-        let glyphSize = fontSize * 1.15
+        let scaledSize = font.pointSize
+        let glyphSize = scaledSize * 1.15
         let attributed = NSMutableAttributedString()
         var lastIndex = 0
         for match in matches {
@@ -230,7 +242,7 @@ struct MessageBodyWithEmoji: View {
             if let image = ItundaFaceEmojiImageCache.shared.image(for: emoji, size: glyphSize) {
                 let attachment = NSTextAttachment()
                 attachment.image = image
-                attachment.bounds = CGRect(x: 0, y: (fontSize - glyphSize) / 2 - 1, width: glyphSize, height: glyphSize)
+                attachment.bounds = CGRect(x: 0, y: (scaledSize - glyphSize) / 2 - 1, width: glyphSize, height: glyphSize)
                 attributed.append(NSAttributedString(attachment: attachment))
             } else {
                 attributed.append(NSAttributedString(string: emoji))
@@ -240,7 +252,7 @@ struct MessageBodyWithEmoji: View {
         if lastIndex < ns.length {
             attributed.append(NSAttributedString(string: ns.substring(from: lastIndex)))
         }
-        attributed.addAttribute(.font, value: UIFont.systemFont(ofSize: fontSize), range: NSRange(location: 0, length: attributed.length))
+        attributed.addAttribute(.font, value: font, range: NSRange(location: 0, length: attributed.length))
         return AnyView(Text(AttributedString(attributed)).foregroundColor(color))
     }
 }

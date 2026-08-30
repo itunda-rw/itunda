@@ -93,7 +93,20 @@ public struct IDS {
     }
 
     public static func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
-        Font(UIFontMetrics(forTextStyle: style).scaledFont(for: pretendardFont(size: size, weight: weight)))
+        Font(scaledUIFont(size: size, weight: weight, relativeTo: style))
+    }
+
+    // Real gap found 2026-08-30 (docs/DESIGN_REFERENCES.md's own tracked
+    // Dynamic-Type sweep, one deliberately-deferred item): ItundaFaceEmoji.swift's
+    // MessageBodyWithEmoji builds a raw NSAttributedString when a message contains a
+    // registered emoji, which needs a real UIFont (not a SwiftUI Font) for its
+    // `.font` attribute -- and also needs the actual scaled point size to size the
+    // inline emoji glyph attachment correctly. Exposed as its own public method
+    // (not just inlined into scaledFont above) so both needs share one
+    // implementation instead of MessageBodyWithEmoji re-deriving UIFontMetrics
+    // scaling on its own.
+    public static func scaledUIFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> UIFont {
+        UIFontMetrics(forTextStyle: style).scaledFont(for: pretendardFont(size: size, weight: weight))
     }
 
     public struct Colors {
