@@ -9,11 +9,60 @@
 import { useEffect, useState } from 'react';
 import { IconShieldCheck } from './icons/ItundaIcons';
 import { useI18n } from './i18n/I18nContext';
-import { ApiError } from './lib/api';
+import { ApiError, getStoredUser } from './lib/api';
 import {
   getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature,
   type Certificate, type VerifyCertificateSignatureResult,
 } from './lib/certificate';
+
+// Real itunda-branded "Verified ID" credential card (2026-08-30, market-readiness
+// audit) -- the visual touchpoint real Toss 인증서/Apple Wallet/Google Wallet all give
+// a digital certificate that this feature never had (CertificateView previously only
+// ever showed a bare monospace serial number + text status, no card at all). This is
+// itunda's own card design (indigo brand gradient, itunda's own wordmark), never a
+// replica of any government-issued ID -- it shows only data the user already gave
+// itunda (their name) plus certificate metadata itunda itself generated, the same
+// safe pattern DemoNidaVerificationService/CertificateService already established of
+// validating/representing real data honestly without fabricating a government
+// document's actual visual design.
+function ItundaCertificateCard({ certificate }: { certificate: Certificate }) {
+  const user = getStoredUser();
+  const isActive = certificate.status === 'ACTIVE';
+  return (
+    <div
+      style={{
+        borderRadius: '18px', padding: '22px', marginBottom: '20px', color: 'white',
+        background: isActive
+          ? 'linear-gradient(135deg, var(--itunda-indigo) 0%, var(--itunda-indigo-active) 100%)'
+          : 'linear-gradient(135deg, #9A9AA5 0%, #6E6E78 100%)',
+        boxShadow: '0 8px 24px rgba(116, 114, 244, 0.25)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+        <div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 800, letterSpacing: '-0.3px' }}>itunda</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.85, marginTop: '2px' }}>Verified Certificate</p>
+        </div>
+        <IconShieldCheck size={22} color="white" />
+      </div>
+      <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, marginBottom: '18px' }}>
+        {user ? `${user.firstName} ${user.lastName}` : 'itunda user'}
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.75, marginBottom: '2px' }}>SERIAL</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+            {certificate.serialNumber.slice(0, 4)} •••• {certificate.serialNumber.slice(-4)}
+          </p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.75, marginBottom: '2px' }}>{isActive ? 'VALID THRU' : certificate.status}</p>
+          {isActive && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{new Date(certificate.expiresAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' })}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function CertificateView() {
   const { t } = useI18n();
@@ -75,13 +124,7 @@ export function CertificateView() {
 
       {certificate && certificate.status === 'ACTIVE' ? (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-green)', fontWeight: 700, marginBottom: '8px' }}>Active</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', fontFamily: 'monospace', marginBottom: '4px' }}>
-            Serial {certificate.serialNumber}
-          </p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
-            Expires {new Date(certificate.expiresAt).toLocaleDateString()}
-          </p>
+          <ItundaCertificateCard certificate={certificate} />
           <button className="itunda-btn itunda-btn-secondary" onClick={handleRevoke} disabled={busy}>
             {busy ? 'Revoking…' : 'Revoke certificate'}
           </button>

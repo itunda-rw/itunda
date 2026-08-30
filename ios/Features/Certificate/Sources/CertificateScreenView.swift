@@ -20,6 +20,7 @@ public struct CertificateScreenView: View {
     @State private var issuedPrivateKey: String?
     @State private var error: String?
     @State private var busy = false
+    @State private var holderName: String?
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -41,9 +42,7 @@ public struct CertificateScreenView: View {
                             Text("A digital certificate you can use to sign agreements in Itunda. You'll need a verified identity first.")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             if let certificate, certificate.status == "ACTIVE" {
-                                Text("Active").bold().foregroundColor(.green)
-                                Text("Serial \(certificate.serialNumber)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                Text("Expires \(certificate.expiresAt)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                ItundaCertificateCard(certificate: certificate, holderName: holderName)
                                 Button(action: { Task { await revoke() } }) {
                                     Text(busy ? "Revoking…" : "Revoke certificate").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                                 }
@@ -86,6 +85,13 @@ public struct CertificateScreenView: View {
         .task {
             do { certificate = try await NetworkClient.shared.getMyCertificate().certificate } catch { self.error = "Could not load your certificate." }
             loaded = true
+            // Real itunda-branded "Verified ID" credential card (2026-08-30) -- see
+            // ItundaCertificateCard's own doc comment. Best-effort: a name-load
+            // failure just falls back to a generic label, never blocks the
+            // certificate itself.
+            if let profile = try? await NetworkClient.shared.getProfile() {
+                holderName = "\(profile.user.firstName) \(profile.user.lastName)"
+            }
         }
     }
 
@@ -110,6 +116,61 @@ public struct CertificateScreenView: View {
             certificate = try await NetworkClient.shared.revokeCertificate().certificate
             issuedPrivateKey = nil
         } catch { self.error = "Could not revoke your certificate." }
+    }
+}
+
+/// Real itunda-branded "Verified ID" credential card (2026-08-30, market-readiness
+/// audit) -- the visual touchpoint real Toss 인증서/Apple Wallet/Google Wallet all give
+/// a digital certificate that this screen never had (previously just bare "Active" +
+/// monospace serial text, no card at all -- see bank-mfe's identical CertificateView.tsx
+/// doc comment for the mirrored web version). itunda's own card design (indigo brand
+/// gradient, itunda's own wordmark), never a replica of any government-issued ID --
+/// shows only data the user already gave itunda (their name) plus certificate metadata
+/// itunda itself generated.
+private struct ItundaCertificateCard: View {
+    let certificate: CertificateDto
+    let holderName: String?
+
+    private var isActive: Bool { certificate.status == "ACTIVE" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("itunda").font(.system(size: 15, weight: .heavy)).foregroundColor(.white)
+                    Text("Verified Certificate").font(.system(size: 11)).foregroundColor(.white.opacity(0.85))
+                }
+                Spacer()
+                Image(systemName: "checkmark.shield.fill").foregroundColor(.white)
+            }
+            Spacer(minLength: 28)
+            Text(holderName ?? "itunda user").font(.system(size: 18, weight: .bold)).foregroundColor(.white)
+            Spacer(minLength: 18)
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SERIAL").font(.system(size: 11)).foregroundColor(.white.opacity(0.75))
+                    Text("\(certificate.serialNumber.prefix(4)) •••• \(certificate.serialNumber.suffix(4))")
+                        .font(.system(size: 12, design: .monospaced)).foregroundColor(.white)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(isActive ? "VALID THRU" : certificate.status).font(.system(size: 11)).foregroundColor(.white.opacity(0.75))
+                    if isActive {
+                        Text(certificate.expiresAt.prefix(7)).font(.system(size: 12, weight: .bold)).foregroundColor(.white)
+                    }
+                }
+            }
+        }
+        .padding(22)
+        .background(
+            LinearGradient(
+                colors: isActive
+                    ? [IDS.Colors.brand, Color(red: 0x5C / 255, green: 0x55 / 255, blue: 0xD8 / 255)]
+                    : [Color(red: 0x9A / 255, green: 0x9A / 255, blue: 0xA5 / 255), Color(red: 0x6E / 255, green: 0x6E / 255, blue: 0x78 / 255)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+        .cornerRadius(18)
     }
 }
 

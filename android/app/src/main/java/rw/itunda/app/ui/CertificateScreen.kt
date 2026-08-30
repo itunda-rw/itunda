@@ -3,6 +3,9 @@ package rw.itunda.app.ui
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +18,7 @@ import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +53,7 @@ fun CertificateScreen(onBack: () -> Unit) {
     var issuedPrivateKey by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var holderName by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun load() {
@@ -61,7 +66,17 @@ fun CertificateScreen(onBack: () -> Unit) {
             loaded = true
         }
     }
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        load()
+        // Real itunda-branded "Verified ID" credential card (2026-08-30) -- see
+        // ItundaCertificateCard's own doc comment. Best-effort: a name-load failure
+        // just falls back to a generic label, never blocks the certificate itself.
+        holderName = try {
+            NetworkClient.authApi.getProfile().user.let { "${it.firstName} ${it.lastName}" }
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
@@ -80,9 +95,7 @@ fun CertificateScreen(onBack: () -> Unit) {
                         Spacer(Modifier.height(12.dp))
                         val current = certificate
                         if (current != null && current.status == "ACTIVE") {
-                            Text("Active", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                            Text("Serial ${current.serialNumber}", style = MaterialTheme.typography.bodySmall)
-                            Text("Expires ${current.expiresAt}", style = MaterialTheme.typography.bodySmall)
+                            ItundaCertificateCard(certificate = current, holderName = holderName)
                             Spacer(Modifier.height(12.dp))
                             IdsButton(
                                 text = if (busy) "Revoking…" else "Revoke certificate",
@@ -155,6 +168,62 @@ fun CertificateScreen(onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(20.dp))
                 VerifyCertificateCard()
+            }
+        }
+    }
+}
+
+// Real itunda-branded "Verified ID" credential card (2026-08-30, market-readiness
+// audit) -- the visual touchpoint real Toss 인증서/Apple Wallet/Google Wallet all give
+// a digital certificate that this screen never had (previously just a bare
+// monospace serial number + text status, no card at all -- see bank-mfe's own
+// identical CertificateView.tsx doc comment for the mirrored web version). itunda's
+// own card design (indigo brand gradient, itunda's own wordmark), never a replica of
+// any government-issued ID -- shows only data the user already gave itunda (their
+// name) plus certificate metadata itunda itself generated.
+@Composable
+private fun ItundaCertificateCard(certificate: CertificateDto, holderName: String?) {
+    val isActive = certificate.status == "ACTIVE"
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    if (isActive) {
+                        listOf(Ids.colors.brand, androidx.compose.ui.graphics.Color(0xFF5C55D8))
+                    } else {
+                        listOf(androidx.compose.ui.graphics.Color(0xFF9A9AA5), androidx.compose.ui.graphics.Color(0xFF6E6E78))
+                    },
+                ),
+            )
+            .padding(22.dp),
+    ) {
+        Column {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text("itunda", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Black, fontSize = 15.sp)
+                    Text("Verified Certificate", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
+                }
+                androidx.compose.material3.Icon(rw.itunda.core.designsystem.theme.IdsIcons.ShieldCheck, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White)
+            }
+            Spacer(Modifier.height(28.dp))
+            Text(holderName ?: "itunda user", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 18.sp)
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween) {
+                Column {
+                    Text("SERIAL", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
+                    Text(
+                        "${certificate.serialNumber.take(4)} •••• ${certificate.serialNumber.takeLast(4)}",
+                        color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    )
+                }
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                    Text(if (isActive) "VALID THRU" else certificate.status, color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
+                    if (isActive) {
+                        Text(certificate.expiresAt.take(7), color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
             }
         }
     }
