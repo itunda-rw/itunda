@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.LegalDocumentCatalog
 import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -39,6 +40,15 @@ class AuthController(
     @GetMapping("/terms")
     fun getTerms(): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "terms" to TermsCatalog.documents))
+
+    // Real itunda-branded legal document bodies -- see LegalDocumentCatalog's own doc
+    // comment for the full sourced account of why this exists (Android's Settings
+    // screen has carried an honestly-inert "Legal Documents" card since 2026-08-12
+    // with nowhere real to link to). Public (see SecurityConfig), same reasoning as
+    // /terms above -- reference material, not a consent gate.
+    @GetMapping("/legal-documents")
+    fun getLegalDocuments(): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "documents" to LegalDocumentCatalog.documents))
 
     @PostMapping("/register")
     fun register(@RequestBody request: RegisterRequest): ResponseEntity<AuthResponse> =

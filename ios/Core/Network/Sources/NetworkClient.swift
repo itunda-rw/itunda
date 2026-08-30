@@ -49,6 +49,20 @@ private struct TermsResponse: Decodable {
     let terms: [TermsDocument]
 }
 
+// Mirrors services/backend/core/.../LegalDocumentCatalog.kt exactly -- real
+// itunda-branded Terms of Service/Privacy Policy/Credit Data Policy full text,
+// closing SettingsScreen.swift's own missing "Legal Documents" section.
+public struct LegalDocument: Decodable, Identifiable {
+    public let id: String
+    public let title: String
+    public let version: String
+    public let bodyMarkdown: String
+}
+private struct LegalDocumentsResponse: Decodable {
+    let success: Bool
+    let documents: [LegalDocument]
+}
+
 // deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding
 // login call exactly. See DeviceStore.swift for how these are generated.
 // devicePublicKey added 2026-08-23 -- mirrors RegisterRequest's own field exactly,
@@ -532,6 +546,14 @@ public final class NetworkClient {
     public func getTerms() async throws -> [TermsDocument] {
         let response: TermsResponse = try await get("api/v1/auth/terms")
         return response.terms
+    }
+
+    // Real itunda-branded legal document bodies -- see LegalDocument's own doc
+    // comment. Public (SecurityConfig permitAll), reference material, not a
+    // registration consent gate.
+    public func getLegalDocuments() async throws -> [LegalDocument] {
+        let response: LegalDocumentsResponse = try await get("api/v1/auth/legal-documents")
+        return response.documents
     }
 
     public func login(_ request: LoginRequest) async throws -> AuthResponse {

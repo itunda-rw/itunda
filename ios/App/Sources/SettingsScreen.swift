@@ -50,6 +50,12 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "verifying": "Verifying…",
         "confirm": "Confirm",
         "confirmPasswordBody": "Enter your password once to enable biometric device verification.",
+        // Real itunda-branded legal document bodies (2026-08-30) -- see
+        // LegalDocumentScreen.swift's own doc comment.
+        "legalDocuments": "Legal Documents",
+        "creditDataPolicy": "Credit data usage policy",
+        "privacyPolicy": "Privacy policy",
+        "termsConsent": "Terms & consent",
     ],
     .rw: [
         "back": "Subira inyuma",
@@ -77,6 +83,10 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "verifying": "Kwemeza…",
         "confirm": "Emeza",
         "confirmPasswordBody": "Andika ijambo ry'ibanga rimwe kugira ngo wemeze ibimenyetso by'umubiri ku gikoresho.",
+        "legalDocuments": "Inyandiko z'amategeko",
+        "creditDataPolicy": "Politiki y'ikoreshwa ry'amakuru y'inguzanyo",
+        "privacyPolicy": "Politiki y'ibanga",
+        "termsConsent": "Amabwiriza n'uruhushya",
     ],
     // Real gap found 2026-08-15: this dict had zero French entries even after AppLocale
     // itself was widened to .fr (LoginScreen.swift, d6a909b2) -- a user whose locale
@@ -109,6 +119,10 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "verifying": "Vérification…",
         "confirm": "Confirmer",
         "confirmPasswordBody": "Entrez votre mot de passe une fois pour activer la vérification biométrique de l'appareil.",
+        "legalDocuments": "Documents légaux",
+        "creditDataPolicy": "Politique d'utilisation des données de crédit",
+        "privacyPolicy": "Politique de confidentialité",
+        "termsConsent": "Conditions et consentement",
     ],
 ]
 
@@ -126,12 +140,26 @@ struct SettingsScreen: View {
     @State private var keyPassword = ""
     @State private var keyRegisterError: String?
     @State private var keyRegistering = false
+    // Real itunda-branded legal document bodies (2026-08-30) -- see
+    // LegalDocumentScreen.swift's own doc comment.
+    @State private var openLegalDocument: (id: String, title: String)?
 
     private func t(_ key: String) -> String {
         settingsStrings[locale]?[key] ?? settingsStrings[.en]?[key] ?? key
     }
 
     var body: some View {
+        if let openLegalDocument {
+            LegalDocumentScreen(
+                documentId: openLegalDocument.id, fallbackTitle: openLegalDocument.title,
+                onBack: { self.openLegalDocument = nil }
+            )
+        } else {
+            settingsBody
+        }
+    }
+
+    private var settingsBody: some View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onDone) {
@@ -277,6 +305,20 @@ struct SettingsScreen: View {
                             }
                         }
                     }
+                }
+
+                // Real itunda-branded legal document bodies (2026-08-30, market-
+                // readiness audit) -- Android's own equivalent card existed since
+                // 2026-08-12 but every row was deliberately inert (no document
+                // screen to link to yet); iOS never had the section at all. Both
+                // now real -- see LegalDocumentScreen.swift's own doc comment.
+                Section(t("legalDocuments")) {
+                    Button(t("creditDataPolicy")) { openLegalDocument = ("credit_data_policy", t("creditDataPolicy")) }
+                        .foregroundColor(.primary)
+                    Button(t("privacyPolicy")) { openLegalDocument = ("privacy_policy", t("privacyPolicy")) }
+                        .foregroundColor(.primary)
+                    Button(t("termsConsent")) { openLegalDocument = ("terms_of_service", t("termsConsent")) }
+                        .foregroundColor(.primary)
                 }
 
                 // Real Toss security model (2026-08-30, toss.tech-adjacent research --

@@ -16,6 +16,7 @@ import { MyVehiclesCard } from './MyVehiclesCard';
 import { FamilyLinkCard } from './FamilyLinkCard';
 import { MyProductSubscriptionsCard } from './MyProductSubscriptionsCard';
 import { AffiliateEarningsCard } from './AffiliateEarningsCard';
+import { LegalDocumentsCard } from './LegalDocumentsCard';
 import { fetchMyOrders, type CommerceOrder } from './lib/commerce';
 import { fetchMyEatsOrders, fetchMyFavoriteRestaurants, type EatsOrder } from './lib/eats';
 import { fetchMyFavoriteListings, fetchMyListings } from './lib/marketplace';
@@ -107,6 +108,7 @@ export function MyView() {
       <FamilyLinkCard />
       <MyProductSubscriptionsCard />
       <AffiliateEarningsCard />
+      <LegalDocumentsCard />
       {miniApps.length > 0 && (
         <div className="itunda-flat-section">
           <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>

@@ -193,6 +193,26 @@ export async function getTerms(): Promise<TermsDocument[]> {
   return body.terms as TermsDocument[];
 }
 
+export interface LegalDocument {
+  id: string;
+  title: string;
+  version: string;
+  bodyMarkdown: string;
+}
+
+// Real itunda-branded legal document bodies (2026-08-30) -- see backend
+// LegalDocumentCatalog's own doc comment for the full sourced account. Public, same
+// reasoning as getTerms above -- reference material, not a consent gate.
+export async function getLegalDocuments(): Promise<LegalDocument[]> {
+  const response = await fetch(`${BASE_URL}/api/v1/auth/legal-documents`);
+  if (!response.ok) {
+    const { code, message } = await parseErrorBody(response);
+    throw new ApiError(response.status, code, message);
+  }
+  const body = await response.json();
+  return body.documents as LegalDocument[];
+}
+
 // Real sign-up (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8 recommendation
 // #7: bank-mfe had no registration page at all, unlike Android/iOS's real 3-step
 // phone -> name -> password flow (LoginScreen.kt/.swift). Mirrors login's own real device

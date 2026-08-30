@@ -112,6 +112,14 @@ fun SettingsScreen(
     var showPinSetup by remember { mutableStateOf(false) }
     val pinTokenStore = remember { NetworkClient.currentTokenStore() }
     var hasPin by remember { mutableStateOf(pinTokenStore.hasPin()) }
+    // Real itunda-branded legal document bodies (2026-08-30) -- see
+    // LegalDocumentScreen's own doc comment for the full sourced account of why
+    // these 3 rows were inert until now.
+    var openLegalDocument by remember { mutableStateOf<Pair<String, String>?>(null) }
+    openLegalDocument?.let { (id, label) ->
+        LegalDocumentScreen(documentId = id, fallbackTitle = label, onBack = { openLegalDocument = null })
+        return
+    }
     if (showDeviceList) {
         DeviceListScreen(
             devices = devices,
@@ -556,21 +564,23 @@ fun SettingsScreen(
             // Real Toss position (2026-08-12, direct user screenshot comparison) --
             // the real All-tab screenshots have no "Notifications & consent" section;
             // Legal Documents lives in Settings only. These 3 rows were relocated
-            // here from ItundaAppScreen.kt's Explore-tab menu, not newly invented --
-            // same real, honest inert state as before (no onClick at all, so no
-            // chevron either): itunda has no Credit-data-usage/Privacy-policy/Terms
-            // document screens to link to yet, and a tappable row with nowhere to go
-            // is worse than a plain label (this file's own established discipline).
+            // here from ItundaAppScreen.kt's Explore-tab menu, not newly invented.
+            // Made real (2026-08-30, market-readiness audit): each row now opens a
+            // real itunda-branded document via LegalDocumentScreen -- see that
+            // file's own doc comment for why these were left honestly inert until
+            // now (no document screen existed to link to).
             item {
                 SettingsCard {
                     Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    listOf(
-                        stringResource(R.string.settings_credit_data_policy),
-                        stringResource(R.string.settings_privacy_policy),
-                        stringResource(R.string.settings_terms_consent),
-                    ).forEach { label ->
-                        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))
+                    SettingsChevronRow(stringResource(R.string.settings_credit_data_policy)) {
+                        openLegalDocument = "credit_data_policy" to baseContext.getString(R.string.settings_credit_data_policy)
+                    }
+                    SettingsChevronRow(stringResource(R.string.settings_privacy_policy)) {
+                        openLegalDocument = "privacy_policy" to baseContext.getString(R.string.settings_privacy_policy)
+                    }
+                    SettingsChevronRow(stringResource(R.string.settings_terms_consent)) {
+                        openLegalDocument = "terms_of_service" to baseContext.getString(R.string.settings_terms_consent)
                     }
                 }
             }
@@ -697,7 +707,7 @@ internal fun NotificationListScreen(
 // top bar exactly (same back-button shape/position) so navigating in feels like the
 // same screen family, not a different pattern.
 @Composable
-private fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
+internal fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

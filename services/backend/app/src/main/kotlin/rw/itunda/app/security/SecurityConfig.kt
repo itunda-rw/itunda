@@ -84,7 +84,7 @@ class SecurityConfig(
                     // and login/device/verify are unauthenticated by definition (there's no
                     // JWT yet, that's the entire point of a brand-new-session flow), same as
                     // register/login/refresh above.
-                    .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/login/device/challenge", "/api/v1/auth/login/device/verify", "/api/v1/auth/refresh", "/api/v1/auth/check-phone", "/api/v1/auth/terms").permitAll()
+                    .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/login/device/challenge", "/api/v1/auth/login/device/verify", "/api/v1/auth/refresh", "/api/v1/auth/check-phone", "/api/v1/auth/terms", "/api/v1/auth/legal-documents").permitAll()
                     // Real WebSocket live-transport for messaging (2026-07-18) -- the
                     // handshake carries its own JWT as a `?token=` query param (a native
                     // WebSocket client can't set a custom Authorization header), verified
