@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,7 +76,6 @@ import rw.itunda.core.identity.NIDABiometricAuth
 fun SettingsScreen(
     viewModel: MainViewModel,
     onBack: () -> Unit,
-    onLogout: () -> Unit,
     onOpenSend: () -> Unit = {},
     onOpenPay: () -> Unit = {},
 ) {
@@ -577,25 +575,20 @@ fun SettingsScreen(
                 }
             }
 
-            // Real Toss layout (2026-08-12) -- "Close Toss account" is its own
-            // standalone card at the bottom of the real screenshot, separate from
-            // everything above it; itunda's real equivalent account-boundary action is
-            // Log out (there's no real account-closure flow to fabricate a destination
-            // for), given the same standalone-card treatment.
+            // Real Toss security model (2026-08-30, toss.tech-adjacent research --
+            // "why Toss has no traditional logout"): app-lock (biometric/PIN on every
+            // open, already the real default here -- see TokenStore.isAppLockEnabled)
+            // replaces session-timeout logout, because forcing a full re-login after
+            // logout means redoing phone verification, a WORSE security posture (a
+            // fresh SIM-swap/OTP-interception window) than just re-authenticating
+            // locally on an already-trusted device. Direct user decision (2026-08-30,
+            // "like toss"): the standalone Log out row is removed to match. The
+            // underlying SessionManager.logout() (real server-side refresh-token
+            // revocation + push-token unregister) is NOT deleted -- it's still the
+            // correct response to a genuine 401 (MainViewModel's own forced-logout
+            // path) -- only this manual, always-available UI affordance is gone.
             item {
-                SettingsCard {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pressScaleClickable(onClick = onLogout),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Outlined.Logout, contentDescription = null, tint = Ids.colors.danger)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(stringResource(R.string.settings_log_out), color = Ids.colors.danger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                }
-                }
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

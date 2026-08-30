@@ -279,16 +279,19 @@ struct SettingsScreen: View {
                     }
                 }
 
-                Section {
-                    Button(role: .destructive, action: {
-                        Task {
-                            await SessionManager.shared.logout()
-                            onDone()
-                        }
-                    }) {
-                        Label(t("logOut"), systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                }
+                // Real Toss security model (2026-08-30, toss.tech-adjacent research --
+                // "why Toss has no traditional logout"): app-lock (biometric/PIN on
+                // every open, already the real default here -- see
+                // KeychainTokenStore.isAppLockEnabled) replaces session-timeout logout,
+                // because forcing a full re-login after logout means redoing phone
+                // verification, a WORSE security posture (a fresh SIM-swap/OTP-
+                // interception window) than just re-authenticating locally on an
+                // already-trusted device. Direct user decision (2026-08-30, "like
+                // toss"): the standalone Log out section is removed to match.
+                // SessionManager.shared.logout() (real server-side refresh-token
+                // revocation + push-token unregister) is NOT deleted -- it's still the
+                // correct response to a genuine 401 elsewhere in the app -- only this
+                // manual, always-available UI affordance is gone.
             }
         }
         .task { await viewModel.load() }

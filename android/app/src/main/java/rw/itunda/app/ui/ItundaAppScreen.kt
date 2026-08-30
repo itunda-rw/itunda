@@ -1008,7 +1008,6 @@ fun ItundaAppScreen(
             SettingsScreen(
                 viewModel = viewModel,
                 onBack = { showSettings = false },
-                onLogout = { coroutineScope.launch { rw.itunda.core.network.SessionManager.logout() } },
                 onOpenSend = { showSettings = false; showTransferHub = true },
                 onOpenPay = { showSettings = false; selectedTab = ItundaTab.Pay },
             )
