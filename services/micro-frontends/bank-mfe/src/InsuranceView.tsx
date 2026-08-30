@@ -320,10 +320,21 @@ export default function InsuranceView() {
 
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
-        {plans.map((plan) => (
+        {/* Real Toss finding (2026-08-30, toss.tech/article/recommend-just-one): a
+            flat list of options caused decision paralysis; highlighting ONE best
+            pick (not removing the rest) measurably raised conversion. rating is
+            real, already-fetched data, not an invented metric. */}
+        {(() => { const topRating = plans.length > 0 ? Math.max(...plans.map((p) => p.rating)) : 0; return plans.map((plan) => {
+          const isTopRated = plan.rating === topRating;
+          return (
           <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
+                {isTopRated && (
+                  <span style={{ display: 'inline-block', fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)', backgroundColor: 'var(--itunda-indigo-light)', padding: '2px 8px', borderRadius: '999px', marginBottom: '4px' }}>
+                    Top rated
+                  </span>
+                )}
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{plan.name}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.description}</p>
@@ -342,7 +353,9 @@ export default function InsuranceView() {
               )}
             </div>
           </div>
-        ))}
+          );
+          });
+        })()}
       </div>
 
       <CropWeatherIndexSection />
