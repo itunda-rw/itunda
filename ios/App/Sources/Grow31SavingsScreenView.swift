@@ -194,6 +194,10 @@ private struct Grow31SavingsDetailContent: View {
     @State private var plan: Grow31SavingsPlanDto?
     @State private var accountBalance: Double = 0
     @State private var deposits: [Grow31SavingsDepositDto] = []
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionRow's own doc
+    // comment; replaces the "Deposits" section above with the real transaction
+    // ledger this plan's own dedicated account always had, just never exposed.
+    @State private var transactions: [BucketTransactionDto]?
     @State private var loadError: String?
     @State private var actionError: String?
     @State private var confirmingCancel = false
@@ -257,22 +261,20 @@ private struct Grow31SavingsDetailContent: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if !deposits.isEmpty {
-                        Divider().overlay(IDS.Colors.divider)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Deposits").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
-                            ForEach(deposits.sorted { $0.dayNumber > $1.dayNumber }) { deposit in
-                                HStack {
-                                    Text("Day \(deposit.dayNumber) -- streak \(deposit.streakAtDeposit)").font(.caption).foregroundColor(IDS.Colors.textPrimary)
-                                    Spacer()
-                                    Text("\(formatMoney(deposit.amount)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                }
-                                .padding(.vertical, 4)
-                                Divider().overlay(IDS.Colors.divider)
+                    Divider().overlay(IDS.Colors.divider)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Transactions").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                        if let transactions, !transactions.isEmpty {
+                            ForEach(transactions.sorted(by: { $0.createdAt > $1.createdAt })) { tx in
+                                BucketTransactionRow(tx: tx)
                             }
+                        } else if transactions == nil {
+                            Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                        } else {
+                            Text("No transactions to show yet.").font(.caption).foregroundColor(IDS.Colors.textTertiary)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     if let actionError {
                         Text(actionError).font(.caption).foregroundColor(.red)
@@ -352,6 +354,7 @@ private struct Grow31SavingsDetailContent: View {
             } catch {
                 loadError = "Could not load this real plan."
             }
+            transactions = (try? await NetworkClient.shared.getGrow31SavingsPlanTransactions(id: planId).transactions) ?? []
         }
     }
 

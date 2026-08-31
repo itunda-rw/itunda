@@ -1358,6 +1358,35 @@ public struct InterestJar: Decodable {
 
 public struct InterestJarResponse: Decodable { public let success: Bool; public let jar: InterestJar }
 
+// Real per-bucket ledger (2026-08-31, direct user-supplied Toss Bank screenshots:
+// 보관하기/매일모으기 each get their own full-screen ledger) -- mirrors backend's own
+// BucketTransactionDto exactly (services/backend/savings/.../BucketTransactionDto.kt).
+// One normalized shape every savings bucket's own transaction endpoint returns.
+public struct BucketTransactionDto: Decodable, Identifiable {
+    public let id: String
+    public let description: String
+    public let amount: Double
+    public let isCredit: Bool
+    public let balanceAfter: Double
+    public let createdAt: String
+
+    // Explicit public init -- Swift's synthesized memberwise initializer for a
+    // public struct is never more visible than internal, so cross-module callers
+    // (App/Sources constructs this directly for the Youth account, which has no
+    // dedicated ledger account and adapts its plain Transaction history instead)
+    // would otherwise fail to find a callable initializer at all.
+    public init(id: String, description: String, amount: Double, isCredit: Bool, balanceAfter: Double, createdAt: String) {
+        self.id = id
+        self.description = description
+        self.amount = amount
+        self.isCredit = isCredit
+        self.balanceAfter = balanceAfter
+        self.createdAt = createdAt
+    }
+}
+
+public struct BucketTransactionsResponse: Decodable { public let success: Bool; public let transactions: [BucketTransactionDto] }
+
 // Real Deposit Protection Fund status (2026-08-11) -- see backend's
 // DepositProtectionFund.kt doc comment. coverageCapPerUser/contributionRateBps are
 // itunda's own chosen policy figures, not a claimed real BNR-backed scheme -- every
@@ -1435,6 +1464,8 @@ extension NetworkClient {
     public func getMyRateAlerts() async throws -> RateAlertsResponse { try await get("api/v1/account/foreign-currency/rate-alerts") }
 
     public func getUpfrontDeposits() async throws -> UpfrontDepositsResponse { try await get("api/v1/upfront-deposits") }
+
+    public func getUpfrontDepositTransactions(id: String) async throws -> BucketTransactionsResponse { try await get("api/v1/upfront-deposits/\(id)/transactions") }
 
     // Real bug found 2026-08-15 (same pass that found WeeklySavings' identical gap --
     // a full cross-reference of every backend endpoint requiring a non-nullable
@@ -1840,7 +1871,15 @@ extension NetworkClient {
             idempotencyKey: UUID().uuidString
         )
     }
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionDto's own doc
+    // comment for the full account of the isolation gap this closes.
+    public func getSavingsGoalTransactions(goalId: String) async throws -> BucketTransactionsResponse {
+        try await get("api/v1/savings/goals/\(goalId)/transactions")
+    }
+
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
+
+    public func getInterestJarTransactions() async throws -> BucketTransactionsResponse { try await get("api/v1/savings/interest-jar/transactions") }
     public func getDepositProtectionStatus() async throws -> DepositProtectionStatusResponse { try await get("api/v1/savings/deposit-protection") }
 
     public func getDiscoverItems() async throws -> DiscoverResponse { try await get("api/v1/discover") }

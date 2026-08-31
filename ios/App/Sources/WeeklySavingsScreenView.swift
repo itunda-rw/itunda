@@ -195,6 +195,10 @@ private struct WeeklySavingsDetailContent: View {
     @State private var plan: WeeklySavingsPlanDto?
     @State private var accountBalance: Double = 0
     @State private var installments: [WeeklySavingsInstallmentDto] = []
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionRow's own doc
+    // comment. Replaces the "Installments" section below with the real transaction
+    // ledger this plan's own dedicated account always had, just never exposed.
+    @State private var transactions: [BucketTransactionDto]?
     @State private var loadError: String?
     @State private var actionError: String?
     @State private var confirmingCancel = false
@@ -260,22 +264,20 @@ private struct WeeklySavingsDetailContent: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if !installments.isEmpty {
-                        Divider().overlay(IDS.Colors.divider)
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Installments").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
-                            ForEach(installments) { installment in
-                                HStack {
-                                    Text("Week \(installment.weekNumber)").font(.caption).foregroundColor(IDS.Colors.textPrimary)
-                                    Spacer()
-                                    Text("\(formatMoney(installment.amount)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                }
-                                .padding(.vertical, 4)
-                                Divider().overlay(IDS.Colors.divider)
+                    Divider().overlay(IDS.Colors.divider)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Transactions").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                        if let transactions, !transactions.isEmpty {
+                            ForEach(transactions.sorted(by: { $0.createdAt > $1.createdAt })) { tx in
+                                BucketTransactionRow(tx: tx)
                             }
+                        } else if transactions == nil {
+                            Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                        } else {
+                            Text("No transactions to show yet.").font(.caption).foregroundColor(IDS.Colors.textTertiary)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     if let actionError {
                         Text(actionError).font(.caption).foregroundColor(.red)
@@ -338,6 +340,7 @@ private struct WeeklySavingsDetailContent: View {
             } catch {
                 loadError = "Could not load this real plan."
             }
+            transactions = (try? await NetworkClient.shared.getWeeklySavingsPlanTransactions(id: planId).transactions) ?? []
         }
     }
 

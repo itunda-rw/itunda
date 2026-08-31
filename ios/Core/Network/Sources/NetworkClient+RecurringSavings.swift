@@ -108,6 +108,12 @@ extension NetworkClient {
         try await get("api/v1/weekly-savings/plans/\(id)")
     }
 
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionDto's own doc
+    // comment; this plan already has its own dedicated real Account.
+    public func getWeeklySavingsPlanTransactions(id: String) async throws -> BucketTransactionsResponse {
+        try await get("api/v1/weekly-savings/plans/\(id)/transactions")
+    }
+
     // Real bug found 2026-08-15 (while porting Grow31 savings to iOS, checking this
     // file's own established idempotencyKey convention against every other
     // authenticatedPost call): these 3 calls never passed idempotencyKey, so the
@@ -225,6 +231,12 @@ extension NetworkClient {
 
     public func getGrow31SavingsPlan(id: String) async throws -> Grow31SavingsPlanDetailResponse {
         try await get("api/v1/grow31-savings/plans/\(id)")
+    }
+
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionDto's own doc
+    // comment; this plan already has its own dedicated real Account.
+    public func getGrow31SavingsPlanTransactions(id: String) async throws -> BucketTransactionsResponse {
+        try await get("api/v1/grow31-savings/plans/\(id)/transactions")
     }
 
     public func createGrow31SavingsPlan(name: String, dailyAmount: Double) async throws -> CreateGrow31SavingsPlanResponse {

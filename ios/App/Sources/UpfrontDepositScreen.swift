@@ -90,6 +90,12 @@ private struct UpfrontDepositRow: View {
 
     @State private var withdrawing = false
     @State private var error: String?
+    // Real per-bucket ledger (2026-08-31) -- this row previously had no drill-in of
+    // any kind (its own doc history noted "a history log of deposits," true for the
+    // summary fields but not for a real transaction history, which its dedicated
+    // account has always had, just never exposed).
+    @State private var showHistory = false
+    @State private var transactions: [BucketTransactionDto]?
 
     private var statusLabel: String {
         if deposit.status == "MATURED" && deposit.withdrawnAt != nil { return "Withdrawn" }
@@ -114,6 +120,25 @@ private struct UpfrontDepositRow: View {
             Text(deposit.status == "ACTIVE" ? "Locked until \(formatDate(deposit.maturesAt))" : "Matured \(formatDate(deposit.maturesAt))")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             if let error { Text(error).font(.caption).foregroundColor(.red) }
+            Button(action: {
+                showHistory.toggle()
+                if showHistory && transactions == nil {
+                    Task { transactions = (try? await NetworkClient.shared.getUpfrontDepositTransactions(id: deposit.id).transactions) ?? [] }
+                }
+            }) {
+                Text(showHistory ? "Hide history" : "View history").font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            }
+            if showHistory {
+                if let transactions, !transactions.isEmpty {
+                    ForEach(transactions.sorted(by: { $0.createdAt > $1.createdAt })) { tx in
+                        BucketTransactionRow(tx: tx)
+                    }
+                } else if transactions == nil {
+                    Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                } else {
+                    Text("No transactions to show yet.").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                }
+            }
             if deposit.status == "MATURED" && deposit.withdrawnAt == nil {
                 Button(action: { Task { await withdraw() } }) {
                     Text(withdrawing ? "Working…" : "Withdraw to main account").bold().foregroundColor(.white)

@@ -67,6 +67,25 @@ enum SavingsFlowStep: Identifiable {
     }
 }
 
+// Real per-bucket detail screen (2026-08-31, direct user-supplied Toss Bank
+// screenshots: 보관하기/매일모으기 each get their own full-screen ledger). Tapping a
+// bucket's row now opens its own detail screen (BucketDetailScreen.swift) instead
+// of jumping straight into the deposit/claim flow -- Fill/Withdraw live INSIDE that
+// screen instead, matching the real reference. Interest Jar's row keeps no
+// secondary action (never had one); Savings Goal rows keep their existing
+// secondaryAction (quick Withdraw) untouched alongside this.
+enum BucketDetailTarget: Identifiable {
+    case interestJar
+    case goal(id: String, name: String, currentAmount: Double, targetAmount: Double)
+
+    var id: String {
+        switch self {
+        case .interestJar: return "interestJar"
+        case .goal(let id, _, _, _): return "goal-\(id)"
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var selectedTab = 0
     // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- see
@@ -94,6 +113,12 @@ struct ContentView: View {
     @State private var showTransferFlow = false
     // Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
     @State private var savingsFlowStep: SavingsFlowStep?
+    // Real per-bucket detail screen (2026-08-31) -- see BucketDetailTarget's own doc
+    // comment.
+    @State private var bucketDetailTarget: BucketDetailTarget?
+    // Real "itunda Bank assets" hub (2026-08-31) -- see ItundaBankAssetsScreen.swift's
+    // own doc comment.
+    @State private var showBankAssets = false
     // Real savings-goal creation (2026-08-22) -- see CreateSavingsGoalScreen.swift.
     // Its own separate boolean, not folded into savingsFlowStep/SavingsFlowContainer:
     // creation doesn't move money, so it needs none of that container's
@@ -206,6 +231,14 @@ struct ContentView: View {
             iconBackground: Color(.systemGray5),
             onTap: { showCreateSavingsGoal = true }
         ))
+        rows.append(SavingsRowData(
+            title: "itunda Bank assets",
+            subtitle: "See every account, goal, and plan you hold",
+            trailing: "",
+            symbol: "list.bullet",
+            iconBackground: Color(.systemGray5),
+            onTap: { showBankAssets = true }
+        ))
         if let jar = bankViewModel.interestJar {
             // Real interest-methodology transparency (2026-08-11) -- this row only
             // ever showed the opaque earned-this-month figure, never the rate or
@@ -218,7 +251,7 @@ struct ContentView: View {
                 title: "Interest jar",
                 subtitle: String(format: "%.1f%% annual, accrued daily", jar.rate),
                 trailing: "\(formatAmount(Int(jar.earnedThisMonth))) RWF",
-                onTap: { savingsFlowStep = .claimInterest }
+                onTap: { bucketDetailTarget = .interestJar }
             ))
         }
         for goal in bankViewModel.savingsGoals {
@@ -232,7 +265,7 @@ struct ContentView: View {
                 title: goal.name,
                 subtitle: "\(Int(goal.currentAmount)) of \(formatAmount(Int(goal.targetAmount))) RWF\(completedSuffix)",
                 trailing: "\(percent)%",
-                onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) },
+                onTap: { bucketDetailTarget = .goal(id: goal.id, name: goal.name, currentAmount: goal.currentAmount, targetAmount: goal.targetAmount) },
                 secondaryAction: goal.currentAmount > 0 ? "Withdraw" : nil,
                 onSecondaryTap: goal.currentAmount > 0 ? { savingsFlowStep = .withdraw(goalId: goal.id, goalName: goal.name, currentAmount: goal.currentAmount) } : nil
             ))
@@ -267,6 +300,40 @@ struct ContentView: View {
                             Task { await bankViewModel.load() }
                         }
                     )
+                }
+                .fullScreenCover(item: $bucketDetailTarget) { target in
+                    switch target {
+                    case .interestJar:
+                        let jar = bankViewModel.interestJar
+                        BucketDetailScreen(
+                            title: "Interest Jar",
+                            subtitle: "Safe Box",
+                            balanceText: "\(formatAmount(Int(jar?.balance ?? 0))) RWF",
+                            secondaryStatLabel: "Earned all-time",
+                            secondaryStatValue: "\(formatAmount(Int(jar?.earnedTotal ?? 0))) RWF",
+                            fetchTransactions: { try await NetworkClient.shared.getInterestJarTransactions().transactions },
+                            fillLabel: (jar?.earnedThisMonth ?? 0) > 0 ? "Get interest" : nil,
+                            onFill: (jar?.earnedThisMonth ?? 0) > 0 ? { bucketDetailTarget = nil; savingsFlowStep = .claimInterest } : nil,
+                            onBack: { bucketDetailTarget = nil }
+                        )
+                    case .goal(let id, let name, let currentAmount, let targetAmount):
+                        BucketDetailScreen(
+                            title: name,
+                            subtitle: "Savings Goal",
+                            balanceText: "\(formatAmount(Int(currentAmount))) RWF",
+                            secondaryStatLabel: "Target",
+                            secondaryStatValue: "\(formatAmount(Int(targetAmount))) RWF",
+                            fetchTransactions: { try await NetworkClient.shared.getSavingsGoalTransactions(goalId: id).transactions },
+                            fillLabel: "Deposit",
+                            onFill: { bucketDetailTarget = nil; savingsFlowStep = .deposit(goalId: id, goalName: name) },
+                            withdrawLabel: currentAmount > 0 ? "Withdraw" : nil,
+                            onWithdraw: currentAmount > 0 ? { bucketDetailTarget = nil; savingsFlowStep = .withdraw(goalId: id, goalName: name, currentAmount: currentAmount) } : nil,
+                            onBack: { bucketDetailTarget = nil }
+                        )
+                    }
+                }
+                .fullScreenCover(isPresented: $showBankAssets) {
+                    ItundaBankAssetsScreen(onBack: { showBankAssets = false })
                 }
                 .sheet(isPresented: $showCreateSavingsGoal) {
                     CreateSavingsGoalScreen(

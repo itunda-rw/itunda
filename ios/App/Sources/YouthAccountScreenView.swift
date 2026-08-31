@@ -19,6 +19,12 @@ struct YouthAccountScreenView: View {
     @State private var amount = ""
     @State private var busy = false
     @State private var error: String?
+    // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.swift's
+    // own doc comment. Youth Account never supports a withdraw (confirmed: no such
+    // endpoint exists anywhere in this backend), so every one of its transactions is
+    // a real deposit/credit -- isCredit is unconditionally true, no fromAccountId
+    // comparison needed the way the primary account's own ledger requires.
+    @State private var showHistory = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -54,9 +60,11 @@ struct YouthAccountScreenView: View {
                         // say what happens -- the text above already names the real outcome.
                         YouthAccountActionButton(title: busy ? "Checking…" : "Check eligibility", disabled: busy, action: submitBirthDateAndOpen)
                     case .open:
-                        VStack(alignment: .leading, spacing: 4) {
-                            CountUpText("\(formatMoney(account?.balance ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
-                            Text(account?.accountNumber ?? "").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        Button(action: { showHistory = true }) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                CountUpText("\(formatMoney(account?.balance ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text(account?.accountNumber ?? "").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
                         }
                         IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
                         YouthAccountActionButton(title: busy ? "Adding…" : "Add money", disabled: busy, action: deposit)
@@ -67,6 +75,26 @@ struct YouthAccountScreenView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { load() }
+        .fullScreenCover(isPresented: $showHistory) {
+            if let account {
+                BucketDetailScreen(
+                    title: "Youth Account",
+                    subtitle: account.accountNumber,
+                    balanceText: "\(formatMoney(account.balance)) RWF",
+                    fetchTransactions: {
+                        let txs = try await NetworkClient.shared.getAccountTransactionHistory(accountId: account.id).transactions
+                            .sorted(by: { $0.createdAt > $1.createdAt })
+                        var runningBalance = account.balance
+                        return txs.map { tx in
+                            let balanceAfter = runningBalance
+                            runningBalance -= tx.amount
+                            return BucketTransactionDto(id: tx.id, description: tx.description, amount: tx.amount, isCredit: true, balanceAfter: balanceAfter, createdAt: tx.createdAt)
+                        }
+                    },
+                    onBack: { showHistory = false }
+                )
+            }
+        }
     }
 
     private func load() {
