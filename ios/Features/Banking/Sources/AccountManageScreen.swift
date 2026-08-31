@@ -21,12 +21,10 @@ import CoreDesignSystem
 /// (changing your account password, an account nickname, closing your account) --
 /// not silently dropped, see the disclosure text at the bottom.
 ///
-/// One further, iOS-specific disclosed gap vs. web/Android: "Delayed transfers"
-/// (Toss's real 예약송금 anti-phishing hold-and-cancel feature) has a real backend
-/// (services/backend/p2p/P2pDelayedTransferService.kt) and a real web client
-/// (bank-mfe/src/lib/delayedTransfers.ts), but iOS has never built a screen or
-/// NetworkClient method for it -- omitted from the Transfer section entirely
-/// rather than faked. A real follow-up item, not scoped into this pass.
+/// "Delayed transfers" (Toss's real 지연이체서비스 anti-phishing hold-and-cancel
+/// feature) now deep-links to a real DelayedTransferListScreen.swift (2026-09-01,
+/// App/Sources) against the real NetworkClient methods added the same day --
+/// closing what was previously a disclosed, un-built gap here.
 ///
 /// "Manage devices" deep-links to a real standalone DeviceListScreen.swift
 /// (2026-09-01, App/Sources) -- same real GET/POST/DELETE /api/v1/auth/devices
@@ -38,6 +36,7 @@ public struct AccountManageScreen: View {
     let onOpenCard: () -> Void
     let onOpenDevices: () -> Void
     let onOpenAutoTransfer: () -> Void
+    let onOpenDelayedTransfers: () -> Void
     let onOpenForeignCurrency: () -> Void
     let onOpenBills: () -> Void
     let onOpenSupport: () -> Void
@@ -48,6 +47,7 @@ public struct AccountManageScreen: View {
         onOpenCard: @escaping () -> Void,
         onOpenDevices: @escaping () -> Void,
         onOpenAutoTransfer: @escaping () -> Void,
+        onOpenDelayedTransfers: @escaping () -> Void,
         onOpenForeignCurrency: @escaping () -> Void,
         onOpenBills: @escaping () -> Void,
         onOpenSupport: @escaping () -> Void
@@ -57,6 +57,7 @@ public struct AccountManageScreen: View {
         self.onOpenCard = onOpenCard
         self.onOpenDevices = onOpenDevices
         self.onOpenAutoTransfer = onOpenAutoTransfer
+        self.onOpenDelayedTransfers = onOpenDelayedTransfers
         self.onOpenForeignCurrency = onOpenForeignCurrency
         self.onOpenBills = onOpenBills
         self.onOpenSupport = onOpenSupport
@@ -88,6 +89,7 @@ public struct AccountManageScreen: View {
                     ])
                     ManageSection(title: "Transfer", rows: [
                         ManageRowData(title: "Auto transfer", action: onOpenAutoTransfer),
+                        ManageRowData(title: "Delayed transfers", action: onOpenDelayedTransfers),
                     ])
                     ManageSection(title: "Foreign currency", rows: [
                         ManageRowData(title: "Exchange rates", action: onOpenForeignCurrency),

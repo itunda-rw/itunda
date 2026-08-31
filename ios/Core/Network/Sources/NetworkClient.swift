@@ -2535,6 +2535,35 @@ public struct CreateAutoTransferRequest: Encodable {
 public struct AutoTransferResponse: Decodable { public let success: Bool; public let autoTransfer: AutoTransferDto }
 public struct AutoTransfersListResponse: Decodable { public let success: Bool; public let autoTransfers: [AutoTransferDto] }
 
+// Real Korean 지연이체서비스 (Delayed Transfer Service) -- see backend
+// P2pDelayedTransfer.kt's own doc comment for the full sourced account (a real,
+// government-documented anti-voice-phishing safeguard every major Korean bank
+// offers: KakaoBank/Toss/IBK/KB all let a sender opt to hold an outgoing transfer
+// for a real minimum window instead of it landing instantly). Genuinely distinct
+// from a scheduled/future-dated transfer (a user-chosen FUTURE send date, which
+// this codebase has no iOS client for either): this is a SAFETY delay on a
+// transfer the sender wants to send right now. Fully built on the backend and
+// already had a real web client (lib/delayedTransfers.ts) but no iOS client at
+// all until now.
+public enum DelayedTransferStatus: String, Codable { case PENDING, COMPLETED, CANCELLED }
+public struct DelayedTransferDto: Decodable, Identifiable {
+    public let id: String
+    public let senderUserId: String
+    public let recipientUserId: String
+    public let amount: Double
+    public let description: String
+    public let status: DelayedTransferStatus
+    public let releaseAt: String
+    public let createdAt: String
+}
+public struct SendDelayedTransferRequest: Encodable {
+    public let recipient: String
+    public let amount: Double
+    public let description: String
+}
+public struct DelayedTransferResponse: Decodable { public let success: Bool; public let transfer: DelayedTransferDto }
+public struct DelayedTransfersListResponse: Decodable { public let success: Bool; public let transfers: [DelayedTransferDto] }
+
 // Real Toss 사기계좌 조회 (fraud-account lookup before transfer) -- see backend
 // ScamReportService's own doc comment. itunda's own crowd-sourced report registry,
 // not a real police-database integration. Real on bank-mfe/Android only until now
@@ -2775,6 +2804,26 @@ extension NetworkClient {
 
     public func cancelAutoTransfer(_ id: String) async throws -> AutoTransferResponse {
         try await authenticatedDelete("api/v1/p2p/auto-transfers/\(id)")
+    }
+
+    // Real Korean 지연이체서비스 (Delayed Transfer Service) -- see
+    // DelayedTransferDto's own doc comment above. sendDelayed moves real money
+    // immediately into a holding account, so it carries an Idempotency-Key the
+    // same way every other money-moving call in this file does; cancel only
+    // mutates an existing PENDING row by id and stays idempotent without one,
+    // matching cancelAutoTransfer's own reasoning just above.
+    public func getMyDelayedTransfers() async throws -> DelayedTransfersListResponse { try await get("api/v1/p2p/delayed-transfers") }
+
+    public func sendDelayed(recipient: String, amount: Double, description: String) async throws -> DelayedTransferResponse {
+        try await authenticatedPost(
+            "api/v1/p2p/send-delayed",
+            body: SendDelayedTransferRequest(recipient: recipient, amount: amount, description: description),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    public func cancelDelayedTransfer(_ id: String) async throws -> DelayedTransferResponse {
+        try await authenticatedPost("api/v1/p2p/delayed-transfers/\(id)/cancel", body: EmptyBody())
     }
 
     public func checkScamStatus(identifier: String) async throws -> ScamCheckResponse {

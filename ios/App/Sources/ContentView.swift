@@ -197,6 +197,7 @@ struct ContentView: View {
     // showTransferHub, so TransferHubContainer lands straight on its own
     // AutoTransferListScreen instead of the hub's top-level row list.
     @State private var transferHubStartAtAutoTransfers = false
+    @State private var transferHubStartAtDelayedTransfers = false
 
     // Real, minimal usage signal on each tap (2026-08-10) -- same event name/metadata
     // shape bank-mfe's/Android's identical coop rails already fire, stable keys
@@ -501,6 +502,7 @@ struct ContentView: View {
                                 onOpenCard: { showAccountManage = false; showBankCard = true },
                                 onOpenDevices: { showAccountManage = false; showDeviceList = true },
                                 onOpenAutoTransfer: { showAccountManage = false; transferHubStartAtAutoTransfers = true; showTransferHub = true },
+                                onOpenDelayedTransfers: { showAccountManage = false; transferHubStartAtDelayedTransfers = true; showTransferHub = true },
                                 onOpenForeignCurrency: { showAccountManage = false; showBankForeignCurrency = true },
                                 onOpenBills: { showAccountManage = false; showBankPayBills = true },
                                 onOpenSupport: { showAccountManage = false; showBankSupport = true }
@@ -527,11 +529,12 @@ struct ContentView: View {
                 }
                 .fullScreenCover(isPresented: $showTransferHub) {
                     TransferHubContainer(
-                        onBack: { showTransferHub = false; transferHubStartAtAutoTransfers = false },
+                        onBack: { showTransferHub = false; transferHubStartAtAutoTransfers = false; transferHubStartAtDelayedTransfers = false },
                         onSendMoney: { showTransferHub = false; showTransferFlow = true },
                         onSplitBill: { showTransferHub = false; selectedTab = 3 },
                         onOpenHistory: { showTransferHub = false; showTransactionHistory = true },
-                        startAtAutoTransfers: transferHubStartAtAutoTransfers
+                        startAtAutoTransfers: transferHubStartAtAutoTransfers,
+                        startAtDelayedTransfers: transferHubStartAtDelayedTransfers
                     )
                 }
                 .fullScreenCover(isPresented: $showShop) {

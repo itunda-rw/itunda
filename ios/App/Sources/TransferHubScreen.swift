@@ -24,16 +24,18 @@ struct TransferHubContainer: View {
 
     @State private var autoTransferCount = 0
     @State private var showAutoTransfers: Bool
+    @State private var showDelayedTransfers: Bool
 
-    // Real deep-link (2026-09-01) -- AccountManageScreen's "Auto transfer" row
-    // (see ContentView.swift's own wiring) needs to land straight on the
-    // Auto-transfer list instead of this hub's own top-level row list.
-    init(onBack: @escaping () -> Void = {}, onSendMoney: @escaping () -> Void = {}, onSplitBill: @escaping () -> Void = {}, onOpenHistory: @escaping () -> Void = {}, startAtAutoTransfers: Bool = false) {
+    // Real deep-link (2026-09-01) -- AccountManageScreen's "Auto transfer"/"Delayed
+    // transfers" rows (see ContentView.swift's own wiring) need to land straight on
+    // the relevant list instead of this hub's own top-level row list.
+    init(onBack: @escaping () -> Void = {}, onSendMoney: @escaping () -> Void = {}, onSplitBill: @escaping () -> Void = {}, onOpenHistory: @escaping () -> Void = {}, startAtAutoTransfers: Bool = false, startAtDelayedTransfers: Bool = false) {
         self.onBack = onBack
         self.onSendMoney = onSendMoney
         self.onSplitBill = onSplitBill
         self.onOpenHistory = onOpenHistory
         _showAutoTransfers = State(initialValue: startAtAutoTransfers)
+        _showDelayedTransfers = State(initialValue: startAtDelayedTransfers)
     }
 
     var body: some View {
@@ -60,6 +62,16 @@ struct TransferHubContainer: View {
                         title: "Auto-transfer",
                         subtitle: autoTransferCount > 0 ? "\(autoTransferCount) active" : "Set up a recurring transfer",
                         action: { showAutoTransfers = true }
+                    )
+                    // Real 지연이체서비스 (Delayed Transfer Service) row (2026-09-01)
+                    // -- see DelayedTransferDto's own doc comment in
+                    // NetworkClient.swift for the full sourced account. bank-mfe
+                    // shipped a real client first; this is the first native iOS one.
+                    TransferHubRow(
+                        symbol: "clock.arrow.circlepath",
+                        title: "Delayed transfers",
+                        subtitle: "Hold a transfer so you can still cancel it",
+                        action: { showDelayedTransfers = true }
                     )
                     // Real 더치페이 (Split bill) row (2026-07-24) -- completes real
                     // Toss's own 송금 page grouping, deliberately deferred when this
@@ -95,6 +107,9 @@ struct TransferHubContainer: View {
                 onBack: { showAutoTransfers = false },
                 onChanged: { Task { await loadCount() } }
             )
+        }
+        .fullScreenCover(isPresented: $showDelayedTransfers) {
+            DelayedTransferListScreen(onBack: { showDelayedTransfers = false })
         }
     }
 
