@@ -1,7 +1,9 @@
 package rw.itunda.card
 
+import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -20,6 +22,9 @@ import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.domain.User
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -56,7 +61,8 @@ class CardServiceTest : BehaviorSpec({
         notificationRepository: NotificationRepository = notificationRepositoryMock(),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter)
+        userRepository: UserRepository = mockk(),
+    ) = CardService(debitCardRepository, debitCardTransactionRepository, accountRepository, ledgerService, notificationRepository, pushNotificationService, rateLimiter, userRepository)
 
     Given("a real user issuing their first itunda debit card") {
         val debitCardRepository = mockk<DebitCardRepository>()
@@ -243,4 +249,172 @@ class CardServiceTest : BehaviorSpec({
             }
         }
     }
-})
+
+    // Real isolation coverage for the "분실신고"/"카드 재발급"/"카드 해지하기"
+    // (report lost / reissue / close) one-way states this session added -- the exact
+    // bug class this whole feature exists to close was bank-mfe's own previous
+    // "report lost or stolen" button silently relabeling the ordinary, self-
+    // reversible freeze() call.
+    Given("a real card reported lost or stolen") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val card = freshCard("user_1")
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
+
+        When("reporting it lost") {
+            val view = service.reportLost("user_1")
+
+            Then("it real-freezes AND real-marks it lost, distinct from an ordinary freeze") {
+                view.frozen shouldBe true
+                view.lost shouldBe true
+            }
+        }
+
+        When("then attempting to self-unfreeze it") {
+            service.reportLost("user_1")
+            Then("it real-blocks -- lost is a one-way state, not a togglable freeze") {
+                try {
+                    service.unfreeze("user_1")
+                    error("expected CardLostException")
+                } catch (_: CardLostException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real card closed by its owner") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val card = freshCard("user_1")
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
+
+        When("closing it") {
+            val view = service.closeCard("user_1")
+            Then("it real-closes and real-blocks self-unfreeze") {
+                view.closedAt shouldBe card.closedAt
+                try {
+                    service.unfreeze("user_1")
+                    error("expected CardClosedException")
+                } catch (_: CardClosedException) {
+                    // expected
+                }
+            }
+        }
+
+        When("closing it a second time") {
+            service.closeCard("user_1")
+            Then("it real-409s rather than silently no-opping") {
+                try {
+                    service.closeCard("user_1")
+                    error("expected CardClosedException")
+                } catch (_: CardClosedException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real active (never lost or closed) card") {
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val service = newService(
+            debitCardRepository = mockk<DebitCardRepository>().also {
+                every { it.findByUserId("user_1") } returns freshCard("user_1")
+            },
+            debitCardTransactionRepository = debitCardTransactionRepository,
+        )
+
+        When("reissue is attempted on it") {
+            Then("it real-409s -- reissue is only a real recovery path from lost/closed, not a way to rotate an active card") {
+                try {
+                    service.reissue("user_1")
+                    error("expected CardNotEligibleForReissueException")
+                } catch (_: CardNotEligibleForReissueException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real lost card being reissued") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val card = freshCard("user_1").also { it.lost = true; it.frozen = true; it.pinHash = "old_hash" }
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
+
+        When("reissuing") {
+            val view = service.reissue("user_1")
+
+            Then("it real-clears lost/frozen/pin and real-regenerates last4, so the old PIN can never authorize the new card") {
+                view.lost shouldBe false
+                view.frozen shouldBe false
+                view.pinSet shouldBe false
+                view.last4 shouldBe card.last4
+                card.pinHash shouldBe null
+            }
+        }
+    }
+
+    Given("a real user changing their card PIN with the correct login credential") {
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val userRepository = mockk<UserRepository>()
+        val passwordEncoder = BCryptPasswordEncoder()
+        val card = freshCard("user_1")
+        val user = User(id = "user_1", phoneNumber = "+250700000000", firstName = "Test", lastName = "User", passwordHash = passwordEncoder.encode("123456"))
+        every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.save(any()) } answers { firstArg() }
+        every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
+        every { userRepository.findById("user_1") } returns Optional.of(user)
+        val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository, userRepository = userRepository)
+
+        When("setting a real 4-digit PIN") {
+            val view = service.setPin("user_1", "4821", "123456")
+            Then("it real-persists the new PIN hash, never the plaintext") {
+                view.pinSet shouldBe true
+                card.pinHash shouldNotBe null
+                card.pinHash shouldNotBe "4821"
+            }
+        }
+
+        When("setting a PIN with the wrong current credential") {
+            Then("it real-403s rather than accepting it") {
+                try {
+                    service.setPin("user_1", "4821", "wrong-password")
+                    error("expected CardIncorrectCredentialException")
+                } catch (_: CardIncorrectCredentialException) {
+                    // expected
+                }
+            }
+        }
+
+        When("setting a PIN that isn't exactly 4 digits") {
+            Then("it real-400s") {
+                try {
+                    service.setPin("user_1", "12345", "123456")
+                    error("expected CardInvalidPinException")
+                } catch (_: CardInvalidPinException) {
+                    // expected
+                }
+            }
+        }
+    }
+}) {
+    // Real isolation fix -- the new lost/closed/reissue tests above run multiple
+    // `When`s under one `Given` that mutate a real (non-mock) DebitCard instance
+    // across them; without this, Kotest's default SingleInstance mode would let
+    // state leak between `When`s (e.g. a card closed by an earlier `When` staying
+    // closed for a later, supposedly-independent one). Matches the same override
+    // AccountServiceTest.kt already uses for the identical reason.
+    override fun isolationMode() = IsolationMode.InstancePerLeaf
+}

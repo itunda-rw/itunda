@@ -2,6 +2,7 @@ package rw.itunda.card
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
@@ -21,6 +22,7 @@ import rw.itunda.core.repository.DebitCardRepository
 import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.UserRepository
 import java.math.BigDecimal
 import java.security.SecureRandom
 import java.time.Duration
@@ -39,6 +41,13 @@ class CardInvalidAmountException(message: String) : RuntimeException(message)
 class CardDailyLimitExceededException(message: String) : RuntimeException(message)
 class CardMonthlyLimitExceededException(message: String) : RuntimeException(message)
 class CardInvalidDesignException(message: String) : RuntimeException(message)
+class CardLostException(message: String) : RuntimeException(message)
+class CardClosedException(message: String) : RuntimeException(message)
+class CardNotEligibleForReissueException(message: String) : RuntimeException(message)
+class CardInvalidPinException(message: String) : RuntimeException(message)
+class CardIncorrectCredentialException(message: String) : RuntimeException(message)
+
+private val CARD_PIN_PATTERN = Regex("^\\d{4}$")
 
 data class CardView(
     val id: String,
@@ -46,7 +55,11 @@ data class CardView(
     val dailyLimit: BigDecimal,
     val monthlyLimit: BigDecimal,
     val frozen: Boolean,
+    val lost: Boolean,
+    val closedAt: Instant?,
+    val pinSet: Boolean,
     val issuedAt: Instant,
+    val reissuedAt: Instant?,
     val design: String,
     val spentToday: BigDecimal,
     val spentThisMonth: BigDecimal,
@@ -73,6 +86,7 @@ class CardService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
     private val rateLimiter: RateLimiter,
+    private val userRepository: UserRepository,
 ) {
     companion object {
         // itunda has no real production timezone service; Rwanda is a single-timezone
@@ -82,6 +96,10 @@ class CardService(
     }
 
     private val secureRandom = SecureRandom()
+    // Same convention AuthService.setPin already uses for the login PIN -- no shared
+    // PasswordEncoder bean exists anywhere in this codebase (confirmed by grep), every
+    // consumer that needs one builds its own BCryptPasswordEncoder() instance.
+    private val passwordEncoder = BCryptPasswordEncoder()
 
     @Transactional
     fun issueCard(userId: String, design: String = DebitCardDesign.DEFAULT): DebitCard {
@@ -144,9 +162,116 @@ class CardService(
     @Transactional
     fun unfreeze(userId: String): CardView {
         val card = getCardOrThrow(userId)
+        // Real one-way-state fix: `lost`/`closedAt` must never be self-service-
+        // reversible the way an ordinary freeze is -- see DebitCard.kt's own doc
+        // comment on why these are separate fields. Reissuing is the only real way
+        // back to an active card from either state.
+        if (card.lost) throw CardLostException("This card was reported lost or stolen. Reissue a new card to keep using it.")
+        if (card.closedAt != null) throw CardClosedException("This card is closed. Reissue a new card to keep using it.")
         card.frozen = false
         val saved = debitCardRepository.save(card)
         notifyCardStateChanged(userId, saved, frozen = false)
+        return toView(saved)
+    }
+
+    /**
+     * Real "분실신고" (report lost or stolen) -- see DebitCard.kt's own doc comment
+     * for why this is a distinct, one-way state from the ordinary freeze/unfreeze
+     * toggle. Closes a real gap bank-mfe's own CardView had already found and
+     * flagged live (its "Report lost or stolen" button used to just relabel the
+     * ordinary freeze() call because this distinct flow didn't exist yet).
+     */
+    @Transactional
+    fun reportLost(userId: String): CardView {
+        rateLimiter.checkLimit("card:report-lost:$userId", limit = 5, window = Duration.ofHours(1))
+        val card = getCardOrThrow(userId)
+        if (card.closedAt != null) throw CardClosedException("This card is already closed")
+        card.lost = true
+        card.frozen = true
+        val saved = debitCardRepository.save(card)
+        notifyCardLostOrClosed(userId, saved, "reported lost or stolen")
+        return toView(saved)
+    }
+
+    /**
+     * Real "카드 해지하기" (close/cancel card) -- a real, distinct terminal state
+     * from `frozen`. Unlike a lost/stolen report, this is the cardholder's own
+     * deliberate choice to stop using this card entirely; `reissue` below is the
+     * real, honest recovery path from either state, matching how a real bank
+     * treats "get a replacement" the same way whether the old card was lost or
+     * simply retired.
+     */
+    @Transactional
+    fun closeCard(userId: String): CardView {
+        rateLimiter.checkLimit("card:close:$userId", limit = 5, window = Duration.ofHours(1))
+        val card = getCardOrThrow(userId)
+        if (card.closedAt != null) throw CardClosedException("This card is already closed")
+        card.closedAt = Instant.now()
+        card.frozen = true
+        val saved = debitCardRepository.save(card)
+        notifyCardLostOrClosed(userId, saved, "closed")
+        return toView(saved)
+    }
+
+    /**
+     * Real "카드 재발급" (reissue) -- closes the real gap DebitCard.kt's own doc
+     * comment on `issueCard` flags: once a card exists, `issueCard` can never be
+     * called again (CardAlreadyIssuedException), so a lost/stolen/closed card
+     * previously had no real recovery path at all. Regenerates `last4` and clears
+     * `lost`/`closedAt`/`pinHash` on the SAME row rather than creating a second
+     * DebitCard, since `userId` is uniquely constrained (one real card per user at
+     * a time) -- the same honest simplification `last4` itself already documents
+     * (a real stored display suffix, not a routable PAN, so there's no physical
+     * card-fulfilment step a client needs to wait on).
+     */
+    @Transactional
+    fun reissue(userId: String): CardView {
+        rateLimiter.checkLimit("card:reissue:$userId", limit = 5, window = Duration.ofHours(1))
+        val card = getCardOrThrow(userId)
+        if (!card.lost && card.closedAt == null) {
+            throw CardNotEligibleForReissueException("Only a lost, stolen, or closed card can be reissued")
+        }
+        card.last4 = (secureRandom.nextInt(9000) + 1000).toString()
+        card.lost = false
+        card.closedAt = null
+        card.frozen = false
+        card.pinHash = null
+        card.reissuedAt = Instant.now()
+        val saved = debitCardRepository.save(card)
+        val title = "New card issued"
+        val body = "Your new itunda card ending in ${saved.last4} is ready. Set a card PIN before your first purchase."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CARD_REISSUED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"cardId\":\"${saved.id}\"}",
+            ),
+        )
+        sendCardPushAfterCommit(userId, title, body, saved.id)
+        return toView(saved)
+    }
+
+    /**
+     * Real "카드 비밀번호 변경" (change card PIN) -- a real, itunda-issued 4-digit
+     * debit-card PIN, deliberately separate from the 6-digit login PIN (see
+     * DebitCard.kt's own doc comment). Step-up auth (verify the caller's current
+     * login credential before accepting a new card PIN) reuses the exact same
+     * passwordEncoder.matches proof-of-ownership pattern AuthService.setPin
+     * already established for changing the login PIN itself.
+     */
+    @Transactional
+    fun setPin(userId: String, newPin: String, currentCredential: String): CardView {
+        rateLimiter.checkLimit("card:set-pin:$userId", limit = 5, window = Duration.ofHours(1))
+        if (!CARD_PIN_PATTERN.matches(newPin)) {
+            throw CardInvalidPinException("Your card PIN must be exactly 4 digits")
+        }
+        val card = getCardOrThrow(userId)
+        val user = userRepository.findById(userId).orElseThrow { CardNotFoundException("User not found") }
+        if (!passwordEncoder.matches(currentCredential, user.passwordHash)) {
+            throw CardIncorrectCredentialException("Incorrect current password or PIN")
+        }
+        card.pinHash = passwordEncoder.encode(newPin)
+        val saved = debitCardRepository.save(card)
         return toView(saved)
     }
 
@@ -168,6 +293,8 @@ class CardService(
         }
 
         val card = getCardOrThrow(userId)
+        if (card.lost) throw CardFrozenException("This card was reported lost or stolen. Reissue a new card to make a purchase.")
+        if (card.closedAt != null) throw CardFrozenException("This card is closed. Reissue a new card to make a purchase.")
         if (card.frozen) throw CardFrozenException("This card is frozen. Unfreeze it to make a purchase.")
 
         // Real bug found live (2026-08-02): the daily/monthly limit check below reads a
@@ -232,7 +359,8 @@ class CardService(
             transaction = transaction,
             card = CardView(
                 id = card.id, last4 = card.last4, dailyLimit = card.dailyLimit, monthlyLimit = card.monthlyLimit,
-                frozen = card.frozen, issuedAt = card.issuedAt, design = card.design,
+                frozen = card.frozen, lost = card.lost, closedAt = card.closedAt, pinSet = card.pinHash != null,
+                issuedAt = card.issuedAt, reissuedAt = card.reissuedAt, design = card.design,
                 spentToday = spentTodayAfter, spentThisMonth = spentThisMonthAfter,
                 remainingToday = card.dailyLimit.subtract(spentTodayAfter).max(BigDecimal.ZERO),
                 remainingThisMonth = card.monthlyLimit.subtract(spentThisMonthAfter).max(BigDecimal.ZERO),
@@ -250,7 +378,8 @@ class CardService(
         val spentThisMonth = debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(card.id, startOfMonth)
         return CardView(
             id = card.id, last4 = card.last4, dailyLimit = card.dailyLimit, monthlyLimit = card.monthlyLimit,
-            frozen = card.frozen, issuedAt = card.issuedAt, design = card.design,
+            frozen = card.frozen, lost = card.lost, closedAt = card.closedAt, pinSet = card.pinHash != null,
+            issuedAt = card.issuedAt, reissuedAt = card.reissuedAt, design = card.design,
             spentToday = spentToday, spentThisMonth = spentThisMonth,
             remainingToday = card.dailyLimit.subtract(spentToday).max(BigDecimal.ZERO),
             remainingThisMonth = card.monthlyLimit.subtract(spentThisMonth).max(BigDecimal.ZERO),
@@ -270,6 +399,22 @@ class CardService(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "CARD_STATE_CHANGED",
                 title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"cardId\":\"${card.id}\",\"frozen\":\"$frozen\"}",
+            ),
+        )
+        sendCardPushAfterCommit(userId, title, body, card.id)
+    }
+
+    /** A lost/stolen report or a closure must always reach the cardholder immediately
+     * -- the same real security-alert discipline notifyCardStateChanged already
+     * established for freeze/unfreeze, reused here for these two one-way states. */
+    private fun notifyCardLostOrClosed(userId: String, card: DebitCard, verb: String) {
+        val title = if (verb.startsWith("reported")) "Card reported lost" else "Card closed"
+        val body = "Your itunda card ending in ${card.last4} was $verb. No purchases can be made on it anymore."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "CARD_STATE_CHANGED",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"cardId\":\"${card.id}\"}",
             ),
         )
         sendCardPushAfterCommit(userId, title, body, card.id)

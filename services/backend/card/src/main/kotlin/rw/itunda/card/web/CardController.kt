@@ -17,13 +17,18 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.card.CardAlreadyIssuedException
+import rw.itunda.card.CardClosedException
 import rw.itunda.card.CardDailyLimitExceededException
 import rw.itunda.card.CardFrozenException
+import rw.itunda.card.CardIncorrectCredentialException
 import rw.itunda.card.CardInvalidAmountException
 import rw.itunda.card.CardInvalidDesignException
 import rw.itunda.card.CardInvalidLimitException
+import rw.itunda.card.CardInvalidPinException
+import rw.itunda.card.CardLostException
 import rw.itunda.card.CardMonthlyLimitExceededException
 import rw.itunda.card.CardNoAccountException
+import rw.itunda.card.CardNotEligibleForReissueException
 import rw.itunda.card.CardNotFoundException
 import rw.itunda.card.CardService
 import rw.itunda.core.idempotency.IdempotencyConflictException
@@ -38,6 +43,7 @@ import java.math.BigDecimal
 
 data class SetCardLimitsRequest(val dailyLimit: BigDecimal, val monthlyLimit: BigDecimal)
 data class ChargeCardRequest(val amount: BigDecimal, val merchantName: String)
+data class SetCardPinRequest(val newPin: String, val currentCredential: String)
 
 // `design` is nullable/optional (2026-08-27) so an old, not-yet-updated client that
 // still calls POST /issue with no body at all keeps working exactly as before --
@@ -86,6 +92,22 @@ class CardController(
     fun unfreeze(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "card" to cardService.unfreeze(currentUser.userId)))
 
+    @PostMapping("/report-lost")
+    fun reportLost(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "card" to cardService.reportLost(currentUser.userId)))
+
+    @PostMapping("/close")
+    fun close(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "card" to cardService.closeCard(currentUser.userId)))
+
+    @PostMapping("/reissue")
+    fun reissue(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "card" to cardService.reissue(currentUser.userId)))
+
+    @PutMapping("/pin")
+    fun setPin(@RequestBody request: SetCardPinRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "card" to cardService.setPin(currentUser.userId, request.newPin, request.currentCredential)))
+
     @PostMapping("/charge")
     fun charge(
         @RequestBody request: ChargeCardRequest,
@@ -116,6 +138,21 @@ class CardController(
 
     @ExceptionHandler(CardInvalidDesignException::class)
     fun handleInvalidDesign(ex: CardInvalidDesignException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CARD_DESIGN", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CardLostException::class)
+    fun handleLost(ex: CardLostException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_LOST", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(CardClosedException::class)
+    fun handleClosed(ex: CardClosedException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_CLOSED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(CardNotEligibleForReissueException::class)
+    fun handleNotEligibleForReissue(ex: CardNotEligibleForReissueException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CARD_NOT_ELIGIBLE_FOR_REISSUE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(CardInvalidPinException::class)
+    fun handleInvalidPin(ex: CardInvalidPinException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CARD_PIN", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CardIncorrectCredentialException::class)
+    fun handleIncorrectCredential(ex: CardIncorrectCredentialException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("INCORRECT_CREDENTIAL", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(CardInvalidAmountException::class)
     fun handleInvalidAmount(ex: CardInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))

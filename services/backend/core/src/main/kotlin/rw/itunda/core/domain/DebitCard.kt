@@ -47,8 +47,11 @@ class DebitCard(
     @Column(name = "user_id", nullable = false, unique = true, length = 64)
     val userId: String,
 
+    // `var` (2026-09-01): CardService.reissue regenerates this in place on a real
+    // "카드 재발급" -- see this class's own doc comment on why reissue mutates the
+    // same row instead of creating a second DebitCard.
     @Column(name = "last_4", nullable = false, length = 4)
-    val last4: String,
+    var last4: String,
 
     @Column(name = "daily_limit", nullable = false, precision = 18, scale = 2)
     var dailyLimit: BigDecimal,
@@ -58,6 +61,38 @@ class DebitCard(
 
     @Column(nullable = false)
     var frozen: Boolean = false,
+
+    // Real "분실신고"/"카드 해지하기" (report lost-or-stolen / close card) states
+    // (2026-09-01, direct user-supplied Toss Bank card-management screenshots) --
+    // deliberately distinct from `frozen` above: `frozen` is a self-service toggle
+    // the user can flip back at will (`unfreeze`), while `lost`/`closedAt` are
+    // one-way -- see CardService.unfreeze's own real block on unfreezing either
+    // state. Closes a real gap bank-mfe's own CardView had already found and
+    // flagged live: "Report lost or stolen" used to just relabel the ordinary
+    // freeze() call because "itunda has no distinct lost-card-report flow on the
+    // backend" -- this is that real, distinct flow.
+    @Column(nullable = false)
+    var lost: Boolean = false,
+
+    @Column(name = "closed_at")
+    var closedAt: Instant? = null,
+
+    // Real card PIN (2026-08-27 Toss reference: "카드 비밀번호 변경") -- a real,
+    // itunda-issued 4-digit debit-card PIN, deliberately separate from the 6-digit
+    // login PIN (`User.passwordHash`, see AuthService.setPin's own doc comment):
+    // real debit cards worldwide use a 4-digit PIN distinct from any app-login
+    // credential. Hashed with the same BCryptPasswordEncoder convention
+    // AuthService already uses for the login PIN -- never stored or compared in
+    // plaintext.
+    @Column(name = "pin_hash")
+    var pinHash: String? = null,
+
+    // Real "카드 재발급" (reissue) audit marker -- see CardService.reissue's own
+    // doc comment for why reissuing regenerates `last4`/clears `lost`/`closedAt`/
+    // `pinHash` in place rather than creating a second DebitCard row (userId is
+    // uniquely constrained, matching one real card per user at a time).
+    @Column(name = "reissued_at")
+    var reissuedAt: Instant? = null,
 
     @Column(name = "issued_at", nullable = false)
     val issuedAt: Instant = Instant.now(),
