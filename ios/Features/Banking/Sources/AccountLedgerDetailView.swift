@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
@@ -29,19 +30,44 @@ public struct AccountLedgerDetailView: View {
     let transactions: [RecentTransactionRowData]
     let onBack: () -> Void
     let onSend: () -> Void
+    // Real Toss Bank Card/Manage top-bar pair (2026-09-01, direct user-supplied
+    // Toss screenshots) -- matches bank-mfe's/Android's identical AccountDetailScreen
+    // top bar (see AccountManageScreen.swift's own doc comment for what "Manage"
+    // opens). Defaulted to {} so the FeatureBankingExample preview target and any
+    // other caller that doesn't wire these keeps compiling untouched.
+    var onOpenCard: () -> Void = {}
+    var onOpenManage: () -> Void = {}
 
     // Real fix (2026-08-24, direct user follow-up: "no I mean presable effect" --
     // clarifying that the ledger row's missing press feedback was really pointing
     // at a bigger gap, that tapping a row didn't go anywhere at all). Matches
     // Android's/bank-mfe's identical selectedTransaction + TransactionDetailScreen.
     @State private var selectedTransaction: RecentTransactionRowData?
+    // Real interest-claim banner (2026-09-01) -- web's/Android's own
+    // AccountDetailScreen already had this ("Interest 7 RWF" + "Get interest"
+    // chip); iOS never did. FeatureBanking already depends on CoreNetwork (see
+    // BankView.swift's own identical NetworkClient.shared usage), so this is
+    // fetched directly rather than threaded in as a prop.
+    @State private var jar: InterestJar?
+    @State private var claiming = false
 
-    public init(balanceText: String, accountNumber: String?, transactions: [RecentTransactionRowData], onBack: @escaping () -> Void, onSend: @escaping () -> Void) {
+    public init(balanceText: String, accountNumber: String?, transactions: [RecentTransactionRowData], onBack: @escaping () -> Void, onSend: @escaping () -> Void, onOpenCard: @escaping () -> Void = {}, onOpenManage: @escaping () -> Void = {}) {
         self.balanceText = balanceText
         self.accountNumber = accountNumber
         self.transactions = transactions
         self.onBack = onBack
         self.onSend = onSend
+        self.onOpenCard = onOpenCard
+        self.onOpenManage = onOpenManage
+    }
+
+    private func claim() async {
+        claiming = true
+        defer { claiming = false }
+        // Non-critical -- the claim banner just stays as-is on failure, matching
+        // bank-mfe's AccountDetailScreen.handleClaim's own established tolerance.
+        _ = try? await NetworkClient.shared.claimInterest()
+        jar = try? await NetworkClient.shared.getInterestJar().jar
     }
 
     public var body: some View {
@@ -52,8 +78,23 @@ public struct AccountLedgerDetailView: View {
                 }
                 .accessibilityLabel("Back")
                 Spacer()
+                Button(action: onOpenCard) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "creditcard").font(.system(size: 14))
+                        Text("Card").font(IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline))
+                    }
+                    .foregroundColor(IDS.Colors.textSecondary)
+                }
+                Button(action: onOpenManage) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "gearshape").font(.system(size: 14))
+                        Text("Manage").font(IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline))
+                    }
+                    .foregroundColor(IDS.Colors.textSecondary)
+                }
+                .padding(.leading, 14)
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 16)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
@@ -68,6 +109,25 @@ public struct AccountLedgerDetailView: View {
                     CountUpText(balanceText)
                         .font(IDS.scaledFont(size: 32, weight: .bold, relativeTo: .largeTitle))
                         .foregroundColor(IDS.Colors.textPrimary)
+                    if let jar, jar.earnedThisMonth > 0 {
+                        HStack {
+                            Text("Interest \(formatAmount(Int(jar.earnedThisMonth))) RWF")
+                                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
+                                .foregroundColor(IDS.Colors.textSecondary)
+                            Spacer()
+                            Button(action: { Task { await claim() } }) {
+                                Text(claiming ? "…" : "Get interest")
+                                    .font(IDS.scaledFont(size: 12, weight: .bold, relativeTo: .caption2))
+                                    .foregroundColor(IDS.Colors.brand)
+                            }
+                            .disabled(claiming)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(IDS.Colors.backgroundTertiary)
+                        .cornerRadius(10)
+                        .padding(.top, 10)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 24)
@@ -109,6 +169,9 @@ public struct AccountLedgerDetailView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .navigationBarHidden(true)
+        .task {
+            jar = try? await NetworkClient.shared.getInterestJar().jar
+        }
         .fullScreenCover(item: $selectedTransaction) { tx in
             TransactionDetailScreen(tx: tx, onBack: { selectedTransaction = nil })
         }

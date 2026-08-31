@@ -6,6 +6,7 @@ import FeatureBanking
 import FeatureCredit
 import FeatureMaps
 import FeaturePayments
+import FeatureSupport
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
@@ -180,6 +181,21 @@ struct ContentView: View {
     // EntireMenuScreen's own onOpenBank doc comment), matching Android's identical
     // BankHubScreen move. Home no longer carries any Bank-specific data at all.
     @State private var showBank = false
+    // Real Toss Bank 관리 (Manage) account-settings hub (2026-09-01) -- ports
+    // web's/Android's already-built AccountManageScreen (see that type's own doc
+    // comment in FeatureBanking for the full account of what it surfaces and what's
+    // honestly scoped out). This is the one place that can wire its rows to real
+    // App-module screens, since AccountManageScreen itself (FeatureBanking) can't
+    // import them.
+    @State private var showAccountManage = false
+    @State private var showBankCard = false
+    @State private var showBankForeignCurrency = false
+    @State private var showBankPayBills = false
+    @State private var showBankSupport = false
+    // Set true only when AccountManageScreen's "Auto transfer" row opens
+    // showTransferHub, so TransferHubContainer lands straight on its own
+    // AutoTransferListScreen instead of the hub's top-level row list.
+    @State private var transferHubStartAtAutoTransfers = false
 
     // Real, minimal usage signal on each tap (2026-08-10) -- same event name/metadata
     // shape bank-mfe's/Android's identical coop rails already fire, stable keys
@@ -445,7 +461,9 @@ struct ContentView: View {
                             onOpenNotifications: { showBankSettings = true },
                             onOpenProfile: { showBankSettings = true },
                             payBalanceText: bankViewModel.payBalanceText,
-                            onOpenPay: { showBank = false; selectedTab = 1 }
+                            onOpenPay: { showBank = false; selectedTab = 1 },
+                            onOpenCard: { showBankCard = true },
+                            onOpenManage: { showAccountManage = true }
                         )
                             .toolbar {
                                 ToolbarItem(placement: .navigationBarLeading) {
@@ -475,16 +493,41 @@ struct ContentView: View {
                         .sheet(isPresented: $showInvest) {
                             InvestScreenView(onBack: { showInvest = false })
                         }
+                        .fullScreenCover(isPresented: $showAccountManage) {
+                            AccountManageScreen(
+                                accountNumber: bankViewModel.accountNumber ?? "",
+                                onBack: { showAccountManage = false },
+                                onOpenCard: { showAccountManage = false; showBankCard = true },
+                                onOpenDevices: { showAccountManage = false; showBankSettings = true },
+                                onOpenAutoTransfer: { showAccountManage = false; transferHubStartAtAutoTransfers = true; showTransferHub = true },
+                                onOpenForeignCurrency: { showAccountManage = false; showBankForeignCurrency = true },
+                                onOpenBills: { showAccountManage = false; showBankPayBills = true },
+                                onOpenSupport: { showAccountManage = false; showBankSupport = true }
+                            )
+                        }
+                        .sheet(isPresented: $showBankCard) {
+                            CardScreenView(onBack: { showBankCard = false })
+                        }
+                        .sheet(isPresented: $showBankForeignCurrency) {
+                            ForeignCurrencyScreenView(onBack: { showBankForeignCurrency = false })
+                        }
+                        .sheet(isPresented: $showBankPayBills) {
+                            SaronitePayBillsView()
+                        }
+                        .sheet(isPresented: $showBankSupport) {
+                            SupportScreenView(onBack: { showBankSupport = false })
+                        }
                 }
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
                 }
                 .fullScreenCover(isPresented: $showTransferHub) {
                     TransferHubContainer(
-                        onBack: { showTransferHub = false },
+                        onBack: { showTransferHub = false; transferHubStartAtAutoTransfers = false },
                         onSendMoney: { showTransferHub = false; showTransferFlow = true },
                         onSplitBill: { showTransferHub = false; selectedTab = 3 },
-                        onOpenHistory: { showTransferHub = false; showTransactionHistory = true }
+                        onOpenHistory: { showTransferHub = false; showTransactionHistory = true },
+                        startAtAutoTransfers: transferHubStartAtAutoTransfers
                     )
                 }
                 .fullScreenCover(isPresented: $showShop) {

@@ -23,7 +23,18 @@ struct TransferHubContainer: View {
     var onOpenHistory: () -> Void = {}
 
     @State private var autoTransferCount = 0
-    @State private var showAutoTransfers = false
+    @State private var showAutoTransfers: Bool
+
+    // Real deep-link (2026-09-01) -- AccountManageScreen's "Auto transfer" row
+    // (see ContentView.swift's own wiring) needs to land straight on the
+    // Auto-transfer list instead of this hub's own top-level row list.
+    init(onBack: @escaping () -> Void = {}, onSendMoney: @escaping () -> Void = {}, onSplitBill: @escaping () -> Void = {}, onOpenHistory: @escaping () -> Void = {}, startAtAutoTransfers: Bool = false) {
+        self.onBack = onBack
+        self.onSendMoney = onSendMoney
+        self.onSplitBill = onSplitBill
+        self.onOpenHistory = onOpenHistory
+        _showAutoTransfers = State(initialValue: startAtAutoTransfers)
+    }
 
     var body: some View {
         VStack(spacing: 0) {

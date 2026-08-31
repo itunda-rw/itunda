@@ -358,6 +358,13 @@ public struct BankView: View {
     private let onOpenProfile: () -> Void
     private let payBalanceText: String?
     private let onOpenPay: () -> Void
+    // Real Card/Manage top-bar pair (2026-09-01) -- pure pass-throughs, no local
+    // state here, matching onOpenNotifications/onOpenProfile/onOpenPay's own
+    // established shape: ContentView.swift (App module) owns the real navigation
+    // since AccountManageScreen's own rows need App-module screens this module
+    // cannot import.
+    private let onOpenCard: () -> Void
+    private let onOpenManage: () -> Void
 
     /// Real data (2026-07-11) -- balanceText/savingsRows previously didn't exist;
     /// every number here was hardcoded ("RWF 1,284,350" etc). Defaults preserve the
@@ -381,7 +388,9 @@ public struct BankView: View {
         // Dual-balance UI (2026-08-29, closing [[project_itunda_bank_pay_separation]]'s
         // last open item, ported from bank-mfe's identical AccountSummaryRow.tsx fix).
         payBalanceText: String? = nil,
-        onOpenPay: @escaping () -> Void = {}
+        onOpenPay: @escaping () -> Void = {},
+        onOpenCard: @escaping () -> Void = {},
+        onOpenManage: @escaping () -> Void = {}
     ) {
         self.balanceText = balanceText
         self.accountNumber = accountNumber
@@ -395,6 +404,8 @@ public struct BankView: View {
         self.onOpenProfile = onOpenProfile
         self.payBalanceText = payBalanceText
         self.onOpenPay = onOpenPay
+        self.onOpenCard = onOpenCard
+        self.onOpenManage = onOpenManage
     }
 
     public var body: some View {
@@ -506,7 +517,9 @@ public struct BankView: View {
                     accountNumber: accountNumber,
                     transactions: recentTransactions,
                     onBack: { showAccountDetail = false },
-                    onSend: onSend
+                    onSend: onSend,
+                    onOpenCard: onOpenCard,
+                    onOpenManage: onOpenManage
                 )
             }
         }
