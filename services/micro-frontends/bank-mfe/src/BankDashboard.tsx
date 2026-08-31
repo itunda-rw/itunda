@@ -13185,7 +13185,16 @@ function WeeklySavingsSection() {
 
   return (
     <div>
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>26-week savings</h3>
+      {/* Real gap found live (2026-08-31, direct user follow-up: "keep improving
+          itunda bank to more like toss bank"): matches the real Toss Bank
+          reference's own catalog pattern (e.g. "31일 적금 -- 1%~10% p.a." shown
+          directly in the product list, no tap required) -- Android's own
+          BankHubScreen already states this exact real rate inline
+          ("$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly"),
+          web/iOS never did. Sourced from WeeklySavingsService's own real
+          BASE_RATE/BONUS_RATE constants, not invented. */}
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 2px' }}>26-week savings</h3>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '0 4px 10px' }}>5% base rate, escalates weekly</p>
       <CreateWeeklySavingsPlanForm onCreated={load} />
       {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
           conditional error message. */}
@@ -13566,7 +13575,11 @@ function Grow31SavingsSection() {
 
   return (
     <div>
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>31-day savings</h3>
+      {/* Real gap found live (2026-08-31) -- see WeeklySavingsSection's identical
+          fix above. Sourced from Grow31SavingsService.bonusRateForStreak's own
+          real tier table (base 1%, up to +10% at a 31-day streak). */}
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 2px' }}>31-day savings</h3>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '0 4px 10px' }}>Daily streak, up to 10% bonus rate</p>
       <CreateGrow31SavingsPlanForm onCreated={load} />
       {/* Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
           conditional error message. */}
@@ -13623,7 +13636,11 @@ function UpfrontDepositSection() {
 
   return (
     <div>
-      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 10px' }}>12-month deposit</h3>
+      {/* Real gap found live (2026-08-31) -- see WeeklySavingsSection's identical
+          fix above. Sourced from UpfrontInterestDepositService's own real
+          ANNUAL_RATE constant. */}
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, margin: '4px 4px 2px' }}>12-month deposit</h3>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '0 4px 10px' }}>2.80%/yr interest paid upfront, principal locked</p>
       <OpenUpfrontDepositForm onOpened={load} />
       {error && (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '16px' }} role="alert">{error}</p>

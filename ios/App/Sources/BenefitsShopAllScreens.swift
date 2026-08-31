@@ -308,8 +308,17 @@ struct EntireMenuScreen: View {
                 // mini-app does -- points there instead of a second, fake destination.
                 FlatRow(title: "Benefits", subtitle: benefitsSubtitle, glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
-                FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
-                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
+                // Real gap found live (2026-08-31, direct user follow-up: "keep
+                // improving itunda bank to more like toss bank"): matches the real
+                // Toss Bank reference's own catalog pattern (e.g. "31일 적금 --
+                // 1%~10% p.a." shown directly in the product list, no tap
+                // required) -- Android's own BankHubScreen already states these
+                // exact real rates inline, iOS/web never did. Sourced from
+                // WeeklySavingsService/Grow31SavingsService/
+                // UpfrontInterestDepositService's own real rate constants, not
+                // invented; same copy as Android's identical fix.
+                FlatRow(title: "26-Week Savings", subtitle: "5% base rate, escalates weekly", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
+                FlatRow(title: "31-Day Savings", subtitle: "Daily streak, up to 10% bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
                 FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
                 FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showGroupAccounts = true }),
@@ -352,7 +361,7 @@ struct EntireMenuScreen: View {
             ]),
             ("Save & grow", [
                 FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
-                FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", glyph: { AnyView(LockGlyph(size: 28)) }, action: { showUpfrontDeposit = true }),
+                FlatRow(title: "12-month deposit", subtitle: "2.80%/yr interest paid upfront, principal locked", glyph: { AnyView(LockGlyph(size: 28)) }, action: { showUpfrontDeposit = true }),
             ]),
             ("Borrow", [
                 FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
@@ -494,8 +503,8 @@ struct EntireMenuScreen: View {
                 // mini-app does -- points there instead of a second, fake destination.
                 FlatRow(title: "Benefits", subtitle: benefitsSubtitle, glyph: { AnyView(GiftBox(size: 28)) }, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", glyph: { AnyView(ChartIncreasingGlyph(size: 28)) }, action: { showInvest = true }),
-                        FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
-                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
+                        FlatRow(title: "26-Week Savings", subtitle: "5% base rate, escalates weekly", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showWeeklySavings = true }),
+                FlatRow(title: "31-Day Savings", subtitle: "Daily streak, up to 10% bonus rate", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showGrow31Savings = true }),
                         FlatRow(title: "Youth account", subtitle: "Capped starter account, ages 7-18", glyph: { AnyView(ChildGlyph(size: 28)) }, action: { showYouthAccount = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", glyph: { AnyView(ObjectCreditCard(size: 28)) }, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", glyph: { AnyView(HandshakeGlyph(size: 28)) }, action: { showGroupAccounts = true }),
@@ -606,7 +615,7 @@ struct EntireMenuScreen: View {
                     ], isExpanded: expandedMenuSection == "Send & pay", onToggle: { expandedMenuSection = (expandedMenuSection == "Send & pay") ? nil : "Send & pay" })
                     CollapsibleFlatSection(title: "Save & grow", rows: [
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
-                        FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", glyph: { AnyView(LockGlyph(size: 28)) }, action: { showUpfrontDeposit = true }),
+                        FlatRow(title: "12-month deposit", subtitle: "2.80%/yr interest paid upfront, principal locked", glyph: { AnyView(LockGlyph(size: 28)) }, action: { showUpfrontDeposit = true }),
                     ], isExpanded: expandedMenuSection == "Save & grow", onToggle: { expandedMenuSection = (expandedMenuSection == "Save & grow") ? nil : "Save & grow" })
                     CollapsibleFlatSection(title: "Borrow", rows: [
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", glyph: { AnyView(MoneyBagGlyph(size: 28)) }, action: { showLoans = true }),
