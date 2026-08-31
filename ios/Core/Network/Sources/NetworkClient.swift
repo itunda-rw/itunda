@@ -6299,6 +6299,14 @@ public struct CardDto: Decodable, Identifiable {
     public let dailyLimit: Double
     public let monthlyLimit: Double
     public let frozen: Bool
+    // Real "분실신고"/"카드 해지하기"/"카드 재발급"/"카드 비밀번호 변경" fields
+    // (2026-09-01, direct user-supplied Toss Bank card-management screenshots) --
+    // see the backend's DebitCard.kt doc comment for why lost/closedAt are
+    // deliberately separate, one-way states from `frozen`.
+    public let lost: Bool
+    public let closedAt: String?
+    public let pinSet: Bool
+    public let reissuedAt: String?
     public let issuedAt: String
     public let design: String
     public let spentToday: Double
@@ -6309,12 +6317,16 @@ public struct CardDto: Decodable, Identifiable {
     // Explicit memberwise init -- Swift doesn't synthesize a public one across module
     // boundaries, same real gotcha OverdraftAccountDto's own doc comment already
     // documents.
-    public init(id: String, last4: String, dailyLimit: Double, monthlyLimit: Double, frozen: Bool, issuedAt: String, design: String, spentToday: Double, spentThisMonth: Double, remainingToday: Double, remainingThisMonth: Double) {
+    public init(id: String, last4: String, dailyLimit: Double, monthlyLimit: Double, frozen: Bool, lost: Bool, closedAt: String?, pinSet: Bool, reissuedAt: String?, issuedAt: String, design: String, spentToday: Double, spentThisMonth: Double, remainingToday: Double, remainingThisMonth: Double) {
         self.id = id
         self.last4 = last4
         self.dailyLimit = dailyLimit
         self.monthlyLimit = monthlyLimit
         self.frozen = frozen
+        self.lost = lost
+        self.closedAt = closedAt
+        self.pinSet = pinSet
+        self.reissuedAt = reissuedAt
         self.issuedAt = issuedAt
         self.design = design
         self.spentToday = spentToday
@@ -6324,6 +6336,7 @@ public struct CardDto: Decodable, Identifiable {
     }
 }
 public struct CardResponse: Decodable { public let success: Bool; public let card: CardDto }
+public struct SetCardPinRequest: Encodable { public let newPin: String; public let currentCredential: String }
 public struct CardTransactionDto: Decodable, Identifiable {
     public let id: String
     public let cardId: String

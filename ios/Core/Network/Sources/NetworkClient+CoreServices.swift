@@ -133,6 +133,33 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/card/unfreeze", body: EmptyRequest())
     }
 
+    // Real "분실신고" (report lost or stolen) -- a distinct, one-way backend state
+    // from the ordinary freeze/unfreeze toggle above (DebitCard.kt's own doc
+    // comment). Closes the same gap web/Android's identical CardView already
+    // closed this session (commits 378b8e4b/d3facc7b).
+    public func reportCardLost() async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/report-lost", body: EmptyRequest())
+    }
+
+    // Real "카드 해지하기" (close card) -- also one-way; only reissueCard() below
+    // can recover from it.
+    public func closeCard() async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/close", body: EmptyRequest())
+    }
+
+    // Real "카드 재발급" (reissue) -- only allowed once a card is lost or closed;
+    // regenerates last4 and clears the old PIN in place.
+    public func reissueCard() async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/reissue", body: EmptyRequest())
+    }
+
+    // Real "카드 비밀번호 변경" (change card PIN) -- a real, separate 4-digit
+    // debit-card PIN, distinct from the login password/PIN. Requires the current
+    // login credential as step-up auth.
+    public func setCardPin(newPin: String, currentCredential: String) async throws -> CardResponse {
+        try await authenticatedPut("api/v1/card/pin", body: SetCardPinRequest(newPin: newPin, currentCredential: currentCredential))
+    }
+
     public func chargeCard(amount: Double, merchantName: String) async throws -> ChargeCardResponse {
         try await authenticatedPost("api/v1/card/charge", body: ChargeCardRequest(amount: amount, merchantName: merchantName), idempotencyKey: UUID().uuidString)
     }

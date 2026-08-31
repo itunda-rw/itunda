@@ -24,6 +24,14 @@ struct CardScreenView: View {
     @State private var busy = false
     @State private var error: String?
     @State private var chargeMessage: String?
+    // Real "카드 비밀번호 변경" (change card PIN) inline form (2026-09-01, direct
+    // user-supplied Toss Bank card-management screenshots) -- matches web/Android's
+    // identical setCardPin flow.
+    @State private var showPinForm = false
+    @State private var newPinInput = ""
+    @State private var pinPasswordInput = ""
+    @State private var pinError: String?
+    @State private var pinSuccess = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -82,11 +90,7 @@ struct CardScreenView: View {
                                 Spacer()
                                 Text("itunda card").font(.caption).foregroundColor(onFront.opacity(0.85))
                                 Text("•••• •••• •••• \(card.last4)").font(.title3).bold().foregroundColor(onFront)
-                                if card.frozen {
-                                    Text("Frozen").font(.caption).foregroundColor(onFront.opacity(0.85))
-                                } else {
-                                    Text("✓ Active").font(.caption).foregroundColor(onFront.opacity(0.85))
-                                }
+                                Text(cardStatusLabel(card)).font(.caption).foregroundColor(onFront.opacity(0.85))
                             }
                             .padding(20)
                             .aspectRatio(1.586, contentMode: .fit)
@@ -102,7 +106,51 @@ struct CardScreenView: View {
                             )
                             .cornerRadius(16)
 
-                            CardActionButton(title: card.frozen ? "Unfreeze card" : "Freeze card", disabled: busy, action: toggleFreeze)
+                            if card.lost || card.closedAt != nil {
+                                CardActionButton(title: "Get a new card", disabled: busy, action: reissue)
+                            } else {
+                                CardActionButton(title: card.frozen ? "Unfreeze card" : "Freeze card", disabled: busy, action: toggleFreeze)
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Button(action: { showPinForm.toggle() }) {
+                                    HStack {
+                                        Text(card.pinSet ? "Change card PIN" : "Set card PIN").font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+                                        Spacer()
+                                    }
+                                }
+                                .disabled(busy || card.closedAt != nil)
+                                if showPinForm {
+                                    Text("A real 4-digit card PIN, separate from your login password. Confirm your current login password to change it.")
+                                        .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                                    if let pinError {
+                                        Text(pinError).font(.caption).foregroundColor(.red)
+                                    }
+                                    IdsTextField("New 4-digit PIN", text: $newPinInput, isSecure: true, keyboardType: .numberPad)
+                                    IdsTextField("Current login password", text: $pinPasswordInput, isSecure: true)
+                                    CardActionButton(title: busy ? "…" : "Save PIN", disabled: busy, action: setPin)
+                                }
+                            }
+                            .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
+                            if pinSuccess {
+                                Text("Card PIN saved.").font(.caption).foregroundColor(.green)
+                            }
+                            Button(action: reportLost) {
+                                HStack {
+                                    Text(card.lost ? "Reported lost or stolen" : "Report lost or stolen").font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+                                    Spacer()
+                                }
+                            }
+                            .disabled(busy || card.lost || card.closedAt != nil)
+                            .padding(.horizontal, 4)
+                            Button(action: closeCardAction) {
+                                HStack {
+                                    Text(card.closedAt != nil ? "Card closed" : "Close card").font(.subheadline).foregroundColor(card.closedAt != nil ? IDS.Colors.textSecondary : .red)
+                                    Spacer()
+                                }
+                            }
+                            .disabled(busy || card.closedAt != nil)
+                            .padding(.horizontal, 4)
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Spend limits").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -125,7 +173,7 @@ struct CardScreenView: View {
                                 }
                                 IdsTextField("Merchant name", text: $merchantName)
                                 IdsTextField("Amount (RWF)", text: $chargeAmount, keyboardType: .numberPad)
-                                CardActionButton(title: card.frozen ? "Card is frozen" : (busy ? "Paying…" : "Pay"), disabled: busy || card.frozen, action: charge)
+                                CardActionButton(title: payButtonLabel(card, busy: busy), disabled: busy || card.frozen, action: charge)
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)
 
@@ -227,6 +275,81 @@ struct CardScreenView: View {
         }
     }
 
+    // Real "분실신고" (report lost or stolen) -- a distinct, one-way backend state
+    // now exists, closing the gap web/Android's identical CardView already closed
+    // this session.
+    private func reportLost() {
+        guard let current = card, !current.lost, current.closedAt == nil else { return }
+        busy = true
+        error = nil
+        Task {
+            do {
+                card = try await NetworkClient.shared.reportCardLost().card
+            } catch {
+                self.error = "Could not update your card."
+            }
+            busy = false
+        }
+    }
+
+    // Real "카드 해지하기" (close card) -- a deliberate, one-way retirement
+    // distinct from a lost/stolen report; only reissue() below can recover from
+    // either.
+    private func closeCardAction() {
+        guard let current = card, current.closedAt == nil else { return }
+        busy = true
+        error = nil
+        Task {
+            do {
+                card = try await NetworkClient.shared.closeCard().card
+            } catch {
+                self.error = "Could not close your card."
+            }
+            busy = false
+        }
+    }
+
+    // Real "카드 재발급" (reissue) -- the real recovery path from a lost/stolen
+    // or closed card; regenerates last4 and clears the old PIN in place.
+    private func reissue() {
+        busy = true
+        error = nil
+        Task {
+            do {
+                card = try await NetworkClient.shared.reissueCard().card
+            } catch {
+                self.error = "Could not reissue your card."
+            }
+            busy = false
+        }
+    }
+
+    private func setPin() {
+        guard newPinInput.count == 4, newPinInput.allSatisfy({ $0.isNumber }) else {
+            pinError = "Your card PIN must be exactly 4 digits."
+            return
+        }
+        guard !pinPasswordInput.isEmpty else {
+            pinError = "Enter your current login password."
+            return
+        }
+        busy = true
+        pinError = nil
+        pinSuccess = false
+        Task {
+            do {
+                card = try await NetworkClient.shared.setCardPin(newPin: newPinInput, currentCredential: pinPasswordInput).card
+                newPinInput = ""
+                pinPasswordInput = ""
+                showPinForm = false
+                pinSuccess = true
+            } catch {
+                pinError = "Could not update your card PIN."
+            }
+            busy = false
+        }
+    }
+
     private func charge() {
         guard let parsedAmount = Double(chargeAmount), parsedAmount > 0, !merchantName.isEmpty else {
             chargeMessage = "Enter a real merchant name and amount."
@@ -263,6 +386,20 @@ private struct CardActionButton: View {
         }
         .disabled(disabled)
     }
+}
+
+private func cardStatusLabel(_ card: CardDto) -> String {
+    if card.closedAt != nil { return "Closed" }
+    if card.lost { return "Reported lost or stolen" }
+    if card.frozen { return "Frozen" }
+    return "✓ Active"
+}
+
+private func payButtonLabel(_ card: CardDto, busy: Bool) -> String {
+    if card.closedAt != nil { return "Card is closed" }
+    if card.lost { return "Card reported lost" }
+    if card.frozen { return "Card is frozen" }
+    return busy ? "Paying…" : "Pay"
 }
 
 private func formatMoney(_ value: Double) -> String {
