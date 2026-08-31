@@ -5,6 +5,7 @@
 
 import { apiFetch } from './api';
 import { randomUUID } from './uuid';
+import type { BucketTransaction } from './bucketTransaction';
 
 export interface SavingsGoal {
   id: string;
@@ -69,8 +70,14 @@ export const withdrawFromGoal = (goalId: string, amount: number, toAccountId?: s
     body: JSON.stringify({ goalId, amount, toAccountId }),
   });
 
+export const fetchGoalTransactions = (goalId: string) =>
+  apiFetch<{ success: boolean; transactions: BucketTransaction[] }>(`/api/v1/savings/goals/${goalId}/transactions`).then((r) => r.transactions);
+
 export const fetchInterestJar = () =>
   apiFetch<{ success: boolean; jar: InterestJar }>('/api/v1/savings/interest-jar').then((r) => r.jar);
+
+export const fetchInterestJarTransactions = () =>
+  apiFetch<{ success: boolean; transactions: BucketTransaction[] }>('/api/v1/savings/interest-jar/transactions').then((r) => r.transactions);
 
 export const claimInterest = () =>
   apiFetch<{ success: boolean; message: string; claimed: number; newBalance: number }>('/api/v1/savings/interest-jar/claim', {

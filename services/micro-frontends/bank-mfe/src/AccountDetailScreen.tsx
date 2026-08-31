@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeftRight, Car, Utensils, Gift, ShoppingBag, Percent, Landmark, Phone, Receipt, Smartphone, Wallet,  } from 'lucide-react';
-import { IconBack } from './icons/ItundaIcons';
+import { ArrowLeftRight, Car, Utensils, Gift, ShoppingBag, Percent, Landmark, Phone, Receipt, Search, Smartphone, Wallet,  } from 'lucide-react';
+import { IconBack, IconChevronRight } from './icons/ItundaIcons';
 import { IdsButton } from './IdsButton';
 import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 import { AccountManageScreen } from './AccountManageScreen';
+import { ItundaBankAssetsScreen } from './ItundaBankAssetsScreen';
 import { fetchAccountTransactions, type Account, type Transaction } from './lib/account';
+import { claimInterest, fetchInterestJar, type InterestJar } from './lib/savings';
+import { fetchMyAutoTransfers, type AutoTransfer } from './lib/autoTransfers';
 
 // Real Toss Bank reference (20 screenshots, 2026-08-21, direct user instruction:
 // "should look 100% like in this images pixels by pixels"): a full-screen drill-in
@@ -32,11 +35,39 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManage, setShowManage] = useState(false);
+  const [showAssets, setShowAssets] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<{ tx: Transaction; afterBalance: number; isCredit: boolean } | null>(null);
+  // Real interest-claim banner (2026-08-31) -- Android's own AccountDetailScreen
+  // already had this ("Interest 7 RWF" + "Get interest" chip); web/iOS never did.
+  // Ported here rather than re-invented.
+  const [jar, setJar] = useState<InterestJar | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [autoTransfers, setAutoTransfers] = useState<AutoTransfer[] | null>(null);
+  // Real filter + search over the already-fetched ledger (2026-08-31, direct
+  // user-supplied Toss Bank screenshots showing a "전체" filter dropdown + search
+  // icon above the ledger) -- client-side only, no new endpoint needed.
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     fetchAccountTransactions(account.id).then(setTransactions).catch(() => setError('Could not load your transaction history.'));
+    fetchInterestJar().then(setJar).catch(() => setJar(null));
+    fetchMyAutoTransfers().then(setAutoTransfers).catch(() => setAutoTransfers([]));
   }, [account.id]);
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    try {
+      await claimInterest();
+      fetchInterestJar().then(setJar).catch(() => {});
+    } catch {
+      // Non-critical -- the claim banner just stays as-is on failure, matching
+      // InterestJarCard's own established tolerance for this action.
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   const sorted = [...(transactions ?? [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   // Real fix (2026-08-24, matching Android's identical AccountDetailScreen
@@ -53,7 +84,13 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
     runningBalance -= isCredit ? tx.amount : -tx.amount;
     return { tx, afterBalance, isCredit };
   });
-  const groups = withBalance.reduce<{ label: string; items: typeof withBalance }[]>((acc, entry) => {
+  const filtered = withBalance.filter((entry) => {
+    if (filterType && entry.tx.type !== filterType) return false;
+    if (searchQuery.trim() && !entry.tx.description.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
+    return true;
+  });
+  const availableTypes = useMemo(() => Array.from(new Set(withBalance.map((e) => e.tx.type))), [transactions]);
+  const groups = filtered.reduce<{ label: string; items: typeof withBalance }[]>((acc, entry) => {
     const label = new Date(entry.tx.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const last = acc[acc.length - 1];
     if (last && last.label === label) last.items.push(entry);
@@ -94,6 +131,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
         {selectedTransaction && (
           <TransactionDetailScreen entry={selectedTransaction} onBack={() => setSelectedTransaction(null)} />
         )}
+        {showAssets && <ItundaBankAssetsScreen onBack={() => setShowAssets(false)} />}
 
         <div style={{ padding: '4px 20px 24px' }}>
           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
@@ -102,6 +140,14 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
           <p style={{ margin: '6px 0 0', fontSize: '32px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
             {account.currency} {account.balance.toLocaleString()}
           </p>
+          {jar && jar.earnedThisMonth > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--itunda-grey-50)' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>Interest {jar.earnedThisMonth.toLocaleString()} RWF</span>
+              <button onClick={handleClaim} disabled={claiming} style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
+                {claiming ? '…' : 'Get interest'}
+              </button>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
             {/* Real, honest gap: itunda has no consumer-facing "add cash to my own
                 account" flow yet -- the closest real mechanism (AgentService.cashIn)
@@ -115,9 +161,52 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
               <IdsButton variant="tinted" fullWidth onClick={() => onSend(account)}>Send</IdsButton>
             </div>
           </div>
+          {/* Real Auto Transfer + "itunda Bank assets" summary rows (2026-08-31,
+              direct user-supplied Toss Bank screenshot) -- Auto Transfer already has a
+              real home (AutoTransfersCard, itunda Bank's Service section); this is
+              just a count summary linking there, not a duplicate implementation. */}
+          {onNavigateToTab && (
+            <button onClick={() => onNavigateToTab('SAVINGS')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '12px 0', borderTop: '1px solid var(--itunda-grey-100)', marginTop: '16px' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Auto Transfer</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{autoTransfers?.length ?? 0} items</span>
+                <IconChevronRight size={16} color="var(--itunda-grey-400)" />
+              </span>
+            </button>
+          )}
+          <button onClick={() => setShowAssets(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '12px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>itunda Bank assets</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>View all</span>
+              <IconChevronRight size={16} color="var(--itunda-grey-400)" />
+            </span>
+          </button>
         </div>
 
         <div style={{ padding: '0 20px' }}>
+          {sorted.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+              <select
+                value={filterType ?? ''}
+                onChange={(e) => setFilterType(e.target.value || null)}
+                style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-grey-900)', border: 'none', background: 'transparent' }}
+              >
+                <option value="">All</option>
+                {availableTypes.map((type) => (
+                  <option key={type} value={type}>{transactionTypeLabel(type)}</option>
+                ))}
+              </select>
+              <button onClick={() => setShowSearch((v) => !v)} aria-label="Search transactions" style={{ display: 'flex', padding: '4px' }}>
+                <Search size={18} color="var(--itunda-grey-500)" />
+              </button>
+            </div>
+          )}
+          {showSearch && (
+            <input
+              type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search transactions"
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '8px' }}
+            />
+          )}
           {error ? (
             <p role="alert" style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }}>{error}</p>
           ) : transactions === null ? (
@@ -126,6 +215,8 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
             <div style={{ padding: '32px 0' }}>
               <EmptyState message="No transactions yet" />
             </div>
+          ) : groups.length === 0 ? (
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', padding: '16px 0' }}>No transactions match this filter.</p>
           ) : (
             <div>
               {groups.map((group) => (

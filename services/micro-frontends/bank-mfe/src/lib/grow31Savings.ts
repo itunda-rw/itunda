@@ -8,6 +8,7 @@
 
 import { apiFetch } from './api';
 import { randomUUID } from './uuid';
+import type { BucketTransaction } from './bucketTransaction';
 
 export type Grow31SavingsPlanStatus = 'ACTIVE' | 'MATURED' | 'CANCELLED';
 
@@ -77,6 +78,9 @@ export const createGrow31SavingsPlan = (name: string, dailyAmount: number) =>
 
 export const fetchGrow31SavingsPlan = (id: string) =>
   apiFetch<{ success: boolean } & Grow31SavingsPlanDetail>(`/api/v1/grow31-savings/plans/${id}`);
+
+export const fetchGrow31SavingsPlanTransactions = (id: string) =>
+  apiFetch<{ success: boolean; transactions: BucketTransaction[] }>(`/api/v1/grow31-savings/plans/${id}/transactions`).then((r) => r.transactions);
 
 // Real explicit daily action -- unlike weeklySavings' scheduler-driven installments,
 // a Grow31 deposit only happens when the user actually taps "Save today."

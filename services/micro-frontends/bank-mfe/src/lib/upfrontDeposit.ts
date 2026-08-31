@@ -9,6 +9,7 @@
 // Backend has been real (ledger-backed) but had zero client anywhere until now.
 
 import { apiFetch } from './api';
+import type { BucketTransaction } from './bucketTransaction';
 
 export type UpfrontDepositStatus = 'ACTIVE' | 'MATURED';
 
@@ -35,6 +36,9 @@ export const UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80;
 
 export const fetchMyUpfrontDeposits = () =>
   apiFetch<{ success: boolean; deposits: UpfrontInterestDeposit[] }>('/api/v1/upfront-deposits').then((r) => r.deposits);
+
+export const fetchUpfrontDepositTransactions = (id: string) =>
+  apiFetch<{ success: boolean; transactions: BucketTransaction[] }>(`/api/v1/upfront-deposits/${id}/transactions`).then((r) => r.transactions);
 
 export const openUpfrontDeposit = (principal: number) =>
   apiFetch<{ success: boolean; deposit: UpfrontInterestDeposit; message: string }>('/api/v1/upfront-deposits', {

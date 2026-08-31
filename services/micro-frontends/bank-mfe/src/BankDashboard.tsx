@@ -45,7 +45,7 @@ import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { showToast } from './Toast';
 import { EmptyState, ErrorCard } from './EmptyState';
-import { configureAutoTopUp, fetchAutoTopUpSetting, fetchTransactions, fetchTransactionTimeline, fetchAccounts, triggerAutoTopUp, type AutoTopUpSetting, type Transaction, type Account } from './lib/account';
+import { configureAutoTopUp, fetchAccountTransactions, fetchAutoTopUpSetting, fetchTransactions, fetchTransactionTimeline, fetchAccounts, triggerAutoTopUp, type AutoTopUpSetting, type Transaction, type Account } from './lib/account';
 import { PayMoneyDetail } from './PayMoneyDetail';
 import { AccountSummaryRow } from './AccountSummaryRow';
 import { AccountDetailScreen } from './AccountDetailScreen';
@@ -53,7 +53,9 @@ import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice }
 import { fetchNotifications } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
 import { cardDesign, chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
-import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, withdrawFromGoal, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
+import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoalTransactions, fetchGoals, fetchInterestJar, fetchInterestJarTransactions, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, withdrawFromGoal, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
+import { BucketDetailScreen, BucketTransactionList } from './BucketDetailScreen';
+import { transactionsToBucketTransactions, type BucketTransaction } from './lib/bucketTransaction';
 import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
   requestUnpaidGroupAccountDues, setGroupAccountDuesAmount, withdrawFromGroupAccount,
@@ -68,12 +70,12 @@ import {
   type SaccoDividendPayout, type SaccoShareholding,
 } from './lib/sacco';
 import {
-  cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
+  cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlanTransactions, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
 } from './lib/weeklySavings';
 import {
-  cancelGrow31SavingsPlan, createGrow31SavingsPlan, depositGrow31SavingsToday, fetchGrow31SavingsPlan, fetchGrow31SavingsPlans,
+  cancelGrow31SavingsPlan, createGrow31SavingsPlan, depositGrow31SavingsToday, fetchGrow31SavingsPlan, fetchGrow31SavingsPlanTransactions, fetchGrow31SavingsPlans,
   withdrawGrow31SavingsPlan, grow31BonusRateForStreak, GROW31_TERM_DAYS,
   type Grow31SavingsPlan, type Grow31SavingsPlanDetail,
 } from './lib/grow31Savings';
@@ -90,7 +92,7 @@ import { BillsView } from './BillsView';
 import { AgentOperatorView } from './AgentOperatorView';
 import { UssdSettingsView } from './UssdSettingsView';
 import {
-  fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
+  fetchMyUpfrontDeposits, fetchUpfrontDepositTransactions, openUpfrontDeposit, withdrawUpfrontDeposit,
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
   type UpfrontInterestDeposit,
 } from './lib/upfrontDeposit';
@@ -1652,6 +1654,10 @@ function YouthAccountCard() {
   const [showDeposit, setShowDeposit] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.tsx's own doc
+  // comment. Unlike every other bucket, Youth is a real Account, so its history comes
+  // from the existing per-account transactions endpoint via transactionsToBucketTransactions.
+  const [showDetail, setShowDetail] = useState(false);
 
   const load = () => {
     fetchAccounts().then((accounts) => setYouthAccount(accounts.find((w) => w.type === 'MINI') ?? null)).catch(() => setYouthAccount(null));
@@ -1751,10 +1757,21 @@ function YouthAccountCard() {
         </form>
       )}
 
+      {youthAccount && showDetail && (
+        <BucketDetailScreen
+          title={t('youthAccount.title')}
+          subtitle={youthAccount.accountNumber}
+          balanceText={`${youthAccount.balance.toLocaleString()} RWF`}
+          fetchTransactions={() => fetchAccountTransactions(youthAccount.id).then((txs) => transactionsToBucketTransactions(txs, youthAccount.id, youthAccount.balance))}
+          onBack={() => setShowDetail(false)}
+        />
+      )}
       {youthAccount && (
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} RWF</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
+          <button onClick={() => setShowDetail(true)} style={{ textAlign: 'left', display: 'block' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
+          </button>
           {showDeposit && (
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
@@ -11553,6 +11570,10 @@ function InterestJarCard() {
   const [claiming, setClaiming] = useState(false);
   const [claimMsg, setClaimMsg] = useState<string | null>(null);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.tsx's own
+  // doc comment. No Fill/Withdraw here -- money auto-accrues off the linked balance,
+  // "claim" already has its own dedicated button on this card.
+  const [showDetail, setShowDetail] = useState(false);
 
   const load = () => {
     setError(null);
@@ -11600,22 +11621,34 @@ function InterestJarCard() {
           (dailyRate = rate/100/365) -- this copy called it "daily interest" outright,
           which is the actual number times ~365 too high a read for anyone taking it
           literally. Now states the real methodology instead of a bare adjective. */}
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>Safe Box · {jar.rate}% annual, accrued daily on your balance</p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-        <div>
-          {/* Real fix (2026-08-11): interest now auto-credits to the account the
-              instant it accrues (see backend SavingsService.accrueInterest's own
-              doc comment, matching real Toss Bank passbook interest) -- this money
-              is already in jar.balance above, not sitting unclaimed. */}
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.8 }}>Earned this month</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString()} RWF</p>
+      {showDetail && (
+        <BucketDetailScreen
+          title="Interest Jar"
+          subtitle="Safe Box"
+          balanceText={`${jar.balance.toLocaleString()} RWF`}
+          secondaryStat={{ label: 'Earned all-time', value: `${jar.earnedTotal.toLocaleString()} RWF` }}
+          fetchTransactions={fetchInterestJarTransactions}
+          onBack={() => setShowDetail(false)}
+        />
+      )}
+      <button onClick={() => setShowDetail(true)} style={{ display: 'block', width: '100%', textAlign: 'left' }}>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>Safe Box · {jar.rate}% annual, accrued daily on your balance</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+          <div>
+            {/* Real fix (2026-08-11): interest now auto-credits to the account the
+                instant it accrues (see backend SavingsService.accrueInterest's own
+                doc comment, matching real Toss Bank passbook interest) -- this money
+                is already in jar.balance above, not sitting unclaimed. */}
+            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.8 }}>Earned this month</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString()} RWF</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.8 }}>Earned all-time</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedTotal.toLocaleString()} RWF</p>
+          </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.8 }}>Earned all-time</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedTotal.toLocaleString()} RWF</p>
-        </div>
-      </div>
+      </button>
       {needsDeviceVerification ? (
         <div style={{ marginTop: '14px' }}>
           {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
@@ -11683,6 +11716,10 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.tsx's own doc
+  // comment. Deposit/withdraw stays on this card's own existing inline form below --
+  // the detail screen is a pure ledger viewer, opened by tapping the goal's own row.
+  const [showDetail, setShowDetail] = useState(false);
   const pct = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
 
   const handleDeposit = async (e?: React.FormEvent) => {
@@ -11729,14 +11766,24 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
 
   return (
     <div className="itunda-flat-section">
+      {showDetail && (
+        <BucketDetailScreen
+          title={goal.name}
+          subtitle="Savings Goal"
+          balanceText={`${goal.currentAmount.toLocaleString()} RWF`}
+          secondaryStat={{ label: 'Target', value: `${goal.targetAmount.toLocaleString()} RWF` }}
+          fetchTransactions={() => fetchGoalTransactions(goal.id)}
+          onBack={() => setShowDetail(false)}
+        />
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+        <button onClick={() => setShowDetail(true)} style={{ textAlign: 'left' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{goal.name}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
             {goal.currentAmount.toLocaleString()} / {goal.targetAmount.toLocaleString()} RWF
             {goal.status === 'completed' && ' · Completed 🎉'}
           </p>
-        </div>
+        </button>
         <div style={{ display: 'flex', gap: '6px' }}>
           {goal.currentAmount > 0 && (
             <button
@@ -12791,6 +12838,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   const [message, setMessage] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real per-bucket ledger (2026-08-31) -- see BucketTransactionList's own doc
+  // comment. Replaces the old "Installments" list below with the real transaction
+  // ledger this plan's own dedicated account always had, just never exposed.
+  const [transactions, setTransactions] = useState<BucketTransaction[] | null>(null);
   // Real fix (2026-08-10) -- see the Talk conversation view's own identical
   // pendingDeviceRetryRef for the full account: cancel and withdraw share this one
   // flag+prompt, so retrying has to redo whichever one was actually pending.
@@ -12799,6 +12850,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   const load = () => {
     setError(null);
     fetchWeeklySavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchWeeklySavingsPlanTransactions(id).then(setTransactions).catch(() => {});
   };
   useEffect(load, []);
 
@@ -12854,7 +12906,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   }
   if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
-  const { plan, accountBalance, installments } = detail;
+  const { plan, accountBalance } = detail;
   const pct = Math.min(100, Math.round((plan.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
   const currentRate = plan.streakBroken ? plan.baseRate : plan.baseRate + plan.bonusRate;
 
@@ -12892,17 +12944,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         {plan.totalInterestPaid != null && <Row label="Interest paid" value={`${plan.totalInterestPaid.toLocaleString()} RWF`} />}
       </div>
 
-      {installments.length > 0 && (
-        <div className="itunda-flat-section">
-          <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Installments</h3>
-          {installments.map((inst) => (
-            <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 'var(--itunda-type-scale-13-size)' }}>
-              <span style={{ color: 'var(--itunda-grey-500)' }}>Week {inst.weekNumber}</span>
-              <span style={{ fontWeight: 600 }}>{inst.amount.toLocaleString()} RWF</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Transactions</h3>
+        <BucketTransactionList transactions={transactions} />
+      </div>
 
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
@@ -13189,10 +13234,15 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   // cancel/withdraw all share this one flag+prompt, so retrying has to redo whichever
   // one was actually pending.
   const pendingDeviceRetryRef = useRef<(() => void) | null>(null);
+  // Real per-bucket ledger (2026-08-31) -- see BucketTransactionList's own doc
+  // comment. Replaces the old "Deposits" list below with the real transaction
+  // ledger this plan's own dedicated account always had, just never exposed.
+  const [transactions, setTransactions] = useState<BucketTransaction[] | null>(null);
 
   const load = () => {
     setError(null);
     fetchGrow31SavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+    fetchGrow31SavingsPlanTransactions(id).then(setTransactions).catch(() => {});
   };
   useEffect(load, []);
 
@@ -13263,7 +13313,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   }
   if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
 
-  const { plan, accountBalance, deposits } = detail;
+  const { plan, accountBalance } = detail;
   const pct = Math.min(100, Math.round((plan.daysElapsed / GROW31_TERM_DAYS) * 100));
   const bonus = grow31BonusRateForStreak(plan.longestStreak);
   const today = new Date().toISOString().slice(0, 10);
@@ -13299,17 +13349,10 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         {plan.totalInterestPaid != null && <Row label="Total interest paid" value={`${plan.totalInterestPaid.toLocaleString()} RWF`} />}
       </div>
 
-      {deposits.length > 0 && (
-        <div className="itunda-flat-section">
-          <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Deposits</h3>
-          {[...deposits].sort((a, b) => b.dayNumber - a.dayNumber).map((d) => (
-            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 'var(--itunda-type-scale-13-size)' }}>
-              <span style={{ color: 'var(--itunda-grey-500)' }}>Day {d.dayNumber} · streak {d.streakAtDeposit}</span>
-              <span style={{ fontWeight: 600 }}>{d.amount.toLocaleString()} RWF</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="itunda-flat-section">
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Transactions</h3>
+        <BucketTransactionList transactions={transactions} />
+      </div>
 
       {message && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', marginBottom: '10px' }}>{message}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
@@ -13639,6 +13682,18 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   const [withdrawing, setWithdrawing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const matured = deposit.status === 'MATURED';
+  // Real per-bucket ledger (2026-08-31) -- this card previously had no drill-in of
+  // any kind (its own doc history noted "everything a deposit needs fits on its list
+  // row," true for the summary fields but not for a real transaction history, which
+  // its dedicated account has always had, just never exposed).
+  const [showHistory, setShowHistory] = useState(false);
+  const [transactions, setTransactions] = useState<BucketTransaction[] | null>(null);
+  const toggleHistory = () => {
+    setShowHistory((v) => !v);
+    if (!showHistory && transactions === null) {
+      fetchUpfrontDepositTransactions(deposit.id).then(setTransactions).catch(() => setTransactions([]));
+    }
+  };
 
   const handleWithdraw = async () => {
     setError(null);
@@ -13663,6 +13718,14 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
         +{deposit.interestPaid.toLocaleString()} RWF interest already paid · matures {new Date(deposit.maturesAt).toLocaleDateString()}
       </p>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '6px' }} role="alert">{error}</p>}
+      <button onClick={toggleHistory} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', marginTop: '8px', fontWeight: 600 }}>
+        {showHistory ? 'Hide history' : 'View history'}
+      </button>
+      {showHistory && (
+        <div style={{ marginTop: '6px' }}>
+          <BucketTransactionList transactions={transactions} />
+        </div>
+      )}
       {matured && !deposit.withdrawnAt && (
         <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '10px' }} disabled={withdrawing} onClick={handleWithdraw}>
           {withdrawing ? 'Withdrawing…' : 'Withdraw principal'}

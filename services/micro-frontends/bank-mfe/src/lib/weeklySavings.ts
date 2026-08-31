@@ -10,6 +10,7 @@
 
 import { apiFetch } from './api';
 import { randomUUID } from './uuid';
+import type { BucketTransaction } from './bucketTransaction';
 
 export type WeeklySavingsPlanStatus = 'ACTIVE' | 'MATURED' | 'CANCELLED';
 
@@ -71,6 +72,9 @@ export const createWeeklySavingsPlan = (name: string, baseWeeklyAmount: number, 
 
 export const fetchWeeklySavingsPlan = (id: string) =>
   apiFetch<{ success: boolean } & WeeklySavingsPlanDetail>(`/api/v1/weekly-savings/plans/${id}`);
+
+export const fetchWeeklySavingsPlanTransactions = (id: string) =>
+  apiFetch<{ success: boolean; transactions: BucketTransaction[] }>(`/api/v1/weekly-savings/plans/${id}/transactions`).then((r) => r.transactions);
 
 // Real early withdrawal -- always forfeits the streak bonus (see backend
 // cancelPlan's own doc comment); pays out principal + base-rate-only interest
