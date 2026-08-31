@@ -67,8 +67,20 @@ object IdsIcons {
         )
     }
 
+    // Real gap found live (2026-08-31, direct user-supplied real Toss keypad
+    // screenshot -- "arrow icon should look like that"): the bare chevron this
+    // used to draw (a plain angle-bracket with no shaft) doesn't match real
+    // Toss's own back/backspace glyph, a true horizontal arrow -- a full shaft
+    // plus an arrowhead. Redesigned to match that reference exactly (Feather
+    // Icons' own real "arrow-left" shape). This is the ONE shared icon every
+    // "back" button on all 3 platforms already renders through, plus the
+    // numeric-keypad backspace key (an earlier same-day fix reused this same
+    // component) -- redesigning the shape here fixes both at once, with no
+    // call-site changes needed anywhere. Byte-identical geometry to web's own
+    // IconBack (icons/ItundaIcons.tsx) and iOS's IDSBackShape.
     val Back: ImageVector = strokeIcon("IdsIcons.Back") {
-        strokePath(PathData { moveTo(15f, 4f); lineTo(7f, 12f); lineTo(15f, 20f) })
+        strokePath(PathData { moveTo(19f, 12f); lineTo(5f, 12f) })
+        strokePath(PathData { moveTo(12f, 19f); lineTo(5f, 12f); lineTo(12f, 5f) })
     }
 
     val ChevronRight: ImageVector = strokeIcon("IdsIcons.ChevronRight") {

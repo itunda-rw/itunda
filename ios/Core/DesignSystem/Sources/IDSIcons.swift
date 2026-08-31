@@ -39,13 +39,26 @@ private func p(_ x: CGFloat, _ y: CGFloat, in rect: CGRect) -> CGPoint {
     CGPoint(x: rect.minX + x / 24 * rect.width, y: rect.minY + y / 24 * rect.height)
 }
 
+// Real gap found live (2026-08-31, direct user-supplied real Toss keypad
+// screenshot -- "arrow icon should look like that"): the bare chevron this used
+// to draw (a plain angle-bracket with no shaft) doesn't match real Toss's own
+// back/backspace glyph, a true horizontal arrow -- a full shaft plus an
+// arrowhead. Redesigned to match that reference exactly (Feather Icons' own
+// real "arrow-left" shape). This is the ONE shared icon every "back" button on
+// all 3 platforms already renders through, plus the numeric-keypad backspace
+// key (an earlier same-day fix reused this same component) -- redesigning the
+// shape here fixes both at once, with no call-site changes needed anywhere.
+// Byte-identical geometry to web's own IconBack (icons/ItundaIcons.tsx) and
+// Android's IdsIcons.Back.
 public struct IDSBackShape: Shape {
     public init() {}
     public func path(in rect: CGRect) -> Path {
         var path = Path()
-        path.move(to: p(15, 4, in: rect))
-        path.addLine(to: p(7, 12, in: rect))
-        path.addLine(to: p(15, 20, in: rect))
+        path.move(to: p(19, 12, in: rect))
+        path.addLine(to: p(5, 12, in: rect))
+        path.move(to: p(12, 19, in: rect))
+        path.addLine(to: p(5, 12, in: rect))
+        path.addLine(to: p(12, 5, in: rect))
         return path
     }
 }

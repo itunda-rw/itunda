@@ -118,10 +118,22 @@ export function IconYou(props: ItundaIconProps) {
 // 18px deployed size before shipping. Same shape ported byte-identical to Android
 // (IdsIcons.kt, PathParser) and iOS (IDS.Icons, the existing ItundaFaceCanvas SVG
 // path parser) in the same pass -- all 3 platforms render the literal same path data.
+// Real gap found live (2026-08-31, direct user-supplied real Toss keypad
+// screenshot -- "arrow icon should look like that"): the bare chevron this used
+// to draw ("M15,4 L7,12 L15,20", a plain angle-bracket with no shaft) doesn't
+// match real Toss's own back/backspace glyph, which is a true horizontal arrow
+// -- a full shaft plus an arrowhead, not just two angled strokes. Redesigned to
+// match that reference exactly (Feather Icons' own real "arrow-left" shape,
+// same construction convention): a horizontal line from the right edge to the
+// arrowhead's tip, then the arrowhead itself as two strokes meeting at that tip.
+// This is the ONE shared icon every "back" button on all 3 platforms already
+// renders through, plus the numeric-keypad backspace key (2026-08-31's earlier
+// fix reused this same component) -- redesigning the shape here fixes both at
+// once, cross-platform, with no call-site changes needed anywhere.
 export function IconBack(props: ItundaIconProps) {
   return (
     <IconBase {...props}>
-      <path d="M15,4 L7,12 L15,20" />
+      <path d="M19,12 L5,12 M12,19 L5,12 L12,5" />
     </IconBase>
   );
 }
