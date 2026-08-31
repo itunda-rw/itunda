@@ -3195,8 +3195,11 @@ private fun AccountDetailScreen(
             item {
                 Column(modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
                     if (primaryAccount != null) {
+                        // Real gap found live (2026-08-31, direct user correction: "it's
+                        // not itunda account number it's itunda bank account number") --
+                        // matches real Toss's own "토스뱅크 1000-XXXX-XXXX" pattern.
                         Text(
-                            "itunda ${primaryAccount!!.accountNumber.chunked(4).joinToString("-")}",
+                            "itunda Bank ${primaryAccount!!.accountNumber.chunked(4).joinToString("-")}",
                             fontSize = 13.sp, color = Ids.colors.textSecondary,
                         )
                     }

@@ -199,7 +199,14 @@ internal fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         if (key == "DEL") {
-                            Text("⌫", fontSize = 22.sp, color = Ids.colors.textPrimary)
+                            // Real gap found live (2026-08-31, direct user correction:
+                            // "backspace button of keyboard should be horizontal arrow
+                            // (toss style) instead of those weird icons") -- see
+                            // AmountKeypadInput.kt's identical fix for the full account.
+                            // contentDescription null -- the parent Box above already
+                            // carries deleteDescription via .semantics{}, a second one
+                            // here would double-announce to screen readers.
+                            Icon(IdsIcons.Back, contentDescription = null, modifier = Modifier.size(20.dp))
                         } else {
                             Text(key, fontSize = 24.sp, fontWeight = FontWeight.Medium, color = Ids.colors.textPrimary)
                         }

@@ -125,7 +125,12 @@ struct AccountSummaryCard: View {
                     // was never actually shown anywhere except when entering someone
                     // ELSE's number to send to. Same fix on Android/web the same day.
                     if let accountNumber {
-                        Text("itunda \(accountNumber.chunked(4).joined(separator: "-"))")
+                        // Real gap found live (2026-08-31, direct user correction: "it's
+                        // not itunda account number it's itunda bank account number") --
+                        // this caption's own doc comment above already cited the real
+                        // "토스뱅크 1000-3058-1980" reference but the implementation used
+                        // bare "itunda" instead of "itunda Bank."
+                        Text("itunda Bank \(accountNumber.chunked(4).joined(separator: "-"))")
                             .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                             .foregroundColor(IDS.Colors.textTertiary)
                     }

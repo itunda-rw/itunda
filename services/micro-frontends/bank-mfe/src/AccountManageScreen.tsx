@@ -44,8 +44,13 @@ export function AccountManageScreen({ account, onBack, onNavigateToTab }: { acco
           </button>
         </div>
 
+        {/* Real gap found live (2026-08-31, direct user correction: "it's not itunda
+            account number it's itunda bank account number"): this is always the
+            primary itunda Bank account (never Pay/Youth/etc, see this screen's own
+            caller), so the caption should say so, matching real Toss's own "토스뱅크
+            1000-XXXX-XXXX" pattern. */}
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', margin: '4px 0 24px' }}>
-          itunda {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
+          itunda Bank {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
         </p>
 
         <ManageSectionHeader title="Account" />

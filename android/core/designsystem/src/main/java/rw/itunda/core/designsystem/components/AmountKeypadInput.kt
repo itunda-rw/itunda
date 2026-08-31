@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -157,7 +160,13 @@ private fun AmountKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
                         contentAlignment = Alignment.Center,
                     ) {
                         if (key == "DEL") {
-                            Text("⌫", fontSize = 20.sp, color = Ids.colors.textPrimary)
+                            // Real gap found live (2026-08-31, direct user correction:
+                            // "backspace button of keyboard should be horizontal arrow
+                            // (toss style) instead of those weird icons") -- the raw
+                            // "⌫" text glyph rendered inconsistently across fonts;
+                            // reuses the same real, already-cross-platform-shared
+                            // IdsIcons.Back chevron the app's own back buttons use.
+                            Icon(IdsIcons.Back, contentDescription = "Delete", modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary)
                         } else {
                             Text(key, fontSize = 22.sp, fontWeight = FontWeight.Medium, color = Ids.colors.textPrimary)
                         }

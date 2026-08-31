@@ -45,8 +45,11 @@ export function AccountSummaryRow({ onOpen, onNavigateToPay }: { onOpen: (accoun
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '4px 0 4px', textAlign: 'left' }}
       >
         <div>
+          {/* Real gap found live (2026-08-31, direct user correction: "it's not itunda
+              account number it's itunda bank account number") -- see
+              AccountManageScreen.tsx's identical fix for the full account. */}
           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-            itunda {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
+            itunda Bank {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: '26px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
             {account.balance.toLocaleString()} {account.currency}

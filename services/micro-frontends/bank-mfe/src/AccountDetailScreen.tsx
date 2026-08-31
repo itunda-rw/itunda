@@ -134,8 +134,11 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
         {showAssets && <ItundaBankAssetsScreen onBack={() => setShowAssets(false)} />}
 
         <div style={{ padding: '4px 20px 24px' }}>
+          {/* Real gap found live (2026-08-31, direct user correction: "it's not itunda
+              account number it's itunda bank account number") -- see
+              AccountManageScreen.tsx's identical fix for the full account. */}
           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-            itunda {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
+            itunda Bank {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
           </p>
           <p style={{ margin: '6px 0 0', fontSize: '32px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
             {account.currency} {account.balance.toLocaleString()}

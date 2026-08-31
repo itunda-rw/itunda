@@ -58,7 +58,10 @@ public struct AccountLedgerDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     if let accountNumber {
-                        Text("itunda \(accountNumber.chunked(4).joined(separator: "-"))")
+                        // Real gap found live (2026-08-31, direct user correction: "it's
+                        // not itunda account number it's itunda bank account number")
+                        // -- matches real Toss's own "토스뱅크 1000-XXXX-XXXX" pattern.
+                        Text("itunda Bank \(accountNumber.chunked(4).joined(separator: "-"))")
                             .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
                             .foregroundColor(IDS.Colors.textTertiary)
                     }

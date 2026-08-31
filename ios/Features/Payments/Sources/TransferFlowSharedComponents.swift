@@ -124,7 +124,15 @@ struct NumericKeypad: View {
                         Button(action: { key == "DEL" ? onDelete() : onDigit(key) }) {
                             Group {
                                 if key == "DEL" {
-                                    Image(systemName: "delete.left")
+                                    // Real gap found live (2026-08-31, direct user
+                                    // correction: "backspace button of keyboard should
+                                    // be horizontal arrow (toss style) instead of those
+                                    // weird icons") -- the stock "delete.left" SF Symbol
+                                    // (a tag-with-X shape) is a visually different icon
+                                    // concept from this app's own back button; reuses
+                                    // the same real, already-cross-platform-shared
+                                    // IDS.Icons.back chevron instead.
+                                    IDS.Icons.back(size: 20, color: IDS.Colors.textPrimary)
                                 } else {
                                     Text(key).font(IDS.scaledFont(size: 24, weight: .medium, relativeTo: .title2))
                                 }

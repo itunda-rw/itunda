@@ -230,7 +230,7 @@
     <string name="bank_title">itunda Bank</string>
     <string name="pay_title">itunda Pay</string>
     <string name="bank_total_saved">Igiteranyo cy\'ubwizigame</string>
-    <string name="bank_account_account">Account ya itunda</string>
+    <string name="bank_account_account">Account ya itunda Bank</string>
     <string name="home_account_switcher">Hindura konti</string>
     <string name="home_auto_transfer_active">%1$d irakora</string>
     <string name="home_auto_transfer_setup">Tegura kohereza amafaranga buri gihe</string>

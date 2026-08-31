@@ -818,9 +818,15 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               key={k} type="button"
               onClick={() => (k === '⌫' ? backspace() : appendDigit(k))}
               aria-label={k === '⌫' ? 'Backspace' : `Enter ${k}`}
-              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-grey-900)', borderRadius: '10px' }}
+              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 600, color: 'var(--itunda-grey-900)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              {k}
+              {/* Real gap found live (2026-08-31, direct user correction: "backspace
+                  button of keyboard should be horizontal arrow (toss style) instead
+                  of those weird icons") -- the raw "⌫" text glyph renders
+                  inconsistently across fonts/platforms; reuses the same real,
+                  already-cross-platform-shared IconBack chevron the app's own back
+                  buttons use, instead of a second, different icon concept. */}
+              {k === '⌫' ? <IconBack size={20} color="var(--itunda-grey-900)" /> : k}
             </button>
           ))}
         </div>
