@@ -51,6 +51,10 @@ class UpfrontInterestDepositController(
     fun myDeposits(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "deposits" to upfrontInterestDepositService.getMyDeposits(currentUser.userId)))
 
+    @GetMapping("/{id}/transactions")
+    fun getTransactions(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to upfrontInterestDepositService.getDepositTransactions(currentUser.userId, id)))
+
     @PostMapping("/{id}/withdraw")
     fun withdraw(
         @PathVariable id: String,

@@ -7,6 +7,7 @@ import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InterestJar
+import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
@@ -20,6 +21,8 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InterestJarRepository
+import rw.itunda.core.repository.LedgerAccountRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -62,10 +65,58 @@ class SavingsService(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val ledgerAccountRepository: LedgerAccountRepository,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     private val log = LoggerFactory.getLogger(SavingsService::class.java)
 
     fun getGoals(userId: String) = savingsGoalRepository.findByUserId(userId)
+
+    private fun goalLedgerAccountId(goal: SavingsGoal) = "sg_ledger_${goal.id}"
+
+    // Real per-bucket ledger isolation (2026-08-31) -- see BucketTransactionDto's own
+    // doc comment for the full "why": every goal used to share ONE pool account
+    // ("savings_goal_payable", also reused by the unrelated MotoOwnershipService), so
+    // no goal's own deposit/withdrawal history could ever be isolated. Get-or-create,
+    // same proven pattern as AgentService's per-agent cash account -- no LedgerService/
+    // schema change needed, just a new row in the existing ledger_accounts table.
+    private fun ensureGoalLedgerAccount(goal: SavingsGoal): String {
+        val id = goalLedgerAccountId(goal)
+        if (!ledgerAccountRepository.existsById(id)) {
+            ledgerAccountRepository.save(LedgerAccount(id = id, name = "Savings Goal: ${goal.name}"))
+            // Real one-time reconciliation for goals that already held money BEFORE
+            // this per-goal isolation shipped: that money is real and currently sits
+            // in the shared pool, not this brand-new account. Without this, the very
+            // next withdrawal would debit a account that has never actually held any
+            // of this goal's money, driving it negative while the old pool stays
+            // overstated by the same amount -- a real ledger-integrity bug, not just a
+            // cosmetic history gap. This is a real, auditable balancing entry that
+            // correctly re-attributes money that already, truly belongs to this goal
+            // -- not fake data. Itemized history from before this point isn't
+            // recoverable (the shared pool never distinguished goals), so this goal's
+            // own ledger honestly starts here, at its true current balance.
+            if (goal.currentAmount > BigDecimal.ZERO) {
+                ledgerService.postLedgerTransaction(
+                    "RWF",
+                    listOf(
+                        LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, goal.currentAmount, "Opening balance for ${goal.name}"),
+                        LedgerLeg(id, LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, goal.currentAmount, "Opening balance for ${goal.name}"),
+                    ),
+                )
+            }
+        }
+        return id
+    }
+
+    fun getGoalTransactions(userId: String, goalId: String): List<BucketTransactionDto> {
+        val goal = savingsGoalRepository.findById(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(goalLedgerAccountId(goal)).map { it.toBucketTransactionDto() }
+    }
+
+    fun getInterestJarTransactions(userId: String): List<BucketTransactionDto> {
+        val jar = interestJarRepository.findById(userId).orElseThrow { NoInterestJarException("No interest jar found for this account") }
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(jar.accountId).map { it.toBucketTransactionDto() }
+    }
 
     @Transactional
     fun createGoal(userId: String, name: String, targetAmount: BigDecimal, monthlyContribution: BigDecimal?, targetDate: String?, category: String?): SavingsGoal {
@@ -119,7 +170,7 @@ class SavingsService(
             sourceAccount.currency,
             listOf(
                 LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Deposit to ${goal.name}"),
-                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Deposit to ${goal.name}"),
+                LedgerLeg(ensureGoalLedgerAccount(goal), LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Deposit to ${goal.name}"),
             ),
         )
 
@@ -162,7 +213,7 @@ class SavingsService(
         ledgerService.postLedgerTransaction(
             destinationAccount.currency,
             listOf(
-                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, amount, "Withdraw from ${goal.name}"),
+                LedgerLeg(ensureGoalLedgerAccount(goal), LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, amount, "Withdraw from ${goal.name}"),
                 LedgerLeg(destinationAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Withdraw from ${goal.name}"),
             ),
         )
@@ -210,7 +261,7 @@ class SavingsService(
             sourceAccount.currency,
             listOf(
                 LedgerLeg(sourceAccount.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualContribution, "Auto-save to ${goal.name}"),
-                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualContribution, "Auto-save to ${goal.name}"),
+                LedgerLeg(ensureGoalLedgerAccount(goal), LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, actualContribution, "Auto-save to ${goal.name}"),
             ),
         )
 

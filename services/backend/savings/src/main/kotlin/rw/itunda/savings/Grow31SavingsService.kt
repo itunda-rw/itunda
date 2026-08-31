@@ -15,6 +15,7 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.Grow31SavingsDepositRepository
 import rw.itunda.core.repository.Grow31SavingsPlanRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
@@ -54,8 +55,16 @@ class Grow31SavingsService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     private val log = LoggerFactory.getLogger(Grow31SavingsService::class.java)
+
+    // Real per-bucket ledger (2026-08-31) -- see WeeklySavingsService.getPlanTransactions's
+    // own doc comment; this plan already has its own dedicated real Account.
+    fun getPlanTransactions(userId: String, planId: String): List<BucketTransactionDto> {
+        val plan = findOwned(userId, planId)
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(plan.accountId).map { it.toBucketTransactionDto() }
+    }
 
     companion object {
         // Real, sourced tier table (tossbank.com/articles/savings-account,

@@ -14,6 +14,7 @@ import rw.itunda.core.domain.WeeklySavingsPlanStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.WeeklySavingsInstallmentRepository
 import rw.itunda.core.repository.WeeklySavingsPlanRepository
 import rw.itunda.core.account.AccountNumberGenerator
@@ -57,8 +58,17 @@ class WeeklySavingsService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     private val log = LoggerFactory.getLogger(WeeklySavingsService::class.java)
+
+    // Real per-bucket ledger (2026-08-31) -- unlike SavingsGoal, this plan already has
+    // its own dedicated real Account (created in createPlan above), so its ledger is
+    // already cleanly isolated -- no shared-pool migration needed, just a read path.
+    fun getPlanTransactions(userId: String, planId: String): List<BucketTransactionDto> {
+        val plan = findOwned(userId, planId)
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(plan.accountId).map { it.toBucketTransactionDto() }
+    }
 
     // Real KakaoBank step-up presets (10/20/30/50/100%). The exact cadence the step
     // applies on (every 4 installments) is itunda's own scoping choice -- the sourced

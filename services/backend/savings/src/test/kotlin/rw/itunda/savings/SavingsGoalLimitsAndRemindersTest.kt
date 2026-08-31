@@ -13,6 +13,8 @@ import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InterestJarRepository
+import rw.itunda.core.repository.LedgerAccountRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
@@ -40,7 +42,9 @@ class SavingsGoalLimitsAndRemindersTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
-        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val ledgerAccountRepository = mockk<LedgerAccountRepository>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService, ledgerAccountRepository, ledgerEntryRepository)
         every { rateLimiter.checkLimit("savings:goal:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to create another real goal") {
@@ -65,7 +69,9 @@ class SavingsGoalLimitsAndRemindersTest : BehaviorSpec({
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>()
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+        val ledgerAccountRepository = mockk<LedgerAccountRepository>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService, ledgerAccountRepository, ledgerEntryRepository)
 
         fun goalWithTarget(id: String, userId: String, targetDate: String?, status: SavingsGoalStatus = SavingsGoalStatus.active, maturityNotifiedAt: Instant? = null) = SavingsGoal(
             id = id, userId = userId, accountId = "account_$userId", name = "Goal $id",

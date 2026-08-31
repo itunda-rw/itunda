@@ -13,6 +13,7 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.UpfrontInterestDepositRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
 import java.math.BigDecimal
@@ -48,8 +49,19 @@ class UpfrontInterestDepositService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     private val log = LoggerFactory.getLogger(UpfrontInterestDepositService::class.java)
+
+    // Real per-bucket ledger (2026-08-31) -- see WeeklySavingsService.getPlanTransactions's
+    // own doc comment; this deposit already has its own dedicated real Account. Note the
+    // upfront-interest payout leg (open()'s second postLedgerTransaction call) credits
+    // MAIN directly, not this account, so it won't appear here -- that money never
+    // touched this bucket, by design (see open()'s own doc comment).
+    fun getDepositTransactions(userId: String, depositId: String): List<BucketTransactionDto> {
+        val deposit = findOwned(userId, depositId)
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(deposit.accountId).map { it.toBucketTransactionDto() }
+    }
 
     /** Real gross interest for the full 12-month term, paid in one shot -- the real
      * distinguishing mechanic, unlike every other product here's accrue-then-claim shape. */

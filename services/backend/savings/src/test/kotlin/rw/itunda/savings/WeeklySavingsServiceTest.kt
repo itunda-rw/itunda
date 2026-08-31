@@ -18,6 +18,7 @@ import rw.itunda.core.domain.WeeklySavingsPlanStatus
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.WeeklySavingsInstallmentRepository
 import rw.itunda.core.repository.WeeklySavingsPlanRepository
 import rw.itunda.core.account.AccountNumberGenerator
@@ -57,7 +58,8 @@ class WeeklySavingsServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         accountNumberGenerator: AccountNumberGenerator = mockk(relaxed = true),
-    ) = WeeklySavingsService(accountRepository, planRepository, installmentRepository, ledgerService, rateLimiter, accountNumberGenerator)
+        ledgerEntryRepository: LedgerEntryRepository = mockk(relaxed = true),
+    ) = WeeklySavingsService(accountRepository, planRepository, installmentRepository, ledgerService, rateLimiter, accountNumberGenerator, ledgerEntryRepository)
 
     Given("the real escalating weekly amount schedule") {
         val svc = service()

@@ -53,6 +53,10 @@ class WeeklySavingsController(
     fun get(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true) + weeklySavingsService.getPlan(currentUser.userId, id).toMap())
 
+    @GetMapping("/plans/{id}/transactions")
+    fun getTransactions(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to weeklySavingsService.getPlanTransactions(currentUser.userId, id)))
+
     @PostMapping("/plans/{id}/cancel")
     fun cancel(
         @PathVariable id: String,

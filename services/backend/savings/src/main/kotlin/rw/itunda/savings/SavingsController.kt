@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
@@ -81,9 +82,20 @@ class SavingsController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real per-bucket ledger (2026-08-31) -- see SavingsService.getGoalTransactions/
+    // BucketTransactionDto's own doc comments for the full account of the gap this
+    // closes.
+    @GetMapping("/goals/{id}/transactions")
+    fun getGoalTransactions(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to savingsService.getGoalTransactions(currentUser.userId, id)))
+
     @GetMapping("/interest-jar")
     fun getInterestJar(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "jar" to savingsService.getInterestJar(currentUser.userId)))
+
+    @GetMapping("/interest-jar/transactions")
+    fun getInterestJarTransactions(@AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to savingsService.getInterestJarTransactions(currentUser.userId)))
 
     @PostMapping("/interest-jar/claim")
     fun claimInterest(

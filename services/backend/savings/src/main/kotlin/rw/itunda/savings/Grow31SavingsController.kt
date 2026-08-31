@@ -53,6 +53,10 @@ class Grow31SavingsController(
     fun get(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true) + grow31SavingsService.getPlan(currentUser.userId, id).toMap())
 
+    @GetMapping("/plans/{id}/transactions")
+    fun getTransactions(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to grow31SavingsService.getPlanTransactions(currentUser.userId, id)))
+
     @PostMapping("/plans/{id}/deposit-today")
     fun depositToday(
         @PathVariable id: String,
