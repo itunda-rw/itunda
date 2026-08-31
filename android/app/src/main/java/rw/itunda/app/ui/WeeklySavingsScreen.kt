@@ -301,6 +301,10 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
     // own withdrawSuccess: completing a real 26-week savings challenge is a genuine
     // earned milestone with zero success acknowledgment before this fix.
     var withdrawSuccess by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionList's own doc
+    // comment. Replaces the old "Installments" list below with the real transaction
+    // ledger this plan's own dedicated account always had, just never exposed.
+    var transactions by remember { mutableStateOf<List<rw.itunda.core.network.BucketTransactionDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -313,6 +317,11 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            try {
+                transactions = NetworkClient.apiService.getWeeklySavingsPlanTransactions(planId).transactions
+            } catch (e: Exception) {
+                transactions = emptyList()
             }
         }
     }
@@ -455,12 +464,14 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                         )
                     }
                 }
-                item { Text("Installments", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-                if (current.installments.isEmpty()) {
-                    item { EmptyState("No installments collected yet.") }
+                item { Text("Transactions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                if (transactions == null) {
+                    item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                } else if (transactions!!.isEmpty()) {
+                    item { EmptyState("No transactions to show yet.") }
                 } else {
-                    items(current.installments.sortedByDescending { it.weekNumber }, key = { it.weekNumber }) { installment ->
-                        InstallmentRowWeekly(installment)
+                    items(transactions!!.sortedByDescending { it.createdAt }, key = { it.id }) { tx ->
+                        BucketTransactionRow(tx)
                     }
                 }
             }
@@ -479,17 +490,6 @@ private fun ActionButtonWeekly(label: String, color: Color, enabled: Boolean, on
     }
 }
 
-@Composable
-private fun InstallmentRowWeekly(installment: WeeklySavingsInstallmentDto) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(Ids.colors.surface).padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text("Week ${installment.weekNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text("${formatMoneyWeekly(installment.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-    }
-}
 
 private fun formatWeeklyDate(iso: String): String = try {
     java.time.Instant.parse(iso).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()

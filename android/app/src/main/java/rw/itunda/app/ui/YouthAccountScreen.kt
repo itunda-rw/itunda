@@ -66,6 +66,12 @@ fun YouthAccountScreen(onBack: () -> Unit) {
     var amount by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.kt's own doc
+    // comment. Youth Account never supports a withdraw (confirmed: no such endpoint
+    // exists anywhere in this backend), so every one of its transactions is a real
+    // deposit/credit -- isCredit is unconditionally true, no fromAccountId comparison
+    // needed the way the primary account's own ledger requires.
+    var showHistory by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -146,6 +152,30 @@ fun YouthAccountScreen(onBack: () -> Unit) {
         }
     }
 
+    if (showHistory && account != null) {
+        val acct = account!!
+        BucketDetailScreen(
+            title = "Youth Account",
+            subtitle = acct.accountNumber,
+            balanceText = "${formatMoneyMini(acct.balance)} RWF",
+            fetchTransactions = {
+                val txs = NetworkClient.apiService.getAccountTransactionHistory(acct.id).transactions
+                    .sortedByDescending { it.createdAt }
+                var runningBalance = acct.balance
+                txs.map { tx ->
+                    val balanceAfter = runningBalance
+                    runningBalance -= tx.amount
+                    rw.itunda.core.network.BucketTransactionDto(
+                        id = tx.id, description = tx.description, amount = tx.amount,
+                        isCredit = true, balanceAfter = balanceAfter, createdAt = tx.createdAt,
+                    )
+                }
+            },
+            onBack = { showHistory = false },
+        )
+        return
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         BackTopBar(title = "Youth account", onBack = onBack)
         LazyColumn(
@@ -200,7 +230,10 @@ fun YouthAccountScreen(onBack: () -> Unit) {
                     // around this balance summary -- a lone section on this screen, no
                     // sibling section to separate it from (docs/UI_UX_GUIDELINES.md §10).
                     item {
-                        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
+                                .pressScaleClickable(onClick = { showHistory = true }),
+                        ) {
                             val animatedBalance = rememberCountUp(account?.balance ?: 0.0)
                             Text("${formatMoneyMini(animatedBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                             Text(account?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)

@@ -282,6 +282,10 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
     // itself (not the post-withdrawal `detail`, which no longer reflects the just-paid
     // interest) so the celebration message stays accurate.
     var withdrawSuccess by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // Real per-bucket ledger (2026-08-31) -- see BucketTransactionList's own doc
+    // comment. Replaces the old "Deposits" list below with the real transaction
+    // ledger this plan's own dedicated account always had, just never exposed.
+    var transactions by remember { mutableStateOf<List<rw.itunda.core.network.BucketTransactionDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -294,6 +298,11 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            try {
+                transactions = NetworkClient.apiService.getGrow31SavingsPlanTransactions(planId).transactions
+            } catch (e: Exception) {
+                transactions = emptyList()
             }
         }
     }
@@ -460,12 +469,14 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                         )
                     }
                 }
-                item { Text("Deposits", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-                if (current.deposits.isEmpty()) {
-                    item { EmptyState("No deposits yet.") }
+                item { Text("Transactions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                if (transactions == null) {
+                    item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                } else if (transactions!!.isEmpty()) {
+                    item { EmptyState("No transactions to show yet.") }
                 } else {
-                    items(current.deposits.sortedByDescending { it.dayNumber }, key = { it.dayNumber }) { deposit ->
-                        DepositRowGrow31(deposit)
+                    items(transactions!!.sortedByDescending { it.createdAt }, key = { it.id }) { tx ->
+                        BucketTransactionRow(tx)
                     }
                 }
             }
@@ -481,21 +492,6 @@ private fun ActionButtonGrow31(label: String, color: Color, enabled: Boolean, on
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = Color.White, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun DepositRowGrow31(deposit: Grow31SavingsDepositDto) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(Ids.colors.surface).padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column {
-            Text("Day ${deposit.dayNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text("Streak ${deposit.streakAtDeposit}", color = Ids.colors.textSecondary, fontSize = 11.sp)
-        }
-        Text("${formatMoneyGrow31(deposit.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
 

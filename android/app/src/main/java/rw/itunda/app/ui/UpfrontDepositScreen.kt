@@ -131,6 +131,12 @@ fun UpfrontDepositScreen(onBack: () -> Unit) {
 private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit) {
     var withdrawing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real per-bucket ledger (2026-08-31) -- this row previously had no drill-in of
+    // any kind (its own doc history noted "everything a deposit needs fits on its
+    // list row," true for the summary fields but not for a real transaction history,
+    // which its dedicated account has always had, just never exposed).
+    var showHistory by remember { mutableStateOf(false) }
+    var transactions by remember { mutableStateOf<List<rw.itunda.core.network.BucketTransactionDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card wrapper --
@@ -150,6 +156,31 @@ private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit)
             color = Ids.colors.textSecondary, fontSize = 12.sp,
         )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        Text(
+            if (showHistory) "Hide history" else "View history",
+            color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 12.sp,
+            modifier = Modifier.pressScaleClickable {
+                showHistory = !showHistory
+                if (showHistory && transactions == null) {
+                    coroutineScope.launch {
+                        transactions = try {
+                            NetworkClient.apiService.getUpfrontDepositTransactions(deposit.id).transactions
+                        } catch (e: Exception) {
+                            emptyList()
+                        }
+                    }
+                }
+            },
+        )
+        if (showHistory) {
+            when {
+                transactions == null -> Text("Loading…", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                transactions!!.isEmpty() -> Text("No transactions to show yet.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                else -> Column {
+                    transactions!!.sortedByDescending { it.createdAt }.forEach { tx -> BucketTransactionRow(tx) }
+                }
+            }
+        }
         if (deposit.status == "MATURED" && deposit.withdrawnAt == null) {
             Spacer(modifier = Modifier.height(4.dp))
             Box(

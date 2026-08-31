@@ -261,6 +261,14 @@
     <string name="account_detail_get_interest">Get interest</string>
     <string name="account_detail_interest_prefix">Interest</string>
     <string name="account_detail_empty">No transactions yet</string>
+    <string name="loading">Loading…</string>
+    <string name="bucket_fill">Fill</string>
+    <string name="bucket_withdraw">Withdraw</string>
+    <string name="bucket_load_error">Could not load this account\'s history.</string>
+    <string name="bucket_no_transactions_yet">No transactions to show yet. If this account already held money before today, its itemized history starts from here.</string>
+    <string name="itunda_bank_assets_title">itunda Bank assets</string>
+    <string name="itunda_bank_assets_empty">You don\'t have any itunda Bank products open yet.</string>
+    <string name="itunda_bank_assets_view_all">View all</string>
     <string name="pay_money_detail_title">itunda Pay Money</string>
     <string name="pay_money_add">Add money</string>
     <string name="pay_money_history_only">See payment history only</string>

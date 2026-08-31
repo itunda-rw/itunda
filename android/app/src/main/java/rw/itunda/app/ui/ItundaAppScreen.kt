@@ -375,6 +375,18 @@ private sealed class SavingsFlowStep : java.io.Serializable {
     data class Success(val headline: String, val message: String, val celebratory: Boolean) : SavingsFlowStep()
 }
 
+// Real per-bucket detail screen (2026-08-31, direct user-supplied Toss Bank
+// screenshots: 보관하기/매일모으기 each get their own full-screen ledger). Tapping a
+// bucket's row now opens its own detail screen (BucketDetailScreen.kt) instead of
+// jumping straight into the deposit/claim flow -- Fill/Withdraw live INSIDE that
+// screen instead, matching the real reference. Interest Jar's row keeps no
+// secondary action (never had one); Savings Goal rows keep their existing
+// secondaryAction (quick Withdraw) untouched alongside this.
+private sealed class BucketDetailTarget : java.io.Serializable {
+    data object InterestJar : BucketDetailTarget()
+    data class Goal(val id: String, val name: String, val currentAmount: Double, val targetAmount: Double) : BucketDetailTarget()
+}
+
 @Composable
 fun ItundaAppScreen(
     viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
@@ -403,6 +415,8 @@ fun ItundaAppScreen(
         // OverviewScreen's new per-account Send button sets this.
         var transferFromAccount by rememberSaveable { mutableStateOf<TransferFromAccount?>(null) }
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
+        var bucketDetailTarget by rememberSaveable { mutableStateOf<BucketDetailTarget?>(null) }
+        var showBankAssets by rememberSaveable { mutableStateOf(false) }
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
         // Real Toss distinction (2026-08-12, direct user clarification against real
@@ -1406,6 +1420,7 @@ fun ItundaAppScreen(
                 onDepositToGoal = { goalId, goalName -> showBank = false; savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
                 onWithdrawFromGoal = { goalId, goalName, currentAmount -> showBank = false; savingsFlowStep = SavingsFlowStep.Withdraw(goalId, goalName, currentAmount) },
                 onClaimInterest = { showBank = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                onOpenBucketDetail = { target -> showBank = false; bucketDetailTarget = target },
                 onOpenSacco = { showSacco = true },
                 onOpenIkimina = { showIkimina = true },
                 onOpenMotoOwnership = { showMotoOwnership = true },
@@ -1450,7 +1465,52 @@ fun ItundaAppScreen(
                 onTopUp = { showAccountDetail = false; showAgentCash = true },
                 onSend = { showAccountDetail = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                 onClaimInterest = { showAccountDetail = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                onOpenBankAssets = { showAccountDetail = false; showBankAssets = true },
             )
+            return@IdsTheme
+        }
+        if (showBankAssets) {
+            BackHandler { showBankAssets = false }
+            ItundaBankAssetsScreen(onBack = { showBankAssets = false })
+            return@IdsTheme
+        }
+        bucketDetailTarget?.let { target ->
+            BackHandler { bucketDetailTarget = null }
+            when (target) {
+                is BucketDetailTarget.InterestJar -> {
+                    val jar by viewModel.interestJar.collectAsState()
+                    BucketDetailScreen(
+                        title = "Interest Jar",
+                        subtitle = "Safe Box",
+                        balanceText = "%,.0f RWF".format(jar?.balance ?: 0.0),
+                        secondaryStatLabel = "Earned all-time",
+                        secondaryStatValue = "%,.0f RWF".format(jar?.earnedTotal ?: 0.0),
+                        fetchTransactions = { rw.itunda.core.network.NetworkClient.apiService.getInterestJarTransactions().transactions },
+                        fillLabel = if ((jar?.earnedThisMonth ?: 0.0) > 0.0) "Get interest" else null,
+                        onFill = if ((jar?.earnedThisMonth ?: 0.0) > 0.0) {
+                            { bucketDetailTarget = null; savingsFlowStep = SavingsFlowStep.ClaimInterest }
+                        } else null,
+                        onBack = { bucketDetailTarget = null },
+                    )
+                }
+                is BucketDetailTarget.Goal -> {
+                    BucketDetailScreen(
+                        title = target.name,
+                        subtitle = "Savings Goal",
+                        balanceText = "%,.0f RWF".format(target.currentAmount),
+                        secondaryStatLabel = "Target",
+                        secondaryStatValue = "%,.0f RWF".format(target.targetAmount),
+                        fetchTransactions = { rw.itunda.core.network.NetworkClient.apiService.getSavingsGoalTransactions(target.id).transactions },
+                        fillLabel = "Deposit",
+                        onFill = { bucketDetailTarget = null; savingsFlowStep = SavingsFlowStep.Deposit(target.id, target.name) },
+                        withdrawLabel = "Withdraw",
+                        onWithdraw = if (target.currentAmount > 0) {
+                            { bucketDetailTarget = null; savingsFlowStep = SavingsFlowStep.Withdraw(target.id, target.name, target.currentAmount) }
+                        } else null,
+                        onBack = { bucketDetailTarget = null },
+                    )
+                }
+            }
             return@IdsTheme
         }
         if (showGroupAccounts) {
@@ -2199,6 +2259,7 @@ private fun BankHubScreen(
     // .withdrawFromGoal's own doc comment for the full account.
     onWithdrawFromGoal: (goalId: String, goalName: String, currentAmount: Double) -> Unit,
     onClaimInterest: () -> Unit,
+    onOpenBucketDetail: (BucketDetailTarget) -> Unit = {},
     onOpenSacco: () -> Unit,
     onOpenIkimina: () -> Unit,
     onOpenMotoOwnership: () -> Unit,
@@ -2405,7 +2466,7 @@ private fun BankHubScreen(
                                     "%,.0f RWF".format(jar.earnedThisMonth),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
-                                    onClick = onClaimInterest,
+                                    onClick = { onOpenBucketDetail(BucketDetailTarget.InterestJar) },
                                 )
                             )
                         }
@@ -2441,7 +2502,13 @@ private fun BankHubScreen(
                                     "$progressPercent%",
                                     Icons.Outlined.Savings,
                                     AccentIndigo,
-                                    onClick = { onDepositToGoal(goal.id, goal.name) },
+                                    // Real per-bucket detail screen (2026-08-31) -- tapping a
+                                    // goal now opens its own ledger (BucketDetailScreen.kt);
+                                    // Deposit lives inside that screen's Fill button. The
+                                    // existing quick-Withdraw secondary action below is kept
+                                    // untouched for fast access without opening the detail
+                                    // screen first.
+                                    onClick = { onOpenBucketDetail(BucketDetailTarget.Goal(goal.id, goal.name, goal.currentAmount, goal.targetAmount)) },
                                     // Real gap found live (2026-08-31, direct user
                                     // re-reference of the real Toss "얼마나 꺼낼까요?"
                                     // withdraw screenshot) -- only offered once there's
@@ -3029,6 +3096,7 @@ private fun AccountDetailScreen(
     onTopUp: () -> Unit,
     onSend: () -> Unit,
     onClaimInterest: () -> Unit,
+    onOpenBankAssets: () -> Unit,
 ) {
     // Real Toss Bank reference (20 screenshots, 2026-08-21): this screen is
     // balance + interest + ledger only -- the product catalog (Save & grow/
@@ -3161,6 +3229,22 @@ private fun AccountDetailScreen(
                     }
                     Spacer(modifier = Modifier.height(20.dp))
                 }
+            }
+            // Real "itunda Bank assets" summary row (2026-08-31, direct user-supplied
+            // Toss Bank screenshot) -- see ItundaBankAssetsScreen.kt's own doc comment.
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenBankAssets).padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.itunda_bank_assets_title), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.itunda_bank_assets_view_all), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textTertiary)
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
             }
             if (withBalance.isEmpty()) {
                 item { EmptyState(stringResource(R.string.account_detail_empty)) }

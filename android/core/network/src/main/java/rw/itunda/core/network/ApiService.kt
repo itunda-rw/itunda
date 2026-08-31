@@ -421,6 +421,21 @@ data class InterestJar(
 
 data class InterestJarResponse(val success: Boolean, val jar: InterestJar)
 
+// Real per-bucket ledger (2026-08-31, direct user-supplied Toss Bank screenshots:
+// 보관하기/매일모으기 each get their own full-screen ledger) -- mirrors backend's own
+// BucketTransactionDto exactly (services/backend/savings/.../BucketTransactionDto.kt).
+// One normalized shape every savings bucket's own transaction endpoint returns.
+data class BucketTransactionDto(
+    val id: String,
+    val description: String,
+    val amount: Double,
+    val isCredit: Boolean,
+    val balanceAfter: Double,
+    val createdAt: String,
+)
+
+data class BucketTransactionsResponse(val success: Boolean, val transactions: List<BucketTransactionDto>)
+
 // Real Deposit Protection Fund status (2026-08-11) -- see backend's
 // DepositProtectionFund.kt doc comment. coverageCapPerUser/contributionRateBps are
 // itunda's own chosen policy figures, not a claimed real BNR-backed scheme -- every
@@ -2608,8 +2623,14 @@ interface ApiService {
     @POST("api/v1/savings/goals")
     suspend fun createSavingsGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CreateSavingsGoalRequest): CreateSavingsGoalResponse
 
+    @GET("api/v1/savings/goals/{id}/transactions")
+    suspend fun getSavingsGoalTransactions(@Path("id") id: String): BucketTransactionsResponse
+
     @GET("api/v1/savings/interest-jar")
     suspend fun getInterestJar(): InterestJarResponse
+
+    @GET("api/v1/savings/interest-jar/transactions")
+    suspend fun getInterestJarTransactions(): BucketTransactionsResponse
 
     // Real Deposit Protection Fund status (2026-08-11) -- see backend's
     // DepositProtectionFund.kt doc comment for the full honesty framing.
@@ -4253,6 +4274,9 @@ interface ApiService {
     @GET("api/v1/weekly-savings/plans/{id}")
     suspend fun getWeeklySavingsPlan(@Path("id") id: String): WeeklySavingsPlanDetailResponse
 
+    @GET("api/v1/weekly-savings/plans/{id}/transactions")
+    suspend fun getWeeklySavingsPlanTransactions(@Path("id") id: String): BucketTransactionsResponse
+
     @POST("api/v1/weekly-savings/plans")
     suspend fun createWeeklySavingsPlan(@Body request: CreateWeeklySavingsPlanRequest): CreateWeeklySavingsPlanResponse
 
@@ -4271,6 +4295,9 @@ interface ApiService {
 
     @GET("api/v1/grow31-savings/plans/{id}")
     suspend fun getGrow31SavingsPlan(@Path("id") id: String): Grow31SavingsPlanDetailResponse
+
+    @GET("api/v1/grow31-savings/plans/{id}/transactions")
+    suspend fun getGrow31SavingsPlanTransactions(@Path("id") id: String): BucketTransactionsResponse
 
     @POST("api/v1/grow31-savings/plans")
     suspend fun createGrow31SavingsPlan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CreateGrow31SavingsPlanRequest): CreateGrow31SavingsPlanResponse
@@ -4294,6 +4321,9 @@ interface ApiService {
 
     @POST("api/v1/upfront-deposits/{id}/withdraw")
     suspend fun withdrawUpfrontDeposit(@Path("id") id: String): UpfrontDepositResponse
+
+    @GET("api/v1/upfront-deposits/{id}/transactions")
+    suspend fun getUpfrontDepositTransactions(@Path("id") id: String): BucketTransactionsResponse
 
     // Real KakaoBank mini-style capped starter account (rw.itunda.account.
     // YouthAccountService, 2026-07-28) -- first mobile client for this feature (item 100),
