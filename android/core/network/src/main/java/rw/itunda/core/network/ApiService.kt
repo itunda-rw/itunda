@@ -2120,6 +2120,14 @@ data class CardDto(
     val dailyLimit: java.math.BigDecimal,
     val monthlyLimit: java.math.BigDecimal,
     val frozen: Boolean,
+    // Real "분실신고"/"카드 해지하기"/"카드 재발급"/"카드 비밀번호 변경" fields
+    // (2026-09-01, direct user-supplied Toss Bank card-management screenshots) --
+    // see the backend's DebitCard.kt doc comment for why lost/closedAt are
+    // deliberately separate, one-way states from `frozen`.
+    val lost: Boolean = false,
+    val closedAt: String? = null,
+    val pinSet: Boolean = false,
+    val reissuedAt: String? = null,
     val issuedAt: String,
     val design: String,
     val spentToday: java.math.BigDecimal,
@@ -2139,6 +2147,7 @@ data class CardTransactionsResponse(val success: Boolean, val transactions: List
 data class SetCardLimitsRequest(val dailyLimit: java.math.BigDecimal, val monthlyLimit: java.math.BigDecimal)
 data class ChargeCardRequest(val amount: java.math.BigDecimal, val merchantName: String)
 data class ChargeCardResponse(val success: Boolean, val transaction: CardTransactionDto, val card: CardDto)
+data class SetCardPinRequest(val newPin: String, val currentCredential: String)
 
 // Real card-design picker (2026-08-27, direct user instruction: "update itunda bank
 // with all those cards designs allowing users to choose from those designs... that's
@@ -4094,6 +4103,18 @@ interface ApiService {
 
     @POST("api/v1/card/unfreeze")
     suspend fun unfreezeCard(): CardResponse
+
+    @POST("api/v1/card/report-lost")
+    suspend fun reportCardLost(): CardResponse
+
+    @POST("api/v1/card/close")
+    suspend fun closeCard(): CardResponse
+
+    @POST("api/v1/card/reissue")
+    suspend fun reissueCard(): CardResponse
+
+    @PUT("api/v1/card/pin")
+    suspend fun setCardPin(@Body request: SetCardPinRequest): CardResponse
 
     @POST("api/v1/card/charge")
     suspend fun chargeCard(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ChargeCardRequest): ChargeCardResponse

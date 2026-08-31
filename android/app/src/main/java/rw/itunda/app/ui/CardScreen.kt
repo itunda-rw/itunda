@@ -50,6 +50,7 @@ import rw.itunda.core.network.ChargeCardRequest
 import rw.itunda.core.network.IssueCardRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetCardLimitsRequest
+import rw.itunda.core.network.SetCardPinRequest
 import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -77,6 +78,14 @@ fun CardScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var chargeMessage by remember { mutableStateOf<String?>(null) }
+    // Real "카드 비밀번호 변경" (change card PIN) inline form (2026-09-01, direct
+    // user-supplied Toss Bank card-management screenshots) -- matches bank-mfe's
+    // identical setCardPin flow.
+    var showPinForm by remember { mutableStateOf(false) }
+    var newPinInput by remember { mutableStateOf("") }
+    var pinPasswordInput by remember { mutableStateOf("") }
+    var pinError by remember { mutableStateOf<String?>(null) }
+    var pinSuccess by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -158,6 +167,94 @@ fun CardScreen(onBack: () -> Unit) {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    // Real "분실신고" (report lost or stolen) -- a distinct, one-way backend state
+    // now exists (POST /api/v1/card/report-lost), closing the gap bank-mfe's own
+    // previous version had already found and disclosed live.
+    fun reportLost() {
+        val current = card ?: return
+        if (current.lost || current.closedAt != null) return
+        busy = true
+        error = null
+        coroutineScope.launch {
+            try {
+                card = NetworkClient.apiService.reportCardLost().card
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    // Real "카드 해지하기" (close card) -- a deliberate, one-way retirement distinct
+    // from a lost/stolen report; only reissue() below can recover from either.
+    fun closeCard() {
+        val current = card ?: return
+        if (current.closedAt != null) return
+        busy = true
+        error = null
+        coroutineScope.launch {
+            try {
+                card = NetworkClient.apiService.closeCard().card
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    // Real "카드 재발급" (reissue) -- the real recovery path from a lost/stolen or
+    // closed card; regenerates last4 and clears the old PIN in place.
+    fun reissue() {
+        busy = true
+        error = null
+        coroutineScope.launch {
+            try {
+                card = NetworkClient.apiService.reissueCard().card
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun setPin() {
+        if (!newPinInput.matches(Regex("^\\d{4}$"))) {
+            pinError = "Your card PIN must be exactly 4 digits."
+            return
+        }
+        if (pinPasswordInput.isBlank()) {
+            pinError = "Enter your current login password."
+            return
+        }
+        busy = true
+        pinError = null
+        pinSuccess = false
+        coroutineScope.launch {
+            try {
+                card = NetworkClient.apiService.setCardPin(SetCardPinRequest(newPinInput, pinPasswordInput)).card
+                newPinInput = ""
+                pinPasswordInput = ""
+                showPinForm = false
+                pinSuccess = true
+            } catch (e: HttpException) {
+                pinError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                pinError = "Couldn't reach itunda. Check your connection and try again."
             } finally {
                 busy = false
             }
@@ -270,18 +367,60 @@ fun CardScreen(onBack: () -> Unit) {
                                         Column {
                                             Text("itunda card", color = onFront.copy(alpha = 0.85f), fontSize = 13.sp)
                                             Text("•••• •••• •••• ${c.last4}", color = onFront, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp)
-                                            if (c.frozen) {
-                                                Text("Frozen", color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
-                                            } else {
-                                                Text("✓ Active", color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
+                                            val statusLabel = when {
+                                                c.closedAt != null -> "Closed"
+                                                c.lost -> "Reported lost or stolen"
+                                                c.frozen -> "Frozen"
+                                                else -> "✓ Active"
                                             }
+                                            Text(statusLabel, color = onFront.copy(alpha = 0.85f), fontSize = 12.sp)
                                         }
                                     }
                                 }
                             }
                         }
                         item {
-                            CardActionButton(if (c.frozen) "Unfreeze card" else "Freeze card", enabled = !busy) { toggleFreeze() }
+                            if (c.lost || c.closedAt != null) {
+                                CardActionButton("Get a new card", enabled = !busy) { reissue() }
+                            } else {
+                                CardActionButton(if (c.frozen) "Unfreeze card" else "Freeze card", enabled = !busy) { toggleFreeze() }
+                            }
+                        }
+                        item {
+                            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && c.closedAt == null) { showPinForm = !showPinForm }, horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Text(if (c.pinSet) "Change card PIN" else "Set card PIN", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                                    }
+                                    if (showPinForm) {
+                                        Text(
+                                            "A real 4-digit card PIN, separate from your login password. Confirm your current login password to change it.",
+                                            color = Ids.colors.textTertiary, fontSize = 11.sp,
+                                        )
+                                        pinError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                                        IdsTextField(value = newPinInput, onValueChange = { newPinInput = it.filter { c -> c.isDigit() }.take(4) }, label = "New 4-digit PIN", isPassword = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword, modifier = Modifier.fillMaxWidth())
+                                        IdsTextField(value = pinPasswordInput, onValueChange = { pinPasswordInput = it }, label = "Current login password", isPassword = true, modifier = Modifier.fillMaxWidth())
+                                        CardActionButton(if (busy) "…" else "Save PIN", enabled = !busy) { setPin() }
+                                    }
+                                }
+                            }
+                        }
+                        pinSuccess.let { if (it) item { Text("Card PIN saved.", color = Ids.colors.success, fontSize = 12.sp) } }
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && !c.lost && c.closedAt == null) { reportLost() },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(if (c.lost) "Reported lost or stolen" else "Report lost or stolen", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                            }
+                        }
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !busy && c.closedAt == null) { closeCard() },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(if (c.closedAt != null) "Card closed" else "Close card", color = if (c.closedAt != null) Ids.colors.textSecondary else Ids.colors.danger, fontSize = 14.sp)
+                            }
                         }
                         item {
                             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
@@ -308,7 +447,14 @@ fun CardScreen(onBack: () -> Unit) {
                                     chargeMessage?.let { Text(it, color = if (it.startsWith("Paid")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
                                     IdsTextField(value = merchantName, onValueChange = { merchantName = it }, label = "Merchant name", modifier = Modifier.fillMaxWidth())
                                     IdsTextField(value = chargeAmount, onValueChange = { chargeAmount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
-                                    CardActionButton(if (c.frozen) "Card is frozen" else if (busy) "Paying…" else "Pay", enabled = !busy && !c.frozen) { charge() }
+                                    val payLabel = when {
+                                        c.closedAt != null -> "Card is closed"
+                                        c.lost -> "Card reported lost"
+                                        c.frozen -> "Card is frozen"
+                                        busy -> "Paying…"
+                                        else -> "Pay"
+                                    }
+                                    CardActionButton(payLabel, enabled = !busy && !c.frozen) { charge() }
                                 }
                             }
                         }
