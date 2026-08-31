@@ -151,6 +151,13 @@ private func pt(_ key: String, _ arg: Int) -> String {
 // NetworkClient -- the actual fetch/add calls happen in TransferFlowContainer.swift
 // (App/Sources), which already has API access, and are passed down here as plain
 // data + callbacks.
+// Real send-money flow has exactly 2 steps on iOS/Android (Recipient, Amount) --
+// unlike web's 3-step TransferFlow, there's no separate Confirm screen: confirmation
+// happens via a biometric prompt (NIDABiometricAuth, see TransferFlowContainer.swift's
+// own confirm()) overlaid directly on the Amount screen. Matches Android's identical
+// TRANSFER_STEP_LABELS in TransferFlow.kt, same day.
+let transferStepLabels = ["Recipient", "Amount"]
+
 public struct ContactUi: Identifiable {
     public let id: String
     public let name: String
@@ -170,21 +177,26 @@ public struct RecipientEntryScreen: View {
     let contacts: [ContactUi]
     let onAddContact: (String, String) -> Void
     let onNext: (String) -> Void
+    let activeStepIndex: Int
 
     public init(
         onBack: @escaping () -> Void,
         contacts: [ContactUi] = [], onAddContact: @escaping (String, String) -> Void = { _, _ in },
-        onNext: @escaping (String) -> Void
+        onNext: @escaping (String) -> Void,
+        activeStepIndex: Int = 0
     ) {
         self.onBack = onBack
         self.contacts = contacts
         self.onAddContact = onAddContact
         self.onNext = onNext
+        self.activeStepIndex = activeStepIndex
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             FlowTopBar(onBack: onBack)
+            IdsProgressStepper(activeStepIndex: activeStepIndex, steps: transferStepLabels)
+                .padding(.horizontal, 24)
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(pt("recipientHeadline"))
@@ -329,6 +341,7 @@ public struct TransferAmountScreen: View {
     // default), set only when the caller opened this screen from a specific
     // non-default account (e.g. OverviewScreenView's new per-account Send button).
     let fromAccountName: String?
+    let activeStepIndex: Int
 
     public init(
         recipientAccountNumber: String,
@@ -339,7 +352,8 @@ public struct TransferAmountScreen: View {
         onReportScam: @escaping () -> Void = {},
         onBack: @escaping () -> Void,
         onConfirm: @escaping (Int, Bool, String?, String?) -> Void,
-        fromAccountName: String? = nil
+        fromAccountName: String? = nil,
+        activeStepIndex: Int = 1
     ) {
         self.recipientAccountNumber = recipientAccountNumber
         self.availableBalance = availableBalance
@@ -350,6 +364,7 @@ public struct TransferAmountScreen: View {
         self.onBack = onBack
         self.onConfirm = onConfirm
         self.fromAccountName = fromAccountName
+        self.activeStepIndex = activeStepIndex
     }
 
     private var amount: Int { Int(digits) ?? 0 }
@@ -358,6 +373,8 @@ public struct TransferAmountScreen: View {
     public var body: some View {
         VStack(spacing: 0) {
             FlowTopBar(onBack: onBack)
+            IdsProgressStepper(activeStepIndex: activeStepIndex, steps: transferStepLabels)
+                .padding(.horizontal, 24)
 
             VStack(alignment: .leading, spacing: 6) {
                 TransferPartyRow(label: fromAccountName ?? pt("fromAccount"), sublabel: pt("availableBalance", transferFormatAmount(Int(availableBalance))), symbol: "creditcard")

@@ -59,9 +59,16 @@ import java.io.IOException
 // shape as UpfrontDepositScreen.kt.
 private val SUPPORTED_CURRENCIES = listOf("USD", "EUR", "GBP")
 
+// Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) -- see
+// ForeignCurrencyIntroContent.kt's own doc comment. Mirrors Grow31SavingsScreen.kt's/
+// WeeklySavingsScreen.kt's identical LIST/INTRO mode split.
+private enum class ForeignCurrencyMode { LIST, INTRO }
+
 @Composable
 fun ForeignCurrencyScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
+    var mode by remember { mutableStateOf(ForeignCurrencyMode.LIST) }
+    var selectedCurrency by remember { mutableStateOf<String?>(null) }
     var accounts by remember { mutableStateOf<List<AccountDto>?>(null) }
     var conversions by remember { mutableStateOf<List<CurrencyConversionDto>?>(null) }
     var rateAlerts by remember { mutableStateOf<List<ExchangeRateAlertDto>>(emptyList()) }
@@ -94,12 +101,16 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 NetworkClient.apiService.openForeignAccount(OpenForeignAccountRequest(currency))
+                mode = ForeignCurrencyMode.LIST
+                selectedCurrency = null
                 refreshKey++
             } catch (e: HttpException) {
                 if (rw.itunda.core.network.apiErrorCode(e) == "FOREIGN_ACCOUNT_ALREADY_EXISTS") {
                     // Real Toss-style resolution, not a dead-end error: the account
                     // genuinely already exists -- reload and show it instead of
                     // erroring on every retry.
+                    mode = ForeignCurrencyMode.LIST
+                    selectedCurrency = null
                     refreshKey++
                 } else {
                     error = superAppErrorMessage(e)
@@ -113,7 +124,23 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Foreign currency", onBack = onBack)
+        val backAction: () -> Unit = if (mode == ForeignCurrencyMode.INTRO) {
+            { mode = ForeignCurrencyMode.LIST; selectedCurrency = null }
+        } else {
+            onBack
+        }
+        BackTopBar(title = if (mode == ForeignCurrencyMode.INTRO) "Open account" else "Foreign currency", onBack = backAction)
+        if (mode == ForeignCurrencyMode.INTRO) {
+            val openCurrencies = accounts.orEmpty().map { it.currency }.toSet()
+            ForeignCurrencyIntroContent(
+                availableCurrencies = SUPPORTED_CURRENCIES.filter { it !in openCurrencies },
+                selected = selectedCurrency,
+                onSelect = { selectedCurrency = it },
+                submitting = openingCurrency != null,
+                onOpen = { selectedCurrency?.let { openAccount(it) } },
+            )
+            return@Column
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
@@ -139,19 +166,21 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                 }
                 val openCurrencies = list.map { it.currency }.toSet()
                 val missing = SUPPORTED_CURRENCIES.filter { it !in openCurrencies }
+                // Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) --
+                // was a bare row of "+ Open USD"-style pills with zero explanation of
+                // what the account does; see ForeignCurrencyIntroContent.kt's own doc
+                // comment.
                 if (missing.isNotEmpty()) {
                     item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            missing.forEach { code ->
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(if (openingCurrency == code) Ids.colors.textTertiary else Ids.colors.brand)
-                                        .pressScaleClickable(enabled = openingCurrency == null) { openAccount(code) }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                                ) { Text("+ Open $code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-                            }
-                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ids.colors.brand)
+                                .pressScaleClickable { mode = ForeignCurrencyMode.INTRO }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("+ Open a foreign currency account", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
                     }
                 }
             }

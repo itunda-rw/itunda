@@ -106,6 +106,15 @@ data class ScamWarningUi(val reportCount: Int)
 
 private enum class RecipientTab { FRIENDS, ACCOUNT }
 
+// Real Toss TDS ProgressStepper (docs/UI_UX_GUIDELINES.md product-feel research) -- see
+// IdsProgressStepper.kt's own doc comment. Mirrors bank-mfe's identical
+// TRANSFER_STEP_LABELS in BankDashboard.tsx (Recipient/Amount/Confirm) minus the
+// Confirm step -- Android's own real send-money flow has no separate confirm SCREEN
+// (confirmation happens via the biometric prompt overlaid on the Amount screen itself,
+// not a third screen), so a 2-step indicator honestly matches this platform's real
+// step count rather than forcing artificial parity with web's 3-step shape.
+internal val TRANSFER_STEP_LABELS = listOf("Recipient", "Amount")
+
 // Real Toss-matching redesign (2026-08-14, direct user reference: the real "어디로
 // 보낼까요?" screen tabs 계좌/친구/내 주변 -- itunda's version mixed manual account
 // entry and a small contacts afterthought into one screen with no tabs at all).
@@ -120,6 +129,7 @@ fun RecipientEntryScreen(
     onNext: (accountNumber: String) -> Unit,
     contacts: List<ContactUi> = emptyList(),
     onAddContact: (name: String, phoneNumber: String) -> Unit = { _, _ -> },
+    activeStepIndex: Int = 0,
 ) {
     var tab by rememberSaveable { mutableStateOf(RecipientTab.FRIENDS) }
     var accountNumber by rememberSaveable { mutableStateOf("") }
@@ -134,6 +144,10 @@ fun RecipientEntryScreen(
             .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
+        rw.itunda.core.designsystem.components.IdsProgressStepper(
+            activeStepIndex = activeStepIndex, steps = TRANSFER_STEP_LABELS,
+            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal),
+        )
         RecipientTabRow(selected = tab, onSelect = { tab = it })
 
         when (tab) {
@@ -365,6 +379,7 @@ fun TransferAmountScreen(
     // default), set only when the caller opened this screen from a specific
     // non-default account (e.g. OverviewScreen's new per-account Send button).
     fromAccountName: String? = null,
+    activeStepIndex: Int = 1,
 ) {
     // rememberSaveable (2026-07-12), same reasoning as ItundaAppScreen.kt's
     // TransferStep -- confirmed live on-device that without this, a process kill
@@ -389,6 +404,10 @@ fun TransferAmountScreen(
             .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
+        rw.itunda.core.designsystem.components.IdsProgressStepper(
+            activeStepIndex = activeStepIndex, steps = TRANSFER_STEP_LABELS,
+            modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal),
+        )
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(

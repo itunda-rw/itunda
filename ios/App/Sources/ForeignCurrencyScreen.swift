@@ -17,6 +17,10 @@ struct ForeignCurrencyScreenView: View {
     @State private var rateAlerts: [ExchangeRateAlertDto] = []
     @State private var error: String?
     @State private var openingCurrency: String?
+    // Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md rule 13) -- see
+    // ForeignCurrencyIntroContent.swift's own doc comment.
+    @State private var showingIntro = false
+    @State private var selectedCurrency: String?
 
     private func load() async {
         do {
@@ -35,12 +39,16 @@ struct ForeignCurrencyScreenView: View {
         defer { openingCurrency = nil }
         do {
             _ = try await NetworkClient.shared.openForeignAccount(OpenForeignAccountRequest(currency: currency))
+            showingIntro = false
+            selectedCurrency = nil
             await load()
         } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
             // FOREIGN_ACCOUNT_ALREADY_EXISTS in practice (matches Android's identical
             // ForeignCurrencyScreen.kt fix, 2026-08-15) -- the account genuinely
             // already exists. Resolve forward: reload and show it instead of a
             // dead-end error.
+            showingIntro = false
+            selectedCurrency = nil
             await load()
         } catch {
             self.error = "Could not open this account."
@@ -50,13 +58,25 @@ struct ForeignCurrencyScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body) }.accessibilityLabel("Back")
+                Button(action: showingIntro ? { showingIntro = false; selectedCurrency = nil } : onBack) {
+                    IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body)
+                }.accessibilityLabel("Back")
                 Spacer()
-                Text("Foreign currency").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                Text(showingIntro ? "Open account" : "Foreign currency").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Color.clear.frame(width: 20)
             }
             .padding()
+
+            if showingIntro {
+                let openCurrencies = Set(accounts?.map { $0.currency } ?? [])
+                ForeignCurrencyIntroContent(
+                    availableCurrencies: supportedCurrencies.filter { !openCurrencies.contains($0) },
+                    selected: $selectedCurrency,
+                    submitting: openingCurrency != nil,
+                    onOpen: { if let c = selectedCurrency { Task { await openAccount(c) } } }
+                )
+            } else {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -79,17 +99,16 @@ struct ForeignCurrencyScreenView: View {
 
                         let openCurrencies = Set(accounts.map { $0.currency })
                         let missing = supportedCurrencies.filter { !openCurrencies.contains($0) }
+                        // Real Toss product-intro pattern (docs/UI_UX_GUIDELINES.md
+                        // rule 13) -- was a bare row of "+ Open USD"-style buttons with
+                        // zero explanation; see ForeignCurrencyIntroContent.swift's own
+                        // doc comment.
                         if !missing.isEmpty {
-                            HStack(spacing: 8) {
-                                ForEach(missing, id: \.self) { code in
-                                    Button(action: { Task { await openAccount(code) } }) {
-                                        Text(openingCurrency == code ? "…" : "+ Open \(code)")
-                                            .font(.footnote).bold().foregroundColor(.white)
-                                            .padding(.horizontal, 14).padding(.vertical, 10)
-                                            .background(IDS.Colors.brand).cornerRadius(10)
-                                    }
-                                    .disabled(openingCurrency != nil)
-                                }
+                            Button(action: { showingIntro = true }) {
+                                Text("+ Open a foreign currency account")
+                                    .font(.subheadline).bold().foregroundColor(.white)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                    .background(IDS.Colors.brand).cornerRadius(10)
                             }
                         }
 
@@ -115,6 +134,7 @@ struct ForeignCurrencyScreenView: View {
                     }
                 }
                 .padding(IDS.Layout.screenHorizontal)
+            }
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
