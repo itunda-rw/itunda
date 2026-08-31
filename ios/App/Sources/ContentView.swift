@@ -188,6 +188,7 @@ struct ContentView: View {
     // App-module screens, since AccountManageScreen itself (FeatureBanking) can't
     // import them.
     @State private var showAccountManage = false
+    @State private var showDeviceList = false
     @State private var showBankCard = false
     @State private var showBankForeignCurrency = false
     @State private var showBankPayBills = false
@@ -498,7 +499,7 @@ struct ContentView: View {
                                 accountNumber: bankViewModel.accountNumber ?? "",
                                 onBack: { showAccountManage = false },
                                 onOpenCard: { showAccountManage = false; showBankCard = true },
-                                onOpenDevices: { showAccountManage = false; showBankSettings = true },
+                                onOpenDevices: { showAccountManage = false; showDeviceList = true },
                                 onOpenAutoTransfer: { showAccountManage = false; transferHubStartAtAutoTransfers = true; showTransferHub = true },
                                 onOpenForeignCurrency: { showAccountManage = false; showBankForeignCurrency = true },
                                 onOpenBills: { showAccountManage = false; showBankPayBills = true },
@@ -516,6 +517,9 @@ struct ContentView: View {
                         }
                         .sheet(isPresented: $showBankSupport) {
                             SupportScreenView(onBack: { showBankSupport = false })
+                        }
+                        .fullScreenCover(isPresented: $showDeviceList) {
+                            DeviceListScreen(onBack: { showDeviceList = false })
                         }
                 }
                 .fullScreenCover(isPresented: $showSettings) {

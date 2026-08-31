@@ -28,11 +28,10 @@ import CoreDesignSystem
 /// NetworkClient method for it -- omitted from the Transfer section entirely
 /// rather than faked. A real follow-up item, not scoped into this pass.
 ///
-/// "Manage devices" honestly routes to the general Settings screen here (unlike
-/// Android, which could deep-link straight to its own standalone DeviceListScreen)
-/// -- iOS has no standalone device-list screen; devices are a `Section` inside
-/// SettingsScreen.swift, matching Android's OWN pre-this-session behavior for the
-/// whole gear icon.
+/// "Manage devices" deep-links to a real standalone DeviceListScreen.swift
+/// (2026-09-01, App/Sources) -- same real GET/POST/DELETE /api/v1/auth/devices
+/// endpoints SettingsScreen.swift's own inline device Section already used,
+/// closing what was originally a disclosed gap here (routing to general Settings).
 public struct AccountManageScreen: View {
     let accountNumber: String
     let onBack: () -> Void
