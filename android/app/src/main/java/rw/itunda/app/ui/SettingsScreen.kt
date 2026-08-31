@@ -611,7 +611,7 @@ fun SettingsScreen(
 // GET/POST/DELETE /api/v1/auth/devices-backed data and DeviceRow as before, just
 // reached via "Services logged in with Toss" instead of dumped inline.
 @Composable
-private fun DeviceListScreen(devices: List<rw.itunda.core.network.TrustedDeviceDto>, onRevoke: (String) -> Unit, onBack: () -> Unit) {
+internal fun DeviceListScreen(devices: List<rw.itunda.core.network.TrustedDeviceDto>, onRevoke: (String) -> Unit, onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
         SettingsSubScreenHeader(stringResource(R.string.settings_devices), onBack)
         LazyColumn(

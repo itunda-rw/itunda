@@ -417,6 +417,17 @@ fun ItundaAppScreen(
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
         var bucketDetailTarget by rememberSaveable { mutableStateOf<BucketDetailTarget?>(null) }
         var showBankAssets by rememberSaveable { mutableStateOf(false) }
+        // Real Toss Bank 관리 (Manage) account-settings hub (2026-09-01, direct
+        // user-supplied Toss screenshots of that exact screen) -- ports web's own
+        // already-built AccountManageScreen.tsx (see that file's own doc comment for
+        // which real itunda features it surfaces and what's honestly scoped out) so
+        // the gear icon opens an account-scoped hub instead of jumping straight to
+        // the generic app-wide Settings screen. showDeviceList is a second, separate
+        // top-level flag from SettingsScreen.kt's own local one -- lets this screen's
+        // "Manage devices" row deep-link straight to DeviceListScreen (now `internal`)
+        // without going through Settings at all.
+        var showAccountManage by rememberSaveable { mutableStateOf(false) }
+        var showDeviceList by rememberSaveable { mutableStateOf(false) }
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
         // Real Toss distinction (2026-08-12, direct user clarification against real
@@ -1461,7 +1472,7 @@ fun ItundaAppScreen(
                 viewModel = viewModel,
                 onBack = { showAccountDetail = false },
                 onOpenCard = { showAccountDetail = false; showCard = true },
-                onOpenManage = { showAccountDetail = false; showSettings = true },
+                onOpenManage = { showAccountDetail = false; showAccountManage = true },
                 onTopUp = { showAccountDetail = false; showAgentCash = true },
                 onSend = { showAccountDetail = false; transferStep = TransferStep.Recipient; transferFromAccount = null },
                 onClaimInterest = { showAccountDetail = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
@@ -1472,6 +1483,36 @@ fun ItundaAppScreen(
         if (showBankAssets) {
             BackHandler { showBankAssets = false }
             ItundaBankAssetsScreen(onBack = { showBankAssets = false })
+            return@IdsTheme
+        }
+        // Checked after showCard/showDeviceList/showTransferHub/showForeignCurrency/
+        // showSupport (all set well above/below this point) since this screen's own
+        // rows deep-link into each of them -- same ordering rule showAccountDetail's
+        // own comment above documents.
+        if (showAccountManage) {
+            BackHandler { showAccountManage = false }
+            val manageContext = androidx.compose.ui.platform.LocalContext.current
+            AccountManageScreen(
+                accountNumber = viewModel.primaryAccount.value?.accountNumber ?: "",
+                onBack = { showAccountManage = false },
+                onOpenCard = { showAccountManage = false; showCard = true },
+                onOpenDevices = { showAccountManage = false; showDeviceList = true },
+                onOpenAutoTransfer = { showAccountManage = false; showTransferHub = true; showAutoTransfers = true },
+                onOpenScheduledTransfers = { showAccountManage = false; showTransferHub = true; showScheduledTransfers = true },
+                onOpenForeignCurrency = { showAccountManage = false; showForeignCurrency = true },
+                onOpenBills = { manageContext.startActivity(android.content.Intent(manageContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java)) },
+                onOpenSupport = { showAccountManage = false; showSupport = true },
+            )
+            return@IdsTheme
+        }
+        if (showDeviceList) {
+            BackHandler { showDeviceList = false }
+            val devices by viewModel.devices.collectAsState()
+            DeviceListScreen(
+                devices = devices,
+                onRevoke = { deviceId -> viewModel.revokeDeviceFromSettings(deviceId) },
+                onBack = { showDeviceList = false },
+            )
             return@IdsTheme
         }
         bucketDetailTarget?.let { target ->
