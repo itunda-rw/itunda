@@ -14,6 +14,14 @@ export interface Card {
   dailyLimit: number;
   monthlyLimit: number;
   frozen: boolean;
+  // Real "분실신고"/"카드 해지하기"/"카드 재발급"/"카드 비밀번호 변경" fields
+  // (2026-09-01, direct user-supplied Toss Bank card-management screenshots) --
+  // see the backend's DebitCard.kt doc comment for why lost/closedAt are
+  // deliberately separate, one-way states from `frozen`.
+  lost: boolean;
+  closedAt: string | null;
+  pinSet: boolean;
+  reissuedAt: string | null;
   issuedAt: string;
   design: string;
   spentToday: number;
@@ -82,6 +90,32 @@ export const freezeCard = () =>
 
 export const unfreezeCard = () =>
   apiFetch<{ success: boolean; card: Card }>('/api/v1/card/unfreeze', { method: 'POST' }).then((r) => r.card);
+
+// Real "분실신고" (report lost or stolen) -- a distinct, one-way backend state from
+// the ordinary freeze/unfreeze toggle above (DebitCard.kt's own doc comment). Closes
+// the real gap this file's own CardView previously flagged live: "Report lost or
+// stolen" used to just relabel freezeCard() because no distinct backend flow existed.
+export const reportLostCard = () =>
+  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/report-lost', { method: 'POST' }).then((r) => r.card);
+
+// Real "카드 해지하기" (close card) -- also one-way; only reissueCard() below can
+// recover from it.
+export const closeMyCard = () =>
+  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/close', { method: 'POST' }).then((r) => r.card);
+
+// Real "카드 재발급" (reissue) -- only allowed once a card is lost or closed;
+// regenerates last4 and clears the old PIN in place.
+export const reissueCard = () =>
+  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/reissue', { method: 'POST' }).then((r) => r.card);
+
+// Real "카드 비밀번호 변경" (change card PIN) -- a real, separate 4-digit debit-card
+// PIN, distinct from the login password/PIN. Requires the current login credential as
+// step-up auth, same as AuthService.setPin's own real PIN-change flow.
+export const setCardPin = (newPin: string, currentCredential: string) =>
+  apiFetch<{ success: boolean; card: Card }>('/api/v1/card/pin', {
+    method: 'PUT',
+    body: JSON.stringify({ newPin, currentCredential }),
+  }).then((r) => r.card);
 
 export const chargeCard = (amount: number, merchantName: string) =>
   apiFetch<{ success: boolean; transaction: CardTransaction; card: Card }>('/api/v1/card/charge', {

@@ -52,7 +52,7 @@ import { AccountDetailScreen } from './AccountDetailScreen';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
-import { cardDesign, chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
+import { cardDesign, chargeCard, closeMyCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, reissueCard, reportLostCard, setCardLimits, setCardPin, unfreezeCard, type Card, type CardTransaction } from './lib/card';
 import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoalTransactions, fetchGoals, fetchInterestJar, fetchInterestJarTransactions, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, withdrawFromGoal, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import { BucketDetailScreen, BucketTransactionList } from './BucketDetailScreen';
 import { transactionsToBucketTransactions, type BucketTransaction } from './lib/bucketTransaction';
@@ -11204,6 +11204,14 @@ function CardView() {
   // one screen where a cardholder would naturally look for "what is my card earning me."
   const [cardUsageFactor, setCardUsageFactor] = useState<CreditScoreFactor | null>(null);
   const [cardSuggestion, setCardSuggestion] = useState<CreditScoreSuggestion | null>(null);
+  // Real "카드 비밀번호 변경" (change card PIN) inline form (2026-09-01, direct
+  // user-supplied Toss Bank card-management screenshots) -- see lib/card.ts's
+  // setCardPin doc comment for the real step-up-auth this posts to.
+  const [showPinForm, setShowPinForm] = useState(false);
+  const [newPinInput, setNewPinInput] = useState('');
+  const [pinPasswordInput, setPinPasswordInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinSuccess, setPinSuccess] = useState(false);
 
   const load = () => {
     setError(null);
@@ -11257,21 +11265,68 @@ function CardView() {
     }
   };
 
-  // Real Toss Bank reference (2026-08-23, user-supplied 분실신고/"Report lost"
-  // screenshot): itunda has no distinct lost-card-report flow on the backend, only
-  // freeze/unfreeze -- but freezing genuinely accomplishes the real protective intent
-  // of "report lost or stolen" (no purchases can go through), so this reuses the same
-  // real freezeCard() call rather than inventing a separate endpoint. Unlike the
-  // Freeze/Unfreeze toggle button above (which flips either direction), this always
-  // freezes -- matching "report lost" real one-way meaning.
+  // Real "분실신고" (report lost or stolen) -- closes the gap this file's own
+  // previous version disclosed: a distinct, one-way backend state now exists
+  // (POST /api/v1/card/report-lost), so this no longer relabels the ordinary,
+  // self-reversible freezeCard() call.
   const handleReportLost = async () => {
-    if (!card || card.frozen) return;
+    if (!card || card.lost || card.closedAt) return;
     setBusy(true);
     setError(null);
     try {
-      setCard(await freezeCard());
+      setCard(await reportLostCard());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Real "카드 해지하기" (close card) -- a deliberate, one-way retirement distinct
+  // from a lost/stolen report; only reissue below can recover from either.
+  const handleCloseCard = async () => {
+    if (!card || card.closedAt) return;
+    if (!window.confirm('Close this card? You can get a new one afterward, but this card will stop working immediately.')) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCard(await closeMyCard());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Real "카드 재발급" (reissue) -- the real recovery path from a lost/stolen or
+  // closed card; regenerates last4 and clears the old PIN in place (backend
+  // enforces one card per user, see CardService.reissue's own doc comment).
+  const handleReissue = async () => {
+    if (!card) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCard(await reissueCard());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('common.actionError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinSuccess(false);
+    setBusy(true);
+    try {
+      setCard(await setCardPin(newPinInput, pinPasswordInput));
+      setNewPinInput('');
+      setPinPasswordInput('');
+      setShowPinForm(false);
+      setPinSuccess(true);
+    } catch (err) {
+      setPinError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
       setBusy(false);
     }
@@ -11339,10 +11394,10 @@ function CardView() {
   // navigation arrows (spentThisMonth is a live running total, no per-past-month
   // breakdown endpoint exists), no postpaid-transit-card/reissue/ATM-guide/
   // overseas-fee/ongoing-events rows (all genuinely Korea-transit/card-network-
-  // specific, itunda has no backend for any of them). "Report lost or stolen"
-  // reuses the same real freezeCard() the Freeze/Unfreeze toggle already calls --
-  // freezing genuinely accomplishes that real protective intent, not a fabricated
-  // separate flow (see handleReportLost's own doc comment).
+  // specific, itunda has no backend for any of them). "Report lost or stolen",
+  // "Close card", and "Card PIN" (2026-09-01) are now real, distinct backend
+  // flows -- see CardService.reportLost/closeCard/setPin's own doc comments --
+  // no longer relabeling freezeCard() the way this comment used to describe.
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -11368,14 +11423,21 @@ function CardView() {
         </div>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-        •••• {card.last4} · {card.frozen ? 'Frozen — no purchases can be made' : 'Active'}
+        •••• {card.last4} ·{' '}
+        {card.closedAt ? 'Closed' : card.lost ? 'Reported lost or stolen' : card.frozen ? 'Frozen — no purchases can be made' : 'Active'}
       </p>
 
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
 
-      <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze} style={{ marginBottom: '20px' }}>
-        {card.frozen ? 'Unfreeze card' : 'Freeze card'}
-      </button>
+      {card.lost || card.closedAt ? (
+        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleReissue} style={{ marginBottom: '20px' }}>
+          {busy ? '…' : 'Get a new card'}
+        </button>
+      ) : (
+        <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze} style={{ marginBottom: '20px' }}>
+          {card.frozen ? 'Unfreeze card' : 'Freeze card'}
+        </button>
+      )}
 
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Usage history</h3>
@@ -11422,14 +11484,56 @@ function CardView() {
           <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
         <button
-          onClick={handleReportLost}
-          disabled={busy || card.frozen}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.frozen ? 0.5 : 1 }}
+          onClick={() => setShowPinForm((v) => !v)}
+          disabled={busy || !!card.closedAt}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
         >
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.frozen ? 'Reported lost or stolen' : 'Report lost or stolen'}</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.pinSet ? 'Change card PIN' : 'Set card PIN'}</span>
+          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+        </button>
+        <button
+          onClick={handleReportLost}
+          disabled={busy || card.lost || !!card.closedAt}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.lost || card.closedAt ? 0.5 : 1 }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>{card.lost ? 'Reported lost or stolen' : 'Report lost or stolen'}</span>
+          <IconChevronRight size={18} color="var(--itunda-grey-400)" />
+        </button>
+        <button
+          onClick={handleCloseCard}
+          disabled={busy || !!card.closedAt}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', textAlign: 'left', opacity: card.closedAt ? 0.5 : 1 }}
+        >
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: card.closedAt ? 'var(--itunda-grey-500)' : 'var(--itunda-red)' }}>{card.closedAt ? 'Card closed' : 'Close card'}</span>
           <IconChevronRight size={18} color="var(--itunda-grey-400)" />
         </button>
       </div>
+
+      {showPinForm && (
+        <div className="itunda-flat-section">
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>{card.pinSet ? 'Change card PIN' : 'Set card PIN'}</h3>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+            A real 4-digit card PIN, separate from your login password. Confirm your current login password to change it.
+          </p>
+          <form onSubmit={handleSetPin} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {pinError && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{pinError}</p>}
+            <input
+              type="password" inputMode="numeric" placeholder="New 4-digit PIN" value={newPinInput}
+              onChange={(e) => setNewPinInput(e.target.value)} required maxLength={4} pattern="\d{4}"
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            />
+            <input
+              type="password" placeholder="Current login password" value={pinPasswordInput}
+              onChange={(e) => setPinPasswordInput(e.target.value)} required
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
+            />
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
+              {busy ? '…' : 'Save PIN'}
+            </button>
+          </form>
+        </div>
+      )}
+      {pinSuccess && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginBottom: '8px' }}>Card PIN saved.</p>}
 
       <div id="card-spend-limits-section" className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Spend limits</h3>
@@ -11473,7 +11577,7 @@ function CardView() {
             style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || card.frozen}>
-            {card.frozen ? 'Card is frozen' : busy ? 'Paying…' : 'Pay'}
+            {card.closedAt ? 'Card is closed' : card.lost ? 'Card reported lost' : card.frozen ? 'Card is frozen' : busy ? 'Paying…' : 'Pay'}
           </button>
         </form>
       </div>
