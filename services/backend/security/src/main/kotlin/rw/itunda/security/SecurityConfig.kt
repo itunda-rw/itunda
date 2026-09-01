@@ -1,4 +1,4 @@
-package rw.itunda.app.security
+package rw.itunda.security
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -20,6 +20,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
  * default of how the Express backend started (nothing required auth until it was added
  * route-by-route, and even then no controller used the verified identity; see
  * SECURITY.md). Stateless: no server-side session, matching the token-based design.
+ *
+ * Moved here from app/src/main/kotlin/rw/itunda/app/security/ (2026-09-01, unchanged
+ * except its package) so card-service -- the first independently-deployable product,
+ * see docs/ARCHITECTURE.md -- validates JWTs through the exact same filter chain as
+ * :app, rather than a second, driftable copy.
  */
 @Configuration
 class SecurityConfig(

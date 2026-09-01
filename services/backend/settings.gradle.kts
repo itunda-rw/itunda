@@ -44,5 +44,10 @@ include(
     ":card",
     ":transit",
     ":ussd",
+    // Real, distinct module (2026-09-01) -- see security/build.gradle.kts's own doc
+    // comment: promoted out of :app so card-service (the first independently-
+    // deployable product) can share the identical JWT filter chain.
+    ":security",
+    ":card-service",
     ":app"
 )

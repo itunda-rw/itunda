@@ -1,4 +1,4 @@
-package rw.itunda.app.security
+package rw.itunda.security
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.FilterChain

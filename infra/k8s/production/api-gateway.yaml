@@ -68,6 +68,8 @@ spec:
         env:
         - name: BACKEND_URL
           value: "http://backend:4001"
+        - name: CARD_SERVICE_URL
+          value: "http://card-service:4002"
         - name: LEDGER_SERVICE_URL
           value: "http://ledger-service:8082"
         - name: PAYMENT_SERVICE_URL

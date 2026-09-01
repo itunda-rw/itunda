@@ -177,6 +177,12 @@ app.get('/metrics', async (req, res) => {
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:8081';
 const LEDGER_SERVICE_URL = process.env.LEDGER_SERVICE_URL || 'http://localhost:8082';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
+// Real, first independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up to the 2026-07-11 microservices decision.
+// Same routing-precedence reasoning as PAYMENT_SERVICE_URL/LEDGER_SERVICE_URL above:
+// registered before the /api/v1 catch-all to services/backend, which no longer
+// serves /api/v1/card/** at all (the :card Gradle module was removed from :app).
+const CARD_SERVICE_URL = process.env.CARD_SERVICE_URL || 'http://localhost:4002';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -361,6 +367,8 @@ const messagingWebSocketProxy = createProxyMiddleware({
 app.use('/api/v1/payments', moneyMovementLimiter, upstreamProxy(PAYMENT_SERVICE_URL));
 
 app.use('/api/v1/ledger', moneyMovementLimiter, upstreamProxy(LEDGER_SERVICE_URL));
+
+app.use('/api/v1/card', moneyMovementLimiter, upstreamProxy(CARD_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

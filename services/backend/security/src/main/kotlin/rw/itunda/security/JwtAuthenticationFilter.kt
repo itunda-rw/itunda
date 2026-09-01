@@ -1,4 +1,4 @@
-package rw.itunda.app.security
+package rw.itunda.security
 
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest

@@ -14,6 +14,10 @@ dependencyManagement {
 dependencies {
     implementation(project(":core"))
     implementation(project(":auth"))
+    // Real, distinct module (2026-09-01) -- see security/build.gradle.kts's own doc
+    // comment: SecurityConfig/JwtAuthenticationFilter/DeviceVerificationFilter moved
+    // out of this module so card-service shares the identical filter chain.
+    implementation(project(":security"))
     implementation(project(":agents"))
     implementation(project(":account"))
     implementation(project(":bills"))
@@ -52,7 +56,10 @@ dependencies {
     implementation(project(":vehicle"))
     implementation(project(":family"))
     implementation(project(":splitbill"))
-    implementation(project(":card"))
+    // :card removed (2026-09-01) -- extracted into its own independently-deployable
+    // card-service (see docs/ARCHITECTURE.md); this is the change that actually
+    // shrinks :app:bootJar's compile graph for a Card-only change. Confirmed via
+    // repo-wide grep: nothing else in :app reaches into rw.itunda.card directly.
     implementation(project(":transit"))
     implementation(project(":ussd"))
     implementation("org.springframework.boot:spring-boot-starter-web")

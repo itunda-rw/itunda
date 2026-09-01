@@ -48,6 +48,10 @@ patch_image_pull_policy() {
 
 override_images_if_set() {
   [[ -n "${ITUNDA_BACKEND_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref backend) backend=${ITUNDA_BACKEND_IMAGE}"
+  # card-service added 2026-09-01 -- the first independently-deployable itunda
+  # product (see docs/ARCHITECTURE.md). Setting only this image never touches
+  # backend's own Deployment/pods.
+  [[ -n "${ITUNDA_CARD_SERVICE_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref card-service) card-service=${ITUNDA_CARD_SERVICE_IMAGE}"
   [[ -n "${ITUNDA_API_GATEWAY_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref api-gateway) api-gateway=${ITUNDA_API_GATEWAY_IMAGE}"
   [[ -n "${ITUNDA_LEDGER_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref ledger-service) ledger-service=${ITUNDA_LEDGER_IMAGE}"
   [[ -n "${ITUNDA_PAYMENT_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref payment-service) payment-service=${ITUNDA_PAYMENT_IMAGE}"
@@ -71,7 +75,7 @@ wait_for_rollouts() {
   local app
   local namespace
 
-  for app in backend api-gateway ledger-service payment-service; do
+  for app in backend card-service api-gateway ledger-service payment-service; do
     namespace="itunda"
     workload="$(app_workload_ref "$app")"
     if [[ "$workload" == rollout/* ]]; then
@@ -172,11 +176,13 @@ deploy_private_cloud() {
   cluster_kubectl "apply -f ${DEPLOY_REPO_PATH}/infra/k8s/private-cloud/nodeports.yaml"
 
   patch_image_pull_policy "$(app_workload_ref backend)" backend
+  patch_image_pull_policy "$(app_workload_ref card-service)" card-service
   patch_image_pull_policy "$(app_workload_ref api-gateway)" api-gateway
   patch_image_pull_policy "$(app_workload_ref ledger-service)" ledger-service
   patch_image_pull_policy "$(app_workload_ref payment-service)" payment-service
   override_images_if_set
   apply_image_pull_secret_if_set "$(app_workload_ref backend)"
+  apply_image_pull_secret_if_set "$(app_workload_ref card-service)"
   apply_image_pull_secret_if_set "$(app_workload_ref api-gateway)"
   apply_image_pull_secret_if_set "$(app_workload_ref ledger-service)"
   apply_image_pull_secret_if_set "$(app_workload_ref payment-service)"
