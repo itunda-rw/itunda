@@ -192,6 +192,13 @@ const CARD_SERVICE_URL = process.env.CARD_SERVICE_URL || 'http://localhost:4002'
 // prefix other unrelated modules also use, so only its own specific sub-path is
 // routed here -- never the whole /api/v1/system prefix.
 const INSURANCE_SERVICE_URL = process.env.INSURANCE_SERVICE_URL || 'http://localhost:4003';
+// Real, third independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// CARD_SERVICE_URL/INSURANCE_SERVICE_URL above. Covers all three of :agents'
+// own route prefixes (/api/v1/agent singular -- AgentOperatorController,
+// /api/v1/agents plural -- AgentDiscoveryController, /api/v1/float-marketplace)
+// plus its admin sub-path under the shared /api/v1/system/** prefix.
+const AGENTS_SERVICE_URL = process.env.AGENTS_SERVICE_URL || 'http://localhost:4004';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -380,6 +387,10 @@ app.use('/api/v1/ledger', moneyMovementLimiter, upstreamProxy(LEDGER_SERVICE_URL
 app.use('/api/v1/card', moneyMovementLimiter, upstreamProxy(CARD_SERVICE_URL));
 app.use('/api/v1/system/insurance-claims', moneyMovementLimiter, upstreamProxy(INSURANCE_SERVICE_URL));
 app.use('/api/v1/insurance', moneyMovementLimiter, upstreamProxy(INSURANCE_SERVICE_URL));
+app.use('/api/v1/system/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/agent', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/float-marketplace', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

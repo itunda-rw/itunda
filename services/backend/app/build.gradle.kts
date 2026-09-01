@@ -18,7 +18,10 @@ dependencies {
     // comment: SecurityConfig/JwtAuthenticationFilter/DeviceVerificationFilter moved
     // out of this module so card-service shares the identical filter chain.
     implementation(project(":security"))
-    implementation(project(":agents"))
+    // :agents removed (2026-09-01) -- extracted into its own
+    // independently-deployable agents-service (see docs/ARCHITECTURE.md), the
+    // third product after :card/:insurance. Confirmed via repo-wide grep:
+    // nothing else in :app reaches into rw.itunda.agents directly.
     implementation(project(":account"))
     implementation(project(":bills"))
     implementation(project(":loans"))

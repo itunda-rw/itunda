@@ -54,5 +54,10 @@ include(
     // confirmed to have zero Gradle-level coupling with any other product
     // module, the same property that made :card the first extraction.
     ":insurance-service",
+    // Real, third independently-deployable module (2026-09-01) -- see
+    // agents-service/build.gradle.kts's own doc comment: :agents (the Agent
+    // Operator cash-in/cash-out network) was confirmed to have zero
+    // Gradle-level coupling with any other product module.
+    ":agents-service",
     ":app"
 )
