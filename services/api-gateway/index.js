@@ -256,6 +256,11 @@ const IDENTITY_SERVICE_URL = process.env.IDENTITY_SERVICE_URL || 'http://localho
 // prefix from :account's own singular /api/v1/account/** -- checked before
 // assuming safety, no collision).
 const OVERVIEW_SERVICE_URL = process.env.OVERVIEW_SERVICE_URL || 'http://localhost:4011';
+// Real, eleventh independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. No moneyMovementLimiter -- knowledge
+// base Q&A moves no money.
+const KNOWLEDGE_SERVICE_URL = process.env.KNOWLEDGE_SERVICE_URL || 'http://localhost:4012';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -462,6 +467,7 @@ app.use('/api/v1/system/compliance', upstreamProxy(IDENTITY_SERVICE_URL));
 app.use('/api/v1/identity', upstreamProxy(IDENTITY_SERVICE_URL));
 app.use('/api/v1/overview', upstreamProxy(OVERVIEW_SERVICE_URL));
 app.use('/api/v1/accounts', upstreamProxy(OVERVIEW_SERVICE_URL));
+app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

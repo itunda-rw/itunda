@@ -68,7 +68,11 @@ dependencies {
     implementation(project(":messaging"))
     implementation(project(":marketplace"))
     implementation(project(":community"))
-    implementation(project(":knowledge"))
+    // :knowledge removed (2026-09-01) -- extracted into its own
+    // independently-deployable knowledge-service, the eleventh product after
+    // :card/:insurance/:agents/:transit/:certificate/:bills/:vehicle/
+    // :partners/:identity/:overview. Confirmed via repo-wide grep: nothing
+    // else in :app reaches into rw.itunda.knowledge directly.
     implementation(project(":jobs"))
     implementation(project(":realestate"))
     implementation(project(":commerce"))

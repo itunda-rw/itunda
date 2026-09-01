@@ -57,6 +57,8 @@ spec:
           value: "http://identity-service:4010"
         - name: OVERVIEW_SERVICE_URL
           value: "http://overview-service:4011"
+        - name: KNOWLEDGE_SERVICE_URL
+          value: "http://knowledge-service:4012"
         - name: LEDGER_SERVICE_URL
           value: "http://ledger-service:8082"
         - name: PAYMENT_SERVICE_URL

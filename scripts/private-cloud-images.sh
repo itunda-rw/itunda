@@ -38,7 +38,9 @@ service_keys() {
   # itunda product, same shape as the eight before it.
   # overview-service added 2026-09-01 -- the tenth independently-deployable
   # itunda product, same shape as the nine before it.
-  printf '%s\n' api-gateway backend ledger-service payment-service card-service insurance-service agents-service transit-service certificate-service bills-service vehicle-service partners-service identity-service overview-service
+  # knowledge-service added 2026-09-01 -- the eleventh independently-deployable
+  # itunda product, same shape as the ten before it.
+  printf '%s\n' api-gateway backend ledger-service payment-service card-service insurance-service agents-service transit-service certificate-service bills-service vehicle-service partners-service identity-service overview-service knowledge-service
 }
 
 ensure_remote_build_headroom() {
@@ -72,7 +74,7 @@ selected_services() {
 
 service_context() {
   case "$1" in
-    backend|card-service|insurance-service|agents-service|transit-service|certificate-service|bills-service|vehicle-service|partners-service|identity-service|overview-service) printf '%s\n' "$ROOT_DIR/services/backend" ;;
+    backend|card-service|insurance-service|agents-service|transit-service|certificate-service|bills-service|vehicle-service|partners-service|identity-service|overview-service|knowledge-service) printf '%s\n' "$ROOT_DIR/services/backend" ;;
     api-gateway) printf '%s\n' "$ROOT_DIR/services/api-gateway" ;;
     ledger-service|payment-service) printf '%s\n' "$ROOT_DIR/services/microservices" ;;
     *) echo "Unknown service: $1" >&2; exit 1 ;;
@@ -92,6 +94,7 @@ service_dockerfile() {
     partners-service) printf '%s\n' "$ROOT_DIR/services/backend/partners-service/Dockerfile" ;;
     identity-service) printf '%s\n' "$ROOT_DIR/services/backend/identity-service/Dockerfile" ;;
     overview-service) printf '%s\n' "$ROOT_DIR/services/backend/overview-service/Dockerfile" ;;
+    knowledge-service) printf '%s\n' "$ROOT_DIR/services/backend/knowledge-service/Dockerfile" ;;
     api-gateway) printf '%s\n' "$ROOT_DIR/services/api-gateway/Dockerfile" ;;
     ledger-service) printf '%s\n' "$ROOT_DIR/services/microservices/ledger-service/Dockerfile" ;;
     payment-service) printf '%s\n' "$ROOT_DIR/services/microservices/payment-service/Dockerfile" ;;
@@ -112,6 +115,7 @@ service_env_var() {
     partners-service) printf 'ITUNDA_PARTNERS_SERVICE_IMAGE\n' ;;
     identity-service) printf 'ITUNDA_IDENTITY_SERVICE_IMAGE\n' ;;
     overview-service) printf 'ITUNDA_OVERVIEW_SERVICE_IMAGE\n' ;;
+    knowledge-service) printf 'ITUNDA_KNOWLEDGE_SERVICE_IMAGE\n' ;;
     api-gateway) printf 'ITUNDA_API_GATEWAY_IMAGE\n' ;;
     ledger-service) printf 'ITUNDA_LEDGER_IMAGE\n' ;;
     payment-service) printf 'ITUNDA_PAYMENT_IMAGE\n' ;;
@@ -290,28 +294,28 @@ Usage: scripts/private-cloud-images.sh <command> [args]
 
 Commands:
   plan [registry-host] [tag]
-    Print the exact docker build/push commands for the fourteen private-cloud images.
+    Print the exact docker build/push commands for the fifteen private-cloud images.
 
   plan-private-cloud [registry-host] [tag]
     Print the exact build/push commands against the arm64 rehearsal registry on the private cloud.
 
   build [registry-host] [tag]
-    Build all fourteen service images for the target registry/project.
+    Build all fifteen service images for the target registry/project.
 
   push [registry-host] [tag]
-    Push all fourteen service images to the target registry/project.
+    Push all fifteen service images to the target registry/project.
 
   build-push [registry-host] [tag]
-    Build then push all fourteen service images.
+    Build then push all fifteen service images.
 
   build-private-cloud [registry-host] [tag]
-    Build all fourteen service images on the primary Multipass VM for the private-cloud registry.
+    Build all fifteen service images on the primary Multipass VM for the private-cloud registry.
 
   push-private-cloud [registry-host] [tag]
-    Push all fourteen remote-built images from the primary Multipass VM to the private-cloud registry.
+    Push all fifteen remote-built images from the primary Multipass VM to the private-cloud registry.
 
   build-push-private-cloud [registry-host] [tag]
-    Stage the repo on the primary Multipass VM, build all fourteen images there, then push them.
+    Stage the repo on the primary Multipass VM, build all fifteen images there, then push them.
 
   print-env [registry-host] [tag]
     Print ITUNDA_*_IMAGE env vars and the pull-secret name for deploy/progressive commands.

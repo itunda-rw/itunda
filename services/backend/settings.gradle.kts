@@ -94,5 +94,10 @@ include(
     // confirmed to have zero Gradle-level coupling with any other product
     // module.
     ":overview-service",
+    // Real, eleventh independently-deployable module (2026-09-01) -- see
+    // knowledge-service/build.gradle.kts's own doc comment: :knowledge was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module.
+    ":knowledge-service",
     ":app"
 )
