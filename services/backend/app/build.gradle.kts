@@ -65,7 +65,11 @@ dependencies {
     implementation(project(":gift"))
     implementation(project(":calling"))
     implementation(project(":rideshare"))
-    implementation(project(":vehicle"))
+    // :vehicle removed (2026-09-01) -- extracted into its own
+    // independently-deployable vehicle-service, the seventh product after
+    // :card/:insurance/:agents/:transit/:certificate/:bills. Confirmed via
+    // repo-wide grep: nothing else in :app reaches into rw.itunda.vehicle
+    // directly.
     implementation(project(":family"))
     implementation(project(":splitbill"))
     // :card removed (2026-09-01) -- extracted into its own independently-deployable

@@ -49,6 +49,8 @@ spec:
           value: "http://certificate-service:4006"
         - name: BILLS_SERVICE_URL
           value: "http://bills-service:4007"
+        - name: VEHICLE_SERVICE_URL
+          value: "http://vehicle-service:4008"
         - name: LEDGER_SERVICE_URL
           value: "http://ledger-service:8082"
         - name: PAYMENT_SERVICE_URL

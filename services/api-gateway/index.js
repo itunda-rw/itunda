@@ -216,6 +216,11 @@ const CERTIFICATE_SERVICE_URL = process.env.CERTIFICATE_SERVICE_URL || 'http://l
 // payments) -- wrapped in moneyMovementLimiter, same as card/insurance/
 // agents/transit.
 const BILLS_SERVICE_URL = process.env.BILLS_SERVICE_URL || 'http://localhost:4007';
+// Real, seventh independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. No moneyMovementLimiter -- vehicle
+// valuation moves no money, same reasoning as CERTIFICATE_SERVICE_URL.
+const VEHICLE_SERVICE_URL = process.env.VEHICLE_SERVICE_URL || 'http://localhost:4008';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -411,6 +416,7 @@ app.use('/api/v1/float-marketplace', moneyMovementLimiter, upstreamProxy(AGENTS_
 app.use('/api/v1/transit', moneyMovementLimiter, upstreamProxy(TRANSIT_SERVICE_URL));
 app.use('/api/v1/certificate', upstreamProxy(CERTIFICATE_SERVICE_URL));
 app.use('/api/v1/bills', moneyMovementLimiter, upstreamProxy(BILLS_SERVICE_URL));
+app.use('/api/v1/vehicles', upstreamProxy(VEHICLE_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

@@ -73,5 +73,10 @@ include(
     // bills-service/build.gradle.kts's own doc comment: :bills was confirmed
     // to have zero Gradle-level coupling with any other product module.
     ":bills-service",
+    // Real, seventh independently-deployable module (2026-09-01) -- see
+    // vehicle-service/build.gradle.kts's own doc comment: :vehicle was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module.
+    ":vehicle-service",
     ":app"
 )
