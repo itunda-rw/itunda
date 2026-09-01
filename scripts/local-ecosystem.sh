@@ -155,6 +155,7 @@ start_gateway() {
     export BILLS_SERVICE_URL="${BILLS_SERVICE_URL:-http://localhost:4007}"
     export VEHICLE_SERVICE_URL="${VEHICLE_SERVICE_URL:-http://localhost:4008}"
     export PARTNERS_SERVICE_URL="${PARTNERS_SERVICE_URL:-http://localhost:4009}"
+    export IDENTITY_SERVICE_URL="${IDENTITY_SERVICE_URL:-http://localhost:4010}"
     export LEDGER_SERVICE_URL="${LEDGER_SERVICE_URL:-http://localhost:8082}"
     export PAYMENT_SERVICE_URL="${PAYMENT_SERVICE_URL:-http://localhost:8081}"
     run_workspace "@itunda/api-gateway" start

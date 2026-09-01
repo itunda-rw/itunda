@@ -239,6 +239,16 @@ const VEHICLE_SERVICE_URL = process.env.VEHICLE_SERVICE_URL || 'http://localhost
 // matches app.use() in registration order, not longest-prefix, so a
 // mis-ordered broader route would silently swallow this narrower one.
 const PARTNERS_SERVICE_URL = process.env.PARTNERS_SERVICE_URL || 'http://localhost:4009';
+// Real, ninth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Owns two prefixes: /api/v1/identity
+// (real NIDA/KYB verification) and the admin sub-path
+// /api/v1/system/compliance under the shared /api/v1/system/** prefix. The
+// /api/v1/identity route below is registered AFTER partners-service's
+// existing /api/v1/identity/verification line (see that const's own comment)
+// exactly per the resolved route-collision note -- Express matches
+// registration order, not longest-prefix, so this ordering is load-bearing,
+// not cosmetic.
+const IDENTITY_SERVICE_URL = process.env.IDENTITY_SERVICE_URL || 'http://localhost:4010';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -439,6 +449,10 @@ app.use('/api/v1/system/partners', upstreamProxy(PARTNERS_SERVICE_URL));
 app.use('/api/v1/identity/verification', upstreamProxy(PARTNERS_SERVICE_URL));
 app.use('/api/v1/partners', upstreamProxy(PARTNERS_SERVICE_URL));
 app.use('/api/v1/mini-apps', upstreamProxy(PARTNERS_SERVICE_URL));
+// Registered AFTER the /api/v1/identity/verification line above -- required
+// ordering, not incidental (see IDENTITY_SERVICE_URL's own comment).
+app.use('/api/v1/system/compliance', upstreamProxy(IDENTITY_SERVICE_URL));
+app.use('/api/v1/identity', upstreamProxy(IDENTITY_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 
