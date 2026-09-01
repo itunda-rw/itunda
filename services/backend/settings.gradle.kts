@@ -69,5 +69,9 @@ include(
     // confirmed to have zero Gradle-level coupling with any other product
     // module.
     ":certificate-service",
+    // Real, sixth independently-deployable module (2026-09-01) -- see
+    // bills-service/build.gradle.kts's own doc comment: :bills was confirmed
+    // to have zero Gradle-level coupling with any other product module.
+    ":bills-service",
     ":app"
 )

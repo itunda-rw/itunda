@@ -23,7 +23,10 @@ dependencies {
     // third product after :card/:insurance. Confirmed via repo-wide grep:
     // nothing else in :app reaches into rw.itunda.agents directly.
     implementation(project(":account"))
-    implementation(project(":bills"))
+    // :bills removed (2026-09-01) -- extracted into its own
+    // independently-deployable bills-service, the sixth product after
+    // :card/:insurance/:agents/:transit/:certificate. Confirmed via repo-wide
+    // grep: nothing else in :app reaches into rw.itunda.bills directly.
     implementation(project(":loans"))
     implementation(project(":contacts"))
     implementation(project(":stocks"))
