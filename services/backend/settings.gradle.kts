@@ -49,5 +49,10 @@ include(
     // deployable product) can share the identical JWT filter chain.
     ":security",
     ":card-service",
+    // Real, second independently-deployable module (2026-09-01) -- see
+    // insurance-service/build.gradle.kts's own doc comment: :insurance was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module, the same property that made :card the first extraction.
+    ":insurance-service",
     ":app"
 )

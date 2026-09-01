@@ -183,6 +183,15 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
 // registered before the /api/v1 catch-all to services/backend, which no longer
 // serves /api/v1/card/** at all (the :card Gradle module was removed from :app).
 const CARD_SERVICE_URL = process.env.CARD_SERVICE_URL || 'http://localhost:4002';
+// Real, second independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// CARD_SERVICE_URL above: registered before the /api/v1 catch-all to
+// services/backend, which no longer serves /api/v1/insurance/** or
+// /api/v1/system/insurance-claims at all (the :insurance Gradle module was
+// removed from :app). The admin route lives under the shared /api/v1/system/**
+// prefix other unrelated modules also use, so only its own specific sub-path is
+// routed here -- never the whole /api/v1/system prefix.
+const INSURANCE_SERVICE_URL = process.env.INSURANCE_SERVICE_URL || 'http://localhost:4003';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -369,6 +378,8 @@ app.use('/api/v1/payments', moneyMovementLimiter, upstreamProxy(PAYMENT_SERVICE_
 app.use('/api/v1/ledger', moneyMovementLimiter, upstreamProxy(LEDGER_SERVICE_URL));
 
 app.use('/api/v1/card', moneyMovementLimiter, upstreamProxy(CARD_SERVICE_URL));
+app.use('/api/v1/system/insurance-claims', moneyMovementLimiter, upstreamProxy(INSURANCE_SERVICE_URL));
+app.use('/api/v1/insurance', moneyMovementLimiter, upstreamProxy(INSURANCE_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

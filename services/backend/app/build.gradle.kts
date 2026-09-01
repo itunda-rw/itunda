@@ -28,7 +28,10 @@ dependencies {
     implementation(project(":notifications"))
     implementation(project(":discover"))
     implementation(project(":analytics"))
-    implementation(project(":insurance"))
+    // :insurance removed (2026-09-01) -- extracted into its own
+    // independently-deployable insurance-service (see docs/ARCHITECTURE.md), the
+    // second product after :card. Confirmed via repo-wide grep: nothing else in
+    // :app reaches into rw.itunda.insurance directly.
     implementation(project(":system"))
     implementation(project(":merchant"))
     implementation(project(":identity"))
