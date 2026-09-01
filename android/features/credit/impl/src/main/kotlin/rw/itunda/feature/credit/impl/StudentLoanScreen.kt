@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.credit.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background

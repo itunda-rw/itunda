@@ -282,6 +282,11 @@ dependencies {
     implementation(project(":features:eats:impl"))
     implementation(project(":features:talk:impl"))
     implementation(project(":features:maps:impl"))
+    // Real content moved in 2026-09-02: LoansScreen.kt/CreditScoreScreen.kt/
+    // StudentLoanScreen.kt/VupLoanScreen.kt/LoansCreditPanels.kt relocated from
+    // :app's own ui/ package into :features:credit:impl, mirroring iOS's
+    // already-real Features/Credit split (see CLAUDE.md's own note).
+    implementation(project(":features:credit:impl"))
     // features:banking:impl deliberately has no dependency here (2026-07-11): its
     // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted
     // in 061cff6 as unreachable and superseded by ItundaAppScreen.kt's Home tab,

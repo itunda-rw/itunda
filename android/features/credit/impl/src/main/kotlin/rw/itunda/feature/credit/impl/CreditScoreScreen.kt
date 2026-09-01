@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.credit.impl
 
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.SkeletonBlock

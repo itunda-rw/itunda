@@ -181,6 +181,10 @@ import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.feature.shop.impl.CommerceShopContent
 import rw.itunda.feature.eats.impl.EatsContent
+import rw.itunda.feature.credit.impl.LoansScreen
+import rw.itunda.feature.credit.impl.CreditScoreScreen
+import rw.itunda.feature.credit.impl.StudentLoanScreen
+import rw.itunda.feature.credit.impl.VupLoanScreen
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
