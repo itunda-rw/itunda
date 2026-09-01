@@ -199,6 +199,10 @@ const INSURANCE_SERVICE_URL = process.env.INSURANCE_SERVICE_URL || 'http://local
 // /api/v1/agents plural -- AgentDiscoveryController, /api/v1/float-marketplace)
 // plus its admin sub-path under the shared /api/v1/system/** prefix.
 const AGENTS_SERVICE_URL = process.env.AGENTS_SERVICE_URL || 'http://localhost:4004';
+// Real, fourth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// CARD_SERVICE_URL/INSURANCE_SERVICE_URL/AGENTS_SERVICE_URL above.
+const TRANSIT_SERVICE_URL = process.env.TRANSIT_SERVICE_URL || 'http://localhost:4005';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -391,6 +395,7 @@ app.use('/api/v1/system/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERV
 app.use('/api/v1/agent', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
 app.use('/api/v1/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
 app.use('/api/v1/float-marketplace', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
+app.use('/api/v1/transit', moneyMovementLimiter, upstreamProxy(TRANSIT_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

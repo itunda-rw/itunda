@@ -24,7 +24,9 @@ service_keys() {
   # different bootJar target).
   # agents-service added 2026-09-01 -- the third independently-deployable itunda
   # product, same shape as card-service/insurance-service.
-  printf '%s\n' api-gateway backend ledger-service payment-service card-service insurance-service agents-service
+  # transit-service added 2026-09-01 -- the fourth independently-deployable
+  # itunda product, same shape as the three before it.
+  printf '%s\n' api-gateway backend ledger-service payment-service card-service insurance-service agents-service transit-service
 }
 
 ensure_remote_build_headroom() {
@@ -58,7 +60,7 @@ selected_services() {
 
 service_context() {
   case "$1" in
-    backend|card-service|insurance-service|agents-service) printf '%s\n' "$ROOT_DIR/services/backend" ;;
+    backend|card-service|insurance-service|agents-service|transit-service) printf '%s\n' "$ROOT_DIR/services/backend" ;;
     api-gateway) printf '%s\n' "$ROOT_DIR/services/api-gateway" ;;
     ledger-service|payment-service) printf '%s\n' "$ROOT_DIR/services/microservices" ;;
     *) echo "Unknown service: $1" >&2; exit 1 ;;
@@ -71,6 +73,7 @@ service_dockerfile() {
     card-service) printf '%s\n' "$ROOT_DIR/services/backend/card-service/Dockerfile" ;;
     insurance-service) printf '%s\n' "$ROOT_DIR/services/backend/insurance-service/Dockerfile" ;;
     agents-service) printf '%s\n' "$ROOT_DIR/services/backend/agents-service/Dockerfile" ;;
+    transit-service) printf '%s\n' "$ROOT_DIR/services/backend/transit-service/Dockerfile" ;;
     api-gateway) printf '%s\n' "$ROOT_DIR/services/api-gateway/Dockerfile" ;;
     ledger-service) printf '%s\n' "$ROOT_DIR/services/microservices/ledger-service/Dockerfile" ;;
     payment-service) printf '%s\n' "$ROOT_DIR/services/microservices/payment-service/Dockerfile" ;;
@@ -84,6 +87,7 @@ service_env_var() {
     card-service) printf 'ITUNDA_CARD_SERVICE_IMAGE\n' ;;
     insurance-service) printf 'ITUNDA_INSURANCE_SERVICE_IMAGE\n' ;;
     agents-service) printf 'ITUNDA_AGENTS_SERVICE_IMAGE\n' ;;
+    transit-service) printf 'ITUNDA_TRANSIT_SERVICE_IMAGE\n' ;;
     api-gateway) printf 'ITUNDA_API_GATEWAY_IMAGE\n' ;;
     ledger-service) printf 'ITUNDA_LEDGER_IMAGE\n' ;;
     payment-service) printf 'ITUNDA_PAYMENT_IMAGE\n' ;;
@@ -262,28 +266,28 @@ Usage: scripts/private-cloud-images.sh <command> [args]
 
 Commands:
   plan [registry-host] [tag]
-    Print the exact docker build/push commands for the seven private-cloud images.
+    Print the exact docker build/push commands for the eight private-cloud images.
 
   plan-private-cloud [registry-host] [tag]
     Print the exact build/push commands against the arm64 rehearsal registry on the private cloud.
 
   build [registry-host] [tag]
-    Build all seven service images for the target registry/project.
+    Build all eight service images for the target registry/project.
 
   push [registry-host] [tag]
-    Push all seven service images to the target registry/project.
+    Push all eight service images to the target registry/project.
 
   build-push [registry-host] [tag]
-    Build then push all seven service images.
+    Build then push all eight service images.
 
   build-private-cloud [registry-host] [tag]
-    Build all seven service images on the primary Multipass VM for the private-cloud registry.
+    Build all eight service images on the primary Multipass VM for the private-cloud registry.
 
   push-private-cloud [registry-host] [tag]
-    Push all seven remote-built images from the primary Multipass VM to the private-cloud registry.
+    Push all eight remote-built images from the primary Multipass VM to the private-cloud registry.
 
   build-push-private-cloud [registry-host] [tag]
-    Stage the repo on the primary Multipass VM, build all seven images there, then push them.
+    Stage the repo on the primary Multipass VM, build all eight images there, then push them.
 
   print-env [registry-host] [tag]
     Print ITUNDA_*_IMAGE env vars and the pull-secret name for deploy/progressive commands.

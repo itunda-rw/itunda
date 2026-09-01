@@ -59,6 +59,9 @@ override_images_if_set() {
   # agents-service added 2026-09-01 -- the third independently-deployable itunda
   # product (see docs/ARCHITECTURE.md).
   [[ -n "${ITUNDA_AGENTS_SERVICE_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref agents-service) agents-service=${ITUNDA_AGENTS_SERVICE_IMAGE}"
+  # transit-service added 2026-09-01 -- the fourth independently-deployable
+  # itunda product (see docs/ARCHITECTURE.md).
+  [[ -n "${ITUNDA_TRANSIT_SERVICE_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref transit-service) transit-service=${ITUNDA_TRANSIT_SERVICE_IMAGE}"
   [[ -n "${ITUNDA_API_GATEWAY_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref api-gateway) api-gateway=${ITUNDA_API_GATEWAY_IMAGE}"
   [[ -n "${ITUNDA_LEDGER_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref ledger-service) ledger-service=${ITUNDA_LEDGER_IMAGE}"
   [[ -n "${ITUNDA_PAYMENT_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref payment-service) payment-service=${ITUNDA_PAYMENT_IMAGE}"
@@ -82,7 +85,7 @@ wait_for_rollouts() {
   local app
   local namespace
 
-  for app in backend card-service insurance-service agents-service api-gateway ledger-service payment-service; do
+  for app in backend card-service insurance-service agents-service transit-service api-gateway ledger-service payment-service; do
     namespace="itunda"
     workload="$(app_workload_ref "$app")"
     if [[ "$workload" == rollout/* ]]; then
@@ -186,6 +189,7 @@ deploy_private_cloud() {
   patch_image_pull_policy "$(app_workload_ref card-service)" card-service
   patch_image_pull_policy "$(app_workload_ref insurance-service)" insurance-service
   patch_image_pull_policy "$(app_workload_ref agents-service)" agents-service
+  patch_image_pull_policy "$(app_workload_ref transit-service)" transit-service
   patch_image_pull_policy "$(app_workload_ref api-gateway)" api-gateway
   patch_image_pull_policy "$(app_workload_ref ledger-service)" ledger-service
   patch_image_pull_policy "$(app_workload_ref payment-service)" payment-service
@@ -194,6 +198,7 @@ deploy_private_cloud() {
   apply_image_pull_secret_if_set "$(app_workload_ref card-service)"
   apply_image_pull_secret_if_set "$(app_workload_ref insurance-service)"
   apply_image_pull_secret_if_set "$(app_workload_ref agents-service)"
+  apply_image_pull_secret_if_set "$(app_workload_ref transit-service)"
   apply_image_pull_secret_if_set "$(app_workload_ref api-gateway)"
   apply_image_pull_secret_if_set "$(app_workload_ref ledger-service)"
   apply_image_pull_secret_if_set "$(app_workload_ref payment-service)"

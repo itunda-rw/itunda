@@ -59,5 +59,10 @@ include(
     // Operator cash-in/cash-out network) was confirmed to have zero
     // Gradle-level coupling with any other product module.
     ":agents-service",
+    // Real, fourth independently-deployable module (2026-09-01) -- see
+    // transit-service/build.gradle.kts's own doc comment: :transit (real
+    // Kigali stored-value transit + NFC tap-to-collect) was confirmed to have
+    // zero Gradle-level coupling with any other product module.
+    ":transit-service",
     ":app"
 )

@@ -66,7 +66,10 @@ dependencies {
     // card-service (see docs/ARCHITECTURE.md); this is the change that actually
     // shrinks :app:bootJar's compile graph for a Card-only change. Confirmed via
     // repo-wide grep: nothing else in :app reaches into rw.itunda.card directly.
-    implementation(project(":transit"))
+    // :transit removed (2026-09-01) -- extracted into its own
+    // independently-deployable transit-service, the fourth product after
+    // :card/:insurance/:agents. Confirmed via repo-wide grep: nothing else in
+    // :app reaches into rw.itunda.transit directly.
     implementation(project(":ussd"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
