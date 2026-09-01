@@ -626,6 +626,15 @@ data class ScamReportsListResponse(val success: Boolean, val reports: List<ScamR
 data class P2pRecipientPreviewDto(val recipientUserId: String, val displayName: String)
 data class ResolveRecipientResponse(val success: Boolean, val recipient: P2pRecipientPreviewDto)
 
+// Real Toss Bank "Transfer limit" row (2026-09-01) -- mirrors web's lib/p2p.ts
+// fetchTransferLimit / backend P2pController's GET /api/v1/p2p/transfer-limit.
+data class TransferLimitResponse(
+    val success: Boolean,
+    val perTransferLimit: Double,
+    val dailyLimit: Double,
+    val remainingToday: Double,
+)
+
 // Mirrors services/backend/savings's SavingsController.kt.
 data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromAccountId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
@@ -2709,6 +2718,9 @@ interface ApiService {
 
     @GET("api/v1/p2p/recipient")
     suspend fun resolveRecipient(@Query("identifier") identifier: String): ResolveRecipientResponse
+
+    @GET("api/v1/p2p/transfer-limit")
+    suspend fun getTransferLimit(): TransferLimitResponse
 
     @POST("api/v1/p2p/scam-reports")
     suspend fun reportScam(@Body request: ReportScamRequest): ScamReportResponse

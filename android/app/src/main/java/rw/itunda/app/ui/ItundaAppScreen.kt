@@ -1497,6 +1497,7 @@ fun ItundaAppScreen(
                 onBack = { showAccountManage = false },
                 onOpenCard = { showAccountManage = false; showCard = true },
                 onOpenDevices = { showAccountManage = false; showDeviceList = true },
+                onOpenInterestJar = { showAccountManage = false; bucketDetailTarget = BucketDetailTarget.InterestJar },
                 onOpenAutoTransfer = { showAccountManage = false; showTransferHub = true; showAutoTransfers = true },
                 onOpenScheduledTransfers = { showAccountManage = false; showTransferHub = true; showScheduledTransfers = true },
                 onOpenForeignCurrency = { showAccountManage = false; showForeignCurrency = true },
