@@ -1,6 +1,9 @@
-import {  } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { IconBack, IconChevronRight } from './icons/ItundaIcons';
 import type { Account } from './lib/account';
+import { fetchProfile } from './lib/neighborhood';
+import { fetchMyDevices, getOrCreateDeviceId } from './lib/device';
+import { fetchTransferLimit, type TransferLimit } from './lib/p2p';
 
 // Real Toss Bank reference (5 more screenshots, 2026-08-23, direct user instruction:
 // "this is what users should [see] when they click on manage in itunda bank"): the
@@ -23,17 +26,32 @@ import type { Account } from './lib/account';
 // rates (the FOREIGN_CURRENCY tab's real rate cards), Bills (the real BILLS tab),
 // Support (the real SUPPORT tab).
 //
+// Added 2026-09-01 (same real Toss reference, re-audited against what itunda already
+// has): "View interest earned" (routes to the real Interest Jar bucket screen, never
+// linked from here before), "Verification method" (real phoneVerified + real
+// per-device publicKey state, not an invented method list), "Transfer limit" (the
+// real, already-enforced P2pTransferLimitService caps, previously surfaced only
+// reactively as a decline error).
+//
 // Real, named, deliberately NOT built this pass (unlike the Korea-specific rows
 // above, these genuinely fit itunda's own account model but don't exist yet --
 // flagged as honest gaps, not fabricated): changing your account password (itunda
 // does use a real phone+password login, unlike Toss's own passwordless flow, so this
 // is a real future feature -- just not a rushed, security-sensitive addition folded
-// into a UI-redesign pass), an account nickname, and closing your account.
+// into a UI-redesign pass), an account nickname, and closing your account. Also
+// real and disclosed: MAIN account has no interest rate to display (only the
+// separate Savings/Interest Jar accrues), and Contract documents/Get documents has
+// no real PDF/statement generation backing it anywhere in this codebase yet.
 export function AccountManageScreen({ account, onBack, onNavigateToTab }: { account: Account; onBack: () => void; onNavigateToTab: (tab: 'CARD' | 'SAVINGS' | 'PAY' | 'BILLS' | 'FOREIGN_CURRENCY' | 'DEVICES' | 'SUPPORT') => void }) {
   const go = (tab: 'CARD' | 'SAVINGS' | 'PAY' | 'BILLS' | 'FOREIGN_CURRENCY' | 'DEVICES' | 'SUPPORT') => {
     onBack();
     onNavigateToTab(tab);
   };
+  const [showVerification, setShowVerification] = useState(false);
+  const [showTransferLimit, setShowTransferLimit] = useState(false);
+
+  if (showVerification) return <VerificationMethodScreen onBack={() => setShowVerification(false)} />;
+  if (showTransferLimit) return <TransferLimitScreen onBack={() => setShowTransferLimit(false)} />;
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
@@ -55,13 +73,20 @@ export function AccountManageScreen({ account, onBack, onNavigateToTab }: { acco
 
         <ManageSectionHeader title="Account" />
         <ManageRow label="Debit card" onClick={() => go('CARD')} />
+        {/* Real "View interest earned" row (2026-09-01, direct user-supplied Toss
+            Bank Manage-screen screenshot) -- the real Interest Jar bucket screen
+            already exists (ItundaBankAssetsScreen), just never linked from here.
+            Routes to SAVINGS, the same real home InterestJarCard already has. */}
+        <ManageRow label="View interest earned" onClick={() => go('SAVINGS')} />
 
         <ManageSectionHeader title="Security" />
         <ManageRow label="Manage devices" onClick={() => go('DEVICES')} />
+        <ManageRow label="Verification method" onClick={() => setShowVerification(true)} />
 
         <ManageSectionHeader title="Transfer" />
         <ManageRow label="Auto transfer" onClick={() => go('SAVINGS')} />
         <ManageRow label="Delayed transfers" onClick={() => go('PAY')} />
+        <ManageRow label="Transfer limit" onClick={() => setShowTransferLimit(true)} />
 
         <ManageSectionHeader title="Foreign currency" />
         <ManageRow label="Exchange rates" onClick={() => go('FOREIGN_CURRENCY')} />
@@ -94,5 +119,97 @@ function ManageRow({ label, onClick }: { label: string; onClick: () => void }) {
       <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>{label}</span>
       <IconChevronRight size={18} color="var(--itunda-grey-400)" />
     </button>
+  );
+}
+
+function ManageSubScreen({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0' }}>
+          <button onClick={onBack} aria-label="Back" style={{ display: 'flex', padding: '4px', marginLeft: '-4px' }}>
+            <IconBack size={24} color="var(--itunda-grey-900)" />
+          </button>
+        </div>
+        <h1 style={{ margin: '4px 0 20px', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{title}</h1>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Real "Verification method" screen (2026-09-01, direct user-supplied Toss Bank
+// Manage-screen screenshot) -- shows exactly two real, already-tracked facts rather
+// than a fabricated 2FA-method label: whether the phone on this account is verified
+// (User.phoneVerified) and whether THIS device has completed real biometric/
+// passwordless device-key registration (TrustedDevice.publicKey != null for the
+// entry matching this browser's own real getOrCreateDeviceId()) -- itunda's real
+// equivalent of "what verifies you," not an invented list of methods it doesn't have.
+function VerificationMethodScreen({ onBack }: { onBack: () => void }) {
+  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
+  const [deviceVerified, setDeviceVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetchProfile().then((p) => setPhoneVerified(p.phoneVerified)).catch(() => setPhoneVerified(null));
+    const deviceId = getOrCreateDeviceId();
+    fetchMyDevices()
+      .then((devices) => setDeviceVerified(devices.some((d) => d.deviceId === deviceId && d.publicKey != null)))
+      .catch(() => setDeviceVerified(null));
+  }, []);
+
+  const row = (label: string, value: boolean | null) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
+      <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>{label}</span>
+      <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: value ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }}>
+        {value === null ? '…' : value ? 'Verified' : 'Not verified'}
+      </span>
+    </div>
+  );
+
+  return (
+    <ManageSubScreen title="Verification method" onBack={onBack}>
+      {row('Phone number', phoneVerified)}
+      {row('This device', deviceVerified)}
+      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', marginTop: '16px', lineHeight: 1.5 }}>
+        "This device" reflects real biometric/passwordless verification for the device you're using right now — set it up from Manage devices.
+      </p>
+    </ManageSubScreen>
+  );
+}
+
+// Real "Transfer limit" screen (2026-09-01, direct user-supplied Toss Bank
+// Manage-screen screenshot) -- the real, enforced P2pTransferLimitService caps,
+// previously surfaced only reactively as a decline error on an oversized transfer.
+function TransferLimitScreen({ onBack }: { onBack: () => void }) {
+  const [limit, setLimit] = useState<TransferLimit | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetchTransferLimit().then(setLimit).catch(() => setError(true));
+  }, []);
+
+  return (
+    <ManageSubScreen title="Transfer limit" onBack={onBack}>
+      {error ? (
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }}>Could not load your transfer limit.</p>
+      ) : !limit ? (
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Per transfer</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{limit.perTransferLimit.toLocaleString()} RWF</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Daily</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{limit.dailyLimit.toLocaleString()} RWF</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Remaining today</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{limit.remainingToday.toLocaleString()} RWF</span>
+          </div>
+        </>
+      )}
+    </ManageSubScreen>
   );
 }

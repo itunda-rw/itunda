@@ -38,6 +38,11 @@ export interface TrustedDevice {
   firstSeenAt: string;
   lastSeenAt: string;
   verifiedAt: string | null;
+  // Real field this TS interface was missing (2026-09-01) -- TrustedDevice.kt's real
+  // publicKey column was already in every real response, just untyped here. Non-null
+  // iff this device completed real biometric/passwordless device-key registration
+  // (DeviceService.registerDeviceKey) -- the real "Verification method" signal.
+  publicKey: string | null;
 }
 
 export const fetchMyDevices = () =>

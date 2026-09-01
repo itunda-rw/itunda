@@ -71,6 +71,24 @@ export const generateP2pRequest = (amount: number, description: string) =>
 export const fetchMyP2pRequests = () =>
   apiFetch<{ success: boolean; requests: P2pPaymentRequestDto[] }>('/api/v1/p2p/requests').then((r) => r.requests);
 
+// Real "Transfer limit" row (2026-09-01, direct user-supplied Toss Bank Manage-screen
+// screenshot) -- the flat per-transfer/daily caps P2pTransferLimitService already
+// enforces on every real transfer, previously surfaced only reactively as a decline
+// error (see that class's own doc comment for the real sourced 500,000/2,500,000 RWF
+// figures).
+export interface TransferLimit {
+  perTransferLimit: number;
+  dailyLimit: number;
+  remainingToday: number;
+}
+
+export const fetchTransferLimit = () =>
+  apiFetch<{ success: boolean } & TransferLimit>('/api/v1/p2p/transfer-limit').then((r) => ({
+    perTransferLimit: r.perTransferLimit,
+    dailyLimit: r.dailyLimit,
+    remainingToday: r.remainingToday,
+  }));
+
 export const payP2pRequest = (requestId: string) =>
   apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>(`/api/v1/p2p/pay/${requestId}`, {
     method: 'POST',
