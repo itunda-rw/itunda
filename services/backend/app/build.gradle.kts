@@ -57,7 +57,11 @@ dependencies {
     implementation(project(":rewards"))
     implementation(project(":creditscore"))
     implementation(project(":trustscore"))
-    implementation(project(":overview"))
+    // :overview removed (2026-09-01) -- extracted into its own
+    // independently-deployable overview-service, the tenth product after
+    // :card/:insurance/:agents/:transit/:certificate/:bills/:vehicle/
+    // :partners/:identity. Confirmed via repo-wide grep: nothing else in
+    // :app reaches into rw.itunda.overview directly.
     implementation(project(":p2p"))
     implementation(project(":offline"))
     implementation(project(":support"))

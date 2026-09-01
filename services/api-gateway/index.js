@@ -249,6 +249,13 @@ const PARTNERS_SERVICE_URL = process.env.PARTNERS_SERVICE_URL || 'http://localho
 // registration order, not longest-prefix, so this ordering is load-bearing,
 // not cosmetic.
 const IDENTITY_SERVICE_URL = process.env.IDENTITY_SERVICE_URL || 'http://localhost:4010';
+// Real, tenth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Owns two prefixes: /api/v1/overview
+// (net-worth/assets aggregation dashboard) and /api/v1/accounts (plural --
+// LinkedAccountController's external-bank-account linking, a real, distinct
+// prefix from :account's own singular /api/v1/account/** -- checked before
+// assuming safety, no collision).
+const OVERVIEW_SERVICE_URL = process.env.OVERVIEW_SERVICE_URL || 'http://localhost:4011';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -453,6 +460,8 @@ app.use('/api/v1/mini-apps', upstreamProxy(PARTNERS_SERVICE_URL));
 // ordering, not incidental (see IDENTITY_SERVICE_URL's own comment).
 app.use('/api/v1/system/compliance', upstreamProxy(IDENTITY_SERVICE_URL));
 app.use('/api/v1/identity', upstreamProxy(IDENTITY_SERVICE_URL));
+app.use('/api/v1/overview', upstreamProxy(OVERVIEW_SERVICE_URL));
+app.use('/api/v1/accounts', upstreamProxy(OVERVIEW_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

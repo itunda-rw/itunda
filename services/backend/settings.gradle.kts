@@ -89,5 +89,10 @@ include(
     // module; its own route-collision hazard with :partners is resolved by
     // gateway registration order (see services/api-gateway/index.js).
     ":identity-service",
+    // Real, tenth independently-deployable module (2026-09-01) -- see
+    // overview-service/build.gradle.kts's own doc comment: :overview was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module.
+    ":overview-service",
     ":app"
 )
