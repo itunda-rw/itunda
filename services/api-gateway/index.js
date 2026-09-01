@@ -203,6 +203,13 @@ const AGENTS_SERVICE_URL = process.env.AGENTS_SERVICE_URL || 'http://localhost:4
 // docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
 // CARD_SERVICE_URL/INSURANCE_SERVICE_URL/AGENTS_SERVICE_URL above.
 const TRANSIT_SERVICE_URL = process.env.TRANSIT_SERVICE_URL || 'http://localhost:4005';
+// Real, fifth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above, but deliberately NOT wrapped in
+// moneyMovementLimiter -- certificate generation/verification moves no money,
+// unlike card/insurance/agents/transit; the global rate limiter applied
+// earlier in the middleware chain already covers it.
+const CERTIFICATE_SERVICE_URL = process.env.CERTIFICATE_SERVICE_URL || 'http://localhost:4006';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -396,6 +403,7 @@ app.use('/api/v1/agent', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL)
 app.use('/api/v1/agents', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
 app.use('/api/v1/float-marketplace', moneyMovementLimiter, upstreamProxy(AGENTS_SERVICE_URL));
 app.use('/api/v1/transit', moneyMovementLimiter, upstreamProxy(TRANSIT_SERVICE_URL));
+app.use('/api/v1/certificate', upstreamProxy(CERTIFICATE_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

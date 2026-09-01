@@ -39,7 +39,10 @@ dependencies {
     implementation(project(":merchant"))
     implementation(project(":identity"))
     implementation(project(":partners"))
-    implementation(project(":certificate"))
+    // :certificate removed (2026-09-01) -- extracted into its own
+    // independently-deployable certificate-service, the fifth product after
+    // :card/:insurance/:agents/:transit. Confirmed via repo-wide grep: nothing
+    // else in :app reaches into rw.itunda.certificate directly.
     implementation(project(":rewards"))
     implementation(project(":creditscore"))
     implementation(project(":trustscore"))

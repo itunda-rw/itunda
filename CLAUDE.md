@@ -26,15 +26,16 @@ whichever one is wrong; never let them silently drift apart.
 
 - `services/backend` — the canonical backend: Kotlin + Spring Boot + Spring Data JPA +
   MySQL + Flyway (`ddl-auto: validate`, never `update`) + Spring Security JWT. Tests use
-  Kotest + MockK. `:card-service`, `:insurance-service`, `:agents-service`, and
-  `:transit-service` (each its own Gradle module, own bootJar/Dockerfile/k8s Deployment)
-  are the first four products extracted out of `:app` into independently deployable
-  services — same code, same shared MySQL schema, not a separate database. See
-  `docs/ARCHITECTURE.md`'s "First independently-deployable product" row and its
-  "Second"/"Third"/"Fourth extraction" follow-ups (including the confirmed-zero-coupling
-  candidate list and a real shared-route-prefix collision hazard flagged for `:identity`)
-  before extracting another module the same way; not every module is as cleanly decoupled
-  as these four were.
+  Kotest + MockK. `:card-service`, `:insurance-service`, `:agents-service`,
+  `:transit-service`, and `:certificate-service` (each its own Gradle module, own
+  bootJar/Dockerfile/k8s Deployment) are the first five products extracted out of `:app`
+  into independently deployable services — same code, same shared MySQL schema, not a
+  separate database. See `docs/ARCHITECTURE.md`'s "First independently-deployable
+  product" row and its "Second" through "Fifth extraction" follow-ups (including the
+  confirmed-zero-coupling candidate list, a real shared-route-prefix collision hazard
+  flagged for `:identity`, and a real `:app`-source-level coupling that ruled out
+  `:calling`) before extracting another module the same way; not every module is as
+  cleanly decoupled as these five were.
 - `services/microservices/{payment-service,ledger-service,core-libs}` — a real, parallel,
   not-yet-reconciled hexagonal-architecture MSA prototype. Not superseded, not the default
   for new feature work.

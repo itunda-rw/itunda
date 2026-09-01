@@ -64,5 +64,10 @@ include(
     // Kigali stored-value transit + NFC tap-to-collect) was confirmed to have
     // zero Gradle-level coupling with any other product module.
     ":transit-service",
+    // Real, fifth independently-deployable module (2026-09-01) -- see
+    // certificate-service/build.gradle.kts's own doc comment: :certificate was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module.
+    ":certificate-service",
     ":app"
 )

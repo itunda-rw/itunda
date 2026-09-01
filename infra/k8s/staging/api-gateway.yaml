@@ -45,6 +45,8 @@ spec:
           value: "http://agents-service:4004"
         - name: TRANSIT_SERVICE_URL
           value: "http://transit-service:4005"
+        - name: CERTIFICATE_SERVICE_URL
+          value: "http://certificate-service:4006"
         - name: LEDGER_SERVICE_URL
           value: "http://ledger-service:8082"
         - name: PAYMENT_SERVICE_URL
