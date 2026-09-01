@@ -221,6 +221,24 @@ const BILLS_SERVICE_URL = process.env.BILLS_SERVICE_URL || 'http://localhost:400
 // the other *_SERVICE_URL consts above. No moneyMovementLimiter -- vehicle
 // valuation moves no money, same reasoning as CERTIFICATE_SERVICE_URL.
 const VEHICLE_SERVICE_URL = process.env.VEHICLE_SERVICE_URL || 'http://localhost:4008';
+// Real, eighth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence reasoning as
+// the other *_SERVICE_URL consts above. :partners owns FOUR distinct route
+// prefixes (see the four app.use calls below): /api/v1/partners (covers both
+// PartnerController's own routes AND PartnerIdentityController's
+// /api/v1/partners/identity sub-path, since both already live under the same
+// /api/v1/partners prefix -- one route registration covers both),
+// /api/v1/identity/verification (IdentityVerificationController -- a
+// DIFFERENT top-level prefix than :partners' own /api/v1/partners, and a
+// narrower sub-path than :identity's own future /api/v1/identity prefix, not
+// yet extracted), /api/v1/mini-apps (MiniAppCatalogController), and the admin
+// sub-path /api/v1/system/partners under the shared /api/v1/system/** prefix.
+// IMPORTANT ordering note for whenever :identity is eventually extracted: its
+// broader /api/v1/identity route MUST be registered AFTER this file's
+// existing /api/v1/identity/verification line below, not before -- Express
+// matches app.use() in registration order, not longest-prefix, so a
+// mis-ordered broader route would silently swallow this narrower one.
+const PARTNERS_SERVICE_URL = process.env.PARTNERS_SERVICE_URL || 'http://localhost:4009';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -417,6 +435,10 @@ app.use('/api/v1/transit', moneyMovementLimiter, upstreamProxy(TRANSIT_SERVICE_U
 app.use('/api/v1/certificate', upstreamProxy(CERTIFICATE_SERVICE_URL));
 app.use('/api/v1/bills', moneyMovementLimiter, upstreamProxy(BILLS_SERVICE_URL));
 app.use('/api/v1/vehicles', upstreamProxy(VEHICLE_SERVICE_URL));
+app.use('/api/v1/system/partners', upstreamProxy(PARTNERS_SERVICE_URL));
+app.use('/api/v1/identity/verification', upstreamProxy(PARTNERS_SERVICE_URL));
+app.use('/api/v1/partners', upstreamProxy(PARTNERS_SERVICE_URL));
+app.use('/api/v1/mini-apps', upstreamProxy(PARTNERS_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 

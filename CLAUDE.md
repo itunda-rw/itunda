@@ -27,16 +27,17 @@ whichever one is wrong; never let them silently drift apart.
 - `services/backend` — the canonical backend: Kotlin + Spring Boot + Spring Data JPA +
   MySQL + Flyway (`ddl-auto: validate`, never `update`) + Spring Security JWT. Tests use
   Kotest + MockK. `:card-service`, `:insurance-service`, `:agents-service`,
-  `:transit-service`, `:certificate-service`, `:bills-service`, and `:vehicle-service`
-  (each its own Gradle module, own bootJar/Dockerfile/k8s Deployment) are the first seven
-  products extracted out of `:app` into independently deployable services — same code,
-  same shared MySQL schema, not a separate database. See `docs/ARCHITECTURE.md`'s "First
-  independently-deployable product" row and its "Second" through "Seventh extraction"
-  follow-ups (including the confirmed-zero-coupling candidate list, a real
-  shared-route-prefix collision hazard flagged for `:identity`/`:partners`, a real
+  `:transit-service`, `:certificate-service`, `:bills-service`, `:vehicle-service`, and
+  `:partners-service` (each its own Gradle module, own bootJar/Dockerfile/k8s Deployment)
+  are the first eight products extracted out of `:app` into independently deployable
+  services — same code, same shared MySQL schema, not a separate database. See
+  `docs/ARCHITECTURE.md`'s "First independently-deployable product" row and its "Second"
+  through "Eighth extraction" follow-ups (including the confirmed-zero-coupling candidate
+  list, how the `:identity`/`:partners` shared-route-prefix collision was resolved by
+  gateway registration order rather than ruling `:partners` out, a real
   `:app`-source-level coupling that ruled out `:calling`, and how `:bills-service` wires
   real Kafka events) before extracting another module the same way; not every module is
-  as cleanly decoupled as these seven were.
+  as cleanly decoupled as these eight were.
 - `services/microservices/{payment-service,ledger-service,core-libs}` — a real, parallel,
   not-yet-reconciled hexagonal-architecture MSA prototype. Not superseded, not the default
   for new feature work.

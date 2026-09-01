@@ -41,7 +41,11 @@ dependencies {
     implementation(project(":system"))
     implementation(project(":merchant"))
     implementation(project(":identity"))
-    implementation(project(":partners"))
+    // :partners removed (2026-09-01) -- extracted into its own
+    // independently-deployable partners-service, the eighth product after
+    // :card/:insurance/:agents/:transit/:certificate/:bills/:vehicle.
+    // Confirmed via repo-wide grep: nothing else in :app reaches into
+    // rw.itunda.partners directly.
     // :certificate removed (2026-09-01) -- extracted into its own
     // independently-deployable certificate-service, the fifth product after
     // :card/:insurance/:agents/:transit. Confirmed via repo-wide grep: nothing

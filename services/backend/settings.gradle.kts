@@ -78,5 +78,10 @@ include(
     // confirmed to have zero Gradle-level coupling with any other product
     // module.
     ":vehicle-service",
+    // Real, eighth independently-deployable module (2026-09-01) -- see
+    // partners-service/build.gradle.kts's own doc comment: :partners was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module.
+    ":partners-service",
     ":app"
 )
