@@ -51,12 +51,27 @@ whichever one is wrong; never let them silently drift apart.
   which is a mostly-unused 2-tab demo). Verification today: `tsc -b` + `vite build` +
   `oxlint` + `python3 scripts/accessibility-lint.py <file>` + a real browser click-through
   against the live deployed backend — there is no unit-test runner wired in yet.
-- `android/` — Kotlin + Jetpack Compose, real Gradle Feature-module isolation
-  (`:features:<name>:{api,impl,testing}`, enforced by Konsist in CI). `:app:compileKotlin`
-  or `:features:<name>:impl:compileDebugKotlin` to verify.
-- `ios/` — Swift + SwiftUI, `Core`/`Features/<Name>` module split (in progress, not every
-  feature moved yet), plus real React Native "Saronite" mini-apps for some features
-  (Bills/Insurance). `tuist generate && pod install` before `xcodebuild`.
+- `android/` — Kotlin + Jetpack Compose, Gradle Feature-module scaffolding
+  (`:features:<name>:{api,impl,testing}`), boundary-enforced by Konsist in CI — but the
+  scaffolding is well ahead of the migration: only `community`/`eats`/`jobs`/
+  `marketplace`/`maps`/`payments`/`property`/`shop`/`talk` actually have real code moved
+  in (confirmed 2026-09-02, real per-module line counts). `banking`/`credit` are the
+  biggest real gap — their entire real implementation (`ItundaAppScreen.kt`,
+  `LoansScreen.kt`, `CreditScoreScreen.kt`, etc.) still lives directly in `:app`'s own
+  `ui/` package, unlike iOS's `Features/Banking`/`Features/Credit`, which are already
+  real. `bills`/`insurance` are correctly empty by design (Saronite/React-Native
+  mini-apps, not native, same as iOS). `wealth`/`engagement`/`merchant` are empty on
+  BOTH platforms — a real product-scope gap (no mapped screen yet), not an architecture
+  one. `:app:compileKotlin` or `:features:<name>:impl:compileDebugKotlin` to verify;
+  `./gradlew :architecture-test:test` runs the Konsist boundary check (passes cleanly,
+  but only meaningfully constrains the modules that actually have content).
+- `ios/` — Swift + SwiftUI, `Core`/`Features/<Name>` module split — real and substantially
+  further along than Android's equivalent (confirmed 2026-09-02): `Banking`/`Credit`/
+  `Maps`/`Payments` all have real, populated Feature modules; `Bills`/`Insurance` are
+  correctly empty (Saronite/React-Native mini-apps); `Wealth`/`Engagement`/`Merchant` are
+  empty on both platforms (product-scope gap). Plus real React Native "Saronite"
+  mini-apps for some features (Bills/Insurance). `tuist generate && pod install` before
+  `xcodebuild`.
 - `packages/design-tokens/tokens.css` — the single real source of truth for color/type
   tokens across every web workspace; matches Toss's own published TDS hex values exactly.
 
