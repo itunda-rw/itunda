@@ -37,7 +37,12 @@ dependencies {
     // :partners/:identity/:overview/:knowledge. Confirmed via repo-wide grep:
     // nothing else in :app reaches into rw.itunda.notifications directly.
     implementation(project(":discover"))
-    implementation(project(":analytics"))
+    // :analytics removed (2026-09-02) -- extracted into its own
+    // independently-deployable analytics-service, the thirteenth product
+    // after :card/:insurance/:agents/:transit/:certificate/:bills/:vehicle/
+    // :partners/:identity/:overview/:knowledge/:notifications. Confirmed via
+    // repo-wide grep: nothing else in :app reaches into rw.itunda.analytics
+    // directly.
     // :insurance removed (2026-09-01) -- extracted into its own
     // independently-deployable insurance-service (see docs/ARCHITECTURE.md), the
     // second product after :card. Confirmed via repo-wide grep: nothing else in

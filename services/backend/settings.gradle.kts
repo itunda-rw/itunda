@@ -104,5 +104,10 @@ include(
     // was confirmed to have zero Gradle-level coupling with any other
     // product module.
     ":notifications-service",
+    // Real, thirteenth independently-deployable module (2026-09-02) -- see
+    // analytics-service/build.gradle.kts's own doc comment: :analytics was
+    // confirmed to have zero Gradle-level coupling with any other product
+    // module.
+    ":analytics-service",
     ":app"
 )

@@ -270,6 +270,13 @@ const KNOWLEDGE_SERVICE_URL = process.env.KNOWLEDGE_SERVICE_URL || 'http://local
 // collision -- only this specific sub-path is routed, never the whole
 // /api/v1/talk prefix).
 const NOTIFICATIONS_SERVICE_URL = process.env.NOTIFICATIONS_SERVICE_URL || 'http://localhost:4013';
+// Real, thirteenth independently-deployable itunda product (2026-09-02) --
+// see docs/ARCHITECTURE.md's dated follow-up. Same routing-precedence
+// reasoning as the other *_SERVICE_URL consts above. No moneyMovementLimiter
+// -- analytics event ingestion moves no money. GET /api/v1/analytics/summary
+// stays real, deliberate hasRole("ADMIN") in the shared :security
+// SecurityConfig, unaffected by this extraction.
+const ANALYTICS_SERVICE_URL = process.env.ANALYTICS_SERVICE_URL || 'http://localhost:4014';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -479,6 +486,7 @@ app.use('/api/v1/accounts', upstreamProxy(OVERVIEW_SERVICE_URL));
 app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
 app.use('/api/v1/talk/service-channel', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 app.use('/api/v1/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
+app.use('/api/v1/analytics', upstreamProxy(ANALYTICS_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 
