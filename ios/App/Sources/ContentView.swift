@@ -189,6 +189,8 @@ struct ContentView: View {
     // import them.
     @State private var showAccountManage = false
     @State private var showDeviceList = false
+    @State private var showVerificationMethod = false
+    @State private var showTransferLimitDetail = false
     @State private var showBankCard = false
     @State private var showBankForeignCurrency = false
     @State private var showBankPayBills = false
@@ -501,8 +503,11 @@ struct ContentView: View {
                                 onBack: { showAccountManage = false },
                                 onOpenCard: { showAccountManage = false; showBankCard = true },
                                 onOpenDevices: { showAccountManage = false; showDeviceList = true },
+                                onOpenInterestJar: { showAccountManage = false; bucketDetailTarget = .interestJar },
+                                onOpenVerificationMethod: { showAccountManage = false; showVerificationMethod = true },
                                 onOpenAutoTransfer: { showAccountManage = false; transferHubStartAtAutoTransfers = true; showTransferHub = true },
                                 onOpenDelayedTransfers: { showAccountManage = false; transferHubStartAtDelayedTransfers = true; showTransferHub = true },
+                                onOpenTransferLimit: { showAccountManage = false; showTransferLimitDetail = true },
                                 onOpenForeignCurrency: { showAccountManage = false; showBankForeignCurrency = true },
                                 onOpenBills: { showAccountManage = false; showBankPayBills = true },
                                 onOpenSupport: { showAccountManage = false; showBankSupport = true }
@@ -522,6 +527,12 @@ struct ContentView: View {
                         }
                         .fullScreenCover(isPresented: $showDeviceList) {
                             DeviceListScreen(onBack: { showDeviceList = false })
+                        }
+                        .fullScreenCover(isPresented: $showVerificationMethod) {
+                            VerificationMethodScreen(onBack: { showVerificationMethod = false })
+                        }
+                        .fullScreenCover(isPresented: $showTransferLimitDetail) {
+                            TransferLimitScreen(onBack: { showTransferLimitDetail = false })
                         }
                 }
                 .fullScreenCover(isPresented: $showSettings) {

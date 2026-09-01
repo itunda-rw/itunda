@@ -30,13 +30,25 @@ import CoreDesignSystem
 /// (2026-09-01, App/Sources) -- same real GET/POST/DELETE /api/v1/auth/devices
 /// endpoints SettingsScreen.swift's own inline device Section already used,
 /// closing what was originally a disclosed gap here (routing to general Settings).
+///
+/// "View interest earned" routes to the existing Interest Jar BucketDetailScreen
+/// (same real bucketDetailTarget = .interestJar ContentView.swift already uses
+/// elsewhere). "Verification method" and "Transfer limit" (2026-09-01, direct
+/// user-supplied Toss Bank Manage-screen screenshot) are new standalone screens
+/// (VerificationMethodScreen.swift/TransferLimitScreen.swift, App/Sources) -- both
+/// pure informational reads of data the backend already exposes, matching web/
+/// Android's identical additions -- built there rather than here for the same
+/// App-module-type reason as Devices/Delayed transfers above.
 public struct AccountManageScreen: View {
     let accountNumber: String
     let onBack: () -> Void
     let onOpenCard: () -> Void
     let onOpenDevices: () -> Void
+    let onOpenInterestJar: () -> Void
+    let onOpenVerificationMethod: () -> Void
     let onOpenAutoTransfer: () -> Void
     let onOpenDelayedTransfers: () -> Void
+    let onOpenTransferLimit: () -> Void
     let onOpenForeignCurrency: () -> Void
     let onOpenBills: () -> Void
     let onOpenSupport: () -> Void
@@ -46,8 +58,11 @@ public struct AccountManageScreen: View {
         onBack: @escaping () -> Void,
         onOpenCard: @escaping () -> Void,
         onOpenDevices: @escaping () -> Void,
+        onOpenInterestJar: @escaping () -> Void,
+        onOpenVerificationMethod: @escaping () -> Void,
         onOpenAutoTransfer: @escaping () -> Void,
         onOpenDelayedTransfers: @escaping () -> Void,
+        onOpenTransferLimit: @escaping () -> Void,
         onOpenForeignCurrency: @escaping () -> Void,
         onOpenBills: @escaping () -> Void,
         onOpenSupport: @escaping () -> Void
@@ -56,8 +71,11 @@ public struct AccountManageScreen: View {
         self.onBack = onBack
         self.onOpenCard = onOpenCard
         self.onOpenDevices = onOpenDevices
+        self.onOpenInterestJar = onOpenInterestJar
+        self.onOpenVerificationMethod = onOpenVerificationMethod
         self.onOpenAutoTransfer = onOpenAutoTransfer
         self.onOpenDelayedTransfers = onOpenDelayedTransfers
+        self.onOpenTransferLimit = onOpenTransferLimit
         self.onOpenForeignCurrency = onOpenForeignCurrency
         self.onOpenBills = onOpenBills
         self.onOpenSupport = onOpenSupport
@@ -83,13 +101,16 @@ public struct AccountManageScreen: View {
 
                     ManageSection(title: "Account", rows: [
                         ManageRowData(title: "Debit card", action: onOpenCard),
+                        ManageRowData(title: "View interest earned", action: onOpenInterestJar),
                     ])
                     ManageSection(title: "Security", rows: [
                         ManageRowData(title: "Manage devices", action: onOpenDevices),
+                        ManageRowData(title: "Verification method", action: onOpenVerificationMethod),
                     ])
                     ManageSection(title: "Transfer", rows: [
                         ManageRowData(title: "Auto transfer", action: onOpenAutoTransfer),
                         ManageRowData(title: "Delayed transfers", action: onOpenDelayedTransfers),
+                        ManageRowData(title: "Transfer limit", action: onOpenTransferLimit),
                     ])
                     ManageSection(title: "Foreign currency", rows: [
                         ManageRowData(title: "Exchange rates", action: onOpenForeignCurrency),

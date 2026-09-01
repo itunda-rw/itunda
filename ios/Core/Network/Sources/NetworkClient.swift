@@ -2583,6 +2583,16 @@ public struct ScamReportsListResponse: Decodable { public let success: Bool; pub
 public struct P2pRecipientPreviewDto: Decodable { public let recipientUserId: String; public let displayName: String }
 public struct ResolveRecipientResponse: Decodable { public let success: Bool; public let recipient: P2pRecipientPreviewDto }
 
+// Real Toss Bank "Transfer limit" row (2026-09-01) -- mirrors web's lib/p2p.ts
+// fetchTransferLimit / Android's TransferLimitResponse / backend P2pController's
+// GET /api/v1/p2p/transfer-limit.
+public struct TransferLimitResponse: Decodable {
+    public let success: Bool
+    public let perTransferLimit: Double
+    public let dailyLimit: Double
+    public let remainingToday: Double
+}
+
 public struct DepositRequest: Encodable { public let goalId: String; public let amount: Double }
 public struct DepositResponse: Decodable { public let success: Bool; public let message: String; public let goal: SavingsGoal }
 // Real gap found live (2026-08-31, direct user re-reference of the real Toss
@@ -2648,6 +2658,11 @@ public struct TrustedDeviceDto: Decodable, Identifiable {
     public let firstSeenAt: String
     public let lastSeenAt: String
     public let verifiedAt: String?
+    // Real field this struct was missing (2026-09-01, same real gap found in bank-mfe's
+    // TrustedDevice TS type) -- TrustedDevice.kt's real publicKey column was already in
+    // every real response, just undeclared here. Non-nil iff this device completed real
+    // biometric/passwordless device-key registration (DeviceService.registerDeviceKey).
+    public let publicKey: String?
 }
 public struct DevicesResponse: Decodable { public let success: Bool; public let devices: [TrustedDeviceDto] }
 public struct VerifyDeviceRequest: Encodable { public let password: String }
@@ -2832,6 +2847,10 @@ extension NetworkClient {
 
     public func resolveRecipient(identifier: String) async throws -> ResolveRecipientResponse {
         try await get("api/v1/p2p/recipient?identifier=\(identifier.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? identifier)")
+    }
+
+    public func getTransferLimit() async throws -> TransferLimitResponse {
+        try await get("api/v1/p2p/transfer-limit")
     }
 
     public func reportScam(identifier: String, reason: String) async throws -> ScamReportResponse {
