@@ -31,7 +31,11 @@ dependencies {
     implementation(project(":contacts"))
     implementation(project(":stocks"))
     implementation(project(":savings"))
-    implementation(project(":notifications"))
+    // :notifications removed (2026-09-01) -- extracted into its own
+    // independently-deployable notifications-service, the twelfth product
+    // after :card/:insurance/:agents/:transit/:certificate/:bills/:vehicle/
+    // :partners/:identity/:overview/:knowledge. Confirmed via repo-wide grep:
+    // nothing else in :app reaches into rw.itunda.notifications directly.
     implementation(project(":discover"))
     implementation(project(":analytics"))
     // :insurance removed (2026-09-01) -- extracted into its own

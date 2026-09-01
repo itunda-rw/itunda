@@ -59,6 +59,8 @@ spec:
           value: "http://overview-service:4011"
         - name: KNOWLEDGE_SERVICE_URL
           value: "http://knowledge-service:4012"
+        - name: NOTIFICATIONS_SERVICE_URL
+          value: "http://notifications-service:4013"
         - name: LEDGER_SERVICE_URL
           value: "http://ledger-service:8082"
         - name: PAYMENT_SERVICE_URL

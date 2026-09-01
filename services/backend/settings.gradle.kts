@@ -99,5 +99,10 @@ include(
     // confirmed to have zero Gradle-level coupling with any other product
     // module.
     ":knowledge-service",
+    // Real, twelfth independently-deployable module (2026-09-01) -- see
+    // notifications-service/build.gradle.kts's own doc comment: :notifications
+    // was confirmed to have zero Gradle-level coupling with any other
+    // product module.
+    ":notifications-service",
     ":app"
 )

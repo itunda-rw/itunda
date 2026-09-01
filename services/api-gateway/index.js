@@ -261,6 +261,15 @@ const OVERVIEW_SERVICE_URL = process.env.OVERVIEW_SERVICE_URL || 'http://localho
 // the other *_SERVICE_URL consts above. No moneyMovementLimiter -- knowledge
 // base Q&A moves no money.
 const KNOWLEDGE_SERVICE_URL = process.env.KNOWLEDGE_SERVICE_URL || 'http://localhost:4012';
+// Real, twelfth independently-deployable itunda product (2026-09-01) -- see
+// docs/ARCHITECTURE.md's dated follow-up. Owns two prefixes:
+// /api/v1/notifications (covers both NotificationController and
+// DeviceTokenController's /api/v1/notifications/device-tokens sub-path --
+// one registration covers both) and /api/v1/talk/service-channel (a distinct
+// sub-path from :messaging's own /api/v1/talk/ai-chat, checked, no
+// collision -- only this specific sub-path is routed, never the whole
+// /api/v1/talk prefix).
+const NOTIFICATIONS_SERVICE_URL = process.env.NOTIFICATIONS_SERVICE_URL || 'http://localhost:4013';
 function parsePositiveTimeout(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
@@ -468,6 +477,8 @@ app.use('/api/v1/identity', upstreamProxy(IDENTITY_SERVICE_URL));
 app.use('/api/v1/overview', upstreamProxy(OVERVIEW_SERVICE_URL));
 app.use('/api/v1/accounts', upstreamProxy(OVERVIEW_SERVICE_URL));
 app.use('/api/v1/knowledge', upstreamProxy(KNOWLEDGE_SERVICE_URL));
+app.use('/api/v1/talk/service-channel', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
+app.use('/api/v1/notifications', upstreamProxy(NOTIFICATIONS_SERVICE_URL));
 
 app.use('/api/v1', upstreamProxy(BACKEND_URL));
 
