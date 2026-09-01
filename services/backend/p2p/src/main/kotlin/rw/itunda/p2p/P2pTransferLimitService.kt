@@ -123,6 +123,22 @@ class P2pTransferLimitService(
         }
     }
 
+    /**
+     * Real, read-only "your transfer limit is X" lookup (2026-09-01, direct user-
+     * supplied Toss Bank Manage-screen screenshot: "Transfer limit" row) -- reuses the
+     * exact same real sum-query `enforce()` already proves correct, rather than a
+     * second, driftable copy. No lock needed here (unlike `enforce()`, which locks
+     * because it's about to also insert a new transfer) -- a plain read is honest for
+     * a value the caller is only displaying, not acting on atomically.
+     */
+    fun getRemainingToday(senderUserId: String): BigDecimal {
+        val startOfDayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant()
+        val sentToday = transactionRepository
+            .findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(senderUserId, TransactionType.TRANSFER, TransactionStatus.COMPLETED, startOfDayUtc)
+            .sumOf { it.amount }
+        return DAILY_TRANSFER_LIMIT.subtract(sentToday).max(BigDecimal.ZERO)
+    }
+
     companion object {
         // Real values proportioned to itunda's own already-established real limits
         // (DebitCard.DEFAULT_DAILY_LIMIT = 500,000 RWF, YouthAccountService

@@ -145,6 +145,39 @@ class P2pTransferLimitServiceTest : BehaviorSpec({
         }
     }
 
+    // Real "Transfer limit" row read (2026-09-01) -- getRemainingToday is a plain read,
+    // never locks the account (unlike enforce(), which is about to also insert a new
+    // transfer) -- confirmed here so a future change doesn't silently add one.
+    Given("a real sender whose earlier real transfers today already total 2,400,000 RWF") {
+        val transactionRepository = mockk<TransactionRepository>()
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
+        val service = P2pTransferLimitService(transactionRepository, accountRepository)
+        every { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(eq("sender_1"), any(), any(), any()) } returns
+            listOf(priorTransfer("1500000"), priorTransfer("900000"))
+
+        When("reading their real remaining-today amount") {
+            val remaining = service.getRemainingToday("sender_1")
+
+            Then("it real-reports the exact 100,000 RWF actually remaining, without locking any account") {
+                remaining shouldBe BigDecimal("100000")
+                verify(exactly = 0) { accountRepository.findByIdForUpdate(any()) }
+            }
+        }
+    }
+
+    Given("a real sender who already sent the full real daily cap today") {
+        val transactionRepository = mockk<TransactionRepository>()
+        val accountRepository = mockk<AccountRepository>(relaxed = true)
+        val service = P2pTransferLimitService(transactionRepository, accountRepository)
+        every { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(eq("sender_1"), any(), any(), any()) } returns
+            listOf(priorTransfer("2500000"))
+
+        When("reading their real remaining-today amount") {
+            Then("it real-floors at zero rather than reporting a negative remaining amount") {
+                service.getRemainingToday("sender_1") shouldBe BigDecimal.ZERO
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

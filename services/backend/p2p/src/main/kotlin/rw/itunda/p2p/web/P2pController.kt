@@ -35,6 +35,7 @@ import rw.itunda.p2p.P2pRequestNotPayableException
 import rw.itunda.p2p.P2pSelfPaymentException
 import rw.itunda.p2p.P2pService
 import rw.itunda.p2p.P2pTransferLimitExceededException
+import rw.itunda.p2p.P2pTransferLimitService
 import java.math.BigDecimal
 
 data class GenerateP2pRequest(val amount: BigDecimal, val description: String)
@@ -50,7 +51,23 @@ class P2pController(
     private val p2pService: P2pService,
     private val p2pDelayedTransferService: P2pDelayedTransferService,
     private val idempotencyService: IdempotencyService,
+    private val p2pTransferLimitService: P2pTransferLimitService,
 ) {
+
+    // Real "Transfer limit" row (2026-09-01, direct user-supplied Toss Bank Manage-
+    // screen screenshot) -- the flat per-transfer/daily caps P2pTransferLimitService
+    // already enforces on every real transfer, previously surfaced only reactively as
+    // a decline error. remainingToday reuses that same service's own real sum-query.
+    @GetMapping("/transfer-limit")
+    fun getTransferLimit(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "perTransferLimit" to P2pTransferLimitService.PER_TRANSFER_LIMIT,
+                "dailyLimit" to P2pTransferLimitService.DAILY_TRANSFER_LIMIT,
+                "remainingToday" to p2pTransferLimitService.getRemainingToday(currentUser.userId),
+            ),
+        )
 
     @PostMapping("/request")
     fun generateRequest(
