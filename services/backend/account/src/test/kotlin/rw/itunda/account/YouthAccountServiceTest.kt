@@ -195,6 +195,7 @@ class YouthAccountServiceTest : BehaviorSpec({
 
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns mainAccount
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MINI) } returns miniAccount
+        every { accountRepository.findByIdForUpdate(any()) } answers { java.util.Optional.of(miniAccount) }
         every { transactionRepository.save(any()) } answers { firstArg() }
 
         When("depositing a real amount within all three real caps") {
@@ -208,6 +209,15 @@ class YouthAccountServiceTest : BehaviorSpec({
                 val legs = legsSlot.captured
                 legs.first { it.accountId == "account_main" }.amount shouldBe BigDecimal("50000")
                 legs.first { it.accountId == "account_mini" }.amount shouldBe BigDecimal("50000")
+            }
+
+            // Real concurrency-audit regression (same "coarse repo filter, live SUM(),
+            // no lock" shape CardService.chargeWithCard/P2pTransferLimitService.enforce/
+            // FamilyLinkService.enforceSpendLimit already fixed): proves the youth
+            // account row is actually locked before the daily/monthly SUM() checks, not
+            // just that the checks happen.
+            Then("it locks the youth account row before checking the daily/monthly caps") {
+                verify { accountRepository.findByIdForUpdate("account_mini") }
             }
         }
 

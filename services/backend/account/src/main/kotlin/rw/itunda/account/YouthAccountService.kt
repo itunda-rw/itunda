@@ -133,6 +133,15 @@ class YouthAccountService(
         val youthAccount = accountRepository.findByUserIdAndType(userId, AccountType.MINI)
             ?: throw AccountNotFoundException("No Youth account found for this account -- open one first")
 
+        // Real "coarse repo filter, live SUM(), no lock" bug class this codebase has hit
+        // 3 times before (CardService.chargeWithCard/P2pTransferLimitService.enforce/
+        // FamilyLinkService.enforceSpendLimit) -- two concurrent deposits could each read
+        // the same pre-deposit daily/monthly sum and both pass, together exceeding
+        // DAILY_DEPOSIT_LIMIT/MONTHLY_DEPOSIT_LIMIT/MAX_BALANCE. Lock the youth account row
+        // itself before the SUM reads, serializing concurrent deposits the same way those
+        // 3 fixes lock the capped account's own row.
+        accountRepository.findByIdForUpdate(youthAccount.id)
+
         if (youthAccount.balance.add(amount) > MAX_BALANCE) {
             throw YouthAccountBalanceCapExceededException("This deposit would push the Youth account balance over the real $MAX_BALANCE RWF cap")
         }
