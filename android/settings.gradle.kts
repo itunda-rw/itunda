@@ -209,6 +209,10 @@ include(":features:pay:api")
 include(":features:pay:impl")
 include(":features:pay:testing")
 
+include(":features:menu:api")
+include(":features:menu:impl")
+include(":features:menu:testing")
+
 // Itunda Pay SDK (For 3rd party integrations)
 include(":sdk:pay")
 

@@ -29,6 +29,35 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.itundaface.HandshakeGlyph
+import rw.itunda.core.designsystem.itundaface.NatureBird
+import rw.itunda.core.designsystem.itundaface.NatureCat
+import rw.itunda.core.designsystem.itundaface.NatureCherryBlossom
+import rw.itunda.core.designsystem.itundaface.NatureDog
+import rw.itunda.core.designsystem.itundaface.NatureGlowingStar
+import rw.itunda.core.designsystem.itundaface.NatureRainbow
+import rw.itunda.core.designsystem.itundaface.NatureStar
+import rw.itunda.core.designsystem.itundaface.ObjectCreditCard
+import rw.itunda.core.designsystem.itundaface.ObjectHeadphones
+import rw.itunda.core.designsystem.itundaface.ObjectKey
+import rw.itunda.core.designsystem.itundaface.ObjectLightBulb
+import rw.itunda.core.designsystem.itundaface.ObjectMobilePhone
+import rw.itunda.core.designsystem.itundaface.ObjectPaperclip
+import rw.itunda.core.designsystem.itundaface.ObjectPen
+import rw.itunda.core.designsystem.itundaface.ObjectWatch
+import rw.itunda.core.designsystem.itundaface.PeopleClappingHands
+import rw.itunda.core.designsystem.itundaface.PeopleEyes
+import rw.itunda.core.designsystem.itundaface.PeopleFist
+import rw.itunda.core.designsystem.itundaface.PeopleMuscle
+import rw.itunda.core.designsystem.itundaface.PeopleOkHand
+import rw.itunda.core.designsystem.itundaface.PeoplePray
+import rw.itunda.core.designsystem.itundaface.PeopleVictoryHand
+import rw.itunda.core.designsystem.itundaface.PeopleWavingHand
+import rw.itunda.core.designsystem.itundaface.TravelAirplane
+import rw.itunda.core.designsystem.itundaface.TravelBike
+import rw.itunda.core.designsystem.itundaface.TravelCar
+import rw.itunda.core.designsystem.itundaface.TravelHouse
+import rw.itunda.core.designsystem.itundaface.TravelRocket
 
 // itundaface emoji-input infrastructure -- Android port of the real new
 // capability shipped to bank-mfe same session (icons/ItundaFaceEmoji.tsx), part

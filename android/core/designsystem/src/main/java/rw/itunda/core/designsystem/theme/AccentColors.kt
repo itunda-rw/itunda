@@ -16,3 +16,8 @@ val AccentIndigo = Color(0xFF7472F4)
 val AccentTeal = Color(0xFF14AE85)
 val AccentPurple = Color(0xFF7C5CFC)
 val AccentOrange = Color(0xFFF2A93B)
+// Promoted here 2026-09-02, Menu Feature-module decomposition -- MenuScreen's own
+// (and only) real caller, moving into :features:menu:impl in the same slice.
+// AccentRed/AccentPink stayed in :app's ItundaAppScreen.kt (confirmed dead code,
+// zero real callers -- not this task's job to clean up unrelated dead code).
+val AccentGray = Color(0xFF6B7684)

@@ -2,6 +2,7 @@ package rw.itunda.feature.maps.impl
 
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.itundaface.PlaceGlyph
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

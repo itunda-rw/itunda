@@ -188,6 +188,7 @@ import rw.itunda.feature.credit.impl.VupLoanScreen
 import rw.itunda.feature.banking.impl.BankHubScreen
 import rw.itunda.feature.home.impl.HomeTab
 import rw.itunda.feature.pay.impl.PayTab
+import rw.itunda.feature.menu.impl.MenuScreen
 import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
@@ -245,22 +246,8 @@ import rw.itunda.core.designsystem.itundaface.SeedlingGlyph
 import rw.itunda.core.designsystem.itundaface.RefreshCardGlyph
 import rw.itunda.core.designsystem.itundaface.ReceiptGlyph
 import rw.itunda.core.designsystem.itundaface.ShieldEmojiGlyph
-import rw.itunda.feature.talk.impl.ObjectKey
-import rw.itunda.feature.maps.impl.PlaceRestaurant
-import rw.itunda.feature.maps.impl.PlaceMarket
-import rw.itunda.feature.maps.impl.PlaceBank
-import rw.itunda.feature.maps.impl.PlaceBusStop
-import rw.itunda.feature.maps.impl.PlaceSchool
-import rw.itunda.feature.maps.impl.PlaceItundaAgent
-import rw.itunda.feature.talk.impl.ObjectCreditCard
-import rw.itunda.feature.talk.impl.ObjectMobilePhone
-import rw.itunda.feature.talk.impl.ObjectLightBulb
-import rw.itunda.feature.talk.impl.TravelHouse
-import rw.itunda.feature.talk.impl.TravelCar
-import rw.itunda.feature.talk.impl.NatureStar
-import rw.itunda.feature.talk.impl.NatureGlowingStar
-import rw.itunda.feature.talk.impl.ObjectPen
-import rw.itunda.feature.talk.impl.HandshakeGlyph
+import rw.itunda.core.designsystem.itundaface.PlaceMarket
+import rw.itunda.core.designsystem.itundaface.TravelHouse
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
 // theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
@@ -276,10 +263,11 @@ import rw.itunda.feature.talk.impl.HandshakeGlyph
 // AccentIndigo/Teal/Purple/Orange moved to core/designsystem/theme/AccentColors.kt
 // (2026-09-02, Banking Feature-module decomposition slice 3) so BankHubScreen
 // (moving to :features:banking:impl) and LedgerFormatting.kt/BucketDetailScreen.kt
-// (staying in :app) share one real definition.
+// (staying in :app) share one real definition. AccentGray moved there too
+// (2026-09-02, Menu Feature-module decomposition) -- MenuScreen was its only real
+// caller.
 internal val AccentRed = Color(0xFFFF5B5B)
 private val AccentPink = Color(0xFFEC5F8C)
-internal val AccentGray = Color(0xFF6B7684)
 
 // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10), replacing
 // the previous Home/Shop/Hood/Talk/All layout -- an explicit product decision after
@@ -1806,6 +1794,7 @@ fun ItundaAppScreen(
                     // primary tabs now.
                     ItundaTab.Explore -> {
                         val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
+                        val menuContext = androidx.compose.ui.platform.LocalContext.current
                         MenuScreen(
                             onOpenShop = { showShop = true },
                             onOpenEats = { showEats = true },
@@ -1858,6 +1847,21 @@ fun ItundaAppScreen(
                             onSwitchToTalk = { selectedTab = ItundaTab.Messages },
                             onOpenProperty = { showProperty = true },
                             partnerMiniApps = partnerMiniApps,
+                            onOpenRewardTasksMiniApp = {
+                                menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                            },
+                            onOpenPayBillsMiniApp = {
+                                menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+                            },
+                            onOpenInsuranceMiniApp = {
+                                menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
+                            },
+                            onOpenAccountBalanceMiniApp = {
+                                menuContext.startActivity(android.content.Intent(menuContext, rw.itunda.app.miniapps.AccountBalanceMiniAppActivity::class.java))
+                            },
+                            onLaunchPartnerMiniApp = { activity, app, onError ->
+                                rw.itunda.app.miniapps.PartnerMiniAppLoader.launch(activity = activity, app = app, onError = onError)
+                            },
                         )
                     }
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
@@ -2182,560 +2186,9 @@ private fun TransactionDetailScreen(
 // PayMoneyDetailScreen/CouponBoxScreen/MembershipScreen all moved to
 // :features:pay:impl (2026-09-02, Pay Feature-module decomposition).
 
-// Real Explore primary bottom tab (renamed 2026-08-10 from All -- see ItundaTab's own
-// doc comment for the full history: separated from My at the user's own direct
-// request in an earlier pass ("My and All screen should be separated like KakaoPay"),
-// then brought back to the bottom nav directly once mini-apps and (planned) games
-// meant this exhaustive service catalog needed to be one tap away, not nested two
-// taps under My; My is now its own primary tab (ItundaTab.You) instead of a
-// profile-icon-reachable screen from here. Content that doesn't
-// belong in an exhaustive product catalog.
-@Composable
-private fun MenuScreen(
-    onOpenShop: () -> Unit = {},
-    onOpenEats: () -> Unit = {},
-    onOpenMarketplace: () -> Unit = {},
-    onOpenCommunity: () -> Unit = {},
-    onOpenJobs: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
-    onOpenInvest: () -> Unit = {},
-    onOpenBank: () -> Unit = {},
-    onOpenMap: () -> Unit = {},
-    onOpenOverview: () -> Unit = {},
-    onOpenLoans: () -> Unit = {},
-    onOpenSupport: () -> Unit = {},
-    onOpenCreditScore: () -> Unit = {},
-    onOpenCertificate: () -> Unit = {},
-    onOpenIdentity: () -> Unit = {},
-    onOpenWeeklySavings: () -> Unit = {},
-    onOpenGrow31Savings: () -> Unit = {},
-    onOpenUpfrontDeposit: () -> Unit = {},
-    onOpenYouthAccount: () -> Unit = {},
-    onOpenCard: () -> Unit = {},
-    onOpenTransit: () -> Unit = {},
-    onOpenGroupAccounts: () -> Unit = {},
-    onOpenIkimina: () -> Unit = {},
-    onOpenSacco: () -> Unit = {},
-    onOpenHarvestAdvance: () -> Unit = {},
-    onOpenSpending: () -> Unit = {},
-    onOpenRides: () -> Unit = {},
-    onOpenDesignatedDriver: () -> Unit = {},
-    onOpenBikeRental: () -> Unit = {},
-    onOpenParking: () -> Unit = {},
-    onOpenMotoFareCollect: () -> Unit = {},
-    onOpenBus: () -> Unit = {},
-    onOpenKnowledge: () -> Unit = {},
-    onOpenVehicleInspection: () -> Unit = {},
-    onOpenVehicleValuation: () -> Unit = {},
-    onOpenFamilyLink: () -> Unit = {},
-    onOpenSubscriptions: () -> Unit = {},
-    onOpenForeignCurrency: () -> Unit = {},
-    onOpenRequestMoney: () -> Unit = {},
-    onOpenAutoTopUp: () -> Unit = {},
-    onOpenTrustScore: () -> Unit = {},
-    onOpenAgentOperator: () -> Unit = {},
-    onOpenFloatMarketplace: () -> Unit = {},
-    onOpenVupLoan: () -> Unit = {},
-    onOpenStudentLoan: () -> Unit = {},
-    onOpenMotoOwnership: () -> Unit = {},
-    onOpenTransferHub: () -> Unit = {},
-    onClaimInterest: () -> Unit = {},
-    onSwitchToTalk: () -> Unit = {},
-    onOpenProperty: () -> Unit = {},
-    partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
-) {
-    // No BackHandler here (2026-07-24): this is now a persistent bottom-nav
-    // destination, not a screen pushed on top of one -- there's nothing to back out
-    // to. My's own real content is one tap in via the profile icon below instead.
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    var partnerLoadError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    var loadingPartnerAppId by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    // Real fix (2026-08-10): direct response to repeated, specific product feedback
-    // ("itunda still feels like code not product... not organized... hard to
-    // navigate") -- traced to a concrete cause: this screen rendered ~17 categories
-    // and 60+ rows fully expanded, always, in one long scroll, below a "Search" box
-    // that was pure decoration (no TextField, nothing typed into it ever did
-    // anything). That's the exact anti-pattern Hick's Law names -- decision time
-    // rises with visible choice count -- and it's a data dump (whatever got built,
-    // in build order) rather than an information architecture. The row content and
-    // every real onClick below is completely unchanged; only how it's found and
-    // shown changed: a real, working search over all of it.
-    var menuSearchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
-    // Real fix (2026-08-30, simplification-adoption thread, toss.tech/article/
-    // Marketing_Writing principle 5: Toss measured a real 4x conversion increase
-    // replacing vague copy ("missions") with a concrete count ("4 financial
-    // missions available")) -- the "Benefits" row's subtitle below was the exact
-    // same vague shape ("Points, coupons, rewards"), never stating how many tasks
-    // are actually available. Own, independent fetch (same call PayTab's own
-    // rewardsTotal already makes, just for this screen -- MenuScreen has no shared
-    // state with PayTab to reuse) so this doesn't add a real screen-load
-    // dependency to anything else on this tab.
-    var availableTaskCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        try {
-            val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
-            availableTaskCount = result.tasks.count { it.eligible && !it.claimed }
-        } catch (_: Exception) { /* keep the generic fallback subtitle */ }
-    }
-    // CORRECTED 2026-08-12: the 16 heavier categories below used to collapse behind a
-    // tap-to-expand accordion (added 2026-08-10 on a Hick's Law/decision-overload
-    // theory). A real, direct user-provided screenshot batch of the actual Toss app's
-    // own All tab shows every category's items always fully visible, no
-    // collapse/expand mechanic anywhere -- Toss's real answer to a long list is the
-    // real, working search box above (kept, unchanged), not hiding content behind a
-    // tap. Reverted to always-expanded FlatSection for all 16, matching the real
-    // screenshots exactly; expandedMenuSection state removed as dead code.
+// MenuScreen/IconGridSection/AllTopBar/MenuSearchBar/menuSections all moved to
+// :features:menu:impl (2026-09-02, Menu Feature-module decomposition).
 
-    // Shop/Eats/Marketplace/Community/Jobs added here as separate flat rows
-    // (2026-08-10, real user correction) -- all lost their own primary tab (see
-    // ItundaTab's own doc comment), and nesting them behind one "Shop"/"Hood" row
-    // with an internal toggle would be a tab bar inside a tab: real noise a flat
-    // catalog shouldn't have. Each opens its real feature/impl content directly.
-    // Marketplace/Community/Jobs/Property's real, deliberately Karrot-sourced
-    // top-bar/menu-sheet/FAB shell (previously shared via HoodTab's chip row) now
-    // lives in HoodSectionScreen, parameterized per section instead of switchable --
-    // see that composable's own doc comment. Pay's own row removed since Pay is now
-    // a primary tab itself, not something Explore needs to surface.
-    // Real IA fix (2026-08-30, simplification-adoption thread, toss.tech/article/
-    // uxresearcher-cardsorting-core): Toss's own card-sorting research found users
-    // reject a flat list of many services, grouping instead by real-world context --
-    // this exact 10-row "Quick links" list was the flat-list anti-pattern the
-    // article's research replaced, while bank-mfe's own EXPLORE_TAB_GROUPS had
-    // already solved the identical problem for the identical features (never ported
-    // to native). Split into 3 sub-lists reusing web's own already-validated
-    // category names/membership verbatim, not a newly-invented taxonomy.
-    val quickLinksEverydayRows = listOf(
-        FlatRow("Shop", subtitle = "Coupang-style commerce", glyph = { ShoppingBagGlyph(size = 28.dp) }, onClick = onOpenShop),
-        FlatRow("Eats", subtitle = "Food delivery, order or deliver", glyph = { PlaceRestaurant(size = 28.dp) }, onClick = onOpenEats),
-        FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", glyph = { PinGlyph(size = 28.dp) }, onClick = onOpenMap),
-    )
-    val quickLinksNeighbourhoodRows = listOf(
-        FlatRow("Marketplace", subtitle = "당근마켓-style neighborhood buy/sell", glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenMarketplace),
-        FlatRow("Community", subtitle = "Neighborhood life, local questions and posts", glyph = { SpeechBubbleGlyph(size = 28.dp) }, onClick = onOpenCommunity),
-        FlatRow("Jobs", subtitle = "Neighborhood gigs and part-time work", glyph = { BriefcaseGlyph(size = 28.dp) }, onClick = onOpenJobs),
-        FlatRow("Property", subtitle = "Neighborhood rentals and sales", glyph = { TravelHouse(size = 28.dp) }, onClick = onOpenProperty),
-    )
-    val quickLinksMoneyRows = listOf(
-        // Real fix (2026-08-13, direct user report: "entire app is still messy...
-        // give me something real"): used to open BenefitsTab, a full screen of
-        // entirely fabricated content -- a fake "P 137" points pill, a fake "🎁
-        // Limited gift for Rwanda / 25,000" banner, 4 dead "Visit" buttons (Happy
-        // lottery/Push the button/Try on/Bring friends, zero real backend), and a
-        // fake "3 chances to get money back / RWF 5,000 / BK account -> TUYIZERE
-        // Eric" card. This row's own subtitle ("Points, coupons, rewards") already
-        // describes exactly what the real "Reward tasks" mini-app below in this same
-        // section does (rw.itunda.rewards, real tasks/steps/referral, real RWF
-        // payouts) -- points there instead of a second, fake destination.
-        FlatRow(
-            "Benefits",
-            subtitle = when (val count = availableTaskCount) {
-                null, 0 -> "Points, coupons, rewards"
-                1 -> "1 reward task available"
-                else -> "$count reward tasks available"
-            },
-            glyph = { GiftBox(size = 28.dp) },
-            onClick = { context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
-        ),
-        FlatRow("Invest", subtitle = "RSE stocks, real portfolio", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
-        FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenWeeklySavings),
-        FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
-    )
-    val accountsRows = listOf(
-        FlatRow("Open account", subtitle = "Itunda Account, other banks, RSE brokerage", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenOverview),
-        FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenOverview),
-        FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", glyph = { ObjectCreditCard(size = 28.dp) }, onClick = onOpenCard),
-        // Real Kigali public-transit stored-value balance (2026-08-27) -- see
-        // TransitScreen.kt's own doc comment for the full sourced account.
-        FlatRow("Transit", subtitle = "Top up and tap to pay your real Kigali bus fare", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenTransit),
-        FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", glyph = { BarChartGlyph(size = 28.dp) }, onClick = onOpenSpending),
-        FlatRow("Group account", subtitle = "Shared account with dues and split expenses", glyph = { HandshakeGlyph(size = 28.dp) }, onClick = onOpenGroupAccounts),
-        FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", glyph = { FamilyGlyph(size = 28.dp) }, onClick = onOpenFamilyLink),
-        FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
-        FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", glyph = { CalendarGlyph(size = 28.dp) }, onClick = onOpenSubscriptions),
-        FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", glyph = { ObjectPen(size = 28.dp) }, onClick = onOpenCertificate),
-    )
-    val sendPayRows = listOf(
-        FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = IdsIcons.Send, iconColor = AccentIndigo, onClick = onOpenTransferHub),
-        FlatRow("Request money", subtitle = "Generate a real payment request code", glyph = { ReceiptGlyph(size = 28.dp) }, onClick = onOpenRequestMoney),
-        FlatRow("Auto top-up", subtitle = "Refill your account automatically from a linked account", glyph = { RefreshCardGlyph(size = 28.dp) }, onClick = onOpenAutoTopUp),
-        FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", glyph = { ObjectMobilePhone(size = 28.dp) }, onClick = {
-            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-        }),
-    )
-    // Real icon differentiation (2026-08-24) -- these 6 rows all shared the identical
-    // Savings icon, the exact "parallel icon-clash instance" DESIGN_REFERENCES.md
-    // Section 65 named as a ready-made next pass but never fixed. Reuses
-    // BankHubScreen's own already-shipped, real per-product mapping (Section 193)
-    // byte-for-byte where the same product appears there, rather than inventing a
-    // second, divergent icon choice for the identical concept on a different screen.
-    // Youth account has no BankHubScreen counterpart to mirror -- ChildCare is new,
-    // picked for the real "ages 7-18 starter account" concept, not already used
-    // elsewhere in this row set.
-    val saveGrowRows = listOf(
-        FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenWeeklySavings),
-        FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenGrow31Savings),
-        FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", glyph = { LockGlyph(size = 28.dp) }, onClick = onOpenUpfrontDeposit),
-        FlatRow("Youth account", subtitle = "Capped starter account, ages 7-18", glyph = { ChildGlyph(size = 28.dp) }, onClick = onOpenYouthAccount),
-        FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", glyph = { HandshakeGlyph(size = 28.dp) }, onClick = onOpenIkimina),
-        FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenSacco),
-    )
-    // Same real gap, same fix shape, same BankHubScreen (Section 193) mapping reused
-    // for Harvest advance/VUP/Student loan/Moto-Taxi -- 3 of these 6 rows shared the
-    // identical AccountBalanceWallet icon before this. "Get a loan" and "Credit score"
-    // already had their own distinct icons and are unchanged.
-    val borrowRows = listOf(
-        FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans),
-        FlatRow("Credit score", subtitle = "Free check, alternative data", glyph = { NatureGlowingStar(size = 28.dp) }, onClick = onOpenCreditScore),
-        FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", glyph = { SeedlingGlyph(size = 28.dp) }, onClick = onOpenHarvestAdvance),
-        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", glyph = { ShieldEmojiGlyph(size = 28.dp) }, onClick = onOpenVupLoan),
-        FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", glyph = { PlaceSchool(size = 28.dp) }, onClick = onOpenStudentLoan),
-        FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
-    )
-    val transportRows = listOf(
-        FlatRow("Rides", subtitle = "Request a ride or drive for real fares", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenRides),
-        FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", glyph = { ObjectKey(size = 28.dp) }, onClick = onOpenDesignatedDriver),
-        FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenBikeRental),
-        FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", glyph = { ParkingGlyph(size = 28.dp) }, onClick = onOpenParking),
-        FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", glyph = { PlaceBusStop(size = 28.dp) }, onClick = onOpenBus),
-        // Real "tap to pay your moto-taxi fare" (2026-08-27, direct user follow-up:
-        // "now we can make pay for tax and moto as well") -- see
-        // MotoFareCollectScreen.kt's own doc comment for the full sourced account.
-        FlatRow("Collect a moto fare", subtitle = "Drivers: tap or scan a rider's code to collect a real fare", glyph = { BikeGlyph(size = 28.dp) }, onClick = onOpenMotoFareCollect),
-        FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", glyph = { WrenchGlyph(size = 28.dp) }, onClick = onOpenVehicleInspection),
-        FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", glyph = { TravelCar(size = 28.dp) }, onClick = onOpenVehicleValuation),
-    )
-    val communityTrustRows = listOf(
-        FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", glyph = { NatureStar(size = 28.dp) }, onClick = onOpenTrustScore),
-        FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", glyph = { SpeechBubbleGlyph(size = 28.dp) }, onClick = onOpenKnowledge),
-    )
-    val cashAgentRows = listOf(
-        FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", glyph = { PlaceItundaAgent(size = 28.dp) }, onClick = onOpenAgentOperator),
-        FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenFloatMarketplace),
-    )
-    val switchSaveRows = listOf(
-        FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans),
-        FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, glyph = { TravelHouse(size = 28.dp) }, onClick = onOpenLoans),
-        FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, glyph = { PlaceMarket(size = 28.dp) }, onClick = onOpenLoans)
-    )
-    val cardsRows = listOf(
-        FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, glyph = { ObjectCreditCard(size = 28.dp) }, onClick = onOpenCard),
-        FlatRow("Virtual card", trailing = "Instant issue", glyph = { ObjectCreditCard(size = 28.dp) }, onClick = onOpenCard)
-    )
-    val servicesRows = listOf(
-        FlatRow("Rent deposit protection", glyph = { TravelHouse(size = 28.dp) }),
-        FlatRow("Recurring payments", glyph = { CalendarGlyph(size = 28.dp) }, onClick = onOpenSubscriptions),
-        FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
-        FlatRow("REG & WASAC bills", glyph = { ObjectLightBulb(size = 28.dp) }, onClick = {
-            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-        }),
-        // Real fix (2026-08-11): interest now auto-credits to the account the instant
-        // it accrues (see backend SavingsService.accrueInterest's own doc comment) --
-        // "Claim interest now" overclaimed a pending action that no longer exists.
-        FlatRow("Interest earned this month", glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onClaimInterest),
-        FlatRow("SME income tax estimate", glyph = { ReceiptGlyph(size = 28.dp) }),
-        FlatRow("Split a bill with friends", glyph = { SplitBillDice(size = 28.dp) }, onClick = onSwitchToTalk),
-        FlatRow("Shared calendar", glyph = { CalendarGlyph(size = 28.dp) }),
-        FlatRow("Kids' allowance tasks", glyph = { ChildGlyph(size = 28.dp) })
-    )
-    val foreignCurrencyRows = listOf(
-        FlatRow("Foreign currency account", trailing = "100% rate preference", trailingIsLink = true, glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency),
-        FlatRow("International transfer", glyph = { GlobeGlyph(size = 28.dp) }, onClick = onOpenForeignCurrency)
-    )
-    val growMoneyRows = listOf(
-        FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
-        FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenInvest),
-        FlatRow("IPO schedule", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenInvest),
-        FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, glyph = { PlaceBank(size = 28.dp) }, onClick = onOpenInvest)
-    )
-    val pensionRows = listOf(
-        FlatRow("Check my RSSB pension", glyph = { PlaceBank(size = 28.dp) }),
-        FlatRow("Pension products", glyph = { MoneyBagGlyph(size = 28.dp) })
-    )
-    val loansRows = listOf(
-        FlatRow("Check my max limit", glyph = { ChartIncreasingGlyph(size = 28.dp) }, onClick = onOpenLoans),
-        FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, glyph = { MoneyBagGlyph(size = 28.dp) }, onClick = onOpenLoans)
-    )
-    // Real Toss arrangement (2026-08-12, direct user screenshot comparison) -- the
-    // real All-tab reference screenshots have NO "Notifications & consent"-style
-    // section at all; Notifications and legal-document links live exclusively in
-    // Settings on the real app (Section 51/52, docs/DESIGN_REFERENCES.md), not
-    // duplicated into the app-launcher-style All tab. This section used to render
-    // here; its 3 legal rows (never had a real destination -- itunda has no
-    // Credit-data-usage/Privacy-policy/Terms document screens yet, same honest
-    // inert-row state as before, not fabricated now either) moved to a real
-    // "Legal Documents" card in SettingsScreen.kt instead of staying duplicated in
-    // two places. The "Notifications" row is dropped outright, not moved -- Settings'
-    // own "Notifications" row already covers the same real destination.
-    // Real Toss icon convention (2026-08-12, direct user screenshot comparison) --
-    // the real Help section shows a distinct colored icon on every single row; these
-    // 6 rows previously had none at all (plain text), a real visible "still not the
-    // same" gap the user flagged directly against the reference screenshot.
-    val supportRows = listOf(
-        FlatRow("FAQ", glyph = { QuestionGlyph(size = 28.dp) }),
-        FlatRow("Live chat", glyph = { SpeechBubbleGlyph(size = 28.dp) }),
-        FlatRow("Call support", glyph = { ObjectMobilePhone(size = 28.dp) }),
-        FlatRow("Report an issue with a transaction", glyph = { WarningGlyph(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
-        FlatRow("My support tickets", glyph = { VoucherTicket(size = 28.dp) }, showChevron = true, onClick = onOpenSupport),
-        FlatRow("Announcements", glyph = { BellGlyph(size = 28.dp) })
-    )
-    // Real Toss Bank reference mapping (see the doc comment further down, kept in
-    // place, for the full account of Switch & save/Cards/Services/Foreign
-    // currency/Grow your money/Pension/Loans/Notifications & consent/Support).
-    val allMenuSectionsForSearch = listOf(
-        "Everyday" to quickLinksEverydayRows,
-        "Your neighbourhood" to quickLinksNeighbourhoodRows,
-        "Money tools" to quickLinksMoneyRows,
-        "Accounts & cards" to accountsRows,
-        "Send & pay" to sendPayRows,
-        "Save & grow" to saveGrowRows,
-        "Borrow" to borrowRows,
-        "Transport" to transportRows,
-        "Community & trust" to communityTrustRows,
-        "Cash agent tools" to cashAgentRows,
-        "Switch & save" to switchSaveRows,
-        "Cards" to cardsRows,
-        "Services" to servicesRows,
-        "Foreign currency" to foreignCurrencyRows,
-        "Grow your money" to growMoneyRows,
-        "Pension" to pensionRows,
-        "Loans" to loansRows,
-        "Support" to supportRows,
-    )
-
-    // Real fix (2026-08-25) -- same redundant-bottom-padding-vs-Scaffold-inset bug as
-    // PayTab's own identical LazyColumn, see that one's doc comment for the full
-    // account.
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
-    ) {
-        item {
-            AllTopBar(
-                onOpenAuthentication = onOpenIdentity,
-                onOpenHelp = onOpenSupport,
-                onOpenSettings = onOpenSettings,
-            )
-        }
-        item {
-            SearchBar(
-                query = menuSearchQuery,
-                onQueryChange = { menuSearchQuery = it },
-                placeholder = "Search everything else",
-            )
-        }
-        if (menuSearchQuery.isBlank()) {
-            // Real Toss layout (2026-08-12), matching the real screenshot's own
-            // opening two sections exactly: "Open" (a real app-launcher shortcut grid,
-            // itunda's Mini/Games/Bank/Pick already matched this concept 1:1, just
-            // renamed to the real label) then a real quick-launch grid, in that order
-            // -- itunda previously had FIVE separate "quick access"-flavored sections
-            // stacked before reaching any of the real categorized content (Quick
-            // links, Quick access, Mini apps, Partner mini-apps, Shortcuts), which is
-            // real, visible clutter the actual Toss app doesn't have. Consolidated to
-            // three: Open, Shortcuts, then Quick links (with Mini apps' 4 rows folded
-            // in rather than kept as their own separate header) -- "Shortcuts" stays
-            // that name, not renamed to "Recent", since it's still a static curated
-            // list, not real recently-used tracking (the exact honesty bug this same
-            // screen's own 2026-08-10 fix already corrected once).
-            item {
-                // Real fix (2026-08-13, direct user report: "entire app is still
-                // messy... keep fixing"): this whole grid had no onItemClick at all --
-                // IconGridSection's default is a silent no-op, so all 4 tiles here were
-                // dead taps. "Youth" (real YouthAccountScreen, ages 7-18 capped
-                // account -- renamed from the bare "Mini" label 2026-08-23, see
-                // docs/UI_UX_GUIDELINES.md §12: that label used an Apps icon that
-                // visually suggested Saronite's own real "mini-app" framework, not the
-                // banking product it actually opened) and "Bank" (real itunda Bank
-                // hub) both already have working destinations elsewhere in this file,
-                // just never wired here. "Games" is honestly still unbuilt -- this
-                // same file's own MenuScreen doc comment above already calls it
-                // "(planned)" -- and "Pick" has no real backing feature anywhere in
-                // this codebase (grepped). Left both unwired rather than fabricating a
-                // destination neither one has.
-                IconGridSection(
-                    "Open",
-                    listOf(
-                        "Youth" to Icons.Outlined.Savings,
-                        "Games" to Icons.Outlined.SportsEsports,
-                        "Bank" to Icons.Outlined.AccountBalance,
-                        "Pick" to IdsIcons.Star,
-                    ),
-                    onItemClick = { label ->
-                        when (label) {
-                            "Youth" -> onOpenYouthAccount()
-                            "Bank" -> onOpenBank()
-                        }
-                    },
-                )
-            }
-            item {
-                IconGridSection(
-                    "Shortcuts",
-                    listOf(
-                        "Open account" to Icons.Outlined.AddCircleOutline,
-                        "Verify" to Icons.Outlined.VerifiedUser,
-                        "Send" to IdsIcons.Send,
-                        "Group" to Icons.Outlined.Group,
-                        "Property" to Icons.Outlined.HomeWork,
-                        "Insurance" to IdsIcons.ShieldCheck,
-                    ),
-                    onItemClick = { label ->
-                        when (label) {
-                            "Open account" -> onOpenOverview()
-                            "Verify" -> onOpenIdentity()
-                            "Send" -> onOpenTransferHub()
-                            "Group" -> onOpenGroupAccounts()
-                            "Property" -> onOpenProperty()
-                            "Insurance" -> context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
-                        }
-                    },
-                )
-            }
-            // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
-            // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
-            // reachable as a real row instead of being dropped. Mini apps' own 4 rows
-            // (Account balance/Pay bills/Reward tasks/Insurance) merged in here too
-            // (2026-08-12), not kept as their own separate "Mini apps" header.
-            // Real IA fix (2026-08-30): was one flat "Quick links" section with these
-            // 4 rows appended -- now 3 context-grouped sections (see
-            // quickLinksEverydayRows's own doc comment above), with the 4 financial
-            // mini-app shortcuts folded into "Money tools" alongside Benefits/Invest/
-            // Savings rather than a separate flat list.
-            item { FlatSection("Everyday", quickLinksEverydayRows) }
-            item { FlatSection("Your neighbourhood", quickLinksNeighbourhoodRows) }
-            item {
-                FlatSection(
-                    "Money tools",
-                    quickLinksMoneyRows + listOf(
-                        FlatRow("Account balance", onClick = {
-                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.AccountBalanceMiniAppActivity::class.java))
-                        }),
-                        FlatRow("Pay bills", onClick = {
-                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                        }),
-                        FlatRow("Reward tasks", onClick = {
-                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
-                        }),
-                        FlatRow("Insurance", onClick = {
-                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
-                        }),
-                    ),
-                )
-            }
-            // Real Partner SDK section (2026-07-17) -- lists REAL approved third-party
-            // mini-apps from GET /api/v1/mini-apps/catalog (services/backend/partners),
-            // closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner SDK row.
-            // Empty when the catalog has no approved entries yet (a real, honest empty
-            // state, not hidden entirely, so this section's existence is itself visible
-            // proof the mechanism is wired up end to end).
-            if (partnerMiniApps.isNotEmpty()) {
-                item {
-                    FlatSection(
-                        title = "Partner mini-apps",
-                        rows = partnerMiniApps.map { app ->
-                            FlatRow(
-                                title = app.name,
-                                subtitle = if (loadingPartnerAppId == app.id) "Loading..." else app.description,
-                                onClick = {
-                                    if (loadingPartnerAppId == null) {
-                                        loadingPartnerAppId = app.id
-                                        coroutineScope.launch {
-                                            rw.itunda.app.miniapps.PartnerMiniAppLoader.launch(
-                                                activity = context as android.app.Activity,
-                                                app = app,
-                                                onError = { message -> partnerLoadError = message },
-                                            )
-                                            loadingPartnerAppId = null
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-            // Real gap found live (2026-08-10): this used to be one 33-row "Financial
-            // services" section -- everything from savings to bus tickets to vehicle
-            // inspection dumped under a single label that was actively wrong for most of
-            // what it contained. This read as unorganized because it WAS unorganized: a
-            // supply-side dump (whatever got built, in build order) rather than a
-            // demand-side grouping (what the user is actually trying to do), the exact
-            // anti-pattern Toss Tech's own 내 문서함 rewrite names and fixes (toss.tech/
-            // article/mydoc, "화면 내에서 우선순위 정리가 되지 않았" -- "priorities weren't
-            // organized within the screen"; they restructured around real user intent
-            // instead of internal product structure). Same real rows, same real
-            // onClick callbacks -- only the grouping and two previously-dead rows changed.
-            item { FlatSection("Accounts & cards", accountsRows) }
-            item { FlatSection("Send & pay", sendPayRows) }
-            item { FlatSection("Save & grow", saveGrowRows) }
-            item { FlatSection("Borrow", borrowRows) }
-            item { FlatSection("Transport", transportRows) }
-            item { FlatSection("Community & trust", communityTrustRows) }
-            // Kept last and separately labeled, not blended into the rows above: these two
-            // are role-gated (only assigned cash-agent operators can use them), so grouping
-            // them with everyday-user rows would itself be the same "wrong category" problem
-            // this whole section just got fixed for.
-            item { FlatSection("Cash agent tools", cashAgentRows) }
-            // Everything below is modeled directly on the real Toss Bank
-            // 갈아타기/신용카드/체크카드/서비스/외화/목돈굴리기/연금/대출/알림 및 동의/고객센터
-            // reference screens (user-provided, 2026-07-10), adapted to Rwanda
-            // rails per docs/FACT_CHECKED_TOSS_RWANDA_MAP.md's established
-            // mapping (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel Money, RSE tickers,
-            // RSSB pension) rather than left as Korean-market content.
-            item { FlatSection("Switch & save", switchSaveRows) }
-            item { FlatSection("Cards", cardsRows) }
-            item { FlatSection("Services", servicesRows) }
-            item { FlatSection("Foreign currency", foreignCurrencyRows) }
-            item { FlatSection("Grow your money", growMoneyRows) }
-            item { FlatSection("Pension", pensionRows) }
-            item { FlatSection("Loans", loansRows) }
-            item { FlatSection("Support", supportRows) }
-        } else {
-            val query = menuSearchQuery.trim()
-            val matchingSections = allMenuSectionsForSearch.map { (title, rows) ->
-                title to rows.filter { it.title.contains(query, ignoreCase = true) }
-            }.filter { it.second.isNotEmpty() }
-            if (matchingSections.isEmpty()) {
-                item {
-                    Text(
-                        "No match for \"$query\".",
-                        color = Ids.colors.textTertiary,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                    )
-                }
-            } else {
-                matchingSections.forEach { (title, rows) ->
-                    item { FlatSection(title, rows) }
-                }
-            }
-        }
-    }
-
-    // Real, honest failure surface for the partner mini-app download/reload flow
-    // (2026-07-17) -- a partner's bundle is arbitrary remote content fetched at tap
-    // time, so a real network/HTTP/reload failure must be shown, not silently dropped.
-    val currentPartnerLoadError = partnerLoadError
-    if (currentPartnerLoadError != null) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { partnerLoadError = null },
-            title = { Text("Couldn't load mini-app") },
-            text = { Text(currentPartnerLoadError) },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { partnerLoadError = null }) { Text("OK") }
-            }
-        )
-    }
-}
-
-// Real Naver-style "My" personal hub (2026-07-22), replacing what used to be this
-// bottom tab's entire content (the exhaustive service catalog, now MenuScreen above)
-// -- at the user's direct request: "My should be like Naver style My since we have
-// shopping and eats and other products where users need to easily get track of their
-// orders, reservation, favorites." Every number/row here is a real fetched count or
-// preview, not decoration -- the same "no fabricated numbers" discipline this whole
-// app already follows elsewhere.
 // Real My-activity screen (2026-07-24: trimmed to just this) -- "Quick links" and
 // "My account" used to duplicate rows this screen's own content, back when it was the
 // only way to reach them; now that All/MenuScreen is the primary bottom tab and already
@@ -3222,55 +2675,13 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
 }
 
 // FlatRow/FlatSection/FlatSectionRow moved to ItundaAppFlatRows.kt, SearchBar/
-// AllTopBar moved to ItundaAppSharedUi.kt (2026-09-02, Banking Feature-module
-// decomposition slice 1) -- same package, zero import changes.
+// AllTopBar/IconGridSection/MenuSearchBar moved to :features:menu:impl (2026-09-02,
+// Menu Feature-module decomposition) -- were briefly in ItundaAppSharedUi.kt
+// (Banking decomposition slice 1) before that.
 
 // BackTopBar relocated 2026-07-23 to core/designsystem/components/HoodShared.kt while
 // extracting Community into :features:community:impl -- every call site across :app
 // now imports it from there instead.
-
-// Was rendering item.take(1) -- the first letter of the label -- as the
-// "icon" in every grid tile across the app (Mini/Games/Bank/Pick all
-// showed as plain letters M/G/B/P). Real icons per item now; this is the
-// single biggest reason the app read as a wireframe rather than Toss.
-@Composable
-// Real Toss/Baemin/Karrot hub-organization fix (2026-08-29, direct user reference:
-// real Baemin "요기더적립/포장/할인랭킹/선물" + "전체/치킨/버거/족발보쌈/..." rows and
-// Karrot's "전체/중고차/중고거래/알바/부동산" row -- one compact, single-row
-// horizontally-scrolling strip per category set, never a multi-row grid that eats
-// vertical space before real content even starts). This previously wrapped to
-// multiple fixed rows via `items.chunked(4)` -- "Shortcuts"' 6 items became 2 rows,
-// the trailing row's 2 items spaced awkwardly far apart by SpaceBetween -- exactly
-// the "noisy page, not enough room for content" pattern the user's own reference
-// screenshots were pointing at. A horizontal scroller keeps every section to one
-// compact row regardless of item count.
-private fun IconGridSection(
-    title: String,
-    items: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>>,
-    onItemClick: (String) -> Unit = {},
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(title, color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        ) {
-            items.forEach { (label, icon) ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.width(64.dp).pressScaleClickable { onItemClick(label) },
-                ) {
-                    Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(label, color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1)
-                }
-            }
-        }
-    }
-}
-
 
 @Preview(showBackground = true)
 @Composable

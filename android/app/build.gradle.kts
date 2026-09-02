@@ -310,6 +310,12 @@ dependencies {
     // real prerequisites resolved first -- see [[project_itunda_feature_isolation]]
     // -- before this dependency could be added cleanly.
     implementation(project(":features:pay:impl"))
+    // Real content moved in 2026-09-02 (Menu Feature-module decomposition, same
+    // scope as Home/Pay): MenuScreen and its supporting IconGridSection/AllTopBar/
+    // MenuSearchBar/menuSections. 5 rw.itunda.app.miniapps.* Activity/loader
+    // references replaced with injected callbacks -- see
+    // [[project_itunda_feature_isolation]].
+    implementation(project(":features:menu:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --

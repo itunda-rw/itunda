@@ -1,4 +1,4 @@
-package rw.itunda.feature.maps.impl
+package rw.itunda.core.designsystem.itundaface
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.StrokeCap
