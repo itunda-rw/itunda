@@ -149,34 +149,38 @@ adb shell am instrument -w -e class rw.itunda.app.ui.FocusOrderTest \
 
 ## iOS
 
-Needs full Xcode (not just Command Line Tools) and Tuist 3.x — this repo's
-`ios/Project.swift` uses the `platform: .iOS`/`Target(name:platform:product:...)`
-manifest API, which Tuist 4.0+ replaced with `destinations:` as a breaking change, so
-the latest Tuist will fail with confusing `ProjectDescription` type errors against
-this file. If `xcode-select -p` reports the Command Line Tools instead of a full
-Xcode install, check `/Applications/Xcode.app` before assuming Xcode isn't
-available — point at it for just your shell session, no `sudo`/system-wide
-`xcode-select -s` needed:
+Needs full Xcode (not just Command Line Tools) and Tuist 4.x. **Updated 2026-09-03**: this
+section previously said the manifest needed Tuist 3.x specifically (`platform: .iOS`/
+`Target(name:platform:product:...)`, with Tuist 4.0+'s `destinations:` API as a breaking
+change) -- that's stale. `ios/Project.swift` has since been migrated to Tuist 4.x's own
+`destinations: .iOS` API throughout; a plain Homebrew-installed Tuist 4.x (confirmed working:
+4.202.5) generates the workspace cleanly with no `mise`/version-pin needed at all. If
+`xcode-select -p` reports the Command Line Tools instead of a full Xcode install, check
+`/Applications/Xcode.app` before assuming Xcode isn't available — point at it for just your
+shell session, no `sudo`/system-wide `xcode-select -s` needed:
 
 ```bash
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 ```
 
-Install a compatible Tuist via [mise](https://mise.jdx.dev/) (any 3.x release; 3.42.3
-is confirmed working):
+Install Tuist (Homebrew is the simplest path; any 4.x release works):
 
 ```bash
-mise install tuist@3.42.3
+brew install tuist
 ```
 
 Generate the real Xcode workspace and build against a simulator:
 
 ```bash
 cd ios
-mise exec tuist@3.42.3 -- tuist generate --no-open
+tuist generate --no-open
+pod install
 xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
-  -destination 'platform=iOS Simulator,name=iPhone 14' build
+  -destination 'platform=iOS Simulator,name=<your simulator>' build
 ```
+
+`pod install` must be re-run after every `tuist generate`, not just the first time a new
+source file is added -- `tuist generate` invalidates CocoaPods integration every time.
 
 `Itunda.xcodeproj`/`Itunda.xcworkspace`/`Derived/` are Tuist output, gitignored —
 regenerate with the command above rather than expecting them to already exist.
