@@ -38,19 +38,41 @@ class DeviceKeyManager {
     /** Generates the key pair and returns the raw uncompressed P-256 point (0x04 || X ||
      * Y, 65 bytes), base64-encoded -- the exact wire format
      * DeviceService.parsePublicKey expects server-side, so neither client needs a
-     * DER/X.509 conversion step. */
+     * DER/X.509 conversion step.
+     *
+     * Real gap found+fixed (2026-09-02, Toss security research thread): this file's
+     * own header comment already claimed "StrongBox-backed where the device supports
+     * it," but no code anywhere actually called `setIsStrongBoxBacked` -- on a device
+     * with a real StrongBox secure chip (Pixel 3+, many Samsung Knox devices), this
+     * key was silently generated in the TEE instead, the weaker of the two hardware
+     * options Android exposes. `setIsStrongBoxBacked` isn't automatic; it must be
+     * requested, and it throws `StrongBoxUnavailableException` on hardware that lacks
+     * it -- the standard, Google-documented pattern is try-StrongBox-then-fall-back,
+     * not a hard requirement, since most Android devices in Rwanda's real market
+     * don't have StrongBox at all and this key must still work there. */
     fun generateKeyPair(): String {
         val keyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEYSTORE)
-        val spec = KeyGenParameterSpec.Builder(KEYSTORE_ALIAS, KeyProperties.PURPOSE_SIGN)
+        fun buildSpec(useStrongBox: Boolean) = KeyGenParameterSpec.Builder(KEYSTORE_ALIAS, KeyProperties.PURPOSE_SIGN)
             .setDigests(KeyProperties.DIGEST_SHA256)
             .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             // Required on every signature, not just once at creation -- so a stolen,
             // unlocked phone still can't sign a device-verification challenge without
             // the real owner's fingerprint/face.
             .setUserAuthenticationRequired(true)
+            .setIsStrongBoxBacked(useStrongBox)
             .build()
-        keyPairGenerator.initialize(spec)
-        val keyPair = keyPairGenerator.generateKeyPair()
+        val keyPair = try {
+            keyPairGenerator.initialize(buildSpec(useStrongBox = true))
+            keyPairGenerator.generateKeyPair()
+        } catch (e: Exception) {
+            // StrongBoxUnavailableException (API 28+) is the real, expected case on
+            // hardware without a StrongBox chip -- caught as a plain Exception since
+            // that class isn't guaranteed present on this module's minSdk. Any other
+            // failure here would also fail identically on the retry, so this is a
+            // safe, honest fallback rather than a silently-swallowed real error.
+            keyPairGenerator.initialize(buildSpec(useStrongBox = false))
+            keyPairGenerator.generateKeyPair()
+        }
         return encodePublicKey(keyPair.public as ECPublicKey)
     }
 
