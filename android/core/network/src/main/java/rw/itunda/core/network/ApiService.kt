@@ -4158,6 +4158,15 @@ interface ApiService {
     @GET("api/v1/moto-fare/earnings")
     suspend fun getMyMotoFareEarnings(@Query("page") page: Int = 0, @Query("size") size: Int = 20): MotoFareEarningsResponse
 
+    // Real gap found live (uncalled-endpoint sweep, 2026-09-02): the backend's own
+    // MotoFareController.getMyTripsAsRider ("/trips") is the exact symmetric
+    // counterpart of getMyTripsAsDriver ("/earnings") above -- same MotoFareTripDto
+    // shape, same pagination -- but had zero caller on any platform since the feature
+    // shipped 2026-08-27. A rider who tapped to pay a moto-taxi fare had no way to see
+    // their own trip history, only the driver side of this same feature was ever wired.
+    @GET("api/v1/moto-fare/trips")
+    suspend fun getMyMotoFareTripsAsRider(@Query("page") page: Int = 0, @Query("size") size: Int = 20): MotoFareEarningsResponse
+
     @POST("api/v1/support/tickets")
     suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse
 

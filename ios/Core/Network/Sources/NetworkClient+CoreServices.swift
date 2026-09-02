@@ -117,6 +117,16 @@ extension NetworkClient {
         try await get("api/v1/moto-fare/earnings?page=\(page)&size=\(size)")
     }
 
+    // Real gap found live (uncalled-endpoint sweep, 2026-09-02): the backend's own
+    // MotoFareController.getMyTripsAsRider ("/trips") is the exact symmetric
+    // counterpart of getMyTripsAsDriver ("/earnings") above -- same MotoFareTripDto
+    // shape, same pagination -- but had zero caller on any platform since the feature
+    // shipped 2026-08-27. A rider who tapped to pay a moto-taxi fare had no way to see
+    // their own trip history, only the driver side of this same feature was ever wired.
+    public func getMyMotoFareTripsAsRider(page: Int = 0, size: Int = 20) async throws -> MotoFareEarningsResponse {
+        try await get("api/v1/moto-fare/trips?page=\(page)&size=\(size)")
+    }
+
     public func getMyCard() async throws -> CardResponse { try await get("api/v1/card/my-card") }
 
     public func getCardTransactions() async throws -> CardTransactionsResponse { try await get("api/v1/card/transactions") }

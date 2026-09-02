@@ -58,24 +58,27 @@ import java.util.UUID
 private val MIN_FARE = BigDecimal("400")
 private val MAX_FARE = BigDecimal("6000")
 
-// Real driver earnings summary (uncalled-endpoint sweep, 2026-08-29) -- mirrors
-// ride-hailing's own "This week" earnings card in shape, but moto-fare's /earnings
-// endpoint returns a flat trip list, not day-bucketed totals, so the aggregate is
-// summed client-side over whatever page is fetched.
+// Real driver earnings / rider trip-history summary -- mirrors ride-hailing's own
+// "This week" earnings card in shape, but moto-fare's /earnings and /trips endpoints
+// both return a flat trip list, not day-bucketed totals, so the aggregate is summed
+// client-side over whatever page is fetched. Shared between both roles
+// (uncalled-endpoint sweep, 2026-09-02: the rider side of this same real component
+// was never built, only the driver side was, since the driver's own
+// uncalled-endpoint fix on 2026-08-29).
 @Composable
-private fun MotoFareEarningsSummary(trips: List<MotoFareTripDto>, totalElements: Long) {
+private fun MotoFareTripSummary(trips: List<MotoFareTripDto>, totalElements: Long, isDriver: Boolean) {
     val totalFare = trips.sumOf { it.fare.toDouble() }
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text("Your fares", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(if (isDriver) "Your fares" else "Your trips", fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text("Fares collected", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                Text(if (isDriver) "Fares collected" else "Trips paid", fontSize = 11.sp, color = Ids.colors.textSecondary)
                 Text("$totalElements", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
             Column {
                 Text("Total (last ${trips.size})", fontSize = 11.sp, color = Ids.colors.textSecondary)
-                Text("${formatMoneyMotoFare(totalFare)} RWF", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ids.colors.success)
+                Text("${formatMoneyMotoFare(totalFare)} RWF", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = if (isDriver) Ids.colors.success else Ids.colors.textPrimary)
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
@@ -88,9 +91,40 @@ private fun MotoFareEarningsSummary(trips: List<MotoFareTripDto>, totalElements:
     }
 }
 
+// Real rider-side trip history (uncalled-endpoint sweep, 2026-09-02) -- see
+// getMyMotoFareTripsAsRider's own doc comment on ApiService.kt. A rider only ever
+// pays by showing their existing payment code to a driver, so unlike the driver
+// there's no scan/collect action here -- just their own past trips.
 @Composable
-fun MotoFareCollectScreen(onBack: () -> Unit) {
-    BackHandler(onBack = onBack)
+private fun MotoFareRiderTripsContent() {
+    var trips by remember { mutableStateOf<List<MotoFareTripDto>?>(null) }
+    var totalElements by remember { mutableStateOf(0L) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                val result = NetworkClient.apiService.getMyMotoFareTripsAsRider()
+                trips = result.trips
+                totalElements = result.totalElements
+            } catch (_: Exception) {
+                trips = emptyList()
+            }
+        }
+    }
+
+    when {
+        trips == null -> Text("Loading…", fontSize = 13.sp, color = Ids.colors.textSecondary)
+        trips!!.isEmpty() -> Text(
+            "No moto-taxi trips yet -- show your payment code to a driver next time you tap to pay.",
+            fontSize = 13.sp, color = Ids.colors.textSecondary,
+        )
+        else -> MotoFareTripSummary(trips = trips!!, totalElements = totalElements, isDriver = false)
+    }
+}
+
+@Composable
+private fun MotoFareDriverCollectContent() {
     var code by remember { mutableStateOf<String?>(null) }
     var nfcUnavailable by remember { mutableStateOf(false) }
     var fare by remember { mutableStateOf(MIN_FARE.toFloat()) }
@@ -143,71 +177,100 @@ fun MotoFareCollectScreen(onBack: () -> Unit) {
         }
     }
 
+    when {
+        collected != null -> {
+            val result = collected!!
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Collected", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.success)
+                Text("${formatMoneyMotoFare(result.fare)} RWF", fontSize = 16.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(10.dp))
+                        .background(Ids.colors.brand).pressScaleClickable(onClick = ::reset).padding(vertical = 14.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text("Collect next fare", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        code == null -> {
+            Column {
+                earnings?.takeIf { it.isNotEmpty() }?.let { trips ->
+                    MotoFareTripSummary(trips = trips, totalElements = earningsTotal, isDriver = true)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Text("Scan the rider's payment code", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Ask the rider to open itunda and tap to show their payment code, then hold your phones back-to-back. No NFC? Point your camera at their QR instead. Fares go straight into your own itunda account -- no fee.",
+                    fontSize = 11.sp, color = Ids.colors.textSecondary,
+                )
+                TransitNfcListener(onCodeRead = { code = it }, onUnavailable = { nfcUnavailable = true })
+                if (nfcUnavailable) {
+                    Column(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp))) {
+                        CameraQrScanner(onScanned = { code = it }, modifier = Modifier.fillMaxSize())
+                    }
+                }
+            }
+        }
+        else -> {
+            Column {
+                Text("Collect fare", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Slider(
+                        value = fare, onValueChange = { fare = it },
+                        valueRange = MIN_FARE.toFloat()..MAX_FARE.toFloat(), steps = 55,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("${formatMoneyMotoFare(fare)} RWF", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                        .background(Ids.colors.brand).pressScaleClickable(enabled = !busy, onClick = ::collect)
+                        .padding(vertical = 14.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text(if (busy) "Collecting…" else "Collect ${formatMoneyMotoFare(fare)} RWF", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+// Real rider/driver sub-tab toggle (uncalled-endpoint sweep, 2026-09-02), mirroring
+// RidesView/DesignatedDriverView's own "customer side vs. provider side" pattern --
+// most people opening this screen are riders checking their own trips, not drivers
+// about to scan a code, so "My trips" is the default, not "Collect".
+@Composable
+fun MotoFareCollectScreen(onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    var isDriverTab by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        BackTopBar(title = "Collect moto fare", onBack = onBack)
+        BackTopBar(title = "Moto fare", onBack = onBack)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                when {
-                    collected != null -> {
-                        val result = collected!!
-                        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Collected", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ids.colors.success)
-                            Text("${formatMoneyMotoFare(result.fare)} RWF", fontSize = 16.sp)
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(10.dp))
-                                    .background(Ids.colors.brand).pressScaleClickable(onClick = ::reset).padding(vertical = 14.dp),
-                                horizontalArrangement = Arrangement.Center,
-                            ) {
-                                Text("Collect next fare", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                    code == null -> {
-                        Column {
-                            earnings?.takeIf { it.isNotEmpty() }?.let { trips ->
-                                MotoFareEarningsSummary(trips = trips, totalElements = earningsTotal)
-                                Spacer(modifier = Modifier.height(8.dp))
-                            }
-                            Text("Scan the rider's payment code", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text(
-                                "Ask the rider to open itunda and tap to show their payment code, then hold your phones back-to-back. No NFC? Point your camera at their QR instead. Fares go straight into your own itunda account -- no fee.",
-                                fontSize = 11.sp, color = Ids.colors.textSecondary,
-                            )
-                            TransitNfcListener(onCodeRead = { code = it }, onUnavailable = { nfcUnavailable = true })
-                            if (nfcUnavailable) {
-                                Column(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp))) {
-                                    CameraQrScanner(onScanned = { code = it }, modifier = Modifier.fillMaxSize())
-                                }
-                            }
-                        }
-                    }
-                    else -> {
-                        Column {
-                            Text("Collect fare", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Slider(
-                                    value = fare, onValueChange = { fare = it },
-                                    valueRange = MIN_FARE.toFloat()..MAX_FARE.toFloat(), steps = 55,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text("${formatMoneyMotoFare(fare)} RWF", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                    .background(Ids.colors.brand).pressScaleClickable(enabled = !busy, onClick = ::collect)
-                                    .padding(vertical = 14.dp),
-                                horizontalArrangement = Arrangement.Center,
-                            ) {
-                                Text(if (busy) "Collecting…" else "Collect ${formatMoneyMotoFare(fare)} RWF", color = Color.White, fontWeight = FontWeight.Bold)
-                            }
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    listOf(false to "My trips", true to "Collect").forEach { (tab, label) ->
+                        Row(
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                                .background(if (isDriverTab == tab) Ids.colors.brand else Color.Transparent)
+                                .pressScaleClickable(onClick = { isDriverTab = tab }).padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isDriverTab == tab) Color.White else Ids.colors.textSecondary)
                         }
                     }
                 }
+            }
+            item {
+                if (isDriverTab) MotoFareDriverCollectContent() else MotoFareRiderTripsContent()
             }
         }
     }

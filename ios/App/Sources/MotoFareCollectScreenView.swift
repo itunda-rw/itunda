@@ -24,8 +24,18 @@ private func formatAmount(_ value: Int) -> String {
 private let minFare: Double = 400
 private let maxFare: Double = 6000
 
+private enum MotoFareTab {
+    case trips
+    case collect
+}
+
 struct MotoFareCollectScreenView: View {
     var onBack: () -> Void = {}
+    // Real rider/driver sub-tab toggle (uncalled-endpoint sweep, 2026-09-02),
+    // mirroring RidesView/DesignatedDriverView's own "customer side vs. provider
+    // side" pattern -- most people opening this screen are riders checking their
+    // own trips, not drivers about to scan a code, so trips is the default.
+    @State private var tab: MotoFareTab = .trips
     @State private var code: String?
     @State private var nfcUnavailable = false
     @State private var scanUnavailable = false
@@ -38,6 +48,11 @@ struct MotoFareCollectScreenView: View {
     // existed with zero way for a driver to ever see what they'd collected.
     @State private var earningsTrips: [MotoFareTripDto] = []
     @State private var earningsTotal = 0
+    // Real gap found live (uncalled-endpoint sweep, 2026-09-02): see
+    // getMyMotoFareTripsAsRider's own doc comment on NetworkClient+CoreServices.swift.
+    @State private var riderTrips: [MotoFareTripDto] = []
+    @State private var riderTripsTotal = 0
+    @State private var riderTripsLoaded = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,26 +61,32 @@ struct MotoFareCollectScreenView: View {
                     IDS.Icons.back(size: 17, color: IDS.Colors.textPrimary, relativeTo: .body)
                 }.accessibilityLabel("Back")
                 Spacer()
-                Text("Collect moto fare").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                Text("Moto fare").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Color.clear.frame(width: 20)
             }
             .padding()
 
+            tabRow
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if let error {
-                        Text(error).font(.footnote).foregroundColor(.red)
-                    }
-                    if let collected {
-                        collectedView(collected)
-                    } else if let code {
-                        collectFormView(code)
+                    if tab == .trips {
+                        riderTripsContent
                     } else {
-                        if !earningsTrips.isEmpty {
-                            earningsSummaryView
+                        if let error {
+                            Text(error).font(.footnote).foregroundColor(.red)
                         }
-                        scanView
+                        if let collected {
+                            collectedView(collected)
+                        } else if let code {
+                            collectFormView(code)
+                        } else {
+                            if !earningsTrips.isEmpty {
+                                tripSummaryView(trips: earningsTrips, total: earningsTotal, isDriver: true)
+                            }
+                            scanView
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -77,8 +98,45 @@ struct MotoFareCollectScreenView: View {
             nfcReader.onUnavailable = { nfcUnavailable = true }
             nfcReader.start()
             loadEarnings()
+            loadRiderTrips()
         }
         .onDisappear { nfcReader.stop() }
+    }
+
+    private var tabRow: some View {
+        HStack(spacing: 4) {
+            ForEach([MotoFareTab.trips, .collect], id: \.self) { candidate in
+                Button(action: { tab = candidate }) {
+                    Text(candidate == .trips ? "My trips" : "Collect")
+                        .font(.subheadline).bold()
+                        .foregroundColor(tab == candidate ? .white : IDS.Colors.textTertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(tab == candidate ? IDS.Colors.brand : Color.clear)
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .padding(4)
+        .background(IDS.Colors.backgroundTertiary)
+        .cornerRadius(10)
+        .padding(.horizontal)
+    }
+
+    // Real rider-side trip history (uncalled-endpoint sweep, 2026-09-02) -- a rider
+    // only ever pays by showing their existing payment code to a driver, so unlike
+    // the driver there's no scan/collect action here -- just their own past trips.
+    private var riderTripsContent: some View {
+        Group {
+            if !riderTripsLoaded {
+                ProgressView().frame(maxWidth: .infinity).padding(40)
+            } else if riderTrips.isEmpty {
+                Text("No moto-taxi trips yet -- show your payment code to a driver next time you tap to pay.")
+                    .font(.footnote).foregroundColor(IDS.Colors.textTertiary)
+            } else {
+                tripSummaryView(trips: riderTrips, total: riderTripsTotal, isDriver: false)
+            }
+        }
     }
 
     private func loadEarnings() {
@@ -90,24 +148,37 @@ struct MotoFareCollectScreenView: View {
         }
     }
 
-    // Mirrors ride-hailing's own "This week" earnings card in shape, but
-    // moto-fare's /earnings endpoint returns a flat trip list, not day-bucketed
-    // totals, so the aggregate is summed client-side over whatever page is fetched.
-    private var earningsSummaryView: some View {
+    private func loadRiderTrips() {
+        Task {
+            let result = try? await NetworkClient.shared.getMyMotoFareTripsAsRider()
+            riderTrips = result?.trips ?? []
+            riderTripsTotal = result?.totalElements ?? 0
+            riderTripsLoaded = true
+        }
+    }
+
+    // Real driver earnings / rider trip-history summary -- mirrors ride-hailing's
+    // own "This week" earnings card in shape, but moto-fare's /earnings and /trips
+    // endpoints both return a flat trip list, not day-bucketed totals, so the
+    // aggregate is summed client-side over whatever page is fetched. Shared between
+    // both roles (uncalled-endpoint sweep, 2026-09-02: the rider side of this same
+    // real view was never built, only the driver side was, since the driver's own
+    // uncalled-endpoint fix on 2026-08-29).
+    private func tripSummaryView(trips: [MotoFareTripDto], total: Int, isDriver: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Your fares").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text(isDriver ? "Your fares" : "Your trips").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
             HStack {
                 VStack(alignment: .leading) {
-                    Text("Fares collected").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
-                    Text("\(earningsTotal)").font(.headline)
+                    Text(isDriver ? "Fares collected" : "Trips paid").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                    Text("\(total)").font(.headline)
                 }
                 Spacer()
                 VStack(alignment: .trailing) {
-                    Text("Total (last \(earningsTrips.count))").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
-                    Text("\(formatMoney(earningsTrips.reduce(0) { $0 + $1.fare })) RWF").font(.headline).foregroundColor(.green)
+                    Text("Total (last \(trips.count))").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                    Text("\(formatMoney(trips.reduce(0) { $0 + $1.fare })) RWF").font(.headline).foregroundColor(isDriver ? .green : IDS.Colors.textPrimary)
                 }
             }
-            ForEach(earningsTrips.prefix(5)) { trip in
+            ForEach(trips.prefix(5)) { trip in
                 HStack {
                     Text(trip.createdAt).font(.caption).foregroundColor(IDS.Colors.textTertiary)
                     Spacer()
