@@ -15,22 +15,34 @@ Toss's actual architecture in [docs/TOSS_ARCHITECTURE_FACTS.md](docs/TOSS_ARCHIT
 Top-level layout (restructured 2026-07-11 for naming clarity — see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5):
 
-- `services/backend/`: the canonical backend — real Kotlin + Spring Boot + MySQL, covering
-  auth/wallet/transfer/bills/loans/contacts/stocks/savings/insurance/notifications/discover/system,
-  verified live against real MySQL.
+- `services/backend/`: the canonical backend — real Kotlin + Spring Boot + Spring Data JPA +
+  MySQL + Flyway, covering every product vertical (auth/wallet/transfer/bills/loans/contacts/
+  stocks/savings/insurance/eats/commerce+shop/marketplace+hood/rideshare/transit/certificate/
+  agents/partners/identity/knowledge/notifications/discover/system and more), verified live
+  against real MySQL. 13 of its modules (card/insurance/agents/transit/certificate/bills/
+  vehicle/partners/identity/overview/knowledge/notifications/analytics) are also independently
+  deployable as their own Spring Boot services — see `docs/DEPLOYMENT.md`.
 - `services/microservices/`: a real, independently-deployable per-bounded-context MSA
   prototype (`payment-service`, `ledger-service`) — less feature coverage than `services/backend`
   but architecturally closer to Toss's actual documented MSA pattern. Not reconciled with
   `services/backend` yet.
-- `services/micro-frontends/`, `services/api-gateway/`: web/BFF surfaces, demo-to-stub depth.
+- `services/micro-frontends/`: 7 real Vite/Module-Federation apps — `bank-mfe` (the real,
+  deployed consumer super-app), `host-app` (a mostly-unused 2-tab demo shell), `kyc-mfe`,
+  `ops-mfe` (the real internal admin/ops frontend), `merchant-mfe`, `maps-mfe`, `pay-checkout`.
+- `services/api-gateway/`: a real Express reverse proxy — rate limiting (incl. a stricter
+  money-movement limiter), a hand-rolled per-target circuit breaker, `X-Request-ID`
+  propagation, security headers, Prometheus metrics, bounded upstream timeouts with fail-fast
+  503/504 — not a stub.
 - `services/blog/`: the `tech.itunda.rw` engineering blog, modeled on toss.tech.
 - `packages/saronite/`: mini-app SDK modeled on Toss's real open-source `granite` — currently a
   hand-rolled approximation, not yet built on Granite itself.
 - `android/`, `ios/`: native mobile shells with real bounded-context modules (design system,
-  ledger, risk, identity, banking, payments) — Android verified compiling and running on-device;
-  iOS ported but not build-verified in this environment (see docs/ARCHITECTURE.md §3). Each
-  platform's own `sdk/pay`/`SDK/Pay` module holds itunda's own (in-progress) payment SDK,
-  `ItundaPayments`.
+  ledger, risk, identity, banking, payments) — both platforms verified building and running
+  (Android: `./gradlew :app:compileDebugKotlin` / real on-device runs; iOS: full `ItundaApp`
+  scheme `xcodebuild` against the Simulator, `BUILD SUCCEEDED`, a routine part of this repo's
+  own verification habit — see `docs/ARCHITECTURE.md` §3 for the fuller per-Feature-module
+  breakdown). Each platform's own `sdk/pay`/`SDK/Pay` module holds itunda's own (in-progress)
+  payment SDK, `ItundaPayments`.
 - `infra/`: Kubernetes manifests and other infrastructure config.
 
 ## Toss-Aligned Product System
@@ -111,8 +123,9 @@ yarn dev:ecosystem:local
 That starts `infra/docker-compose.yml` first and maps MySQL/Redis/Kafka to `3307`, `16379`,
 and `9092`.
 
-If you only want the web shell, `yarn dev` now starts `bank-mfe`, `kyc-mfe`, and `host-app`
-together instead of only the host shell.
+If you only want the web shell, `yarn dev` now starts `bank-mfe`, `kyc-mfe`, `ops-mfe`, and
+`host-app` together instead of only the host shell. `merchant-mfe`/`maps-mfe`/`pay-checkout`
+are 3 more real micro-frontends, run individually (`yarn workspace <name> run dev`).
 
 Manual pieces, if you want them separately:
 
