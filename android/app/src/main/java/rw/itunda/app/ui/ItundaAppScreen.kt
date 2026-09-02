@@ -185,6 +185,7 @@ import rw.itunda.feature.credit.impl.LoansScreen
 import rw.itunda.feature.credit.impl.CreditScoreScreen
 import rw.itunda.feature.credit.impl.StudentLoanScreen
 import rw.itunda.feature.credit.impl.VupLoanScreen
+import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
 import rw.itunda.core.designsystem.theme.AccentTeal
@@ -384,17 +385,9 @@ private sealed class SavingsFlowStep : java.io.Serializable {
     data class Success(val headline: String, val message: String, val celebratory: Boolean) : SavingsFlowStep()
 }
 
-// Real per-bucket detail screen (2026-08-31, direct user-supplied Toss Bank
-// screenshots: 보관하기/매일모으기 each get their own full-screen ledger). Tapping a
-// bucket's row now opens its own detail screen (BucketDetailScreen.kt) instead of
-// jumping straight into the deposit/claim flow -- Fill/Withdraw live INSIDE that
-// screen instead, matching the real reference. Interest Jar's row keeps no
-// secondary action (never had one); Savings Goal rows keep their existing
-// secondaryAction (quick Withdraw) untouched alongside this.
-private sealed class BucketDetailTarget : java.io.Serializable {
-    data object InterestJar : BucketDetailTarget()
-    data class Goal(val id: String, val name: String, val currentAmount: Double, val targetAmount: Double) : BucketDetailTarget()
-}
+// BucketDetailTarget moved to :core:network/BucketDetailTarget.kt (2026-09-02,
+// Banking Feature-module decomposition slice 4) so :features:banking:impl's
+// BankHubScreen can share the same type.
 
 @Composable
 fun ItundaAppScreen(
