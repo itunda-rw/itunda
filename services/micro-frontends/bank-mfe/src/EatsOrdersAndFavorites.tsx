@@ -13,10 +13,12 @@ import {
 import { EatsOrderCard, EATS_STATUS_LABEL, RESTAURANT_STATUS_CHAIN } from './EatsOrderCard';
 import { ReviewOrderCard, TipRiderPrompt, RestaurantReviewsManageView } from './EatsReviews';
 import { ShareFavoritesModal, WishlistButton, nextInChain } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSeller }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null; onMessageSeller: (conversationId: string) => void }) {
   const { t } = useI18n();
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
+  const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [messagingOrderId, setMessagingOrderId] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (orders.length === 0) return <EmptyState message="No orders yet — order from a nearby restaurant and it'll show up here." />;
 
   return (
@@ -112,6 +114,7 @@ export function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessa
 export function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: FavoriteRestaurant) => void; onChanged: () => void }) {
   const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteRestaurant[] | null>(null);
+  const showSkeleton = useDeferredLoading(favorites === null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -156,7 +159,7 @@ export function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favori
     );
   }
   if (favorites === null) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
   if (favorites.length === 0) {
     return <EmptyState message="No favorite restaurants yet. Tap the heart on a restaurant to save it here." />;
@@ -200,6 +203,7 @@ export function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favori
 export function RestaurantOrdersView() {
   const { t } = useI18n();
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
+  const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
@@ -261,7 +265,7 @@ export function RestaurantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (orders.length === 0) return null;
 
   return (

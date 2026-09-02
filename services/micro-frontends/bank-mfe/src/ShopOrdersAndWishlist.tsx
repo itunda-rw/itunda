@@ -13,10 +13,12 @@ import {
 import { ProductImageThumb, ProductPriceBlock } from './ProductDisplay';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { nextInChain } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (order: CommerceOrder) => void; reorderingId: string | null }) {
   const { t } = useI18n();
   const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
+  const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
@@ -49,7 +51,7 @@ export function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (orders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
 
   const renderAction = (o: CommerceOrder) => {
@@ -96,6 +98,7 @@ export function MyCommerceOrdersView({ onReorder, reorderingId }: { onReorder: (
 export function MerchantOrdersView() {
   const { t } = useI18n();
   const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
+  const showSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
@@ -139,7 +142,7 @@ export function MerchantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (orders === null) return showSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (orders.length === 0) return null;
 
   return (
@@ -171,6 +174,7 @@ export function MerchantOrdersView() {
 export function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingMerchant) => void }) {
   const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteProduct[] | null>(null);
+  const showSkeleton = useDeferredLoading(favorites === null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -197,7 +201,7 @@ export function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: Sh
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (favorites === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (favorites.length === 0) return <EmptyState message="No saved items yet -- tap ♡ on any product to save it here." />;
 
   return (
