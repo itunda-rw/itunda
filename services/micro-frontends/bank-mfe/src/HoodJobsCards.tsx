@@ -6,6 +6,7 @@ import { ApiError, getStoredUser } from './lib/api';
 import { applyToJob, createJobPost, fetchApplicationsForJobPost, fetchJobPost, fetchJobPostReviews, fetchMyFavoriteJobPosts, fetchMyJobApplications, markJobPostFilled, removeJobPost, removeJobPostFavorite, respondToJobApplication, submitJobPostReview, type FavoriteJobPost, type JobApplication, type JobCategory, type JobPayType, type JobPost } from './lib/jobs';
 import { type HoodReview } from './lib/marketplace';
 import { HoodReportButton, HoodReviewForm, HoodReviewResultView, TrustBadge, WishlistButton } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; onCreated: () => void }) {
   const { t } = useI18n();
@@ -131,6 +132,7 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [showApplicants, setShowApplicants] = useState(false);
   const [applications, setApplications] = useState<JobApplication[] | null>(null);
+  const showApplicationsSkeleton = useDeferredLoading(applications === null);
   const [respondingToId, setRespondingToId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -340,7 +342,7 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
             {showApplicants ? 'Hide applicants' : 'View applicants'}
           </button>
           {showApplicants && (
-            applications === null ? <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} /> :
+            applications === null ? (showApplicationsSkeleton ? <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) :
             applications.filter((a) => a.status === 'PENDING').length === 0 ? (
               <EmptyState message="No applications yet — apply to a job post and it'll show up here." />
             ) : (
@@ -377,6 +379,7 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
 export function MyJobApplicationsView() {
   const { t } = useI18n();
   const [applications, setApplications] = useState<Array<{ application: JobApplication; title: string | null }> | null>(null);
+  const showApplicationsSkeleton = useDeferredLoading(applications === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -394,7 +397,7 @@ export function MyJobApplicationsView() {
   }, []);
 
   if (error) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
-  if (applications === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (applications === null) return showApplicationsSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (applications.length === 0) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You haven't applied to any jobs yet.</p>;
 
   return (
@@ -423,6 +426,7 @@ export function MyJobApplicationsView() {
 export function JobPostWishlistView() {
   const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteJobPost[] | null>(null);
+  const showFavoritesSkeleton = useDeferredLoading(favorites === null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -449,7 +453,7 @@ export function JobPostWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (favorites === null) return showFavoritesSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (favorites.length === 0) return <EmptyState message="No saved jobs yet -- tap ♡ on any job post to save it here." />;
 
   return (

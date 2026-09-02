@@ -7,13 +7,16 @@ import { addCommunityComment, fetchCommunityCategories, fetchCommunityComments, 
 import { fetchProfile } from './lib/neighborhood';
 import { NewCommunityPostCard, CommentNotificationToggle, CommunityPostCard, MeetupSessionsSection, GroupBuyFinalizeSection } from './HoodCommunityCards';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
   const { t } = useI18n();
   const [post, setPost] = useState<CommunityPost | null>(null);
+  const showPostSkeleton = useDeferredLoading(!post);
   const [authorName, setAuthorName] = useState('');
   const [likedByMe, setLikedByMe] = useState(false);
   const [comments, setComments] = useState<{ comment: CommunityComment; authorName: string }[] | null>(null);
+  const showCommentsSkeleton = useDeferredLoading(comments === null);
   const [commentBody, setCommentBody] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [liking, setLiking] = useState(false);
@@ -65,7 +68,7 @@ export function CommunityPostDetailView({ postId, onBack }: { postId: string; on
     <div>
       <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {!post && !error && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {!post && !error && showPostSkeleton && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {post && (
         <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{post.title}</p>
@@ -84,7 +87,7 @@ export function CommunityPostDetailView({ postId, onBack }: { postId: string; on
       {post && post.category === 'meetup' && <MeetupSessionsSection post={post} currentUserId={currentUser?.id} />}
       {post && post.category === 'group_buy' && <GroupBuyFinalizeSection post={post} currentUserId={currentUser?.id} />}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
-      {comments === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {comments === null && showCommentsSkeleton && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {comments !== null && comments.length === 0 && (
         <EmptyState message="No comments yet -- be the first to reply." />
       )}
@@ -121,6 +124,7 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
   const [topics, setTopics] = useState<CommunityCategory[]>([]);
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
+  const showPostsSkeleton = useDeferredLoading(posts === null);
   // Real 같이해요 (join-together) group join counts (2026-07-24) -- see TrustBadge's
   // sibling doc comments; closes docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
   const [joinedCounts, setJoinedCounts] = useState<JoinedCounts>({});
@@ -274,7 +278,7 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
       {error && (
         <ErrorCard message={error} onRetry={load} />
       )}
-      {!error && posts === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {!error && posts === null && showPostsSkeleton && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
         // Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
         // from the same-day Android/iOS fix): say what's missing AND what fixes

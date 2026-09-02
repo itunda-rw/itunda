@@ -17,6 +17,7 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { DeviceStepUpPrompt } from './DeviceStepUpPrompt';
 import { Sparkline } from './Sparkline';
 import { StockDetailSheet } from './StockDetailSheet';
+import { useDeferredLoading } from './useDeferredLoading';
 import {
   fetchPortfolio, fetchPortfolioHistory, fetchStocks, fetchWatchlist, fundInvestmentAccount,
   type Portfolio, type PortfolioValuePoint, type Stock,
@@ -105,9 +106,12 @@ export function StocksView() {
   // doc comment for the full sourced account.
   const [marketFilter, setMarketFilter] = useState<'ALL' | 'RSE' | 'NASDAQ'>('ALL');
   const [stocks, setStocks] = useState<Stock[] | null>(null);
+  const showStocksSkeleton = useDeferredLoading(stocks === null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const showPortfolioSkeleton = useDeferredLoading(portfolio === null);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioValuePoint[] | null>(null);
   const [watchlist, setWatchlist] = useState<Stock[] | null>(null);
+  const showWatchlistSkeleton = useDeferredLoading(watchlist === null);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,7 +203,7 @@ export function StocksView() {
       )}
 
       {subTab === 'MARKET' && (
-        stocks === null ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : (
+        stocks === null ? (showStocksSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
               {([{ id: 'ALL', label: 'All' }, { id: 'RSE', label: 'Rwanda (RSE)' }, { id: 'NASDAQ', label: 'Overseas' }] as const).map(({ id, label }) => (
@@ -222,7 +226,7 @@ export function StocksView() {
       )}
 
       {subTab === 'PORTFOLIO' && (
-        portfolio === null ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : (
+        portfolio === null ? (showPortfolioSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) : (
           // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- summary
           // section on a multi-section screen.
           <div>
@@ -270,7 +274,7 @@ export function StocksView() {
       )}
 
       {subTab === 'WATCHLIST' && (
-        watchlist === null ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : watchlist.length === 0 ? (
+        watchlist === null ? (showWatchlistSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) : watchlist.length === 0 ? (
           // Real fix (2026-08-24, flat-design sweep): dropped itunda-card -- lone
           // conditional empty-state message.
           <EmptyState message="No stocks watched yet. Tap the star on any stock in the Market tab to follow it." />
