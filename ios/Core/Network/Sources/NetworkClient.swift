@@ -4550,11 +4550,21 @@ public struct EatsReviewDto: Decodable {
     // 2026-08-04, Android already has it, this is the first iOS client.
     public let photoUrl: String?
     public let createdAt: String
+    // Real Coupang/Naver-style "도움돼요" (helpful) counter -- see backend
+    // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
+    // bank-mfe/Android with zero iOS client until now -- found via a
+    // cross-platform-parity check.
+    public let helpfulCount: Int
 }
 public struct EatsReviewResponse: Decodable { public let success: Bool; public let review: EatsReviewDto }
 public struct EatsReviewsResponse: Decodable { public let success: Bool; public let reviews: [EatsReviewDto] }
 public struct EatsRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 public struct ReplyToEatsReviewRequest: Encodable { public let reply: String }
+public struct ToggleEatsReviewHelpfulResponse: Decodable { public let success: Bool; public let helpful: Bool }
+public struct ReportEatsReviewRequest: Encodable {
+    public let reason: String
+    public init(reason: String) { self.reason = reason }
+}
 
 public struct EatsOrderDto: Decodable, Identifiable {
     public let id: String
@@ -6018,6 +6028,22 @@ extension NetworkClient {
 
     public func replyToRestaurantReview(_ reviewId: String, reply: String) async throws -> EatsReviewResponse {
         try await authenticatedPost("api/v1/eats/reviews/\(reviewId)/reply", body: ReplyToEatsReviewRequest(reply: reply))
+    }
+
+    // Real Coupang/Naver-style "도움돼요" (helpful) idempotent toggle -- see backend
+    // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
+    // bank-mfe/Android with zero iOS client until now -- found via a
+    // cross-platform-parity check.
+    public func toggleEatsReviewHelpful(_ reviewId: String) async throws -> ToggleEatsReviewHelpfulResponse {
+        try await authenticatedPost("api/v1/eats/reviews/\(reviewId)/helpful", body: EmptyBody())
+    }
+
+    // Real 배달의민족 리뷰 신고하기 (report a review) -- see backend
+    // EatsReviewService.reportReview's own doc comment. Genuinely NOT covered by the
+    // generic HoodReportButton mechanism (no REVIEW target exists there), same
+    // reasoning bank-mfe's own lib/eats.ts doc comment already established.
+    public func reportEatsReview(_ reviewId: String, reason: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/eats/reviews/\(reviewId)/report", body: ReportEatsReviewRequest(reason: reason))
     }
 
     public func searchDeliveryAddress(_ query: String) async throws -> AddressSearchResponse {

@@ -1819,11 +1819,18 @@ data class EatsReviewDto(
     // supplies, never an upload/storage pipeline.
     val photoUrl: String? = null,
     val createdAt: String,
+    // Real Coupang/Naver-style "도움돼요" (helpful) counter -- see backend
+    // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero Android client until now -- found via a cross-platform-parity
+    // check.
+    val helpfulCount: Long = 0,
 )
 data class EatsReviewResponse(val success: Boolean, val review: EatsReviewDto)
 data class EatsReviewsResponse(val success: Boolean, val reviews: List<EatsReviewDto>)
 data class ReplyToEatsReviewRequest(val reply: String)
 data class EatsRatingResponse(val success: Boolean, val average: Double?, val count: Long)
+data class ToggleEatsReviewHelpfulResponse(val success: Boolean, val helpful: Boolean)
+data class ReportEatsReviewRequest(val reason: String, val details: String? = null)
 
 data class EatsOrderDto(
     val id: String,
@@ -3952,6 +3959,22 @@ interface ApiService {
 
     @POST("api/v1/eats/reviews/{reviewId}/reply")
     suspend fun replyToRestaurantReview(@Path("reviewId") reviewId: String, @Body request: ReplyToEatsReviewRequest): EatsReviewResponse
+
+    // Real Coupang/Naver-style "도움돼요" (helpful) idempotent toggle -- see backend
+    // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero Android client until now -- found via a cross-platform-parity
+    // check.
+    @POST("api/v1/eats/reviews/{reviewId}/helpful")
+    suspend fun toggleEatsReviewHelpful(@Path("reviewId") reviewId: String): ToggleEatsReviewHelpfulResponse
+
+    // Real 배달의민족 리뷰 신고하기 (report a review) -- see backend
+    // EatsReviewService.reportReview's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero Android client until now -- found via the same
+    // cross-platform-parity check. Genuinely NOT covered by the generic
+    // HoodReportButton mechanism (no REVIEW target exists there), same reasoning
+    // bank-mfe's own lib/eats.ts doc comment already established.
+    @POST("api/v1/eats/reviews/{reviewId}/report")
+    suspend fun reportEatsReview(@Path("reviewId") reviewId: String, @Body request: ReportEatsReviewRequest): SuccessResponse
 
     // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
     // only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.

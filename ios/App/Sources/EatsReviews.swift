@@ -39,6 +39,26 @@ struct RestaurantRatingBadge: View {
     // Real tag-based good points (itunda Maps redesign, 2026-08-28) -- aggregate counts
     // alongside the star rating, same as Android/web's own port.
     @State private var goodPointCounts: [String: Int] = [:]
+    // Real Coupang/Naver-style "도움돼요" (helpful) toggle -- see backend
+    // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
+    // bank-mfe/Android with zero iOS client until now -- found via a
+    // cross-platform-parity check. EatsReviewDto's fields are all `let`, so the
+    // displayed count is tracked as a local delta rather than mutating the DTO,
+    // mirroring ShopReviews.swift's own established pattern exactly.
+    @State private var helpfulVoted: Set<String> = []
+    @State private var helpfulCountDeltas: [String: Int] = [:]
+
+    private func toggleHelpful(_ reviewId: String) {
+        Task {
+            do {
+                let helpful = try await NetworkClient.shared.toggleEatsReviewHelpful(reviewId).helpful
+                if helpful { helpfulVoted.insert(reviewId) } else { helpfulVoted.remove(reviewId) }
+                helpfulCountDeltas[reviewId, default: 0] += helpful ? 1 : -1
+            } catch {
+                // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+            }
+        }
+    }
 
     var body: some View {
         Group {
@@ -74,6 +94,15 @@ struct RestaurantRatingBadge: View {
                                     if let reply = r.ownerReply, !reply.isEmpty {
                                         Text("↳ Restaurant: \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary).padding(.leading, 12)
                                     }
+                                    HStack(spacing: 10) {
+                                        let displayedCount = max(0, r.helpfulCount + (helpfulCountDeltas[r.id] ?? 0))
+                                        Button(action: { toggleHelpful(r.id) }) {
+                                            Text("👍 Helpful" + (displayedCount > 0 ? " (\(displayedCount))" : ""))
+                                                .font(.caption2)
+                                                .foregroundColor(helpfulVoted.contains(r.id) ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                                        }
+                                        ReportEatsReviewButton(reviewId: r.id)
+                                    }
                                 }
                             }
                         } else {
@@ -105,6 +134,61 @@ struct RestaurantRatingBadge: View {
             } catch {
                 reviews = []
             }
+        }
+    }
+}
+
+// Real 배달의민족 리뷰 신고하기 (report a review) -- see backend
+// EatsReviewService.reportReview's own doc comment. Same real preset-reason-picker
+// shape as bank-mfe/Android's own report button -- genuinely NOT covered by the
+// generic HoodReportButton mechanism (no REVIEW target exists there).
+private let eatsReviewReportReasons: [(reason: String, label: String)] = [
+    ("DEFAMATION", "False or defamatory"),
+    ("PERSONAL_INFO_EXPOSURE", "Shares personal information"),
+    ("OBSCENE_OR_VIOLENT", "Obscene or violent"),
+    ("UNRELATED_ABUSE", "Unrelated or abusive"),
+]
+
+struct ReportEatsReviewButton: View {
+    let reviewId: String
+    @State private var showChoices = false
+    @State private var sending = false
+    @State private var message: String?
+
+    var body: some View {
+        Group {
+            if let message {
+                Text(message).font(.caption2).foregroundColor(message.hasPrefix("Thanks") ? IDS.Colors.success : IDS.Colors.danger)
+            } else if showChoices {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(eatsReviewReportReasons, id: \.reason) { item in
+                        Button(item.label) { send(item.reason) }
+                            .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    Button("Cancel") { showChoices = false }
+                        .font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                }
+            } else {
+                Button(sending ? "Reporting…" : "Report") { showChoices = true }
+                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                    .disabled(sending)
+            }
+        }
+    }
+
+    private func send(_ reason: String) {
+        showChoices = false
+        sending = true
+        Task {
+            do {
+                _ = try await NetworkClient.shared.reportEatsReview(reviewId, reason: reason)
+                message = "Thanks. Your report was sent for review."
+            } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+                message = "You already reported this review."
+            } catch {
+                message = "Could not send the report."
+            }
+            sending = false
         }
     }
 }

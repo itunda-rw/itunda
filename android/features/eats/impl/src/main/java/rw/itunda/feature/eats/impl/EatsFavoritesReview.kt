@@ -52,6 +52,7 @@ import rw.itunda.core.network.EatsRatingResponse
 import rw.itunda.core.network.EatsReviewDto
 import rw.itunda.core.network.FavoriteRestaurantDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.ReportEatsReviewRequest
 import rw.itunda.core.network.SubmitEatsReviewRequest
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -148,6 +149,22 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
     var open by remember { mutableStateOf(false) }
     var reviews by remember { mutableStateOf<List<EatsReviewDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    // Real Coupang/Naver-style "도움돼요" (helpful) toggle -- see backend
+    // EatsReviewService.toggleHelpful's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero Android client until now -- found via a cross-platform-parity
+    // check.
+    var helpfulVoted by remember { mutableStateOf<Set<String>>(emptySet()) }
+    fun toggleHelpful(reviewId: String) {
+        coroutineScope.launch {
+            try {
+                val helpful = NetworkClient.apiService.toggleEatsReviewHelpful(reviewId).helpful
+                helpfulVoted = if (helpful) helpfulVoted + reviewId else helpfulVoted - reviewId
+                reviews = reviews?.map { if (it.id == reviewId) it.copy(helpfulCount = it.helpfulCount + (if (helpful) 1 else -1)) else it }
+            } catch (e: Exception) {
+                // Real, non-critical -- a failed helpful-vote shouldn't block reading reviews.
+            }
+        }
+    }
 
     LaunchedEffect(restaurantId) {
         try {
@@ -217,12 +234,80 @@ internal fun RestaurantRatingBadge(restaurantId: String) {
                                     modifier = Modifier.padding(start = 12.dp),
                                 )
                             }
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 2.dp)) {
+                                Text(
+                                    "👍 Helpful" + (if (rv.helpfulCount > 0) " (${rv.helpfulCount})" else ""),
+                                    color = if (rv.id in helpfulVoted) Ids.colors.brand else Ids.colors.textSecondary,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.pressScaleClickable { toggleHelpful(rv.id) },
+                                )
+                                ReportEatsReviewButton(rv.id)
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
+
+// Real 배달의민족 리뷰 신고하기 (report a review) -- see backend
+// EatsReviewService.reportReview's own doc comment. Same real preset-reason-picker
+// shape as bank-mfe's own ReportReviewButton -- genuinely NOT covered by the generic
+// HoodReportButton mechanism (no REVIEW target exists there).
+private val EATS_REVIEW_REPORT_REASONS = listOf(
+    "DEFAMATION" to "False or defamatory",
+    "PERSONAL_INFO_EXPOSURE" to "Shares personal information",
+    "OBSCENE_OR_VIOLENT" to "Obscene or violent",
+    "UNRELATED_ABUSE" to "Unrelated or abusive",
+)
+
+@Composable
+private fun ReportEatsReviewButton(reviewId: String) {
+    var showChoices by remember { mutableStateOf(false) }
+    var sending by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun send(reason: String) {
+        showChoices = false
+        sending = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.reportEatsReview(reviewId, ReportEatsReviewRequest(reason))
+                message = "Thanks. Your report was sent for review."
+            } catch (e: HttpException) {
+                message = if (e.code() == 409) "You already reported this review." else "Could not send the report."
+            } catch (e: Exception) {
+                message = "Could not send the report."
+            } finally {
+                sending = false
+            }
+        }
+    }
+
+    val currentMessage = message
+    if (currentMessage != null) {
+        Text(currentMessage, color = if (currentMessage.startsWith("Thanks")) Ids.colors.success else Ids.colors.danger, fontSize = 11.sp)
+        return
+    }
+
+    if (showChoices) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            EATS_REVIEW_REPORT_REASONS.forEach { (reason, label) ->
+                Text(label, color = Ids.colors.textSecondary, fontSize = 11.sp, modifier = Modifier.pressScaleClickable { send(reason) })
+            }
+            Text("Cancel", color = Ids.colors.textTertiary, fontSize = 11.sp, modifier = Modifier.pressScaleClickable { showChoices = false })
+        }
+        return
+    }
+
+    Text(
+        if (sending) "Reporting…" else "Report",
+        color = Ids.colors.textSecondary,
+        fontSize = 11.sp,
+        modifier = Modifier.pressScaleClickable(enabled = !sending) { showChoices = true },
+    )
 }
 
 @Composable
