@@ -11,12 +11,16 @@ class RateLimitExceededException(message: String) : RuntimeException(message)
  * Fixed-window rate limiting via a single atomic Redis Lua script (INCR + conditional
  * EXPIRE) — the same class of mechanism Toss's own public Gateway write-up
  * (toss.tech/article/22910) lists as one of the Gateway's core responsibilities
- * alongside auth and circuit breaking, just scoped here to the specific hot path that
- * actually needs it (login/register) instead of a separate gateway service — itunda
- * doesn't have one, and standing one up purely to rate-limit two endpoints would be
- * solving a problem this app doesn't have yet at its current single-service scale.
+ * alongside auth and circuit breaking, applied directly at each call site instead of a
+ * separate gateway service — itunda doesn't have one, and standing one up purely for
+ * this would be solving a problem this app doesn't have yet at its current
+ * single-service scale.
  *
- * Closes SECURITY.md gap #4: "No rate limiting... no brute-force protection on login."
+ * Originally closed SECURITY.md gap #4 ("No rate limiting... no brute-force protection
+ * on login") scoped to just login/register; real coverage has since grown far past
+ * that (142 call sites across ~80 services as of 2026-09-02's Toss security research
+ * pass — savings/loans/p2p/messaging/merchant/rideshare/marketplace/etc.), so treat
+ * this class as this app's general-purpose per-key rate limiter, not a login-only tool.
  */
 @Service
 class RateLimiter(private val redisTemplate: StringRedisTemplate) {
