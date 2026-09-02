@@ -907,6 +907,7 @@ data class PresenceResponse(val success: Boolean, val presence: Map<String, Bool
 // location data" scope this mobile client inherits unchanged.
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class BoostListingRequest(val days: Int)
+data class UpdateListingPriceRequest(val price: Double)
 data class BoostTiersResponse(val success: Boolean, val tiers: Map<String, Double>)
 
 // Real "pay via itunda" Marketplace escrow (2026-07-25) -- see backend
@@ -3014,6 +3015,13 @@ interface ApiService {
     // moves, so no Idempotency-Key, unlike boostListing below.
     @POST("api/v1/marketplace/listings/{id}/bump")
     suspend fun bumpListing(@Path("id") listingId: String): ListingResponse
+
+    // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see backend
+    // MarketplaceService.updatePrice's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero Android client until now -- found via a cross-platform-parity
+    // check. Not money-moving itself, so no Idempotency-Key, matching bumpListing above.
+    @PATCH("api/v1/marketplace/listings/{id}/price")
+    suspend fun updateListingPrice(@Path("id") listingId: String, @Body request: UpdateListingPriceRequest): ListingResponse
 
     // Real seller-paid sponsored placement (2026-07-25) -- see
     // rw.itunda.marketplace.web.MarketplaceController.boostListing.

@@ -99,6 +99,7 @@ import rw.itunda.core.network.RecentlyViewedListingsStore
 import rw.itunda.core.network.MakeOfferRequest
 import rw.itunda.core.network.BoostListingRequest
 import rw.itunda.core.network.MarkSoldRequest
+import rw.itunda.core.network.UpdateListingPriceRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetKeywordAlertQuietHoursRequest
 import rw.itunda.core.network.PayEscrowRequest
@@ -924,6 +925,13 @@ private fun ListingDetailScreen(
     var markingSold by remember { mutableStateOf(false) }
     var buyerPhone by remember { mutableStateOf("") }
 
+    // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see backend
+    // MarketplaceService.updatePrice's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero Android client until now -- found via a cross-platform-parity
+    // check.
+    var editingPrice by remember { mutableStateOf(false) }
+    var newPrice by remember(listing.id) { mutableStateOf(listing.price.toInt().toString()) }
+
     // Real seller-paid sponsored placement (2026-07-25) -- see backend
     // MarketplaceService.boostListing's own doc comment.
     var showBoostPicker by remember { mutableStateOf(false) }
@@ -1241,10 +1249,43 @@ private fun ListingDetailScreen(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                 )
             }
+            if (isMine && editingPrice) {
+                OutlinedTextField(
+                    value = newPrice,
+                    onValueChange = { newPrice = it },
+                    label = { Text("New price (RWF)") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListingActionButton("Cancel", busy) { editingPrice = false }
+                    ListingActionButton(if (busy) "Saving…" else "Save", busy || (newPrice.toDoubleOrNull() ?: 0.0) <= 0.0) {
+                        busy = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.updateListingPrice(listing.id, UpdateListingPriceRequest(newPrice.toDouble()))
+                                editingPrice = false
+                                onChanged()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
-                    if (listing.status == "ACTIVE" && !markingSold) {
+                    if (listing.status == "ACTIVE" && !markingSold && !editingPrice) {
                         ListingActionButton("Mark sold", busy) { markingSold = true }
+                        // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see
+                        // backend MarketplaceService.updatePrice's own doc comment.
+                        ListingActionButton("Edit price", busy) {
+                            newPrice = listing.price.toInt().toString()
+                            editingPrice = true
+                        }
                         // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10 --
                         // see backend MarketplaceService.bumpListing's own doc comment.
                         // Free and self-serve, unlike Boost below -- a real, once-per-24h

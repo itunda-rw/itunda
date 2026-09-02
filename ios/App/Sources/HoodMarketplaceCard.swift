@@ -48,6 +48,12 @@ struct ListingCard: View {
     @State private var markingSold = false
     @State private var buyerPhone = ""
 
+    // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see backend
+    // MarketplaceService.updatePrice's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero iOS client until now -- found via a cross-platform-parity check.
+    @State private var editingPrice = false
+    @State private var newPrice = ""
+
     // Real seller-paid sponsored placement -- see backend
     // MarketplaceService.boostListing's own doc comment. Android already has this;
     // this is the first iOS client.
@@ -257,10 +263,25 @@ struct ListingCard: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.footnote)
             }
+            // Real 가격 수정 (price edit) -- see backend MarketplaceService.updatePrice's
+            // own doc comment.
+            if isMine, editingPrice {
+                TextField("New price (RWF)", text: $newPrice)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numberPad)
+                HStack(spacing: 10) {
+                    actionButton("Cancel", filled: false) { editingPrice = false }
+                    actionButton(busy ? "Saving…" : "Save", filled: true) { await updatePrice() }
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
-                    if listing.status == "ACTIVE" && !markingSold {
+                    if listing.status == "ACTIVE" && !markingSold && !editingPrice {
                         actionButton("Mark sold", filled: false) { markingSold = true }
+                        actionButton("Edit price", filled: false) {
+                            newPrice = String(Int(listing.price))
+                            editingPrice = true
+                        }
                         actionButton("Boost", filled: false) {
                             showBoostPicker = true
                             if boostTiers == nil {
@@ -491,6 +512,22 @@ struct ListingCard: View {
         defer { busy = false }
         do {
             _ = try await NetworkClient.shared.removeListing(listing.id)
+            onChanged()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func updatePrice() async {
+        guard let price = Double(newPrice), price > 0 else { return }
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.updateListingPrice(listing.id, price: price)
+            editingPrice = false
             onChanged()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)

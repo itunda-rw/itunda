@@ -2195,6 +2195,22 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    // Same shape as authenticatedPut, real PATCH method -- first real caller is
+    // updateListingPrice below (backend uses @PatchMapping, not @PutMapping).
+    func authenticatedPatch<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        return try decoder.decode(Response.self, from: data)
+    }
+
     // Real photo upload (item 152-adjacent, added 2026-08-01) -- see UploadController.kt's
     // own doc comment: POST /api/v1/uploads (multipart, 5MB cap, JPEG/PNG/WebP only)
     // stores real files on itunda-dc-a and hands back a URL any "photoUrl"/"documentUrl"
@@ -3304,6 +3320,10 @@ public struct MarkSoldRequest: Encodable { public let buyerPhoneNumber: String? 
 public struct BoostListingRequest: Encodable {
     public let days: Int
     public init(days: Int) { self.days = days }
+}
+public struct UpdateListingPriceRequest: Encodable {
+    public let price: Double
+    public init(price: Double) { self.price = price }
 }
 public struct BoostTiersResponse: Decodable { public let success: Bool; public let tiers: [String: Double] }
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
@@ -4997,6 +5017,14 @@ extension NetworkClient {
     public func getBoostTiers() async throws -> BoostTiersResponse { try await get("api/v1/marketplace/boost-tiers") }
     public func boostListing(_ listingId: String, days: Int) async throws -> ListingResponse {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/boost", body: BoostListingRequest(days: days), idempotencyKey: UUID().uuidString)
+    }
+
+    // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see backend
+    // MarketplaceService.updatePrice's own doc comment. Real, shipped on the backend +
+    // bank-mfe with zero iOS client until now -- found via a cross-platform-parity
+    // check. Not money-moving itself, so no Idempotency-Key, matching boostListing above.
+    public func updateListingPrice(_ listingId: String, price: Double) async throws -> ListingResponse {
+        try await authenticatedPatch("api/v1/marketplace/listings/\(listingId)/price", body: UpdateListingPriceRequest(price: price))
     }
 
     // Real post-transaction review with asymmetric public/private visibility
