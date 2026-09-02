@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.core.designsystem.components
 
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap

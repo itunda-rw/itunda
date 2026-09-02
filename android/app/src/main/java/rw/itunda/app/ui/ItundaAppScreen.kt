@@ -187,6 +187,7 @@ import rw.itunda.feature.credit.impl.StudentLoanScreen
 import rw.itunda.feature.credit.impl.VupLoanScreen
 import rw.itunda.feature.banking.impl.BankHubScreen
 import rw.itunda.feature.home.impl.HomeTab
+import rw.itunda.feature.pay.impl.PayTab
 import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
@@ -1755,14 +1756,29 @@ fun ItundaAppScreen(
                     // overlay from Home's QR icon or a Menu row. No BackHandler here,
                     // same as Explore/You below: a persistent bottom-nav destination,
                     // not a screen pushed on top of one.
-                    ItundaTab.Pay -> PayTab(
-                        viewModel,
+                    ItundaTab.Pay -> {
+                        val payTransactions by viewModel.transactions.collectAsState()
+                        val payContext = androidx.compose.ui.platform.LocalContext.current
+                        PayTab(
+                        transactions = payTransactions,
                         onSend = { transferStep = TransferStep.Recipient; transferFromAccount = null },
                         onCashOutAtAgent = { showAgentCash = true },
-                        onSwitchTab = { selectedTab = it },
+                        onOpenSettings = { selectedTab = ItundaTab.You },
+                        onBrowseMerchants = { selectedTab = ItundaTab.Explore },
                         onOpenSupport = { showSupport = true },
                         onOpenCard = { showCard = true },
-                    )
+                        payAMerchantSection = {
+                            rw.itunda.feature.shop.impl.PayAMerchantSection(
+                                deviceStepUpHost = { visible, onDismiss, onVerified ->
+                                    DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
+                                },
+                            )
+                        },
+                        onOpenRewardsMiniApp = {
+                            payContext.startActivity(android.content.Intent(payContext, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                        },
+                        )
+                    }
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is
                     // injected here rather than called directly inside :features:talk:impl.
@@ -2159,352 +2175,9 @@ private fun TransactionDetailScreen(
 // (2026-09-02, Banking Feature-module decomposition slice 1) -- same package,
 // zero import changes.
 
-// Real fix (2026-08-11, itunda Pay research pass -- user-provided KakaoPay/Toss
-// Pay screenshots): this whole tab was a decorative mockup -- MapPlaceholder's
-// hardcoded "5 nearby stores" text, PayFeatureCard's hardcoded "30% rewards" with
-// onClick = {} no-op buttons, and a ShellSection row with a hardcoded "RWF 31,031"
-// that had no onClick at all. Zero calls to any real Pay backend endpoint. The
-// REAL payment-collection UI (pay-by-code, pay-by-static-QR, Face Pay -- all
-// genuinely wired to rw.itunda.merchant.MerchantService.collect) already existed,
-// just misfiled inside the unrelated Shop feature where the Pay tab/Home QR icon
-// could never reach it. This is that real UI, moved to where "Pay" actually means
-// pay -- see PayAMerchantSection's own doc comment in ShopScreen.kt for why it's
-// exposed from :features:shop:impl rather than duplicated.
-private enum class PayTabMode { MY_CODE, PAY_MERCHANT }
-
-@Composable
-private fun PayTab(
-    viewModel: MainViewModel,
-    onSend: () -> Unit,
-    onCashOutAtAgent: () -> Unit,
-    onSwitchTab: (ItundaTab) -> Unit,
-    onOpenSupport: () -> Unit,
-    onOpenCard: () -> Unit,
-) {
-    // Real Toss Pay home reference (4 screenshots, 2026-08-22, direct user follow-up:
-    // "our pay home screen should also look 100% like toss pay home screen") -- real
-    // FacePay enrollment (getFacePayStatus) and real RewardsService task list
-    // (getRewardTasks/claimRewardTask, ApiService.kt), never surfaced on this tab
-    // before. See PayHomeExtras.kt's own doc comment for the honest-scoping detail
-    // (coupons/"how to pay online" omitted, no real backend for either).
-    var facePayEnrolled by remember { mutableStateOf(false) }
-    var facePayBusy by remember { mutableStateOf(false) }
-    var rewardTasks by remember { mutableStateOf<List<rw.itunda.core.network.RewardTaskDto>>(emptyList()) }
-    var rewardsTotal by remember { mutableStateOf(0.0) }
-    var claimingRewardId by remember { mutableStateOf<String?>(null) }
-    // Real itunda-issued card summary row (itunda Pay redesign, 2026-08-28) -- see
-    // this screen's own web sibling (PayHub in BankDashboard.tsx) for the full
-    // account. null = genuinely not issued (real teaser state), keeps showing
-    // nothing (not a teaser) until the real load actually settles either way.
-    var hasCard by remember { mutableStateOf<Boolean?>(null) }
-    var cardLast4 by remember { mutableStateOf<String?>(null) }
-    var cardFrozen by remember { mutableStateOf(false) }
-    var showCouponBox by remember { mutableStateOf(false) }
-    var showMembership by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        try {
-            facePayEnrolled = rw.itunda.core.network.NetworkClient.apiService.getFacePayStatus().enrolled
-        } catch (e: Exception) {
-            // Non-critical -- the row just keeps showing the last-known state.
-        }
-        try {
-            val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
-            rewardTasks = result.tasks
-            rewardsTotal = result.rewardsTotal
-        } catch (e: Exception) {
-            // Non-critical -- the preview section just stays hidden.
-        }
-        try {
-            val card = rw.itunda.core.network.NetworkClient.apiService.getMyCard().card
-            hasCard = true
-            cardLast4 = card.last4
-            cardFrozen = card.frozen
-        } catch (e: Exception) {
-            hasCard = false
-        }
-    }
-    // Real "345 stores nearby" banner -- see PayHomeExtras.kt's rememberNearbyMerchants.
-    val nearbyMerchants = rememberNearbyMerchants()
-    val payTabTransactions by viewModel.transactions.collectAsState()
-    // Real fix (2026-08-11, same session -- direct user pushback: "why is itunda pay
-    // have no simplicity at all pay by code?"): PAY_MERCHANT (manual merchant-ID/
-    // amount entry) was the ONLY way to pay -- real friction Toss's own "Postel's
-    // Law -- minimize input requests" research argues against. Real KakaoPay/Toss
-    // Pay's actual primary in-store flow has the CUSTOMER's own scannable code
-    // already on screen the moment Pay opens, no typing at all -- MY_CODE is that,
-    // now the default. PAY_MERCHANT stays for a merchant with a printed/posted
-    // static QR (a market stall), the one real case where typing a merchant ID is
-    // still the honest baseline until real camera scanning exists on that side too.
-    var mode by remember { mutableStateOf(PayTabMode.MY_CODE) }
-    // Real swipeable funding-source cards (2026-08-11) -- the user's own KakaoPay
-    // reference screenshot's bottom card carousel. The real, buildable slice of that:
-    // itunda's own real accounts (PAY + any opened foreign-currency ones,
-    // ForeignCurrencyAccountService) as distinct swipeable cards, where the settled
-    // card is the one CustomerPaymentCode.accountId actually funds the QR from -- see
-    // MerchantService.generateCustomerPaymentCode's own doc comment. No fabricated
-    // membership/deal cards: itunda has no real backend for those as payment sources.
-    // Defaults to PAY (2026-08-21 fix), not MAIN -- matches MerchantService.collect/
-    // chargeByCustomerCode's own real default funding source post-separation.
-    var accounts by remember { mutableStateOf<List<rw.itunda.core.network.Account>>(emptyList()) }
-    var selectedAccountId by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
-        try {
-            val pay = rw.itunda.core.network.NetworkClient.apiService.getAccounts().accounts.filter { it.type == "PAY" }
-            val foreign = rw.itunda.core.network.NetworkClient.apiService.getForeignAccounts().accounts
-            accounts = pay + foreign
-        } catch (e: Exception) {
-            // Real, non-critical -- MyPaymentCodeCard falls back to the backend's own
-            // PAY default when accounts never load.
-        }
-    }
-    LaunchedEffect(accounts) {
-        if (selectedAccountId == null) selectedAccountId = accounts.firstOrNull { it.type == "PAY" }?.id
-    }
-    // Real "Toss Pay Money" detail/statement screen (user screenshots, 2026-08-21) --
-    // see PayMoneyDetailScreen's own doc comment.
-    var openAccountDetail by remember { mutableStateOf<rw.itunda.core.network.Account?>(null) }
-    if (openAccountDetail != null) {
-        PayMoneyDetailScreen(
-            account = openAccountDetail!!,
-            onBack = { openAccountDetail = null },
-            onSend = { openAccountDetail = null; onSend() },
-            // Real gap, honestly scoped out for now (same as bank-mfe's identical
-            // choice): itunda has no self-service "pull an amount from my linked
-            // account right now" flow, only AutoTopUpCard's threshold-based auto
-            // top-up. Closing back to Pay rather than routing somewhere unrelated.
-            onAddMoney = { openAccountDetail = null },
-        )
-        return
-    }
-    if (showCouponBox) {
-        CouponBoxScreen(onBack = { showCouponBox = false }, onBrowseMerchants = { showCouponBox = false; onSwitchTab(ItundaTab.Explore) })
-        return
-    }
-    if (showMembership) {
-        MembershipScreen(
-            onBack = { showMembership = false },
-            onOpenPayMoney = { showMembership = false; openAccountDetail = accounts.find { it.type == "PAY" } },
-        )
-        return
-    }
-    val coroutineScope = rememberCoroutineScope()
-    val handleFacePayToggle: () -> Unit = {
-        coroutineScope.launch {
-            facePayBusy = true
-            try {
-                if (facePayEnrolled) rw.itunda.core.network.NetworkClient.apiService.revokeFacePay() else rw.itunda.core.network.NetworkClient.apiService.enrollFacePay()
-                facePayEnrolled = !facePayEnrolled
-            } catch (e: Exception) {
-                // Non-critical -- the row just keeps showing the last-known state.
-            } finally {
-                facePayBusy = false
-            }
-        }
-    }
-    val handleClaimReward: (String) -> Unit = { taskId ->
-        coroutineScope.launch {
-            claimingRewardId = taskId
-            try {
-                rw.itunda.core.network.NetworkClient.apiService.claimRewardTask(
-                    java.util.UUID.randomUUID().toString(),
-                    rw.itunda.core.network.ClaimRewardTaskRequest(taskId),
-                )
-                val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
-                rewardTasks = result.tasks
-                rewardsTotal = result.rewardsTotal
-            } catch (e: retrofit2.HttpException) {
-                // Real gap found 2026-08-30: on REWARD_TASK_ALREADY_CLAIMED this used to be
-                // a silent no-op, which could leave the row stuck showing "claimable"
-                // forever if an earlier tap actually succeeded -- refresh so it reflects
-                // reality. Every other error is still non-critical/retryable on next tap.
-                if (rw.itunda.core.network.apiErrorCode(e) == "REWARD_TASK_ALREADY_CLAIMED") {
-                    val result = rw.itunda.core.network.NetworkClient.apiService.getRewardTasks()
-                    rewardTasks = result.tasks
-                    rewardsTotal = result.rewardsTotal
-                }
-            } catch (e: Exception) {
-                // Non-critical -- the row just stays claimable, retryable on next tap.
-            } finally {
-                claimingRewardId = null
-            }
-        }
-    }
-    // Real fix (2026-08-25, direct user report + live-measured, same session as
-    // ItundaBottomBar's own identical padding-stacking fix): this LazyColumn's own
-    // `vertical = screenVertical` bottom padding was stacking with the Scaffold's
-    // already-correct bottomBar inset (paddingValues, applied once by the shared Box
-    // in ItundaAppScreen's own Scaffold) -- a real, measured 16dp of dead space
-    // between the last row and the nav bar that nothing needed. Top kept (real
-    // breathing room below the status bar); bottom now comes from Scaffold alone.
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, top = Ids.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
-    ) {
-        // Real Toss Pay home reference (4 screenshots, 2026-08-22): a bold "Pay"
-        // wordmark plus a settings icon, not PlainTopBar's generic decorative "..."
-        // menu -- itunda has no dedicated Pay-settings screen yet, so this honestly
-        // routes to the You tab (the closest real settings destination) rather than
-        // fabricating one.
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Pay", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                IdsIconButton(icon = Icons.Outlined.Settings, contentDescription = "Pay settings", onClick = { onSwitchTab(ItundaTab.You) })
-            }
-        }
-        item { NearbyMerchantsBanner(merchants = nearbyMerchants) }
-        item {
-            FacePayStatusRow(
-                enrolled = facePayEnrolled,
-                busy = facePayBusy,
-                cashbackRatePercent = nearbyMerchants.takeIf { it.isNotEmpty() }?.let { list -> list.sumOf { it.cashbackRate } / list.size * 100.0 },
-                onToggle = handleFacePayToggle,
-            )
-        }
-        // Real Toss Pay reference (user-provided screenshots, 2026-08-21): the real Pay
-        // home screen has no headline balance card at all -- it's a nearby-merchant-
-        // rewards surface leading straight into the payment-method picker (Facepay/QR
-        // sheet: linked bank account or card, no separate "Pay Money" balance shown
-        // anywhere). AccountHeroCard (real balance, account number, "See all"
-        // transactions) was itunda's own invented pattern, not a real Toss Pay one --
-        // removed. MyPaymentCodeCard below already carries both the real funding-
-        // source picker and its own real balance/nearby-merchant-benefits row, so it's
-        // the real equivalent of Toss Pay's own map+rewards home surface. Send/Cash
-        // out kept as a compact quick-action row (no capability lost) since Pay is
-        // still itunda's real complete send/receive product; the real interest-claim
-        // prompt and recent-transactions preview stay owned by BankHubScreen, which
-        // was always their true home per that screen's own doc comment.
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = IdsIcons.Add)
-                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = IdsIcons.Send)
-            }
-        }
-        item {
-            // Real KakaoPay reference (user's own screenshot): the segmented control is
-            // a dark pill with a lighter-grey highlight behind the active label, not a
-            // bright brand-color fill -- text stays white either way. Uses
-            // Ids.colors.surface (not .chip) for the active highlight: .chip and
-            // .surfaceSoft resolve to the literal same hex in both themes
-            // (IdsSemanticColors.kt), so the highlight was rendering invisibly against
-            // its own container until this fix -- .surface is the one token
-            // guaranteed distinct from .surfaceSoft in both light and dark.
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
-            ) {
-                listOf(PayTabMode.MY_CODE to "My code", PayTabMode.PAY_MERCHANT to "Pay a merchant").forEach { (m, label) ->
-                    val active = mode == m
-                    Text(
-                        label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(if (active) Ids.colors.surface else androidx.compose.ui.graphics.Color.Transparent)
-                            .pressScaleClickable { mode = m }
-                            .padding(vertical = 10.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    )
-                }
-            }
-        }
-        when (mode) {
-            PayTabMode.MY_CODE -> {
-                item {
-                    MyPaymentCodeCard(
-                        accounts = accounts,
-                        selectedAccountId = selectedAccountId,
-                        onSelectAccount = { selectedAccountId = it },
-                        onOpenAccountDetail = { openAccountDetail = it },
-                        onOpenCard = onOpenCard,
-                    )
-                }
-                if (accounts.size > 1) {
-                    item {
-                        AccountCardCarousel(
-                            accounts = accounts,
-                            selectedAccountId = selectedAccountId,
-                            onSelect = { selectedAccountId = it },
-                        )
-                    }
-                }
-            }
-            PayTabMode.PAY_MERCHANT -> item {
-                rw.itunda.feature.shop.impl.PayAMerchantSection(
-                    deviceStepUpHost = { visible, onDismiss, onVerified ->
-                        DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
-                    },
-                )
-            }
-        }
-        item { RewardsSummaryRow(rewardsTotal = rewardsTotal, payBalance = accounts.find { it.type == "PAY" }?.balance) }
-        // Real itunda-issued card summary row (itunda Pay redesign, 2026-08-28) --
-        // mirrors the real reference's own linked-card row using 100% real itunda
-        // data, never a fabricated "auto-apply points" claim a real external card
-        // issuer would make.
-        if (hasCard != null) {
-            item {
-                if (hasCard == true) {
-                    Row(
-                        Modifier.fillMaxWidth().pressScaleClickable(onClick = onOpenCard),
-                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(stringResource(R.string.overview_card_number, cardLast4 ?: ""), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(
-                                if (cardFrozen) stringResource(R.string.overview_card_frozen) else stringResource(R.string.overview_card_active),
-                                color = Ids.colors.textSecondary, fontSize = 12.sp,
-                            )
-                        }
-                        Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
-                    }
-                } else {
-                    Row(
-                        Modifier.fillMaxWidth().dashedBorder(Ids.colors.divider).padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(stringResource(R.string.overview_teaser_cards), color = Ids.colors.textSecondary, fontSize = 13.sp)
-                        IdsButton(text = stringResource(R.string.overview_teaser_cards_cta), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small, onClick = onOpenCard)
-                    }
-                }
-            }
-        }
-        // Real "Points · Pay Money" summary row -- the real reference's own
-        // Membership-screen entry point.
-        item {
-            Row(
-                Modifier.fillMaxWidth().pressScaleClickable { showMembership = true },
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.pay_points_pay_money_row), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("%,.0f RWF".format(rewardsTotal + (accounts.find { it.type == "PAY" }?.balance ?: 0.0)), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
-                }
-            }
-        }
-        // Real "Your Coupons" row -- see CouponBoxScreen.kt's own doc comment for
-        // the real GET /api/v1/merchant/coupons/browse endpoint this now leads to.
-        item {
-            Row(
-                Modifier.fillMaxWidth().pressScaleClickable { showCouponBox = true },
-                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.pay_your_coupons_row), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Icon(IdsIcons.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
-            }
-        }
-        item { RewardsPreviewSection(tasks = rewardTasks, claimingId = claimingRewardId, onClaim = handleClaimReward) }
-        item { PaymentHistorySection(transactions = payTabTransactions) }
-        item { GetHelpLinks(onOpenSupport = onOpenSupport) }
-    }
-}
-
-// MyPaymentCodeCard now lives in MyPaymentCodeCard.kt (extracted 2026-08-28, itunda
-// Pay redesign, same file-size-lint constraint as accountCardColor + AccountCardCarousel below).
-
-// accountCardColor + AccountCardCarousel now live in AccountCardCarousel.kt
-// (extracted 2026-08-26 to stay under this file's own file-size-lint baseline).
+// PayTab/PayTabMode/MyPaymentCodeCard/AccountCardCarousel/PayHomeExtras/
+// PayMoneyDetailScreen/CouponBoxScreen/MembershipScreen all moved to
+// :features:pay:impl (2026-09-02, Pay Feature-module decomposition).
 
 // Real Explore primary bottom tab (renamed 2026-08-10 from All -- see ItundaTab's own
 // doc comment for the full history: separated from My at the user's own direct

@@ -303,6 +303,13 @@ dependencies {
     // Property), so this is a NEW module, not filling in an already-signaled one.
     // See [[project_itunda_feature_isolation]] for the full account.
     implementation(project(":features:home:impl"))
+    // Real content moved in 2026-09-02 (Pay Feature-module decomposition, same
+    // "Continue into HomeTab next" scope, which also covered Pay/Menu/My): PayTab
+    // and its 6 supporting screens (MyPaymentCodeCard/AccountCardCarousel/
+    // PayHomeExtras/PayMoneyDetailScreen/CouponBoxScreen/MembershipScreen). Three
+    // real prerequisites resolved first -- see [[project_itunda_feature_isolation]]
+    // -- before this dependency could be added cleanly.
+    implementation(project(":features:pay:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --

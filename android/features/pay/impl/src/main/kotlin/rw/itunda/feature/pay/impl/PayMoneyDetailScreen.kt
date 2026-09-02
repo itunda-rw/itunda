@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.pay.impl
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -39,7 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.app.R
+import rw.itunda.feature.pay.impl.R
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize

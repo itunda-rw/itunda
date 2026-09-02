@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Real strings for :features:pay:impl's PayTab and its supporting screens
+     (MyPaymentCodeCard/PayMoneyDetailScreen/CouponBoxScreen/MembershipScreen/
+     PayHomeExtras), migrated from :app's own strings.xml (2026-09-02, Pay
+     Feature-module decomposition). back/home_send/overview_card_*/
+     overview_teaser_cards* are duplicated here (also kept in :app, used by
+     other screens that stay there too). -->
+<resources>
+    <string name="overview_card_number">Card •••• %1$s</string>
+    <string name="overview_card_active">Active</string>
+    <string name="overview_card_frozen">Frozen</string>
+    <string name="overview_teaser_cards">No card yet</string>
+    <string name="overview_teaser_cards_cta">Get a card</string>
+    <string name="pay_points_pay_money_row">Points · Pay Money</string>
+    <string name="pay_your_coupons_row">Your Coupons</string>
+    <string name="pay_coupon_box_title">Coupon box</string>
+    <string name="pay_coupons_received">Coupons received %1$d</string>
+    <string name="pay_coupons_used_expired">Used / expired %1$d</string>
+    <string name="pay_coupons_empty_title">You don\'t have any coupons</string>
+    <string name="pay_coupons_empty_subtitle">Want coupons you can get right now?</string>
+    <string name="pay_coupons_find_new">Find new coupons</string>
+    <string name="pay_coupons_none_used">You haven\'t used any coupons yet.</string>
+    <string name="pay_membership_title">Membership</string>
+    <string name="pay_membership_total">Linked memberships</string>
+    <string name="pay_membership_available_points">Available points</string>
+    <string name="pay_membership_pay_money">Pay Money</string>
+    <string name="pay_membership_store_points">Store points</string>
+    <string name="home_cash_out">Cash out</string>
+    <string name="home_send">Send</string>
+    <string name="back">Back</string>
+    <string name="pay_money_detail_title">itunda Pay Money</string>
+    <string name="pay_money_add">Add money</string>
+    <string name="pay_money_history_only">See payment history only</string>
+    <string name="pay_money_empty">No details found</string>
+    <string name="pay_picker_title">Choose how to pay</string>
+    <string name="pay_picker_recent">Recent</string>
+    <string name="pay_picker_account">Account</string>
+    <string name="pay_picker_card">Card</string>
+    <string name="pay_picker_linked_accounts">Linked accounts</string>
+</resources>

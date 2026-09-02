@@ -121,25 +121,6 @@
     <string name="overview_teaser_car_cta">Add a vehicle</string>
     <!-- Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
          screenshots). -->
-    <string name="pay_picker_title">Choose how to pay</string>
-    <string name="pay_picker_recent">Recent</string>
-    <string name="pay_picker_account">Account</string>
-    <string name="pay_picker_card">Card</string>
-    <string name="pay_picker_linked_accounts">Linked accounts</string>
-    <string name="pay_points_pay_money_row">Points · Pay Money</string>
-    <string name="pay_your_coupons_row">Your Coupons</string>
-    <string name="pay_coupon_box_title">Coupon box</string>
-    <string name="pay_coupons_received">Coupons received %1$d</string>
-    <string name="pay_coupons_used_expired">Used / expired %1$d</string>
-    <string name="pay_coupons_empty_title">You don\'t have any coupons</string>
-    <string name="pay_coupons_empty_subtitle">Want coupons you can get right now?</string>
-    <string name="pay_coupons_find_new">Find new coupons</string>
-    <string name="pay_coupons_none_used">You haven\'t used any coupons yet.</string>
-    <string name="pay_membership_title">Membership</string>
-    <string name="pay_membership_total">Linked memberships</string>
-    <string name="pay_membership_available_points">Available points</string>
-    <string name="pay_membership_pay_money">Pay Money</string>
-    <string name="pay_membership_store_points">Store points</string>
     <!-- Real gap caught while localizing iOS's TransferFlowContainer.swift (2026-08-08):
          this scam-report reason dialog exists only in ItundaAppScreen.kt's transfer step,
          separate from TransferFlow.kt's own "Report this number as a scam" link (already
@@ -212,7 +193,6 @@
          offline user saw normal-looking placeholder data with no honest signal
          it wasn't real. -->
     <!-- Real Naver-style Home redesign (2026-08-14), see HomeTab's own doc comment. -->
-    <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
     <string name="home_see_all">See all</string>
     <string name="home_round_up_title">Round-up saving</string>
@@ -260,10 +240,6 @@
     <string name="itunda_bank_assets_title">itunda Bank assets</string>
     <string name="itunda_bank_assets_empty">You don\'t have any itunda Bank products open yet.</string>
     <string name="itunda_bank_assets_view_all">View all</string>
-    <string name="pay_money_detail_title">itunda Pay Money</string>
-    <string name="pay_money_add">Add money</string>
-    <string name="pay_money_history_only">See payment history only</string>
-    <string name="pay_money_empty">No details found</string>
     <string name="home_coop_rail_title">Built for how Rwanda saves</string>
     <string name="home_coop_rail_moto_subtitle">Save toward your own bike, then convert to a loan</string>
     <string name="home_savings">Savings</string>

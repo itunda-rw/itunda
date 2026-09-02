@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,7 +40,10 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.TransitPresentmentStore
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
+import rw.itunda.core.designsystem.components.generatePayQrBitmap
+import rw.itunda.core.designsystem.components.generatePayBarcodeBitmap
 import rw.itunda.core.designsystem.itundaface.LockGlyph
 import rw.itunda.core.designsystem.theme.IdsColors
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -92,7 +95,7 @@ internal fun MyPaymentCodeCard(
         if (!revealed) {
             // Real NFC bridge (2026-08-27) -- see TransitPresentmentStore.kt's own doc
             // comment. A hidden code must never still be broadcastable over NFC.
-            rw.itunda.app.nfc.TransitPresentmentStore.clear()
+            TransitPresentmentStore.clear()
             return@LaunchedEffect
         }
         while (true) {
@@ -103,7 +106,7 @@ internal fun MyPaymentCodeCard(
                 code = res.code
                 expiresAtMillis = java.time.Instant.parse(res.expiresAt).toEpochMilli()
                 error = null
-                rw.itunda.app.nfc.TransitPresentmentStore.set(res.code, expiresAtMillis)
+                TransitPresentmentStore.set(res.code, expiresAtMillis)
             } catch (e: Exception) {
                 error = "Could not load your payment code."
             }
@@ -115,7 +118,7 @@ internal fun MyPaymentCodeCard(
     // just `revealed` toggled off) must also stop broadcasting -- same real intent as
     // the `!revealed` branch above.
     DisposableEffect(Unit) {
-        onDispose { rw.itunda.app.nfc.TransitPresentmentStore.clear() }
+        onDispose { TransitPresentmentStore.clear() }
     }
     LaunchedEffect(revealed) {
         if (!revealed) return@LaunchedEffect

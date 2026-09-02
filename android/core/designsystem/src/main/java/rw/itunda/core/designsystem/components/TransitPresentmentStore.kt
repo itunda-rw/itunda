@@ -1,4 +1,4 @@
-package rw.itunda.app.nfc
+package rw.itunda.core.designsystem.components
 
 // Real bridge between "My payment code" (MyPaymentCodeCard, ItundaAppScreen.kt) and
 // TransitHceService (2026-08-27, direct user follow-up: "for simplification we need

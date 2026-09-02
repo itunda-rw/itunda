@@ -2,6 +2,7 @@ package rw.itunda.app.nfc
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import rw.itunda.core.designsystem.components.TransitPresentmentStore
 import java.nio.charset.StandardCharsets
 
 // Real NFC "tap to present my payment code" (2026-08-27, direct user follow-up: "for

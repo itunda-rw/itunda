@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.pay.impl
 
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable

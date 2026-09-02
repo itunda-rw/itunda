@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.generatePayQrBitmap
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import rw.itunda.core.designsystem.components.IdsTextField

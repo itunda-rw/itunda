@@ -1,6 +1,5 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.pay.impl
 
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,13 +28,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.app.R
-import rw.itunda.app.miniapps.RewardTasksMiniAppActivity
+import rw.itunda.feature.pay.impl.R
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -53,14 +50,18 @@ import rw.itunda.core.network.RewardTaskDto
 // first time this pass) only. See this file's own web sibling (MembershipView.tsx)
 // for the full account.
 @Composable
-fun MembershipScreen(onBack: () -> Unit, onOpenPayMoney: () -> Unit) {
+fun MembershipScreen(onBack: () -> Unit, onOpenPayMoney: () -> Unit, onOpenRewardsMiniApp: () -> Unit) {
     BackHandler(onBack = onBack)
-    val context = LocalContext.current
     // Real "View all rewards" destination -- Android has no native Rewards screen
     // (RewardsService is otherwise reached only through the Saronite RN mini-app),
     // same real gap RewardsPreviewSection's own callers already work around
-    // elsewhere on this tab.
-    val openRewardsMiniApp = { context.startActivity(Intent(context, RewardTasksMiniAppActivity::class.java)) }
+    // elsewhere on this tab. Injected as a plain callback (2026-09-02, Pay
+    // Feature-module decomposition) rather than constructed here directly --
+    // RewardTasksMiniAppActivity is an :app-only Android Activity class/manifest
+    // entry, so this screen (now in :features:pay:impl) can't reference it, same
+    // "inject what a Feature module can't reach" pattern deviceStepUpHost already
+    // established for TalkTab/PayAMerchantSection.
+    val openRewardsMiniApp = onOpenRewardsMiniApp
     var payBalance by remember { mutableStateOf<Double?>(null) }
     var rewardsTotal by remember { mutableStateOf<Double?>(null) }
     var rewardTasks by remember { mutableStateOf<List<RewardTaskDto>>(emptyList()) }
