@@ -297,6 +297,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("100000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
+        every { vendorCashAdvanceRepository.findByIdForUpdate("vendoradv_3") } returns Optional.of(advance)
         every { merchantRepository.findById("merchant_6") } returns Optional.of(m)
         every { accountRepository.findById("account_6") } returns Optional.of(w)
         // Real inflow of 10,000 since last collection -- 15% of that is 1,500, far below
@@ -337,6 +338,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("50000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
+        every { vendorCashAdvanceRepository.findByIdForUpdate("vendoradv_4") } returns Optional.of(advance)
         every { merchantRepository.findById("merchant_7") } returns Optional.of(m)
         every { accountRepository.findById("account_7") } returns Optional.of(w)
         // Real inflow of 1,000,000 -- 15% of that is 150,000, which would overpay the
@@ -381,6 +383,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("100000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
+        every { vendorCashAdvanceRepository.findByIdForUpdate("vendoradv_5") } returns Optional.of(advance)
         every { merchantRepository.findById("merchant_8") } returns Optional.of(m)
         every { accountRepository.findById("account_8") } returns Optional.of(w)
         every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_8", any()) } returns
@@ -402,10 +405,14 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
     }
 
     Given("a real DISBURSED advance with zero real itunda-collected settlement inflow since the last collection") {
+        val vendorCashAdvanceRepository = mockk<VendorCashAdvanceRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val accountRepository = mockk<AccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
-        val service = newService(merchantRepository = merchantRepository, accountRepository = accountRepository, ledgerEntryRepository = ledgerEntryRepository)
+        val service = newService(
+            vendorCashAdvanceRepository = vendorCashAdvanceRepository, merchantRepository = merchantRepository,
+            accountRepository = accountRepository, ledgerEntryRepository = ledgerEntryRepository,
+        )
 
         val m = merchant("merchant_9", "user_1", "account_9")
         val w = account("account_9", "user_1")
@@ -414,6 +421,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
             feeAmount = BigDecimal("14400"), totalOwed = BigDecimal("194400"), remainingOwed = BigDecimal("100000"),
             collectionRatePercent = 15.0, status = VendorCashAdvanceStatus.DISBURSED, disbursedAt = Instant.now().minus(java.time.Duration.ofDays(2)),
         )
+        every { vendorCashAdvanceRepository.findByIdForUpdate("vendoradv_6") } returns Optional.of(advance)
         every { merchantRepository.findById("merchant_9") } returns Optional.of(m)
         every { accountRepository.findById("account_9") } returns Optional.of(w)
         every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("account_9", any()) } returns emptyList()

@@ -334,7 +334,15 @@ class VendorCashAdvanceService(
      * leg when there's nothing real to collect.
      */
     @Transactional
-    fun runDailyCollection(advance: VendorCashAdvance): Boolean {
+    fun runDailyCollection(advanceArg: VendorCashAdvance): Boolean {
+        // Real hardening (concurrency-audit thread) -- advanceArg was loaded by
+        // VendorCashAdvanceCollectionScheduler's own earlier, already-committed
+        // transaction (a batch query, `getAdvancesDueForCollection`), so it's detached
+        // by the time this method's own @Transactional starts. Re-fetching locked here
+        // (rather than mutating advanceArg directly) closes the same race
+        // SavingsService.autoContribute's own identical fix closes -- a manual
+        // repayEarly racing this scheduled collection on the same advance.
+        val advance = vendorCashAdvanceRepository.findByIdForUpdate(advanceArg.id).orElse(null) ?: return false
         val merchant = merchantRepository.findById(advance.merchantId).orElse(null) ?: return false
         val account = accountRepository.findById(merchant.accountId).orElse(null) ?: return false
 
