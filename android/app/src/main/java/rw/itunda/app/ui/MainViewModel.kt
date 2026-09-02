@@ -22,26 +22,14 @@ import rw.itunda.core.network.BatchActionRequest
 import rw.itunda.core.network.BatchRequest
 import rw.itunda.core.network.ConnectivityObserver
 import rw.itunda.core.network.OfflineActionQueue
+import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.network.SessionManager
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
 
-/** Shared outcome type for the real money-moving calls below (transfer/deposit/
- * claim) -- distinct from AuthResult (SessionManager.kt) since these carry a
- * user-facing amount/balance, not a session. Queued (2026-07-13) is distinct from
- * Success: the action wasn't actually executed yet, only durably saved locally for
- * replay once connectivity returns -- see OfflineActionQueue.kt. */
-sealed interface MoneyActionResult {
-    data class Success(val message: String) : MoneyActionResult
-    data class Queued(val message: String) : MoneyActionResult
-    data class Failure(val message: String) : MoneyActionResult
-    // Real device binding (2026-07-21 port) -- a real 403 DEVICE_NOT_VERIFIED (this
-    // device hasn't been step-up-verified yet) gets its own case, not a generic
-    // Failure, since the caller has a real, actionable next step (re-enter password,
-    // then retry). Mirrors bank-mfe's needsDeviceVerification handling exactly.
-    data object DeviceNotVerified : MoneyActionResult
-}
+// MoneyActionResult moved to :core:network (2026-09-02, Banking Feature-module
+// decomposition slice 2) so Feature modules can share it without depending on :app.
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Real offline queue + connectivity signal (2026-07-13) -- see

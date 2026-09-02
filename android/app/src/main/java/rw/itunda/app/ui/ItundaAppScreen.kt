@@ -185,6 +185,7 @@ import rw.itunda.feature.credit.impl.LoansScreen
 import rw.itunda.feature.credit.impl.CreditScoreScreen
 import rw.itunda.feature.credit.impl.StudentLoanScreen
 import rw.itunda.feature.credit.impl.VupLoanScreen
+import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
@@ -754,7 +755,7 @@ fun ItundaAppScreen(
                                             viewModel.sendTransfer(step.accountNumber, amountRwf, memo = giftNote ?: "", fromAccountId = transferFromAccount?.accountId)
                                         }
                                         when (val result = doSend()) {
-                                            is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                            is rw.itunda.core.network.MoneyActionResult.Success -> {
                                                 isSendingTransfer = false
                                                 transferStep = TransferStep.Success(result.message, amountRwf, recipientDisplayName ?: step.accountNumber)
                                             }
@@ -763,24 +764,24 @@ fun ItundaAppScreen(
                                             // offline (see MainViewModel.depositToSavingsGoal's
                                             // doc comment for why) -- handled only because
                                             // MoneyActionResult is a shared sealed interface.
-                                            is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                            is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                                 isSendingTransfer = false
                                                 transferStep = null
                                                 transferFromAccount = null
                                             }
-                                            is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                            is rw.itunda.core.network.MoneyActionResult.Failure -> {
                                                 isSendingTransfer = false
                                                 biometricError = result.message
                                             }
-                                            is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                            is rw.itunda.core.network.MoneyActionResult.DeviceNotVerified -> {
                                                 isSendingTransfer = false
                                                 deviceStepUpError = null
                                                 pendingDeviceRetry = {
                                                     isSendingTransfer = true
                                                     val retryResult = doSend()
                                                     isSendingTransfer = false
-                                                    if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf, recipientDisplayName ?: step.accountNumber)
-                                                    else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) biometricError = retryResult.message
+                                                    if (retryResult is rw.itunda.core.network.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf, recipientDisplayName ?: step.accountNumber)
+                                                    else if (retryResult is rw.itunda.core.network.MoneyActionResult.Failure) biometricError = retryResult.message
                                                 }
                                                 showDeviceStepUp = true
                                             }
@@ -816,14 +817,14 @@ fun ItundaAppScreen(
                         deviceStepUpBusy = true
                         coroutineScope.launch {
                             when (val result = viewModel.verifyDevice(password)) {
-                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     deviceStepUpBusy = false
                                     showDeviceStepUp = false
                                     val retry = pendingDeviceRetry
                                     pendingDeviceRetry = null
                                     retry?.invoke()
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                is rw.itunda.core.network.MoneyActionResult.Failure -> {
                                     deviceStepUpBusy = false
                                     deviceStepUpError = result.message
                                 }
@@ -900,7 +901,7 @@ fun ItundaAppScreen(
                         isSavingsSubmitting = true
                         coroutineScope.launch {
                             when (val result = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)) {
-                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), result.message, celebratory = false)
                                 }
@@ -911,16 +912,16 @@ fun ItundaAppScreen(
                                 // surface the distinction via a real Toast rather than
                                 // silently treating it as identical to a completed
                                 // deposit.
-                                is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = null
                                     rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, result.message)
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                is rw.itunda.core.network.MoneyActionResult.Failure -> {
                                     isSavingsSubmitting = false
                                     savingsError = result.message
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                is rw.itunda.core.network.MoneyActionResult.DeviceNotVerified -> {
                                     isSavingsSubmitting = false
                                     deviceStepUpError = null
                                     pendingDeviceRetry = {
@@ -928,12 +929,12 @@ fun ItundaAppScreen(
                                         val retryResult = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
                                         when (retryResult) {
-                                            is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), retryResult.message, celebratory = false)
-                                            is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF saved".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                                 savingsFlowStep = null
                                                 rw.itunda.core.designsystem.components.IdsToast.show(coroutineScope, retryResult.message)
                                             }
-                                            is rw.itunda.app.ui.MoneyActionResult.Failure -> savingsError = retryResult.message
+                                            is rw.itunda.core.network.MoneyActionResult.Failure -> savingsError = retryResult.message
                                             else -> {}
                                         }
                                     }
@@ -953,11 +954,11 @@ fun ItundaAppScreen(
                         isSavingsSubmitting = true
                         coroutineScope.launch {
                             when (val result = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)) {
-                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), result.message, celebratory = false)
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                     // withdrawFromSavingsGoal never actually returns
                                     // Queued (unlike depositToSavingsGoal, no offline
                                     // queue support here) -- handled only because
@@ -965,11 +966,11 @@ fun ItundaAppScreen(
                                     isSavingsSubmitting = false
                                     savingsFlowStep = null
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                is rw.itunda.core.network.MoneyActionResult.Failure -> {
                                     isSavingsSubmitting = false
                                     savingsError = result.message
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                is rw.itunda.core.network.MoneyActionResult.DeviceNotVerified -> {
                                     isSavingsSubmitting = false
                                     deviceStepUpError = null
                                     pendingDeviceRetry = {
@@ -977,8 +978,8 @@ fun ItundaAppScreen(
                                         val retryResult = viewModel.withdrawFromSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
                                         when (retryResult) {
-                                            is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), retryResult.message, celebratory = false)
-                                            is rw.itunda.app.ui.MoneyActionResult.Failure -> savingsError = retryResult.message
+                                            is rw.itunda.core.network.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("%,d RWF withdrawn".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.core.network.MoneyActionResult.Failure -> savingsError = retryResult.message
                                             else -> {}
                                         }
                                     }
@@ -998,7 +999,7 @@ fun ItundaAppScreen(
                         isSavingsSubmitting = true
                         coroutineScope.launch {
                             when (val result = viewModel.claimInterest()) {
-                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
                                     // celebratory = true -- real earned money, matches
                                     // Toss's own confetti-for-positive-moments example
@@ -1008,23 +1009,23 @@ fun ItundaAppScreen(
                                 // claimInterest never actually returns Queued (only
                                 // SAVINGS_DEPOSIT is queued) -- handled only because
                                 // MoneyActionResult is a shared sealed interface.
-                                is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                is rw.itunda.core.network.MoneyActionResult.Queued -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = null
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                is rw.itunda.core.network.MoneyActionResult.Failure -> {
                                     isSavingsSubmitting = false
                                     savingsError = result.message
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                is rw.itunda.core.network.MoneyActionResult.DeviceNotVerified -> {
                                     isSavingsSubmitting = false
                                     deviceStepUpError = null
                                     pendingDeviceRetry = {
                                         isSavingsSubmitting = true
                                         val retryResult = viewModel.claimInterest()
                                         isSavingsSubmitting = false
-                                        if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) savingsFlowStep = SavingsFlowStep.Success("Interest claimed", retryResult.message, celebratory = true)
-                                        else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) savingsError = retryResult.message
+                                        if (retryResult is rw.itunda.core.network.MoneyActionResult.Success) savingsFlowStep = SavingsFlowStep.Success("Interest claimed", retryResult.message, celebratory = true)
+                                        else if (retryResult is rw.itunda.core.network.MoneyActionResult.Failure) savingsError = retryResult.message
                                     }
                                     showDeviceStepUp = true
                                 }
@@ -1056,14 +1057,14 @@ fun ItundaAppScreen(
                         deviceStepUpBusy = true
                         coroutineScope.launch {
                             when (val result = viewModel.verifyDevice(password)) {
-                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                is rw.itunda.core.network.MoneyActionResult.Success -> {
                                     deviceStepUpBusy = false
                                     showDeviceStepUp = false
                                     val retry = pendingDeviceRetry
                                     pendingDeviceRetry = null
                                     retry?.invoke()
                                 }
-                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                is rw.itunda.core.network.MoneyActionResult.Failure -> {
                                     deviceStepUpBusy = false
                                     deviceStepUpError = result.message
                                 }
@@ -1429,8 +1430,19 @@ fun ItundaAppScreen(
         // top of it, same relationship Explore has with these same children).
         if (showBank) {
             BackHandler { showBank = false }
+            val bankPrimaryAccount by viewModel.primaryAccount.collectAsState()
+            val bankSavingsGoals by viewModel.savingsGoals.collectAsState()
+            val bankInterestJar by viewModel.interestJar.collectAsState()
+            val bankRoundUpSettings by viewModel.roundUpSettings.collectAsState()
+            val bankSpendingInsight by viewModel.spendingInsight.collectAsState()
             BankHubScreen(
-                viewModel = viewModel,
+                primaryAccount = bankPrimaryAccount,
+                savingsGoals = bankSavingsGoals,
+                interestJar = bankInterestJar,
+                roundUpSettings = bankRoundUpSettings,
+                spendingInsight = bankSpendingInsight,
+                onSetRoundUpSettings = viewModel::setRoundUpSettings,
+                onCreateSavingsGoal = viewModel::createSavingsGoal,
                 onBack = { showBank = false },
                 onDepositToGoal = { goalId, goalName -> showBank = false; savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
                 onWithdrawFromGoal = { goalId, goalName, currentAmount -> showBank = false; savingsFlowStep = SavingsFlowStep.Withdraw(goalId, goalName, currentAmount) },
@@ -2225,7 +2237,22 @@ private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80
 
 @Composable
 private fun BankHubScreen(
-    viewModel: MainViewModel,
+    // Real decoupling (2026-09-02, Banking Feature-module decomposition slice 2) --
+    // was `viewModel: MainViewModel` (the whole 674-line, :app-only ViewModel);
+    // narrowed to just the 5 StateFlow values this screen actually reads, hoisted
+    // to plain params so this composable has zero MainViewModel/:app dependency
+    // and is eligible to move into :features:banking:impl. Every other value this
+    // screen needs (depositProtection/payAccount/creditScore) was ALREADY fetched
+    // independently via its own LaunchedEffect, not via MainViewModel -- see this
+    // function's own pre-existing "each screen fetches its own minimal real data"
+    // comments below.
+    primaryAccount: rw.itunda.core.network.Account?,
+    savingsGoals: List<rw.itunda.core.network.SavingsGoal>,
+    interestJar: rw.itunda.core.network.InterestJar?,
+    roundUpSettings: rw.itunda.core.network.RoundUpSettingsDto?,
+    spendingInsight: rw.itunda.core.network.SpendingInsightResponse?,
+    onSetRoundUpSettings: suspend (enabled: Boolean, roundToNearest: Long, targetGoalId: String?) -> rw.itunda.core.network.MoneyActionResult,
+    onCreateSavingsGoal: suspend (name: String, targetAmountRwf: Long, monthlyContributionRwf: Long?, targetDate: String?) -> rw.itunda.core.network.MoneyActionResult,
     onBack: () -> Unit,
     onDepositToGoal: (goalId: String, goalName: String) -> Unit,
     // Real gap found live (2026-08-31, direct user re-reference of the real Toss
@@ -2266,10 +2293,6 @@ private fun BankHubScreen(
     onOpenPay: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
-    val primaryAccount by viewModel.primaryAccount.collectAsState()
-    val savingsGoals by viewModel.savingsGoals.collectAsState()
-    val interestJar by viewModel.interestJar.collectAsState()
-    val roundUpSettings by viewModel.roundUpSettings.collectAsState()
     var showRoundUpDialog by remember { mutableStateOf(false) }
     var showNewGoalDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -2299,8 +2322,8 @@ private fun BankHubScreen(
     // Real architectural fix (2026-08-13, direct user directive): credit score and
     // spending insight used to be fetched by HomeTab -- moved here, same "each
     // screen fetches its own minimal real data" precedent as depositProtection
-    // above, now that Bank (not Home) is their real home.
-    val spendingInsight by viewModel.spendingInsight.collectAsState()
+    // above, now that Bank (not Home) is their real home. spendingInsight itself is
+    // now a plain param (see this function's own signature comment).
     val spendingTopCategory = spendingInsight?.categories?.maxByOrNull { it.amount.toDouble() }
     var creditScore by remember { mutableStateOf<rw.itunda.core.network.CreditScoreResponse?>(null) }
     LaunchedEffect(Unit) {
@@ -2648,7 +2671,7 @@ private fun BankHubScreen(
                 onDismiss = { showRoundUpDialog = false },
                 onSave = { enabled, increment, goalId ->
                     coroutineScope.launch {
-                        viewModel.setRoundUpSettings(enabled, increment, goalId)
+                        onSetRoundUpSettings(enabled, increment, goalId)
                         showRoundUpDialog = false
                     }
                 },
@@ -2658,7 +2681,7 @@ private fun BankHubScreen(
             NewSavingsGoalDialog(
                 onDismiss = { showNewGoalDialog = false },
                 onCreate = { name, target, monthly, date ->
-                    viewModel.createSavingsGoal(name, target, monthly, date)
+                    onCreateSavingsGoal(name, target, monthly, date)
                 },
                 onCreated = { showNewGoalDialog = false },
             )
