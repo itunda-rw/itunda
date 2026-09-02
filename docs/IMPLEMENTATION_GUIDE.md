@@ -60,7 +60,9 @@ and Kafka already exist in your private cloud or another reachable environment a
 - the federated host app on `:5000`
 - the `kyc-mfe` and `bank-mfe` remotes on `:5001` and `:5002`
 
-If you only want the web shell, `yarn dev` now starts all three Vite apps together. The
+If you only want the web shell, `yarn dev` now starts all four Vite apps together
+(`bank-mfe`, `kyc-mfe`, `ops-mfe`, `host-app`). `merchant-mfe`/`maps-mfe`/`pay-checkout` are 3
+more real micro-frontends, run individually (`yarn workspace <name> run dev`) when needed. The
 Android/iOS apps and the `packages/saronite` mini-app host are still separate build targets.
 
 For a full local-only fallback, use `yarn dev:ecosystem:local`. That starts
@@ -114,12 +116,14 @@ yarn dev:ecosystem
 ```
 
 ### Staging / Production
-`infra/k8s/production/` has one real manifest (`api-gateway.yaml`) plus a `monitoring/`
-manifest — no staging manifests exist yet, and nothing here has been applied to a real cluster.
-Treat this as a starting point, not a working deploy pipeline:
+Updated 2026-09-03: `infra/k8s/production/` now has 19 real manifests (the canonical
+backend/api-gateway/ledger-service/payment-service, plus 13 independently-deployable product
+services -- see `docs/DEPLOYMENT.md` for the full current list), with a matching
+`infra/k8s/staging/` directory. See `docs/DEPLOYMENT.md` for the up-to-date deploy path
+(including the Multipass private-cloud bootstrap flow, which HAS been applied to a real,
+running cluster -- see `docs/PRIVATE_CLOUD_OPERATIONS.md`):
 ```bash
-kubectl apply -f infra/k8s/production/
-# Auto-scaling and multi-replica numbers below are aspirational, not configured anywhere yet
+kubectl apply -f infra/k8s/production/   # or infra/k8s/staging/
 ```
 
 ## 7. Performance Targets
@@ -163,7 +167,10 @@ implemented.
 ## 9. Testing
 
 Corrected 2026-07-13: none of the `npm run test*`/`security:scan` scripts below used to be
-here ever existed — the root `package.json` only declares `dev`, `build`, and `lint` (see §2).
+here ever existed. Updated 2026-09-03: the root `package.json` has since grown a large
+`private-cloud:*` script surface (deploy/bootstrap/registry/observability tooling, ~70 scripts
+total) but still has no `test` or `security:scan` entry anywhere — that specific gap this
+section originally corrected is still real, just no longer because the script list is small.
 Real test commands, per stack:
 
 ```bash

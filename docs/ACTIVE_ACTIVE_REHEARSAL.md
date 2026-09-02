@@ -2,6 +2,17 @@
 
 Last updated: 2026-07-14
 
+> **STALE, flagged 2026-09-03, not yet re-audited.** `multipass list` today shows only ONE VM,
+> `itunda-dc-a` at `192.168.252.4` (not the `.2` address below) -- `itunda-dc-b` no longer
+> exists. The entire two-VM topology this file describes (dc-b as MySQL primary, Redis
+> singleton on dc-b, two independent Kafka brokers) is no longer accurate; the private cloud is
+> now a single, heavily overcommitted node (see [[project_itunda_private_cloud]] memory /
+> `docs/PRIVATE_CLOUD_OPERATIONS.md` for the current real state). **Don't trust the specific
+> topology claims below** -- run `yarn audit:private-cloud`/`yarn verify:private-cloud` for the
+> real current state rather than this snapshot, and treat a proper re-audit + rewrite of this
+> file as a real, open follow-up (not done in this pass -- confirming the sole fact above was
+> the scope of this check, not a full live-topology re-verification).
+
 This file now records the **current** state of the local Multipass private-cloud rehearsal.
 Earlier versions mixed one real historical MySQL failover drill with broader "active-active"
 language and made the present topology sound more symmetric than it is. The current wording is

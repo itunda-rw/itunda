@@ -67,9 +67,13 @@ The full operator flow is in [PRIVATE_CLOUD_OPERATIONS.md](PRIVATE_CLOUD_OPERATI
 yarn dev
 ```
 
-Unlike the old setup, `yarn dev` now starts all three required Vite apps together
-(`bank-mfe`, `kyc-mfe`, and `host-app`). The host shell depends on the two remotes, so
-starting only `host-app` was not a complete local run.
+Unlike the old setup, `yarn dev` now starts all four required Vite apps together
+(`bank-mfe`, `kyc-mfe`, `ops-mfe`, and `host-app` -- see `scripts/local-ecosystem.sh`'s own
+`web-dev` mode). The host shell depends on the remotes, so starting only `host-app` was not a
+complete local run. `services/micro-frontends/` also has 3 more real, independently-run
+micro-frontends not part of this bundled command -- `merchant-mfe`, `maps-mfe`, and
+`pay-checkout` -- run those individually with `yarn workspace <name> run dev` when working on
+them specifically.
 
 ## Run the canonical backend
 
@@ -198,10 +202,13 @@ itunda/
 │   ├── shared-utils/         # shared JS/TS utils (real es-toolkit dependency)
 │   └── saronite/              # mini-app host + native bridge (own npm workspace)
 ├── services/
-│   ├── backend/               # canonical Kotlin/Spring Boot backend
+│   ├── backend/               # canonical Kotlin/Spring Boot backend, plus 13 independently-
+│   │                          #   deployable product services (card/insurance/agents/etc.,
+│   │                          #   see docs/DEPLOYMENT.md)
 │   ├── microservices/         # ledger-service, payment-service, core-libs
 │   ├── api-gateway/           # thin Express reverse proxy
-│   ├── micro-frontends/       # host-app, bank-mfe, kyc-mfe (Vite Module Federation)
+│   ├── micro-frontends/       # host-app, bank-mfe, kyc-mfe, ops-mfe, merchant-mfe,
+│   │                          #   maps-mfe, pay-checkout (Vite Module Federation)
 │   └── blog/                  # tech.itunda.rw engineering blog (own npm workspace)
 ├── infra/                    # docker-compose, k8s manifests
 ├── scripts/                  # one-off root-level scripts

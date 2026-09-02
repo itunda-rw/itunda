@@ -1,13 +1,13 @@
 # Deployment Guide - Itunda Fintech System
 
-> **Rewritten 2026-07-12.** The previous version of this file was generic AWS/Postgres/Stripe
-> boilerplate that did not match anything in this repo (no Terraform, no AWS SDK usage, no
-> Stripe key anywhere in code, and the real database is MySQL, not Postgres/DocumentDB). This
-> version describes what actually exists to deploy today: real Dockerfiles, real Kubernetes
-> manifests under `infra/k8s/`, and a real local Docker Compose stack. It does not invent a
-> cloud provider or a CI/CD pipeline that isn't in this repo. See `docs/ARCHITECTURE.md` §4 for
-> the verification history behind these manifests (what's been build/YAML-verified vs. what
-> still needs a live cluster to confirm).
+> **Rewritten 2026-07-12, updated 2026-09-03.** The previous version of this file was generic
+> AWS/Postgres/Stripe boilerplate that did not match anything in this repo (no Terraform, no AWS
+> SDK usage, no Stripe key anywhere in code, and the real database is MySQL, not
+> Postgres/DocumentDB). This version describes what actually exists to deploy today: real
+> Dockerfiles, real Kubernetes manifests under `infra/k8s/`, and a real local Docker Compose
+> stack. It does not invent a cloud provider or a CI/CD pipeline that isn't in this repo. See
+> `docs/ARCHITECTURE.md` §4 for the verification history behind these manifests (what's been
+> build/YAML-verified vs. what still needs a live cluster to confirm).
 >
 > Rwanda-specific note: nothing here should ever route through Toss's own systems — Toss
 > operates in South Korea under its own licenses. Itunda's rails are MTN Mobile Money, Airtel
@@ -23,6 +23,34 @@
 | `services/microservices/payment-service` | `services/microservices/payment-service/Dockerfile` | `infra/k8s/{production,staging}/payment-service.yaml` | 8081 |
 | Namespace, Grafana, Prometheus, network policies | — | `infra/k8s/base/`, `infra/k8s/monitoring/`, `infra/k8s/production/policies.yaml` | — |
 | Local-only MySQL/Redis/Kafka for cluster dev | — | `infra/k8s/local-dev/{mysql,redis,kafka}.yaml` | — |
+
+**13 independently-deployable backend product services** (added 2026-09-01/02, see root
+`CLAUDE.md`'s "First independently-deployable product" account and `docs/ARCHITECTURE.md`'s
+"Second" through "Thirteenth extraction" entries) -- each is a separate Gradle `bootJar` target
+built from the SAME `services/backend` build context (not a separate directory the way
+`services/microservices/*` is), sharing `:app`'s own MySQL schema, not a separate database:
+
+| Service | Port |
+|---|---|
+| `card-service` | 4002 |
+| `insurance-service` | 4003 |
+| `agents-service` | 4004 |
+| `transit-service` | 4005 |
+| `certificate-service` | 4006 |
+| `bills-service` | 4007 |
+| `vehicle-service` | 4008 |
+| `partners-service` | 4009 |
+| `identity-service` | 4010 |
+| `overview-service` | 4011 |
+| `knowledge-service` | 4012 |
+| `notifications-service` | 4013 |
+| `analytics-service` | 4014 |
+
+Each has its own Dockerfile (`services/backend/<service-name>/Dockerfile`) and its own manifest
+(`infra/k8s/{production,staging,progressive-delivery}/<service-name>.yaml`). The full, current,
+authoritative list of deployable service keys lives in `scripts/private-cloud-images.sh`'s own
+`service_keys()` function -- check there rather than re-trusting this table if it and the script
+ever disagree, since the script is what actually drives real builds/pushes.
 
 `services/microservices` and `services/backend` deliberately run against **separate MySQL
 databases** (`itunda_ledger` for the backend, isolated DBs for the microservices) — they are
@@ -70,11 +98,18 @@ docker build -t itunda/backend:latest -f services/backend/Dockerfile .
 docker build -t itunda/api-gateway:latest services/api-gateway
 docker build -t itunda/ledger-service:latest services/microservices/ledger-service
 docker build -t itunda/payment-service:latest services/microservices/payment-service
+# Each of the 13 independently-deployable product services (same shape, e.g. card-service):
+docker build -t itunda/card-service:latest -f services/backend/card-service/Dockerfile services/backend
 ```
 
 `services/backend/Dockerfile` builds only the `:app` Gradle module (the one module that
 assembles a runnable jar — see its own header comment for the two wrong-module Dockerfiles it
-replaced) and runs as a non-root `itunda` user on port `4001`.
+replaced) and runs as a non-root `itunda` user on port `4001`. The 13 product services each
+build a different `bootJar` target from that same `services/backend` build context, so a
+change scoped to just one product (e.g. Card) compiles a much smaller dependency graph than a
+full `:app:bootJar` -- see `scripts/private-cloud-images.sh` for the real per-service build
+logic this manual `docker build` form mirrors, including the `ITUNDA_PRIVATE_CLOUD_SERVICES`
+override to build/push a single service without touching the others.
 
 ## 3. Kubernetes deployment
 
