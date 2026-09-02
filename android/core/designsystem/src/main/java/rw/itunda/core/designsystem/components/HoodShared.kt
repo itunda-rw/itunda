@@ -39,6 +39,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.theme.Ids
@@ -82,8 +84,25 @@ import java.io.IOException
 // Every call site across the app (Community/Jobs/Property, still in :app for now) was
 // repointed to this single shared copy rather than left duplicated.
 
+// Real KakaoPay finding (tech.kakaopay.com/post/skeleton-ui-idea, ported to bank-mfe's
+// useDeferredLoading 2026-09-03): unconditionally showing a skeleton the instant a
+// fetch starts causes a real flicker for any response fast enough to already have data
+// back before a human can register the shimmer as informative rather than broken --
+// KakaoPay's own measured data showed most of their requests completing in 110-300ms.
+// Since every one of this composable's 60+ real call sites already only composes it
+// while its own data is null (removing it from composition the instant data arrives),
+// the 200ms delay lives here once rather than needing a per-call-site wrapper: nothing
+// renders until the delay elapses, so a response that lands first never shows a
+// skeleton at all.
 @Composable
 fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
+    var showSkeleton by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(200)
+        showSkeleton = true
+    }
+    if (!showSkeleton) return
+
     val transition = rememberInfiniteTransition(label = "skeleton")
     val offset by transition.animateFloat(
         initialValue = -1f,
