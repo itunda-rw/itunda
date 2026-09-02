@@ -42,12 +42,5 @@
     <string name="transfer_amount_max">Max</string>
     <string name="transfer_amount_insufficient">Not enough balance — you have RWF %1$s</string>
     <string name="transfer_send">Send</string>
-    <string name="transfer_device_verify_title">🔒 Verify this device</string>
-    <string name="transfer_device_verify_body">This is a new device for your account. Re-enter your password to allow it to send money, then try again.</string>
-    <string name="transfer_password_description">Password</string>
-    <string name="transfer_show_password">Show password</string>
-    <string name="transfer_hide_password">Hide password</string>
-    <string name="transfer_verifying">Verifying…</string>
-    <string name="transfer_verify_device">Verify device</string>
     <string name="transfer_delete_digit">Delete</string>
 </resources>

@@ -37,12 +37,5 @@
     <string name="transfer_amount_max">Max</string>
     <string name="transfer_amount_insufficient">Solde insuffisant — vous avez RWF %1$s</string>
     <string name="transfer_send">Envoyer</string>
-    <string name="transfer_device_verify_title">🔒 Vérifiez cet appareil</string>
-    <string name="transfer_device_verify_body">Il s\'agit d\'un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l\'autoriser à envoyer de l\'argent, puis réessayez.</string>
-    <string name="transfer_password_description">Mot de passe</string>
-    <string name="transfer_show_password">Afficher le mot de passe</string>
-    <string name="transfer_hide_password">Masquer le mot de passe</string>
-    <string name="transfer_verifying">Vérification…</string>
-    <string name="transfer_verify_device">Vérifier l\'appareil</string>
     <string name="transfer_delete_digit">Supprimer</string>
 </resources>

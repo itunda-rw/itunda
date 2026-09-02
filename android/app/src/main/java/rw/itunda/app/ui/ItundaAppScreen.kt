@@ -807,7 +807,7 @@ fun ItundaAppScreen(
                 )
             }
             if (showDeviceStepUp) {
-                rw.itunda.feature.payments.impl.DeviceStepUpDialog(
+                rw.itunda.core.designsystem.components.DeviceStepUpDialog(
                     busy = deviceStepUpBusy,
                     error = deviceStepUpError,
                     onCancel = { showDeviceStepUp = false; deviceStepUpError = null; pendingDeviceRetry = null },
@@ -1047,7 +1047,7 @@ fun ItundaAppScreen(
                 )
             }
             if (showDeviceStepUp) {
-                rw.itunda.feature.payments.impl.DeviceStepUpDialog(
+                rw.itunda.core.designsystem.components.DeviceStepUpDialog(
                     busy = deviceStepUpBusy,
                     error = deviceStepUpError,
                     onCancel = { showDeviceStepUp = false; deviceStepUpError = null; pendingDeviceRetry = null },
