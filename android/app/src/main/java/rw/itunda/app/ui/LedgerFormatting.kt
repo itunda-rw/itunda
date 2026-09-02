@@ -37,6 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.AccentIndigo
+import rw.itunda.core.designsystem.theme.AccentTeal
+import rw.itunda.core.designsystem.theme.AccentPurple
+import rw.itunda.core.designsystem.theme.AccentOrange
 
 // Real fix (2026-08-26): split out of ItundaAppScreen.kt once that file grew past
 // its file-size-lint baseline. Pure transaction-ledger row rendering + formatting

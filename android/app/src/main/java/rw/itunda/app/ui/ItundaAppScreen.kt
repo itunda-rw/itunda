@@ -186,6 +186,10 @@ import rw.itunda.feature.credit.impl.CreditScoreScreen
 import rw.itunda.feature.credit.impl.StudentLoanScreen
 import rw.itunda.feature.credit.impl.VupLoanScreen
 import rw.itunda.core.network.MoneyActionResult
+import rw.itunda.core.designsystem.theme.AccentIndigo
+import rw.itunda.core.designsystem.theme.AccentTeal
+import rw.itunda.core.designsystem.theme.AccentPurple
+import rw.itunda.core.designsystem.theme.AccentOrange
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
@@ -254,10 +258,10 @@ import rw.itunda.feature.talk.impl.HandshakeGlyph
 // FlatSection rows (갈아타기/서비스/외화/목돈굴리기/연금/대출 등) -- these are
 // brand/product colors in real Toss, not semantic theme colors, so unlike
 // Ids.colors.brand etc. above they intentionally stay constant across light/dark.
-internal val AccentIndigo = Color(0xFF7472F4)
-internal val AccentTeal = Color(0xFF14AE85)
-internal val AccentPurple = Color(0xFF7C5CFC)
-internal val AccentOrange = Color(0xFFF2A93B)
+// AccentIndigo/Teal/Purple/Orange moved to core/designsystem/theme/AccentColors.kt
+// (2026-09-02, Banking Feature-module decomposition slice 3) so BankHubScreen
+// (moving to :features:banking:impl) and LedgerFormatting.kt/BucketDetailScreen.kt
+// (staying in :app) share one real definition.
 internal val AccentRed = Color(0xFFFF5B5B)
 private val AccentPink = Color(0xFFEC5F8C)
 internal val AccentGray = Color(0xFF6B7684)

@@ -36,6 +36,7 @@ import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
+import rw.itunda.core.designsystem.theme.AccentIndigo
 
 // Extracted from ItundaAppScreen.kt (2026-09-02, slice 1 of the Banking Feature-module
 // decomposition, see ItundaAppSharedUi.kt's own header note for the full account) --
