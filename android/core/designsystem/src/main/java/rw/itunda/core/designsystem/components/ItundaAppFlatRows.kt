@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.core.designsystem.components
 
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -44,7 +44,7 @@ import rw.itunda.core.designsystem.theme.AccentIndigo
 // zero import changes anywhere else.
 
 @Composable
-internal fun TransactionDetailRow(label: String, value: String) {
+fun TransactionDetailRow(label: String, value: String) {
     // Real fix, applied proactively (this exact "two unweighted Texts in a Row can
     // overflow into each other" bug was just caught live in AccountLedgerRow above
     // this same session -- see that fix's own doc comment): the value gets
@@ -68,7 +68,7 @@ internal fun TransactionDetailRow(label: String, value: String) {
 // Banking Feature-module decomposition slice 5) -- confirmed used only by
 // BankHubScreen, which moved to the same module in the same slice.
 
-internal data class FlatRow(
+data class FlatRow(
     val title: String,
     val subtitle: String? = null,
     val trailing: String? = null,
@@ -111,7 +111,7 @@ internal data class FlatRow(
  * showChevron since both patterns can appear in the same screen.
  */
 @Composable
-internal fun FlatSection(title: String, rows: List<FlatRow>) {
+fun FlatSection(title: String, rows: List<FlatRow>) {
     Column {
         Text(
             title,

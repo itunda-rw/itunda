@@ -205,6 +205,9 @@ import rw.itunda.core.designsystem.components.ledgerRowTitle
 import rw.itunda.core.designsystem.components.ledgerDateHeader
 import rw.itunda.core.designsystem.components.ledgerFullDateTime
 import rw.itunda.core.designsystem.components.transactionTypeLabel
+import rw.itunda.core.designsystem.components.TransactionDetailRow
+import rw.itunda.core.designsystem.components.FlatRow
+import rw.itunda.core.designsystem.components.FlatSection
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.IdsTheme
