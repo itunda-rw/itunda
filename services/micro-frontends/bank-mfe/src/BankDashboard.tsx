@@ -41,6 +41,7 @@ import { LOCALES, type TranslationKey } from './i18n/translations';
 import { IdsButton } from './IdsButton';
 import { showToast } from './Toast';
 import { EmptyState, ErrorCard } from './EmptyState';
+import { useDeferredLoading } from './useDeferredLoading';
 import { ShopView } from './ShopView';
 import { configureAutoTopUp, fetchAccountTransactions, fetchAutoTopUpSetting, fetchTransactions, fetchTransactionTimeline, fetchAccounts, triggerAutoTopUp, type AutoTopUpSetting, type Transaction, type Account } from './lib/account';
 import { PayMoneyDetail } from './PayMoneyDetail';
@@ -6043,6 +6044,11 @@ function GroupAccountsSection() {
   const [accounts, setAccounts] = useState<GroupAccount[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Real, sourced finding (KakaoPay tech blog) -- see useDeferredLoading's own doc
+  // comment for the full account. Proof-of-concept site for a real, multi-session
+  // sweep: this file alone has ~105 other `=== null` skeleton call sites still
+  // showing instantly, not yet migrated.
+  const showSkeleton = useDeferredLoading(accounts === null);
 
   const load = () => {
     setError(null);
@@ -6064,7 +6070,7 @@ function GroupAccountsSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {accounts === null ? (
-        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : accounts.length === 0 ? (
         <EmptyState message="No group accounts yet -- start one to save or split expenses with others." />
       ) : (
