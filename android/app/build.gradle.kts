@@ -316,6 +316,11 @@ dependencies {
     // references replaced with injected callbacks -- see
     // [[project_itunda_feature_isolation]].
     implementation(project(":features:menu:impl"))
+    // Real content moved in 2026-09-02 (My Feature-module decomposition, completing
+    // the Home/Pay/Menu/My scope): MyTab and its 3 supporting screens
+    // (ProfilePhotoCard/VerificationCard+VerificationRow/PinUpgradeCard) -- the
+    // cleanest of the four, zero MainViewModel/cross-Feature coupling.
+    implementation(project(":features:my:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --

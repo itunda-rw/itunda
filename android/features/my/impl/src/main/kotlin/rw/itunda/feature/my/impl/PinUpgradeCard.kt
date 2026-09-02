@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.my.impl
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
