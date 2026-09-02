@@ -287,15 +287,15 @@ dependencies {
     // :app's own ui/ package into :features:credit:impl, mirroring iOS's
     // already-real Features/Credit split (see CLAUDE.md's own note).
     implementation(project(":features:credit:impl"))
-    // features:banking:impl deliberately has no dependency here (2026-07-11): its
-    // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted
-    // in 061cff6 as unreachable and superseded by ItundaAppScreen.kt's Home tab,
-    // built directly against real Toss reference screenshots -- see docs/ARCHITECTURE.md
-    // §3. Re-adding them would recreate the exact "two things doing the same job"
-    // duplication this repo has spent this session eliminating elsewhere (backend,
-    // SDKs, shared-utils). The module itself stays declared in settings.gradle.kts
-    // as a placeholder for a genuinely distinct future banking feature, matching the
-    // other empty feature modules -- it just has nothing to depend on yet.
+    // Real content moved in 2026-09-02 (Banking Feature-module decomposition slice
+    // 5, following the 2026-07-11 note this comment used to carry): the note above
+    // rejected re-adding BankScreen.kt/MySpendingScreen.kt, which were genuinely
+    // superseded duplicates -- this is a different move, relocating the ALREADY-
+    // canonical BankHubScreen/NewSavingsGoalDialog (and their supporting
+    // ShellRow/ShellSection/RoundUpSettingsDialog) out of ItundaAppScreen.kt into
+    // their own Feature module, not recreating a deleted duplicate. See
+    // [[project_itunda_feature_isolation]] for the full account.
+    implementation(project(":features:banking:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --

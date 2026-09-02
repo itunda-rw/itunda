@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -29,10 +28,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.components.IdsButton
-import rw.itunda.core.designsystem.components.IdsButtonSize
-import rw.itunda.core.designsystem.components.IdsButtonVariant
-import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
@@ -69,98 +64,9 @@ internal fun TransactionDetailRow(label: String, value: String) {
     }
 }
 
-internal data class ShellRow(
-    val title: String,
-    val subtitle: String,
-    val action: String,
-    val icon: ImageVector,
-    val iconColor: Color = AccentIndigo,
-    // Added 2026-07-12 for the real Savings section's rows (deposit/claim) --
-    // default null preserves every existing purely-promotional ShellRow call site
-    // unchanged.
-    val onClick: (() -> Unit)? = null,
-    // Real gap found live (2026-08-31, direct user re-reference of the real Toss
-    // withdraw screenshot) -- a real savings goal needs a second, genuinely distinct
-    // action (Withdraw) alongside its primary one (Deposit), unlike every other
-    // ShellRow in this file, which only ever needed one. Default null preserves every
-    // existing single-action row unchanged.
-    val secondaryAction: String? = null,
-    val onSecondaryClick: (() -> Unit)? = null,
-)
-
-// Flattened 2026-08-22 (direct user directive: "out bank home screen should
-// look 100% like toss bank screen") -- real Toss Bank's own product catalog
-// (Save & Grow / Borrow / Insights) renders as one continuous flat list, not a
-// grid of separate rounded cards; matches iOS's AccountLedgerDetailRow and
-// AccountDetailScreen.tsx's flat row pattern built the same session. 38dp
-// circular icon badge (was 42dp square-ish RoundedCornerShape(16.dp)) to match
-// those exactly.
-// Real fix (2026-08-24, direct user directive, real Toss product-list
-// screenshots): dropped the Divider() this used to render between rows -- real
-// Toss lists separate rows with whitespace alone, not a hairline rule per row.
-// FlatSection below already got this right (see its own doc comment); this was
-// the one real remaining list style still adding one.
-@Composable
-internal fun ShellSection(title: String, rows: List<ShellRow>) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (title.isNotEmpty()) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-            Spacer(modifier = Modifier.height(4.dp))
-        }
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (row.onClick != null) Modifier.pressScaleClickable(onClick = row.onClick) else Modifier)
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(row.iconColor),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Was showing row.third (the action label, e.g. "3 new"
-                    // or "Claim") crammed into a 42dp icon box -- a real bug,
-                    // not a placeholder; it also rendered a second time below
-                    // via the row's own action button whenever longer than one character.
-                    // Then briefly row.first's initial as a stopgap, then a
-                    // real icon but on a flat muted Ids.colors.chip background --
-                    // real Toss's card-list icon badges (송금/자산 reference
-                    // screenshots) are vivid per-item brand colors, not one
-                    // neutral gray tone reused everywhere.
-                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
-                    if (row.subtitle.isNotEmpty()) {
-                        Text(row.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
-                    }
-                }
-                if (row.action == ">") {
-                    Icon(IdsIcons.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                } else if (row.action.isNotBlank()) {
-                    // Real fix (2026-08-13, direct user report: "entire app is
-                    // still messy"): this button's onClick was hardcoded to a
-                    // no-op regardless of row.onClick -- the surrounding Row above
-                    // is already clickable via row.onClick when set, but a nested
-                    // clickable element (this button) intercepts the tap before it
-                    // reaches the parent, so tapping directly on the visually
-                    // obvious CTA (e.g. credit score's "View") silently did
-                    // nothing while tapping elsewhere in the same row worked.
-                    IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-                }
-                if (row.secondaryAction != null) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    IdsButton(row.secondaryAction, onClick = row.onSecondaryClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-                }
-            }
-        }
-    }
-}
+// ShellRow/ShellSection moved to :features:banking:impl/BankHubShellRow.kt (2026-09-02,
+// Banking Feature-module decomposition slice 5) -- confirmed used only by
+// BankHubScreen, which moved to the same module in the same slice.
 
 internal data class FlatRow(
     val title: String,
