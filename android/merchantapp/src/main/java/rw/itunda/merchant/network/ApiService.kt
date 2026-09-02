@@ -315,6 +315,15 @@ data class CardChargeResponse(
     val completedAt: String,
 )
 
+data class RedeemedGiftVoucherDto(
+    val id: String,
+    val productNameSnapshot: String?,
+    val amount: Double,
+    val status: String,
+    val redeemedAt: String?,
+)
+data class RedeemGiftVoucherResponse(val success: Boolean, val voucher: RedeemedGiftVoucherDto)
+
 data class ReportDayDto(val date: String, val collectionCount: Int, val grossAmount: Double, val fees: Double, val netAmount: Double, val byChannel: Map<String, Double>)
 data class ReportResponse(val success: Boolean, val from: String, val to: String, val days: List<ReportDayDto>)
 data class TopSellingProductDto(val productId: String, val productName: String, val unitsSold: Int, val revenue: Double)
@@ -449,6 +458,15 @@ interface ApiService {
 
     @POST("api/v1/merchant/card/charge")
     suspend fun chargeCard(@Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(), @Body request: ChargeCardRequest): CardChargeResponse
+
+    // Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption --
+    // see backend GiftVoucherService.redeemVoucher's own doc comment: the customer
+    // shows the merchant their voucher (its real id, from their own itunda app), the
+    // merchant enters it here to redeem -- never a self-serve redeem the customer
+    // could fake. Real, shipped on the backend + merchant-mfe with zero Android/iOS
+    // MerchantApp client until now -- found via a cross-platform-parity check.
+    @POST("api/v1/gift-vouchers/{id}/redeem")
+    suspend fun redeemGiftVoucher(@Path("id") voucherId: String, @Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString()): RedeemGiftVoucherResponse
 
     @GET("api/v1/merchant/products")
     suspend fun getProductCatalog(): MerchantProductsResponse

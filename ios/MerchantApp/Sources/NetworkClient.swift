@@ -252,6 +252,21 @@ struct CardChargeResponse: Decodable {
     let completedAt: String
 }
 
+// Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption --
+// see backend GiftVoucherService.redeemVoucher's own doc comment: the customer shows
+// the merchant their voucher (its real id, from their own itunda app), the merchant
+// enters it here to redeem -- never a self-serve redeem the customer could fake.
+// Real, shipped on the backend + merchant-mfe/Android with zero iOS MerchantApp
+// client until now -- found via a cross-platform-parity check.
+struct RedeemedGiftVoucherDto: Decodable {
+    let id: String
+    let productNameSnapshot: String?
+    let amount: Double
+    let status: String
+    let redeemedAt: String?
+}
+struct RedeemGiftVoucherResponse: Decodable { let success: Bool; let voucher: RedeemedGiftVoucherDto }
+
 struct ReportDayDto: Decodable, Identifiable {
     var id: String { date }
     let date: String
@@ -497,6 +512,12 @@ final class MerchantNetworkClient {
 
     func chargeCard(_ request: ChargeCardRequest) async throws -> CardChargeResponse {
         try await postWithHeader("api/v1/merchant/card/charge", body: request, header: ("Idempotency-Key", UUID().uuidString))
+    }
+
+    // Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption --
+    // see RedeemedGiftVoucherDto's own doc comment for the full sourced account.
+    func redeemGiftVoucher(_ voucherId: String) async throws -> RedeemGiftVoucherResponse {
+        try await postWithHeader("api/v1/gift-vouchers/\(voucherId)/redeem", body: EmptyBody(), header: ("Idempotency-Key", UUID().uuidString))
     }
 
     func verifyDevice(password: String) async throws -> VerifyDeviceResponse {
