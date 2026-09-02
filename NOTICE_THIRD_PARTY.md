@@ -29,10 +29,12 @@ Version 1.1 (<https://scripts.sil.org/OFL>). The full license text is
 reproduced below per OFL §2, which requires that any copy — original or
 modified — carry this notice.
 
-Locations using this derived data:
+Locations using this derived data (updated 2026-09-03: the Android and iOS paths moved into
+each platform's `:core:designsystem` module during a later cross-Feature-module promotion,
+not corrected here until now):
 - `services/micro-frontends/bank-mfe/src/icons/ItundaFacePeople.tsx` (web)
-- `android/features/talk/impl/.../ItundaFacePeople.kt` (Android)
-- `ios/App/Sources/ItundaFace/ItundaFacePeople.swift` (iOS)
+- `android/core/designsystem/src/main/java/rw/itunda/core/designsystem/itundaface/ItundaFacePeople.kt` (Android)
+- `ios/Core/DesignSystem/Sources/ItundaFace/ItundaFacePeople.swift` (iOS)
 - `github.com/itunda-rw/itundaface` (the published, standalone itundaface repo)
 
 ---
