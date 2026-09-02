@@ -5068,6 +5068,18 @@ extension NetworkClient {
 
     public func getMyFavoriteListings() async throws -> FavoriteListingsResponse { try await get("api/v1/marketplace/listings/favorites") }
 
+    // Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's own
+    // doc comment. Real, shipped on the backend + bank-mfe (2026-08-24) with zero iOS
+    // client until now -- found via a cross-platform-parity check. Mirrors
+    // addListingFavorite/removeListingFavorite exactly (POST to hide, DELETE to unhide).
+    public func hideListing(_ listingId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/hide", body: EmptyBody())
+    }
+
+    public func unhideListing(_ listingId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/marketplace/listings/\(listingId)/hide")
+    }
+
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
     public func sendGiftInConversation(conversationId: String, amount: Double, note: String?, theme: String? = nil) async throws -> GiftResponse {
         try await authenticatedPost(

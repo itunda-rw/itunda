@@ -311,6 +311,29 @@ fun MarketplaceContent(
         }
     }
 
+    // Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's
+    // own doc comment. Real, shipped on the backend + bank-mfe (2026-08-24) with zero
+    // Android client until now -- found via a cross-platform-parity check. A local
+    // list filter (not a full reload) makes the hidden row disappear immediately,
+    // matching bank-mfe's own "backend excludes this listing from browse, plain
+    // onChanged() refetch is what makes it disappear" behavior without losing scroll
+    // position on a real network round-trip.
+    var hidingId by remember { mutableStateOf<String?>(null) }
+    fun hideListing(listingId: String) {
+        hidingId = listingId
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.hideListing(listingId)
+                listings = listings?.filterNot { it.id == listingId }
+            } catch (e: Exception) {
+                // Real, non-critical -- a failed hide just means the listing is still
+                // visible, same "silent, non-blocking" discipline toggleFavorite above.
+            } finally {
+                hidingId = null
+            }
+        }
+    }
+
     // Real like/unlike toggle (2026-08-03) -- see backend MarketplaceController.kt's
     // own doc comment. likedListingIds itself is declared up near trustScores (a
     // Kotlin-locals-must-be-declared-before-use requirement, see that declaration's
@@ -561,6 +584,8 @@ fun MarketplaceContent(
                         onToggleFavorite = { toggleFavorite(listing.id) },
                         liked = listing.id in likedListingIds,
                         onToggleLike = { toggleLike(listing.id) },
+                        hiding = hidingId == listing.id,
+                        onHide = { hideListing(listing.id) },
                         onOpen = { selectedListing = listing },
                         isScrollTouched = marketplaceTouchedKey.value == listing.id,
                     )
@@ -635,6 +660,8 @@ fun MarketplaceContent(
                     onToggleFavorite = { toggleFavorite(listing.id) },
                     liked = listing.id in likedListingIds,
                     onToggleLike = { toggleLike(listing.id) },
+                    hiding = hidingId == listing.id,
+                    onHide = { hideListing(listing.id) },
                     onOpen = { selectedListing = listing },
                     isScrollTouched = marketplaceTouchedKey.value == listing.id,
                 )
@@ -702,6 +729,7 @@ private fun ListingRow(
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     viewerLocation: Pair<Double, Double>? = null,
     liked: Boolean = false, onToggleLike: () -> Unit = {},
+    hiding: Boolean = false, onHide: () -> Unit = {},
     onOpen: () -> Unit,
     isScrollTouched: Boolean = false,
 ) {
@@ -790,6 +818,14 @@ private fun ListingRow(
                             modifier = Modifier.weight(1f),
                         )
                         if (!isMine) {
+                            Text(
+                                if (hiding) "…" else "Hide",
+                                color = Ids.colors.textSecondary,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(end = 8.dp)
+                                    .semantics { contentDescription = "Hide this listing -- you won't see it again" }
+                                    .pressScaleClickable(enabled = !hiding, onClick = onHide),
+                            )
                             WishlistHeart(
                                 favorited = favorited,
                                 size = 20.dp,

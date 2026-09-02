@@ -1914,6 +1914,11 @@ data class FavoriteRestaurantDto(val restaurantId: String, val businessName: Str
 data class FavoriteRestaurantsResponse(val success: Boolean, val favorites: List<FavoriteRestaurantDto>)
 data class AddFavoriteResponse(val success: Boolean)
 
+// Real Karrot "이 글 숨기기" (hide this post) -- the client only needs to know the call
+// succeeded (same as AddFavoriteResponse), the real ListingHide object's own fields
+// aren't rendered anywhere, matching bank-mfe's own hideListing() usage.
+data class HideListingResponse(val success: Boolean)
+
 // Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- see
 // getMyEatsMembership's own doc comment.
 data class EatsMembershipDto(
@@ -3073,6 +3078,16 @@ interface ApiService {
     // own real toggle discipline above.
     @POST("api/v1/marketplace/listings/{id}/like")
     suspend fun toggleListingLike(@Path("id") listingId: String): ToggleLikeResponse
+
+    // Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's own
+    // doc comment. Real, shipped on the backend + bank-mfe (2026-08-24) with zero
+    // Android/iOS client until now -- found via a cross-platform-parity check. Mirrors
+    // addListingFavorite/removeListingFavorite exactly (POST to hide, DELETE to unhide).
+    @POST("api/v1/marketplace/listings/{id}/hide")
+    suspend fun hideListing(@Path("id") listingId: String): HideListingResponse
+
+    @DELETE("api/v1/marketplace/listings/{id}/hide")
+    suspend fun unhideListing(@Path("id") listingId: String): AddFavoriteResponse
 
     // Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
     // since before this session) -- first Android client for this feature (item 115,

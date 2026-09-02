@@ -33,6 +33,10 @@ struct ListingCard: View {
 
     @State private var busy = false
     @State private var error: String?
+    // Real Karrot "이 글 숨기기" (hide this post) -- see backend ListingHideService's
+    // own doc comment. Real, shipped on the backend + bank-mfe (2026-08-24) with zero
+    // iOS client until now -- found via a cross-platform-parity check.
+    @State private var hiding = false
     @State private var offering = false
     @State private var offerAmount = ""
     @State private var showingSafetyChecklist = false
@@ -115,6 +119,14 @@ struct ListingCard: View {
                 }
                 Spacer()
                 if !isMine {
+                    Button(action: { Task { await hideListing() } }) {
+                        Text(hiding ? "…" : "Hide")
+                            .font(.caption2)
+                            .foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    .accessibilityLabel("Hide this listing -- you won't see it again")
+                    .disabled(hiding)
+                    .padding(.trailing, 8)
                     Button(action: onToggleFavorite) {
                         WishlistHeart(favorited: favorited, size: 18)
                     }
@@ -455,6 +467,22 @@ struct ListingCard: View {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real Karrot "이 글 숨기기" (hide this post) -- backend excludes this listing from
+    // browse, so calling onChanged() (a real refetch) is what makes it disappear,
+    // matching bank-mfe's own hideListing() usage exactly. Fails silently, same
+    // non-blocking discipline as toggleFavorite -- a failed hide just means the
+    // listing is still visible.
+    private func hideListing() async {
+        hiding = true
+        defer { hiding = false }
+        do {
+            _ = try await NetworkClient.shared.hideListing(listing.id)
+            onChanged()
+        } catch {
+            // Real, non-critical -- see doc comment above.
         }
     }
 
