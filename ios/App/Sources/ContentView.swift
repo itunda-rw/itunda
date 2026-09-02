@@ -429,7 +429,12 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            EntireMenuScreen(
+            // Real Menu Feature-module decomposition (2026-09-02) -- EntireMenuScreen
+            // itself now lives in FeatureMenu as a pure callback-driven catalog;
+            // MenuTabContent.swift owns its ~45 destinations' state + presentation
+            // (everything below this call, unchanged from before the move), matching
+            // HomeTabContent's own established App-Feature-bridge role.
+            MenuTabContent(
                 onOpenSettings: { showSettings = true },
                 onClaimInterest: { savingsFlowStep = .claimInterest },
                 onSwitchToTalk: { selectedTab = 3 },

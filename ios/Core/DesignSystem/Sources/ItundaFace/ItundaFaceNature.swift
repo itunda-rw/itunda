@@ -95,10 +95,10 @@ private let natureBirdShapes: [ItundaFaceShape] = [
     .filledPath(d: "M45.41,73.71c-1.95,0.71,0.61,7.6,3.24,10.7c2.77,3.26,9.47,10.58,19.71,11.54 c6.95,0.66,10.04-1.31,11.68-3.1c1.22-1.33,2.53-2.87,3.43-3.57c1.31-1.03,2.63-0.14,4.88-1.78c1.62-1.18,1.97-3.14,2.82-3.85 c0.84-0.7,2.27-0.54,3-1.22c1.31-1.22,1.13-4.79,0.19-4.97s-1.03,2.53-1.97,2.91s-2.19,0.14-3.94,1.13 c-1.5,0.84-1.03,2.53-2.06,3.28s-2.91-0.28-5.44,1.13c-1.37,0.76-2.53,4.41-6.48,5.26c-4.9,1.05-12.25-2.52-15.77-5.07 C50.53,80.18,48.74,72.49,45.41,73.71z", color: Color(hex: 0x026AA8)),
 ]
 
-struct NatureDog: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureDogShapes) } }
-struct NatureCat: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureCatShapes) } }
-struct NatureStar: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureStarShapes) } }
-struct NatureGlowingStar: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureGlowingStarShapes) } }
-struct NatureRainbow: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureRainbowShapes) } }
-struct NatureCherryBlossom: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureCherryBlossomShapes) } }
-struct NatureBird: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureBirdShapes) } }
+public struct NatureDog: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureDogShapes) } }
+public struct NatureCat: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureCatShapes) } }
+public struct NatureStar: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureStarShapes) } }
+public struct NatureGlowingStar: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureGlowingStarShapes) } }
+public struct NatureRainbow: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureRainbowShapes) } }
+public struct NatureCherryBlossom: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureCherryBlossomShapes) } }
+public struct NatureBird: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: natureBirdShapes) } }

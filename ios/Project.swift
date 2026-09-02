@@ -163,7 +163,18 @@ let featureDependencies: [TargetDependency] = [
 // reward-tasks mini-app (:App-only) switched to a plain onOpenRewardsMiniApp
 // callback, matching FeatureAssets' OverviewScreenView's own onOpenRewards
 // precedent exactly.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay"]
+// "Menu" added 2026-09-02 -- iOS parity pass continued (see "Home"/"Pay"'s own
+// comments above), matching Android's own already-real :features:menu:impl
+// exactly. EntireMenuScreen (App/Sources/BenefitsShopAllScreens.swift) is a
+// catalog of ~45 destinations spanning nearly every product in the app -- unlike
+// Home/Pay's handful of App-only dependencies, a generic-ViewBuilder-injection
+// signature here would need 45+ type parameters, far less readable than the
+// alternative. Converted every destination to a plain `onOpenX: () -> Void`
+// callback instead, mirroring Android's real MenuScreen.kt signature exactly
+// (same real screen, same real architecture on both platforms) -- ContentView.swift
+// now owns every destination's state + presentation, the same role
+// ItundaAppScreen.kt already plays on Android.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

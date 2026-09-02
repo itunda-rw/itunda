@@ -158,12 +158,12 @@ private let peopleHandshakeShapes: [ItundaFaceShape] = [
     ]),
 ]
 
-struct PeopleEyes: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 80, shapes: peopleEyesShapes) } }
-struct PeopleWavingHand: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleWavingHandShapes) } }
-struct PeopleFist: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleFistShapes) } }
-struct PeopleVictoryHand: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleVictoryHandShapes) } }
-struct PeopleOkHand: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleOkHandShapes) } }
-struct PeopleMuscle: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleMuscleShapes) } }
-struct PeoplePray: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peoplePrayShapes) } }
-struct PeopleClappingHands: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleClappingHandsShapes) } }
-struct HandshakeGlyph: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleHandshakeShapes) } }
+public struct PeopleEyes: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 80, shapes: peopleEyesShapes) } }
+public struct PeopleWavingHand: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleWavingHandShapes) } }
+public struct PeopleFist: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleFistShapes) } }
+public struct PeopleVictoryHand: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleVictoryHandShapes) } }
+public struct PeopleOkHand: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleOkHandShapes) } }
+public struct PeopleMuscle: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleMuscleShapes) } }
+public struct PeoplePray: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peoplePrayShapes) } }
+public struct PeopleClappingHands: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleClappingHandsShapes) } }
+public struct HandshakeGlyph: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: peopleHandshakeShapes) } }

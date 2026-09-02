@@ -158,11 +158,11 @@ private let objectPenShapes: [ItundaFaceShape] = [
     .filledPath(d: "M107.19,8.77c-0.53,0.11-1.03,0.52-1.06,1.06c-0.03,0.55,0.41,0.99,0.82,1.36 c1.28,1.16,2.61,2.34,4.25,2.89c0.36,0.12,0.83,0.19,1.08-0.1c0.16-0.18,0.17-0.45,0.15-0.69c-0.08-0.99-0.58-1.9-1.23-2.65 C110.18,9.48,108.84,8.43,107.19,8.77z", color: Color(hex: 0xEEEEEE)),
 ]
 
-struct ObjectCreditCard: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectCreditCardShapes) } }
-struct ObjectMobilePhone: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectMobilePhoneShapes) } }
-struct ObjectWatch: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectWatchShapes) } }
-struct ObjectKey: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectKeyShapes) } }
-struct ObjectLightBulb: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectLightBulbShapes) } }
-struct ObjectHeadphones: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectHeadphonesShapes) } }
-struct ObjectPaperclip: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectPaperclipShapes) } }
-struct ObjectPen: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectPenShapes) } }
+public struct ObjectCreditCard: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectCreditCardShapes) } }
+public struct ObjectMobilePhone: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectMobilePhoneShapes) } }
+public struct ObjectWatch: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectWatchShapes) } }
+public struct ObjectKey: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectKeyShapes) } }
+public struct ObjectLightBulb: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectLightBulbShapes) } }
+public struct ObjectHeadphones: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectHeadphonesShapes) } }
+public struct ObjectPaperclip: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectPaperclipShapes) } }
+public struct ObjectPen: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: objectPenShapes) } }

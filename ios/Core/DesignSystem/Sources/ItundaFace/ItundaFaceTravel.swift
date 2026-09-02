@@ -148,9 +148,9 @@ private let travelGlobeShapes: [ItundaFaceShape] = [
     .filledPath(d: "M72.46,83.86c-0.3-0.39-1.65-0.45-2.1-0.16s-1.13,2.42-0.94,2.78c0.19,0.36,1.49,0.26,1.94,0.1 S72.78,84.28,72.46,83.86z", color: Color(hex: 0x4186F1)),
 ]
 
-struct TravelCar: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelCarShapes) } }
-struct TravelAirplane: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelAirplaneShapes) } }
-struct TravelHouse: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelHouseShapes) } }
-struct TravelRocket: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelRocketShapes) } }
-struct TravelBike: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelBikeShapes) } }
-struct TravelGlobe: View { var size: CGFloat = 24; var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelGlobeShapes) } }
+public struct TravelCar: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelCarShapes) } }
+public struct TravelAirplane: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelAirplaneShapes) } }
+public struct TravelHouse: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelHouseShapes) } }
+public struct TravelRocket: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelRocketShapes) } }
+public struct TravelBike: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelBikeShapes) } }
+public struct TravelGlobe: View { public var size: CGFloat = 24; public init(size: CGFloat = 24) { self.size = size }; public var body: some View { ItundaFaceGlyphCanvas(size: size, viewBoxSize: 128, shapes: travelGlobeShapes) } }
