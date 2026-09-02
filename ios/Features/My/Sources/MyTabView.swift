@@ -1,12 +1,23 @@
 //
-//  BenefitsShopAllScreens.swift
-//  Originally built (2026-07-11) to close part of docs/TOSS_RWANDA_ALIGNMENT.md's
-//  "screen/navigation taxonomy parity is still open" gap for three tabs; two of
-//  those (BenefitsScreen/DiscoverScreen) were retired outright and EntireMenuScreen
-//  (the "All"/Explore tab) moved to Features/Menu/Sources/ (2026-09-02, Menu
-//  Feature-module decomposition) -- see that module's own doc comment for the
-//  fuller history. This file now holds only MyTabView (the "My" primary tab) and
-//  its own private formatAmount helper.
+//  MyTabView.swift
+//  Real Naver-style "My" personal hub (2026-07-22) -- at the user's direct request:
+//  "My should be like Naver style My since we have shopping and eats and other products
+//  where users need to easily get track of their orders, reservation, favorites." Every
+//  number/row here is a real fetched count or preview, not decoration -- the same "no
+//  fabricated numbers" discipline this app already follows elsewhere.
+//
+//  Trimmed down (2026-07-24) to ONLY this unique content -- its old "Quick links" and
+//  "My account" sections are deleted, since both now fully duplicate rows already in
+//  EntireMenuScreen's own catalog (now FeatureMenu). Mirrors Android's trimmed MyTab
+//  exactly. This is now its own primary tab (ItundaTab.You, 2026-08-10, see
+//  ContentView.swift's own doc comment) -- not reached via EntireMenuScreen's
+//  profile icon anymore.
+//
+//  Moved here from App/Sources/BenefitsShopAllScreens.swift (2026-09-02, My
+//  Feature-module decomposition, matching Android's own already-real
+//  :features:my:impl) -- was originally rebuilt 2026-07-11 alongside
+//  BenefitsScreen/DiscoverScreen/EntireMenuScreen (both retired or moved
+//  separately; see FeatureMenu's own doc comment for that history).
 //
 
 import SwiftUI
@@ -25,29 +36,29 @@ private func formatAmount(_ value: Int) -> String {
     return formatter.string(from: NSNumber(value: value)) ?? "0"
 }
 
-// EntireMenuScreen (the "Explore"/"All" tab) moved to Features/Menu/Sources/
-// (2026-09-02, Menu Feature-module decomposition, matching Android's own already-
-// real :features:menu:impl) -- see that module's own doc comment for the full
-// history this file's old header carried.
+// Same "each screen keeps its own local copy" convention as formatAmount above --
+// TalkScreen.errorMessage (App-only, 23 other real callers) isn't reachable from a
+// Feature module.
+private func errorMessage(_ statusCode: Int) -> String {
+    switch statusCode {
+    case 400: return "Please check what you entered and try again."
+    case 401, 403: return "You don't have access to do that."
+    case 404: return "That couldn't be found."
+    case 409: return "That's already been done, or is being processed."
+    case 422: return "Insufficient funds for this order."
+    case 429: return "Too many attempts -- please wait a moment and try again."
+    default: return "Something went wrong. Please try again."
+    }
+}
 
-// Real Naver-style "My" personal hub (2026-07-22) -- at the user's direct request:
-// "My should be like Naver style My since we have shopping and eats and other products
-// where users need to easily get track of their orders, reservation, favorites." Every
-// number/row here is a real fetched count or preview, not decoration -- the same "no
-// fabricated numbers" discipline this app already follows elsewhere.
-//
-// Trimmed down (2026-07-24) to ONLY this unique content -- its old "Quick links" and
-// "My account" sections are deleted, since both now fully duplicate rows already in
-// EntireMenuScreen's own catalog. Mirrors Android's trimmed MyTab exactly. This is
-// now its own primary tab (ItundaTab.You, 2026-08-10, see ContentView.swift's own
-// doc comment) -- not reached via EntireMenuScreen's profile icon anymore.
-struct MyTabView: View {
+public struct MyTabView: View {
     var onBack: () -> Void = {}
     var onSwitchToShop: () -> Void = {}
     var onSwitchToEats: () -> Void = {}
     var onSwitchToMarketplace: () -> Void = {}
     var onSwitchToJobs: () -> Void = {}
     var onSwitchToProperty: () -> Void = {}
+    var onUpdatePin: (_ currentCredential: String, _ newPin: String) async -> String? = { _, _ in nil }
 
     @State private var shopOrders: [OrderDto] = []
     @State private var eatsOrders: [EatsOrderDto] = []
@@ -65,7 +76,25 @@ struct MyTabView: View {
     @State private var affiliateLinks: [AffiliateLinkDto] = []
     @State private var affiliateCommissions: [AffiliateCommissionDto] = []
 
-    var body: some View {
+    public init(
+        onBack: @escaping () -> Void = {},
+        onSwitchToShop: @escaping () -> Void = {},
+        onSwitchToEats: @escaping () -> Void = {},
+        onSwitchToMarketplace: @escaping () -> Void = {},
+        onSwitchToJobs: @escaping () -> Void = {},
+        onSwitchToProperty: @escaping () -> Void = {},
+        onUpdatePin: @escaping (_ currentCredential: String, _ newPin: String) async -> String? = { _, _ in nil }
+    ) {
+        self.onBack = onBack
+        self.onSwitchToShop = onSwitchToShop
+        self.onSwitchToEats = onSwitchToEats
+        self.onSwitchToMarketplace = onSwitchToMarketplace
+        self.onSwitchToJobs = onSwitchToJobs
+        self.onSwitchToProperty = onSwitchToProperty
+        self.onUpdatePin = onUpdatePin
+    }
+
+    public var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.sectionSpacing) {
                 HStack {
@@ -80,7 +109,7 @@ struct MyTabView: View {
                 // PinUpgradeCard.swift's own doc comment. Own file, not inline here,
                 // matching this session's own file-size-lint discipline for this
                 // already-large file.
-                PinUpgradeCard()
+                PinUpgradeCard(onUpdatePin: onUpdatePin)
                 VerificationCard()
                 if !affiliateLinks.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
@@ -410,7 +439,7 @@ private struct VerificationRow: View {
             // PHONE_ALREADY_VERIFIED are the only 409s either endpoint can return.
             onVerified()
         } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+            error = errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -432,7 +461,7 @@ private struct VerificationRow: View {
             try? await Task.sleep(nanoseconds: 500_000_000)
             onVerified()
         } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+            error = errorMessage(statusCode)
             shake()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."

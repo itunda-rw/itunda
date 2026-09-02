@@ -13,8 +13,18 @@ import CoreDesignSystem
 /// new, self-contained pieces. Flat, no card background -- matches this codebase's
 /// own standing "new/touched screens are flat" design law
 /// (docs/UI_UX_GUIDELINES.md), mirroring Android's/bank-mfe's identical choice here.
+///
+/// Moved here from App/Sources (2026-09-02, My Feature-module decomposition).
+/// `SessionManager`/`AuthResult` are App-only (SessionManager.swift is the app's
+/// own central session/auth orchestrator, tied to ItundaApp.swift's own lifecycle
+/// state -- not a design-system component to promote) -- `onUpdatePin` takes their
+/// place as a plain injected callback returning an error message on failure or nil
+/// on success, matching this codebase's own established plain-callback pattern
+/// (DeviceStepUpHost's onVerified, PayScreen's onOpenRewardsMiniApp).
 struct PinUpgradeCard: View {
     private enum Step { case closed, credential, create, confirm, success }
+
+    var onUpdatePin: (_ currentCredential: String, _ newPin: String) async -> String? = { _, _ in nil }
 
     @State private var pinSet: Bool?
     @State private var step: Step = .closed
@@ -109,14 +119,13 @@ struct PinUpgradeCard: View {
         busy = true
         error = nil
         Task {
-            let result = await SessionManager.shared.updateAccountPin(currentCredential: currentCredential, newPin: entered)
+            let failureMessage = await onUpdatePin(currentCredential, entered)
             busy = false
-            switch result {
-            case .success:
-                step = .success
-            case .failure(let message):
-                error = message
+            if let failureMessage {
+                error = failureMessage
                 step = .credential
+            } else {
+                step = .success
             }
         }
     }

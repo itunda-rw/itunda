@@ -6,6 +6,7 @@ import FeatureBanking
 import FeatureCredit
 import FeatureHome
 import FeatureMaps
+import FeatureMy
 import FeaturePay
 import FeaturePayments
 import FeatureSupport
@@ -620,13 +621,21 @@ struct ContentView: View {
             // Real, dedicated primary tab (2026-08-10, see this TabView's own doc
             // comment) -- MyTabView's own real content (orders/favorites/listings) is
             // completely unchanged, just reached directly instead of via Explore's
-            // profile icon.
+            // profile icon. Now FeatureMy (2026-09-02, My Feature-module
+            // decomposition) -- onUpdatePin bridges to SessionManager, App-only
+            // since it's the app's own central session/auth orchestrator.
             MyTabView(
                 onSwitchToShop: { showShop = true },
                 onSwitchToEats: { showEats = true },
                 onSwitchToMarketplace: { showMarketplace = true },
                 onSwitchToJobs: { showJobs = true },
-                onSwitchToProperty: { showProperty = true }
+                onSwitchToProperty: { showProperty = true },
+                onUpdatePin: { currentCredential, newPin in
+                    switch await SessionManager.shared.updateAccountPin(currentCredential: currentCredential, newPin: newPin) {
+                    case .success: return nil
+                    case .failure(let message): return message
+                    }
+                }
             )
                 .tabItem {
                     Image(systemName: "person.fill")

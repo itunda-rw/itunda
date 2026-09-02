@@ -3,12 +3,11 @@
 //  itundaface: like/wishlist heart-toggle glyphs, ported from bank-mfe's
 //  icons/ItundaFaceHearts.tsx / github.com/itunda-rw/itundaface, matching
 //  Android's ItundaFaceHearts.kt -- the widest-reaching group, since real
-//  usage spans Marketplace/Property/Jobs/Eats/Community. Lives in
-//  App/Sources (not CoreDesignSystem) because every real consumer is
-//  already part of the single monolithic App target -- unlike Android,
-//  iOS hasn't split those domains into separate Feature modules yet (see
-//  root CLAUDE.md's own note on this), so there's no cross-module sharing
-//  need the way gifts/reactions' shared canvas had.
+//  usage spans Marketplace/Property/Jobs/Eats/Community/My. Moved here from
+//  App/Sources (2026-09-02, My Feature-module decomposition) -- MyTabView,
+//  now in FeatureMy, needs WishlistHeart, and the 6 other real consumers
+//  (Hood/Shop/Eats screens) all stay in :App and already import
+//  CoreDesignSystem.
 //
 //  Deliberately the SAME shared-seam heart silhouette as ItundaFaceReactions
 //  .swift's reactionHeartShapes (identical path data, identical

@@ -14,7 +14,7 @@ import CoreDesignSystem
 /// same real reason (keeping this backend account credential distinct from any
 /// future local app-unlock PIN). Auto-submits at 6 digits, matching every real PIN
 /// entry convention (Toss, bank cards) -- no separate confirm button.
-struct AccountPinPad: View {
+public struct AccountPinPad: View {
     let headline: String
     var subtitle: String? = nil
     var errorMessage: String? = nil
@@ -31,7 +31,15 @@ struct AccountPinPad: View {
 
     private let pinLength = 6
 
-    var body: some View {
+    public init(headline: String, subtitle: String? = nil, errorMessage: String? = nil, busy: Bool = false, onComplete: @escaping (String) -> Void) {
+        self.headline = headline
+        self.subtitle = subtitle
+        self.errorMessage = errorMessage
+        self.busy = busy
+        self.onComplete = onComplete
+    }
+
+    public var body: some View {
         VStack(spacing: 0) {
             Text(headline)
                 .font(IDS.Typography.title)

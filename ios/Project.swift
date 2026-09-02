@@ -174,7 +174,22 @@ let featureDependencies: [TargetDependency] = [
 // (same real screen, same real architecture on both platforms) -- ContentView.swift
 // now owns every destination's state + presentation, the same role
 // ItundaAppScreen.kt already plays on Android.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu"]
+// "My" added 2026-09-02 -- iOS parity pass CLOSES here (see "Home"/"Pay"/"Menu"'s
+// own comments above), matching Android's own already-real :features:my:impl.
+// MyTabView (App/Sources/BenefitsShopAllScreens.swift) was the cleanest of the
+// four: only plain `onSwitchToX: () -> Void` callbacks, no App-only screen type
+// injected directly. Real blockers found anyway: SessionManager/AuthResult (the
+// app's own central session/auth orchestrator, tied to ItundaApp.swift's own
+// lifecycle -- not a design-system component) replaced with a plain
+// `onUpdatePin: (String, String) async -> String?` callback on the moved
+// PinUpgradeCard; AccountPinPad (shared with LoginScreen, which stays in :App)
+// promoted to CoreDesignSystem; WishlistHeart (shared with 6 other App-only
+// screens) and its whole ItundaFaceHearts.swift file promoted too -- the doc
+// comment there had explicitly deferred this exact move "because... iOS hasn't
+// split those domains into separate Feature modules yet"; TalkScreen.errorMessage
+// (App-only, 23 other real callers) got its own local per-file copy, same
+// established convention as this file's own formatAmount duplication.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay", "Menu", "My"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }
