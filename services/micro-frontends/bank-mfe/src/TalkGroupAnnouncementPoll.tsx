@@ -7,6 +7,7 @@ import {
   createGroupPoll, fetchGroupAnnouncement, fetchGroupPolls, postGroupAnnouncement, voteGroupPoll,
   type GroupAnnouncement, type GroupPollWithVotes,
 } from './lib/talk';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real group 공지/투표 (announcement/poll) (itunda Talk redesign, 2026-08-28) -- see
 // backend GroupPollAnnouncementService's own doc comment. Split into its own file,
@@ -16,7 +17,8 @@ import {
 // as a separate, deliberately-deferred piece).
 
 function AnnouncementBody({ announcement }: { announcement: GroupAnnouncement | null | undefined }) {
-  if (announcement === undefined) return <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  const showSkeleton = useDeferredLoading(announcement === undefined);
+  if (announcement === undefined) return showSkeleton ? <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (!announcement) return <EmptyState message="No announcement yet." />;
   return (
     <div style={{ display: 'flex', gap: '10px', padding: '12px 14px', backgroundColor: 'var(--itunda-grey-50)', borderRadius: 'var(--itunda-radius-md)' }}>
@@ -30,7 +32,8 @@ function AnnouncementBody({ announcement }: { announcement: GroupAnnouncement | 
 }
 
 function PollsList({ polls, onVote }: { polls: GroupPollWithVotes[] | null; onVote: (pollId: string, optionId: string) => void }) {
-  if (polls === null) return <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  const showSkeleton = useDeferredLoading(polls === null);
+  if (polls === null) return showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (polls.length === 0) return <EmptyState message="No polls yet." />;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

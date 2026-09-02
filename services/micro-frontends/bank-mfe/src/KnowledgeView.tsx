@@ -15,6 +15,7 @@ import {
   fetchMyKnowledgeAnswers, fetchMyKnowledgeQuestions, fetchMyKnowledgeReputation, postKnowledgeAnswer, postKnowledgeQuestion,
   type KnowledgeAnswer, type KnowledgeCategory, type KnowledgeQuestion,
 } from './lib/knowledge';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function KnowledgeView() {
   const { t } = useI18n();
@@ -194,7 +195,9 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
 function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: string; onBack: () => void }) {
   const { t } = useI18n();
   const [question, setQuestion] = useState<KnowledgeQuestion | null>(null);
+  const showQuestionSkeleton = useDeferredLoading(!question);
   const [answers, setAnswers] = useState<KnowledgeAnswer[] | null>(null);
+  const showAnswersSkeleton = useDeferredLoading(answers === null);
   const [answerBody, setAnswerBody] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [answering, setAnswering] = useState(false);
@@ -244,7 +247,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
     <div>
       <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-      {!question && !error && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {!question && !error && showQuestionSkeleton && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {question && (
         <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700 }}>{question.title}</p>
@@ -252,7 +255,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
         </div>
       )}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Answers</h3>
-      {answers === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {answers === null && showAnswersSkeleton && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {answers !== null && answers.length === 0 && (
         <EmptyState message="No answers yet -- be the first to help." />
       )}

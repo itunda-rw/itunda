@@ -4,6 +4,7 @@ import { IconBack } from './icons/ItundaIcons';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { ApiError } from './lib/api';
 import { markNotificationRead } from './lib/notifications';
+import { useDeferredLoading } from './useDeferredLoading';
 import {
   AiChatBusyError, fetchAiChatHistory, fetchServiceChannel, sendAiChatMessage,
   type AiChatMessage, type ServiceChannelBubble,
@@ -32,6 +33,7 @@ function ThreadHeader({ title, subtitle, onBack }: { title: string; subtitle?: s
 
 export function TalkServiceChannelThread({ onBack }: { onBack: () => void }) {
   const [bubbles, setBubbles] = useState<ServiceChannelBubble[] | null>(null);
+  const showSkeleton = useDeferredLoading(bubbles === null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -56,7 +58,7 @@ export function TalkServiceChannelThread({ onBack }: { onBack: () => void }) {
       <ThreadHeader title="itunda" subtitle="Real-time updates about your account" onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {error && <ErrorCard message={error} onRetry={load} />}
-        {!error && bubbles === null && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
+        {!error && bubbles === null && showSkeleton && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {!error && bubbles?.length === 0 && <EmptyState message="No updates yet." />}
         {bubbles?.map((bubble) => (
           <button
@@ -102,6 +104,7 @@ function AiChatBubble({ message }: { message: AiChatMessage }) {
 
 export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState<AiChatMessage[] | null>(null);
+  const showSkeleton = useDeferredLoading(messages === null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   // Real single-flight AI model (see AiChatService's own doc comment) -- a genuine,
@@ -132,7 +135,7 @@ export function TalkAiChatThread({ onBack }: { onBack: () => void }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <ThreadHeader title="itunda AI" subtitle="Real self-hosted assistant, short answers only" onBack={onBack} />
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
-        {messages === null && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
+        {messages === null && showSkeleton && <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages?.length === 0 && (
           <EmptyState message="Ask itunda AI anything about the app. Replies are short and come from a small self-hosted model." />
         )}

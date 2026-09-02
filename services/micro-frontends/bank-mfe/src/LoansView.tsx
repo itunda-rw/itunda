@@ -21,6 +21,7 @@ import { HarvestAdvanceView } from './HarvestAdvanceView';
 import { VupLoanView } from './VupLoanView';
 import { StudentLoanView } from './StudentLoanView';
 import { MotoOwnershipView } from './MotoOwnershipView';
+import { useDeferredLoading } from './useDeferredLoading';
 import {
   applyForLoan, fetchLenders, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan,
   type Lender, type LoanAccount, type LoanOffer,
@@ -48,7 +49,9 @@ export function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?
     if (initialMode) onConsumedInitialMode?.();
   }, []);
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
+  const showOffersSkeleton = useDeferredLoading(offers === null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
+  const showMyLoansSkeleton = useDeferredLoading(myLoans === null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
   const [lenderId, setLenderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -185,7 +188,7 @@ export function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?
               ))}
             </div>
           )}
-          {offers === null ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> :
+          {offers === null ? (showOffersSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) :
            offers.length === 0 ? <EmptyState message="No offers right now — check back later or explore another lender." /> :
            (() => {
              // Real Toss finding (2026-08-30, toss.tech/article/recommend-just-one):
@@ -202,7 +205,7 @@ export function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?
         </>
       )}
       {mode === 'MY_LOANS' && (
-        myLoans === null ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> :
+        myLoans === null ? (showMyLoansSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) :
         myLoans.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no loans yet.</p> :
         myLoans.map((loan) => (
           <div key={loan.id} className="itunda-flat-section">

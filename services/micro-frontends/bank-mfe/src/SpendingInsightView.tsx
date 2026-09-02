@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { EmptyState } from './EmptyState';
+import { useDeferredLoading } from './useDeferredLoading';
 import {
   fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, setBudget,
   type BudgetView, type SpendingCategory,
@@ -21,6 +22,7 @@ import {
 function MonthlySpendingReportCard() {
   const { t } = useI18n();
   const [report, setReport] = useState<Awaited<ReturnType<typeof fetchMonthlySpendingReport>> | null>(null);
+  const showSkeleton = useDeferredLoading(!report);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ function MonthlySpendingReportCard() {
   }, []);
 
   if (!report) {
-    return error ? null : <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return error ? null : (showSkeleton ? <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} /> : null);
   }
 
   const changed = report.categories.filter((c) => c.percentChange !== null).sort((a, b) => Math.abs(b.percentChange ?? 0) - Math.abs(a.percentChange ?? 0));
@@ -62,6 +64,7 @@ function MonthlySpendingReportCard() {
 export function SpendingInsightView() {
   const { t } = useI18n();
   const [categories, setCategories] = useState<SpendingCategory[] | null>(null);
+  const showSkeleton = useDeferredLoading(!categories);
   const [totalSpent, setTotalSpent] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +75,9 @@ export function SpendingInsightView() {
   }, []);
 
   if (!categories) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return error
+      ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+      : (showSkeleton ? <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} /> : null);
   }
 
   const maxAmount = Math.max(...categories.map((c) => c.amount), 1);

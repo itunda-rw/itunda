@@ -6,6 +6,7 @@ import { ApiError } from './lib/api';
 import { addKeywordAlert, createListing, emptyVehicleFieldsState, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchMyFavoriteListings, removeKeywordAlert, removeListingFavorite, setKeywordAlertQuietHours, vehicleFieldsToRequest, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours, type VehicleFieldsState } from './lib/marketplace';
 import { uploadFile } from './lib/upload';
 import { VehicleListingFieldsForm } from './HoodVehicleFields';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function NewListingCard({ onCreated }: { onCreated: () => void }) {
   const { t } = useI18n();
@@ -166,6 +167,7 @@ export function NewListingCard({ onCreated }: { onCreated: () => void }) {
 export function ListingWishlistView() {
   const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoriteListing[] | null>(null);
+  const showSkeleton = useDeferredLoading(favorites === null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -192,7 +194,7 @@ export function ListingWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (favorites === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (favorites.length === 0) return <EmptyState message="No saved listings yet -- tap ♡ on any listing to save it here." />;
 
   return (
@@ -225,6 +227,7 @@ export function ListingWishlistView() {
 export function KeywordAlertsView() {
   const { t } = useI18n();
   const [alerts, setAlerts] = useState<KeywordAlert[] | null>(null);
+  const showAlertsSkeleton = useDeferredLoading(alerts === null);
   const [keyword, setKeyword] = useState('');
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -300,7 +303,7 @@ export function KeywordAlertsView() {
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
 
       {alerts === null ? (
-        <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showAlertsSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : alerts.length === 0 ? (
         <EmptyState message="No keyword alerts yet -- add one to get notified when a matching listing is posted." />
       ) : (

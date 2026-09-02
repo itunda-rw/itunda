@@ -14,6 +14,7 @@ import {
   openOverdraft, repayOverdraft, repayPostpaidCredit, spendPostpaidCredit,
   type OverdraftAccount, type PostpaidCreditLine,
 } from './lib/loans';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
 // lib/loans.ts's OverdraftAccount doc comment for the full sourced account. Found
@@ -23,6 +24,7 @@ import {
 export function OverdraftView() {
   const { t } = useI18n();
   const [account, setAccount] = useState<OverdraftAccount | null | undefined>(undefined);
+  const showSkeleton = useDeferredLoading(account === undefined);
   const [requestedLimit, setRequestedLimit] = useState('100000');
   const [drawAmount, setDrawAmount] = useState('');
   const [repayAmount, setRepayAmount] = useState('');
@@ -90,7 +92,7 @@ export function OverdraftView() {
     }
   };
 
-  if (account === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (account === undefined) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   if (account === null) {
     return (
@@ -141,6 +143,7 @@ export function OverdraftView() {
 export function PostpaidCreditView() {
   const { t } = useI18n();
   const [line, setLine] = useState<PostpaidCreditLine | null | undefined>(undefined);
+  const showSkeleton = useDeferredLoading(line === undefined);
   const [spendAmount, setSpendAmount] = useState('');
   const [repayAmount, setRepayAmount] = useState('');
   const [busy, setBusy] = useState(false);
@@ -204,7 +207,7 @@ export function PostpaidCreditView() {
     }
   };
 
-  if (line === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (line === undefined) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   if (line === null) {
     return (

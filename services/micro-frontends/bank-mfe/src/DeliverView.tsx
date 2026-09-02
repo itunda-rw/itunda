@@ -10,13 +10,16 @@ import {
 } from './lib/eatsRider';
 import { EatsOrderCard, EATS_STATUS_LABEL, RIDER_STATUS_CHAIN } from './EatsOrderCard';
 import { nextInChain } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function DeliverView() {
   const { t } = useI18n();
   const [rider, setRider] = useState<Rider | null | undefined>(undefined);
+  const showRiderSkeleton = useDeferredLoading(rider === undefined);
   const [error, setError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
   const [available, setAvailable] = useState<EatsOrder[] | null>(null);
+  const showAvailableSkeleton = useDeferredLoading(available === null);
   const [mine, setMine] = useState<EatsOrder[] | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
@@ -98,7 +101,7 @@ export function DeliverView() {
     }
   };
 
-  if (rider === undefined) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (rider === undefined) return showRiderSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   if (rider === null) {
     return (
@@ -159,7 +162,7 @@ export function DeliverView() {
         <div style={{ marginBottom: '20px' }}>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Available deliveries</h4>
           {available === null ? (
-            <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
+            showAvailableSkeleton ? <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
           ) : available.length === 0 ? (
             <EmptyState message="No deliveries waiting right now — stay online and you'll be notified." />
           ) : (

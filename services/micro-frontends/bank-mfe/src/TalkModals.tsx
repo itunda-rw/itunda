@@ -12,6 +12,7 @@ import { FullScreenFlow } from './FullScreenFlow';
 import { IdsButton } from './IdsButton';
 import { renderTextWithEmoji } from './icons/ItundaFaceEmoji';
 import { chatMessageTime } from './TalkBubbles';
+import { useDeferredLoading } from './useDeferredLoading';
 import {
   fetchConversations, fetchGroups,
   type ConversationSummary, type GroupSummary, type ReactionGroup,
@@ -55,6 +56,7 @@ export function MediaGalleryModal({ imageUrls, onClose }: { imageUrls: string[];
 export function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationType: 'DIRECT' | 'GROUP', destinationId: string) => void; onClose: () => void }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
+  const showSkeleton = useDeferredLoading(conversations === null || groups === null);
 
   useEffect(() => {
     fetchConversations().then(setConversations).catch(() => setConversations([]));
@@ -68,7 +70,7 @@ export function ForwardPickerModal({ onForward, onClose }: { onForward: (destina
     <FullScreenFlow bottomCTA={<IdsButton variant="tinted" fullWidth onClick={onClose}>Cancel</IdsButton>}>
       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>Forward to…</p>
       {conversations === null || groups === null ? (
-        <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : conversations.length === 0 && groups.length === 0 ? (
         <EmptyState message="No conversations to forward to yet — start a chat first." />
       ) : (
@@ -117,6 +119,7 @@ export function ThreadModal<T extends { id: string; senderId: string; body: stri
 }) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<T[] | null>(null);
+  const showSkeleton = useDeferredLoading(messages === null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -158,7 +161,7 @@ export function ThreadModal<T extends { id: string; senderId: string; body: stri
         {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginBottom: '8px' }}>{error}</p>}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
           {messages === null ? (
-            <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />
+            showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
           ) : (
             messages.map((m, i) => {
               const isMine = m.senderId === currentUserId;

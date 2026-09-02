@@ -14,16 +14,19 @@ import {
 } from './lib/rideshare';
 import { RideTripCard } from './RideCards';
 import { AddressAutocomplete } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function RideDriverView() {
   const { t } = useI18n();
   const [driver, setDriver] = useState<RideDriver | null | undefined>(undefined);
+  const showDriverSkeleton = useDeferredLoading(driver === undefined);
   const [registeringDriver, setRegisteringDriver] = useState(false);
   // Real gap found live (2026-08-31, market-readiness audit) -- see lib/rideshare.ts's
   // own registerAsDriver doc comment. Same real self-declared field
   // DesignatedDriverView's own licenseNumber input already establishes below.
   const [driverLicenseNumber, setDriverLicenseNumber] = useState('');
   const [availableTrips, setAvailableTrips] = useState<RideTrip[] | null>(null);
+  const showTripsSkeleton = useDeferredLoading(availableTrips === null);
   const [myDriverTrips, setMyDriverTrips] = useState<RideTrip[] | null>(null);
   const [driverError, setDriverError] = useState<string | null>(null);
   const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
@@ -199,7 +202,7 @@ export function RideDriverView() {
   };
 
   if (driver === undefined) {
-    return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showDriverSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   if (driver === null) {
@@ -349,7 +352,7 @@ export function RideDriverView() {
         <div style={{ marginBottom: '20px' }}>
           <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Trip requests near you</h4>
           {availableTrips === null ? (
-            <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
+            showTripsSkeleton ? <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
           ) : availableTrips.length === 0 ? (
             <EmptyState message="No trip requests waiting right now — stay online and you'll be notified." />
           ) : (

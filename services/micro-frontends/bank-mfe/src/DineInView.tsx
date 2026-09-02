@@ -10,6 +10,7 @@ import {
   type DineInOrder, type DineInOrderStatus,
 } from './lib/dineIn';
 import { nextInChain, eatsCartKey, eatsOptionsSummary, eatsLineUnitPrice, type EatsCartLine } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 const DINE_IN_STATUS_LABEL: Record<DineInOrderStatus, string> = {
   PLACED: 'Placed',
@@ -43,6 +44,7 @@ function DineInOrderCard({ order, action }: { order: DineInOrder; action?: React
 export function DineInRestaurantOrdersView() {
   const { t } = useI18n();
   const [orders, setOrders] = useState<DineInOrder[] | null>(null);
+  const showOrdersSkeleton = useDeferredLoading(orders === null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
@@ -97,7 +99,7 @@ export function DineInRestaurantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (orders === null) return showOrdersSkeleton ? <div className="skeleton" style={{ height: '180px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (orders.length === 0) return null;
 
   return (
@@ -137,6 +139,7 @@ export function DineInRestaurantOrdersView() {
 function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: DineInOrder) => void }) {
   const { t } = useI18n();
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
+  const showMenuSkeleton = useDeferredLoading(menu === null);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, EatsCartLine>>({});
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
@@ -203,7 +206,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   }
 
   if (menu === null) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showMenuSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   if (showCheckout) {
