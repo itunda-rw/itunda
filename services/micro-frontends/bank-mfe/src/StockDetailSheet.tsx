@@ -15,6 +15,7 @@ import {
   buyStock, clearPriceAlert, fetchPriceAlert, fetchStockHistory, sellStock, setPriceAlert, unwatchStock, watchStock,
   type PriceAlert, type PricePoint, type Stock,
 } from './lib/stocks';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled }: {
   stock: Stock;
@@ -25,6 +26,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
 }) {
   const { t } = useI18n();
   const [history, setHistory] = useState<PricePoint[] | null>(null);
+  const showSkeleton = useDeferredLoading(history === null);
   const [shares, setShares] = useState('');
   const [mode, setMode] = useState<'BUY' | 'SELL'>('BUY');
   const [error, setError] = useState<string | null>(null);
@@ -152,7 +154,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
       </p>
 
       {history === null ? (
-        <div className="skeleton" style={{ height: '48px', borderRadius: '8px', marginBottom: '16px' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '48px', borderRadius: '8px', marginBottom: '16px' }} /> : null
       ) : history.length > 0 ? (
         <div style={{ marginBottom: '16px' }}>
           <Sparkline values={history.map((h) => h.price)} positive={positive} />

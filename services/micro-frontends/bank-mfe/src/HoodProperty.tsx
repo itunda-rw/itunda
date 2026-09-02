@@ -8,6 +8,7 @@ import { fetchProfile } from './lib/neighborhood';
 import { addPropertyListingFavorite, contactLister, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyTypes, fetchPropertyValuation, removePropertyListingFavorite, type PropertyListing, type PropertyListingType, type PropertyType, type PropertyValuationEstimate } from './lib/realestate';
 import { NewPropertyListingCard, PropertyListingWishlistView } from './HoodPropertyCards';
 import { PropertyListingCard } from './HoodPropertyListingCard';
+import { useDeferredLoading } from './useDeferredLoading';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
 
 export function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
@@ -19,6 +20,7 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
   const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
   const [listings, setListings] = useState<PropertyListing[] | null>(null);
+  const showSkeleton = useDeferredLoading(listings === null);
   // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
   const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
@@ -196,7 +198,7 @@ export function PropertyView({ onMessageLister }: { onMessageLister: (conversati
           {error && (
             <ErrorCard message={error} onRetry={load} />
           )}
-          {!error && listings === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
+          {!error && listings === null && showSkeleton && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             // Real copy-voice fix (item 244, round 5 of the empty-state pass,
             // ported from the same-day Android/iOS fix): say what's missing AND

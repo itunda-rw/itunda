@@ -18,6 +18,7 @@ import { ApiError } from './lib/api';
 import { browseCoupons, fetchMyCouponRedemptions, type CouponBrowseView, type CouponRedemption } from './lib/coupons';
 import { useI18n } from './i18n/I18nContext';
 import { IconBack } from './icons/ItundaIcons';
+import { useDeferredLoading } from './useDeferredLoading';
 
 function couponDiscountLabel(c: CouponBrowseView['coupon']) {
   return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
@@ -28,6 +29,7 @@ export function CouponBoxView({ onBack, onBrowseMerchants }: { onBack: () => voi
   const [tab, setTab] = useState<'RECEIVED' | 'USED'>('RECEIVED');
   const [coupons, setCoupons] = useState<CouponBrowseView[] | null>(null);
   const [redemptions, setRedemptions] = useState<CouponRedemption[] | null>(null);
+  const showSkeleton = useDeferredLoading(coupons === null || redemptions === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export function CouponBoxView({ onBack, onBrowseMerchants }: { onBack: () => voi
         </div>
 
         {coupons === null || redemptions === null ? (
-          <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />
+          showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
         ) : tab === 'RECEIVED' ? (
           received.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 0' }}>

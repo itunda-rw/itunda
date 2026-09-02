@@ -15,7 +15,7 @@ import { ProductDetailView } from './ProductDisplay';
 import { ProductCatalogView } from './ProductCatalogView';
 import { MultiCartView, MultiCartResultsView, type CommerceCheckoutResult } from './MerchantBillingAndCart';
 import { MyCommerceOrdersView, MerchantOrdersView, WishlistView } from './ShopOrdersAndWishlist';
-import { MerchantReturnQueueView, MerchantRedeemVoucherCard } from './CommerceOrders';
+import { MerchantReturnQueueView, MerchantRedeemVoucherCard } from './CommerceMerchantTools';
 import { BannerCarousel, MissionsRow, NearbyAdsRail, RecentlyViewedRail, DealsRail, SurplusDealsRail, TimeDealsRail } from './ShopRails';
 import { SearchResultsList, MerchantList } from './ShopMerchantList';
 

@@ -25,6 +25,7 @@ import {
   type TransitBalance,
   type TransitTrip,
 } from './lib/transit';
+import { useDeferredLoading } from './useDeferredLoading';
 
 function tapButtonLabel(balance: TransitBalance | null, fare: number, busy: boolean): string {
   if (balance === null) return 'Top up first';
@@ -36,6 +37,7 @@ function tapButtonLabel(balance: TransitBalance | null, fare: number, busy: bool
 export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) {
   const { t } = useI18n();
   const [balance, setBalance] = useState<TransitBalance | null | undefined>(undefined);
+  const showSkeleton = useDeferredLoading(balance === undefined);
   const [trips, setTrips] = useState<TransitTrip[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,7 +94,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
     return <ErrorCard message={error} onRetry={load} />;
   }
   if (balance === undefined) {
-    return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   return (

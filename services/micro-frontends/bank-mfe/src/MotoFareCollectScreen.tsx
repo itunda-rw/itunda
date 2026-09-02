@@ -13,6 +13,7 @@ import {
   type MotoFareCollectResult, type MotoFareTrip,
 } from './lib/motoFare';
 import { EmptyState } from './EmptyState';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real driver earnings / rider trip-history summary -- mirrors ride-hailing's own
 // "This week" card (BankDashboard.tsx's DRIVE sub-tab) in shape, but moto-fare's
@@ -59,12 +60,13 @@ function MotoFareTripSummary({ trips, totalElements, role }: { trips: MotoFareTr
 // driver there's no scan/collect action here -- just their own past trips.
 function MotoFareRiderTripsView() {
   const [trips, setTrips] = useState<{ trips: MotoFareTrip[]; totalElements: number } | null>(null);
+  const showSkeleton = useDeferredLoading(trips === null);
 
   useEffect(() => {
     fetchMyMotoFareTripsAsRider().then((r) => setTrips({ trips: r.trips, totalElements: r.totalElements })).catch(() => setTrips({ trips: [], totalElements: 0 }));
   }, []);
 
-  if (trips === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (trips === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (trips.trips.length === 0) {
     return <EmptyState message="No moto-taxi trips yet -- show your payment code to a driver next time you tap to pay." />;
   }

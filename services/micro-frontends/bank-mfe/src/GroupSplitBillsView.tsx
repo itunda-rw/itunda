@@ -17,6 +17,7 @@ import {
   type SplitBillWithParticipants,
 } from './lib/splitBill';
 import { type GroupMember } from './lib/messaging';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real KakaoPay-style split bill (2026-07-22) -- found fully built on the backend
 // (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself being
@@ -28,6 +29,7 @@ export function GroupSplitBillsView({
 }: { groupConversationId: string; members: GroupMember[]; currentUserId: string | null; onBack: () => void }) {
   const { t } = useI18n();
   const [splitBills, setSplitBills] = useState<SplitBillWithParticipants[] | null>(null);
+  const showSkeleton = useDeferredLoading(splitBills === null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -185,7 +187,7 @@ export function GroupSplitBillsView({
           </div>
         </form>
       )}
-      {splitBills === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {splitBills === null && showSkeleton && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {splitBills !== null && splitBills.length === 0 && (
         <EmptyState message="No split bills in this group yet — split one to divide a shared expense evenly." />
       )}

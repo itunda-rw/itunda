@@ -9,6 +9,7 @@ import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { fetchCreditScoreSuggestions } from './lib/creditScore';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real personal KYC identity submission (2026-07-22) -- found fully built on the
 // backend (rw.itunda.identity) with zero client UI anywhere; merchant-mfe already has
@@ -21,6 +22,7 @@ const IDENTITY_STATUS_LABELS: Record<string, string> = { PENDING: 'Pending revie
 export function IdentityView() {
   const { t } = useI18n();
   const [submissions, setSubmissions] = useState<KycSubmission[] | null>(null);
+  const showSkeleton = useDeferredLoading(submissions === null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [documentType, setDocumentType] = useState<IdentityDocumentType>('NATIONAL_ID');
@@ -108,7 +110,7 @@ export function IdentityView() {
         </form>
       )}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Your submissions</h3>
-      {submissions === null ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> :
+      {submissions === null ? (showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) :
         submissions.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no submissions yet.</p> :
         submissions.map((s) => (
           <div key={s.id} className="itunda-flat-section">

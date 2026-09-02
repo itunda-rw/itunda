@@ -9,6 +9,7 @@ import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
 import { fetchTransactions, type Transaction } from './lib/account';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real customer support tickets (2026-07-22) -- found fully built on the backend
 // (rw.itunda.support) with zero client UI anywhere. A ticket is always tied to a
@@ -25,6 +26,7 @@ const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE
 export function SupportView({ initialTransactionId, initialCategory, onConsumedInitial }: { initialTransactionId?: string | null; initialCategory?: SupportTicketCategory; onConsumedInitial?: () => void } = {}) {
   const { t } = useI18n();
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
+  const showSkeleton = useDeferredLoading(tickets === null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -106,7 +108,7 @@ export function SupportView({ initialTransactionId, initialCategory, onConsumedI
         </form>
       )}
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Your tickets</h3>
-      {tickets === null ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> :
+      {tickets === null ? (showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null) :
         tickets.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no support tickets.</p> :
         tickets.map((t) => (
           <div key={t.id} className="itunda-flat-section">

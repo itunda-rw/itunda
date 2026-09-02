@@ -12,6 +12,7 @@ import {
   requestFloat, fetchMyFloatRequests, fetchIncomingFloatRequests, acceptFloatRequest, declineFloatRequest,
   type NearbyFloatListing, type FloatListing, type FloatTransferRequest,
 } from './lib/floatMarketplace';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real fix (2026-08-26): split out of BankDashboard.tsx once that file grew past
 // its file-size-lint baseline. The real Itunda cash-agent operator console + its
@@ -27,6 +28,7 @@ export function AgentOperatorView() {
   const { t } = useI18n();
   const [section, setSection] = useState<'till' | 'float'>('till');
   const [till, setTill] = useState<AgentTillSnapshot | null>(null);
+  const showSkeleton = useDeferredLoading(!till);
   const [activity, setActivity] = useState<AgentActivityItem[]>([]);
   const [notOperator, setNotOperator] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +133,7 @@ export function AgentOperatorView() {
   }
 
   if (!till) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : (showSkeleton ? <div className="skeleton" style={{ height: '200px', borderRadius: 'var(--itunda-radius-md)' }} /> : null);
   }
 
   return (

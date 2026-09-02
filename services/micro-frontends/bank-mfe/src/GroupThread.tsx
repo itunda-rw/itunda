@@ -26,10 +26,12 @@ import {
   fetchPinnedGroupMessage, forwardGroupMessage, pinGroupMessage, sendGroupMessage, toggleGroupReaction, unpinGroupMessage,
   type GroupMember, type GroupMessage, type GroupSummary, type MessagingSocketHandle,
 } from './lib/messaging';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<GroupMessage[] | null>(null);
+  const showSkeleton = useDeferredLoading(messages === null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -349,7 +351,7 @@ export function GroupThread({ group, onBack }: { group: GroupSummary; onBack: ()
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
+        {messages === null && showSkeleton && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages !== null && messages.length === 0 && (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
             Say hello — no messages yet.

@@ -11,6 +11,7 @@ import {
   applyForVupLoan, disburseVupLoan, fetchMyVupLoans, fetchVupLoanEligibility, repayVupLoan,
   type VupLoan, type VupLoanEligibility, type VupLoanPurpose,
 } from './lib/vupLoan';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services micro-loan --
 // see lib/vupLoan.ts's own doc comment for the full sourced account. The first
@@ -22,6 +23,7 @@ export function VupLoanView() {
   const { t } = useI18n();
   const [loans, setLoans] = useState<VupLoan[] | null>(null);
   const [eligibility, setEligibility] = useState<VupLoanEligibility | null>(null);
+  const showSkeleton = useDeferredLoading(loans === null || eligibility === null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -84,7 +86,7 @@ export function VupLoanView() {
     }
   };
 
-  if (loans === null || eligibility === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (loans === null || eligibility === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

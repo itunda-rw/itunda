@@ -6,6 +6,7 @@ import {
   type EatsOrder, type EatsReview,
 } from './lib/eats';
 import { StarRatingInput } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real owner-reply management (item 184) -- a restaurant owner's own reviews, with an
 // inline reply form for anything not yet replied to. Lives on RestaurantOrdersView
@@ -14,6 +15,7 @@ import { StarRatingInput } from './BankDashboard';
 export function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string }) {
   const { t } = useI18n();
   const [reviews, setReviews] = useState<EatsReview[] | null>(null);
+  const showSkeleton = useDeferredLoading(reviews === null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -24,7 +26,7 @@ export function RestaurantReviewsManageView({ restaurantId }: { restaurantId: st
   useEffect(load, [restaurantId]);
 
   if (error) return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
-  if (reviews === null) return <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (reviews === null) return showSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (reviews.length === 0) return null;
 
   return (

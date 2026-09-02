@@ -14,6 +14,7 @@ import {
   attachSplitBillReceipt, createDirectSplitBill, fetchDirectSplitBills, paySplitBillShare, requestSplitBillNextRound,
   type SplitBillWithParticipants,
 } from './lib/splitBill';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real 1:1-chat split-bill view (2026-08-09) -- see lib/splitBill.ts's own doc comment
 // on createDirectSplitBill/fetchDirectSplitBills for the backend account. Same shape
@@ -24,6 +25,7 @@ export function DirectSplitBillsView({
 }: { otherUserId: string; otherUserName: string; currentUserId: string | null; onBack: () => void }) {
   const { t } = useI18n();
   const [splitBills, setSplitBills] = useState<SplitBillWithParticipants[] | null>(null);
+  const showSkeleton = useDeferredLoading(splitBills === null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -154,7 +156,7 @@ export function DirectSplitBillsView({
           </div>
         </form>
       )}
-      {splitBills === null && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {splitBills === null && showSkeleton && <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {splitBills !== null && splitBills.length === 0 && (
         <EmptyState message={`No split bills with ${otherUserName} yet — split one to divide a shared expense evenly.`} />
       )}

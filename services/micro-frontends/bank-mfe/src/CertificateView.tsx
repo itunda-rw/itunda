@@ -14,6 +14,7 @@ import {
   getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature,
   type Certificate, type VerifyCertificateSignatureResult,
 } from './lib/certificate';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real itunda-branded "Verified ID" credential card (2026-08-30, market-readiness
 // audit) -- the visual touchpoint real Toss 인증서/Apple Wallet/Google Wallet all give
@@ -67,6 +68,7 @@ function ItundaCertificateCard({ certificate }: { certificate: Certificate }) {
 export function CertificateView() {
   const { t } = useI18n();
   const [certificate, setCertificate] = useState<Certificate | null | undefined>(undefined);
+  const showSkeleton = useDeferredLoading(certificate === undefined);
   const [issuedPrivateKey, setIssuedPrivateKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,7 +111,7 @@ export function CertificateView() {
   };
 
   if (certificate === undefined) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   return (

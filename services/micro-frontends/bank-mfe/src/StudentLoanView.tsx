@@ -11,6 +11,7 @@ import {
   applyForStudentLoan, declareGraduated as declareStudentLoanGraduated, disburseStudentLoan, fetchMyStudentLoans, fetchSuggestedPayment, repayStudentLoan,
   type StudentLoan, type StudentLoanLevel, type StudentLoanSuggestedPayment,
 } from './lib/studentLoan';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real Rwanda BRD (Development Bank of Rwanda) higher-education student loan -- see
 // the backend's StudentLoanService.kt doc comment for the full sourced account.
@@ -20,6 +21,7 @@ import {
 export function StudentLoanView() {
   const { t } = useI18n();
   const [loans, setLoans] = useState<StudentLoan[] | null>(null);
+  const showSkeleton = useDeferredLoading(loans === null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [suggested, setSuggested] = useState<Record<string, StudentLoanSuggestedPayment>>({});
@@ -107,7 +109,7 @@ export function StudentLoanView() {
     }
   };
 
-  if (loans === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (loans === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

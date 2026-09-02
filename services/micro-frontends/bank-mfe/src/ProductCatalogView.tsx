@@ -18,6 +18,7 @@ import { ProductRatingBadge } from './ProductRating';
 import { BillingPlanRow } from './MerchantBillingAndCart';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { WishlistButton } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 function ProductCatalogView({
   merchant, cart, onSetQty, onBack, onViewCart, onOpenProduct, onContactSeller,
@@ -32,6 +33,7 @@ function ProductCatalogView({
 }) {
   const { t } = useI18n();
   const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
+  const showSkeleton = useDeferredLoading(catalog === null);
   const [error, setError] = useState<string | null>(null);
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -139,7 +141,7 @@ function ProductCatalogView({
   }
 
   if (catalog === null) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   return (

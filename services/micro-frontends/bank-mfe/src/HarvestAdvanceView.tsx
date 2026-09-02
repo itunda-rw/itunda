@@ -12,6 +12,7 @@ import {
   registerCooperative, repayHarvestAdvance, requestHarvestAdvance,
   type CooperativeMembership, type HarvestAdvance,
 } from './lib/harvestAdvance';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real Rwanda coffee-cooperative harvest-advance / input financing -- see
 // lib/harvestAdvance.ts's own doc comment for the full sourced account. Sourced beyond
@@ -23,6 +24,7 @@ import {
 export function HarvestAdvanceView() {
   const { t } = useI18n();
   const [memberships, setMemberships] = useState<CooperativeMembership[] | null>(null);
+  const showSkeleton = useDeferredLoading(memberships === null);
   const [advances, setAdvances] = useState<HarvestAdvance[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -116,7 +118,7 @@ export function HarvestAdvanceView() {
     }
   };
 
-  if (memberships === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (memberships === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

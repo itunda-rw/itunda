@@ -6,6 +6,7 @@ import { HeartFilled } from './icons/ItundaFaceHearts';
 import { ApiError } from './lib/api';
 import { checkIntoMeetupSession, createCommunityPost, fetchCommentNotificationsEnabled, fetchMeetupSessions, finalizeGroupBuy, removeCommunityPost, scheduleMeetupSessions, setCommentNotificationsEnabled, type CommunityCategory, type CommunityPost, type MeetupSession } from './lib/community';
 import { HoodReportButton } from './BankDashboard';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function NewCommunityPostCard({ categories, onCreated }: { categories: CommunityCategory[]; onCreated: () => void }) {
   const { t } = useI18n();
@@ -272,6 +273,7 @@ export function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChang
 export function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; currentUserId: string | undefined }) {
   const { t } = useI18n();
   const [sessions, setSessions] = useState<MeetupSession[] | null>(null);
+  const showSkeleton = useDeferredLoading(sessions === null);
   const [dates, setDates] = useState<string[]>(['']);
   const [scheduling, setScheduling] = useState(false);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
@@ -318,7 +320,7 @@ export function MeetupSessionsSection({ post, currentUserId }: { post: Community
   return (
     <div style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
-      {sessions === null && <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} />}
+      {sessions === null && showSkeleton && <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--itunda-radius-md)' }} />}
       {sessions !== null && sessions.length === 0 && (
         <EmptyState message="No sessions scheduled yet — start one to meet up with neighbors." />
       )}

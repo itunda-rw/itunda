@@ -19,6 +19,7 @@ import { fetchLinkedAccounts, type LinkedAccount } from './lib/overview';
 import { fetchMyCard, type Card } from './lib/card';
 import { AccountLinkForm } from './AccountLinkForm';
 import { useI18n } from './i18n/I18nContext';
+import { useDeferredLoading } from './useDeferredLoading';
 
 type PickerTab = 'RECENT' | 'ACCOUNT' | 'CARD';
 
@@ -42,6 +43,7 @@ export function PayFundingSourcePicker({
   const [tab, setTab] = useState<PickerTab>('RECENT');
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [card, setCard] = useState<Card | null | undefined>(undefined);
+  const showCardSkeleton = useDeferredLoading(card === undefined);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -136,7 +138,7 @@ export function PayFundingSourcePicker({
 
         {tab === 'CARD' && (
           card === undefined ? (
-            <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} />
+            showCardSkeleton ? <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
           ) : card ? (
             <button
               onClick={() => { onClose(); onOpenCard(); }}

@@ -33,6 +33,7 @@ import {
   type ConversationSummary, type Message, type MessagingSocketHandle,
 } from './lib/messaging';
 import { getRoomTheme, ROOM_THEMES } from './lib/roomSettings';
+import { useDeferredLoading } from './useDeferredLoading';
 
 function roomThemeColor(conversationId: string): string | undefined {
   const id = getRoomTheme(conversationId);
@@ -49,6 +50,7 @@ function blockButtonLabel(blocking: boolean, blocked: boolean): string {
 export function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const { t } = useI18n();
   const [messages, setMessages] = useState<Message[] | null>(null);
+  const showSkeleton = useDeferredLoading(messages === null);
   const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
   const [giftsByMessageId, setGiftsByMessageId] = useState<Record<string, Gift>>({});
   const [vouchersByMessageId, setVouchersByMessageId] = useState<Record<string, GiftVoucher>>({});
@@ -558,7 +560,7 @@ export function ConversationThread({ conversation, onBack }: { conversation: Con
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px', backgroundColor: roomThemeColor(conversation.conversationId), borderRadius: 'var(--itunda-radius-md)' }}>
-        {messages === null && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
+        {messages === null && showSkeleton && <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />}
         {messages !== null && messages.length === 0 && (
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
             Say hello — no messages yet.

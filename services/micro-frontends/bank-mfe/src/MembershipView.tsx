@@ -18,6 +18,7 @@ import { fetchMyLoyaltyBalances, type LoyaltyBalance } from './lib/coupons';
 import { RewardsPreviewSection } from './PayHomeExtras';
 import { useI18n } from './i18n/I18nContext';
 import { IconBack } from './icons/ItundaIcons';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function MembershipView({ onBack, onOpenRewards, onOpenPayMoney }: { onBack: () => void; onOpenRewards: () => void; onOpenPayMoney: () => void }) {
   const { t } = useI18n();
@@ -37,6 +38,7 @@ export function MembershipView({ onBack, onOpenRewards, onOpenPayMoney }: { onBa
   }, [t]);
 
   const loading = payBalance === null || rewards === null || loyalty === null;
+  const showSkeleton = useDeferredLoading(loading);
   const combinedTotal = (rewards?.rewardsTotal ?? 0) + (payBalance ?? 0);
 
   return (
@@ -50,9 +52,11 @@ export function MembershipView({ onBack, onOpenRewards, onOpenPayMoney }: { onBa
         </div>
 
         {loading ? (
-          <div style={{ padding: '0 20px' }}>
-            <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />
-          </div>
+          showSkeleton ? (
+            <div style={{ padding: '0 20px' }}>
+              <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />
+            </div>
+          ) : null
         ) : (
           <div style={{ padding: '4px 20px 24px' }}>
             <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('pay.membershipTotal')}</p>

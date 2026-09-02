@@ -4,6 +4,7 @@ import { showToast } from './Toast';
 import { useI18n } from './i18n/I18nContext';
 import { ApiError } from './lib/api';
 import { createPropertyListing, fetchMyFavoritePropertyListings, removePropertyListingFavorite, type FavoritePropertyListing, type PropertyListingType, type PropertyType } from './lib/realestate';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: PropertyType[]; onCreated: () => void }) {
   const { t } = useI18n();
@@ -107,6 +108,7 @@ export function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyT
 export function PropertyListingWishlistView() {
   const { t } = useI18n();
   const [favorites, setFavorites] = useState<FavoritePropertyListing[] | null>(null);
+  const showSkeleton = useDeferredLoading(favorites === null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
@@ -133,7 +135,7 @@ export function PropertyListingWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (favorites === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (favorites.length === 0) return <EmptyState message="No saved properties yet -- tap ♡ on any listing to save it here." />;
 
   return (

@@ -9,6 +9,7 @@ import { fetchProfile } from './lib/neighborhood';
 import { NewJobPostCard, JobPostCard, MyJobApplicationsView, JobPostWishlistView } from './HoodJobsCards';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
 import { ResumeBuilderView } from './HoodResumeBuilder';
+import { useDeferredLoading } from './useDeferredLoading';
 
 export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
   const { t } = useI18n();
@@ -18,6 +19,7 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
+  const showPostsSkeleton = useDeferredLoading(posts === null);
   // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
   const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
@@ -239,7 +241,7 @@ export function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId
               {error && (
                 <ErrorCard message={error} onRetry={load} />
               )}
-              {!error && posts === null && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
+              {!error && posts === null && showPostsSkeleton && <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />}
               {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
                 // Real copy-voice fix (item 244, round 5 of the empty-state pass,
                 // ported from the same-day Android/iOS fix): say what's missing AND

@@ -11,6 +11,7 @@ import {
   cancelMotoOwnershipPlan, contributeToMotoOwnershipPlan, convertMotoOwnershipPlanToLoan, createMotoOwnershipPlan, fetchMyMotoOwnershipPlans, repayMotoOwnershipPlan,
   type MotoOwnershipPlan,
 } from './lib/motoOwnership';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real Rwanda moto-taxi ownership savings-to-loan plan -- see lib/motoOwnership.ts's
 // own doc comment for the full sourced account. The first two-PHASE product in this
@@ -21,6 +22,7 @@ import {
 export function MotoOwnershipView() {
   const { t } = useI18n();
   const [plans, setPlans] = useState<MotoOwnershipPlan[] | null>(null);
+  const showSkeleton = useDeferredLoading(plans === null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -117,7 +119,7 @@ export function MotoOwnershipView() {
     }
   };
 
-  if (plans === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (plans === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

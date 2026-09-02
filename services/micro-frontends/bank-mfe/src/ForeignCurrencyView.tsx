@@ -9,6 +9,7 @@ import {
   clearRateAlert, convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyAccounts, fetchMyRateAlerts, openForeignCurrencyAccount, setRateAlert,
   FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ExchangeRateAlert, type ForeignCurrencyCode, type ForeignCurrencyAccount,
 } from './lib/foreignCurrency';
+import { useDeferredLoading } from './useDeferredLoading';
 
 // Real currency full names for the intro screen's picker -- the rest of this file
 // only ever showed the bare currency code.
@@ -30,6 +31,7 @@ const CURRENCY_FULL_NAME: Record<ForeignCurrencyCode, string> = {
 export function ForeignCurrencyView() {
   const { t } = useI18n();
   const [accounts, setAccounts] = useState<ForeignCurrencyAccount[] | null>(null);
+  const showSkeleton = useDeferredLoading(accounts === null);
   const [conversions, setConversions] = useState<CurrencyConversion[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export function ForeignCurrencyView() {
   useEffect(load, []);
 
   if (accounts === null) {
-    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return error ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p> : (showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null);
   }
 
   const openCurrencies = new Set(accounts.map((w) => w.currency));
