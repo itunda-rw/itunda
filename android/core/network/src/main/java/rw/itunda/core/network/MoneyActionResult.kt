@@ -12,7 +12,12 @@ package rw.itunda.core.network
  * BankHubScreen/NewSavingsGoalDialog) can reference the same real type without
  * :features depending back on :app. */
 sealed interface MoneyActionResult {
-    data class Success(val message: String) : MoneyActionResult
+    // fraudWarnings added 2026-09-02 (Toss security research thread) -- real,
+    // friendly post-send fraud-heuristic warnings, so far only ever populated by
+    // sendDirect's own response. Defaults to empty so every other Success(...)
+    // caller (savings deposits/claims, which never carry a fraud warning) is
+    // completely unaffected.
+    data class Success(val message: String, val fraudWarnings: List<String> = emptyList()) : MoneyActionResult
     data class Queued(val message: String) : MoneyActionResult
     data class Failure(val message: String) : MoneyActionResult
     // Real device binding (2026-07-21 port) -- a real 403 DEVICE_NOT_VERIFIED (this

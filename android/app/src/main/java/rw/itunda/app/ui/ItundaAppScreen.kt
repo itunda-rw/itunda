@@ -321,7 +321,7 @@ private sealed class TransferStep : java.io.Serializable {
     // completion). Before this, a successful transfer here just set transferStep = null
     // directly -- the sheet silently closed with zero acknowledgment that real money had
     // actually moved, not even a Toast. See TransferSuccessScreen's own doc comment.
-    data class Success(val message: String, val amountRwf: Long, val recipientLabel: String) : TransferStep()
+    data class Success(val message: String, val amountRwf: Long, val recipientLabel: String, val fraudWarnings: List<String> = emptyList()) : TransferStep()
 }
 
 // Real gap found live (2026-08-31, direct user reference of their own Toss app's
@@ -343,7 +343,7 @@ private data class TransferFromAccount(val accountId: String, val accountName: S
 // "co-design visual, audio, and haptic effects" principle this session's micro-
 // interaction research (Toss/general UX sources) both independently named.
 @Composable
-private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, onDone: () -> Unit) {
+private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, fraudWarnings: List<String> = emptyList(), onDone: () -> Unit) {
     // Real Toss "Sent" success-screen reference (2026-08-23, user-supplied screenshot):
     // a real "To [name]" line (see recipientDisplayName's own doc comment above for
     // where this now-resolved name comes from) and a real Share action -- itunda's
@@ -362,6 +362,7 @@ private fun TransferSuccessScreen(amountRwf: Long, recipientLabel: String, onDon
             shareContext.startActivity(android.content.Intent.createChooser(intent, "Share"))
         },
         onDone = onDone,
+        fraudWarnings = fraudWarnings,
     )
 }
 
@@ -757,7 +758,7 @@ fun ItundaAppScreen(
                                         when (val result = doSend()) {
                                             is rw.itunda.core.network.MoneyActionResult.Success -> {
                                                 isSendingTransfer = false
-                                                transferStep = TransferStep.Success(result.message, amountRwf, recipientDisplayName ?: step.accountNumber)
+                                                transferStep = TransferStep.Success(result.message, amountRwf, recipientDisplayName ?: step.accountNumber, result.fraudWarnings)
                                             }
                                             // sendTransfer never actually returns Queued -- a
                                             // transfer confirm is deliberately never queued
@@ -780,7 +781,7 @@ fun ItundaAppScreen(
                                                     isSendingTransfer = true
                                                     val retryResult = doSend()
                                                     isSendingTransfer = false
-                                                    if (retryResult is rw.itunda.core.network.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf, recipientDisplayName ?: step.accountNumber)
+                                                    if (retryResult is rw.itunda.core.network.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf, recipientDisplayName ?: step.accountNumber, retryResult.fraudWarnings)
                                                     else if (retryResult is rw.itunda.core.network.MoneyActionResult.Failure) biometricError = retryResult.message
                                                 }
                                                 showDeviceStepUp = true
@@ -804,6 +805,7 @@ fun ItundaAppScreen(
                 is TransferStep.Success -> TransferSuccessScreen(
                     amountRwf = step.amountRwf,
                     recipientLabel = step.recipientLabel,
+                    fraudWarnings = step.fraudWarnings,
                     onDone = { transferStep = null; transferFromAccount = null },
                 )
             }

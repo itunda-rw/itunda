@@ -30,7 +30,10 @@ private enum TransferStep: Equatable {
     // directly -- the flow silently closed with zero acknowledgment that real money
     // had actually moved, matching (and now closing) the exact gap Android's own
     // TransferStep.Success doc comment describes having already fixed 2026-08-11.
-    case success(amountRwf: Int, recipientLabel: String)
+    // fraudWarnings added 2026-09-02 (Toss security research thread) -- Swift enum
+    // cases can't carry default associated-value parameters, so this is required at
+    // both real construction sites below rather than defaulted.
+    case success(amountRwf: Int, recipientLabel: String, fraudWarnings: [String])
 }
 
 // Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- the scam-report
@@ -179,7 +182,7 @@ struct TransferFlowContainer: View {
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
                 }
-            case .success(let amountRwf, let recipientLabel):
+            case .success(let amountRwf, let recipientLabel, let fraudWarnings):
                 IdsCelebrationScreen(
                     headline: "\(amountRwf.formatted()) RWF sent",
                     message: "",
@@ -198,7 +201,8 @@ struct TransferFlowContainer: View {
                             while let presented = top.presentedViewController { top = presented }
                             top.present(activityVC, animated: true)
                         }
-                    }
+                    },
+                    fraudWarnings: fraudWarnings
                 )
             }
         }
@@ -287,7 +291,7 @@ struct TransferFlowContainer: View {
                         ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: pendingAmountRwf, note: pendingGiftNote, theme: pendingGiftTheme)
                         : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf, memo: pendingGiftNote ?? "", fromAccountId: fromAccount?.id)
                     isSubmitting = false
-                    if case .success = retryResult { step = .success(amountRwf: pendingAmountRwf, recipientLabel: recipientDisplayName ?? accountNumber) }
+                    if case .success(_, let fraudWarnings) = retryResult { step = .success(amountRwf: pendingAmountRwf, recipientLabel: recipientDisplayName ?? accountNumber, fraudWarnings: fraudWarnings) }
                     else if case .failure(let message) = retryResult { errorMessage = message }
                 }
             case .failure(let message):
@@ -323,8 +327,8 @@ struct TransferFlowContainer: View {
                     : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf, memo: note ?? "", fromAccountId: fromAccount?.id)
                 isSubmitting = false
                 switch result {
-                case .success:
-                    step = .success(amountRwf: amountRwf, recipientLabel: recipientDisplayName ?? accountNumber)
+                case .success(_, let fraudWarnings):
+                    step = .success(amountRwf: amountRwf, recipientLabel: recipientDisplayName ?? accountNumber, fraudWarnings: fraudWarnings)
                 // sendTransfer never actually returns .queued -- a transfer confirm
                 // is deliberately never queued offline (see
                 // TransferViewModel.depositToSavingsGoal's doc comment for why) --

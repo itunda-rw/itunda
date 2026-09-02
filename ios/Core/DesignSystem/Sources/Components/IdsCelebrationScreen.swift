@@ -28,14 +28,22 @@ public struct IdsCelebrationScreen: View {
     // real, generic celebration primitive, not a transfer-only screen.
     var recipientLabel: String? = nil
     var onShare: (() -> Void)? = nil
+    // Real Toss "Fraud Suspicion Siren" post-payment notice (2026-09-02, Toss
+    // security research thread) -- purely informational, the transfer this is
+    // attached to has already completed. Empty by default so every other real
+    // caller (savings deposit/claim) is unaffected; only the transfer-success
+    // screen ever populates this, mirroring Android's identical IdsCelebrationScreen
+    // extension.
+    var fraudWarnings: [String] = []
 
-    public init(headline: String, message: String, onDone: @escaping () -> Void, celebratory: Bool = false, recipientLabel: String? = nil, onShare: (() -> Void)? = nil) {
+    public init(headline: String, message: String, onDone: @escaping () -> Void, celebratory: Bool = false, recipientLabel: String? = nil, onShare: (() -> Void)? = nil, fraudWarnings: [String] = []) {
         self.headline = headline
         self.message = message
         self.onDone = onDone
         self.celebratory = celebratory
         self.recipientLabel = recipientLabel
         self.onShare = onShare
+        self.fraudWarnings = fraudWarnings
     }
 
     @State private var checkScale: CGFloat = 0.3
@@ -76,6 +84,21 @@ public struct IdsCelebrationScreen: View {
                         .font(IDS.scaledFont(size: 18, weight: .semibold, relativeTo: .headline))
                         .foregroundColor(IDS.Colors.textPrimary)
                         .padding(.top, 4)
+                }
+
+                if !fraudWarnings.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(fraudWarnings.enumerated()), id: \.offset) { _, warning in
+                            Text(warning)
+                                .font(IDS.scaledFont(size: 12, weight: .medium, relativeTo: .caption1))
+                                .foregroundColor(IDS.Colors.danger)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(IDS.Colors.dangerTint)
+                    .cornerRadius(10)
+                    .padding(.top, 14)
                 }
 
                 Spacer()

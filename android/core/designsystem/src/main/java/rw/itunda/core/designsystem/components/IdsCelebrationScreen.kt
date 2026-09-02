@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,6 +80,12 @@ fun IdsCelebrationScreen(
     // unaffected -- additive, not a signature change those callers need to touch.
     recipientLabel: String? = null,
     onShare: (() -> Unit)? = null,
+    // Real Toss "Fraud Suspicion Siren" post-payment notice (2026-09-02, Toss
+    // security research thread) -- purely informational, the transfer this is
+    // attached to has already completed. Empty by default so every other real
+    // caller (Group/Ikimina/Grow31/WeeklySavings deposit-claim) is unaffected;
+    // only sendDirect's own transfer-success screen ever populates this.
+    fraudWarnings: List<String> = emptyList(),
 ) {
     BackHandler(onBack = onDone)
     val haptics = LocalHapticFeedback.current
@@ -127,6 +135,21 @@ fun IdsCelebrationScreen(
             if (recipientLabel != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("To $recipientLabel", fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = Ids.colors.textPrimary)
+            }
+            if (fraudWarnings.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Ids.colors.dangerTint)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
+                    fraudWarnings.forEachIndexed { index, warning ->
+                        if (index > 0) Spacer(modifier = Modifier.height(4.dp))
+                        Text(warning, color = Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(40.dp))
             if (onShare != null) {

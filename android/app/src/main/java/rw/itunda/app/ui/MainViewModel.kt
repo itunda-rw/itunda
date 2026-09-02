@@ -362,7 +362,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 request = SendDirectP2pRequest(recipient = normalizeRecipientIdentifier(recipientIdentifier), amount = BigDecimal(amountRwf), description = memo, fromAccountId = fromAccountId),
             )
             fetchData()
-            MoneyActionResult.Success(res.message)
+            MoneyActionResult.Success(res.message, fraudWarnings = res.fraudWarnings)
         } catch (e: retrofit2.HttpException) {
             if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {

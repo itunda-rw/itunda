@@ -2500,6 +2500,12 @@ public struct SendDirectP2pResponse: Decodable {
     public let message: String
     public let transaction: TransactionDto
     public let newBalance: Double
+    // Real, friendly post-send fraud-heuristic warnings (2026-09-02, Toss security
+    // research thread) -- P2pService.sendDirect's own doc comment confirms this is
+    // always present (an empty array, never omitted/null), matching Android/bank-mfe's
+    // identical field. Purely informational: the transfer this is attached to has
+    // already completed, matching Toss's own real post-payment FDS notice.
+    public let fraudWarnings: [String]
 }
 
 // Real Toss Bank 자동이체 (auto-transfer) equivalent (2026-07-24 port) -- mirrors

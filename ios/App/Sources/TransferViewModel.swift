@@ -2,7 +2,12 @@ import Foundation
 import CoreNetwork
 
 enum MoneyActionResult {
-    case success(String)
+    // fraudWarnings added 2026-09-02 (Toss security research thread) -- real,
+    // friendly post-send fraud-heuristic warnings, so far only ever populated by
+    // sendTransfer's own response. Every other real caller passes `[]`. Swift enum
+    // cases can't carry default associated-value parameters (unlike a function),
+    // so this is required at every construction site rather than defaulted.
+    case success(String, fraudWarnings: [String])
     // Queued (2026-07-13) is distinct from success: the action wasn't executed yet,
     // only durably saved locally for replay once connectivity returns -- see
     // OfflineActionQueue.swift. Mirrors Android's MoneyActionResult.Queued exactly.
@@ -41,7 +46,7 @@ final class TransferViewModel: ObservableObject {
                 memo: memo,
                 fromAccountId: fromAccountId
             )
-            return .success(response.message)
+            return .success(response.message, fraudWarnings: response.fraudWarnings)
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
@@ -66,7 +71,7 @@ final class TransferViewModel: ObservableObject {
                 note: note,
                 theme: theme
             )
-            return .success("Gift sent! Held until they claim it -- auto-refunded after 7 days if unclaimed.")
+            return .success("Gift sent! Held until they claim it -- auto-refunded after 7 days if unclaimed.", fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
         } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
@@ -113,7 +118,7 @@ final class TransferViewModel: ObservableObject {
     func depositToSavingsGoal(goalId: String, amountRwf: Int) async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.depositToGoal(goalId: goalId, amount: Double(amountRwf))
-            return .success(response.message)
+            return .success(response.message, fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
         } catch let NetworkError.httpError(statusCode) {
@@ -134,7 +139,7 @@ final class TransferViewModel: ObservableObject {
     func withdrawFromSavingsGoal(goalId: String, amountRwf: Int) async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.withdrawFromGoal(goalId: goalId, amount: Double(amountRwf))
-            return .success(response.message)
+            return .success(response.message, fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
         } catch let NetworkError.httpError(statusCode) {
@@ -147,7 +152,7 @@ final class TransferViewModel: ObservableObject {
     func claimInterest() async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.claimInterest()
-            return .success(response.message)
+            return .success(response.message, fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
         } catch let NetworkError.httpError(statusCode) {
@@ -165,7 +170,7 @@ final class TransferViewModel: ObservableObject {
     func verifyDevice(password: String) async -> MoneyActionResult {
         do {
             _ = try await NetworkClient.shared.verifyDevice(password: password)
-            return .success("Device verified")
+            return .success("Device verified", fraudWarnings: [])
         } catch let NetworkError.httpError(statusCode) {
             let message = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
             return .failure(message)

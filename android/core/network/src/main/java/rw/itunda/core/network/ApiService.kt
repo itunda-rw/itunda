@@ -517,7 +517,13 @@ data class ConfirmTransferResponse(val success: Boolean, val message: String, va
 // building this on the backend/bank-mfe side one day earlier). This is the real one --
 // no quote step needed, since there's no external rail decision to quote.
 data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "", val fromAccountId: String? = null)
-data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
+// fraudWarnings added 2026-09-02 (Toss security research thread) -- real, friendly
+// post-send fraud-heuristic warnings (P2pService.sendDirect's own FraudRuleEngine
+// evaluation, already computed but previously only surfaced on bank-mfe). Purely
+// informational: the transfer this is attached to has already completed, matching
+// Toss's own real post-payment FDS notice ("Fraud Suspicion Siren"). Defaults to
+// empty so no other SendDirectP2pResponse deserialization is affected.
+data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double, val fraudWarnings: List<String> = emptyList())
 
 // Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant
 // transfer to a linked family member, see backend P2pService.sendToFamilyMember's own
