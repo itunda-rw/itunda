@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.core.designsystem.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
