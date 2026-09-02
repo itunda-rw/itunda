@@ -4010,6 +4010,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
   const [contacts, setContacts] = useState<TalkContact[] | null>(null);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
+  const showSkeleton = useDeferredLoading(contacts === null);
   const [startingId, setStartingId] = useState<string | null>(null);
 
   const load = () => {
@@ -4037,7 +4038,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
   };
 
   if (error) return <ErrorCard message={error} onRetry={load} />;
-  if (contacts === null) return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (contacts === null) return showSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   if (contacts.length === 0) {
     return (
       <EmptyState message="No friends yet -- save someone's contact and they'll show up here once they're on itunda." />
@@ -4728,6 +4729,7 @@ function DevicesView() {
   const [devices, setDevices] = useState<TrustedDevice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const showSkeleton = useDeferredLoading(devices === null);
   const myDeviceId = getOrCreateDeviceId();
 
   const load = () => {
@@ -4754,7 +4756,7 @@ function DevicesView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (devices === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (devices === null) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -4829,6 +4831,7 @@ function CardView() {
   const [card, setCard] = useState<Card | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<CardTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const showSkeleton = useDeferredLoading(card === undefined);
   const [busy, setBusy] = useState(false);
   const [dailyLimitInput, setDailyLimitInput] = useState('');
   const [monthlyLimitInput, setMonthlyLimitInput] = useState('');
@@ -5018,7 +5021,7 @@ function CardView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (card === undefined) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (card === undefined) return showSkeleton ? <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   if (card === null) {
     return <CardExplainer busy={busy} onIssue={handleIssue} />;
@@ -5319,6 +5322,7 @@ function InterestJarCard() {
   const [jar, setJar] = useState<InterestJar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const showSkeleton = useDeferredLoading(jar === null);
   const [claimMsg, setClaimMsg] = useState<string | null>(null);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   // Real per-bucket detail screen (2026-08-31) -- see BucketDetailScreen.tsx's own
@@ -5361,7 +5365,7 @@ function InterestJarCard() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (jar === null) return <div className="skeleton" style={{ height: '140px', marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (jar === null) return showSkeleton ? <div className="skeleton" style={{ height: '140px', marginBottom: '16px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   const canClaim = jar.earnedThisMonth > 0;
 
@@ -5720,6 +5724,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
 function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const { t } = useI18n();
   const [detail, setDetail] = useState<GroupAccountDetail | null>(null);
+  const showSkeleton = useDeferredLoading(detail === null);
   const [error, setError] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -5867,7 +5872,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       </div>
     );
   }
-  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (detail === null) return showSkeleton ? <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   // Real fix (2026-08-24, flat-design sweep): 5 distinct non-exclusive sections
   // shown together -- reused .itunda-flat-section for section-boundary dividers.
@@ -6293,6 +6298,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
 function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const { t } = useI18n();
   const [detail, setDetail] = useState<IkiminaDetail | null>(null);
+  const showSkeleton = useDeferredLoading(detail === null);
   const [error, setError] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [busy, setBusy] = useState(false);
@@ -6319,7 +6325,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       </div>
     );
   }
-  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (detail === null) return showSkeleton ? <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   const { ikimina, members, currentRoundContributions } = detail;
   const isOrganizer = ikimina.organizerId === myUserId;
@@ -6589,6 +6595,7 @@ function escalationLabel(rate: number): string {
 function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const { t } = useI18n();
   const [detail, setDetail] = useState<WeeklySavingsPlanDetail | null>(null);
+  const showSkeleton = useDeferredLoading(detail === null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -6660,7 +6667,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
     );
   }
-  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (detail === null) return showSkeleton ? <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   const { plan, accountBalance } = detail;
   const pct = Math.min(100, Math.round((plan.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
@@ -6990,6 +6997,7 @@ function WeeklySavingsSection() {
 function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const { t } = useI18n();
   const [detail, setDetail] = useState<Grow31SavingsPlanDetail | null>(null);
+  const showSkeleton = useDeferredLoading(detail === null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -7076,7 +7084,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
     );
   }
-  if (detail === null) return <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (detail === null) return showSkeleton ? <div className="skeleton" style={{ height: '260px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
 
   const { plan, accountBalance } = detail;
   const pct = Math.min(100, Math.round((plan.daysElapsed / GROW31_TERM_DAYS) * 100));
