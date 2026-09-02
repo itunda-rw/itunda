@@ -65,7 +65,7 @@ class SavingsServiceTest : BehaviorSpec({
                 targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("100000"),
                 monthlyContribution = BigDecimal("50000"), interestRate = 7.5, createdAt = Instant.now(),
             )
-            every { savingsGoalRepository.findById("sg_1") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_1") } returns Optional.of(goal)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }
@@ -85,7 +85,7 @@ class SavingsServiceTest : BehaviorSpec({
                 targetAmount = BigDecimal("250000"), currentAmount = BigDecimal("240000"),
                 monthlyContribution = BigDecimal("30000"), interestRate = 7.5, createdAt = Instant.now(),
             )
-            every { savingsGoalRepository.findById("sg_2") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_2") } returns Optional.of(goal)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }
@@ -126,7 +126,7 @@ class SavingsServiceTest : BehaviorSpec({
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
                 status = SavingsGoalStatus.completed,
             )
-            every { savingsGoalRepository.findById("sg_done_1") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_done_1") } returns Optional.of(goal)
 
             Then("it throws GoalAlreadyCompletedException before moving any real money") {
                 try {
@@ -144,7 +144,7 @@ class SavingsServiceTest : BehaviorSpec({
                 targetAmount = BigDecimal("100000"), currentAmount = BigDecimal.ZERO,
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
             )
-            every { savingsGoalRepository.findById("sg_3") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_3") } returns Optional.of(goal)
             every { accountRepository.findById("account_other") } returns Optional.of(account("account_other", "someone_else"))
 
             Then("it throws AccountNotOwnedException before touching the ledger") {
@@ -163,7 +163,7 @@ class SavingsServiceTest : BehaviorSpec({
                 targetAmount = BigDecimal("100000"), currentAmount = BigDecimal.ZERO,
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
             )
-            every { savingsGoalRepository.findById("sg_4") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_4") } returns Optional.of(goal)
 
             Then("it throws GoalNotFoundException, not a distinct ownership error -- same 404-not-403 pattern as account lookups") {
                 try {
@@ -280,6 +280,7 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("auto-contributing to a goal with sufficient funds") {
             val g = goal("sg_ok", "20000", null)
+            every { savingsGoalRepository.findByIdForUpdate(g.id) } returns Optional.of(g)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_auto", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }
@@ -296,6 +297,7 @@ class SavingsServiceTest : BehaviorSpec({
 
         When("auto-contributing to a goal without enough balance") {
             val g = goal("sg_poor", "999999999", null)
+            every { savingsGoalRepository.findByIdForUpdate(g.id) } returns Optional.of(g)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
 
             val succeeded = service.autoContribute(g)
@@ -318,6 +320,7 @@ class SavingsServiceTest : BehaviorSpec({
                 targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("490000"),
                 monthlyContribution = BigDecimal("20000"), interestRate = 7.5,
             )
+            every { savingsGoalRepository.findByIdForUpdate(g.id) } returns Optional.of(g)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_auto2", emptyList())
             every { savingsGoalRepository.save(any()) } answers { firstArg() }

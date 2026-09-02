@@ -60,7 +60,7 @@ class SavingsGoalLedgerIsolationTest : BehaviorSpec({
                 targetAmount = BigDecimal("100000"), currentAmount = BigDecimal.ZERO,
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
             )
-            every { savingsGoalRepository.findById("sg_new_1") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_new_1") } returns Optional.of(goal)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerAccountRepository.existsById("sg_ledger_sg_new_1") } returns false
             every { ledgerAccountRepository.save(any()) } answers { firstArg() }
@@ -81,7 +81,7 @@ class SavingsGoalLedgerIsolationTest : BehaviorSpec({
                 targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("120000"),
                 monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, createdAt = Instant.now(),
             )
-            every { savingsGoalRepository.findById("sg_old_1") } returns Optional.of(goal)
+            every { savingsGoalRepository.findByIdForUpdate("sg_old_1") } returns Optional.of(goal)
             every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account("account_1", "user_1")
             every { ledgerAccountRepository.existsById("sg_ledger_sg_old_1") } returns false
             every { ledgerAccountRepository.save(any()) } answers { firstArg() }

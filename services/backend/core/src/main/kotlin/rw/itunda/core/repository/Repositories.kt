@@ -75,6 +75,17 @@ interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
     fun findByUserId(userId: String): List<SavingsGoal>
     fun existsByUserId(userId: String): Boolean
 
+    // Real hardening (concurrency-audit thread) -- SavingsGoal already carries @Version,
+    // so a losing concurrent writer's whole transaction rolls back atomically (not a
+    // fund-leak), but depositToGoal/withdrawFromGoal/autoContribute all read this row
+    // unlocked before mutating currentAmount and posting real ledger legs -- adding this
+    // lock avoids the wasted ledger-posting work + a raw ObjectOptimisticLockingFailureException
+    // in favor of a clean domain exception, matching the established convention
+    // (WalletRepository/AccountRepository.findByIdForUpdate) elsewhere in this codebase.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select g from SavingsGoal g where g.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<SavingsGoal>
+
     // Real KB국민은행-style 상품만기알림서비스 (product maturity alert) candidate query --
     // see SavingsMaturityReminderScheduler's own doc comment. `targetDate` is a real,
     // unvalidated free-text field set at goal-creation time (never parsed or format-

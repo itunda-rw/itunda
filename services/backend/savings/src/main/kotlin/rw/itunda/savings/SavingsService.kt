@@ -137,7 +137,12 @@ class SavingsService(
 
     @Transactional
     fun depositToGoal(userId: String, goalId: String, amount: BigDecimal, fromAccountId: String?): SavingsGoal {
-        val goal = savingsGoalRepository.findById(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
+        // Real hardening (concurrency-audit thread) -- locks the goal row before the
+        // currentAmount read/mutate + ledger post below, avoiding wasted ledger-posting
+        // work + a raw optimistic-lock exception if this races withdrawFromGoal/
+        // autoContribute on the same goal. SavingsGoal's own @Version already made this
+        // provably NOT a fund-leak either way -- see this thread's own standing rule.
+        val goal = savingsGoalRepository.findByIdForUpdate(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
         // Real bug found+fixed (2026-08-23): nothing previously stopped a deposit into an
         // already-completed goal -- the real money debit/ledger-credit below ran
         // unconditionally, but `currentAmount` is capped at `targetAmount`, so the money
@@ -196,7 +201,9 @@ class SavingsService(
     // history" real Toss behavior.
     @Transactional
     fun withdrawFromGoal(userId: String, goalId: String, amount: BigDecimal, toAccountId: String?): SavingsGoal {
-        val goal = savingsGoalRepository.findById(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
+        // Real hardening (concurrency-audit thread) -- same reasoning as
+        // depositToGoal's own identical lock above.
+        val goal = savingsGoalRepository.findByIdForUpdate(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
         if (amount <= BigDecimal.ZERO) throw InsufficientGoalBalanceException("Amount must be positive")
         if (amount > goal.currentAmount) {
             throw InsufficientGoalBalanceException("Cannot withdraw more than this goal's current balance (${goal.currentAmount})")
@@ -246,7 +253,14 @@ class SavingsService(
     // this cycle and retries next time, the same way a real bank's standing order behaves,
     // rather than failing loudly for something that isn't the user's fault mid-batch.
     @Transactional
-    fun autoContribute(goal: SavingsGoal): Boolean {
+    fun autoContribute(goalArg: SavingsGoal): Boolean {
+        // Real hardening (concurrency-audit thread) -- goalArg was loaded by
+        // AutoSaveScheduler's OWN transaction (a batch query, `getGoalsDueForAutoContribution`),
+        // already committed and detached by the time this method's own @Transactional
+        // starts. Re-fetching locked here (rather than mutating goalArg directly) closes
+        // the same race depositToGoal/withdrawFromGoal's own locks close -- a manual
+        // deposit/withdraw racing this scheduled contribution on the same goal.
+        val goal = savingsGoalRepository.findByIdForUpdate(goalArg.id).orElseThrow { GoalNotFoundException("Goal not found") }
         val sourceAccount = accountRepository.findByUserIdAndType(goal.userId, AccountType.MAIN)
         if (sourceAccount == null || sourceAccount.availableBalance < goal.monthlyContribution) {
             log.info("Skipping auto-contribution for goal {} -- insufficient funds or no MAIN account", goal.id)
