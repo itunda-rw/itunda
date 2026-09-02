@@ -94,12 +94,9 @@ struct EmoticonBubble: View {
     }
 }
 
-extension ISO8601DateFormatter {
-    convenience init(withFractionalSeconds: Bool) {
-        self.init()
-        if withFractionalSeconds { formatOptions.insert(.withFractionalSeconds) }
-    }
-}
+// ISO8601DateFormatter(withFractionalSeconds:) moved to Core/DesignSystem/Sources/
+// Components/ISO8601DateFormatterExtensions.swift (2026-09-02, Pay Feature-module
+// decomposition) -- see that file's doc comment for why.
 
 func chatMessageTime(_ sentAt: String) -> String {
     let date = ISO8601DateFormatter(withFractionalSeconds: true).date(from: sentAt)

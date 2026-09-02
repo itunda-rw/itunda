@@ -6,6 +6,7 @@ import FeatureBanking
 import FeatureCredit
 import FeatureHome
 import FeatureMaps
+import FeaturePay
 import FeaturePayments
 import FeatureSupport
 
@@ -182,6 +183,12 @@ struct ContentView: View {
     // EntireMenuScreen's own onOpenBank doc comment), matching Android's identical
     // BankHubScreen move. Home no longer carries any Bank-specific data at all.
     @State private var showBank = false
+    // Real "View all rewards" destination for PayScreen's Membership sheet
+    // (2026-09-02, Pay Feature-module decomposition) -- PayScreen now lives in
+    // FeaturePay and injects this as a plain onOpenRewardsMiniApp callback, same
+    // onOpenRewards precedent FeatureAssets' own OverviewScreenView already
+    // established, since SaroniteRewardTasksView is :App-only.
+    @State private var showRewardTasksMiniApp = false
     // Real Toss Bank 관리 (Manage) account-settings hub (2026-09-01) -- ports
     // web's/Android's already-built AccountManageScreen (see that type's own doc
     // comment in FeatureBanking for the full account of what it surfaces and what's
@@ -407,7 +414,15 @@ struct ContentView: View {
             // HoodScreen's own Picker -- a tab bar inside a tab, noise a flat catalog
             // shouldn't have -- so each is flat instead; see HoodSectionScreen's own
             // doc comment (HoodScreen.swift) for the fuller account.
-            PayScreen(onSwitchToYou: { selectedTab = 4 })
+            PayScreen(
+                onSwitchToYou: { selectedTab = 4 },
+                onOpenRewardsMiniApp: { showRewardTasksMiniApp = true },
+                cardDestination: { dismiss in CardScreenView(onBack: dismiss) },
+                supportDestination: { dismiss in SupportScreenView(onBack: dismiss) }
+            )
+                .sheet(isPresented: $showRewardTasksMiniApp) {
+                    SaroniteRewardTasksView()
+                }
                 .tabItem {
                     Image(systemName: "creditcard.fill")
                     Text("Pay")

@@ -2,6 +2,15 @@ import SwiftUI
 import AVFoundation
 import CoreImage.CIFilterBuiltins
 
+// Promoted here from App/Sources/QrScanCamera.swift (2026-09-02, Pay Feature-module
+// decomposition -- MyPaymentCodeCard.swift/ShopPay.swift, both moving to
+// FeaturePay, call these directly) -- already shared by 4 other App/Sources
+// screens (AgentOperatorScreenView/MotoFareCollectScreenView/TalkGroupsBrowse/
+// TransitCollectScreenView), all staying in :App and already importing
+// CoreDesignSystem. Same "promote a cohesive, widely-shared, zero-unique-coupling
+// component" pattern as this same slice's DeviceStepUpView.swift promotion, and
+// matches Android's own PayQrCodeUtil.kt promotion to :core:designsystem exactly.
+
 // Real camera QR scanning (Pay-parity port, §237) -- first camera capability
 // anywhere in this app target (see the memory this closes: 9 days after Android's
 // CameraX+ML Kit scanner and bank-mfe's web `QrScanCamera` shipped, iOS still had
@@ -17,7 +26,7 @@ import CoreImage.CIFilterBuiltins
 /// `itunda://pay?intentId=...` URL yields just the `intentId` value; a raw opaque
 /// code (this app's dynamic per-sale codes aren't URL-wrapped) passes through
 /// trimmed, unchanged.
-func parseQrParam(_ raw: String, key: String) -> String {
+public func parseQrParam(_ raw: String, key: String) -> String {
     if let range = raw.range(of: "[?&]\(key)=([^&]+)", options: .regularExpression) {
         let matched = String(raw[range])
         if let value = matched.split(separator: "=", maxSplits: 1).last {
@@ -31,7 +40,7 @@ func parseQrParam(_ raw: String, key: String) -> String {
 /// in ShopPay.swift) -- Core Image's native `CIFilter.qrCodeGenerator`, no
 /// third-party library, the generation-side counterpart to this file's own
 /// scanning capability above.
-func generateQrImage(from string: String, size: CGFloat) -> UIImage? {
+public func generateQrImage(from string: String, size: CGFloat) -> UIImage? {
     let filter = CIFilter.qrCodeGenerator()
     filter.message = Data(string.utf8)
     filter.correctionLevel = "M"
@@ -50,7 +59,7 @@ func generateQrImage(from string: String, size: CGFloat) -> UIImage? {
 /// it, not QR alone. Core Image's native `CIFilter.code128BarcodeGenerator` --
 /// same first-party, no-third-party-library discipline as `generateQrImage`
 /// above.
-func generateBarcodeImage(from string: String, width: CGFloat, height: CGFloat) -> UIImage? {
+public func generateBarcodeImage(from string: String, width: CGFloat, height: CGFloat) -> UIImage? {
     let filter = CIFilter.code128BarcodeGenerator()
     filter.message = Data(string.utf8)
     guard let outputImage = filter.outputImage else { return nil }
@@ -62,21 +71,33 @@ func generateBarcodeImage(from string: String, width: CGFloat, height: CGFloat) 
     return UIImage(cgImage: cgImage)
 }
 
-struct QrScanCameraView: UIViewControllerRepresentable {
+public struct QrScanCameraView: UIViewControllerRepresentable {
     let onDetect: (String) -> Void
     let onUnavailable: () -> Void
 
-    func makeUIViewController(context: Context) -> QrScannerViewController {
+    public init(onDetect: @escaping (String) -> Void, onUnavailable: @escaping () -> Void) {
+        self.onDetect = onDetect
+        self.onUnavailable = onUnavailable
+    }
+
+    public func makeUIViewController(context: Context) -> QrScannerViewController {
         let controller = QrScannerViewController()
         controller.onDetect = onDetect
         controller.onUnavailable = onUnavailable
         return controller
     }
 
-    func updateUIViewController(_ uiViewController: QrScannerViewController, context: Context) {}
+    public func updateUIViewController(_ uiViewController: QrScannerViewController, context: Context) {}
 }
 
-final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+// QrScannerViewController must be `public` since it's the return type of
+// makeUIViewController above, which itself must be public to satisfy the public
+// UIViewControllerRepresentable conformance on a public QrScanCameraView used
+// across module boundaries (FeaturePay). That in turn requires every overridden
+// UIViewController lifecycle method and the AVCaptureMetadataOutputObjectsDelegate
+// conformance method below to also be `public` -- Swift requires an override/
+// protocol witness to be at least as accessible as its enclosing type.
+public final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onDetect: ((String) -> Void)?
     var onUnavailable: (() -> Void)?
 
@@ -97,7 +118,7 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         return label
     }()
 
-    override func viewDidLoad() {
+    override public func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -154,13 +175,13 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         UIAccessibility.post(notification: .announcement, argument: "Camera ready. Point at a QR code.")
     }
 
-    override func viewDidLayoutSubviews() {
+    override public func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         previewLayer?.frame = view.bounds
         foundLabel.frame = CGRect(x: 0, y: view.bounds.height - 34, width: view.bounds.width, height: 20)
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
+    override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         if session.isRunning {
             let session = self.session
@@ -170,7 +191,7 @@ final class QrScannerViewController: UIViewController, AVCaptureMetadataOutputOb
         }
     }
 
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+    public func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
         guard !hasDetected,
               let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
               object.type == .qr,

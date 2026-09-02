@@ -14,6 +14,16 @@ import CoreNetwork
 struct MembershipScreenView: View {
     var onBack: () -> Void = {}
     var onOpenPayMoney: () -> Void = {}
+    // Real "View all rewards" destination -- iOS has no native Rewards screen
+    // either (RewardsService is otherwise reached only through the Saronite RN
+    // mini-app). Injected as a plain callback (2026-09-02, Pay Feature-module
+    // decomposition) rather than presented directly -- SaroniteRewardTasksView is
+    // an :App-only Saronite bridge view, and this screen now lives in FeaturePay,
+    // matching the exact onOpenRewards precedent FeatureAssets' own
+    // OverviewScreenView already established (see its own doc comment) -- the
+    // caller (ContentView.swift) owns the real showRewardTasksMiniApp state and
+    // sheet presentation.
+    var onOpenRewardsMiniApp: () -> Void = {}
 
     @State private var payBalance: Double?
     @State private var rewardsTotal: Double?
@@ -21,11 +31,6 @@ struct MembershipScreenView: View {
     @State private var claimingRewardId: String?
     @State private var loyaltyBalances: [LoyaltyBalanceDto]?
     @State private var error: String?
-    // Real "View all rewards" destination -- iOS has no native Rewards screen
-    // either (RewardsService is otherwise reached only through the Saronite RN
-    // mini-app, same real gap OverviewLoansCreditScoreScreens.swift's own
-    // onOpenRewards already works around).
-    @State private var showRewardTasksMiniApp = false
 
     private var loading: Bool { payBalance == nil || rewardsTotal == nil || loyaltyBalances == nil }
 
@@ -53,7 +58,7 @@ struct MembershipScreenView: View {
                         Text("\(Int((rewardsTotal ?? 0) + (payBalance ?? 0))) RWF").font(.title).bold()
                             .padding(.bottom, 16)
 
-                        Button(action: { showRewardTasksMiniApp = true }) {
+                        Button(action: onOpenRewardsMiniApp) {
                             HStack {
                                 Text("Available points").foregroundColor(IDS.Colors.textPrimary)
                                 Spacer()
@@ -105,9 +110,6 @@ struct MembershipScreenView: View {
             } catch {
                 self.error = "Could not load your membership details."
             }
-        }
-        .sheet(isPresented: $showRewardTasksMiniApp) {
-            SaroniteRewardTasksView()
         }
     }
 

@@ -1,23 +1,19 @@
 import SwiftUI
+import CoreDesignSystem
 import FeaturePayments
 
 // Real per-feature isolated preview app (2026-08-29) -- see FeatureBankingExampleApp
 // for the full rationale (docs/TOSS_ARCHITECTURE_FACTS.md §8). Payments has the most
-// real public screens of any module (transfer flow, pay-money detail, transaction
-// history), so this is a picker list like Banking's, not a single direct screen.
+// real public screens of any module (transfer flow, transaction history), so this
+// is a picker list like Banking's, not a single direct screen. Pay money detail
+// moved out to FeaturePay (2026-09-02, Pay Feature-module decomposition) -- its
+// only real caller was MyPaymentCodeCard.swift, which moved there too.
 @main
 struct FeaturePaymentsExampleApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
                 List {
-                    NavigationLink("Pay money detail") {
-                        PayMoneyDetailScreen(
-                            currency: "RWF", balance: 42_500,
-                            transactions: Self.sampleTransactions, errorMessage: nil,
-                            onBack: {}, onSend: {}, onAddMoney: {}
-                        )
-                    }
                     NavigationLink("Transaction history") {
                         TransactionHistoryScreen(transactions: Self.sampleTransactions, onBack: {})
                     }

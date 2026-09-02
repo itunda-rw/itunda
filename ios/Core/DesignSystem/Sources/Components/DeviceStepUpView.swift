@@ -1,7 +1,6 @@
 import SwiftUI
 import CoreNetwork
 import CoreIdentity
-import CoreDesignSystem
 
 /// Real device binding step-up dialog (2026-07-21 port) -- shown wherever a
 /// money-moving call real-403s with DEVICE_NOT_VERIFIED. Re-proves password
@@ -11,12 +10,22 @@ import CoreDesignSystem
 /// DeviceStepUpPrompt (BankDashboard.tsx) / Android's DeviceStepUpDialog exactly --
 /// same copy, same shape (password field, Cancel/Verify).
 ///
-/// Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- reuses
-/// AppLocale/loadStoredLocale from LoginScreen.swift directly since this file lives
-/// in the same App target (unlike Features/Payments' TransferFlowScreens.swift,
-/// which needed its own copy). Worth doing here specifically because this dialog is
-/// shared by four money-moving flows (Gift, Commerce, Eats, Stocks -- see
-/// DeviceStepUpHost's own doc comment below), not just Transfer.
+/// Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- uses
+/// AppLocale/loadStoredLocale, both already real CoreDesignSystem symbols (same
+/// module as this file since its 2026-09-02 promotion below, no import needed).
+/// Worth doing here specifically because this dialog is shared by four
+/// money-moving flows (Gift, Commerce, Eats, Stocks -- see DeviceStepUpHost's own
+/// doc comment below), not just Transfer.
+///
+/// Promoted here from App/Sources/DeviceStepUpView.swift (2026-09-02, Pay
+/// Feature-module decomposition -- MyPaymentCodeCard.swift/ShopPay.swift, both
+/// moving to FeaturePay, call DeviceStepUpHost directly) -- already used by 7
+/// other App/Sources screens (EatsCheckout/DelayedTransferListScreen/
+/// GroupAccountScreenView/InvestScreenView/RequestMoneyScreen/TalkChatThread/
+/// ShopProductDetail) plus SavingsFlowContainer/TransferFlowContainer, all
+/// staying in :App -- same "promote a cohesive, widely-shared, zero-unique-coupling
+/// component" pattern Android's own DeviceStepUpHost/DeviceStepUpDialog promotion
+/// to :core:designsystem already established.
 private let deviceStepUpStrings: [AppLocale: [String: String]] = [
     .en: [
         "title": "Verify this device",
@@ -57,7 +66,7 @@ private func dsu(_ key: String) -> String {
     return deviceStepUpStrings[locale]?[key] ?? deviceStepUpStrings[.en]?[key] ?? key
 }
 
-struct DeviceStepUpView: View {
+public struct DeviceStepUpView: View {
     @State private var password = ""
     @FocusState private var passwordFocused: Bool
     // Real "Minimum Input" simplicity addition (docs/DESIGN_REFERENCES.md §11/§12), matching
@@ -69,7 +78,14 @@ struct DeviceStepUpView: View {
     let onVerify: (String) -> Void
     let onCancel: () -> Void
 
-    var body: some View {
+    public init(busy: Bool, error: String?, onVerify: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
+        self.busy = busy
+        self.error = error
+        self.onVerify = onVerify
+        self.onCancel = onCancel
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 LockGlyph(size: 16)
@@ -136,7 +152,7 @@ struct DeviceStepUpView: View {
 /// EatsScreen.swift/InvestScreenView.swift) would otherwise have hand-duplicated the
 /// same logic. Mirrors Android's DeviceStepUpHost.kt exactly: verifies the current
 /// device, then invokes the caller's retry closure.
-struct DeviceStepUpHost: View {
+public struct DeviceStepUpHost: View {
     let visible: Bool
     let onDismiss: () -> Void
     let onVerified: () async -> Void
@@ -144,7 +160,13 @@ struct DeviceStepUpHost: View {
     @State private var busy = false
     @State private var error: String?
 
-    var body: some View {
+    public init(visible: Bool, onDismiss: @escaping () -> Void, onVerified: @escaping () async -> Void) {
+        self.visible = visible
+        self.onDismiss = onDismiss
+        self.onVerified = onVerified
+    }
+
+    public var body: some View {
         if visible {
             Color.black.opacity(0.3).ignoresSafeArea()
             DeviceStepUpView(

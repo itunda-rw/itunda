@@ -2,7 +2,6 @@ import SwiftUI
 import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
-import FeatureSupport
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --
@@ -199,7 +198,7 @@ struct RewardsPreviewSection: View {
 // routing to the real SupportScreenView -- rather than fabricating Toss-specific rows
 // ("Toss Prime", "Google gift codes", cross-merchant coupon wallet, external
 // online-merchant integrations) itunda has no real backend for.
-struct PayScreen: View {
+public struct PayScreen<CardDestination: View, SupportDestination: View>: View {
     @State private var paymentResult: CollectPaymentResultDto?
     @State private var rewardsTotal: Double = 0
     @State private var rewardTasks: [RewardTaskDto] = []
@@ -207,7 +206,25 @@ struct PayScreen: View {
     @State private var showSupport = false
     @State private var showNearbyMerchants = false
     @StateObject private var nearbyMerchantsLoader = NearbyMerchantsLoader()
-    var onSwitchToYou: () -> Void = {}
+    let onSwitchToYou: () -> Void
+    // Real injected view-builder slots (2026-09-02, Pay Feature-module
+    // decomposition) -- CardScreenView is shared with ContentView.swift/
+    // BenefitsShopAllScreens.swift (stays in :App); SupportScreenView lives in
+    // FeatureSupport's own Sources (not Interface), so a direct import from
+    // FeaturePay would be a forbidden cross-Feature dependency
+    // (scripts/ios-silo-boundary-check.py). Generic @ViewBuilder injection matches
+    // this codebase's own established pattern (RoomLockGate/EatsOrderRow/
+    // CommerceOrderRow's `<Content: View>` shape) rather than inventing a new one.
+    // Each closure receives PayScreen's own dismiss action, so the injected
+    // destination's real "back" button (CardScreenView(onBack:)/
+    // SupportScreenView(onBack:)) can close the sheet PayScreen itself owns
+    // (showCard/showSupport), not just rely on swipe-to-dismiss.
+    @ViewBuilder let cardDestination: (@escaping () -> Void) -> CardDestination
+    @ViewBuilder let supportDestination: (@escaping () -> Void) -> SupportDestination
+    // Real injected callback, same onOpenRewards precedent FeatureAssets'
+    // OverviewScreenView already established -- SaroniteRewardTasksView is
+    // :App-only.
+    let onOpenRewardsMiniApp: () -> Void
     // Real itunda Pay redesign (2026-08-28, direct user reference: real Toss Pay
     // screenshots) -- itunda's own real issued-card summary row, Coupon Box, and
     // adapted Membership screen. See PayFundingSourcePickerView.swift/
@@ -220,7 +237,19 @@ struct PayScreen: View {
     @State private var showCouponBox = false
     @State private var showMembership = false
 
-    var body: some View {
+    public init(
+        onSwitchToYou: @escaping () -> Void = {},
+        onOpenRewardsMiniApp: @escaping () -> Void = {},
+        @ViewBuilder cardDestination: @escaping (@escaping () -> Void) -> CardDestination,
+        @ViewBuilder supportDestination: @escaping (@escaping () -> Void) -> SupportDestination
+    ) {
+        self.onSwitchToYou = onSwitchToYou
+        self.onOpenRewardsMiniApp = onOpenRewardsMiniApp
+        self.cardDestination = cardDestination
+        self.supportDestination = supportDestination
+    }
+
+    public var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 HStack {
@@ -322,13 +351,13 @@ struct PayScreen: View {
             }
         }
         .sheet(isPresented: $showSupport) {
-            SupportScreenView(onBack: { showSupport = false })
+            supportDestination({ showSupport = false })
         }
         .sheet(isPresented: $showNearbyMerchants) {
             NearbyMerchantsSheet(merchants: nearbyMerchantsLoader.merchants)
         }
         .sheet(isPresented: $showCard) {
-            CardScreenView(onBack: { showCard = false })
+            cardDestination({ showCard = false })
         }
         .sheet(isPresented: $showCouponBox) {
             CouponBoxScreenView(onBack: { showCouponBox = false }, onBrowseMerchants: { showCouponBox = false })
@@ -342,6 +371,7 @@ struct PayScreen: View {
             MembershipScreenView(
                 onBack: { showMembership = false },
                 onOpenPayMoney: { showMembership = false },
+                onOpenRewardsMiniApp: onOpenRewardsMiniApp,
             )
         }
     }

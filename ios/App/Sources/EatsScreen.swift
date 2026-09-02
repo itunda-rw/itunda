@@ -88,11 +88,9 @@ struct EatsContent: View {
 
 enum OrderFoodView { case browse, favorites, orders }
 
-let isoDateFormatterFractional: ISO8601DateFormatter = {
-    let f = ISO8601DateFormatter()
-    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return f
-}()
+// isoDateFormatterFractional moved to Core/DesignSystem/Sources/Components/
+// ISO8601DateFormatterExtensions.swift (2026-09-02, Pay Feature-module
+// decomposition) -- see that file's doc comment for why.
 
 struct OrderFoodContent: View {
     @State private var view: OrderFoodView = .browse

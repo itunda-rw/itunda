@@ -3,7 +3,6 @@ import UIKit
 import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
-import FeaturePayments
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --

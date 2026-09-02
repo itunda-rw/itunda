@@ -152,7 +152,18 @@ let featureDependencies: [TargetDependency] = [
 // promoted to CoreDesignSystem instead of FeatureHome depending on FeatureBanking
 // directly, which scripts/ios-silo-boundary-check.py forbids -- no extra
 // cross-feature dependency needed, just the standard featureDependencies set.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home"]
+// "Pay" added 2026-09-02 -- iOS parity pass continued (see "Home"'s own comment
+// above). PayScreen (App/Sources/PayHomeExtras.swift) + ShopPay.swift/
+// CouponBoxScreenView.swift/MembershipScreenView.swift moved. Real blockers found:
+// CardScreenView (shared with ContentView.swift/BenefitsShopAllScreens.swift, stays
+// in :App) and SupportScreenView (FeatureSupport's own Sources, not Interface --
+// a direct import would be a forbidden cross-Feature dependency) both switched to
+// generic @ViewBuilder injection, matching this codebase's own established
+// `<Content: View>` pattern (RoomLockGate/EatsOrderRow/CommerceOrderRow); Saronite's
+// reward-tasks mini-app (:App-only) switched to a plain onOpenRewardsMiniApp
+// callback, matching FeatureAssets' OverviewScreenView's own onOpenRewards
+// precedent exactly.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home", "Pay"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }
