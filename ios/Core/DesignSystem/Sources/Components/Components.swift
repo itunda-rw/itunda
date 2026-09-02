@@ -308,32 +308,49 @@ public struct IdsBadge: View {
 // the loading-state visual language, not a missing capability (iOS always showed
 // *something* while loading, just not the same shaped-placeholder shape as the other
 // two platforms). Same animated left-to-right gradient sweep as bank-mfe/Android's own.
+// Real KakaoPay finding (tech.kakaopay.com/post/skeleton-ui-idea, ported to bank-mfe's
+// useDeferredLoading and Android's SkeletonBlock 2026-09-03): showing a skeleton the
+// instant a fetch starts flickers on any response fast enough to already have data back
+// before a human can register the shimmer as informative rather than broken -- KakaoPay's
+// own measured data showed most of their requests completing in 110-300ms. Since every
+// real call site already only shows this view while its own data is nil, the 200ms delay
+// lives here once rather than needing a per-call-site wrapper: nothing renders until the
+// delay elapses, so a response that lands first never shows a skeleton at all.
 public struct SkeletonBlock: View {
     let height: CGFloat
     @State private var animating = false
+    @State private var showSkeleton = false
 
     public init(height: CGFloat = 120) {
         self.height = height
     }
 
     public var body: some View {
-        RoundedRectangle(cornerRadius: IDS.Layout.cardCornerRadius)
-            .fill(IDS.Colors.chipBackground)
-            .overlay(
-                LinearGradient(
-                    colors: [IDS.Colors.chipBackground, IDS.Colors.card, IDS.Colors.chipBackground],
-                    startPoint: animating ? .trailing : .leading,
-                    endPoint: animating ? UnitPoint(x: 2, y: 0.5) : UnitPoint(x: -1, y: 0.5)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: IDS.Layout.cardCornerRadius))
-            )
-            .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .onAppear {
-                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
-                    animating = true
-                }
+        Group {
+            if showSkeleton {
+                RoundedRectangle(cornerRadius: IDS.Layout.cardCornerRadius)
+                    .fill(IDS.Colors.chipBackground)
+                    .overlay(
+                        LinearGradient(
+                            colors: [IDS.Colors.chipBackground, IDS.Colors.card, IDS.Colors.chipBackground],
+                            startPoint: animating ? .trailing : .leading,
+                            endPoint: animating ? UnitPoint(x: 2, y: 0.5) : UnitPoint(x: -1, y: 0.5)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: IDS.Layout.cardCornerRadius))
+                    )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: height)
+                    .onAppear {
+                        withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
+                            animating = true
+                        }
+                    }
             }
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            showSkeleton = true
+        }
     }
 }
 
