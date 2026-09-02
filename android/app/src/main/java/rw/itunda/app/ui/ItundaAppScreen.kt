@@ -198,6 +198,12 @@ import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.LocalRealActivity
 import rw.itunda.core.designsystem.components.DeviceStepUpHost
+import rw.itunda.core.designsystem.components.AccountLedgerRow
+import rw.itunda.core.designsystem.components.ledgerRowIcon
+import rw.itunda.core.designsystem.components.ledgerRowTitle
+import rw.itunda.core.designsystem.components.ledgerDateHeader
+import rw.itunda.core.designsystem.components.ledgerFullDateTime
+import rw.itunda.core.designsystem.components.transactionTypeLabel
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.IdsTheme
