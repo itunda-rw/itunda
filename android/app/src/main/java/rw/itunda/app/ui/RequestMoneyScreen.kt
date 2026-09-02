@@ -3,6 +3,7 @@ package rw.itunda.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import rw.itunda.core.designsystem.components.pressScaleClickable
+import rw.itunda.core.designsystem.components.DeviceStepUpHost
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -186,9 +187,9 @@ private fun PayRequestCard(onPaid: () -> Unit) {
     var paying by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Real biometric device step-up (item 170's own named follow-up, closed 2026-07-29)
-    // -- DeviceStepUpHost.kt lives in this same :app module (unlike the Feature-module
-    // screens that need it injected), so it's used directly here rather than the
-    // honest-text-message fallback this screen shipped with originally.
+    // -- DeviceStepUpHost now lives in :core:designsystem (promoted 2026-09-02, see
+    // its own doc comment), used directly here rather than the honest-text-message
+    // fallback this screen shipped with originally.
     var needsDeviceVerification by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 

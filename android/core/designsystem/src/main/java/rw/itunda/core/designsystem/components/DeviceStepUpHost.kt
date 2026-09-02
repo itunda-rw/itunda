@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.core.designsystem.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,24 +14,18 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.VerifyDeviceRequest
 import rw.itunda.core.network.VerifyDeviceSignatureRequest
 import rw.itunda.core.network.apiErrorMessage
-import rw.itunda.core.designsystem.components.DeviceStepUpDialog
 import java.io.IOException
 import java.util.Base64
 
 /**
  * Real device binding step-up, factored out 2026-07-21 after the third copy of this
- * exact pattern (Gift send/claim, Commerce checkout, Eats checkout, Stocks buy/sell --
- * see SuperAppTabs.kt/InvestScreen.kt) would otherwise have hand-duplicated the same
- * busy/error state + verify-then-retry logic. Lives in :app, not a Feature module --
- * NOT because of `NetworkClient` (a stale reason this comment used to give; Feature
- * modules genuinely CAN depend on `:core:network`, confirmed 2026-09-02 when
- * :features:banking:impl/:features:home:impl were built referencing it directly).
- * The real reason: this reads `LocalRealActivity`, an `:app`-only CompositionLocal
- * (see its own doc comment) for the biometric-first path's activity handle. The
- * visual `DeviceStepUpDialog` this wraps now lives in `:core:designsystem` (promoted
- * 2026-09-02 out of :features:payments:impl so any Feature module's own copy of THIS
- * host -- once `LocalRealActivity` is itself shared -- can render it without a
- * forbidden cross-Feature impl-to-impl import).
+ * exact pattern (Gift send/claim, Commerce checkout, Eats checkout, Stocks buy/sell)
+ * would otherwise have hand-duplicated the same busy/error state + verify-then-retry
+ * logic. Promoted here from :app (2026-09-02, prerequisite for extracting PayTab
+ * into its own Feature module) now that both things that used to keep it :app-only
+ * are resolved: `LocalRealActivity` (the biometric-first path's activity handle) and
+ * `DeviceStepUpDialog` (the visual dialog this wraps) are both shared
+ * :core:designsystem components now, not :app-only/cross-Feature ones.
  *
  * Usage: hold a `pendingDeviceRetry: (suspend () -> Unit)?` and a
  * `needsDeviceVerification: Boolean` in the caller: on a real 403

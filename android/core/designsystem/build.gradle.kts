@@ -31,6 +31,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
 
     implementation(project(":core:network")) // For SDUI models + superAppErrorMessage
+    implementation(project(":core:identity")) // For DeviceStepUpHost's DeviceKeyManager
 
     // Added 2026-07-22 for HoodShared.kt -- the cross-feature Marketplace/Community/
     // Jobs/Property UI atoms (rememberRealLocationRequester, HoodReportAction,
@@ -38,6 +39,7 @@ dependencies {
     // :features:marketplace:impl can share them without depending on :app.
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")

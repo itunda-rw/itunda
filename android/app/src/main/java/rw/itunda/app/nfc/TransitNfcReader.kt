@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import rw.itunda.app.ui.LocalRealActivity
+import rw.itunda.core.designsystem.components.LocalRealActivity
 import java.nio.charset.StandardCharsets
 
 // Real NFC "collector reads a rider's tapped phone" (2026-08-27, direct user

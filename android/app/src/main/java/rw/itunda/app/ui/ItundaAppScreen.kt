@@ -196,6 +196,8 @@ import rw.itunda.core.designsystem.theme.AccentOrange
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
+import rw.itunda.core.designsystem.components.LocalRealActivity
+import rw.itunda.core.designsystem.components.DeviceStepUpHost
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.IdsTheme
@@ -1757,8 +1759,12 @@ fun ItundaAppScreen(
                     )
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is
-                    // injected (DeviceStepUpHost.kt wraps :features:payments:impl's
-                    // dialog, so it can't become a direct Feature-to-Feature dependency).
+                    // injected here rather than called directly inside :features:talk:impl.
+                    // DeviceStepUpHost moved to :core:designsystem 2026-09-02 (no longer
+                    // wraps a cross-Feature dialog), so a Feature module COULD call it
+                    // directly now -- this injection wiring was left as-is since removing
+                    // it is an unrelated cleanup, not required to unblock PayTab's own
+                    // extraction (the reason this promotion happened).
                     ItundaTab.Messages -> TalkTab(
                         initialConversationId = pendingConversationId,
                         onConsumedInitial = { pendingConversationId = null },

@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.core.designsystem.components
 
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.fragment.app.FragmentActivity
@@ -14,6 +14,11 @@ import androidx.fragment.app.FragmentActivity
 // screen that genuinely needs the hosting Activity (BiometricPrompt via
 // NIDABiometricAuth, AppLockScreen) reads it from here instead of casting
 // LocalContext.
+//
+// Promoted here from :app's own ui/ package (2026-09-02, prerequisite for
+// extracting PayTab into a new Feature module) -- DeviceStepUpHost reads this
+// for its biometric-first path, and DeviceStepUpHost itself needs to be
+// callable from any Feature module, not just :app.
 val LocalRealActivity = staticCompositionLocalOf<FragmentActivity> {
     error("LocalRealActivity not provided -- must be set at MainActivity's setContent root")
 }
