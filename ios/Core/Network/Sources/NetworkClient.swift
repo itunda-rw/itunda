@@ -5859,6 +5859,17 @@ extension NetworkClient {
         try await get("api/v1/orders/products/\(productId)/inquiries")
     }
 
+    // Real "my questions across every product I've ever asked about" -- see
+    // OrderController.getMyInquiries's own doc comment on the backend. The two
+    // methods above only ever let a buyer ask/view a SINGLE product's own Q&A; this
+    // is the first place on iOS a buyer can see every question they've ever asked,
+    // across every product, in one list. Real gap found live (uncalled-endpoint
+    // sweep, 2026-09-03): this endpoint existed with zero caller on iOS or bank-mfe
+    // -- only Android had this wired, since 2026-08-04.
+    public func getMyProductInquiries() async throws -> ProductInquiriesResponse {
+        try await get("api/v1/orders/inquiries/my-questions")
+    }
+
     // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing --
     // see rw.itunda.merchant.MerchantBillingService's own doc comment. Customer-facing
     // half only, matching bank-mfe's own scope (plan creation is merchant-owner-only,

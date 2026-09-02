@@ -231,6 +231,19 @@ export const fetchProductInquiries = (productId: string) =>
     (r) => r.inquiries,
   );
 
+// Real "my questions across every product I've ever asked about" -- see
+// OrderController.getMyInquiries's own doc comment on the backend. The section
+// above only ever lets a buyer ask/view a SINGLE product's own Q&A; this is the
+// first place on bank-mfe a buyer can see every question they've ever asked, across
+// every product, in one list. Read-only from here -- answering is the merchant
+// app's job. Real gap found live (uncalled-endpoint sweep, 2026-09-03): the backend
+// endpoint existed with zero caller on bank-mfe or iOS -- only Android had this
+// wired, since 2026-08-04.
+export const fetchMyProductInquiries = () =>
+  apiFetch<{ success: boolean; inquiries: ProductInquiry[] }>('/api/v1/orders/inquiries/my-questions').then(
+    (r) => r.inquiries,
+  );
+
 export const fetchProductRating = (productId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/orders/products/${productId}/rating`);
 

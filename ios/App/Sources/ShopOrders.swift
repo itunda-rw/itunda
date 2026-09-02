@@ -232,3 +232,60 @@ struct MyProductSubscriptionsView: View {
     }
 }
 
+// Real "my questions across every product I've ever asked about" -- see
+// NetworkClient's getMyProductInquiries doc comment. ProductInquirySection (on a
+// single product's detail page) already lets a buyer ask/view that one product's
+// Q&A; this is the first place a buyer can see every question they've ever asked,
+// across every product, in one list. Read-only from here -- answering is the
+// merchant app's job. Real gap found live (uncalled-endpoint sweep, 2026-09-03):
+// this endpoint existed with zero caller on iOS or bank-mfe -- only Android had
+// this wired, since 2026-08-04 (mirrors that platform's own ShopOrders.kt
+// MyProductInquiriesView exactly).
+struct MyProductInquiriesView: View {
+    @State private var inquiries: [ProductInquiryDto]?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 10)
+            } else if inquiries == nil {
+                SkeletonBlock(height: 120)
+            } else if inquiries!.isEmpty {
+                EmptyStateView("No questions asked yet -- ask one from any product's detail page.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(inquiries!) { q in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(q.question).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                        if let answer = q.answer, !answer.isEmpty {
+                            Text("Answered: \(answer)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        } else {
+                            Text("Waiting for an answer…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 10)
+                    Divider().overlay(IDS.Colors.divider)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyProductInquiries()
+            inquiries = res.inquiries
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+

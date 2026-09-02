@@ -72,7 +72,7 @@ final class SilentLocationFetcher: NSObject, ObservableObject, CLLocationManager
 /// their own flat ContentView.swift destination now (see ContentView.swift's
 /// showShop/showEats).
 
-enum CommerceView { case browse, orders, wishlist, subscriptions }
+enum CommerceView { case browse, orders, wishlist, subscriptions, questions }
 
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification the
@@ -321,6 +321,7 @@ struct CommerceShopContent: View {
                         Text("My orders").tag(CommerceView.orders)
                         Text("Wishlist").tag(CommerceView.wishlist)
                         Text("Subscriptions").tag(CommerceView.subscriptions)
+                        Text("Questions").tag(CommerceView.questions)
                     }
                     .pickerStyle(.segmented)
 
@@ -344,6 +345,8 @@ struct CommerceShopContent: View {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else if view == .subscriptions {
                         MyProductSubscriptionsView()
+                    } else if view == .questions {
+                        MyProductInquiriesView()
                     } else {
                         // Real fix (2026-08-25, direct user follow-up: "why do we
                         // have pay in there?" -- matches Android's identical

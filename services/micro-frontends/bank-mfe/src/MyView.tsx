@@ -15,6 +15,7 @@ import { NotificationsCard, ProfilePhotoCard, VerificationCard } from './MyProfi
 import { MyVehiclesCard } from './MyVehiclesCard';
 import { FamilyLinkCard } from './FamilyLinkCard';
 import { MyProductSubscriptionsCard } from './MyProductSubscriptionsCard';
+import { MyProductInquiriesCard } from './MyProductInquiriesCard';
 import { AffiliateEarningsCard } from './AffiliateEarningsCard';
 import { LegalDocumentsCard } from './LegalDocumentsCard';
 import { fetchMyOrders, type CommerceOrder } from './lib/commerce';
@@ -107,6 +108,7 @@ export function MyView() {
       <MyVehiclesCard />
       <FamilyLinkCard />
       <MyProductSubscriptionsCard />
+      <MyProductInquiriesCard />
       <AffiliateEarningsCard />
       <LegalDocumentsCard />
       {miniApps.length > 0 && (
