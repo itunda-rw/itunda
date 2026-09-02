@@ -3478,6 +3478,7 @@ function emptyConversationsMessage(showArchived: boolean, filterTab: 'all' | 'un
 function DirectMessagesList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
   const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const showSkeleton = useDeferredLoading(conversations === null);
   // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
   // .archived's own doc comment. Loaded alongside the active list so the
   // "Archived (N)" toggle has a real count without an extra round-trip.
@@ -3605,7 +3606,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   }
 
   if (conversations === null) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   // Pinned rooms float to the top of the active list, same as real KakaoTalk --
@@ -3755,8 +3756,9 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
 // persisted CallSession rows. No "place a call" affordance yet -- that's a separate,
 // later piece once the calling UI itself (WebRTC/dial screen) is built.
 function TalkCallLog({ calls, currentUserId }: { calls: CallSession[] | null; currentUserId: string | null }) {
+  const showSkeleton = useDeferredLoading(calls === null);
   if (calls === null) {
-    return <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '120px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
   if (calls.length === 0) {
     return <EmptyState message="No calls yet." />;
@@ -3792,6 +3794,7 @@ function TalkCallLog({ calls, currentUserId }: { calls: CallSession[] | null; cu
 function GroupsList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void } = {}) {
   const { t } = useI18n();
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
+  const showSkeleton = useDeferredLoading(groups === null);
   const [error, setError] = useState<string | null>(null);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
 
@@ -3834,7 +3837,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
   }
 
   if (groups === null) {
-    return <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} />;
+    return showSkeleton ? <div className="skeleton" style={{ height: '220px', borderRadius: 'var(--itunda-radius-md)' }} /> : null;
   }
 
   return (
@@ -4402,6 +4405,7 @@ export function ShareFavoritesModal({
   onShare, onClose, title = 'Share favorites to…',
 }: { onShare: (conversationId: string) => void; onClose: () => void; title?: string }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const showSkeleton = useDeferredLoading(conversations === null);
 
   useEffect(() => {
     fetchConversations().then(setConversations).catch(() => setConversations([]));
@@ -4419,7 +4423,7 @@ export function ShareFavoritesModal({
       >
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '12px' }}>{title}</p>
         {conversations === null ? (
-          <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} />
+          showSkeleton ? <div className="skeleton" style={{ height: '100px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
         ) : conversations.length === 0 ? (
           <EmptyState message="No conversations to share to yet — start a chat first." />
         ) : (
@@ -5739,6 +5743,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   // Real KakaoBank 회비 (dues) management (2026-07-26) -- see
   // GroupAccountService.setDuesAmount's own doc comment.
   const [dues, setDues] = useState<GroupAccountDuesStatus | null>(null);
+  const showDuesSkeleton = useDeferredLoading(dues === null);
   const [duesAmountInput, setDuesAmountInput] = useState('');
   const [duesBusy, setDuesBusy] = useState(false);
   const [remindedCount, setRemindedCount] = useState<number | null>(null);
@@ -5899,7 +5904,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Monthly dues</h3>
         {dues === null ? (
-          <div className="skeleton" style={{ height: '40px', borderRadius: '8px' }} />
+          showDuesSkeleton ? <div className="skeleton" style={{ height: '40px', borderRadius: '8px' }} /> : null
         ) : dues.duesAmount === null ? (
           isOwner ? (
             <form onSubmit={handleSetDues} style={{ display: 'flex', gap: '8px' }}>
@@ -6106,6 +6111,7 @@ function GroupAccountsSection() {
 function IkiminaSection() {
   const { t } = useI18n();
   const [ikiminas, setIkiminas] = useState<Ikimina[] | null>(null);
+  const showSkeleton = useDeferredLoading(ikiminas === null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -6132,7 +6138,7 @@ function IkiminaSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {ikiminas === null ? (
-        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : ikiminas.length === 0 ? (
         <EmptyState message="No ikimina groups yet -- start one with people you trust." />
       ) : (
@@ -6927,6 +6933,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
 function WeeklySavingsSection() {
   const { t } = useI18n();
   const [plans, setPlans] = useState<WeeklySavingsPlan[] | null>(null);
+  const showSkeleton = useDeferredLoading(plans === null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -6959,7 +6966,7 @@ function WeeklySavingsSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {plans === null ? (
-        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : plans.length === 0 ? (
         <EmptyState message="No 26-week savings plans yet — start one with an escalating weekly auto-debit and a streak-gated bonus rate." />
       ) : (
@@ -7318,6 +7325,7 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
 function Grow31SavingsSection() {
   const { t } = useI18n();
   const [plans, setPlans] = useState<Grow31SavingsPlan[] | null>(null);
+  const showSkeleton = useDeferredLoading(plans === null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -7345,7 +7353,7 @@ function Grow31SavingsSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: '10px 0' }} role="alert">{error}</p>
       )}
       {plans === null ? (
-        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : plans.length === 0 ? (
         <EmptyState message="No 31-day plans yet — save a small fixed amount every real day for an escalating streak bonus." />
       ) : (
@@ -7384,6 +7392,7 @@ function Grow31SavingsSection() {
 function UpfrontDepositSection() {
   const { t } = useI18n();
   const [deposits, setDeposits] = useState<UpfrontInterestDeposit[] | null>(null);
+  const showSkeleton = useDeferredLoading(deposits === null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -7404,7 +7413,7 @@ function UpfrontDepositSection() {
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '16px' }} role="alert">{error}</p>
       )}
       {deposits === null ? (
-        <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} />
+        showSkeleton ? <div className="skeleton" style={{ height: '64px', borderRadius: 'var(--itunda-radius-md)' }} /> : null
       ) : deposits.length === 0 ? (
         <EmptyState message="No 12-month deposits yet — open one to get a full year's interest paid today, principal locked for 12 months." />
       ) : (
