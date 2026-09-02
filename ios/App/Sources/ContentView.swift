@@ -4,6 +4,7 @@ import CoreNetwork
 import CoreDesignSystem
 import FeatureBanking
 import FeatureCredit
+import FeatureHome
 import FeatureMaps
 import FeaturePayments
 import FeatureSupport
@@ -301,7 +302,11 @@ struct ContentView: View {
             // already tracked by BankViewModel but never rendered anywhere -- same
             // "tracked but never shown" bug just found and fixed on Android's
             // identical HomeTab.
-            HomeTabContent(bankViewModel: bankViewModel)
+            HomeTabContent(
+                discoverRows: bankViewModel.discoverRows,
+                isOffline: bankViewModel.isOffline,
+                onLoad: { await bankViewModel.load() }
+            )
                 .fullScreenCover(isPresented: $showTransferFlow) {
                     TransferFlowContainer(
                         availableBalance: bankViewModel.availableBalance,

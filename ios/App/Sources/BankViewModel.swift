@@ -1,5 +1,6 @@
 import Foundation
 import FeatureBanking
+import CoreDesignSystem
 import CoreNetwork
 
 /// Real data backing BankView (2026-07-11) -- mirrors Android's MainViewModel.kt.

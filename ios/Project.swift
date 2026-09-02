@@ -143,7 +143,16 @@ let featureDependencies: [TargetDependency] = [
 // `CoreIdentity`'s device/biometric identity -- kept as two separate modules
 // deliberately, same real distinction Toss's own device-binding vs.
 // 본인확인(identity verification) draw.
-let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support"]
+// "Home" added 2026-09-02 -- iOS parity pass for Android's own :features:home:impl
+// extraction (see [[project_itunda_feature_isolation]]). HomeTabContent.swift moved
+// from App/Sources, same confirmed-self-contained-after-decoupling pattern "Maps"
+// used above: was @ObservedObject-coupled to BankViewModel (App/Sources-only, the
+// same App-target-local view-model Android's own MainViewModel decoupling
+// addressed), narrowed to plain params. DiscoverRowData (was FeatureBanking-only)
+// promoted to CoreDesignSystem instead of FeatureHome depending on FeatureBanking
+// directly, which scripts/ios-silo-boundary-check.py forbids -- no extra
+// cross-feature dependency needed, just the standard featureDependencies set.
+let featureModules = ["Payments", "Bills", "Merchant", "Credit", "Wealth", "Insurance", "Engagement", "Assets", "Banking", "Maps", "Certificate", "Identity", "Support", "Home"]
 for feature in featureModules {
     allTargets.append(contentsOf: makeMicroFeature(name: feature, dependencies: featureDependencies))
 }

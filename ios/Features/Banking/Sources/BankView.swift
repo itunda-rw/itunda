@@ -279,20 +279,10 @@ public struct CooperativeRowData: Identifiable {
 /// click-through action or money movement. Android already has this (DiscoverSection
 /// in ItundaAppScreen.kt, found real on backend + Android with zero client anywhere
 /// else); this is the first iOS client.
-public struct DiscoverRowData: Identifiable {
-    public let id = UUID()
-    public let title: String
-    public let subtitle: String
-    public let badge: String?
-    public let isNew: Bool
-
-    public init(title: String, subtitle: String, badge: String?, isNew: Bool) {
-        self.title = title
-        self.subtitle = subtitle
-        self.badge = badge
-        self.isNew = isNew
-    }
-}
+// DiscoverRowData moved to CoreDesignSystem/Components/DiscoverRowData.swift
+// (2026-09-02, Home Feature-module decomposition) -- FeatureHome's HomeTabContent
+// needs it too, and Feature-to-Feature imports (FeatureHome importing FeatureBanking
+// directly) are forbidden by scripts/ios-silo-boundary-check.py.
 
 /// Real Toss Bank reference (20 screenshots, 2026-08-21): backs
 /// AccountLedgerDetailView, the real ledger drill-in reached by tapping
