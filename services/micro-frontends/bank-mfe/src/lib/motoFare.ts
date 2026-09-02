@@ -50,3 +50,14 @@ export const fetchMyMotoFareEarnings = (page = 0, size = 20) =>
   apiFetch<{ success: boolean; trips: MotoFareTrip[]; totalElements: number; totalPages: number }>(
     `/api/v1/moto-fare/earnings?page=${page}&size=${size}`,
   );
+
+// Real gap found live (uncalled-endpoint sweep, 2026-09-02): the backend's own
+// MotoFareController.getMyTripsAsRider ("/trips") is the exact symmetric counterpart
+// of getMyTripsAsDriver ("/earnings") above -- same MotoFareTrip shape, same
+// pagination -- but had zero caller anywhere on any platform since the feature
+// shipped 2026-08-27. A rider who tapped to pay a moto-taxi fare had no way to see
+// their own trip history, only the driver side of this same feature ever got wired.
+export const fetchMyMotoFareTripsAsRider = (page = 0, size = 20) =>
+  apiFetch<{ success: boolean; trips: MotoFareTrip[]; totalElements: number; totalPages: number }>(
+    `/api/v1/moto-fare/trips?page=${page}&size=${size}`,
+  );

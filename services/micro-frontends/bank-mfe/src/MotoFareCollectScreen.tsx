@@ -8,26 +8,37 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from './lib/api';
 import { QrScanCamera } from './QrScanCamera';
-import { collectMotoFare, fetchMyMotoFareEarnings, MOTO_FARE_MAX, MOTO_FARE_MIN, MOTO_FARE_STEP, type MotoFareCollectResult, type MotoFareTrip } from './lib/motoFare';
+import {
+  collectMotoFare, fetchMyMotoFareEarnings, fetchMyMotoFareTripsAsRider, MOTO_FARE_MAX, MOTO_FARE_MIN, MOTO_FARE_STEP,
+  type MotoFareCollectResult, type MotoFareTrip,
+} from './lib/motoFare';
+import { EmptyState } from './EmptyState';
 
-// Real driver earnings summary (uncalled-endpoint sweep, 2026-08-29) -- mirrors
-// ride-hailing's own "This week" card (BankDashboard.tsx's DRIVE sub-tab) in shape,
-// but moto-fare's /earnings endpoint returns a flat trip list, not day-bucketed
+// Real driver earnings / rider trip-history summary -- mirrors ride-hailing's own
+// "This week" card (BankDashboard.tsx's DRIVE sub-tab) in shape, but moto-fare's
+// /earnings and /trips endpoints both return a flat trip list, not day-bucketed
 // totals, so the aggregate is summed client-side over whatever page is fetched.
-function MotoFareEarningsSummary({ trips, totalElements }: { trips: MotoFareTrip[]; totalElements: number }) {
+// Shared between both roles (uncalled-endpoint sweep, 2026-09-02: the rider side of
+// this same real component was never built, only the driver side was, since the
+// driver's own uncalled-endpoint fix on 2026-08-29).
+function MotoFareTripSummary({ trips, totalElements, role }: { trips: MotoFareTrip[]; totalElements: number; role: 'DRIVER' | 'RIDER' }) {
   if (trips.length === 0) return null;
   const totalFare = trips.reduce((sum, t) => sum + t.fare, 0);
   return (
     <div className="itunda-flat-section" style={{ marginBottom: '16px' }}>
-      <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>Your fares</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '10px' }}>
+        {role === 'DRIVER' ? 'Your fares' : 'Your trips'}
+      </p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
         <div>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Fares collected</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
+            {role === 'DRIVER' ? 'Fares collected' : 'Trips paid'}
+          </p>
           <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{totalElements}</p>
         </div>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Total (last {trips.length})</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{totalFare.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: role === 'DRIVER' ? 'var(--itunda-green)' : 'var(--itunda-grey-900)' }}>{totalFare.toLocaleString()} RWF</p>
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -42,7 +53,25 @@ function MotoFareEarningsSummary({ trips, totalElements }: { trips: MotoFareTrip
   );
 }
 
-export function MotoFareCollectScreen() {
+// Real rider-side trip history (uncalled-endpoint sweep, 2026-09-02) -- see
+// fetchMyMotoFareTripsAsRider's own doc comment. A rider only ever pays by showing
+// their existing "My payment code" to a driver (MyPaymentCodeCard), so unlike the
+// driver there's no scan/collect action here -- just their own past trips.
+function MotoFareRiderTripsView() {
+  const [trips, setTrips] = useState<{ trips: MotoFareTrip[]; totalElements: number } | null>(null);
+
+  useEffect(() => {
+    fetchMyMotoFareTripsAsRider().then((r) => setTrips({ trips: r.trips, totalElements: r.totalElements })).catch(() => setTrips({ trips: [], totalElements: 0 }));
+  }, []);
+
+  if (trips === null) return <div className="skeleton" style={{ height: '160px', borderRadius: 'var(--itunda-radius-md)' }} />;
+  if (trips.trips.length === 0) {
+    return <EmptyState message="No moto-taxi trips yet -- show your payment code to a driver next time you tap to pay." />;
+  }
+  return <MotoFareTripSummary trips={trips.trips} totalElements={trips.totalElements} role="RIDER" />;
+}
+
+function MotoFareDriverCollectView() {
   const [code, setCode] = useState<string | null>(null);
   const [scanUnavailable, setScanUnavailable] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -94,7 +123,7 @@ export function MotoFareCollectScreen() {
   if (!code) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {earnings && <MotoFareEarningsSummary trips={earnings.trips} totalElements={earnings.totalElements} />}
+        {earnings && <MotoFareTripSummary trips={earnings.trips} totalElements={earnings.totalElements} role="DRIVER" />}
         <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '4px' }}>Scan the rider&apos;s payment code</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
           Ask the rider to open itunda and tap to show their payment code, then point your camera at it.
@@ -138,6 +167,33 @@ export function MotoFareCollectScreen() {
       <button onClick={reset} style={{ width: '100%', marginTop: '8px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
         Scan a different code
       </button>
+    </div>
+  );
+}
+
+// Real rider/driver sub-tab toggle (uncalled-endpoint sweep, 2026-09-02), mirroring
+// RidesView/DesignatedDriverView's own "customer side vs. provider side" pattern --
+// most people opening this screen are riders checking their own trips, not drivers
+// about to scan a code, so "My trips" is the default, not "Collect".
+export function MotoFareCollectScreen() {
+  const [subTab, setSubTab] = useState<'TRIPS' | 'COLLECT'>('TRIPS');
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <button
+          className={subTab === 'TRIPS' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
+          onClick={() => setSubTab('TRIPS')} style={{ flex: 1 }}
+        >
+          My trips
+        </button>
+        <button
+          className={subTab === 'COLLECT' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
+          onClick={() => setSubTab('COLLECT')} style={{ flex: 1 }}
+        >
+          Collect
+        </button>
+      </div>
+      {subTab === 'TRIPS' ? <MotoFareRiderTripsView /> : <MotoFareDriverCollectView />}
     </div>
   );
 }
