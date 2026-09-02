@@ -3400,6 +3400,14 @@ interface ApiService {
     @DELETE("api/v1/realestate/listings/{id}")
     suspend fun removePropertyListing(@Path("id") propertyListingId: String): PropertyListingResponse
 
+    // Real Karrot(당근마켓)-style price-drop notification -- see backend
+    // PropertyListingService.updatePrice's own doc comment. Real, shipped on the
+    // backend + bank-mfe with zero Android client until now -- found via a
+    // cross-platform-parity check, the real-estate mirror of the same fix already
+    // ported to Marketplace listings.
+    @POST("api/v1/realestate/listings/{id}/price")
+    suspend fun updatePropertyListingPrice(@Path("id") propertyListingId: String, @Body request: UpdateListingPriceRequest): PropertyListingResponse
+
     @POST("api/v1/realestate/listings/{id}/contact-lister")
     suspend fun contactLister(@Path("id") propertyListingId: String): ContactListerResponse
 

@@ -102,6 +102,13 @@ struct PropertyListingCard: View {
     @State private var markingTaken = false
     @State private var counterpartyPhone = ""
 
+    // Real Karrot(당근마켓)-style price-drop notification -- see backend
+    // PropertyListingService.updatePrice's own doc comment. Real, shipped on the
+    // backend + bank-mfe with zero iOS client until now -- found via a
+    // cross-platform-parity check.
+    @State private var editingPrice = false
+    @State private var newPrice = ""
+
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
     @State private var showReviewSheet = false
@@ -253,10 +260,25 @@ struct PropertyListingCard: View {
             if isMine, ownershipStatus == "PENDING" {
                 Text("Verification pending review").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
+            // Real Karrot(당근마켓)-style price-drop notification -- see backend
+            // PropertyListingService.updatePrice's own doc comment.
+            if isMine, editingPrice {
+                TextField("New price (RWF)", text: $newPrice)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numberPad)
+                HStack(spacing: 10) {
+                    actionButton("Cancel", filled: false) { editingPrice = false }
+                    actionButton(busy ? "Saving…" : "Save", filled: true) { await updatePrice() }
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
-                    if listing.status == "AVAILABLE" && !markingTaken {
+                    if listing.status == "AVAILABLE" && !markingTaken && !editingPrice {
                         actionButton("Mark taken", filled: false) { markingTaken = true }
+                        actionButton("Edit price", filled: false) {
+                            newPrice = String(Int(listing.price))
+                            editingPrice = true
+                        }
                     }
                     if listing.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
@@ -382,6 +404,22 @@ struct PropertyListingCard: View {
         do {
             _ = try await NetworkClient.shared.removePropertyListing(listing.id)
             onChanged()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func updatePrice() async {
+        guard let price = Double(newPrice), price > 0 else { return }
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.updatePropertyListingPrice(listing.id, price: price)
+            editingPrice = false
+            onChanged()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

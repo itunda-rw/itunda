@@ -5415,6 +5415,15 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/realestate/listings/\(propertyListingId)")
     }
 
+    // Real Karrot(당근마켓)-style price-drop notification -- see backend
+    // PropertyListingService.updatePrice's own doc comment. Real, shipped on the
+    // backend + bank-mfe with zero iOS client until now -- found via a
+    // cross-platform-parity check, the real-estate mirror of the same fix already
+    // ported to Marketplace listings (updateListingPrice above).
+    public func updatePropertyListingPrice(_ propertyListingId: String, price: Double) async throws -> PropertyListingResponse {
+        try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/price", body: UpdateListingPriceRequest(price: price))
+    }
+
     public func contactLister(_ propertyListingId: String) async throws -> ContactListerResponse {
         try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/contact-lister", body: EmptyBody())
     }

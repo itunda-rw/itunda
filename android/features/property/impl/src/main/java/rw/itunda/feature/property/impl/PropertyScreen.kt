@@ -77,6 +77,7 @@ import rw.itunda.core.network.CreatePropertyListingRequest
 import rw.itunda.core.network.FavoritePropertyListingDto
 import rw.itunda.core.network.MakePropertyOfferRequest
 import rw.itunda.core.network.MarkTakenRequest
+import rw.itunda.core.network.UpdateListingPriceRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PropertyListingDto
 import rw.itunda.core.network.PropertyTypeDto
@@ -603,6 +604,13 @@ private fun PropertyListingCard(
     var markingTaken by remember { mutableStateOf(false) }
     var counterpartyPhone by remember { mutableStateOf("") }
 
+    // Real Karrot(당근마켓)-style price-drop notification -- see backend
+    // PropertyListingService.updatePrice's own doc comment. Real, shipped on the
+    // backend + bank-mfe with zero Android client until now -- found via a
+    // cross-platform-parity check.
+    var editingPrice by remember { mutableStateOf(false) }
+    var newPrice by remember(listing.id) { mutableStateOf(listing.price.toInt().toString()) }
+
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
     var showReviewSheet by remember { mutableStateOf(false) }
@@ -816,10 +824,44 @@ private fun PropertyListingCard(
                     ListingActionButton(label, busy, filled = true) { showReviewSheet = true }
                 }
             }
+            if (isMine && editingPrice) {
+                IdsTextField(
+                    value = newPrice,
+                    onValueChange = { newPrice = it },
+                    label = "New price (RWF)",
+                    singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListingActionButton("Cancel", busy) { editingPrice = false }
+                    ListingActionButton(if (busy) "Saving…" else "Save", busy || (newPrice.toDoubleOrNull() ?: 0.0) <= 0.0) {
+                        busy = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.updatePropertyListingPrice(listing.id, UpdateListingPriceRequest(newPrice.toDouble()))
+                                editingPrice = false
+                                onChanged()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
-                    if (listing.status == "AVAILABLE" && !markingTaken) {
+                    if (listing.status == "AVAILABLE" && !markingTaken && !editingPrice) {
                         ListingActionButton("Mark taken", busy) { markingTaken = true }
+                        // Real Karrot(당근마켓)-style price-drop notification -- see
+                        // backend PropertyListingService.updatePrice's own doc comment.
+                        ListingActionButton("Edit price", busy) {
+                            newPrice = listing.price.toInt().toString()
+                            editingPrice = true
+                        }
                     }
                     if (listing.status != "REMOVED") {
                         ListingActionButton("Remove", busy) {
