@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_notifications">Amamenyesha</string>
+    <string name="home_discover">Menya</string>
+    <string name="home_new_badge">GISHYA</string>
+    <string name="home_account_switcher">Hindura konti</string>
+    <string name="home_current_account">Konti nyakuri</string>
+    <string name="home_demo_balance_unavailable">Amafaranga y\'ikigeragezo ntabwo aboneka</string>
+    <string name="home_dismiss_recommendation">Ivanaho</string>
+    <string name="home_feed_title">Kuri wowe</string>
+    <string name="home_link_another_account">+ Ongeramo indi konti</string>
+    <string name="home_offline_banner">Nturi kuri interineti. Turerekana amakuru macye, atari ay\'igihe nyacyo.</string>
+    <string name="home_pay_shortcut">Kwishyura</string>
+    <string name="home_recommendation_cta_named">%1$s, %2$s</string>
+    <string name="home_search_clear">Siba ishakiro</string>
+    <string name="home_search_description">Shakisha kuri itunda</string>
+    <string name="home_search_empty">Nta bisubizo bibonetse.</string>
+    <string name="home_search_placeholder">Shakisha kuri itunda</string>
+    <string name="home_search_section_community">Abaturanyi</string>
+    <string name="home_search_section_jobs">Akazi</string>
+    <string name="home_search_section_marketplace">Isoko</string>
+    <string name="home_search_section_products">Ibicuruzwa</string>
+    <string name="home_search_section_property">Imitungo</string>
+    <string name="home_trending_title">Ibikunzwe hafi yawe</string>
+    <string name="home_your_accounts">KONTI ZAWE</string>
+    <string name="bank_account_account">itunda Bank</string>
+</resources>

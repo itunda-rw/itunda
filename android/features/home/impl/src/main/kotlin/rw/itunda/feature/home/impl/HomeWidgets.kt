@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.home.impl
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,40 +16,33 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import coil.compose.AsyncImage
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.app.R
+import coil.compose.AsyncImage
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.rememberCountUp
-import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsIcons
 
-// Real fix (2026-08-26): split out of ItundaAppScreen.kt once that file grew past
-// its file-size-lint baseline. Home tab's own search bar/results widgets, trending
-// grid, merged feed row, and round-up settings dialog -- only used by HomeTab,
-// which stays behind. HomeFeedEntry/the functions here flipped private -> internal
-// since their caller stays in a different file within the same module.
+// Moved here from :app's HomeTabWidgets.kt (2026-09-02, Home Feature-module
+// decomposition) -- confirmed used only by HomeTab, which moved to this same module
+// in the same slice.
 
 @Composable
 internal fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onClear: () -> Unit) {
@@ -83,9 +76,6 @@ internal fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onCle
     }
 }
 
-// Real section header for blended search results (2026-08-14) -- see HomeTab's own
-// runSearch doc comment for the full "why" this exists (Naver's universal search
-// labels each content type's own section, rather than one type-blind list).
 @Composable
 internal fun HomeSearchSectionHeader(label: String) {
     Text(
@@ -110,11 +100,6 @@ internal fun HomeSearchResultRow(result: rw.itunda.core.network.ProductSearchRes
     }
 }
 
-// Real market widget row (2026-08-14) -- Naver's own weather/stock-index widget
-// row, filled with itunda's real equivalents instead of fabricated weather: the
-// spendable account balance (already fetched) and real RSE stock chips (getStocks,
-// InvestScreen's own real data source, arrow+percent styled the same way real
-// stock tickers signal direction).
 @Composable
 internal fun HomeMarketWidgetRow(
     primaryAccount: rw.itunda.core.network.Account?,
@@ -158,10 +143,6 @@ internal fun HomeMarketWidgetRow(
     }
 }
 
-// Real "Trending nearby" grid (2026-08-14) -- Naver's own Clip video grid,
-// structurally: a 2-column image-led card grid. itunda has no video content, but
-// real Marketplace listing photos (the only one of the 4 feed sources with a real
-// photoUrl) fill the same slot honestly.
 @Composable
 internal fun HomeTrendingGrid(listings: List<rw.itunda.core.network.ListingDto>, onOpenMarketplace: () -> Unit) {
     Column {
@@ -191,10 +172,6 @@ internal fun HomeTrendingGrid(listings: List<rw.itunda.core.network.ListingDto>,
     }
 }
 
-// Real merged cross-vertical feed row (2026-08-14) -- see HomeFeedEntry's own doc
-// comment. Photo-led for Marketplace (the one source with a real photo), a
-// category-colored icon tile for the other three, matching Talk's own FriendsView
-// row shape rather than inventing a new avatar convention.
 @Composable
 internal fun HomeFeedRow(entry: HomeFeedEntry, onClick: () -> Unit) {
     val (icon, tint) = when (entry.kind) {

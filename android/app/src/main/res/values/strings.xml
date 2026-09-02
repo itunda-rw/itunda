@@ -200,13 +200,6 @@
          default landing tab (TossTab.Home), the exact same "translated the wrong
          screen" gap just found and fixed on web's BankDashboard (HomeView vs
          OverviewView). HomeTab itself had almost zero stringResource() calls before this. -->
-    <string name="home_pay_shortcut">Pay</string>
-    <string name="home_notifications">Notifications</string>
-    <string name="home_account_switcher">Switch account</string>
-    <string name="home_your_accounts">YOUR ACCOUNTS</string>
-    <string name="home_current_account">Current account</string>
-    <string name="home_demo_balance_unavailable">Demo balance unavailable</string>
-    <string name="home_link_another_account">+ Link another account</string>
     <!-- Real fix (2026-08-13, direct user report: "what is account didn't is itunda
          bank account"). Home's hero card and the Pay tab showed the literal identical
          balance under two different names ("Account" here vs "itunda Pay" at
@@ -218,27 +211,11 @@
          was already tracked but never actually surfaced anywhere. A genuinely
          offline user saw normal-looking placeholder data with no honest signal
          it wasn't real. -->
-    <string name="home_offline_banner">You are offline. Showing limited, non-live data.</string>
     <!-- Real Naver-style Home redesign (2026-08-14), see HomeTab's own doc comment. -->
-    <string name="home_search_placeholder">Search itunda</string>
-    <string name="home_search_description">Search itunda</string>
-    <string name="home_search_clear">Clear search</string>
-    <string name="home_search_empty">No results found.</string>
-    <string name="home_search_section_products">Products</string>
-    <string name="home_search_section_marketplace">Marketplace</string>
-    <string name="home_search_section_community">Community</string>
-    <string name="home_search_section_jobs">Jobs</string>
-    <string name="home_search_section_property">Property</string>
-    <string name="home_trending_title">Trending nearby</string>
-    <string name="home_feed_title">For you</string>
     <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
     <string name="home_see_all">See all</string>
     <string name="home_round_up_title">Round-up saving</string>
-    <string name="home_discover">Discover</string>
-    <string name="home_new_badge">NEW</string>
-    <string name="home_recommendation_cta_named">%1$s, %2$s</string>
-    <string name="home_dismiss_recommendation">Dismiss</string>
     <string name="back">Back</string>
     <string name="account_detail_card">Card</string>
     <string name="account_detail_manage">Manage</string>

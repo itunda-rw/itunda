@@ -296,6 +296,13 @@ dependencies {
     // their own Feature module, not recreating a deleted duplicate. See
     // [[project_itunda_feature_isolation]] for the full account.
     implementation(project(":features:banking:impl"))
+    // Real content moved in 2026-09-02 (Home Feature-module decomposition, following
+    // the user's explicit "Continue into HomeTab next" direction): unlike Banking/
+    // Credit, Home had no pre-existing empty scaffold on either platform -- it's
+    // genuinely cross-vertical (pulls content from Marketplace/Community/Jobs/
+    // Property), so this is a NEW module, not filling in an already-signaled one.
+    // See [[project_itunda_feature_isolation]] for the full account.
+    implementation(project(":features:home:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --

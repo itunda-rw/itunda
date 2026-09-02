@@ -201,6 +201,10 @@ include(":features:banking:api")
 include(":features:banking:impl")
 include(":features:banking:testing")
 
+include(":features:home:api")
+include(":features:home:impl")
+include(":features:home:testing")
+
 // Itunda Pay SDK (For 3rd party integrations)
 include(":sdk:pay")
 
