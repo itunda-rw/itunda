@@ -52,17 +52,19 @@ whichever one is wrong; never let them silently drift apart.
   `oxlint` + `python3 scripts/accessibility-lint.py <file>` + a real browser click-through
   against the live deployed backend — there is no unit-test runner wired in yet.
 - `android/` — Kotlin + Jetpack Compose, Gradle Feature-module scaffolding
-  (`:features:<name>:{api,impl,testing}`), boundary-enforced by Konsist in CI — but the
-  scaffolding is well ahead of the migration: only `community`/`eats`/`jobs`/
-  `marketplace`/`maps`/`payments`/`property`/`shop`/`talk` actually have real code moved
-  in (confirmed 2026-09-02, real per-module line counts). `banking`/`credit` are the
-  biggest real gap — their entire real implementation (`ItundaAppScreen.kt`,
-  `LoansScreen.kt`, `CreditScoreScreen.kt`, etc.) still lives directly in `:app`'s own
-  `ui/` package, unlike iOS's `Features/Banking`/`Features/Credit`, which are already
-  real. `bills`/`insurance` are correctly empty by design (Saronite/React-Native
-  mini-apps, not native, same as iOS). `wealth`/`engagement`/`merchant` are empty on
-  BOTH platforms — a real product-scope gap (no mapped screen yet), not an architecture
-  one. `:app:compileKotlin` or `:features:<name>:impl:compileDebugKotlin` to verify;
+  (`:features:<name>:{api,impl,testing}`), boundary-enforced by Konsist in CI — the
+  scaffolding-vs-migration gap has closed a lot since the 2026-09-02 tab-decomposition
+  push: `community`/`eats`/`jobs`/`marketplace`/`maps`/`payments`/`property`/`shop`/
+  `talk`/`banking`/`credit`/`home`/`pay`/`menu`/`my`/`wealth` (confirmed 2026-09-03, real
+  per-module `.kt` file counts) all have real code moved in — `banking`/`credit` (moved
+  2026-09-02, `BankHubScreen`/`LoansScreen`/`CreditScoreScreen`/etc.) and `wealth`
+  (moved 2026-09-03, `InvestScreen`/`StockDetailScreen`/`InvestPortfolio`) are no longer
+  gaps, matching iOS's already-real `Features/Banking`/`Features/Credit` split. `bills`/
+  `insurance` are correctly empty by design (Saronite/React-Native mini-apps, not
+  native, same as iOS). `engagement`/`merchant` remain empty on BOTH platforms — a real
+  product-scope gap (no mapped screen yet), not an architecture one; `assets` is also
+  empty scaffolding but was never mapped to a specific tab, unlike the others.
+  `:app:compileKotlin` or `:features:<name>:impl:compileDebugKotlin` to verify;
   `./gradlew :architecture-test:test` runs the Konsist boundary check (passes cleanly,
   but only meaningfully constrains the modules that actually have content).
 - `ios/` — Swift + SwiftUI, `Core`/`Features/<Name>` module split — real and substantially
