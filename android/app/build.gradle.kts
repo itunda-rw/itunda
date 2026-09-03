@@ -321,6 +321,12 @@ dependencies {
     // (ProfilePhotoCard/VerificationCard+VerificationRow/PinUpgradeCard) -- the
     // cleanest of the four, zero MainViewModel/cross-Feature coupling.
     implementation(project(":features:my:impl"))
+    // Real content moved 2026-09-03 (Wealth Feature-module extraction, filling the
+    // previously-empty :features:wealth scaffold noted in CLAUDE.md's own
+    // "product-scope gap" line): InvestScreen and its supporting StockDetailScreen/
+    // InvestPortfolio -- zero MainViewModel/R.string coupling, the cleanest
+    // extraction so far.
+    implementation(project(":features:wealth:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --

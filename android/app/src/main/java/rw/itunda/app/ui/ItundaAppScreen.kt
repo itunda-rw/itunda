@@ -190,6 +190,7 @@ import rw.itunda.feature.home.impl.HomeTab
 import rw.itunda.feature.pay.impl.PayTab
 import rw.itunda.feature.menu.impl.MenuScreen
 import rw.itunda.feature.my.impl.MyTab
+import rw.itunda.feature.wealth.impl.InvestScreen
 import rw.itunda.core.network.BucketDetailTarget
 import rw.itunda.core.network.MoneyActionResult
 import rw.itunda.core.designsystem.theme.AccentIndigo
