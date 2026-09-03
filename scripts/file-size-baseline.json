@@ -16,7 +16,7 @@
   "android/features/community/impl/src/main/java/rw/itunda/feature/community/impl/CommunityScreen.kt": 899,
   "android/features/eats/impl/src/main/java/rw/itunda/feature/eats/impl/EatsScreen.kt": 525,
   "android/features/jobs/impl/src/main/java/rw/itunda/feature/jobs/impl/JobsScreen.kt": 926,
-  "android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/MapsScreen.kt": 1822,
+  "android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/MapsScreen.kt": 1823,
   "android/features/marketplace/impl/src/main/java/rw/itunda/feature/marketplace/impl/MarketplaceScreen.kt": 1689,
   "android/features/payments/impl/src/main/java/rw/itunda/feature/payments/impl/TransferFlow.kt": 568,
   "android/features/property/impl/src/main/java/rw/itunda/feature/property/impl/PropertyScreen.kt": 949,

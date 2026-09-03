@@ -24,6 +24,9 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 
 // Real profile photo (URL, not a binary upload) -- also the real, buildable half of
 // Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
@@ -90,8 +93,10 @@ internal fun ProfilePhotoCard() {
                                 profilePhotoUrl = rw.itunda.core.network.NetworkClient.authApi.updateProfilePhoto(
                                     rw.itunda.core.network.UpdateProfilePhotoRequest(trimmed),
                                 ).user.profilePhotoUrl
-                            } catch (_: Exception) {
-                                error = "Could not update your profile photo."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                             } finally {
                                 saving = false
                             }

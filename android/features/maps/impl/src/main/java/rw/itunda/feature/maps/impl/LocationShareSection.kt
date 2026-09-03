@@ -32,6 +32,9 @@ import rw.itunda.core.network.LiveLocationShareDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.StartLocationShareRequest
 import rw.itunda.core.network.UpdateLocationShareRequest
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -166,8 +169,10 @@ fun LocationShareSection(
                                     myShares = listOf(share) + myShares
                                     showStartShare = false
                                     recipientPhone = ""
-                                } catch (e: Exception) {
-                                    error = e.message ?: "Could not start sharing your location."
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally {
                                     busy = false
                                 }

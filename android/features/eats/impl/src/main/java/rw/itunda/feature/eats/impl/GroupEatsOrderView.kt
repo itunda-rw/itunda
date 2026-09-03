@@ -47,6 +47,9 @@ import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetGroupEatsOrderItemsRequest
 import rw.itunda.core.network.ShoppingMerchantDto
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 import rw.itunda.core.network.TokenStore
 import java.util.UUID
 
@@ -156,8 +159,10 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
                                 try {
                                     val res = NetworkClient.apiService.createGroupEatsOrder(CreateGroupEatsOrderRequest(restaurantId, address.trim()))
                                     if (res.success) openOrder(res.groupOrder)
-                                } catch (e: Exception) {
-                                    error = "Could not start this together order."
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally {
                                     busy = false
                                 }
@@ -276,8 +281,10 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
                                         val res = NetworkClient.apiService.setGroupEatsOrderItems(id, SetGroupEatsOrderItemsRequest(nextItems))
                                         myItems = nextItems
                                         detail = res
-                                    } catch (_: Exception) {
-                                        error = "Could not add this item."
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
                                     } finally {
                                         busy = false
                                     }
@@ -324,8 +331,10 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
                                 try {
                                     val res = NetworkClient.apiService.finalizeGroupEatsOrder(id, UUID.randomUUID().toString())
                                     placedOrder = res.order
-                                } catch (e: Exception) {
-                                    error = "Could not place this order."
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally {
                                     busy = false
                                 }
@@ -348,8 +357,10 @@ internal fun GroupEatsOrderView(restaurants: List<ShoppingMerchantDto>?) {
                                     detail = null
                                     myItems = emptyList()
                                     mode = GroupOrderMode.CLOSED
-                                } catch (_: Exception) {
-                                    error = "Could not cancel this together order."
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally {
                                     busy = false
                                 }

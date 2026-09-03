@@ -145,6 +145,7 @@ import rw.itunda.core.network.KigaliWeatherDto
 import rw.itunda.core.network.TransitJourneyDto
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
 
 // Eighth Feature extraction (2026-07-23), after the seven-module pass this same session
 // already completed -- see features/marketplace/impl/.../MarketplaceScreen.kt's own
@@ -947,8 +948,8 @@ fun MapScreen(
                 showSteps = false
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
-            } catch (e: Exception) {
-                error = "Could not find a route through these stops."
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
                 routing = false
             }
