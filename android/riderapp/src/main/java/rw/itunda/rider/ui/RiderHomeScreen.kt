@@ -1,7 +1,7 @@
 package rw.itunda.rider.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -273,7 +273,7 @@ fun RiderHomeScreen(
         ) {
             listOf(HomeTab.AVAILABLE to "Available", HomeTab.MINE to "My deliveries").forEach { (t, label) ->
                 val selected = tab == t
-                Column(modifier = Modifier.clickable { tab = t }) {
+                Column(modifier = Modifier.pressScaleClickable { tab = t }) {
                     Text(
                         label,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -382,7 +382,7 @@ private fun RiderDeliveryRow(
     onOpen: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = !showClaim, onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !showClaim, onClick = onOpen),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {

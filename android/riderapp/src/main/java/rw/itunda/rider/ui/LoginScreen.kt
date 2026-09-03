@@ -1,6 +1,6 @@
 package rw.itunda.rider.ui
 
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -119,7 +119,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 locale.name,
                 style = IdsTypography.Body2,
                 color = Ids.colors.textSecondary,
-                modifier = Modifier.clickable {
+                modifier = Modifier.pressScaleClickable {
                     val currentIndex = riderSupportedLocales.indexOf(locale).coerceAtLeast(0)
                     locale = riderSupportedLocales[(currentIndex + 1) % riderSupportedLocales.size]
                     context.getSharedPreferences("itunda_rider_locale_prefs", android.content.Context.MODE_PRIVATE)

@@ -1,6 +1,6 @@
 package rw.itunda.agent.ui
 
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -106,7 +106,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 locale.name,
                 style = IdsTypography.Body2,
                 color = Ids.colors.textSecondary,
-                modifier = Modifier.clickable {
+                modifier = Modifier.pressScaleClickable {
                     val currentIndex = agentSupportedLocales.indexOf(locale).coerceAtLeast(0)
                     locale = agentSupportedLocales[(currentIndex + 1) % agentSupportedLocales.size]
                     context.getSharedPreferences("itunda_agent_locale_prefs", android.content.Context.MODE_PRIVATE)

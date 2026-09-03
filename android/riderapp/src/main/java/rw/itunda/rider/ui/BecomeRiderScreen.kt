@@ -1,6 +1,6 @@
 package rw.itunda.rider.ui
 
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -95,7 +95,7 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
         Text(
             "Log out",
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clickable(onClick = onLogout),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).pressScaleClickable(onClick = onLogout),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
