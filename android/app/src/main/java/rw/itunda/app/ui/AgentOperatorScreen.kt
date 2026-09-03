@@ -41,6 +41,7 @@ import rw.itunda.core.network.SetAgentLocationRequest
 import rw.itunda.core.network.SubmitTillCountRequest
 import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
 import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
@@ -75,8 +76,8 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                     message = "Your location has been updated."
                 } catch (e: retrofit2.HttpException) {
                     error = superAppErrorMessage(e)
-                } catch (e: Exception) {
-                    error = "Could not update your location."
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
                 }
             }
         },
@@ -95,8 +96,8 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                 } else {
                     error = superAppErrorMessage(e)
                 }
-            } catch (e: Exception) {
-                error = "Could not load your till."
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
             }
             try {
                 activity = NetworkClient.apiService.getAgentActivity().activity
@@ -223,8 +224,8 @@ private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (St
                             // exactly the kind of specific reason an agent operator
                             // needs to see to act correctly, not a generic dead end.
                             onError(superAppErrorMessage(e))
-                        } catch (e: Exception) {
-                            onError("Could not accept this cash-in.")
+                        } catch (e: IOException) {
+                            onError("Couldn't reach itunda. Check your connection and try again.")
                         } finally {
                             busy = false
                         }
@@ -287,8 +288,8 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
                             onSubmitted(result.newBalance)
                         } catch (e: retrofit2.HttpException) {
                             onError(superAppErrorMessage(e))
-                        } catch (e: Exception) {
-                            onError("Could not pay this cash-out. Check the withdrawal code.")
+                        } catch (e: IOException) {
+                            onError("Couldn't reach itunda. Check your connection and try again.")
                         } finally {
                             busy = false
                         }
@@ -326,8 +327,8 @@ private fun TillCountCard(onSubmitted: (java.math.BigDecimal, String) -> Unit, o
                             onSubmitted(result.variance, result.status)
                         } catch (e: retrofit2.HttpException) {
                             onError(superAppErrorMessage(e))
-                        } catch (e: Exception) {
-                            onError("Could not submit this till count.")
+                        } catch (e: IOException) {
+                            onError("Couldn't reach itunda. Check your connection and try again.")
                         } finally {
                             busy = false
                         }
