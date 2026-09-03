@@ -4615,6 +4615,11 @@ interface ApiService {
     @POST("api/v1/rides/trips/{tripId}/complete")
     suspend fun completeRideTrip(@Path("tripId") tripId: String): RideTripResponse
 
+    // Real Uber post-trip tipping -- see RideTripDto.tipAmount's own doc comment. Real
+    // Idempotency-Key required -- a tip is a real account-to-account transfer.
+    @POST("api/v1/rides/trips/{tripId}/tip")
+    suspend fun tipRideDriver(@Path("tripId") tripId: String, @Body request: TipRideTripRequest, @Header("Idempotency-Key") idempotencyKey: String): RideTripResponse
+
     @POST("api/v1/rides/trips/{tripId}/cancel")
     suspend fun cancelRideTrip(@Path("tripId") tripId: String): RideTripResponse
 
@@ -5142,10 +5147,14 @@ data class RideTripDto(
     // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- null means an ASAP
     // request, unchanged from before.
     val scheduledFor: String? = null,
+    // Real Uber post-trip tipping -- see RideTripService.tipDriver's own doc comment.
+    // Ported from bank-mfe (2026-09-03). Non-null once tipped.
+    val tipAmount: java.math.BigDecimal? = null,
 )
 data class RideTripResponse(val success: Boolean, val trip: RideTripDto)
 data class RideTripsResponse(val success: Boolean, val trips: List<RideTripDto>)
 data class StartRideTripRequest(val pin: String)
+data class TipRideTripRequest(val amount: java.math.BigDecimal)
 data class RideTripPinResponse(val success: Boolean, val pin: String)
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
 // doc comment.

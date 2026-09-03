@@ -230,3 +230,75 @@ private func formatMoneyRide(_ value: Double) -> String {
     formatter.maximumFractionDigits = 2
     return formatter.string(from: NSNumber(value: rounded)) ?? String(format: "%.2f", rounded)
 }
+
+// Real Uber post-trip tipping -- ported from bank-mfe/Android (2026-09-03), see
+// RideTripDto.tipAmount's own doc comment. Same real device step-up pattern every
+// other money-moving action in this app needs (a tip is a real account-to-account
+// transfer, gated by DeviceVerificationFilter same as TransferFlow).
+private let rideTipPresets = [500, 1000, 2000]
+
+struct TipDriverPrompt: View {
+    let tripId: String
+    let onTipped: () -> Void
+
+    @State private var amount: Int?
+    @State private var customAmount = ""
+    @State private var submitting = false
+    @State private var error: String?
+    @State private var needsDeviceVerification = false
+
+    var body: some View {
+        if needsDeviceVerification {
+            DeviceStepUpHost(
+                visible: true,
+                onDismiss: { needsDeviceVerification = false },
+                onVerified: { await submit(nil) }
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Tip your driver").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                HStack(spacing: 6) {
+                    ForEach(rideTipPresets, id: \.self) { preset in
+                        let selected = amount == preset
+                        Text("\(preset)")
+                            .font(.caption).bold().foregroundColor(selected ? .white : IDS.Colors.textSecondary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 8)
+                            .background(selected ? IDS.Colors.brand : Color.clear).cornerRadius(8)
+                            .onTapGesture { amount = preset; customAmount = ""; Task { await submit(preset) } }
+                    }
+                }
+                HStack(spacing: 6) {
+                    IdsTextField("Custom amount (RWF)", text: Binding(get: { customAmount }, set: { customAmount = $0; amount = nil }))
+                        .keyboardType(.numberPad)
+                    Button(action: { Task { await submit(nil) } }) {
+                        Text(submitting ? "…" : "Tip").font(.caption).bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background((Int(customAmount) ?? 0) > 0 && !submitting ? IDS.Colors.brand : IDS.Colors.textTertiary).cornerRadius(8)
+                    }
+                    .disabled(submitting || (Int(customAmount) ?? 0) <= 0)
+                }
+                if let error { Text(error).font(.caption2).foregroundColor(.red) }
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    private func submit(_ overrideAmount: Int?) async {
+        let finalAmount = overrideAmount ?? amount ?? Int(customAmount)
+        guard let finalAmount, finalAmount > 0 else { return }
+        needsDeviceVerification = false
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.tipRideDriver(tripId: tripId, amount: Double(finalAmount))
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
+            return
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+            return
+        }
+        onTipped()
+    }
+}

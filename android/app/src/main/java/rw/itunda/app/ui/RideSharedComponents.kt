@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -304,4 +305,95 @@ internal fun rideTripStatusColor(status: String): Color = when (status) {
 internal fun formatMoneyRide(value: java.math.BigDecimal): String {
     val rounded = value.stripTrailingZeros()
     return if (rounded.scale() <= 0) "%,d".format(rounded.toBigInteger()) else "%,.2f".format(rounded)
+}
+
+// Real Uber post-trip tipping -- ported from bank-mfe (2026-09-03), see
+// RideTripDto.tipAmount's own doc comment. Same real device step-up pattern every
+// other money-moving action in this app needs (a tip is a real account-to-account
+// transfer, gated by DeviceVerificationFilter same as TransferFlow).
+private val RIDE_TIP_PRESETS = listOf(500, 1000, 2000)
+
+@Composable
+internal fun TipDriverPrompt(tripId: String, onTipped: () -> Unit) {
+    var amount by remember { mutableStateOf<Int?>(null) }
+    var customAmount by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var needsDeviceVerification by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun submit(overrideAmount: Int? = null) {
+        val finalAmount = overrideAmount ?: amount ?: customAmount.toIntOrNull()
+        if (finalAmount == null || finalAmount <= 0) return
+        needsDeviceVerification = false
+        submitting = true
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.tipRideDriver(
+                    tripId,
+                    rw.itunda.core.network.TipRideTripRequest(java.math.BigDecimal(finalAmount)),
+                    UUID.randomUUID().toString(),
+                )
+                onTipped()
+            } catch (e: HttpException) {
+                if (rw.itunda.core.network.isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    error = superAppErrorMessage(e)
+                }
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    if (needsDeviceVerification) {
+        rw.itunda.core.designsystem.components.DeviceStepUpHost(
+            visible = true,
+            onDismiss = { needsDeviceVerification = false },
+            onVerified = { submit() },
+        )
+        return
+    }
+
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text("Tip your driver", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            RIDE_TIP_PRESETS.forEach { preset ->
+                val selected = amount == preset
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
+                        .pressScaleClickable(enabled = !submitting) { amount = preset; customAmount = ""; submit(preset) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("%,d".format(preset), color = if (selected) Color.White else Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            IdsTextField(
+                value = customAmount,
+                onValueChange = { customAmount = it; amount = null },
+                label = "Custom amount (RWF)",
+                modifier = Modifier.weight(1f),
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (submitting || (customAmount.toIntOrNull() ?: 0) <= 0) Ids.colors.textTertiary else Ids.colors.brand)
+                    .pressScaleClickable(enabled = !submitting && (customAmount.toIntOrNull() ?: 0) > 0) { submit() }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) { Text(if (submitting) "…" else "Tip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp)) }
+    }
 }

@@ -902,8 +902,12 @@ public struct RideTripDto: Decodable {
     // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- nil means an ASAP
     // request, unchanged from before.
     public let scheduledFor: String?
+    // Real Uber post-trip tipping -- see RideTripService.tipDriver's own doc comment.
+    // Ported from bank-mfe/Android (2026-09-03). Non-nil once tipped.
+    public let tipAmount: Double?
 }
 public struct RideTripResponse: Decodable { public let success: Bool; public let trip: RideTripDto }
+public struct TipRideTripRequest: Encodable { public let amount: Double; public init(amount: Double) { self.amount = amount } }
 public struct RideTripsResponse: Decodable { public let success: Bool; public let trips: [RideTripDto] }
 public struct StartRideTripRequest: Encodable { public let pin: String }
 public struct RideTripPinResponse: Decodable { public let success: Bool; public let pin: String }
@@ -1575,6 +1579,12 @@ extension NetworkClient {
     }
     public func cancelRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/cancel", body: EmptyBody())
+    }
+
+    // Real Uber post-trip tipping -- see RideTripDto.tipAmount's own doc comment. Real
+    // Idempotency-Key required -- a tip is a real account-to-account transfer.
+    public func tipRideDriver(tripId: String, amount: Double) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(tripId)/tip", body: TipRideTripRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     // Real Kakao T 예약 호출 (scheduled ride booking, item 212)/multi-stop (item 214)/

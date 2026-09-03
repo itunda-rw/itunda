@@ -129,6 +129,9 @@ private struct RidePassengerContent: View {
     @State private var requesting = false
     @State private var busyTripId: String?
     @State private var reviewedTripIds: Set<String> = []
+    // Real optimistic-hide for TipDriverPrompt -- same pattern bank-mfe's own
+    // tippedTripIds establishes.
+    @State private var tippedTripIds: Set<String> = []
     @State private var error: String?
     @State private var pollTask: Task<Void, Never>?
     // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
@@ -295,6 +298,9 @@ private struct RidePassengerContent: View {
                                 RideReviewRow(busy: busyTripId == trip.id) { rating, comment in
                                     await submitReview(trip.id, rating, comment)
                                 }
+                            }
+                            if trip.status == "COMPLETED", trip.driverId != nil, trip.tipAmount == nil, !tippedTripIds.contains(trip.id) {
+                                TipDriverPrompt(tripId: trip.id, onTipped: { tippedTripIds.insert(trip.id) })
                             }
                         }
                     }

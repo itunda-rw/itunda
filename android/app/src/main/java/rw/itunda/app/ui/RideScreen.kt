@@ -156,6 +156,9 @@ private fun RidePassengerContent() {
     var requesting by remember { mutableStateOf(false) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var reviewedTripIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Real optimistic-hide for TipDriverPrompt -- same pattern bank-mfe's own
+    // tippedTripIds establishes.
+    var tippedTripIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var error by remember { mutableStateOf<String?>(null) }
     // Real Uber Safety "Trusted Contacts" (item 160) -- see ApiService.kt's own doc
     // comment for the full sourced account. First Android client; mirrors bank-mfe's
@@ -489,6 +492,9 @@ private fun RidePassengerContent() {
                 RideTripCard(trip) {
                     if (trip.status == "COMPLETED" && trip.driverId != null && trip.id !in reviewedTripIds) {
                         RideReviewRow(busy = busyTripId == trip.id) { rating, comment -> submitReview(trip.id, rating, comment) }
+                    }
+                    if (trip.status == "COMPLETED" && trip.driverId != null && trip.tipAmount == null && trip.id !in tippedTripIds) {
+                        TipDriverPrompt(tripId = trip.id, onTipped = { tippedTripIds = tippedTripIds + trip.id })
                     }
                 }
             }
