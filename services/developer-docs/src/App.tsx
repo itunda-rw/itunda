@@ -9,9 +9,6 @@ export default function App() {
         <span className="brand">
           itunda <span className="brand-accent">developers</span>
         </span>
-        <a className="header-link" href="https://github.com/itunda-rw/itunda">
-          GitHub
-        </a>
       </header>
       <main>
         <div className="container">
