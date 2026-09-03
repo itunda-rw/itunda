@@ -186,6 +186,7 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
     var showStockEditor by remember { mutableStateOf(false) }
     var stockDraft by remember { mutableStateOf(product.stockQuantity?.toString() ?: "") }
     var savingStock by remember { mutableStateOf(false) }
+    var showAnalytics by remember { mutableStateOf(false) }
     var showOptions by remember { mutableStateOf(false) }
     var optionGroups by remember { mutableStateOf<List<MenuOptionGroupDto>?>(null) }
     var newGroupName by remember { mutableStateOf("") }
@@ -245,6 +246,7 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
                     }) { Text(if (showStockEditor) "Close stock" else "Adjust stock") }
                     TextButton(onClick = { showTimeDeal = !showTimeDeal }) { Text(if (showTimeDeal) "Close" else if (activeDeal != null) "Time deal running" else "Time deal") }
                     TextButton(onClick = { if (showTiers) showTiers = false else openTierEditor() }) { Text(if (showTiers) "Close" else "Bulk pricing") }
+                    TextButton(onClick = { showAnalytics = !showAnalytics }) { Text(if (showAnalytics) "Close" else "Analytics") }
                     TextButton(onClick = {
                         showOptions = !showOptions
                         if (showOptions && optionGroups == null) loadOptionGroups()
@@ -404,6 +406,9 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(if (savingTiers) "Saving…" else "Save bulk pricing") }
                 }
+            }
+            if (showAnalytics) {
+                ProductAnalyticsPanel(product.id)
             }
             if (showOptions) {
                 Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

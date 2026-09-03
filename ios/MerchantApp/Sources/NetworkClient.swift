@@ -226,6 +226,7 @@ struct SetPriceTiersRequest: Encodable {
     init(tiers: [PriceTierDto]) { self.tiers = tiers }
 }
 struct PriceTiersResponse: Decodable { let success: Bool; let tiers: [PriceTierDto] }
+struct ProductAnalyticsResponse: Decodable { let success: Bool; let viewCount: Int; let orderCount: Int }
 
 // Real menu-item option groups (item 210) -- merchant-mfe/Android already have this;
 // this is the iOS MerchantApp client. v1 scope matches merchant-mfe's own: required,
@@ -599,6 +600,12 @@ final class MerchantNetworkClient {
     // MerchantApp client.
     func getPriceTiers(_ productId: String) async throws -> PriceTiersResponse {
         try await get("api/v1/merchant/products/\(productId)/price-tiers")
+    }
+
+    // Real Coupang WING 상품분석 (product analytics) -- ported from merchant-mfe/
+    // Android (2026-09-03).
+    func getProductAnalytics(_ productId: String) async throws -> ProductAnalyticsResponse {
+        try await get("api/v1/merchant/products/\(productId)/analytics")
     }
 
     func setPriceTiers(_ productId: String, tiers: [PriceTierDto]) async throws -> PriceTiersResponse {

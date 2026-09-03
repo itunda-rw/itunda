@@ -301,6 +301,10 @@ data class PriceTierDto(val minQuantity: Int, val unitPrice: Double)
 data class SetPriceTiersRequest(val tiers: List<PriceTierDto>)
 data class PriceTiersResponse(val success: Boolean, val tiers: List<PriceTierDto>)
 
+// Real Coupang WING 상품분석 (product analytics) -- ported from merchant-mfe
+// (2026-09-03). See MerchantProductService.getProductAnalytics's own doc comment.
+data class ProductAnalyticsResponse(val success: Boolean, val viewCount: Long, val orderCount: Long)
+
 // Real menu-item option groups (item 210) -- merchant-mfe already has this
 // (ProductOptionsPanel); this is the first native-merchant-app client. v1 scope
 // matches merchant-mfe's own: required, single-select groups only (e.g. "Size":
@@ -762,6 +766,9 @@ interface ApiService {
 
     @GET("api/v1/merchant/products/{id}/price-tiers")
     suspend fun getPriceTiers(@Path("id") productId: String): PriceTiersResponse
+
+    @GET("api/v1/merchant/products/{id}/analytics")
+    suspend fun getProductAnalytics(@Path("id") productId: String): ProductAnalyticsResponse
 
     // Real menu-item option groups (item 210) -- see MenuOptionGroupDto's own doc comment.
     @POST("api/v1/merchant/products/{id}/option-groups")

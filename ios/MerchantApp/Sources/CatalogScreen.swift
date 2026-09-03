@@ -19,6 +19,9 @@ struct CatalogTab: View {
     // Real bulk/wholesale pricing -- merchant-mfe/Android already have this; this is
     // the first iOS MerchantApp client. A selected product presents PriceTiersView.
     @State private var pricingProduct: MerchantProductDto?
+    // Real Coupang WING 상품분석 (product analytics) -- ported from merchant-mfe/
+    // Android (2026-09-03). A selected product presents ProductAnalyticsView.
+    @State private var analyticsProduct: MerchantProductDto?
 
     var body: some View {
         ScrollView {
@@ -89,6 +92,8 @@ struct CatalogTab: View {
                                     .font(.footnote)
                                 Button("Bulk pricing") { pricingProduct = product }
                                     .font(.footnote)
+                                Button("Analytics") { analyticsProduct = product }
+                                    .font(.footnote)
                                 Button("Remove") { Task { await remove(product.id) } }
                                     .foregroundColor(.secondary)
                             }
@@ -126,6 +131,9 @@ struct CatalogTab: View {
         }
         .sheet(item: $pricingProduct) { product in
             PriceTiersView(productId: product.id, productName: product.name, regularPrice: product.price)
+        }
+        .sheet(item: $analyticsProduct) { product in
+            ProductAnalyticsView(productId: product.id, productName: product.name)
         }
         .task { await load() }
     }
