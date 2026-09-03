@@ -48,6 +48,8 @@ import rw.itunda.core.network.OwnedEmoticonPackDto
 import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.PurchaseGiftVoucherRequest
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
 import java.util.UUID
 
 
@@ -308,9 +310,9 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                                             NetworkClient.apiService.purchaseEmoticonPack(pack.id)
                                             load()
                                         } catch (e: retrofit2.HttpException) {
-                                            if (e.code() == 409) load() else error = "Could not purchase this pack."
-                                        } catch (_: Exception) {
-                                            error = "Could not purchase this pack."
+                                            if (e.code() == 409) load() else error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally {
                                             busyPackId = null
                                         }
@@ -338,8 +340,10 @@ internal fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                                                 message = "Pack gifted!"
                                                 giftingPackId = null
                                                 giftPhone = ""
-                                            } catch (_: Exception) {
-                                                error = "Could not gift this pack."
+                                            } catch (e: retrofit2.HttpException) {
+                                                error = superAppErrorMessage(e)
+                                            } catch (e: IOException) {
+                                                error = "Couldn't reach itunda. Check your connection and try again."
                                             } finally {
                                                 busyPackId = null
                                             }
