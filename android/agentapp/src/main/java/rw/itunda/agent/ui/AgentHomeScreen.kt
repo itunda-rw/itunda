@@ -4,18 +4,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.draw.clip
+import rw.itunda.core.designsystem.components.CameraQrScanner
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -127,6 +131,7 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
     var amount by remember { mutableStateOf("") }
     var receipt by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
+    var manualCodeEntry by remember { mutableStateOf(false) }
     var payoutChecked by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
@@ -144,7 +149,22 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Store receipt number", modifier = Modifier.fillMaxWidth())
             if (mode == TransactionMode.CASH_OUT) {
-                IdsTextField(value = code, onValueChange = { code = it.uppercase() }, label = "Customer withdrawal code", modifier = Modifier.fillMaxWidth())
+                // Real fix (2026-09-04, no-manual-code-UX sweep) -- this screen was
+                // 100% typed entry with no scan option, the same gap AgentOperatorScreen.kt's
+                // own CashOutCard already fixed for the main app on 2026-08-30. The
+                // customer's withdrawal code is shown as a QR on their own device (see
+                // AgentCashScreen.kt), so the agent can scan it instead of retyping 12
+                // characters.
+                if (!manualCodeEntry) {
+                    Text("Scan customer's QR", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
+                    Column(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp))) {
+                        CameraQrScanner(onScanned = { code = it.uppercase(); manualCodeEntry = true }, modifier = Modifier.fillMaxSize())
+                    }
+                    IdsButton(text = "No camera? Enter code instead", variant = IdsButtonVariant.Tinted, onClick = { manualCodeEntry = true })
+                } else {
+                    IdsTextField(value = code, onValueChange = { code = it.uppercase() }, label = "Customer withdrawal code", modifier = Modifier.fillMaxWidth())
+                    IdsButton(text = "Scan a QR code instead", variant = IdsButtonVariant.Tinted, onClick = { code = ""; manualCodeEntry = false })
+                }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Checkbox(checked = payoutChecked, onCheckedChange = { payoutChecked = it }, enabled = !busy)
                     Text("I checked the code and counted the cash. Do not hand over cash until Itunda confirms.", modifier = Modifier.padding(top = 12.dp))
