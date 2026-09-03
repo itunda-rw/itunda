@@ -34,6 +34,10 @@ Top-level layout (restructured 2026-07-11 for naming clarity — see
   propagation, security headers, Prometheus metrics, bounded upstream timeouts with fail-fast
   503/504 — not a stub.
 - `services/blog/`: the `tech.itunda.rw` engineering blog, modeled on toss.tech.
+- `services/developer-docs/`: the public "Pay with itunda" API reference for external
+  integrators, modeled on docs.tosspayments.com — a small static site (same pattern as
+  `services/blog`), not yet deployed anywhere. Content is a direct port of
+  `docs/PAYMENTS.md`'s own accurate internal reference; update that file first, then this one.
 - `packages/saronite/`: mini-app SDK modeled on Toss's real open-source `granite` — currently a
   hand-rolled approximation, not yet built on Granite itself.
 - `android/`, `ios/`: native mobile shells with real bounded-context modules (design system,
@@ -88,8 +92,8 @@ The repository currently demonstrates the product shape and system contracts. Tr
 ## Local Development
 
 Install JS dependencies (root workspace covers `packages/shared-utils`,
-`services/micro-frontends/*`, `services/api-gateway`; `packages/saronite` and `services/blog` are
-separate npm workspaces, install those independently):
+`services/micro-frontends/*`, `services/api-gateway`; `packages/saronite`, `services/blog`, and
+`services/developer-docs` are separate npm workspaces, install those independently):
 
 ```bash
 yarn install
