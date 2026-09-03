@@ -16,11 +16,9 @@ import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.AccountRepository
-import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.SavingsGoalRepository
-import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -44,15 +42,13 @@ class SavingsGoalLedgerIsolationTest : BehaviorSpec({
     Given("a goal's own per-bucket ledger, the real gap this feature closes") {
         val accountRepository = mockk<AccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
         val ledgerAccountRepository = mockk<LedgerAccountRepository>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
-        val service = SavingsService(accountRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService, ledgerAccountRepository, ledgerEntryRepository)
+        val service = SavingsService(accountRepository, savingsGoalRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService, ledgerAccountRepository, ledgerEntryRepository)
 
         When("a brand-new goal (zero balance) gets its first-ever deposit") {
             val goal = SavingsGoal(

@@ -11,14 +11,14 @@ import org.springframework.stereotype.Component
  * doesn't require the process to stay up an actual 24h to observe it working end to end.
  */
 @Component
-class InterestAccrualScheduler(private val savingsService: SavingsService) {
+class InterestAccrualScheduler(private val interestJarService: InterestJarService) {
     private val log = LoggerFactory.getLogger(InterestAccrualScheduler::class.java)
 
     @Scheduled(fixedDelay = 30000)
     fun run() {
-        val due = savingsService.getJarsDueForAccrual()
+        val due = interestJarService.getJarsDueForAccrual()
         for (jar in due) {
-            savingsService.accrueInterest(jar)
+            interestJarService.accrueInterest(jar)
             log.info("Accrued interest for jar {} (balance {}, earnedThisMonth now {})", jar.userId, jar.balance, jar.earnedThisMonth)
         }
     }

@@ -31,6 +31,7 @@ data class WithdrawRequest(val goalId: String, val amount: BigDecimal, val toAcc
 @RequestMapping("/api/v1/savings")
 class SavingsController(
     private val savingsService: SavingsService,
+    private val interestJarService: InterestJarService,
     private val idempotencyService: IdempotencyService,
     private val depositProtectionService: DepositProtectionService,
     private val savingsMaturityReminderScheduler: SavingsMaturityReminderScheduler,
@@ -91,11 +92,11 @@ class SavingsController(
 
     @GetMapping("/interest-jar")
     fun getInterestJar(@AuthenticationPrincipal currentUser: CurrentUser) =
-        ResponseEntity.ok(mapOf("success" to true, "jar" to savingsService.getInterestJar(currentUser.userId)))
+        ResponseEntity.ok(mapOf("success" to true, "jar" to interestJarService.getInterestJar(currentUser.userId)))
 
     @GetMapping("/interest-jar/transactions")
     fun getInterestJarTransactions(@AuthenticationPrincipal currentUser: CurrentUser) =
-        ResponseEntity.ok(mapOf("success" to true, "transactions" to savingsService.getInterestJarTransactions(currentUser.userId)))
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to interestJarService.getInterestJarTransactions(currentUser.userId)))
 
     @PostMapping("/interest-jar/claim")
     fun claimInterest(
@@ -103,7 +104,7 @@ class SavingsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/savings/interest-jar/claim", idempotencyKey, emptyMap<String, Any>()) {
-            val result = savingsService.claimInterest(currentUser.userId)
+            val result = interestJarService.claimInterest(currentUser.userId)
             200 to (mapOf("success" to true, "message" to "Claimed ${result["claimed"]} RWF interest") + result)
         }
         return ResponseEntity.status(status).body(body)
