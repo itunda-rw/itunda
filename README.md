@@ -123,6 +123,20 @@ yarn dev:ecosystem:local
 That starts `infra/docker-compose.yml` first and maps MySQL/Redis/Kafka to `3307`, `16379`,
 and `9092`.
 
+### Logging in locally
+
+`SeedDataRunner` (`services/backend/app/src/main/kotlin/rw/itunda/app/SeedDataRunner.kt`) seeds
+two real accounts on every backend startup — the same two logins on web, Android, and iOS:
+
+| Phone number      | Password      | What it is                                         |
+| ------------------ | ------------- | --------------------------------------------------- |
+| `+250788123456`    | `password123` | Demo consumer account — funded balances, contacts, an active loan, a savings goal |
+| `+250788999000`    | `admin123`    | Admin account — the only way to reach `/api/v1/system/**` locally without hand-editing the database |
+
+These aren't secrets worth protecting — itunda has no real production/live tier yet (see
+"Reality Check" above), so every credential in this repo is honestly a sandbox one. Don't reuse
+either password anywhere real.
+
 If you only want the web shell, `yarn dev` now starts `bank-mfe`, `kyc-mfe`, `ops-mfe`, and
 `host-app` together instead of only the host shell. `merchant-mfe`/`maps-mfe`/`pay-checkout`
 are 3 more real micro-frontends, run individually (`yarn workspace <name> run dev`).
