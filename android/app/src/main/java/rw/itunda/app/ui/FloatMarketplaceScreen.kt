@@ -35,6 +35,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PostFloatListingRequest
 import rw.itunda.core.network.RequestFloatRequest
 import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
 import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
 
@@ -75,8 +76,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                     nearby = NetworkClient.apiService.getNearbyFloatListings(lat, lng).listings
                 } catch (e: retrofit2.HttpException) {
                     error = superAppErrorMessage(e)
-                } catch (e: Exception) {
-                    error = "Could not load nearby float listings."
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
                 }
             }
         },
@@ -103,8 +104,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                 loadMine()
                             } catch (e: retrofit2.HttpException) {
                                 error = superAppErrorMessage(e)
-                            } catch (e: Exception) {
-                                error = "Could not post this listing."
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                             } finally {
                                 busy = false
                             }
@@ -140,8 +141,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                             loadMine()
                                         } catch (e: retrofit2.HttpException) {
                                             error = superAppErrorMessage(e)
-                                        } catch (e: Exception) {
-                                            error = "Could not send this request."
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally {
                                             busy = false
                                         }
@@ -175,8 +176,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                             loadMine()
                                         } catch (e: retrofit2.HttpException) {
                                             error = superAppErrorMessage(e)
-                                        } catch (e: Exception) {
-                                            error = "Could not cancel this listing."
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally {
                                             busy = false
                                         }
@@ -211,8 +212,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                                 loadMine()
                                             } catch (e: retrofit2.HttpException) {
                                                 error = superAppErrorMessage(e)
-                                            } catch (e: Exception) {
-                                                error = "Could not accept this request."
+                                            } catch (e: IOException) {
+                                                error = "Couldn't reach itunda. Check your connection and try again."
                                             } finally {
                                                 busy = false
                                             }
@@ -232,8 +233,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                                 loadMine()
                                             } catch (e: retrofit2.HttpException) {
                                                 error = superAppErrorMessage(e)
-                                            } catch (e: Exception) {
-                                                error = "Could not decline this request."
+                                            } catch (e: IOException) {
+                                                error = "Couldn't reach itunda. Check your connection and try again."
                                             } finally {
                                                 busy = false
                                             }
