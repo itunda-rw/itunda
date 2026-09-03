@@ -203,9 +203,12 @@ class LoansService(
         })
     }
 
+    // Real lost-update fix (2026-09-03) -- see LoanAccountRepository.findByIdForUpdate's own
+    // doc comment: LoanAccount carries no @Version, and this check-then-act-then-write had no
+    // row lock -- two concurrent repayments could both cap at the same stale `outstanding`.
     @Transactional
     fun repayLoan(userId: String, loanId: String, amount: BigDecimal): Map<String, Any?> {
-        val loan = loanAccountRepository.findById(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
+        val loan = loanAccountRepository.findByIdForUpdate(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
         if (loan.userId != userId) throw LoanNotOwnedException("That loan does not belong to you")
         if (loan.status == LoanStatus.PAID) throw LoanAlreadyPaidException("Loan is already fully repaid")
 
@@ -260,9 +263,12 @@ class LoansService(
      * should show both events actually happened, not be silently collapsed into a field
      * mutation just because the user's own account balance doesn't move.
      */
+    // Real lost-update fix (2026-09-03) -- same shape repayLoan above already fixes: two
+    // concurrent refinance calls on the same ACTIVE loan could both pass the status check,
+    // each disbursing a real new loan and paying off the old one twice.
     @Transactional
     fun refinanceLoan(userId: String, loanId: String): Map<String, Any?> {
-        val loan = loanAccountRepository.findById(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
+        val loan = loanAccountRepository.findByIdForUpdate(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
         if (loan.userId != userId) throw LoanNotOwnedException("That loan does not belong to you")
         if (loan.status != LoanStatus.ACTIVE) throw LoanAlreadyPaidException("Only an active loan can be refinanced")
 

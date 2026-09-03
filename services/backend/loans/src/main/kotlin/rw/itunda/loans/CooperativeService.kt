@@ -119,9 +119,11 @@ class CooperativeService(
 
     /** Real disbursement -- itunda's own capital, the same real `loan_payable` receivable
      * shape `LoansService.applyForLoan` already establishes, never a shared pool. */
+    // Real lost-update fix (2026-09-03) -- see HarvestAdvanceRepository.findByIdForUpdate's
+    // own doc comment: this check-then-act-then-disburse had no row lock.
     @Transactional
     fun disburseAdvance(userId: String, advanceId: String): HarvestAdvance {
-        val advance = advanceRepository.findById(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
+        val advance = advanceRepository.findByIdForUpdate(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         val membership = membershipRepository.findById(advance.membershipId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         if (membership.userId != userId) throw HarvestAdvanceNotFoundException("Advance not found")
         if (advance.status != HarvestAdvanceStatus.REQUESTED) {
@@ -156,10 +158,11 @@ class CooperativeService(
      * outstanding principal in full -- the same honest "don't half-support a feature
      * this entity shape can't back" discipline this session has used throughout.
      */
+    // Real lost-update fix (2026-09-03) -- same shape disburseAdvance above already fixes.
     @Transactional
     fun repayAdvance(userId: String, advanceId: String, amount: BigDecimal): HarvestAdvance {
         if (amount <= BigDecimal.ZERO) throw HarvestAdvanceInvalidAmountException("Repayment amount must be greater than zero")
-        val advance = advanceRepository.findById(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
+        val advance = advanceRepository.findByIdForUpdate(advanceId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         val membership = membershipRepository.findById(advance.membershipId).orElseThrow { HarvestAdvanceNotFoundException("Advance not found") }
         if (membership.userId != userId) throw HarvestAdvanceNotFoundException("Advance not found")
         if (advance.status != HarvestAdvanceStatus.DISBURSED && advance.status != HarvestAdvanceStatus.OVERDUE) {

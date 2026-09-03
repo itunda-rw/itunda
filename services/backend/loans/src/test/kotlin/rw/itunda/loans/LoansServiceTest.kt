@@ -168,7 +168,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("100000"), outstanding = BigDecimal("60000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_x") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_x") } returns Optional.of(loan)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
 
@@ -191,7 +191,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("100000"), outstanding = BigDecimal("15000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_y") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_y") } returns Optional.of(loan)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
             every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
 
@@ -213,7 +213,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("100000"), outstanding = BigDecimal("5000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_z") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_z") } returns Optional.of(loan)
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
             every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
 
@@ -235,7 +235,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("100000"), outstanding = BigDecimal("50000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_w") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_w") } returns Optional.of(loan)
 
             Then("it throws LoanNotOwnedException and never touches the ledger -- the exact bug this file's own SECURITY.md-mirrored fix prevents") {
                 try {
@@ -253,7 +253,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("100000"), outstanding = BigDecimal.ZERO, interestRate = 5.0,
                 status = LoanStatus.PAID, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_v") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_v") } returns Optional.of(loan)
 
             Then("it throws LoanAlreadyPaidException rather than posting a zero-value transaction") {
                 try {
@@ -274,7 +274,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_refi_1") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_refi_1") } returns Optional.of(loan)
             every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
             every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refi", emptyList())
@@ -306,7 +306,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 2.8,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_refi_2") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_refi_2") } returns Optional.of(loan)
             every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
 
             Then("it throws NoBetterRateAvailableException before touching the ledger") {
@@ -325,7 +325,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_refi_3") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_refi_3") } returns Optional.of(loan)
             every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(300, emptyList(), Instant.now())
 
             Then("it throws NoBetterRateAvailableException, matching applyForLoan's own real underwriting gate") {
@@ -347,7 +347,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("6000000"), outstanding = BigDecimal("5500000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_refi_4") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_refi_4") } returns Optional.of(loan)
             every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
 
             Then("it throws NoBetterRateAvailableException rather than refinancing into an offer that can't cover the real balance") {
@@ -366,7 +366,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
                 status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_refi_5") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_refi_5") } returns Optional.of(loan)
 
             Then("it throws LoanNotOwnedException before ever checking credit score") {
                 try {
@@ -384,7 +384,7 @@ class LoansServiceTest : BehaviorSpec({
                 principal = BigDecimal("400000"), outstanding = BigDecimal.ZERO, interestRate = 5.0,
                 status = LoanStatus.PAID, disbursedAt = Instant.now(),
             )
-            every { loanAccountRepository.findById("loan_refi_6") } returns Optional.of(loan)
+            every { loanAccountRepository.findByIdForUpdate("loan_refi_6") } returns Optional.of(loan)
 
             Then("it throws LoanAlreadyPaidException -- there's nothing left to refinance") {
                 try {

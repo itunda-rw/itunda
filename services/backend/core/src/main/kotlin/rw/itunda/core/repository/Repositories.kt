@@ -54,6 +54,16 @@ import java.util.Optional
 
 interface LoanAccountRepository : JpaRepository<LoanAccount, String> {
     fun findByUserId(userId: String): List<LoanAccount>
+
+    // Real lost-update fix (2026-09-03): LoanAccount carries no @Version, and
+    // repayLoan/refinanceLoan mutate `outstanding`/`status` after posting real ledger
+    // money with a plain unlocked findById -- two concurrent repayments could both cap
+    // at the same stale `outstanding`, double-debiting the wallet while only reducing
+    // the recorded debt once. Same findByIdForUpdate convention this codebase already
+    // establishes elsewhere.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select l from LoanAccount l where l.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<LoanAccount>
 }
 
 interface ContactRepository : JpaRepository<Contact, String> {

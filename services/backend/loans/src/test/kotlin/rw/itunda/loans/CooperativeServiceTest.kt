@@ -147,7 +147,7 @@ class CooperativeServiceTest : BehaviorSpec({
             id = "harvestadv_1", membershipId = "coopmem_1", accountId = "account_1", principalAmount = BigDecimal("50000"),
             purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
         )
-        every { advanceRepository.findById("harvestadv_1") } returns Optional.of(advance)
+        every { advanceRepository.findByIdForUpdate("harvestadv_1") } returns Optional.of(advance)
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
         every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -174,7 +174,7 @@ class CooperativeServiceTest : BehaviorSpec({
                 purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
                 status = HarvestAdvanceStatus.DISBURSED,
             )
-            every { advanceRepository.findById("harvestadv_2") } returns Optional.of(alreadyDisbursed)
+            every { advanceRepository.findByIdForUpdate("harvestadv_2") } returns Optional.of(alreadyDisbursed)
 
             Then("the status guard fires") {
                 shouldThrow<HarvestAdvanceInvalidStatusException> { service.disburseAdvance("user_1", "harvestadv_2") }
@@ -198,7 +198,7 @@ class CooperativeServiceTest : BehaviorSpec({
             purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
             status = HarvestAdvanceStatus.DISBURSED,
         )
-        every { advanceRepository.findById("harvestadv_1") } returns Optional.of(advance)
+        every { advanceRepository.findByIdForUpdate("harvestadv_1") } returns Optional.of(advance)
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
         every { accountRepository.findById("account_1") } returns Optional.of(account("account_1", "user_1"))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_repay", emptyList())
@@ -243,7 +243,7 @@ class CooperativeServiceTest : BehaviorSpec({
             purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
             status = HarvestAdvanceStatus.DISBURSED,
         )
-        every { advanceRepository.findById("harvestadv_2") } returns Optional.of(advance)
+        every { advanceRepository.findByIdForUpdate("harvestadv_2") } returns Optional.of(advance)
         every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
 
         When("repaying just 1 RWF of the real 50,000 principal") {
