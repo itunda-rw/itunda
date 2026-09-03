@@ -34,7 +34,9 @@ button {
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  transition: transform 0.1s ease-in-out;
+  /* Real Toss `out` curve -- see bank-mfe's own index.css doc comment for the full
+     sourced account of why plain `ease-in-out` isn't quite the real value. */
+  transition: transform 0.1s var(--itunda-ease-out);
 }
 
 /* Real Toss press-scale tactile feedback -- see bank-mfe's own index.css doc comment
