@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -72,6 +73,7 @@ import rw.itunda.core.network.CreateCommunityPostRequest
 import rw.itunda.core.network.FinalizeGroupBuyRequest
 import rw.itunda.core.network.MeetupSessionDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SetCommentNotificationsEnabledRequest
 import rw.itunda.core.network.ScheduleMeetupSessionsRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
@@ -347,6 +349,7 @@ fun CommunityContent(
             }
         }
         if (view == CommunityView.MINE) {
+            item { CommentNotificationToggle() }
             item {
                 if (!showNewPost) {
                     Box(
@@ -771,3 +774,45 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
     }
 }
 
+
+// Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
+// from bank-mfe (2026-09-03, real gap: fully built on the backend, wired on web, zero
+// client on native). Scoped to MY posts (the preference only affects notifications
+// about comments on posts the caller authored), same real reason this renders only
+// inside the MINE view.
+@Composable
+private fun CommentNotificationToggle() {
+    val scope = rememberCoroutineScope()
+    var enabled by remember { mutableStateOf<Boolean?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        enabled = try { NetworkClient.apiService.getCommentNotificationsEnabled().commentNotificationsEnabled } catch (_: Exception) { true }
+    }
+    val current = enabled ?: return
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text("Notify me about new comments", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            Text("On your own posts, in this neighborhood", fontSize = 11.sp, color = Ids.colors.textSecondary)
+        }
+        Switch(
+            checked = current,
+            enabled = !busy,
+            onCheckedChange = { next ->
+                busy = true
+                scope.launch {
+                    try {
+                        enabled = NetworkClient.apiService.setCommentNotificationsEnabled(SetCommentNotificationsEnabledRequest(next)).commentNotificationsEnabled
+                    } catch (_: Exception) {
+                        // Best-effort -- leaves the switch at its last known real state.
+                    } finally {
+                        busy = false
+                    }
+                }
+            },
+        )
+    }
+}

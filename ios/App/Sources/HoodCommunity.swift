@@ -89,6 +89,10 @@ struct CommunityContent: View {
                         }
                     }
 
+                    if view == .mine {
+                        CommentNotificationToggle()
+                    }
+
                     if showNewPost {
                         NewCommunityPostForm(categories: categories, onCreated: { showNewPost = false; Task { await load() } }, onCancel: { showNewPost = false })
                     } else {

@@ -432,5 +432,47 @@ struct GroupBuyFinalizeSection: View {
     }
 }
 
+// Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
+// from bank-mfe (2026-09-03, real gap: fully built on the backend, wired on web, zero
+// client on native). Scoped to MY posts (the preference only affects notifications
+// about comments on posts the caller authored), same real reason this renders only
+// inside the "My posts" view.
+struct CommentNotificationToggle: View {
+    @State private var enabled: Bool?
+    @State private var busy = false
+
+    var body: some View {
+        if let current = enabled {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Notify me about new comments").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("On your own posts, in this neighborhood").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { current },
+                    set: { next in
+                        busy = true
+                        Task {
+                            if let result = try? await NetworkClient.shared.setCommentNotificationsEnabled(next) {
+                                enabled = result.commentNotificationsEnabled
+                            }
+                            busy = false
+                        }
+                    },
+                ))
+                .labelsHidden()
+                .disabled(busy)
+            }
+            .padding(.vertical, 10)
+        } else {
+            Color.clear.frame(height: 0)
+                .task {
+                    enabled = (try? await NetworkClient.shared.getCommentNotificationsEnabled().commentNotificationsEnabled) ?? true
+                }
+        }
+    }
+}
+
 // ============================== JOBS (당근알바) ==============================
 
