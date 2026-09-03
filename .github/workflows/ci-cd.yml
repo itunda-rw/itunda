@@ -184,6 +184,13 @@ jobs:
   # see docs/ARCHITECTURE.md §3).
   android-build:
     runs-on: ubuntu-latest
+    # Real CI fix (2026-09-03): the first-ever run to get this far (everything
+    # before it was blocked by the two fixes below) silently ran ~64 minutes then
+    # died with no error and no captured log -- an external timeout, not a Gradle
+    # failure. A real, explicit job timeout replaces that silent kill: if the heap
+    # fix below doesn't fully resolve it, this at least fails cleanly with a real,
+    # readable log instead of vanishing.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -208,13 +215,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Real CI fix (2026-09-03): android/gradle.properties pins
+      # `org.gradle.jvmargs=-Xmx6144m`, tuned for a developer's own local machine,
+      # not this runner -- on top of that, the Kotlin compiler's own separate
+      # daemon claims its own heap alongside it. The likely cause of the ~64min
+      # silent stall above: severe memory thrashing, not a real hang. A
+      # GRADLE_USER_HOME-level override here takes precedence over the project's
+      # own gradle.properties without editing the checked-in file (which stays
+      # correct for real developer machines).
+      - name: Cap Gradle/Kotlin daemon heap for this CI runner
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+          echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
+
       - name: Silo boundary check (Konsist architecture test)
         working-directory: android
         run: ./gradlew :architecture-test:test --no-daemon
 
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
   # ios/: Tuist-generated Xcode project (real Feature/Interface/Testing microfeature
   # split, see docs/MULTI_AGENT_ISOLATION.md) + CocoaPods-integrated React Native
