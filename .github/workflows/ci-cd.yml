@@ -13,11 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Real CI fix (2026-09-03), reverted same day: actions/setup-node's own
+      # `cache: yarn` option shells out to `yarn cache dir` as PART of this step's
+      # own execution, before the separate "Enable Corepack" step below ever runs --
+      # it hit the exact same Corepack error as the original bug this workflow
+      # already fixes. Yarn v4 (Berry) also has no `.yarnrc.yml`/`.yarn/cache` in
+      # this repo, so its real cache location isn't even confirmed -- reverted
+      # rather than guess at a manual actions/cache key for something that was
+      # never a requirement. npm/gradle caching below are unaffected and confirmed
+      # working (backend/microservices/android/ios all passed with them).
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: yarn
 
       # Real CI fix (2026-09-03): package.json pins "packageManager": "yarn@4.17.0"
       # (Corepack-managed), but the runner's global Yarn is 1.22.22 -- without this,
@@ -57,11 +65,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `cache: yarn` here -- see lint-and-typecheck's own doc comment above for why.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: yarn
 
       - name: Enable Corepack
         run: corepack enable
@@ -78,11 +86,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # No `cache: yarn` here -- see lint-and-typecheck's own doc comment above for why.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
-          cache: yarn
 
       - name: Enable Corepack
         run: corepack enable
