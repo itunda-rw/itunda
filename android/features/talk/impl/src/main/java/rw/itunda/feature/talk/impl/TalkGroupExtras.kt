@@ -68,6 +68,9 @@ import rw.itunda.core.network.GroupSummaryDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SendMessageRequest
 import rw.itunda.core.network.TalkContactDto
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 
 
 
@@ -151,8 +154,10 @@ internal fun GroupManageMembersView(
                                 NetworkClient.apiService.setGroupPhotoUrl(group.groupId, SetGroupPhotoUrlRequest(photoUrl.trim()))
                                 NetworkClient.apiService.setGroupDescription(group.groupId, SetGroupDescriptionRequest(description.trim()))
                                 infoSaved = true
-                            } catch (_: Exception) {
-                                error = "Could not update group info."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                             } finally { savingInfo = false }
                         }
                     },
@@ -183,8 +188,10 @@ internal fun GroupManageMembersView(
                             try {
                                 NetworkClient.apiService.leaveGroup(group.groupId)
                                 onLeft()
-                            } catch (_: Exception) {
-                                error = "Could not leave this group."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                                 leaving = false
                             }
                         }
@@ -220,10 +227,10 @@ internal fun GroupManageMembersView(
                                         if (apiErrorCode(e) == "ALREADY_MEMBER") {
                                             onMembersChanged()
                                         } else {
-                                            error = "Could not add ${contact.name}."
+                                            error = superAppErrorMessage(e)
                                         }
-                                    } catch (_: Exception) {
-                                        error = "Could not add ${contact.name}."
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
                                     } finally { busyUserId = null }
                                 }
                             },
@@ -406,7 +413,7 @@ internal fun GroupRepliesThreadView(
                     if (body.isEmpty()) return@IdsButton
                     sending = true
                     coroutineScope.launch {
-                        try { onSend(body); draft = ""; load() } catch (_: Exception) { error = "Could not send this reply." } finally { sending = false }
+                        try { onSend(body); draft = ""; load() } catch (e: HttpException) { error = superAppErrorMessage(e) } catch (e: IOException) { error = "Couldn't reach itunda. Check your connection and try again." } finally { sending = false }
                     }
                 },
             )

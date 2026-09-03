@@ -64,6 +64,9 @@ import rw.itunda.core.network.MessageDto
 import rw.itunda.core.network.PriceOfferDto
 import rw.itunda.core.network.PropertyPriceOfferDto
 import rw.itunda.core.network.SendMessageRequest
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 import java.time.Instant
 
 
@@ -142,7 +145,7 @@ internal fun RepliesThreadView(
                     if (body.isEmpty()) return@IdsButton
                     sending = true
                     coroutineScope.launch {
-                        try { onSend(body); draft = ""; load() } catch (_: Exception) { error = "Could not send this reply." } finally { sending = false }
+                        try { onSend(body); draft = ""; load() } catch (e: HttpException) { error = superAppErrorMessage(e) } catch (e: IOException) { error = "Couldn't reach itunda. Check your connection and try again." } finally { sending = false }
                     }
                 },
             )

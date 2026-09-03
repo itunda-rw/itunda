@@ -45,6 +45,9 @@ import rw.itunda.core.network.GroupPollWithVotesDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PostGroupAnnouncementRequest
 import rw.itunda.core.network.VoteGroupPollRequest
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 
 // Real group 공지/투표 (announcement + poll) (itunda Talk redesign, 2026-08-28) --
 // deliberately open to ANY group member, matching every other current group action
@@ -113,8 +116,10 @@ internal fun GroupAnnouncementPollView(groupId: String, onBack: () -> Unit) {
                                     NetworkClient.talkApi.postGroupAnnouncement(groupId, PostGroupAnnouncementRequest(body))
                                     draftAnnouncement = ""
                                     load()
-                                } catch (_: Exception) {
-                                    error = "Could not post this announcement."
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally { postingAnnouncement = false }
                             }
                         },
@@ -131,7 +136,11 @@ internal fun GroupAnnouncementPollView(groupId: String, onBack: () -> Unit) {
                             try {
                                 val res = NetworkClient.talkApi.voteGroupPoll(groupId, poll.poll.id, VoteGroupPollRequest(optionId))
                                 if (res.success) polls = polls.orEmpty().map { if (it.poll.id == poll.poll.id) res.poll else it }
-                            } catch (_: Exception) { error = "Could not record your vote." }
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            }
                         }
                     })
                 }
@@ -213,8 +222,10 @@ private fun NewGroupPollForm(
                             try {
                                 createPoll(question.trim(), optionsText.map { it.trim() }.filter { it.isNotBlank() })
                                 onCreated()
-                            } catch (_: Exception) {
-                                error = "Could not create this poll."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                                 creating = false
                             }
                         }

@@ -282,8 +282,10 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
                     mode = OpenChatMode.CLOSED
                     onJoined(res.group.id)
                 }
-            } catch (e: Exception) {
-                error = "No open chat found for this code."
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
                 submitting = false
             }
@@ -362,8 +364,10 @@ internal fun OpenChatCard(onCreated: (String) -> Unit, onJoined: (String) -> Uni
                                                 // code -- matches bank-mfe/iOS exactly.
                                                 qrBitmap = rw.itunda.core.designsystem.components.generateQrBitmap("itunda://join-chat?code=${res.group.joinCode}")
                                             }
-                                        } catch (e: Exception) {
-                                            error = "Could not create this open chat."
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally {
                                             submitting = false
                                         }
