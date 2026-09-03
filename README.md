@@ -142,6 +142,39 @@ Build the full web surface:
 yarn build
 ```
 
+### Android
+
+```bash
+cd android
+./gradlew :app:compileDebugKotlin   # verify it compiles
+./gradlew :app:assembleDebug        # build a real debug APK
+./gradlew :architecture-test:test   # Konsist Feature-module boundary check
+```
+
+Open the `android/` directory in Android Studio for day-to-day work; the Gradle sync there
+covers the same modules. The app talks to whatever backend `NetworkClient`'s base URL points
+to — a real device needs `adb reverse` (or an equivalent tunnel) to reach a backend running on
+your machine, since `10.0.2.2` only resolves from the emulator.
+
+### iOS
+
+```bash
+cd ios
+tuist generate --no-open   # regenerate Itunda.xcworkspace from Project.swift
+pod install                # after every tuist generate, not just the first time
+```
+
+Then open `Itunda.xcworkspace` (not `Itunda.xcodeproj`) in Xcode and run the `ItundaApp`
+scheme. From the command line:
+
+```bash
+xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+  -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO
+```
+
+A new `.swift` file needs `tuist generate` re-run before Xcode will see it — this is the most
+common "why won't this compile" surprise on this platform.
+
 ## Design Principles
 
 - Put the user's money state first: balance, obligations, next best action.
