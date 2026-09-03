@@ -37,6 +37,7 @@ struct BusinessAccountTab: View {
                 ApiIntegrationCard()
                 StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 MoreStoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                KybCard(merchant: merchant)
             }
             Text("Business account").font(.title3).bold()
             Text("Keep your business money separate from your personal account. Your real card/QR collections still settle to your personal account as before — move money into your business account whenever you're ready to set it aside.")
@@ -64,6 +65,7 @@ struct BusinessAccountTab: View {
                     ApiIntegrationCard()
                     StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                     MoreStoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                    KybCard(merchant: merchant)
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Business balance").font(.caption).foregroundColor(.secondary)

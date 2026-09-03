@@ -87,6 +87,19 @@ struct SetMerchantAvgPrepTimeMinutesRequest: Encodable { let avgPrepTimeMinutes:
 struct SetMerchantPickupDiscountRequest: Encodable { let pickupDiscountPercent: Int? }
 struct SetAcceptingOrdersRequest: Encodable { let accepting: Bool }
 struct SetClosedWeekdaysRequest: Encodable { let weekdays: [Int] }
+
+// Real demo KYB structural pre-check -- ported from merchant-mfe's KybCard
+// (2026-09-03), see DemoKybVerificationService.kt's own doc comment on the backend.
+// This is the SAME generic /api/v1/identity/* endpoint the consumer app's own
+// IdentityScreenView.swift already uses for personal NATIONAL_ID/PASSPORT
+// submissions -- documentType is always BUSINESS_TIN here, a separate concern.
+struct SubmitIdentityRequest: Encodable { let documentType: String; let documentNumber: String; let documentReference: String }
+struct IdentitySubmissionDto: Decodable, Identifiable {
+    let id: String; let userId: String; let documentType: String; let documentNumber: String; let documentReference: String
+    let status: String; let submittedAt: String; let autoVerificationStatus: String?; let autoVerificationDetail: String?
+}
+struct SubmitIdentityResponse: Decodable { let success: Bool; let submission: IdentitySubmissionDto }
+struct IdentityStatusResponse: Decodable { let success: Bool; let submissions: [IdentitySubmissionDto] }
 struct SetAcceptsScheduledOrdersRequest: Encodable { let accepts: Bool }
 struct SetParticipatesInEatsMembershipRequest: Encodable { let participates: Bool }
 
@@ -752,6 +765,13 @@ final class MerchantNetworkClient {
     func setClosedWeekdays(_ weekdays: [Int]) async throws -> MerchantResponse {
         try await post("api/v1/merchant/closed-weekdays", body: SetClosedWeekdaysRequest(weekdays: weekdays))
     }
+
+    // Real demo KYB structural pre-check -- see IdentitySubmissionDto's own doc
+    // comment.
+    func submitIdentity(documentType: String, documentNumber: String, documentReference: String) async throws -> SubmitIdentityResponse {
+        try await post("api/v1/identity/submit", body: SubmitIdentityRequest(documentType: documentType, documentNumber: documentNumber, documentReference: documentReference))
+    }
+    func getIdentityStatus() async throws -> IdentityStatusResponse { try await get("api/v1/identity/status") }
 
     func getFollowerCount() async throws -> FollowerCountResponse { try await get("api/v1/merchant/followers/count") }
 

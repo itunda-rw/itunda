@@ -130,6 +130,21 @@ data class SetMerchantPickupDiscountRequest(val pickupDiscountPercent: Int?)
 data class SetAcceptingOrdersRequest(val accepting: Boolean)
 data class SetClosedWeekdaysRequest(val weekdays: List<Int>)
 
+// Real demo KYB structural pre-check (see DemoKybVerificationService.kt's own doc
+// comment on the backend) -- ported from merchant-mfe's KybCard (2026-09-03). Not a
+// real RDB/RRA registry lookup, but a real 9-digit-TIN structural validator plus a
+// real human-review queue (the same ops-mfe Compliance queue personal KYC already
+// uses), never auto-decided. This is the SAME generic /api/v1/identity/* endpoint
+// android/app's own IdentityScreen.kt already uses for personal NATIONAL_ID/PASSPORT
+// submissions -- documentType is always BUSINESS_TIN here, a separate concern.
+data class SubmitIdentityRequest(val documentType: String, val documentNumber: String, val documentReference: String)
+data class IdentitySubmissionDto(
+    val id: String, val userId: String, val documentType: String, val documentNumber: String, val documentReference: String,
+    val status: String, val submittedAt: String, val autoVerificationStatus: String?, val autoVerificationDetail: String?,
+)
+data class SubmitIdentityResponse(val success: Boolean, val submission: IdentitySubmissionDto)
+data class IdentityStatusResponse(val success: Boolean, val submissions: List<IdentitySubmissionDto>)
+
 // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
 // MerchantAd.kt's own doc comment for the sourced radius range and flat-fee tiers.
 // merchant-mfe already has this (AdsScreen.tsx); zero native client until now.
@@ -685,6 +700,14 @@ interface ApiService {
 
     @POST("api/v1/merchant/closed-weekdays")
     suspend fun setClosedWeekdays(@Body request: SetClosedWeekdaysRequest): MerchantResponse
+
+    // Real demo KYB structural pre-check -- see IdentitySubmissionDto's own doc
+    // comment.
+    @POST("api/v1/identity/submit")
+    suspend fun submitIdentity(@Body request: SubmitIdentityRequest): SubmitIdentityResponse
+
+    @GET("api/v1/identity/status")
+    suspend fun getIdentityStatus(): IdentityStatusResponse
 
     @POST("api/v1/merchant/eats-membership-participation")
     suspend fun setParticipatesInEatsMembership(@Body request: SetParticipatesInEatsMembershipRequest): MerchantResponse
