@@ -10,6 +10,7 @@ import FeatureMy
 import FeaturePay
 import FeaturePayments
 import FeatureSupport
+import FeatureWealth
 
 // Real gap found 2026-08-30 (project_itunda_money_formatting_sweep's own standing
 // convention -- comma thousands-separator for every whole-number RWF amount --

@@ -8,6 +8,7 @@ import FeatureAssets
 import FeatureCertificate
 import FeatureIdentity
 import FeatureSupport
+import FeatureWealth
 
 // Real wrapper (2026-09-02, Menu Feature-module decomposition) around
 // FeatureMenu's EntireMenuScreen, matching HomeTabContent's own established
