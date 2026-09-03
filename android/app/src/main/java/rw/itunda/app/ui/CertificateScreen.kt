@@ -37,6 +37,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.VerifyCertificateSignatureRequest
 import rw.itunda.core.network.VerifyCertificateSignatureResponse
 import rw.itunda.core.network.isKycRequiredError
+import java.io.IOException
 
 // Real digital identity/signing certificate (2026-07-22 port) -- this feature was
 // already real and live-verified on bank-mfe (web) since 2026-07-17, but a full
@@ -108,8 +109,10 @@ fun CertificateScreen(onBack: () -> Unit) {
                                             certificate = NetworkClient.apiService.revokeCertificate().certificate
                                             issuedPrivateKey = null
                                             error = null
-                                        } catch (_: Exception) {
-                                            error = "Could not revoke your certificate."
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally { busy = false }
                                     }
                                 },
@@ -139,8 +142,8 @@ fun CertificateScreen(onBack: () -> Unit) {
                                             } else {
                                                 superAppErrorMessage(e)
                                             }
-                                        } catch (_: Exception) {
-                                            error = "Could not issue a certificate."
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally { busy = false }
                                     }
                                 },
@@ -297,9 +300,12 @@ private fun VerifyCertificateCard() {
                                 VerifyCertificateSignatureRequest(serialNumber, payload, signature),
                             )
                             error = null
-                        } catch (_: Exception) {
+                        } catch (e: HttpException) {
                             verifyResult = null
-                            error = "Could not verify this signature."
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            verifyResult = null
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally { busy = false }
                     }
                 },

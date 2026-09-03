@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
 import rw.itunda.core.network.KycSubmissionDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.network.SubmitIdentityRequest
 
@@ -135,8 +136,8 @@ fun IdentityScreen(onBack: () -> Unit) {
                                         refresh()
                                     } catch (e: retrofit2.HttpException) {
                                         error = superAppErrorMessage(e)
-                                    } catch (_: Exception) {
-                                        error = "That submission could not be completed."
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
                                     } finally { busy = false }
                                 }
                             },
