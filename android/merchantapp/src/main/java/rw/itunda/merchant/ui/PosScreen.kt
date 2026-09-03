@@ -1,7 +1,7 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -133,7 +133,7 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
     ) {
         items(products, key = { it.id }) { product ->
             val soldOut = product.stockQuantity == 0
-            Card(modifier = Modifier.fillMaxWidth().clickable(enabled = !soldOut) { onAdd(product) }) {
+            Card(modifier = Modifier.fillMaxWidth().pressScaleClickable(enabled = !soldOut) { onAdd(product) }) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(product.name, fontWeight = FontWeight.Bold)
                     Text("${"%,.0f".format(product.price)} RWF", style = MaterialTheme.typography.bodySmall)
@@ -177,7 +177,7 @@ private fun CheckoutView(total: Double, description: String, onDone: () -> Unit,
                     label,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 16.dp).clickable { mode = v },
+                    modifier = Modifier.padding(end = 16.dp).pressScaleClickable { mode = v },
                 )
             }
         }

@@ -56,10 +56,12 @@ private struct AvailabilityEditor: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(DAYS, id: \.self) { d in
-                            Text(DAY_LABEL[d] ?? d)
-                                .bold(d == day)
-                                .foregroundColor(d == day ? IDS.Colors.brand : .secondary)
-                                .onTapGesture { day = d }
+                            Button(action: { day = d }) {
+                                Text(DAY_LABEL[d] ?? d)
+                                    .bold(d == day)
+                                    .foregroundColor(d == day ? IDS.Colors.brand : .secondary)
+                            }
+                            .buttonStyle(PressScaleButtonStyle())
                         }
                     }
                 }

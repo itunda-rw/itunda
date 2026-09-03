@@ -39,16 +39,18 @@ struct MoreStoreSettingsCard: View {
                 ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { index, label in
                     let weekday = index + 1 // java.time.DayOfWeek numbering, 1=Monday
                     let selected = closedWeekdays.contains(weekday)
-                    Text(label)
-                        .font(.caption2).bold()
-                        .foregroundColor(selected ? .white : .primary)
-                        .padding(.horizontal, 10).padding(.vertical, 8)
-                        .background(selected ? IDS.Colors.brand : Color(.tertiarySystemBackground))
-                        .clipShape(Capsule())
-                        .onTapGesture {
-                            saved = false
-                            if selected { closedWeekdays.remove(weekday) } else { closedWeekdays.insert(weekday) }
-                        }
+                    Button {
+                        saved = false
+                        if selected { closedWeekdays.remove(weekday) } else { closedWeekdays.insert(weekday) }
+                    } label: {
+                        Text(label)
+                            .font(.caption2).bold()
+                            .foregroundColor(selected ? .white : .primary)
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .background(selected ? IDS.Colors.brand : Color(.tertiarySystemBackground))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(PressScaleButtonStyle())
                 }
             }
             if let error {

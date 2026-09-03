@@ -1,7 +1,7 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -136,7 +136,7 @@ private fun AvailabilityEditor() {
                         DAY_LABEL[d] ?: d,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(end = 10.dp).clickable { day = d },
+                        modifier = Modifier.padding(end = 10.dp).pressScaleClickable { day = d },
                     )
                 }
             }

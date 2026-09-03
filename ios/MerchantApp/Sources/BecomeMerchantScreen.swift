@@ -39,10 +39,12 @@ struct BecomeMerchantScreen: View {
             }
             .disabled(busy)
 
-            Text("Log out")
-                .foregroundColor(.blue)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .onTapGesture(perform: onLogout)
+            Button(action: onLogout) {
+                Text("Log out")
+                    .foregroundColor(.blue)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .buttonStyle(PressScaleButtonStyle())
 
             Spacer()
         }

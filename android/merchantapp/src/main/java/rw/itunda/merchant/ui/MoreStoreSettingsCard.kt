@@ -1,7 +1,7 @@
 package rw.itunda.merchant.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import rw.itunda.core.designsystem.components.pressScaleClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -82,7 +82,7 @@ internal fun MoreStoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDt
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable {
+                            .pressScaleClickable {
                                 saved = false
                                 closedWeekdays = if (selected) closedWeekdays - weekday else closedWeekdays + weekday
                             }
