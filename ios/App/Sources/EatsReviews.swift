@@ -331,7 +331,7 @@ struct TipRiderPrompt: View {
             HStack(spacing: 6) {
                 ForEach(eatsTipPresets, id: \.self) { preset in
                     let selected = amount == preset
-                    Text("\(preset)")
+                    Text(preset.formatted())
                         .font(.caption).bold().foregroundColor(selected ? .white : IDS.Colors.textSecondary)
                         .frame(maxWidth: .infinity).padding(.vertical, 8)
                         .background(selected ? IDS.Colors.brand : Color.clear).cornerRadius(8)
