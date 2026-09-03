@@ -41,6 +41,7 @@ struct FriendsList: View {
                     // a people list, matching GroupAccountScreen's/FamilyLinkScreen's
                     // identical entity-list conversion, no divider.
                     VStack(spacing: 10) {
+                        TodaysBirthdaySection(onOpenConversation: onStarted)
                         ForEach(contacts!) { contact in
                             Button(action: { Task { await startChat(contact) } }) {
                                 HStack(spacing: 16) {
@@ -102,6 +103,58 @@ struct FriendsList: View {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+// Real KakaoTalk "오늘의 생일" (Today's Birthday) -- ported from bank-mfe/Android
+// (2026-09-03). KakaoTalk's own real feature shows friends with a birthday today at
+// the top of the friend list, letting you message them directly without hunting
+// through the full contact list. Renders nothing when the caller has no real
+// contacts with a birthday today -- never an empty placeholder.
+private struct TodaysBirthdaySection: View {
+    let onOpenConversation: (String) -> Void
+
+    @State private var birthdays: [TalkContactDto] = []
+    @State private var startingId: String?
+
+    var body: some View {
+        Group {
+            if !birthdays.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("🎂 Today's birthday").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    ForEach(birthdays) { contact in
+                        Button(action: { Task { await startChat(contact) } }) {
+                            HStack {
+                                Text(contact.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Spacer()
+                                Text(startingId == contact.userId ? "…" : "Say happy birthday")
+                                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                            }
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .background(IDS.Colors.card).cornerRadius(8)
+                        }
+                        .disabled(startingId == contact.userId)
+                    }
+                }
+                .padding(12)
+                .background(IDS.Colors.pressed).cornerRadius(12)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        birthdays = (try? await NetworkClient.shared.getTodaysBirthdays().contacts) ?? []
+    }
+
+    private func startChat(_ contact: TalkContactDto) async {
+        startingId = contact.userId
+        defer { startingId = nil }
+        // Fails quietly -- the user can still reach this same person from the
+        // regular friends list below.
+        if let res = try? await NetworkClient.shared.startConversation(otherUserId: contact.userId) {
+            onOpenConversation(res.conversation.id)
         }
     }
 }

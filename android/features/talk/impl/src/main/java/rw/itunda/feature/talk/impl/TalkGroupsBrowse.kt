@@ -117,6 +117,7 @@ internal fun FriendsView(onStarted: (String) -> Unit) {
         list == null -> SkeletonBlock()
         list.isEmpty() -> EmptyState("No friends yet -- save someone's contact and they'll show up here once they're on itunda.", icon = Icons.Outlined.PersonOutline)
         else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { TodaysBirthdaySection(onOpenConversation = onStarted) }
             // Real fix (2026-08-24, flat-design sweep): dropped the per-row Card --
             // an entity list a user picks from (friends to start a chat with), no
             // divider, matching GroupAccountScreen's precedent

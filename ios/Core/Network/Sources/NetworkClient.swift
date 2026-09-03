@@ -4769,6 +4769,10 @@ extension NetworkClient {
 
     public func getTalkContacts() async throws -> TalkContactsResponse { try await get("api/v1/messages/contacts") }
 
+    // Real KakaoTalk-style "오늘의 생일" (Today's Birthday) -- ported from bank-mfe
+    // (2026-09-03). Reuses the same TalkContactDto shape as getTalkContacts.
+    public func getTodaysBirthdays() async throws -> TalkContactsResponse { try await get("api/v1/messages/contacts/birthdays-today") }
+
     public func getMessages(conversationId: String) async throws -> MessagesResponse {
         try await get("api/v1/messages/conversations/\(conversationId)/messages")
     }

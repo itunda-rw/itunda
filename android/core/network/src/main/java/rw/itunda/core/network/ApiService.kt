@@ -2837,6 +2837,11 @@ interface ApiService {
     @GET("api/v1/messages/contacts")
     suspend fun getTalkContacts(): TalkContactsResponse
 
+    // Real KakaoTalk-style "오늘의 생일" (Today's Birthday) -- ported from bank-mfe
+    // (2026-09-03). Reuses the same TalkContactDto shape as getTalkContacts.
+    @GET("api/v1/messages/contacts/birthdays-today")
+    suspend fun getTodaysBirthdays(): TalkContactsResponse
+
     @GET("api/v1/messages/conversations/{id}/messages")
     suspend fun getMessages(@Path("id") conversationId: String): MessagesResponse
 
