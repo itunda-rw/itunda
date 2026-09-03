@@ -4624,6 +4624,9 @@ public struct EatsOrderDto: Decodable, Identifiable {
     public let deliveryLongitude: Double?
     public let distanceKm: Double?
     public let deliveryNotes: String?
+    // Real Uber Eats post-delivery tip -- see EatsOrderService.tipRider's own doc
+    // comment. Ported from bank-mfe/Android (2026-09-03). Non-null once tipped.
+    public let tipAmount: Double?
 }
 public struct EatsOrderItemDto: Decodable, Identifiable {
     public let id: String; public let orderId: String; public let productId: String; public let productName: String; public let unitPrice: Double; public let quantity: Int
@@ -4634,6 +4637,8 @@ public struct EatsOrderItemDto: Decodable, Identifiable {
 }
 public struct EatsOrderDetailResponse: Decodable { public let success: Bool; public let order: EatsOrderDto; public let items: [EatsOrderItemDto] }
 public struct EatsOrdersResponse: Decodable { public let success: Bool; public let orders: [EatsOrderDto] }
+public struct TipEatsOrderRequest: Encodable { public let amount: Double; public init(amount: Double) { self.amount = amount } }
+public struct TipEatsOrderResponse: Decodable { public let success: Bool; public let order: EatsOrderDto }
 
 // Real 배달의민족 함께주문 (Baemin "Together Order") -- ported from bank-mfe/Android
 // (2026-09-03). A join-code-shared cart in front of the same real checkout/payment
@@ -6145,6 +6150,11 @@ extension NetworkClient {
             "api/v1/eats/orders/\(orderId)/review",
             body: SubmitEatsReviewRequest(restaurantRating: restaurantRating, restaurantComment: restaurantComment, riderRating: riderRating, riderComment: riderComment, photoUrl: photoUrl, goodPoints: goodPoints)
         )
+    }
+
+    // Real Uber Eats post-delivery tip -- see EatsOrderDto.tipAmount's own doc comment.
+    public func tipEatsOrderRider(orderId: String, amount: Double) async throws -> TipEatsOrderResponse {
+        try await authenticatedPost("api/v1/eats/orders/\(orderId)/tip", body: TipEatsOrderRequest(amount: amount))
     }
 
     public func getRestaurantRating(_ restaurantId: String) async throws -> EatsRatingResponse {

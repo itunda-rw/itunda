@@ -138,6 +138,10 @@ internal fun MyEatsOrdersView(
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
+    // Real optimistic-hide for TipRiderPrompt -- same pattern bank-mfe's own
+    // tippedOrderIds establishes, since a fresh getMyEatsOrders() poll would otherwise
+    // briefly still show the prompt until this order's own tipAmount round-trips back.
+    var tippedOrderIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -207,6 +211,9 @@ internal fun MyEatsOrdersView(
                         } else if (o.status == "DELIVERED") {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 ReviewOrderCard(o)
+                                if (o.riderId != null && o.tipAmount == null && !tippedOrderIds.contains(o.id)) {
+                                    TipRiderPrompt(orderId = o.id, onTipped = { tippedOrderIds = tippedOrderIds + o.id })
+                                }
                                 ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
                             }
                         } else if (o.status == "CANCELLED") {

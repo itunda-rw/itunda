@@ -1887,7 +1887,13 @@ data class EatsOrderDto(
     // elsewhere -- never fabricated when no rider is assigned yet.
     val riderName: String? = null,
     val estimatedArrivalMinutes: Int? = null,
+    // Real Uber Eats post-delivery tip -- see EatsOrderService.tipRider's own doc
+    // comment. Ported from bank-mfe (2026-09-03). Non-null once tipped; used to hide
+    // the tip prompt for an order the caller already tipped.
+    val tipAmount: Double? = null,
 )
+data class TipEatsOrderRequest(val amount: Double)
+data class TipEatsOrderResponse(val success: Boolean, val order: EatsOrderDto)
 
 // selectedOptionsJson added 2026-07-21 -- unitPrice above already includes every
 // selected choice's priceDelta; this is purely a human-readable receipt summary, never
@@ -4053,6 +4059,10 @@ interface ApiService {
     // Real post-delivery ratings & reviews (2026-07-18) -- see EatsController.submitReview.
     @POST("api/v1/eats/orders/{id}/review")
     suspend fun submitEatsReview(@Path("id") orderId: String, @Body request: SubmitEatsReviewRequest): EatsReviewResponse
+
+    // Real Uber Eats post-delivery tip -- see EatsOrderDto.tipAmount's own doc comment.
+    @POST("api/v1/eats/orders/{id}/tip")
+    suspend fun tipEatsOrderRider(@Path("id") orderId: String, @Body request: TipEatsOrderRequest): TipEatsOrderResponse
 
     @GET("api/v1/eats/restaurants/{id}/rating")
     suspend fun getRestaurantRating(@Path("id") restaurantId: String): EatsRatingResponse

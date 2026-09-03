@@ -309,3 +309,61 @@ struct ReviewOrderCard: View {
         }
     }
 }
+
+// Real Uber Eats post-delivery tip -- ported from bank-mfe/Android (2026-09-03), see
+// EatsOrderDto.tipAmount's own doc comment. Reuses the exact TIP_PRESETS bank-mfe's
+// own TipRiderPrompt established. Caller only renders this for a real DELIVERY order
+// (a PICKUP order has no rider) that hasn't been tipped yet.
+private let eatsTipPresets = [500, 1000, 2000]
+
+struct TipRiderPrompt: View {
+    let orderId: String
+    let onTipped: () -> Void
+
+    @State private var amount: Int?
+    @State private var customAmount = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Tip your rider").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            HStack(spacing: 6) {
+                ForEach(eatsTipPresets, id: \.self) { preset in
+                    let selected = amount == preset
+                    Text("\(preset)")
+                        .font(.caption).bold().foregroundColor(selected ? .white : IDS.Colors.textSecondary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .background(selected ? IDS.Colors.brand : Color.clear).cornerRadius(8)
+                        .onTapGesture { amount = preset; customAmount = ""; Task { await submit(preset) } }
+                }
+            }
+            HStack(spacing: 6) {
+                IdsTextField("Custom amount (RWF)", text: Binding(get: { customAmount }, set: { customAmount = $0; amount = nil }))
+                    .keyboardType(.numberPad)
+                Button(action: { Task { await submit(nil) } }) {
+                    Text(submitting ? "…" : "Tip").font(.caption).bold().foregroundColor(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background((Int(customAmount) ?? 0) > 0 && !submitting ? IDS.Colors.brand : IDS.Colors.textTertiary).cornerRadius(8)
+                }
+                .disabled(submitting || (Int(customAmount) ?? 0) <= 0)
+            }
+            if let error { Text(error).font(.caption2).foregroundColor(.red) }
+        }
+        .padding(.top, 8)
+    }
+
+    private func submit(_ overrideAmount: Int?) async {
+        let finalAmount = overrideAmount ?? amount ?? Int(customAmount)
+        guard let finalAmount, finalAmount > 0 else { return }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.tipEatsOrderRider(orderId: orderId, amount: Double(finalAmount))
+            onTipped()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}

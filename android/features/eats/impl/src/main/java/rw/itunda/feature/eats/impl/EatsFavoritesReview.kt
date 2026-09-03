@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -414,3 +415,75 @@ internal fun ReviewOrderCard(order: EatsOrderDto) {
     }
 }
 
+
+// Real Uber Eats post-delivery tip -- ported from bank-mfe (2026-09-03), see
+// EatsOrderDto.tipAmount's own doc comment. Reuses the exact TIP_PRESETS bank-mfe's
+// own TipRiderPrompt established. Caller only renders this for a real DELIVERY order
+// (a PICKUP order has no rider) that hasn't been tipped yet.
+private val EATS_TIP_PRESETS = listOf(500, 1000, 2000)
+
+@Composable
+internal fun TipRiderPrompt(orderId: String, onTipped: () -> Unit) {
+    var amount by remember { mutableStateOf<Int?>(null) }
+    var customAmount by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun submit(overrideAmount: Int? = null) {
+        val finalAmount = overrideAmount ?: amount ?: customAmount.toIntOrNull()
+        if (finalAmount == null || finalAmount <= 0) return
+        submitting = true
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.tipEatsOrderRider(orderId, rw.itunda.core.network.TipEatsOrderRequest(finalAmount.toDouble()))
+                onTipped()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text("Tip your rider", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            EATS_TIP_PRESETS.forEach { preset ->
+                val selected = amount == preset
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
+                        .pressScaleClickable(enabled = !submitting) { amount = preset; customAmount = ""; submit(preset) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("%,d".format(preset), color = if (selected) Color.White else Ids.colors.textSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            IdsTextField(
+                value = customAmount,
+                onValueChange = { customAmount = it; amount = null },
+                label = "Custom amount (RWF)",
+                modifier = Modifier.weight(1f),
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (submitting || (customAmount.toIntOrNull() ?: 0) <= 0) Ids.colors.textTertiary else Ids.colors.brand)
+                    .pressScaleClickable(enabled = !submitting && (customAmount.toIntOrNull() ?: 0) > 0) { submit() }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) { Text(if (submitting) "…" else "Tip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp)) }
+    }
+}

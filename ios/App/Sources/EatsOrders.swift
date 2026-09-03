@@ -103,6 +103,9 @@ struct MyEatsOrdersView: View {
     @State private var orders: [EatsOrderDto]?
     @State private var error: String?
     @State private var cancellingId: String?
+    // Real optimistic-hide for TipRiderPrompt -- same pattern bank-mfe's own
+    // tippedOrderIds establishes.
+    @State private var tippedOrderIds: Set<String> = []
 
     var body: some View {
         Group {
@@ -134,6 +137,9 @@ struct MyEatsOrdersView: View {
                             } else if order.status == "DELIVERED" {
                                 VStack(alignment: .leading, spacing: 8) {
                                     ReviewOrderCard(order: order)
+                                    if order.riderId != nil, order.tipAmount == nil, !tippedOrderIds.contains(order.id) {
+                                        TipRiderPrompt(orderId: order.id, onTipped: { tippedOrderIds.insert(order.id) })
+                                    }
                                     ReorderButton(reordering: reorderingId == order.id, onClick: { onReorder(order) })
                                 }
                             } else if order.status == "CANCELLED" {
