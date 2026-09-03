@@ -290,8 +290,10 @@ internal fun GroupSplitBillsView(
                                         )
                                         amountText = ""; descriptionText = ""; selectedParticipantIds = emptySet(); showNewForm = false; ladderMode = false
                                         refresh()
-                                    } catch (_: Exception) {
-                                        error = "That split bill could not be created."
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
                                     } finally { busyId = null }
                                 }
                             },
@@ -342,8 +344,8 @@ internal fun GroupSplitBillsView(
                                             refresh()
                                         } catch (e: retrofit2.HttpException) {
                                             error = superAppErrorMessage(e)
-                                        } catch (_: Exception) {
-                                            error = "That payment could not be completed."
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally { busyId = null }
                                     }
                                 },
@@ -370,8 +372,10 @@ internal fun GroupSplitBillsView(
                                                 NetworkClient.apiService.attachSplitBillReceipt(entry.splitBill.id, AttachSplitBillReceiptRequest(url))
                                                 receiptUrlDrafts = receiptUrlDrafts - entry.splitBill.id
                                                 refresh()
-                                            } catch (_: Exception) {
-                                                error = "That receipt could not be attached."
+                                            } catch (e: HttpException) {
+                                                error = superAppErrorMessage(e)
+                                            } catch (e: IOException) {
+                                                error = "Couldn't reach itunda. Check your connection and try again."
                                             } finally { busyId = null }
                                         }
                                     },
@@ -390,8 +394,10 @@ internal fun GroupSplitBillsView(
                                         try {
                                             NetworkClient.apiService.requestSplitBillNextRound(entry.splitBill.id)
                                             refresh()
-                                        } catch (_: Exception) {
-                                            error = "Could not start the next settlement round."
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally { busyId = null }
                                     }
                                 },

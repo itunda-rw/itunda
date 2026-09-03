@@ -315,8 +315,8 @@ internal fun DirectSplitBillsView(
                                             refresh()
                                         } catch (e: retrofit2.HttpException) {
                                             error = superAppErrorMessage(e)
-                                        } catch (_: Exception) {
-                                            error = "That payment could not be completed."
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally { busyId = null }
                                     }
                                 },
@@ -343,8 +343,10 @@ internal fun DirectSplitBillsView(
                                                 NetworkClient.apiService.attachSplitBillReceipt(entry.splitBill.id, AttachSplitBillReceiptRequest(url))
                                                 receiptUrlDrafts = receiptUrlDrafts - entry.splitBill.id
                                                 refresh()
-                                            } catch (_: Exception) {
-                                                error = "That receipt could not be attached."
+                                            } catch (e: HttpException) {
+                                                error = superAppErrorMessage(e)
+                                            } catch (e: IOException) {
+                                                error = "Couldn't reach itunda. Check your connection and try again."
                                             } finally { busyId = null }
                                         }
                                     },
@@ -363,8 +365,10 @@ internal fun DirectSplitBillsView(
                                         try {
                                             NetworkClient.apiService.requestSplitBillNextRound(entry.splitBill.id)
                                             refresh()
-                                        } catch (_: Exception) {
-                                            error = "Could not start the next settlement round."
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
                                         } finally { busyId = null }
                                     }
                                 },
