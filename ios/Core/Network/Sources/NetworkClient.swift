@@ -5578,6 +5578,9 @@ extension NetworkClient {
     public func resumeProductSubscription(_ id: String) async throws -> ProductSubscriptionResponse { try await authenticatedPost("api/v1/product-subscriptions/\(id)/resume", body: EmptyBody()) }
     public func cancelProductSubscription(_ id: String) async throws -> ProductSubscriptionResponse { try await authenticatedPost("api/v1/product-subscriptions/\(id)/cancel", body: EmptyBody()) }
 
+    // Real Coupang 정기배송 "건너뛰기" (skip next) -- ported from bank-mfe (2026-09-03).
+    public func skipNextProductSubscriptionDelivery(_ id: String) async throws -> ProductSubscriptionResponse { try await authenticatedPost("api/v1/product-subscriptions/\(id)/skip-next", body: EmptyBody()) }
+
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     public func searchPlaces(query: String) async throws -> MapsSearchResponse {
         try await get("api/v1/maps/search", query: [URLQueryItem(name: "q", value: query)])

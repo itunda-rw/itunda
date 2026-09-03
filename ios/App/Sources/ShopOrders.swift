@@ -172,6 +172,15 @@ struct MyProductSubscriptionsView: View {
                         }
                         if s.status != "CANCELLED" {
                             HStack(spacing: 8) {
+                                if s.status == "ACTIVE" {
+                                    Button(action: { Task { await skipNext(s.id) } }) {
+                                        Text(busyId == s.id ? "…" : "Skip next")
+                                            .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(IDS.Colors.chipBackground).cornerRadius(10)
+                                    }
+                                    .disabled(busyId == s.id)
+                                }
                                 Button(action: { Task { await toggle(s) } }) {
                                     Text(busyId == s.id ? "…" : (s.status == "ACTIVE" ? "Pause" : "Resume"))
                                         .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -217,6 +226,17 @@ struct MyProductSubscriptionsView: View {
             await load()
         } catch {
             self.error = "Could not update this subscription."
+        }
+    }
+
+    private func skipNext(_ id: String) async {
+        busyId = id
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.skipNextProductSubscriptionDelivery(id)
+            await load()
+        } catch {
+            self.error = "Could not skip this delivery."
         }
     }
 

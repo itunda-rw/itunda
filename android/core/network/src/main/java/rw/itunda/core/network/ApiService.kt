@@ -3715,6 +3715,10 @@ interface ApiService {
     @POST("api/v1/product-subscriptions/{id}/cancel")
     suspend fun cancelProductSubscription(@Path("id") id: String): ProductSubscriptionResponse
 
+    // Real Coupang 정기배송 "건너뛰기" (skip next) -- ported from bank-mfe (2026-09-03).
+    @POST("api/v1/product-subscriptions/{id}/skip-next")
+    suspend fun skipNextProductSubscriptionDelivery(@Path("id") id: String): ProductSubscriptionResponse
+
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse
 

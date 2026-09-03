@@ -244,6 +244,25 @@ internal fun MyProductSubscriptionsView() {
                     }
                     if (s.status != "CANCELLED") {
                         Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (s.status == "ACTIVE") {
+                                TextButton(onClick = {
+                                    busyId = s.id
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.skipNextProductSubscriptionDelivery(s.id)
+                                            load()
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
+                                        } finally {
+                                            busyId = null
+                                        }
+                                    }
+                                }, enabled = busyId != s.id) {
+                                    Text(if (busyId == s.id) "…" else "Skip next", fontSize = 13.sp)
+                                }
+                            }
                             TextButton(onClick = {
                                 busyId = s.id
                                 coroutineScope.launch {
