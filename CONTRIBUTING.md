@@ -58,9 +58,9 @@ For the real backend (`services/backend`, Kotlin + Spring Boot + MySQL):
 ./gradlew test
 ```
 
-For Android (`android/`) or iOS (`ios/`), see their own module-specific build commands —
-there is no single repo-wide `npm run build`/`test`/`lint`; this is a multi-stack
-monorepo, not a single Node.js project.
+For Android (`android/`) or iOS (`ios/`), see [README.md](README.md#android)'s own setup
+section — there is no single repo-wide `npm run build`/`test`/`lint`; this is a
+multi-stack monorepo, not a single Node.js project.
 
 ### 3. Commit Your Changes
 
