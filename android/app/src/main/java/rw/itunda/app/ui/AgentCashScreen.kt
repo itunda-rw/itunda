@@ -30,10 +30,13 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import rw.itunda.core.network.AgentWithdrawalAuthorizationDto
 import rw.itunda.core.network.CancelAgentWithdrawalAuthorizationRequest
 import rw.itunda.core.network.CreateAgentWithdrawalAuthorizationRequest
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.superAppErrorMessage
+import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -50,7 +53,8 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
     val scope = rememberCoroutineScope()
     suspend fun refresh() {
         try { authorizations = NetworkClient.apiService.getAgentWithdrawalAuthorizations().authorizations; error = null }
-        catch (_: Exception) { error = "Could not load your withdrawal codes." }
+        catch (e: HttpException) { error = superAppErrorMessage(e) }
+        catch (e: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
     }
     LaunchedEffect(Unit) { refresh() }
     BackHandler(onBack = onBack)
@@ -86,7 +90,8 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
                         pendingCreationKey = null
                         refresh()
                     }
-                    catch (_: Exception) { error = "Could not create a code. You may already have three active codes." }
+                    catch (e: HttpException) { error = superAppErrorMessage(e) }
+                    catch (e: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
                     finally { busy = false }
                 }
             })
@@ -111,7 +116,8 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
             busy = true
             scope.launch {
                 try { NetworkClient.apiService.cancelAgentWithdrawalAuthorization(CancelAgentWithdrawalAuthorizationRequest(authorization.code)); refresh() }
-                catch (_: Exception) { error = "This code could not be cancelled." }
+                catch (e: HttpException) { error = superAppErrorMessage(e) }
+                catch (e: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
                 finally { busy = false }
             }
         } }

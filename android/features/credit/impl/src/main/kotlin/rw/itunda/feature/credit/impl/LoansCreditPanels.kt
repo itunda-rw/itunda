@@ -49,6 +49,9 @@ import rw.itunda.core.network.PostpaidCreditLineDto
 import rw.itunda.core.network.RefinanceLoanRequest
 import rw.itunda.core.network.RefinanceResult
 import rw.itunda.core.network.RepayLoanRequest
+import rw.itunda.core.network.superAppErrorMessage
+import retrofit2.HttpException
+import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -108,8 +111,10 @@ internal fun OverdraftPanel() {
                         scope.launch {
                             try {
                                 account = NetworkClient.apiService.openOverdraft(UUID.randomUUID().toString(), OpenOverdraftRequest(limit)).account
-                            } catch (_: Exception) {
-                                error = "Could not open an overdraft account."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                             } finally { busy = false }
                         }
                     },
@@ -145,8 +150,10 @@ internal fun OverdraftPanel() {
                             account = current.copy(drawnBalance = res.drawnBalance)
                             drawAmount = ""
                             notice = "Drew ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF still available."
-                        } catch (_: Exception) {
-                            error = "Could not draw from your overdraft."
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally { busy = false }
                     }
                 },
@@ -170,8 +177,10 @@ internal fun OverdraftPanel() {
                             account = current.copy(drawnBalance = res.drawnBalance)
                             repayAmount = ""
                             notice = "Repaid ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF now available."
-                        } catch (_: Exception) {
-                            error = "Could not repay your overdraft."
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally { busy = false }
                     }
                 },
@@ -229,8 +238,10 @@ internal fun PostpaidCreditPanel() {
                         scope.launch {
                             try {
                                 line = NetworkClient.apiService.applyForPostpaidCredit(UUID.randomUUID().toString()).line
-                            } catch (_: Exception) {
-                                error = "Could not open a postpaid credit line."
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
                             } finally { busy = false }
                         }
                     },
@@ -270,8 +281,10 @@ internal fun PostpaidCreditPanel() {
                             line = current.copy(currentBalance = res.currentBalance)
                             spendAmount = ""
                             notice = "Added ${formatMoneyLoans(res.amount)} RWF to your account -- ${formatMoneyLoans(res.availableCredit)} RWF still available."
-                        } catch (_: Exception) {
-                            error = "Could not spend from your postpaid credit line."
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally { busy = false }
                     }
                 },
@@ -295,8 +308,10 @@ internal fun PostpaidCreditPanel() {
                             line = current.copy(currentBalance = res.currentBalance, status = if (res.currentBalance <= BigDecimal.ZERO) "ACTIVE" else current.status)
                             repayAmount = ""
                             notice = "Repaid ${formatMoneyLoans(res.amount)} RWF -- ${formatMoneyLoans(res.availableCredit)} RWF now available."
-                        } catch (_: Exception) {
-                            error = "Could not repay your postpaid credit line."
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally { busy = false }
                     }
                 },

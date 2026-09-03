@@ -289,8 +289,10 @@ private fun FacePaySettingsCard(enrolled: Boolean?, onChanged: () -> Unit) {
                     try {
                         if (enrolled) NetworkClient.apiService.revokeFacePay() else NetworkClient.apiService.enrollFacePay()
                         onChanged()
-                    } catch (e: Exception) {
-                        error = "Could not update Face Pay."
+                    } catch (e: HttpException) {
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
                     } finally {
                         busy = false
                     }
