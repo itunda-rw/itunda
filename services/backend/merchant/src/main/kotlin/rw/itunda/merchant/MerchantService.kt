@@ -178,12 +178,19 @@ class MerchantService(
     // getMyMerchant(ownerUserId) ownership check -- a static QR's whole real point is
     // that a CUSTOMER, not the merchant, initiates the intent.
     internal fun createIntent(merchantId: String, amount: BigDecimal, description: String): PaymentIntent {
+        // Real flake fix (2026-09-03): expiresAt and createdAt used to come from two
+        // separate Instant.now() calls (createdAt via its own constructor default) --
+        // under a contended CI runner, a scheduling gap between them could push their
+        // difference off exactly 900s, intermittently failing generateQr's own test
+        // assertion. One shared `now` guarantees the 900s window is always exact.
+        val now = Instant.now()
         val intent = PaymentIntent(
             id = "pi_${UUID.randomUUID()}",
             merchantId = merchantId,
             amount = amount,
             description = description,
-            expiresAt = Instant.now().plusSeconds(900),
+            expiresAt = now.plusSeconds(900),
+            createdAt = now,
             ussdCode = generateUssdCode(),
         )
         return paymentIntentRepository.save(intent)
@@ -268,12 +275,16 @@ class MerchantService(
         if ((orderId?.length ?: 0) > 200) throw InvalidCheckoutRequestException("orderId must be 200 characters or fewer")
         val normalizedSuccessUrl = normalizeCheckoutRedirectUrl("successUrl", successUrl)
         val normalizedFailUrl = normalizeCheckoutRedirectUrl("failUrl", failUrl)
+        // Real flake fix (2026-09-03) -- see createIntent's own doc comment: one shared
+        // `now` for both expiresAt and createdAt, not two separate Instant.now() calls.
+        val now = Instant.now()
         val intent = PaymentIntent(
             id = "pi_${UUID.randomUUID()}",
             merchantId = merchant.id,
             amount = amount,
             description = trimmedDescription,
-            expiresAt = Instant.now().plusSeconds(900),
+            expiresAt = now.plusSeconds(900),
+            createdAt = now,
             orderId = orderId?.trim()?.ifBlank { null },
             successUrl = normalizedSuccessUrl,
             failUrl = normalizedFailUrl,
