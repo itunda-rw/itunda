@@ -211,7 +211,7 @@ internal fun PayByCodeCard(
                 error = superAppErrorMessage(e)
                 submitting = false
             } catch (e: IOException) {
-                error = "Could not look up this payment code."
+                error = "Couldn't reach itunda. Check your connection and try again."
                 submitting = false
             }
         }
@@ -364,7 +364,7 @@ internal fun PayByScanCard(
                 scannedIntentId = null
                 submitting = false
             } catch (e: IOException) {
-                error = "Could not look up this payment code."
+                error = "Couldn't reach itunda. Check your connection and try again."
                 scannedIntentId = null
                 submitting = false
             }
