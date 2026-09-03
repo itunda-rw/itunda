@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: yarn
 
       # Real CI fix (2026-09-03): package.json pins "packageManager": "yarn@4.17.0"
       # (Corepack-managed), but the runner's global Yarn is 1.22.22 -- without this,
@@ -60,6 +61,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: yarn
 
       - name: Enable Corepack
         run: corepack enable
@@ -80,6 +82,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: yarn
 
       - name: Enable Corepack
         run: corepack enable
@@ -159,6 +162,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       - name: Build
         working-directory: services/backend
@@ -175,6 +179,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
       - name: Build
         working-directory: services/microservices
@@ -198,6 +203,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
 
       # Real CI fix (2026-09-03): android/settings.gradle.kts applies the
       # `com.facebook.react.settings` plugin from
@@ -214,6 +221,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
       # Real CI fix (2026-09-03): android/gradle.properties pins
       # `org.gradle.jvmargs=-Xmx6144m`, tuned for a developer's own local machine,
@@ -253,6 +261,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: npm
+          cache-dependency-path: packages/saronite/package-lock.json
 
       - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
         working-directory: packages/saronite
