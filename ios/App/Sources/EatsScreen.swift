@@ -86,7 +86,7 @@ struct EatsContent: View {
     }
 }
 
-enum OrderFoodView { case browse, favorites, orders }
+enum OrderFoodView { case browse, favorites, orders, group }
 
 // isoDateFormatterFractional moved to Core/DesignSystem/Sources/Components/
 // ISO8601DateFormatterExtensions.swift (2026-09-02, Pay Feature-module
@@ -242,6 +242,7 @@ struct OrderFoodContent: View {
                     Text("Restaurants").tag(OrderFoodView.browse)
                     Text("Favorites").tag(OrderFoodView.favorites)
                     Text("My orders").tag(OrderFoodView.orders)
+                    Text("Order together").tag(OrderFoodView.group)
                 }
                 .pickerStyle(.segmented)
 
@@ -251,6 +252,8 @@ struct OrderFoodContent: View {
                     if let reorderError {
                         Text(reorderError).foregroundColor(.red).font(.caption)
                     }
+                } else if view == .group {
+                    GroupEatsOrderView(restaurants: allRestaurants)
                 } else if view == .favorites {
                     FavoriteRestaurantsView(
                         onOpen: { favorite in

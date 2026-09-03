@@ -4626,6 +4626,25 @@ public struct EatsOrderItemDto: Decodable, Identifiable {
 public struct EatsOrderDetailResponse: Decodable { public let success: Bool; public let order: EatsOrderDto; public let items: [EatsOrderItemDto] }
 public struct EatsOrdersResponse: Decodable { public let success: Bool; public let orders: [EatsOrderDto] }
 
+// Real 배달의민족 함께주문 (Baemin "Together Order") -- ported from bank-mfe/Android
+// (2026-09-03). A join-code-shared cart in front of the same real checkout/payment
+// path finalizeGroupEatsOrder reuses underneath.
+public struct GroupEatsOrderDto: Decodable {
+    public let id: String; public let hostUserId: String; public let restaurantId: String; public let joinCode: String
+    public let deliveryAddress: String; public let deliveryLatitude: Double?; public let deliveryLongitude: Double?
+    public let fulfillmentType: String; public let status: String; public let resultingOrderId: String?
+    public let createdAt: String; public let finalizedAt: String?
+}
+public struct GroupEatsOrderItemView: Decodable, Identifiable { public let productId: String; public let productName: String; public let quantity: Int; public let unitPrice: Double; public let lineTotal: Double; public var id: String { productId } }
+public struct GroupEatsOrderParticipantView: Decodable, Identifiable { public let userId: String; public let joinedAt: String; public let subtotal: Double; public let items: [GroupEatsOrderItemView]; public var id: String { userId } }
+public struct CreateGroupEatsOrderRequest: Encodable { public let restaurantId: String; public let deliveryAddress: String; public init(restaurantId: String, deliveryAddress: String) { self.restaurantId = restaurantId; self.deliveryAddress = deliveryAddress } }
+public struct JoinGroupEatsOrderRequest: Encodable { public let joinCode: String; public init(joinCode: String) { self.joinCode = joinCode } }
+public struct GroupEatsOrderItemRequest: Encodable { public let menuItemId: String; public let quantity: Int; public init(menuItemId: String, quantity: Int) { self.menuItemId = menuItemId; self.quantity = quantity } }
+public struct SetGroupEatsOrderItemsRequest: Encodable { public let items: [GroupEatsOrderItemRequest]; public init(items: [GroupEatsOrderItemRequest]) { self.items = items } }
+public struct GroupEatsOrderResponse: Decodable { public let success: Bool; public let groupOrder: GroupEatsOrderDto }
+public struct GroupEatsOrderDetailResponse: Decodable { public let success: Bool; public let groupOrder: GroupEatsOrderDto; public let grandTotal: Double; public let participants: [GroupEatsOrderParticipantView] }
+public struct FinalizeGroupEatsOrderResponse: Decodable { public let success: Bool; public let order: EatsOrderDto; public let items: [EatsOrderItemDto] }
+
 public struct RiderLocationDto: Decodable { public let latitude: Double; public let longitude: Double; public let updatedAt: String }
 public struct EatsRiderLocationResponse: Decodable { public let success: Bool; public let available: Bool; public let location: RiderLocationDto? }
 
@@ -6046,6 +6065,32 @@ extension NetworkClient {
     }
 
     public func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
+
+    // Real 배달의민족 함께주문 (Baemin "Together Order") -- see GroupEatsOrderDto's own
+    // doc comment.
+    public func createGroupEatsOrder(restaurantId: String, deliveryAddress: String) async throws -> GroupEatsOrderResponse {
+        try await authenticatedPost("api/v1/eats/group-orders", body: CreateGroupEatsOrderRequest(restaurantId: restaurantId, deliveryAddress: deliveryAddress))
+    }
+
+    public func joinGroupEatsOrder(joinCode: String) async throws -> GroupEatsOrderResponse {
+        try await authenticatedPost("api/v1/eats/group-orders/join", body: JoinGroupEatsOrderRequest(joinCode: joinCode))
+    }
+
+    public func getGroupEatsOrder(id: String) async throws -> GroupEatsOrderDetailResponse {
+        try await get("api/v1/eats/group-orders/\(id)")
+    }
+
+    public func setGroupEatsOrderItems(id: String, items: [GroupEatsOrderItemRequest]) async throws -> GroupEatsOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/group-orders/\(id)/items", body: SetGroupEatsOrderItemsRequest(items: items))
+    }
+
+    public func finalizeGroupEatsOrder(id: String) async throws -> FinalizeGroupEatsOrderResponse {
+        try await authenticatedPost("api/v1/eats/group-orders/\(id)/finalize", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func cancelGroupEatsOrder(id: String) async throws -> GroupEatsOrderResponse {
+        try await authenticatedPost("api/v1/eats/group-orders/\(id)/cancel", body: EmptyBody())
+    }
 
     public func placeDineInOrder(_ request: PlaceDineInOrderRequest) async throws -> DineInOrderDetailResponse {
         try await authenticatedPost("api/v1/eats/dine-in/orders", body: request, idempotencyKey: UUID().uuidString)

@@ -1899,6 +1899,27 @@ data class EatsOrderItemDto(
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
 
+// Real 배달의민족 함께주문 (Baemin "Together Order") -- ported from bank-mfe
+// (2026-09-03), see lib/eatsGroupOrders.ts's own doc comment. A join-code-shared cart
+// in front of the same real checkout/payment path finalizeGroupEatsOrder already
+// reuses underneath (GroupEatsOrderService.finalizeOrder calls the exact same backend
+// EatsOrderService.placeOrder).
+data class GroupEatsOrderDto(
+    val id: String, val hostUserId: String, val restaurantId: String, val joinCode: String,
+    val deliveryAddress: String, val deliveryLatitude: Double?, val deliveryLongitude: Double?,
+    val fulfillmentType: String, val status: String, val resultingOrderId: String?,
+    val createdAt: String, val finalizedAt: String?,
+)
+data class GroupEatsOrderItemView(val productId: String, val productName: String, val quantity: Int, val unitPrice: Double, val lineTotal: Double)
+data class GroupEatsOrderParticipantView(val userId: String, val joinedAt: String, val subtotal: Double, val items: List<GroupEatsOrderItemView>)
+data class CreateGroupEatsOrderRequest(val restaurantId: String, val deliveryAddress: String = "", val deliveryLatitude: Double? = null, val deliveryLongitude: Double? = null, val fulfillmentType: String = "DELIVERY")
+data class JoinGroupEatsOrderRequest(val joinCode: String)
+data class GroupEatsOrderItemRequest(val menuItemId: String, val quantity: Int, val selectedChoiceIds: List<String>? = null)
+data class SetGroupEatsOrderItemsRequest(val items: List<GroupEatsOrderItemRequest>)
+data class GroupEatsOrderResponse(val success: Boolean, val groupOrder: GroupEatsOrderDto)
+data class GroupEatsOrderDetailResponse(val success: Boolean, val groupOrder: GroupEatsOrderDto, val grandTotal: Double, val participants: List<GroupEatsOrderParticipantView>)
+data class FinalizeGroupEatsOrderResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
+
 data class RiderLocationDto(val latitude: Double, val longitude: Double, val updatedAt: String)
 data class EatsRiderLocationResponse(val success: Boolean, val available: Boolean, val location: RiderLocationDto?)
 
@@ -3994,6 +4015,26 @@ interface ApiService {
 
     @GET("api/v1/eats/orders/my-orders")
     suspend fun getMyEatsOrders(): EatsOrdersResponse
+
+    // Real 배달의민족 함께주문 (Baemin "Together Order") -- see GroupEatsOrderDto's own
+    // doc comment.
+    @POST("api/v1/eats/group-orders")
+    suspend fun createGroupEatsOrder(@Body request: CreateGroupEatsOrderRequest): GroupEatsOrderResponse
+
+    @POST("api/v1/eats/group-orders/join")
+    suspend fun joinGroupEatsOrder(@Body request: JoinGroupEatsOrderRequest): GroupEatsOrderResponse
+
+    @GET("api/v1/eats/group-orders/{id}")
+    suspend fun getGroupEatsOrder(@Path("id") id: String): GroupEatsOrderDetailResponse
+
+    @POST("api/v1/eats/group-orders/{id}/items")
+    suspend fun setGroupEatsOrderItems(@Path("id") id: String, @Body request: SetGroupEatsOrderItemsRequest): GroupEatsOrderDetailResponse
+
+    @POST("api/v1/eats/group-orders/{id}/finalize")
+    suspend fun finalizeGroupEatsOrder(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): FinalizeGroupEatsOrderResponse
+
+    @POST("api/v1/eats/group-orders/{id}/cancel")
+    suspend fun cancelGroupEatsOrder(@Path("id") id: String): GroupEatsOrderResponse
 
     // Real order detail, including items -- backs the real "Reorder" button
     // (2026-07-19): a buyer can re-populate a cart from a past order's real items

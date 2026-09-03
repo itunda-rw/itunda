@@ -76,7 +76,7 @@ import java.io.IOException
 
 internal enum class EatsMode { ORDER, DELIVER }
 
-internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS }
+internal enum class OrderFoodView { BROWSE, FAVORITES, ORDERS, GROUP }
 
 @Composable
 internal fun OrderFoodContent(
@@ -373,7 +373,7 @@ internal fun OrderFoodContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
+                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders", OrderFoodView.GROUP to "Order together").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.pressScaleClickable { view = v }) {
                         Text(
@@ -414,6 +414,8 @@ internal fun OrderFoodContent(
                     onChanged = ::loadFavorites,
                 )
             }
+        } else if (view == OrderFoodView.GROUP) {
+            item { GroupEatsOrderView(restaurants = allRestaurants) }
         } else {
             // Real Coupang Eats category icon row (2026-08-12, direct user screenshot)
             // -- the real reference shows a horizontally-scrolling row of round
