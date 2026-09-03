@@ -36,6 +36,7 @@ struct BusinessAccountTab: View {
                 WebhookUrlCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 ApiIntegrationCard()
                 StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                MoreStoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
             }
             Text("Business account").font(.title3).bold()
             Text("Keep your business money separate from your personal account. Your real card/QR collections still settle to your personal account as before — move money into your business account whenever you're ready to set it aside.")
@@ -62,6 +63,7 @@ struct BusinessAccountTab: View {
                     FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                     ApiIntegrationCard()
                     StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                    MoreStoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Business balance").font(.caption).foregroundColor(.secondary)

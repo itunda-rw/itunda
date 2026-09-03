@@ -161,6 +161,7 @@ fun BusinessAccountTab() {
             merchant?.let { m -> WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) }
             ApiIntegrationCard()
             merchant?.let { m -> StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) }
+            merchant?.let { m -> MoreStoreSettingsCard(merchant = m, onUpdated = { merchant = it }) }
             Text("Business account", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Keep your business money separate from your personal account. Your real card/QR " +
@@ -195,6 +196,7 @@ fun BusinessAccountTab() {
         merchant?.let { m -> item { WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) } }
         item { ApiIntegrationCard() }
         merchant?.let { m -> item { StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) } }
+        merchant?.let { m -> item { MoreStoreSettingsCard(merchant = m, onUpdated = { merchant = it }) } }
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {

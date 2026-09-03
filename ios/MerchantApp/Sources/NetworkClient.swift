@@ -45,6 +45,17 @@ struct MerchantDto: Decodable {
     let minOrderAmount: Double?
     let cashbackRate: Double?
     let acceptsScheduledOrders: Bool
+    // Real merchant-set phone/hours/prep-time/pickup-discount/accepting-orders/
+    // closed-weekdays -- ported from merchant-mfe (2026-09-03). See
+    // MerchantService.setPhoneNumber/etc.'s own doc comments on the backend.
+    // closedWeekdays is comma-joined on the wire (matching photoUrls' own convention
+    // for a rarely-multi-valued property), 1=Monday..7=Sunday (java.time.DayOfWeek).
+    let phoneNumber: String?
+    let openingHours: String?
+    let avgPrepTimeMinutes: Int?
+    let pickupDiscountPercent: Int?
+    let isAcceptingOrders: Bool
+    let closedWeekdays: String?
 }
 struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDto }
 // Real API key + webhook delivery log/replay -- found via a fresh "defined but
@@ -70,6 +81,12 @@ struct SetCategoryRequest: Encodable { let category: String }
 struct SetMerchantPhotoUrlRequest: Encodable { let photoUrl: String }
 struct SetMinOrderAmountRequest: Encodable { let minOrderAmount: Double? }
 struct SetCashbackRateRequest: Encodable { let rate: Double? }
+struct SetMerchantPhoneNumberRequest: Encodable { let phoneNumber: String? }
+struct SetMerchantOpeningHoursRequest: Encodable { let openingHours: String? }
+struct SetMerchantAvgPrepTimeMinutesRequest: Encodable { let avgPrepTimeMinutes: Int? }
+struct SetMerchantPickupDiscountRequest: Encodable { let pickupDiscountPercent: Int? }
+struct SetAcceptingOrdersRequest: Encodable { let accepting: Bool }
+struct SetClosedWeekdaysRequest: Encodable { let weekdays: [Int] }
 struct SetAcceptsScheduledOrdersRequest: Encodable { let accepts: Bool }
 struct SetParticipatesInEatsMembershipRequest: Encodable { let participates: Bool }
 
@@ -713,6 +730,27 @@ final class MerchantNetworkClient {
     }
     func setParticipatesInEatsMembership(_ participates: Bool) async throws -> MerchantResponse {
         try await post("api/v1/merchant/eats-membership-participation", body: SetParticipatesInEatsMembershipRequest(participates: participates))
+    }
+
+    // Real merchant-set phone/hours/prep-time/pickup-discount/accepting-orders/
+    // closed-weekdays -- see MerchantDto.phoneNumber's own doc comment.
+    func setMerchantPhoneNumber(_ phoneNumber: String?) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/phone", body: SetMerchantPhoneNumberRequest(phoneNumber: phoneNumber))
+    }
+    func setMerchantOpeningHours(_ openingHours: String?) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/hours", body: SetMerchantOpeningHoursRequest(openingHours: openingHours))
+    }
+    func setMerchantAvgPrepTimeMinutes(_ avgPrepTimeMinutes: Int?) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/prep-time", body: SetMerchantAvgPrepTimeMinutesRequest(avgPrepTimeMinutes: avgPrepTimeMinutes))
+    }
+    func setMerchantPickupDiscount(_ pickupDiscountPercent: Int?) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/pickup-discount", body: SetMerchantPickupDiscountRequest(pickupDiscountPercent: pickupDiscountPercent))
+    }
+    func setAcceptingOrders(_ accepting: Bool) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/accepting-orders", body: SetAcceptingOrdersRequest(accepting: accepting))
+    }
+    func setClosedWeekdays(_ weekdays: [Int]) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/closed-weekdays", body: SetClosedWeekdaysRequest(weekdays: weekdays))
     }
 
     func getFollowerCount() async throws -> FollowerCountResponse { try await get("api/v1/merchant/followers/count") }

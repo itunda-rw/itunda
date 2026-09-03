@@ -103,6 +103,17 @@ data class MerchantDto(
     val minOrderAmount: Double? = null,
     val cashbackRate: Double? = null,
     val acceptsScheduledOrders: Boolean = false,
+    // Real merchant-set phone/hours/prep-time/pickup-discount/accepting-orders/
+    // closed-weekdays -- ported from merchant-mfe (2026-09-03). See
+    // MerchantService.setPhoneNumber/etc.'s own doc comments on the backend.
+    // closedWeekdays is comma-joined on the wire (matching photoUrls' own convention
+    // for a rarely-multi-valued property), 1=Monday..7=Sunday (java.time.DayOfWeek).
+    val phoneNumber: String? = null,
+    val openingHours: String? = null,
+    val avgPrepTimeMinutes: Int? = null,
+    val pickupDiscountPercent: Int? = null,
+    val isAcceptingOrders: Boolean = true,
+    val closedWeekdays: String? = null,
 )
 data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
 data class SetMerchantLocationRequest(val latitude: Double, val longitude: Double)
@@ -112,6 +123,12 @@ data class SetMinOrderAmountRequest(val minOrderAmount: Double?)
 data class SetCashbackRateRequest(val rate: Double?)
 data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
 data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
+data class SetMerchantPhoneNumberRequest(val phoneNumber: String?)
+data class SetMerchantOpeningHoursRequest(val openingHours: String?)
+data class SetMerchantAvgPrepTimeMinutesRequest(val avgPrepTimeMinutes: Int?)
+data class SetMerchantPickupDiscountRequest(val pickupDiscountPercent: Int?)
+data class SetAcceptingOrdersRequest(val accepting: Boolean)
+data class SetClosedWeekdaysRequest(val weekdays: List<Int>)
 
 // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
 // MerchantAd.kt's own doc comment for the sourced radius range and flat-fee tiers.
@@ -648,6 +665,26 @@ interface ApiService {
 
     @POST("api/v1/merchant/scheduled-orders-participation")
     suspend fun setAcceptsScheduledOrders(@Body request: SetAcceptsScheduledOrdersRequest): MerchantResponse
+
+    // Real merchant-set phone/hours/prep-time/pickup-discount/accepting-orders/
+    // closed-weekdays -- see MerchantDto.phoneNumber's own doc comment.
+    @POST("api/v1/merchant/phone")
+    suspend fun setMerchantPhoneNumber(@Body request: SetMerchantPhoneNumberRequest): MerchantResponse
+
+    @POST("api/v1/merchant/hours")
+    suspend fun setMerchantOpeningHours(@Body request: SetMerchantOpeningHoursRequest): MerchantResponse
+
+    @POST("api/v1/merchant/prep-time")
+    suspend fun setMerchantAvgPrepTimeMinutes(@Body request: SetMerchantAvgPrepTimeMinutesRequest): MerchantResponse
+
+    @POST("api/v1/merchant/pickup-discount")
+    suspend fun setMerchantPickupDiscount(@Body request: SetMerchantPickupDiscountRequest): MerchantResponse
+
+    @POST("api/v1/merchant/accepting-orders")
+    suspend fun setAcceptingOrders(@Body request: SetAcceptingOrdersRequest): MerchantResponse
+
+    @POST("api/v1/merchant/closed-weekdays")
+    suspend fun setClosedWeekdays(@Body request: SetClosedWeekdaysRequest): MerchantResponse
 
     @POST("api/v1/merchant/eats-membership-participation")
     suspend fun setParticipatesInEatsMembership(@Body request: SetParticipatesInEatsMembershipRequest): MerchantResponse
