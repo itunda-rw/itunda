@@ -280,6 +280,7 @@ fun MapScreen(
     var routing by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
     var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) } // lat, lng
+    var watchedSharePosition by remember { mutableStateOf<Pair<Double, Double>?>(null) } // real live-location-share being watched, see LocationShareSection.kt
     fun searchTransit(toLat: Double, toLng: Double) {
         val (fromLat, fromLng) = myLocation ?: return
         transitSearching = true
@@ -1059,6 +1060,12 @@ fun MapScreen(
                             iconAllowOverlap(true), iconSize(0.85f),
                         ),
                     )
+                    style.addSource(GeoJsonSource(LIVE_SHARE_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
+                    style.addLayer(
+                        CircleLayer(LIVE_SHARE_LAYER_ID, LIVE_SHARE_SOURCE_ID).withProperties(
+                            circleRadius(8f), circleColor("#F59E0B"), circleStrokeWidth(3f), circleStrokeColor("#ffffff"),
+                        ),
+                    )
                     val featureCollection = FeatureCollection.fromFeatures(currentMerchants.map { m -> merchantFeature(m) })
                     (style.getSourceAs<GeoJsonSource>(MERCHANTS_SOURCE_ID))?.setGeoJson(featureCollection)
 
@@ -1183,6 +1190,19 @@ fun MapScreen(
                 val style = map.style ?: return@getMapAsync
                 val source = style.getSourceAs<GeoJsonSource>(MERCHANTS_SOURCE_ID) ?: return@getMapAsync
                 source.setGeoJson(FeatureCollection.fromFeatures(merchants.map { m -> merchantFeature(m) }))
+            }
+        }
+        LaunchedEffect(watchedSharePosition) {
+            mapView.getMapAsync { map ->
+                val style = map.style ?: return@getMapAsync
+                val source = style.getSourceAs<GeoJsonSource>(LIVE_SHARE_SOURCE_ID) ?: return@getMapAsync
+                val position = watchedSharePosition
+                if (position == null) {
+                    source.setGeoJson(FeatureCollection.fromFeatures(emptyArray()))
+                } else {
+                    source.setGeoJson(FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(Point.fromLngLat(position.second, position.first)))))
+                    map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(position.first, position.second), 14.0))
+                }
             }
         }
         LaunchedEffect(myLocation) {
@@ -1712,6 +1732,8 @@ fun MapScreen(
                                             }
                                         }
                                     },
+                                    myLocation = myLocation,
+                                    onWatchedSharePositionChanged = { watchedSharePosition = it },
                                 )
                             }
                             Box(modifier = Modifier.height(24.dp))

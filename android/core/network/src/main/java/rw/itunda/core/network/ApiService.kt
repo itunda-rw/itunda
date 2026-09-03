@@ -1075,6 +1075,8 @@ data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDt
 data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>, val joinedCounts: Map<String, Int> = emptyMap())
 data class CommunityCategoriesResponse(val success: Boolean, val categories: List<CommunityCategoryDto>)
 data class CommunityTopicsResponse(val success: Boolean, val topics: List<CommunityCategoryDto>)
+data class CommentNotificationsEnabledResponse(val success: Boolean, val commentNotificationsEnabled: Boolean)
+data class SetCommentNotificationsEnabledRequest(val enabled: Boolean)
 data class CommunityPostDetailResponse(val success: Boolean, val post: CommunityPostDto, val authorName: String, val likedByMe: Boolean)
 data class CommunityCommentDto(val id: String, val postId: String, val authorId: String, val body: String, val createdAt: String)
 data class CommunityCommentWithAuthorDto(val comment: CommunityCommentDto, val authorName: String)
@@ -1374,6 +1376,26 @@ data class SharedMapFolderResponse(val success: Boolean, val bookmarks: List<Map
 // own doc comment on the backend. Ported from bank-mfe (2026-08-18); Android already had
 // the view half (SharedFolderSection) but no way to keep what it showed.
 data class SubscribeToSharedMapFolderResponse(val success: Boolean, val copiedCount: Int)
+
+// Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- a real,
+// moving position shared for a bounded window, distinct from the static bookmark-folder
+// share/subscribe above. Ported from bank-mfe/maps-mfe (2026-09-03) -- itunda's own v1 is
+// ALWAYS time-bounded (no "unlimited" option); "live" means periodically-refreshed via
+// polling, not a push channel (itunda has no WebSocket infra for this feature specifically).
+data class LiveLocationShareDto(
+    val id: String, val sharerUserId: String, val recipientUserId: String,
+    val latitude: Double?, val longitude: Double?, val locationUpdatedAt: String?,
+    val expiresAt: String, val revoked: Boolean, val createdAt: String,
+)
+data class StartLocationShareRequest(val recipientPhoneNumber: String, val durationHours: Int = 1)
+data class StartLocationShareResponse(val success: Boolean, val share: LiveLocationShareDto)
+data class UpdateLocationShareRequest(val latitude: Double, val longitude: Double)
+data class UpdateLocationShareResponse(val success: Boolean, val updatedShareCount: Int)
+data class ExtendLocationShareRequest(val additionalHours: Int = 1)
+data class ExtendLocationShareResponse(val success: Boolean, val share: LiveLocationShareDto)
+data class LocationSharesResponse(val success: Boolean, val shares: List<LiveLocationShareDto>)
+data class LocationShareResponse(val success: Boolean, val share: LiveLocationShareDto)
+data class StopLocationShareResponse(val success: Boolean)
 
 data class MapPlaceCategory(val id: String, val label: String)
 val MAP_NEARBY_CATEGORIES = listOf(
@@ -3208,6 +3230,15 @@ interface ApiService {
     @GET("api/v1/community/my-posts")
     suspend fun getMyCommunityPosts(): CommunityPostsResponse
 
+    // Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
+    // from bank-mfe (2026-09-03). Scoped to MY posts only (the preference only affects
+    // notifications about comments on posts the caller authored).
+    @GET("api/v1/community/notification-preference")
+    suspend fun getCommentNotificationsEnabled(): CommentNotificationsEnabledResponse
+
+    @POST("api/v1/community/notification-preference")
+    suspend fun setCommentNotificationsEnabled(@Body request: SetCommentNotificationsEnabledRequest): CommentNotificationsEnabledResponse
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     @GET("api/v1/community/posts/my-neighborhood")
     suspend fun getCommunityPostsMyNeighborhood(@Query("category") category: String? = null): CommunityPostsResponse
@@ -3569,6 +3600,31 @@ interface ApiService {
     // the caller's own bookmarks).
     @POST("api/v1/maps/shared/{userId}/{folderName}/subscribe")
     suspend fun subscribeToSharedMapFolder(@Path("userId") userId: String, @Path("folderName") folderName: String): SubscribeToSharedMapFolderResponse
+
+    // Real Kakao Map-style "친구위치" live location sharing -- see LiveLocationShareDto's
+    // own doc comment.
+    @POST("api/v1/maps/location-share")
+    suspend fun startLocationShare(@Body request: StartLocationShareRequest): StartLocationShareResponse
+
+    @POST("api/v1/maps/location-share/_/update-location")
+    suspend fun updateMyLocationShare(@Body request: UpdateLocationShareRequest): UpdateLocationShareResponse
+
+    @POST("api/v1/maps/location-share/{id}/extend")
+    suspend fun extendLocationShare(@Path("id") id: String, @Body request: ExtendLocationShareRequest): ExtendLocationShareResponse
+
+    @POST("api/v1/maps/location-share/{id}/stop")
+    suspend fun stopLocationShare(@Path("id") id: String): StopLocationShareResponse
+
+    @GET("api/v1/maps/location-share/mine")
+    suspend fun getMyLocationShares(): LocationSharesResponse
+
+    @GET("api/v1/maps/location-share/shared-with-me")
+    suspend fun getLocationSharesWithMe(): LocationSharesResponse
+
+    // Real recipient-side poll -- call this on a real interval (e.g. every 15s) while
+    // watching a share to see the sharer's latest pushed position.
+    @GET("api/v1/maps/location-share/{id}")
+    suspend fun getLocationShare(@Path("id") id: String): LocationShareResponse
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.

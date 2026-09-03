@@ -65,6 +65,8 @@ internal fun AroundYouSection(
     onMoveFolderNameChange: (String) -> Unit,
     onMoveFolderColorChange: (String) -> Unit,
     onConfirmMove: () -> Unit,
+    myLocation: Pair<Double, Double>?,
+    onWatchedSharePositionChanged: (Pair<Double, Double>?) -> Unit,
 ) {
     // Real, free, keyless Kigali weather (itunda Maps redesign, 2026-08-28) -- see
     // KigaliWeatherClient's own doc comment on the backend. Renders nothing at all
@@ -251,4 +253,5 @@ internal fun AroundYouSection(
     // see MapsBooking.kt's own doc comment for the full sourced account). Self-
     // sufficient, fetches its own data, same pattern this section's other rows follow.
     MyBookingsView()
+    LocationShareSection(myLocation = myLocation, onWatchedPositionChanged = onWatchedSharePositionChanged)
 }

@@ -301,6 +301,9 @@ public struct MapScreenView: View {
     @State private var measurePoints: [(Double, Double)] = []
     @State private var lastMeasuredPlaceName: String?
     @State private var measureReverseGeocodeTask: Task<Void, Never>?
+    // Real live-location-share watched marker -- see LocationShareSection.swift's own
+    // doc comment.
+    @State private var watchedSharePosition: CLLocationCoordinate2D?
 
     private func isBookmarked(_ place: PlaceSearchResultDto) -> Bool {
         bookmarks.contains { $0.latitude == place.latitude && $0.longitude == place.longitude }
@@ -328,6 +331,7 @@ public struct MapScreenView: View {
                     MapLibreMapRepresentable(
                         merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace,
                         routeGeometry: route?.geometry, nearbyPlaces: categoryResults, measurePoints: measurePoints,
+                        watchedSharePosition: watchedSharePosition,
                         controller: mapController,
                     )
                         .ignoresSafeArea()
@@ -745,6 +749,13 @@ public struct MapScreenView: View {
                                         }
                                     }
                                     MyBookingsView() // real booking, moved from App/Sources, see MapsBooking.swift
+                                    LocationShareSection(
+                                        myLocation: locationFetcher.coordinate.map { (lat: $0.latitude, lng: $0.longitude) },
+                                        onWatchedPositionChanged: { lat, lng in
+                                            watchedSharePosition = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+                                        },
+                                        onStopWatching: { watchedSharePosition = nil },
+                                    )
                                 }
                             }
                             .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -1318,6 +1329,7 @@ private let measureLineLayerIdentifier = "itunda-measure-line"
 private let measurePointsLayerIdentifier = "itunda-measure-points"
 
 private let nearbyAnnotationTitlePrefix = "itunda-nearby:"
+private let liveShareAnnotationTitle = "itunda-live-share"
 
 private struct MapLibreMapRepresentable: UIViewRepresentable {
     let merchants: [ShoppingMerchantDto]
@@ -1326,6 +1338,11 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
     let routeGeometry: [[Double]]?
     let nearbyPlaces: [NearbyPlaceDto]?
     let measurePoints: [(Double, Double)]
+    // Real Kakao Map-style "친구위치" watched-share marker -- see
+    // LocationShareSection.swift's own doc comment. Amber, distinct in color from "my
+    // location"'s own indigo dot so the two are never visually confused, matching
+    // MapView.tsx's own #F59E0B choice.
+    let watchedSharePosition: CLLocationCoordinate2D?
     let controller: MapController
 
     private let myLocationAnnotationTitle = "itunda-my-location"
@@ -1374,6 +1391,13 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             point.coordinate = myLocation
             point.title = myLocationAnnotationTitle
             points.append(point)
+        }
+        if let watchedSharePosition {
+            let point = MLNPointAnnotation()
+            point.coordinate = watchedSharePosition
+            point.title = liveShareAnnotationTitle
+            points.append(point)
+            mapView.setCenter(watchedSharePosition, zoomLevel: 14, animated: true)
         }
         // Real "nearby places" category-search markers (2026-07-19) -- a distinct
         // violet color, same as bank-mfe's MapView.tsx category chips, tagged via a
@@ -1506,6 +1530,16 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
                 view.frame = CGRect(x: 0, y: 0, width: 18, height: 18)
                 view.backgroundColor = UIColor(red: 0.19, green: 0.51, blue: 0.96, alpha: 1.0)
                 view.layer.cornerRadius = 9
+                view.layer.borderColor = UIColor.white.cgColor
+                view.layer.borderWidth = 3
+                return view
+            }
+            if title == liveShareAnnotationTitle {
+                let identifier = "itunda-live-share-view"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) ?? MLNAnnotationView(reuseIdentifier: identifier)
+                view.frame = CGRect(x: 0, y: 0, width: 16, height: 16)
+                view.backgroundColor = UIColor(red: 0.961, green: 0.620, blue: 0.043, alpha: 1.0)
+                view.layer.cornerRadius = 8
                 view.layer.borderColor = UIColor.white.cgColor
                 view.layer.borderWidth = 3
                 return view

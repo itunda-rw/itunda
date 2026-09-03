@@ -73,6 +73,11 @@ internal const val ROUTE_SOURCE_ID = "route"
 internal const val ROUTE_LAYER_ID = "route-line"
 internal const val NEARBY_SOURCE_ID = "nearby-places"
 internal const val NEARBY_LAYER_ID = "nearby-places-circle"
+// Real live-location-share watched marker -- see LocationShareSection.kt's own doc
+// comment. Amber, distinct in color from "my location"'s own indigo dot so the two are
+// never visually confused, matching MapView.tsx's own #F59E0B choice.
+internal const val LIVE_SHARE_SOURCE_ID = "live-share"
+internal const val LIVE_SHARE_LAYER_ID = "live-share-circle"
 internal const val MERCHANT_ICON_ID = "merchant-pin"
 internal const val DESTINATION_ICON_ID = "destination-pin"
 internal const val NEARBY_ICON_ID = "nearby-pin"

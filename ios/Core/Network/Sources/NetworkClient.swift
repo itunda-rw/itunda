@@ -3501,6 +3501,10 @@ public struct CommunityPostResponse: Decodable { public let success: Bool; publi
 // chat, closing docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
 public struct CommunityPostsResponse: Decodable { public let success: Bool; public let posts: [CommunityPostDto]; public let joinedCounts: [String: Int]? }
 public struct CommunityCategoriesResponse: Decodable { public let success: Bool; public let categories: [CommunityCategoryDto] }
+// Real Karrot 동네생활 "새 댓글 알림 끄기" (turn off new-comment notifications) -- ported
+// from bank-mfe (2026-09-03). Scoped to MY posts only.
+public struct CommentNotificationsEnabledResponse: Decodable { public let success: Bool; public let commentNotificationsEnabled: Bool }
+public struct SetCommentNotificationsEnabledRequest: Encodable { public let enabled: Bool }
 public struct CommunityPostDetailResponse: Decodable { public let success: Bool; public let post: CommunityPostDto; public let authorName: String; public let likedByMe: Bool }
 public struct CommunityCommentDto: Decodable, Identifiable { public let id: String; public let postId: String; public let authorId: String; public let body: String; public let createdAt: String }
 public struct CommunityCommentWithAuthorDto: Decodable, Identifiable {
@@ -3919,6 +3923,26 @@ public struct SetMapFolderVisibilityRequest: Encodable { public let folderName: 
 public struct SetMapFolderVisibilityResponse: Decodable { public let success: Bool; public let updatedCount: Int }
 public struct SharedMapFolderResponse: Decodable { public let success: Bool; public let bookmarks: [MapBookmarkDto] }
 public struct SubscribeToSharedMapFolderResponse: Decodable { public let success: Bool; public let copiedCount: Int }
+
+// Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- a real,
+// moving position shared for a bounded window, distinct from the static bookmark-folder
+// share/subscribe above. Ported from bank-mfe/maps-mfe (2026-09-03) -- itunda's own v1 is
+// ALWAYS time-bounded (no "unlimited" option); "live" means periodically-refreshed via
+// polling, not a push channel (itunda has no WebSocket infra for this feature specifically).
+public struct LiveLocationShareDto: Decodable, Identifiable {
+    public let id: String; public let sharerUserId: String; public let recipientUserId: String
+    public let latitude: Double?; public let longitude: Double?; public let locationUpdatedAt: String?
+    public let expiresAt: String; public let revoked: Bool; public let createdAt: String
+}
+public struct StartLocationShareRequest: Encodable { public let recipientPhoneNumber: String; public let durationHours: Int }
+public struct StartLocationShareResponse: Decodable { public let success: Bool; public let share: LiveLocationShareDto }
+public struct UpdateLocationShareRequest: Encodable { public let latitude: Double; public let longitude: Double }
+public struct UpdateLocationShareResponse: Decodable { public let success: Bool; public let updatedShareCount: Int }
+public struct ExtendLocationShareRequest: Encodable { public let additionalHours: Int }
+public struct ExtendLocationShareResponse: Decodable { public let success: Bool; public let share: LiveLocationShareDto }
+public struct LocationSharesResponse: Decodable { public let success: Bool; public let shares: [LiveLocationShareDto] }
+public struct LocationShareResponse: Decodable { public let success: Bool; public let share: LiveLocationShareDto }
+public struct StopLocationShareResponse: Decodable { public let success: Bool }
 
 public struct MapPlaceCategory: Identifiable { public let id: String; public let label: String; public init(id: String, label: String) { self.id = id; self.label = label } }
 public let mapNearbyCategories: [MapPlaceCategory] = [
@@ -5197,6 +5221,12 @@ extension NetworkClient {
 
     public func getMyCommunityPosts() async throws -> CommunityPostsResponse { try await get("api/v1/community/my-posts") }
 
+    public func getCommentNotificationsEnabled() async throws -> CommentNotificationsEnabledResponse { try await get("api/v1/community/notification-preference") }
+
+    public func setCommentNotificationsEnabled(_ enabled: Bool) async throws -> CommentNotificationsEnabledResponse {
+        try await authenticatedPost("api/v1/community/notification-preference", body: SetCommentNotificationsEnabledRequest(enabled: enabled))
+    }
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     public func getCommunityPostsMyNeighborhood(category: String? = nil) async throws -> CommunityPostsResponse {
         try await get("api/v1/community/posts/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
@@ -5653,6 +5683,37 @@ extension NetworkClient {
     // the caller's own bookmarks. Unlike the GET above, this is authenticated.
     public func subscribeToSharedMapFolder(userId: String, folderName: String) async throws -> SubscribeToSharedMapFolderResponse {
         try await authenticatedPost(sharedMapFolderPath(userId: userId, folderName: folderName, suffix: "/subscribe"), body: EmptyBody())
+    }
+
+    // Real Kakao Map-style "친구위치" live location sharing -- see LiveLocationShareDto's
+    // own doc comment.
+    public func startLocationShare(recipientPhoneNumber: String, durationHours: Int = 1) async throws -> StartLocationShareResponse {
+        try await authenticatedPost("api/v1/maps/location-share", body: StartLocationShareRequest(recipientPhoneNumber: recipientPhoneNumber, durationHours: durationHours))
+    }
+
+    public func updateMyLocationShare(latitude: Double, longitude: Double) async throws -> UpdateLocationShareResponse {
+        try await authenticatedPost("api/v1/maps/location-share/_/update-location", body: UpdateLocationShareRequest(latitude: latitude, longitude: longitude))
+    }
+
+    public func extendLocationShare(id: String, additionalHours: Int = 1) async throws -> ExtendLocationShareResponse {
+        let encodedId = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        return try await authenticatedPost("api/v1/maps/location-share/\(encodedId)/extend", body: ExtendLocationShareRequest(additionalHours: additionalHours))
+    }
+
+    public func stopLocationShare(id: String) async throws -> StopLocationShareResponse {
+        let encodedId = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        return try await authenticatedPost("api/v1/maps/location-share/\(encodedId)/stop", body: EmptyBody())
+    }
+
+    public func getMyLocationShares() async throws -> LocationSharesResponse { try await get("api/v1/maps/location-share/mine") }
+
+    public func getLocationSharesWithMe() async throws -> LocationSharesResponse { try await get("api/v1/maps/location-share/shared-with-me") }
+
+    // Real recipient-side poll -- call this on a real interval (e.g. every 15s) while
+    // watching a share to see the sharer's latest pushed position.
+    public func getLocationShare(id: String) async throws -> LocationShareResponse {
+        let encodedId = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        return try await get("api/v1/maps/location-share/\(encodedId)")
     }
 
     // A real query-param DELETE -- `authenticatedDelete(_:)` below takes no query, so
