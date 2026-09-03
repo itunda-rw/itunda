@@ -144,11 +144,11 @@ class SavingsServiceTest : BehaviorSpec({
             every { savingsGoalRepository.findByIdForUpdate("sg_3") } returns Optional.of(goal)
             every { accountRepository.findById("account_other") } returns Optional.of(account("account_other", "someone_else"))
 
-            Then("it throws AccountNotOwnedException before touching the ledger") {
+            Then("it throws NoAccountException before touching the ledger") {
                 try {
                     service.depositToGoal("user_1", "sg_3", BigDecimal("1000"), "account_other")
-                    error("expected AccountNotOwnedException")
-                } catch (e: AccountNotOwnedException) {
+                    error("expected NoAccountException")
+                } catch (e: NoAccountException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }

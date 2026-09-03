@@ -23,7 +23,6 @@ import java.util.UUID
 
 class LoanOfferNotFoundException(message: String) : RuntimeException(message)
 class LoanNotFoundException(message: String) : RuntimeException(message)
-class LoanNotOwnedException(message: String) : RuntimeException(message)
 class LoanAlreadyPaidException(message: String) : RuntimeException(message)
 class LoanAmountInvalidException(message: String) : RuntimeException(message)
 class LoanApplicationDeclinedException(message: String) : RuntimeException(message)
@@ -209,7 +208,14 @@ class LoansService(
     @Transactional
     fun repayLoan(userId: String, loanId: String, amount: BigDecimal): Map<String, Any?> {
         val loan = loanAccountRepository.findByIdForUpdate(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
-        if (loan.userId != userId) throw LoanNotOwnedException("That loan does not belong to you")
+        // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
+        // LoanNotOwnedException, mapped to a 404 but with its own "LOAN_NOT_OWNED" error
+        // code -- a caller could still distinguish "this loanId exists, isn't mine" from
+        // "doesn't exist" (LOAN_NOT_FOUND) by reading the response body, the exact
+        // existence-oracle probe the 2026-08-02 AutoTopUpService/LinkedAccountService
+        // fixes already correctly avoid by reusing the same NotFound exception for both
+        // cases. Same fix here.
+        if (loan.userId != userId) throw LoanNotFoundException("Loan not found")
         if (loan.status == LoanStatus.PAID) throw LoanAlreadyPaidException("Loan is already fully repaid")
 
         val repayAmount = amount.min(loan.outstanding)
@@ -269,7 +275,14 @@ class LoansService(
     @Transactional
     fun refinanceLoan(userId: String, loanId: String): Map<String, Any?> {
         val loan = loanAccountRepository.findByIdForUpdate(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
-        if (loan.userId != userId) throw LoanNotOwnedException("That loan does not belong to you")
+        // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
+        // LoanNotOwnedException, mapped to a 404 but with its own "LOAN_NOT_OWNED" error
+        // code -- a caller could still distinguish "this loanId exists, isn't mine" from
+        // "doesn't exist" (LOAN_NOT_FOUND) by reading the response body, the exact
+        // existence-oracle probe the 2026-08-02 AutoTopUpService/LinkedAccountService
+        // fixes already correctly avoid by reusing the same NotFound exception for both
+        // cases. Same fix here.
+        if (loan.userId != userId) throw LoanNotFoundException("Loan not found")
         if (loan.status != LoanStatus.ACTIVE) throw LoanAlreadyPaidException("Only an active loan can be refinanced")
 
         val score = creditScoreService.computeScore(userId).score

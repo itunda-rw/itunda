@@ -730,7 +730,13 @@ class MerchantService(
     fun generateCustomerPaymentCode(userId: String, accountId: String? = null): CustomerPaymentCode {
         if (accountId != null) {
             val account = accountRepository.findById(accountId).orElseThrow { MerchantNoAccountException("Account not found") }
-            if (account.userId != userId) throw PaymentCodeAccountNotOwnedException("That account does not belong to you")
+            // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
+            // PaymentCodeAccountNotOwnedException, mapped to a 404 but with its own
+            // "ACCOUNT_NOT_OWNED" error code -- a caller could still distinguish "this
+            // accountId exists, isn't mine" from "doesn't exist" (ACCOUNT_NOT_FOUND) by
+            // reading the response body. Same fix as LoansService/SavingsService's own
+            // identical residual leaks: reuse the same NotFound exception for both cases.
+            if (account.userId != userId) throw MerchantNoAccountException("Account not found")
             if (account.type !in PAYMENT_ELIGIBLE_ACCOUNT_TYPES) {
                 throw PaymentCodeAccountNotEligibleException("This account can't be used to pay a merchant")
             }

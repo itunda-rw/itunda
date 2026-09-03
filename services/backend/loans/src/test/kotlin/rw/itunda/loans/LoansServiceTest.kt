@@ -237,11 +237,11 @@ class LoansServiceTest : BehaviorSpec({
             )
             every { loanAccountRepository.findByIdForUpdate("loan_w") } returns Optional.of(loan)
 
-            Then("it throws LoanNotOwnedException and never touches the ledger -- the exact bug this file's own SECURITY.md-mirrored fix prevents") {
+            Then("it throws LoanNotFoundException and never touches the ledger -- the exact bug this file's own SECURITY.md-mirrored fix prevents") {
                 try {
                     service.repayLoan("attacker", "loan_w", BigDecimal("50000"))
-                    error("expected LoanNotOwnedException")
-                } catch (e: LoanNotOwnedException) {
+                    error("expected LoanNotFoundException")
+                } catch (e: LoanNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -368,11 +368,11 @@ class LoansServiceTest : BehaviorSpec({
             )
             every { loanAccountRepository.findByIdForUpdate("loan_refi_5") } returns Optional.of(loan)
 
-            Then("it throws LoanNotOwnedException before ever checking credit score") {
+            Then("it throws LoanNotFoundException before ever checking credit score") {
                 try {
                     service.refinanceLoan("attacker", "loan_refi_5")
-                    error("expected LoanNotOwnedException")
-                } catch (e: LoanNotOwnedException) {
+                    error("expected LoanNotFoundException")
+                } catch (e: LoanNotFoundException) {
                     verify(exactly = 0) { creditScoreService.computeScore(any()) }
                 }
             }

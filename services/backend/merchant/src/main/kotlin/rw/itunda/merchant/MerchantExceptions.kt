@@ -25,7 +25,6 @@ class SelfPaymentException(message: String) : RuntimeException(message)
 // code, merchant scans it, no typing on either side.
 class CustomerPaymentCodeNotFoundException(message: String) : RuntimeException(message)
 class CustomerPaymentCodeNotPayableException(message: String) : RuntimeException(message)
-class PaymentCodeAccountNotOwnedException(message: String) : RuntimeException(message)
 class PaymentCodeAccountNotEligibleException(message: String) : RuntimeException(message)
 class CardDeclinedException(message: String) : RuntimeException(message)
 class InvalidWebhookUrlException(message: String) : RuntimeException(message)

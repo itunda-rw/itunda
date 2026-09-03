@@ -261,14 +261,6 @@ class LoansController(
     fun handleBusinessAccountRequired(ex: BusinessAccountRequiredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("BUSINESS_ACCOUNT_REQUIRED", ex.message ?: "Conflict"))
 
-    // Real IDOR fix (2026-08-30, pass 6): was HttpStatus.FORBIDDEN -- a caller
-    // submitting another user's real loanId could distinguish "exists, not yours"
-    // (403) from "doesn't exist" (404, LoanNotFoundException just above). Same
-    // existence-oracle class as GroupAccountController/SavingsController's own
-    // prior fixes -- a stranger must never be able to tell the two apart.
-    @ExceptionHandler(LoanNotOwnedException::class)
-    fun handleNotOwned(ex: LoanNotOwnedException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LOAN_NOT_OWNED", ex.message ?: "Not found"))
-
     @ExceptionHandler(LoanAlreadyPaidException::class)
     fun handleAlreadyPaid(ex: LoanAlreadyPaidException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("LOAN_ALREADY_PAID", ex.message ?: "Conflict"))
 

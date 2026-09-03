@@ -154,13 +154,6 @@ class SavingsController(
     @ExceptionHandler(NoInterestJarException::class)
     fun handleNoJar(ex: NoInterestJarException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("INTEREST_JAR_NOT_FOUND", ex.message ?: "Not found"))
 
-    // Real fix (IDOR audit pass 2, docs/DESIGN_REFERENCES.md-adjacent sweep, same bug
-    // class as the GroupAccountController fix): a caller submitting someone else's real
-    // accountId as depositToGoal's optional fromAccountId used to real-403, confirming
-    // that account exists -- an existence-oracle this codebase's own established
-    // convention (a stranger gets a real 404, never a 403) exists specifically to avoid.
-    @ExceptionHandler(AccountNotOwnedException::class)
-    fun handleNotOwned(ex: AccountNotOwnedException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_OWNED", ex.message ?: "Not found"))
 
     @ExceptionHandler(NoInterestAvailableException::class)
     fun handleNoInterest(ex: NoInterestAvailableException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_INTEREST_AVAILABLE", ex.message ?: "Conflict"))

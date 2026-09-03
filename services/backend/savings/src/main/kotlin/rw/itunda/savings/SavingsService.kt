@@ -32,7 +32,6 @@ import java.util.UUID
 private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 
 class GoalNotFoundException(message: String) : RuntimeException(message)
-class AccountNotOwnedException(message: String) : RuntimeException(message)
 class NoAccountException(message: String) : RuntimeException(message)
 class NoInterestJarException(message: String) : RuntimeException(message)
 class NoInterestAvailableException(message: String) : RuntimeException(message)
@@ -139,7 +138,14 @@ class SavingsService(
 
         val sourceAccount = if (fromAccountId != null) {
             val account = accountRepository.findById(fromAccountId).orElseThrow { NoAccountException("Account not found") }
-            if (account.userId != userId) throw AccountNotOwnedException("That account does not belong to you")
+            // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
+            // AccountNotOwnedException, mapped to a 404 but with its own
+            // "ACCOUNT_NOT_OWNED" error code -- a caller could still distinguish "this
+            // accountId exists, isn't mine" from "doesn't exist" (ACCOUNT_NOT_FOUND) by
+            // reading the response body, the exact existence-oracle probe the
+            // 2026-08-02 AutoTopUpService/LinkedAccountService fixes already correctly
+            // avoid by reusing the same NotFound exception for both cases. Same fix here.
+            if (account.userId != userId) throw NoAccountException("Account not found")
             account
         } else {
             accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
@@ -196,7 +202,14 @@ class SavingsService(
 
         val destinationAccount = if (toAccountId != null) {
             val account = accountRepository.findById(toAccountId).orElseThrow { NoAccountException("Account not found") }
-            if (account.userId != userId) throw AccountNotOwnedException("That account does not belong to you")
+            // Real residual-IDOR fix (2026-09-03): this used to throw a distinct
+            // AccountNotOwnedException, mapped to a 404 but with its own
+            // "ACCOUNT_NOT_OWNED" error code -- a caller could still distinguish "this
+            // accountId exists, isn't mine" from "doesn't exist" (ACCOUNT_NOT_FOUND) by
+            // reading the response body, the exact existence-oracle probe the
+            // 2026-08-02 AutoTopUpService/LinkedAccountService fixes already correctly
+            // avoid by reusing the same NotFound exception for both cases. Same fix here.
+            if (account.userId != userId) throw NoAccountException("Account not found")
             account
         } else {
             accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")

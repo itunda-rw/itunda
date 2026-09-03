@@ -32,10 +32,6 @@ class SavingsDepositBatchActionHandler(
             is IdempotencyInProgressException -> 409 to mapOf("success" to false, "error" to mapOf("code" to "IDEMPOTENT_REQUEST_PROCESSING", "message" to e.message))
             is GoalNotFoundException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "GOAL_NOT_FOUND", "message" to e.message))
             is NoAccountException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "ACCOUNT_NOT_FOUND", "message" to e.message))
-            // Real fix (IDOR audit pass 2), matching SavingsController's own identical
-            // handler fix: a real 404, not 403, so a stranger's real accountId doesn't
-            // confirm its existence via the status code alone.
-            is AccountNotOwnedException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "ACCOUNT_NOT_OWNED", "message" to e.message))
             is InsufficientFundsException -> 422 to mapOf("success" to false, "error" to mapOf("code" to "INSUFFICIENT_FUNDS", "message" to e.message))
             is AccountFrozenException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "ACCOUNT_FROZEN", "message" to e.message))
             is IllegalArgumentException -> 400 to mapOf("success" to false, "error" to mapOf("code" to "INVALID_ACTION_BODY", "message" to e.message))

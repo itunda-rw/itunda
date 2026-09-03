@@ -447,9 +447,6 @@ class MerchantController(
     fun handleCustomerCodeNotPayable(ex: CustomerPaymentCodeNotPayableException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CUSTOMER_PAYMENT_CODE_NOT_PAYABLE", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(PaymentCodeAccountNotOwnedException::class)
-    fun handlePaymentCodeAccountNotOwned(ex: PaymentCodeAccountNotOwnedException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ACCOUNT_NOT_OWNED", ex.message ?: "Not found"))
 
     @ExceptionHandler(PaymentCodeAccountNotEligibleException::class)
     fun handlePaymentCodeAccountNotEligible(ex: PaymentCodeAccountNotEligibleException) =
