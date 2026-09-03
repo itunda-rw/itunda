@@ -6163,8 +6163,9 @@ extension NetworkClient {
     }
 
     // Real Uber Eats post-delivery tip -- see EatsOrderDto.tipAmount's own doc comment.
+    // Real Idempotency-Key required, matching tipRideDriver's own identical fix (2026-09-03).
     public func tipEatsOrderRider(orderId: String, amount: Double) async throws -> TipEatsOrderResponse {
-        try await authenticatedPost("api/v1/eats/orders/\(orderId)/tip", body: TipEatsOrderRequest(amount: amount))
+        try await authenticatedPost("api/v1/eats/orders/\(orderId)/tip", body: TipEatsOrderRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func getRestaurantRating(_ restaurantId: String) async throws -> EatsRatingResponse {

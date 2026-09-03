@@ -335,11 +335,14 @@ export interface RatingSummary {
 // comment. Found via scripts/uncalled-endpoint-sweep.py: fully built (real
 // already-tipped guard, real TIP_WINDOW, real account-to-account ledger legs) with zero
 // client anywhere, mirroring the real gap this session already closed for
-// RideTripService.tipDriver. Real backend shape: no Idempotency-Key required here
-// (unlike the ride tip), matching this exact endpoint's own real signature.
+// RideTripService.tipDriver. Real Idempotency-Key now required (2026-09-03 fix, matching
+// the ride tip's own convention): without it, a legitimate client retry (timeout,
+// double-tap) hits EatsOrderAlreadyTippedException and shows a scary error even though
+// the first tip already succeeded and money already moved.
 export const tipEatsOrderRider = (orderId: string, amount: number) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/tip`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount }),
   }).then((r) => r.order);
 

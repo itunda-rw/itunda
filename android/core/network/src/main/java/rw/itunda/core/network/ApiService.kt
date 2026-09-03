@@ -4061,8 +4061,9 @@ interface ApiService {
     suspend fun submitEatsReview(@Path("id") orderId: String, @Body request: SubmitEatsReviewRequest): EatsReviewResponse
 
     // Real Uber Eats post-delivery tip -- see EatsOrderDto.tipAmount's own doc comment.
+    // Real Idempotency-Key required, matching tipRideDriver's own identical fix (2026-09-03).
     @POST("api/v1/eats/orders/{id}/tip")
-    suspend fun tipEatsOrderRider(@Path("id") orderId: String, @Body request: TipEatsOrderRequest): TipEatsOrderResponse
+    suspend fun tipEatsOrderRider(@Path("id") orderId: String, @Body request: TipEatsOrderRequest, @Header("Idempotency-Key") idempotencyKey: String): TipEatsOrderResponse
 
     @GET("api/v1/eats/restaurants/{id}/rating")
     suspend fun getRestaurantRating(@Path("id") restaurantId: String): EatsRatingResponse

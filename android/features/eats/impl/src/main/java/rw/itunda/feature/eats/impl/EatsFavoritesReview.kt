@@ -437,7 +437,11 @@ internal fun TipRiderPrompt(orderId: String, onTipped: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.tipEatsOrderRider(orderId, rw.itunda.core.network.TipEatsOrderRequest(finalAmount.toDouble()))
+                NetworkClient.apiService.tipEatsOrderRider(
+                    orderId,
+                    rw.itunda.core.network.TipEatsOrderRequest(finalAmount.toDouble()),
+                    java.util.UUID.randomUUID().toString(),
+                )
                 onTipped()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

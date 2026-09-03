@@ -521,14 +521,22 @@ class EatsController(
     }
 
     // Real Uber Eats post-delivery tip -- see EatsOrderService.tipRider's own doc comment.
+    // Real Idempotency-Key required, matching RideController.tipDriver's own identical
+    // fix (2026-09-03): without this, a legitimate client-side retry (timeout, double-tap
+    // before the button disables) hits EatsOrderAlreadyTippedException and shows the buyer
+    // a scary error even though their first tip already succeeded and money already moved.
     @PostMapping("/orders/{orderId}/tip")
     fun tipRider(
         @PathVariable orderId: String,
         @RequestBody request: TipEatsOrderRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val order = eatsOrderService.tipRider(currentUser.userId, orderId, request.amount)
-        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/orders/$orderId/tip", idempotencyKey, request) {
+            val order = eatsOrderService.tipRider(currentUser.userId, orderId, request.amount)
+            200 to mapOf("success" to true, "order" to order)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     // Real post-delivery ratings & reviews (2026-07-18) -- see EatsReviewService's own
