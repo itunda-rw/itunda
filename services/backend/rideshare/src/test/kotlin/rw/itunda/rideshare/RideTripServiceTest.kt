@@ -393,7 +393,7 @@ class RideTripServiceTest : BehaviorSpec({
         val secondStop = RideTripStop(id = "ride_trip_stop_2", tripId = trip.id, sequence = 1, address = "Stop 2", latitude = -1.958, longitude = 30.08)
 
         every { rideDriverRepository.findByUserId("driver_user_6") } returns driver
-        every { rideTripRepository.findById(trip.id) } returns java.util.Optional.of(trip)
+        every { rideTripRepository.findByIdForUpdate(trip.id) } returns java.util.Optional.of(trip)
         every { rideTripStopRepository.save(any()) } answers { firstArg() }
 
         When("the driver marks arrival at the next unvisited stop, in order") {
@@ -639,7 +639,7 @@ class RideTripServiceTest : BehaviorSpec({
             transactionId = "ledgertxn_y", status = RideTripStatus.IN_PROGRESS,
         )
         every { rideDriverRepository.findByUserId("driver_user_3") } returns driver
-        every { rideTripRepository.findById("ride_trip_2") } returns Optional.of(trip)
+        every { rideTripRepository.findByIdForUpdate("ride_trip_2") } returns Optional.of(trip)
         every { accountRepository.findById("account_driver_3") } returns Optional.of(driverAccount)
         val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
         every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_payout", emptyList())
@@ -673,7 +673,7 @@ class RideTripServiceTest : BehaviorSpec({
         every { rideTripRepository.save(any()) } answers { firstArg() }
 
         When("the driver enters the exact PIN the passenger told them") {
-            every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(freshTrip())
+            every { rideTripRepository.findByIdForUpdate("ride_trip_3") } returns Optional.of(freshTrip())
             val result = service.startTrip("driver_user_4", "ride_trip_3", "4321")
 
             Then("it real-starts the trip") {
@@ -682,7 +682,7 @@ class RideTripServiceTest : BehaviorSpec({
         }
 
         When("the driver enters the wrong PIN") {
-            every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(freshTrip())
+            every { rideTripRepository.findByIdForUpdate("ride_trip_3") } returns Optional.of(freshTrip())
 
             Then("it throws RidePinMismatchException and never starts the trip") {
                 try {
@@ -697,7 +697,7 @@ class RideTripServiceTest : BehaviorSpec({
         When("the trip predates this feature and has no real PIN at all") {
             val trip = freshTrip()
             trip.pin = null
-            every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(trip)
+            every { rideTripRepository.findByIdForUpdate("ride_trip_3") } returns Optional.of(trip)
 
             Then("it starts anyway rather than permanently locking out an old in-flight trip") {
                 val result = service.startTrip("driver_user_4", "ride_trip_3", "anything")
@@ -721,7 +721,7 @@ class RideTripServiceTest : BehaviorSpec({
             dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
             fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_z", status = RideTripStatus.REQUESTED,
         )
-        every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(trip)
+        every { rideTripRepository.findByIdForUpdate("ride_trip_3") } returns Optional.of(trip)
         every { accountRepository.findByUserIdAndType("passenger_5", AccountType.MAIN) } returns passengerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { rideTripRepository.save(any()) } answers { firstArg() }
@@ -766,7 +766,7 @@ class RideTripServiceTest : BehaviorSpec({
             fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_z2",
             status = RideTripStatus.DRIVER_ASSIGNED, driverAssignedAt = java.time.Instant.now().minusSeconds(30),
         )
-        every { rideTripRepository.findById("ride_trip_cancel_1") } returns Optional.of(trip)
+        every { rideTripRepository.findByIdForUpdate("ride_trip_cancel_1") } returns Optional.of(trip)
         every { rideDriverRepository.findById("driver_cancel_1") } returns Optional.of(driver)
         every { accountRepository.findByUserIdAndType("passenger_cancel_1", AccountType.MAIN) } returns passengerAccount
         every { accountRepository.findById("account_driver_cancel_1") } returns Optional.of(driverAccount)
@@ -822,7 +822,7 @@ class RideTripServiceTest : BehaviorSpec({
             fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_z3",
             status = RideTripStatus.DRIVER_ASSIGNED, driverAssignedAt = java.time.Instant.now().minusSeconds(180),
         )
-        every { rideTripRepository.findById("ride_trip_cancel_2") } returns Optional.of(trip)
+        every { rideTripRepository.findByIdForUpdate("ride_trip_cancel_2") } returns Optional.of(trip)
         every { rideDriverRepository.findById("driver_cancel_2") } returns Optional.of(driver)
         every { accountRepository.findByUserIdAndType("passenger_cancel_2", AccountType.MAIN) } returns passengerAccount
         every { accountRepository.findById("account_driver_cancel_2") } returns Optional.of(driverAccount)

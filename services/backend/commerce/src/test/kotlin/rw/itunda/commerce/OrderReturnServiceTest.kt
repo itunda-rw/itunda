@@ -171,7 +171,7 @@ class OrderReturnServiceTest : BehaviorSpec({
         )
 
         When("the real seller approves a real RETURN request") {
-            every { orderReturnRequestRepository.findById("return_1") } returns Optional.of(pendingReturn)
+            every { orderReturnRequestRepository.findByIdForUpdate("return_1") } returns Optional.of(pendingReturn)
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { orderRepository.findById("order_1") } returns Optional.of(deliveredOrder())
             val originalEntries = listOf(
@@ -206,7 +206,7 @@ class OrderReturnServiceTest : BehaviorSpec({
         }
 
         When("a return refund decision is still inside its transaction") {
-            every { orderReturnRequestRepository.findById("return_1") } returns Optional.of(pendingReturn)
+            every { orderReturnRequestRepository.findByIdForUpdate("return_1") } returns Optional.of(pendingReturn)
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { orderRepository.findById("order_1") } returns Optional.of(deliveredOrder())
             every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns listOf(
@@ -246,7 +246,7 @@ class OrderReturnServiceTest : BehaviorSpec({
                 id = "return_2", orderId = "order_1", buyerId = "buyer_1", merchantId = "merchant_1",
                 type = OrderReturnType.EXCHANGE, reasonCode = "SIZE_FIT", reasonNote = null,
             )
-            every { orderReturnRequestRepository.findById("return_2") } returns Optional.of(exchangeRequest)
+            every { orderReturnRequestRepository.findByIdForUpdate("return_2") } returns Optional.of(exchangeRequest)
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { orderReturnRequestRepository.save(any()) } answers { firstArg() }
 
@@ -260,7 +260,7 @@ class OrderReturnServiceTest : BehaviorSpec({
         }
 
         When("the real seller rejects a real pending request") {
-            every { orderReturnRequestRepository.findById("return_1") } returns Optional.of(pendingReturn)
+            every { orderReturnRequestRepository.findByIdForUpdate("return_1") } returns Optional.of(pendingReturn)
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
             every { orderReturnRequestRepository.save(any()) } answers { firstArg() }
 
@@ -273,7 +273,7 @@ class OrderReturnServiceTest : BehaviorSpec({
         }
 
         When("someone who isn't the real seller for this order tries to decide it") {
-            every { orderReturnRequestRepository.findById("return_1") } returns Optional.of(pendingReturn)
+            every { orderReturnRequestRepository.findByIdForUpdate("return_1") } returns Optional.of(pendingReturn)
             val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "other_seller", accountId = "account_other", businessName = "Other Store", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("other_seller") } returns otherMerchant
 
@@ -295,7 +295,7 @@ class OrderReturnServiceTest : BehaviorSpec({
                 id = "return_3", orderId = "order_1", buyerId = "buyer_1", merchantId = "merchant_1",
                 type = OrderReturnType.RETURN, reasonCode = "DEFECTIVE", reasonNote = null, status = OrderReturnStatus.APPROVED,
             )
-            every { orderReturnRequestRepository.findById("return_3") } returns Optional.of(decided)
+            every { orderReturnRequestRepository.findByIdForUpdate("return_3") } returns Optional.of(decided)
             every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
 
             Then("it throws ReturnRequestAlreadyDecidedException rather than re-deciding it") {

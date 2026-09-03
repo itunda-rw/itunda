@@ -680,9 +680,14 @@ class RideTripService(
     // driver's settlement account -- Uber's own stated rationale ("pay drivers for the
     // time and effort they spend getting to your location"), not a punitive platform
     // fee, so platformFee itself is never charged on a cancellation either way.
+    // Real lost-update fix (2026-09-03) -- same check-then-act-then-refund shape this
+    // session's OrderReturnService.decide/DesignatedDriverService.cancelTrip fixes
+    // already close: unlocked findById meant two concurrent cancelTrip calls (a
+    // passenger double-tapping cancel, or a client retry) could both pass the status
+    // check before either commits, double-refunding the passenger out of ride_holding.
     @Transactional
     fun cancelTrip(passengerId: String, tripId: String): RideTrip {
-        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
         if (trip.passengerId != passengerId) {
             throw RideTripNotFoundException("Trip not found")
         }
@@ -822,8 +827,14 @@ class RideTripService(
         })
     }
 
+    // Real lost-update fix (2026-09-03): completeTrip's own check-then-act-then-payout had
+    // no row lock via this shared helper -- two concurrent completeTrip calls (a driver
+    // double-tapping "Complete trip", or a network retry) could both pass the
+    // IN_PROGRESS check before either commits, double-paying out the same ride's fare.
+    // Same findByIdForUpdate convention this class's own tipDriver already establishes.
+    // Every caller (arriveAtStop, startTrip, completeTrip) is already @Transactional.
     private fun getOwnedTrip(tripId: String, driverId: String): RideTrip {
-        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        val trip = rideTripRepository.findByIdForUpdate(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
         if (trip.driverId != driverId) {
             throw RideTripNotFoundException("Trip not found")
         }

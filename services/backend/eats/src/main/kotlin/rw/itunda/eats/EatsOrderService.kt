@@ -1274,11 +1274,15 @@ class EatsOrderService(
      * real dispatch/delivery work for the rest of the order regardless of one missing
      * item.
      */
+    // Real lost-update fix (2026-09-03) -- see EatsOrderRepository.findByIdForUpdate's own
+    // doc comment: a merchant double-tapping "mark unavailable" on the same item (or a
+    // client retry) could both pass the `item.unavailable` check before either commits,
+    // double-refunding the buyer and double-clawing-back the restaurant for one item.
     @Transactional
     fun markItemUnavailable(ownerUserId: String, orderId: String, orderItemId: String): EatsOrder {
         val restaurant = merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw RestaurantNotFoundException("This account is not registered as a merchant")
-        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        val order = eatsOrderRepository.findByIdForUpdate(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
         if (order.restaurantId != restaurant.id) {
             throw EatsOrderNotFoundException("Order not found")
         }

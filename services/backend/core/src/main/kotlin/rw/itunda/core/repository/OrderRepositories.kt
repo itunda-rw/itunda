@@ -1,8 +1,10 @@
 package rw.itunda.core.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Order
@@ -91,4 +93,14 @@ interface OrderReturnRequestRepository : JpaRepository<OrderReturnRequest, Strin
     fun findByOrderId(orderId: String): List<OrderReturnRequest>
     fun findByBuyerIdOrderByCreatedAtDesc(buyerId: String, pageable: Pageable): Page<OrderReturnRequest>
     fun findByMerchantIdAndStatusOrderByCreatedAtAsc(merchantId: String, status: OrderReturnStatus, pageable: Pageable): Page<OrderReturnRequest>
+
+    // Real lost-update fix (2026-09-03): OrderReturnService.decide's own check-then-act on
+    // `status` before issuing a refund had no row lock -- two concurrent approve calls (a
+    // network retry, or a merchant double-tapping "Approve" before the button disables)
+    // could both pass the REQUESTED check before either commits, double-refunding the
+    // buyer. Same findByIdForUpdate convention RideTripRepository/EatsOrderRepository/
+    // AccountRepository already establish for a check-then-act-then-write row.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from OrderReturnRequest r where r.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): java.util.Optional<OrderReturnRequest>
 }

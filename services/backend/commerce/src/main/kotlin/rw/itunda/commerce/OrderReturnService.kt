@@ -145,9 +145,11 @@ class OrderReturnService(
      * reversing-ledger-entry technique against the order's own original transaction --
      * see this class's own doc comment for why. An approved EXCHANGE moves no money.
      */
+    // Real lost-update fix (2026-09-03) -- see OrderReturnRequestRepository.findByIdForUpdate's
+    // own doc comment: this check-then-act-then-refund had no row lock.
     @Transactional
     fun decide(ownerUserId: String, returnRequestId: String, approve: Boolean): OrderReturnRequest {
-        val request = orderReturnRequestRepository.findById(returnRequestId)
+        val request = orderReturnRequestRepository.findByIdForUpdate(returnRequestId)
             .orElseThrow { ReturnRequestNotFoundException("Return request not found") }
         // Same wrong-exception-type bug as getMerchantReturnQueue above, same fix.
         val merchant = merchantRepository.findByOwnerUserId(ownerUserId)

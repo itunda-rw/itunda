@@ -1496,7 +1496,7 @@ class EatsOrderServiceTest : BehaviorSpec({
 
         When("the restaurant marks one of two items unavailable") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
-            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_iu1") } returns Optional.of(acceptedOrder())
             every { eatsOrderItemRepository.findByOrderId("eats_order_iu1") } returns items()
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund_1", emptyList())
             val savedItem = slot<EatsOrderItem>()
@@ -1530,7 +1530,7 @@ class EatsOrderServiceTest : BehaviorSpec({
 
         When("the order is still PLACED, before real fulfillment has started") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
-            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder(EatsOrderStatus.PLACED))
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_iu1") } returns Optional.of(acceptedOrder(EatsOrderStatus.PLACED))
 
             Then("it throws InvalidEatsOrderStatusTransitionException rather than letting a not-yet-accepted order be partially refunded") {
                 try {
@@ -1545,7 +1545,7 @@ class EatsOrderServiceTest : BehaviorSpec({
 
         When("the same item is already marked unavailable") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
-            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_iu1") } returns Optional.of(acceptedOrder())
             val alreadyUnavailable = listOf(
                 EatsOrderItem(id = "item_1", orderId = "eats_order_iu1", productId = "product_1", productName = "Grilled Chicken", unitPrice = BigDecimal("4000"), quantity = 1, unavailable = true, refundTransactionId = "ledgertxn_prior"),
                 items()[1],
@@ -1565,7 +1565,7 @@ class EatsOrderServiceTest : BehaviorSpec({
 
         When("marking the item would leave zero available items in the order") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
-            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_iu1") } returns Optional.of(acceptedOrder())
             every { eatsOrderItemRepository.findByOrderId("eats_order_iu1") } returns listOf(items()[0])
 
             Then("it throws EatsOrderAllItemsUnavailableException rather than silently emptying the order") {
@@ -1582,7 +1582,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         When("a different restaurant owner (not this order's own) tries to mark an item unavailable") {
             val otherRestaurant = Merchant(id = "restaurant_2", ownerUserId = "owner_2", accountId = "account_other", businessName = "Other Diner", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("owner_2") } returns otherRestaurant
-            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            every { eatsOrderRepository.findByIdForUpdate("eats_order_iu1") } returns Optional.of(acceptedOrder())
 
             Then("it throws EatsOrderNotFoundException -- same IDOR-safe 404 as every other order lookup, not a leak of existence") {
                 try {

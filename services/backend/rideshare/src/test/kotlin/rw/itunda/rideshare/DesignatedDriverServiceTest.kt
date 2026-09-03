@@ -121,7 +121,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             holdTransactionId = "ledgertxn_1",
         )
         every { designatedDriverRepository.findByUserId("user_1") } returns driver
-        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
 
         When("that same user tries to accept it as a driver") {
             Then("the self-trip block fires") {
@@ -194,7 +194,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"), platformFee = BigDecimal("63.75"),
             holdTransactionId = "ledgertxn_1",
         )
-        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
         every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund", emptyList())
         every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
@@ -236,7 +236,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.ACCEPTED,
             driverAcceptedAt = java.time.Instant.now(),
         )
-        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
         every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
         every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_refund", emptyList())
@@ -279,7 +279,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.ACCEPTED,
             driverAcceptedAt = java.time.Instant.now().minus(java.time.Duration.ofMinutes(5)),
         )
-        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
         every { accountRepository.findByUserIdAndType("customer_1", AccountType.MAIN) } returns customerAccount
         every { designatedDriverRepository.findById("designated_driver_1") } returns Optional.of(driver)
         every { accountRepository.findById("account_driver") } returns Optional.of(driverAccount)
@@ -310,7 +310,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             vehicleModel = "RAV4", vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"),
             platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.DRIVING,
         )
-        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { designatedDriverTripRepository.findByIdForUpdate("designated_trip_1") } returns Optional.of(trip)
 
         When("the customer tries to cancel once the driver is already driving") {
             Then("the cancel is correctly rejected -- the fix doesn't over-widen the cancel window") {

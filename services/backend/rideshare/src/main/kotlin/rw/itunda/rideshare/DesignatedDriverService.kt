@@ -205,10 +205,14 @@ class DesignatedDriverService(
     fun getAvailableTrips(): List<DesignatedDriverTrip> =
         designatedDriverTripRepository.findAll().filter { it.status == DesignatedDriverTripStatus.REQUESTED && it.driverId == null }
 
+    // Real lost-update fix (2026-09-03): unlocked findById let two drivers race to accept
+    // the same REQUESTED trip -- both could pass the status/driverId check before either
+    // commits, with the loser's write silently overwriting the winner's driverId. Same
+    // findByIdForUpdate convention this class's own completeTrip already establishes.
     @Transactional
     fun acceptTrip(driverUserId: String, tripId: String): DesignatedDriverTrip {
         val driver = getMyDriver(driverUserId)
-        val trip = designatedDriverTripRepository.findById(tripId).orElseThrow { DesignatedDriverTripNotFoundException("Trip not found") }
+        val trip = designatedDriverTripRepository.findByIdForUpdate(tripId).orElseThrow { DesignatedDriverTripNotFoundException("Trip not found") }
         if (trip.status != DesignatedDriverTripStatus.REQUESTED || trip.driverId != null) {
             throw DesignatedDriverTripAlreadyClaimedException("This trip is no longer available")
         }
@@ -294,9 +298,13 @@ class DesignatedDriverService(
      * (driver has already arrived and is driving the customer's car) still cannot be
      * cancelled -- same real-world reasoning `RideTripService` never allows an
      * IN_PROGRESS ride to be cancelled either. */
+    // Real lost-update fix (2026-09-03): same check-then-act-then-refund shape this
+    // class's own completeTrip already fixed -- unlocked findById meant two concurrent
+    // cancelTrip calls (a customer double-tapping cancel, or a client retry) could both
+    // pass the status check before either commits, double-refunding the customer.
     @Transactional
     fun cancelTrip(customerId: String, tripId: String): DesignatedDriverTrip {
-        val trip = designatedDriverTripRepository.findById(tripId).orElseThrow { DesignatedDriverTripNotFoundException("Trip not found") }
+        val trip = designatedDriverTripRepository.findByIdForUpdate(tripId).orElseThrow { DesignatedDriverTripNotFoundException("Trip not found") }
         if (trip.customerId != customerId) {
             throw DesignatedDriverTripNotFoundException("Trip not found")
         }
