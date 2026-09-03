@@ -37,6 +37,14 @@ button {
   transition: transform 0.1s ease-in-out;
 }
 
+/* Real Toss press-scale tactile feedback -- see bank-mfe's own index.css doc comment
+   for the full sourced account. This app's own `button` rule above already had the
+   transition property, just never the actual :active rule that triggers it -- every
+   button in this app has been rendering with zero press feedback until now. */
+button:active {
+  transform: scale(0.96);
+}
+
 input, textarea {
   font-family: inherit;
 }
