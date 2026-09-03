@@ -67,13 +67,17 @@ whichever one is wrong; never let them silently drift apart.
   `:app:compileKotlin` or `:features:<name>:impl:compileDebugKotlin` to verify;
   `./gradlew :architecture-test:test` runs the Konsist boundary check (passes cleanly,
   but only meaningfully constrains the modules that actually have content).
-- `ios/` — Swift + SwiftUI, `Core`/`Features/<Name>` module split — real and substantially
-  further along than Android's equivalent (confirmed 2026-09-02): `Banking`/`Credit`/
-  `Maps`/`Payments` all have real, populated Feature modules; `Bills`/`Insurance` are
-  correctly empty (Saronite/React-Native mini-apps); `Wealth`/`Engagement`/`Merchant` are
-  empty on both platforms (product-scope gap). Plus real React Native "Saronite"
-  mini-apps for some features (Bills/Insurance). `tuist generate && pod install` before
-  `xcodebuild`.
+- `ios/` — Swift + SwiftUI, `Core`/`Features/<Name>` module split, auto-discovered via
+  `Project.swift`'s own `featureModules` list (every entry gets the same generic
+  target structure + `CoreDesignSystem`/`CoreNetwork`/`CoreIdentity` wiring
+  automatically — adding a Feature's real content is just dropping `.swift` files into
+  its `Sources/` and removing the placeholder `Dummy.swift`, no per-module manifest
+  edits needed). Confirmed 2026-09-03, real per-module file counts: `Banking`/`Credit`/
+  `Maps`/`Payments`/`Home`/`Menu`/`My`/`Pay`/`Wealth`/`Assets`/`Certificate`/`Identity`/
+  `Support` all have real, populated Feature modules. `Bills`/`Insurance` are correctly
+  empty (Saronite/React-Native mini-apps, not native). `Engagement`/`Merchant` remain
+  empty on both platforms — a real product-scope gap (no mapped screen yet), matching
+  Android exactly. `tuist generate && pod install` before `xcodebuild`.
 - `packages/design-tokens/tokens.css` — the single real source of truth for color/type
   tokens across every web workspace; matches Toss's own published TDS hex values exactly.
 
