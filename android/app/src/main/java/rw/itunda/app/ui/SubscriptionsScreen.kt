@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import java.io.IOException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.DetectedSubscriptionDto
@@ -57,8 +58,8 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                 billingSubs = NetworkClient.apiService.getMyBillingSubscriptions().subscriptions
             } catch (e: retrofit2.HttpException) {
                 error = superAppErrorMessage(e)
-            } catch (e: Exception) {
-                error = "Could not load your subscriptions."
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
             }
         }
     }
@@ -70,8 +71,8 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
             estimatedMonthlyTotal = res.estimatedMonthlyTotal
         } catch (e: retrofit2.HttpException) {
             error = superAppErrorMessage(e)
-        } catch (e: Exception) {
-            error = "Could not load your subscriptions."
+        } catch (e: IOException) {
+            error = "Couldn't reach itunda. Check your connection and try again."
         }
         loadBilling()
     }
@@ -185,8 +186,8 @@ private fun MerchantBillingSubscriptionRow(subscription: MerchantBillingSubscrip
                                     onChanged()
                                 } catch (e: retrofit2.HttpException) {
                                     error = superAppErrorMessage(e)
-                                } catch (e: Exception) {
-                                    error = "Could not cancel this subscription."
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 } finally {
                                     busy = false
                                 }

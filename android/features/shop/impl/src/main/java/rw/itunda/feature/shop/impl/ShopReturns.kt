@@ -215,8 +215,10 @@ internal fun BillingPlanRow(plan: MerchantBillingPlanDto, subscription: Merchant
                         try {
                             NetworkClient.apiService.cancelBillingSubscription(subscription.id)
                             onChanged()
-                        } catch (e: Exception) {
-                            error = "Could not cancel this subscription."
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally {
                             busy = false
                         }
@@ -230,8 +232,10 @@ internal fun BillingPlanRow(plan: MerchantBillingPlanDto, subscription: Merchant
                         try {
                             NetworkClient.apiService.subscribeToBillingPlan(plan.id, UUID.randomUUID().toString())
                             onChanged()
-                        } catch (e: Exception) {
-                            error = "Could not subscribe to this plan."
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
                         } finally {
                             busy = false
                         }
