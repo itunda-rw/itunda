@@ -226,7 +226,11 @@ fun AutoTransferListScreen(onBack: () -> Unit, onChanged: () -> Unit) {
                                     if (autoTransfer.status == "ACTIVE") NetworkClient.apiService.pauseAutoTransfer(autoTransfer.id)
                                     else NetworkClient.apiService.resumeAutoTransfer(autoTransfer.id)
                                     load()
-                                } catch (_: Exception) { /* best-effort, row just won't update this tap */ }
+                                } catch (e: retrofit2.HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: Exception) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
                             }
                         },
                         onCancel = {
@@ -235,7 +239,11 @@ fun AutoTransferListScreen(onBack: () -> Unit, onChanged: () -> Unit) {
                                     NetworkClient.apiService.cancelAutoTransfer(autoTransfer.id)
                                     load()
                                     onChanged()
-                                } catch (_: Exception) { }
+                                } catch (e: retrofit2.HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: Exception) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
                             }
                         },
                     )
@@ -464,7 +472,11 @@ fun ScheduledTransferListScreen(onBack: () -> Unit) {
                                 try {
                                     NetworkClient.apiService.cancelScheduledTransfer(transfer.id)
                                     load()
-                                } catch (_: Exception) { }
+                                } catch (e: retrofit2.HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: Exception) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
                             }
                         },
                     )
