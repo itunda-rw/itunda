@@ -484,6 +484,9 @@ struct CommerceShopContent: View {
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let timeDeals, !timeDeals.isEmpty {
                             ShopTimeDealsCarousel(timeDeals: timeDeals, onOpenMerchant: { m in Task { await openMerchant(m) } })
                         }
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty {
+                            ShoppingPointsRow()
+                        }
                         SearchAndCategoryChips(
                             searchText: searchInput,
                             onSearchChange: { searchInput = $0; scheduleFilterReload() },

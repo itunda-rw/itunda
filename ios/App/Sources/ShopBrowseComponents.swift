@@ -145,3 +145,94 @@ struct ProductPriceRow: View {
     }
 }
 
+
+// Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+// ported from bank-mfe/Android (2026-09-03), see backend ShoppingMissionService's own
+// doc comment. Every icon here is a real, backend-tracked once-per-day (or once-ever,
+// for the welcome bonus) claim that credits real RWF straight into the real account --
+// no fabricated points currency.
+struct ShoppingPointsRow: View {
+    @State private var missions: [ShoppingMissionDto] = []
+    @State private var spinOutcomes: [SpinOutcomeDto] = []
+    @State private var busyType: String?
+    @State private var feedback: String?
+
+    private func icon(for type: String) -> String {
+        switch type {
+        case "CHECK_IN": return "arrow.triangle.2.circlepath"
+        case "SCROLL": return "hand.draw"
+        case "SPIN": return "star.fill"
+        case "CAT_FEED": return "pawprint.fill"
+        default: return "doc.text"
+        }
+    }
+
+    var body: some View {
+        Group {
+            if !missions.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Get points and coupons").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 18) {
+                            ForEach(missions, id: \.type) { m in
+                                let done = m.type == "WELCOME_BONUS" ? m.claimedEver : m.completedToday
+                                Button(action: { Task { await complete(m.type) } }) {
+                                    VStack(spacing: 4) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .fill(done ? IDS.Colors.chipBackground : IDS.Colors.brand.opacity(0.15))
+                                                .frame(width: 52, height: 52)
+                                            if busyType == m.type {
+                                                Text("…").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                                            } else {
+                                                Image(systemName: icon(for: m.type)).foregroundColor(done ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                                            }
+                                        }
+                                        Text(m.label)
+                                            .font(.caption2).foregroundColor(done ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
+                                            .lineLimit(1)
+                                        if !done {
+                                            // Real, stated odds for SPIN -- shows the real
+                                            // min-max range up front rather than a hidden
+                                            // mechanic.
+                                            if m.type == "SPIN", let minAmount = spinOutcomes.map(\.amount).min(), let maxAmount = spinOutcomes.map(\.amount).max() {
+                                                Text("+\(formatAmount(Int(minAmount)))~\(formatAmount(Int(maxAmount)))").font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                                            } else {
+                                                Text("+\(formatAmount(Int(m.rewardAmount)))").font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                                            }
+                                        }
+                                    }
+                                    .frame(width: 64)
+                                }
+                                .disabled(done || busyType != nil)
+                            }
+                        }
+                    }
+                    if let feedback {
+                        Text(feedback).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        if let res = try? await NetworkClient.shared.getShoppingMissions() {
+            missions = res.missions
+            spinOutcomes = res.spinOutcomes
+        }
+    }
+
+    private func complete(_ type: String) async {
+        busyType = type
+        defer { busyType = nil }
+        do {
+            let res = try await NetworkClient.shared.completeShoppingMission(type: type)
+            feedback = "+\(formatAmount(Int(res.amountEarned))) RWF"
+            await load()
+        } catch {
+            feedback = "Could not complete this mission."
+        }
+    }
+}

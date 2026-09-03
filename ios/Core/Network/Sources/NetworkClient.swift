@@ -3804,6 +3804,15 @@ public struct DealProductDto: Decodable, Identifiable {
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }
 
+// Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+// ported from bank-mfe/Android (2026-09-03), see backend ShoppingMissionService's own
+// doc comment. Every mission pays real RWF straight into the real account -- itunda
+// has never had a separate "points" currency.
+public struct ShoppingMissionDto: Decodable { public let type: String; public let label: String; public let rewardAmount: Double; public let completedToday: Bool; public let claimedEver: Bool }
+public struct SpinOutcomeDto: Decodable { public let amount: Double; public let odds: Double }
+public struct ShoppingMissionsResponse: Decodable { public let success: Bool; public let missions: [ShoppingMissionDto]; public let spinOutcomes: [SpinOutcomeDto] }
+public struct MissionCompleteResponse: Decodable { public let success: Bool; public let type: String; public let amountEarned: Double; public let newAccountBalance: Double }
+
 // Real Coupang Eats-style dish grid (itunda Eats redesign, 2026-08-28) -- see
 // backend EatsDishRecommendationService.getDishes' own doc comment. Fully built on
 // the backend since 2026-08-03 (Android already ported it); this is the first iOS
@@ -5551,6 +5560,14 @@ extension NetworkClient {
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe/Android
     // already have this; this is the first iOS client.
     public func getMembershipDayStatus() async throws -> MembershipDayStatusResponse { try await get("api/v1/shopping/membership-day") }
+
+    // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+    // see ShoppingMissionDto's own doc comment.
+    public func getShoppingMissions() async throws -> ShoppingMissionsResponse { try await get("api/v1/shopping/points") }
+
+    public func completeShoppingMission(type: String) async throws -> MissionCompleteResponse {
+        try await authenticatedPost("api/v1/shopping/points/missions/\(type)/complete", body: EmptyBody())
+    }
 
     // Real Coupang Eats-style dish grid (itunda Eats redesign, 2026-08-28) -- see
     // EatsDishRecommendationService.getDishes' own doc comment. sortBy="popular" ranks
