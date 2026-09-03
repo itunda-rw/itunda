@@ -18,6 +18,14 @@ jobs:
         with:
           node-version: 20.x
 
+      # Real CI fix (2026-09-03): package.json pins "packageManager": "yarn@4.17.0"
+      # (Corepack-managed), but the runner's global Yarn is 1.22.22 -- without this,
+      # `yarn install --immutable` fails immediately with "Corepack must currently be
+      # enabled". Same fix needed in root-workspace-build/api-gateway-test below,
+      # every job that runs a root yarn install.
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
         run: yarn install --immutable
 
@@ -53,6 +61,9 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
         run: yarn install --immutable
 
@@ -69,6 +80,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -134,11 +148,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Real CI fix (2026-09-03): root build.gradle.kts pins `jvmTarget = "17"` for
+      # Kotlin compilation, but nothing pins compileJava's target -- it just uses
+      # whatever JDK is active. JDK 21 here caused "Inconsistent JVM-target
+      # compatibility detected for tasks 'compileJava' (21) and 'compileKotlin' (17)"
+      # on every CI run. 17 matches the project's own pin (and android-build's own
+      # JDK setup below), not an arbitrary downgrade.
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'
 
       - name: Build
         working-directory: services/backend
@@ -166,6 +186,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      # Real CI fix (2026-09-03): android/settings.gradle.kts applies the
+      # `com.facebook.react.settings` plugin from
+      # packages/saronite/node_modules/@react-native/gradle-plugin -- without
+      # installing Saronite's JS deps first, Gradle fails at settings-evaluation
+      # time with "does not exist" before a single Kotlin file compiles. Same step
+      # ios-build already has below; android-build was just missing it.
+      - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
+        working-directory: packages/saronite
+        run: npm ci
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -201,6 +236,15 @@ jobs:
       - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
         working-directory: packages/saronite
         run: npm ci
+
+      # Real CI fix (2026-09-03): ios/.brick/ (BrickCodegen's own podspec + generated
+      # bridge sources) is gitignored, regenerated from each mini-app's *.brick.ts spec
+      # -- a fresh CI checkout never has it, so `pod install` below failed with "No
+      # podspec found for BrickCodegen in .brick". Same command the Podfile's own
+      # BrickCodegen doc comment already documents for local regeneration.
+      - name: Generate BrickCodegen iOS bridge
+        working-directory: packages/saronite/host-app
+        run: node ../node_modules/.bin/brick-codegen --platform ios --output-ios ../../../ios/.brick --projectRoot .
 
       - name: Install Tuist
         run: brew install --cask tuist
