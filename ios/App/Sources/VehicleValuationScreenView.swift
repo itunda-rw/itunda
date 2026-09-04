@@ -166,6 +166,8 @@ struct VehicleValuationScreenView: View {
             make = ""; model = ""; purchasePrice = ""; purchaseDate = ""; mileageKm = ""
             showCreate = false
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not register this vehicle."
         } catch {
             self.error = "Could not register this vehicle."
         }
@@ -176,6 +178,8 @@ struct VehicleValuationScreenView: View {
             _ = try await NetworkClient.shared.updateVehicleMileage(id, mileageKm: mileage)
             editingMileageVehicle = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not update mileage."
         } catch {
             self.error = "Could not update mileage."
         }

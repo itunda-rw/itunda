@@ -230,8 +230,16 @@ extension NetworkClient {
     }
 
     // Real peer-to-peer agent float rebalancing marketplace -- see FloatMarketplaceController.kt.
+    // Real gap found 2026-09-04: FloatMarketplaceService has a rich, genuinely
+    // distinct-per-case real message surface ("An agent cannot request float from
+    // their own listing", "This float listing is no longer open", "Requested amount
+    // exceeds what remains available", "This request has already been resolved",
+    // "This agent's real till no longer has enough cash on hand to fulfill this
+    // request" -- the last one entirely un-guarded client-side) that
+    // FloatMarketplaceScreenView.swift's 5 bare `catch {}` blocks each flattened
+    // into one static per-action string.
     public func postFloatListing(amount: Double) async throws -> FloatListingResponse {
-        try await authenticatedPost("api/v1/float-marketplace/listings", body: PostFloatListingRequest(amount: amount))
+        try await authenticatedPostWithMessage("api/v1/float-marketplace/listings", body: PostFloatListingRequest(amount: amount))
     }
 
     public func getNearbyFloatListings(latitude: Double, longitude: Double, radiusKm: Double = 20) async throws -> NearbyFloatListingsResponse {
@@ -245,11 +253,11 @@ extension NetworkClient {
     public func getMyFloatListings() async throws -> FloatListingsResponse { try await get("api/v1/float-marketplace/listings/mine") }
 
     public func cancelFloatListing(listingId: String) async throws -> FloatListingResponse {
-        try await authenticatedPost("api/v1/float-marketplace/listings/\(listingId)/cancel", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/float-marketplace/listings/\(listingId)/cancel", body: EmptyBody())
     }
 
     public func requestFloat(listingId: String, amount: Double) async throws -> FloatTransferRequestResponse {
-        try await authenticatedPost("api/v1/float-marketplace/listings/\(listingId)/requests", body: RequestFloatRequest(amount: amount))
+        try await authenticatedPostWithMessage("api/v1/float-marketplace/listings/\(listingId)/requests", body: RequestFloatRequest(amount: amount))
     }
 
     public func getMyFloatRequests() async throws -> FloatTransferRequestsResponse { try await get("api/v1/float-marketplace/requests/mine") }
@@ -257,11 +265,11 @@ extension NetworkClient {
     public func getIncomingFloatRequests() async throws -> FloatTransferRequestsResponse { try await get("api/v1/float-marketplace/requests/incoming") }
 
     public func acceptFloatRequest(requestId: String) async throws -> FloatTransferRequestResponse {
-        try await authenticatedPost("api/v1/float-marketplace/requests/\(requestId)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await postSavingsGoal("api/v1/float-marketplace/requests/\(requestId)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func declineFloatRequest(requestId: String) async throws -> FloatTransferRequestResponse {
-        try await authenticatedPost("api/v1/float-marketplace/requests/\(requestId)/decline", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/float-marketplace/requests/\(requestId)/decline", body: EmptyBody())
     }
 
     public func issueCertificate() async throws -> IssueCertificateResponse {

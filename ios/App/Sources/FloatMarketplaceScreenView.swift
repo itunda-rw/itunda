@@ -257,6 +257,8 @@ struct FloatMarketplaceScreenView: View {
             message = "Listing posted — other nearby agents can now request this float."
             listAmount = ""
             await loadMine()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not post this listing."
         } catch {
             self.error = "Could not post this listing."
         }
@@ -268,6 +270,8 @@ struct FloatMarketplaceScreenView: View {
         do {
             _ = try await NetworkClient.shared.cancelFloatListing(listingId: listingId)
             await loadMine()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not cancel this listing."
         } catch {
             self.error = "Could not cancel this listing."
         }
@@ -285,6 +289,8 @@ struct FloatMarketplaceScreenView: View {
             message = "Request sent — the listing owner will accept or decline it."
             requestAmounts[listingId] = ""
             await loadMine()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not send this request."
         } catch {
             self.error = "Could not send this request."
         }
@@ -297,6 +303,8 @@ struct FloatMarketplaceScreenView: View {
             _ = try await NetworkClient.shared.acceptFloatRequest(requestId: requestId)
             message = "Float transferred to the requesting agent."
             await loadMine()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not accept this request."
         } catch {
             self.error = "Could not accept this request."
         }
@@ -308,6 +316,8 @@ struct FloatMarketplaceScreenView: View {
         do {
             _ = try await NetworkClient.shared.declineFloatRequest(requestId: requestId)
             await loadMine()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not decline this request."
         } catch {
             self.error = "Could not decline this request."
         }

@@ -1845,13 +1845,17 @@ extension NetworkClient {
     // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
     // rw.itunda.vehicle.VehicleValuationService's own doc comment. bank-mfe/Android
     // already have this; this is the first iOS client.
+    // Real gap found 2026-09-04: VehicleValuationService.registerVehicle validates
+    // model-year bounds (dynamic, "between 1980 and $currentYear+1"), a future
+    // purchase date, and make/model length -- none of it checked client-side beyond
+    // a non-empty/positive-price guard.
     public func registerVehicle(make: String, model: String, modelYear: Int, purchasePrice: Double, purchaseDate: String, mileageKm: Int) async throws -> VehicleResponse {
-        try await authenticatedPost("api/v1/vehicles", body: RegisterVehicleRequest(make: make, model: model, modelYear: modelYear, purchasePrice: purchasePrice, purchaseDate: purchaseDate, mileageKm: mileageKm))
+        try await authenticatedPostWithMessage("api/v1/vehicles", body: RegisterVehicleRequest(make: make, model: model, modelYear: modelYear, purchasePrice: purchasePrice, purchaseDate: purchaseDate, mileageKm: mileageKm))
     }
     public func getMyVehicles() async throws -> VehiclesResponse { try await get("api/v1/vehicles") }
     public func getVehicleValuation(_ id: String) async throws -> VehicleValuationResponse { try await get("api/v1/vehicles/\(id)/valuation") }
     public func updateVehicleMileage(_ id: String, mileageKm: Int) async throws -> VehicleResponse {
-        try await authenticatedPost("api/v1/vehicles/\(id)/mileage", body: UpdateVehicleMileageRequest(mileageKm: mileageKm))
+        try await authenticatedPostWithMessage("api/v1/vehicles/\(id)/mileage", body: UpdateVehicleMileageRequest(mileageKm: mileageKm))
     }
     public func removeVehicle(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/vehicles/\(id)") }
 
