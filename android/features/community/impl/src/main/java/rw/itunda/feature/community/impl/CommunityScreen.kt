@@ -113,6 +113,16 @@ fun CommunityContent(
     // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
     // Section 4 recommendation #4.
     var joinedCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    // Real fix (2026-09-04): the "🎉 Meetups" pinned slot below used to be a client-side
+    // partition+sort of whatever page of the general feed happened to be loaded, with no
+    // eventDate filter at all -- so an already-happened meetup could show up pinned as
+    // "upcoming" (only sorted, never excluded), and a genuinely upcoming one could be
+    // missing if it fell off the loaded page. The real backend
+    // GET /api/v1/community/meetups/upcoming (built 2026-07-25) already excludes past
+    // eventDates and orders soonest-first, but had zero callers anywhere in this app
+    // (confirmed via repo-wide grep, matches bank-mfe's own identical dead-binding
+    // finding fixed the same day) until now.
+    var upcomingMeetups by remember { mutableStateOf<List<CommunityPostDto>>(emptyList()) }
     var joiningPostId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewPost by remember { mutableStateOf(false) }
@@ -167,8 +177,27 @@ fun CommunityContent(
         view = if (hasPermission) CommunityView.NEARBY else CommunityView.BROWSE
     }
 
+    fun loadUpcomingMeetups() {
+        if (view == CommunityView.MINE || activeCategory == "meetup") {
+            upcomingMeetups = emptyList()
+            return
+        }
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getUpcomingMeetups()
+                if (res.success) {
+                    upcomingMeetups = res.posts
+                    joinedCounts = joinedCounts + res.joinedCounts
+                }
+            } catch (_: Exception) {
+                // Pinned strip just won't render this refresh -- main feed load is unaffected.
+            }
+        }
+    }
+
     fun load() {
         posts = null
+        loadUpcomingMeetups()
         if (view == CommunityView.NEARBY) {
             requestNearbyLocation()
             return
@@ -399,16 +428,19 @@ fun CommunityContent(
             // docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My posts"
             // stays plain chronological -- pinning your own management list would
             // just be noise, not a discovery aid.
-            val (meetupsRaw, regular) = if (view != CommunityView.MINE) {
-                posts!!.partition { it.category == "meetup" }
+            // Sourced from the real upcoming-only, soonest-first `upcomingMeetups` fetch
+            // above (not a client-side filter of this page's posts), except when
+            // explicitly browsing the Meetups category chip, which keeps the original
+            // full chronological (including past) browse -- a different intent than the
+            // passive homefeed highlight strip.
+            val regular = if (view != CommunityView.MINE) posts!!.filter { it.category != "meetup" } else posts!!
+            val meetups = if (view == CommunityView.MINE) {
+                emptyList()
+            } else if (activeCategory == "meetup") {
+                posts!!.filter { it.category == "meetup" }.sortedBy { it.eventDate ?: "9999" }
             } else {
-                emptyList<CommunityPostDto>() to posts!!
+                upcomingMeetups
             }
-            // Real 당근모임-style soonest-first ordering (2026-07-25) -- a real
-            // upcoming-events list reads by "what's happening soon," not by
-            // when it was posted; a meetup with no real eventDate (created before
-            // this field existed) sorts last, never dropped.
-            val meetups = meetupsRaw.sortedBy { it.eventDate ?: "9999" }
             if (meetups.isNotEmpty()) {
                 item {
                     Text("🎉 Meetups", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
