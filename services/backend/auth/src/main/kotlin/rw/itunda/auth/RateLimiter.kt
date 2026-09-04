@@ -18,9 +18,13 @@ class RateLimitExceededException(message: String) : RuntimeException(message)
  *
  * Originally closed SECURITY.md gap #4 ("No rate limiting... no brute-force protection
  * on login") scoped to just login/register; real coverage has since grown far past
- * that (142 call sites across ~80 services as of 2026-09-02's Toss security research
- * pass — savings/loans/p2p/messaging/merchant/rideshare/marketplace/etc.), so treat
- * this class as this app's general-purpose per-key rate limiter, not a login-only tool.
+ * that (147 call sites across 83 files as of 2026-09-04's Toss security research
+ * sweep — savings/loans/p2p/messaging/merchant/rideshare/marketplace/stocks/account/
+ * bills/etc. — with every real ledger-touching module now individually verified, not
+ * just grep-counted), so treat this class as this app's general-purpose per-key rate
+ * limiter, not a login-only tool. This count will keep drifting as new money-moving
+ * endpoints ship — don't trust it as exact, re-grep `rateLimiter.checkLimit(` before
+ * citing a number in a future audit.
  */
 @Service
 class RateLimiter(private val redisTemplate: StringRedisTemplate) {
