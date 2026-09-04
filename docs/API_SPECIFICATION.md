@@ -211,8 +211,13 @@ modules share it), not a separate or cached copy.
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 LOAN_OFFER_NOT_FOUND`, `404 LOAN_NOT_FOUND`,
-`404 WALLET_NOT_FOUND`, `403 LOAN_NOT_OWNED`, `409 LOAN_ALREADY_PAID`,
+`404 ACCOUNT_NOT_FOUND`, `403 ACCOUNT_FROZEN`, `409 LOAN_ALREADY_PAID`,
 `422 INVALID_LOAN_AMOUNT`, `422 LOAN_APPLICATION_DECLINED`, `422 INSUFFICIENT_FUNDS`.
+**Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND`
+(doesn't exist); `LOAN_NOT_OWNED` also doesn't exist — `LoansService.kt` throws the
+same `LoanNotFoundException` (→ `LOAN_NOT_FOUND`) whether the loan is missing or
+owned by someone else, the same IDOR-safe folding used elsewhere in this API;
+`ACCOUNT_FROZEN` was missing from this list entirely.
 
 ## Credit Score — `/api/v1/credit-score`
 
@@ -287,9 +292,23 @@ trades here are simulated.
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 PLAN_NOT_FOUND`, `404 POLICY_NOT_FOUND`,
-`409 POLICY_NOT_ACTIVE`, `404 WALLET_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
-`400 INVALID_REQUEST`. Real insurer quote/bind adapters are not built — this is itunda's own
-claims workflow, not a live connection to an actual insurer.
+`409 POLICY_NOT_ACTIVE`, `404 ACCOUNT_NOT_FOUND`, `403 ACCOUNT_FROZEN`,
+`422 INSUFFICIENT_FUNDS`, `400 INVALID_REQUEST`, `400 INVALID_CLAIM`,
+`429 RATE_LIMIT_EXCEEDED`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`,
+not `WALLET_NOT_FOUND` (doesn't exist); `ACCOUNT_FROZEN`/`INVALID_CLAIM`/
+`RATE_LIMIT_EXCEEDED` were missing entirely. Note the rate-limit code here is
+`RATE_LIMIT_EXCEEDED`, unlike Account/Stocks/Bills's `RATE_LIMITED` for the same
+underlying `RateLimitExceededException` — a real, undocumented naming
+inconsistency between controllers, not a doc error. Real insurer quote/bind
+adapters are not built — this is itunda's own claims workflow, not a live
+connection to an actual insurer.
+
+`InsuranceController.kt` also has 5 real, undocumented premium-fund routes not
+listed above: `POST /policies/{policyId}/premium-fund` (create), `POST
+/premium-funds/{fundId}/contribute`, `POST /premium-funds/{fundId}/cancel`, `GET
+/premium-funds`, and the ADMIN-only `POST /policies/process-renewal-reminders` —
+with their own `PREMIUM_FUND_NOT_FOUND`/`PREMIUM_FUND_ALREADY_EXISTS`/
+`PREMIUM_FUND_NOT_ACTIVE`/`INVALID_PREMIUM_FUND_AMOUNT` error codes.
 
 ### Insurance claims review — `/api/v1/system/insurance-claims` (ADMIN role only)
 
@@ -298,8 +317,9 @@ claims workflow, not a live connection to an actual insurer.
 | GET | `/queue` | — | `{success, queue: [...]}` | All `SUBMITTED` claims, oldest first |
 | POST | `/{claimId}/decide` | `{approve, reason?}` | `{success, claim}` | On `approve: true`, really pays out from a new `insurance_claims_expense` ledger account straight into the claimant's wallet — confirmed live, balance moved by the exact claim amount |
 
-Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 WALLET_NOT_FOUND`,
-`422 INSUFFICIENT_FUNDS`.
+Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 ACCOUNT_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`,
+not `WALLET_NOT_FOUND` (doesn't exist; confirmed via `InsuranceClaimsAdminController.kt`).
 
 ## Merchant — `/api/v1/merchant`
 
@@ -312,11 +332,18 @@ Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 W
 | POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
 | POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST (Toss Payments' documented shape). Real persistent retry as of 2026-07-13 (7 attempts, 1/4/16/64/256/1024/4096-minute schedule, matching Toss's own documented retry policy exactly) — failure never blocks or rolls back the payment, see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row |
 
-Errors: `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
-`404 WALLET_NOT_FOUND`, `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
+Errors (partial — see below): `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
+`404 ACCOUNT_NOT_FOUND`, `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
 `400 SELF_PAYMENT_NOT_ALLOWED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
-`422 INSUFFICIENT_FUNDS`. No POS/card processing or B2B payroll — see
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`. **Corrected
+2026-09-04** — real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND` (doesn't
+exist). `MerchantController.kt` is much larger than this table (coupons, loyalty
+points, static QR, fee waivers, merchant profile fields, business hours — 25+
+more `@ExceptionHandler`s exist beyond what's listed here); this section
+documents the core register/collect/webhook flow only, not the full merchant
+surface — a real, separate documentation gap from the stale-code issue this
+sweep targets. No POS/card processing or B2B payroll — see
 `docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
 
 ## Face Pay — `/api/v1/facepay`
@@ -336,11 +363,14 @@ a face template/image/hash.
 | GET | `/status` | — | `{success, enrolled, enrollment}` | `enrollment` is `null` if never enrolled or currently revoked |
 | POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ..., channel: "FACE_PAY"}` | Requires an active enrollment (`403 FACEPAY_NOT_ENROLLED` otherwise); same ownership/expiry/self-payment/fraud checks as `/merchant/collect/{intentId}`. `Transaction.channel` is now real and populated for the first time in this backend (`"FACE_PAY"` here, `"QR"` for merchant collection) |
 
-Errors: `403 FACEPAY_NOT_ENROLLED`, `404 MERCHANT_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
+Errors: `403 FACEPAY_NOT_ENROLLED`, `404 MERCHANT_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
 `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
 `400 SELF_PAYMENT_NOT_ALLOWED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
-`422 INSUFFICIENT_FUNDS`, `403 WALLET_FROZEN`.
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`. **Corrected 2026-09-04** — real
+codes are `ACCOUNT_NOT_FOUND`/`ACCOUNT_FROZEN`, not `WALLET_NOT_FOUND`/
+`WALLET_FROZEN` (neither exists; confirmed via `FacePayController.kt`'s own
+`@ExceptionHandler` list).
 
 ## Identity — `/api/v1/identity`
 
@@ -388,7 +418,11 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `403 REWARD_TASK_NOT_ELIGIBLE` (real activity check, before ever touching the wallet or ledger),
 `409 REWARD_TASK_ALREADY_CLAIMED` (a real DB-unique-constraint guard, not just an
 application-level check — a race between two concurrent claims for the same task can't both
-succeed), `404 WALLET_NOT_FOUND`, `404 USER_NOT_FOUND`. All 5 catalog tasks
+succeed), `404 ACCOUNT_NOT_FOUND`, `404 USER_NOT_FOUND`, `400 INVALID_STEP_COUNT`
+(a real handler in `RewardsController.kt` not covered by the 5-task catalog note
+below — a step-tracking task exists beyond what's documented here). **Corrected
+2026-09-04** — real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND` (doesn't
+exist). All 5 catalog tasks
 (`task_first_transfer`, `task_first_bill`, `task_savings_goal`, `task_referral`,
 `task_profile`) are real-activity-verified as of 2026-07-17 — see the Auth section above for
 the `profile/photo` and `profile/verify-email` endpoints `task_profile` checks.
