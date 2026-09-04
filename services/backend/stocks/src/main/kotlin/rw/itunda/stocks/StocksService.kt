@@ -2,6 +2,7 @@ package rw.itunda.stocks
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -19,6 +20,7 @@ import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -43,6 +45,7 @@ class StocksService(
     private val stockTradeRepository: StockTradeRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val rateLimiter: RateLimiter,
 ) {
     fun getStocks() = StockCatalog.stocks
 
@@ -108,6 +111,13 @@ class StocksService(
 
     @Transactional
     fun buyStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
+        // Real gap found live (2026-09-04): every sibling money-moving domain (P2P,
+        // loans, savings) applies a per-user rateLimiter.checkLimit -- stock buy/sell
+        // had none. Idempotency-Key already prevents a double-execute on retry, but
+        // that's a different concern from capping how often a real trade can be
+        // placed at all. Same 30/hour figure P2pService.pay/send already establishes
+        // as this codebase's own baseline for a comparable-stakes real money action.
+        rateLimiter.checkLimit("stocks:buy:$userId", limit = 30, window = Duration.ofHours(1))
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
         val account = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
         // Real bug found and fixed 2026-07-27: shares is caller-supplied BigDecimal with
@@ -149,6 +159,7 @@ class StocksService(
 
     @Transactional
     fun sellStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
+        rateLimiter.checkLimit("stocks:sell:$userId", limit = 30, window = Duration.ofHours(1))
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
         val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
         if (holding == null || holding.shares < shares) throw NotEnoughSharesException("Not enough shares to sell")
