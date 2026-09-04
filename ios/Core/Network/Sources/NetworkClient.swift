@@ -1821,8 +1821,13 @@ extension NetworkClient {
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and
     // Android already have this; this is the first iOS client.
+    // Real gap found 2026-09-04: VehicleInspectionService has real, distinguishable
+    // messages ("This account is already registered as a mechanic", "Cannot book an
+    // inspection with yourself", "Only a REQUESTED booking can be accepted", and a
+    // dynamic cancel message including the booking's actual current status) that
+    // VehicleInspectionScreenView.swift's bare `catch {}` blocks each flattened.
     public func registerAsInspectionMechanic(businessName: String) async throws -> VehicleInspectionMechanicResponse {
-        try await authenticatedPost("api/v1/marketplace/inspections/mechanics/register", body: RegisterInspectionMechanicRequest(businessName: businessName))
+        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/mechanics/register", body: RegisterInspectionMechanicRequest(businessName: businessName))
     }
     public func getMyInspectionMechanicProfile() async throws -> VehicleInspectionMechanicOrNullResponse {
         try await get("api/v1/marketplace/inspections/mechanics/me")
@@ -1831,10 +1836,10 @@ extension NetworkClient {
         try await get("api/v1/marketplace/inspections/mechanics")
     }
     public func setInspectionMechanicAvailability(available: Bool) async throws -> VehicleInspectionMechanicResponse {
-        try await authenticatedPost("api/v1/marketplace/inspections/mechanics/availability", body: SetInspectionMechanicAvailabilityRequest(available: available))
+        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/mechanics/availability", body: SetInspectionMechanicAvailabilityRequest(available: available))
     }
     public func requestVehicleInspection(listingId: String, mechanicId: String, fee: Double, scheduledFor: String) async throws -> VehicleInspectionBookingResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/marketplace/inspections",
             body: RequestVehicleInspectionRequest(listingId: listingId, mechanicId: mechanicId, fee: fee, scheduledFor: scheduledFor),
             idempotencyKey: UUID().uuidString
@@ -1843,13 +1848,13 @@ extension NetworkClient {
     public func getMyInspectionBookings() async throws -> VehicleInspectionBookingsResponse { try await get("api/v1/marketplace/inspections/my-bookings") }
     public func getMyInspectionMechanicBookings() async throws -> VehicleInspectionBookingsResponse { try await get("api/v1/marketplace/inspections/my-mechanic-bookings") }
     public func acceptVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
-        try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/accept", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/\(bookingId)/accept", body: EmptyBody())
     }
     public func completeVehicleInspection(bookingId: String, findings: String?) async throws -> VehicleInspectionBookingResponse {
-        try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/complete", body: CompleteVehicleInspectionRequest(findings: findings))
+        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/\(bookingId)/complete", body: CompleteVehicleInspectionRequest(findings: findings))
     }
     public func cancelVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
-        try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/cancel", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/marketplace/inspections/\(bookingId)/cancel", body: EmptyBody())
     }
 
     // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see

@@ -146,6 +146,8 @@ private struct InspectionBuyerContent: View {
             fee = ""
             scheduleHours = ""
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't request this inspection."
         } catch {
             self.error = "Couldn't request this inspection."
         }
@@ -157,6 +159,8 @@ private struct InspectionBuyerContent: View {
         do {
             _ = try await NetworkClient.shared.cancelVehicleInspection(bookingId: bookingId)
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't cancel this booking."
         } catch {
             self.error = "Couldn't cancel this booking."
         }
@@ -285,11 +289,13 @@ private struct InspectionMechanicContent: View {
         do {
             profile = try await NetworkClient.shared.registerAsInspectionMechanic(businessName: businessName).mechanic
             await load()
-        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+        } catch let NetworkError.httpErrorWithMessage(statusCode, _) where statusCode == 409 {
             // MECHANIC_ALREADY_REGISTERED in practice (matches Android's identical
             // VehicleInspectionScreen.kt fix, 2026-08-15) -- resolve forward: load the
             // existing profile instead of a dead-end error.
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't register as a mechanic."
         } catch {
             self.error = "Couldn't register as a mechanic."
         }
@@ -310,6 +316,8 @@ private struct InspectionMechanicContent: View {
         do {
             _ = try await NetworkClient.shared.acceptVehicleInspection(bookingId: bookingId)
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't accept this booking."
         } catch {
             self.error = "Couldn't accept this booking."
         }
@@ -321,6 +329,8 @@ private struct InspectionMechanicContent: View {
         do {
             _ = try await NetworkClient.shared.completeVehicleInspection(bookingId: bookingId, findings: findingsByBooking[bookingId])
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't complete this booking."
         } catch {
             self.error = "Couldn't complete this booking."
         }
