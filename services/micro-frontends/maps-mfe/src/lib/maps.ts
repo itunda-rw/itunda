@@ -92,11 +92,6 @@ export type TravelMode = 'DRIVING' | 'WALKING' | 'BIKING';
 const TRAVEL_MODE_ICONS: Record<TravelMode, string> = { DRIVING: '🚗', WALKING: '🚶', BIKING: '🚴' };
 export const travelModeIcon = (mode: TravelMode): string => TRAVEL_MODE_ICONS[mode];
 
-export const getDirections = (fromLat: number, fromLng: number, toLat: number, toLng: number, mode: TravelMode = 'DRIVING') =>
-  apiFetch<{ success: boolean; route: RouteResult }>(
-    `/api/v1/maps/directions?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
-  ).then((r) => r.route);
-
 // Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives' own
 // doc comment on the backend for the full account of the real, live-verified case where
 // itunda's own OSRM instance genuinely offers more than one route for the same trip.
