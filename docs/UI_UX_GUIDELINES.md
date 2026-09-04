@@ -127,6 +127,22 @@ design lever. The compressed rule: every empty/failure state names the real obje
 real fix, attributes the cause honestly (yours to fix vs. someone else's gap), never a bare
 "No X yet."
 
+**The same rule applies to network/validation error states, direct standing user
+instruction (2026-08-10, see `feedback_toss_error_handling` memory)**: a real backend
+message ("Choose a real boost duration -- 7/14/30 days", "This restaurant requires a
+minimum order of 10000 RWF") beats a generic per-status-code bucket ("Please check what
+you entered and try again.") every time — the generic bucket is a "No X yet" for errors,
+technically true but not actionable. Always try to parse and surface the backend's real
+`message` first; only fall back to a hardcoded string when the backend genuinely sent
+nothing parseable. A 5xx is different: that's never the user's fault and usually
+transient, so say both explicitly ("itunda is having a brief hiccup on our end — not
+something you did") rather than a vague "Something went wrong." Real, previously-hit
+platform-specific trap: a shared low-level network helper that only ever throws a bare
+status code (no message) forces EVERY caller through the generic bucket regardless of
+what the backend actually sent — see `ARCHITECTURE_GUIDELINES.md` §5's iOS
+`NetworkClient` example for the golden-path fix (a dedicated, message-carrying function
+per endpoint, never a blanket widen of the shared helper).
+
 ## 7. Everyday language, not internal vocabulary (Toss + Kakao)
 
 Toss's real Product Principles: **Casual Concept** — replace technical jargon with
