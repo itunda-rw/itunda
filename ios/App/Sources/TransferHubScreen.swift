@@ -246,7 +246,7 @@ struct AutoTransferListScreen: View {
                 }
                 await load()
             } catch {
-                // Best-effort, same as Android -- this row just won't update this tap.
+                loadError = "Couldn't reach itunda. Check your connection and try again."
             }
         }
     }
@@ -258,7 +258,7 @@ struct AutoTransferListScreen: View {
                 await load()
                 onChanged()
             } catch {
-                // Best-effort, same as Android.
+                loadError = "Couldn't reach itunda. Check your connection and try again."
             }
         }
     }
