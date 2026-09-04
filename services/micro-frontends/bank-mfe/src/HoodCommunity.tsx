@@ -3,7 +3,7 @@ import { EmptyState, ErrorCard } from './EmptyState';
 import { useI18n } from './i18n/I18nContext';
 import { WishlistHeart } from './icons/ItundaFaceHearts';
 import { ApiError, getStoredUser } from './lib/api';
-import { addCommunityComment, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost, fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchCommunityTopics, fetchMyCommunityPosts, joinCommunityMeetup, toggleCommunityLike, type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts } from './lib/community';
+import { addCommunityComment, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost, fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchCommunityTopics, fetchMyCommunityPosts, fetchUpcomingMeetups, joinCommunityMeetup, toggleCommunityLike, type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts } from './lib/community';
 import { fetchProfile } from './lib/neighborhood';
 import { NewCommunityPostCard, CommentNotificationToggle, CommunityPostCard, MeetupSessionsSection, GroupBuyFinalizeSection } from './HoodCommunityCards';
 import { NeighborhoodSetupPrompt, NeighborhoodSwitcherRow } from './BankDashboard';
@@ -128,6 +128,19 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
   // Real 같이해요 (join-together) group join counts (2026-07-24) -- see TrustBadge's
   // sibling doc comments; closes docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
   const [joinedCounts, setJoinedCounts] = useState<JoinedCounts>({});
+  // Real fix (2026-09-04): the "🎉 Meetups" pinned slot below used to be a client-side
+  // filter of whatever page of the general feed happened to be loaded (sorted by post
+  // creation time, with no eventDate check at all) -- meaning an already-happened
+  // meetup could appear pinned as if upcoming, and a genuinely upcoming meetup could be
+  // missing entirely if it fell off the loaded page. The real backend
+  // GET /api/v1/community/meetups/upcoming (built 2026-07-25) already excludes past
+  // eventDates and orders by soonest first, but had zero callers on any client
+  // (confirmed via repo-wide grep, matches Android's own identical dead-binding
+  // finding) until now. Only used when NOT explicitly browsing the Meetups category
+  // chip -- that case keeps its original full chronological (including past) browse,
+  // since deliberately browsing "Meetups" is a different intent than the passive
+  // homefeed highlight strip.
+  const [upcomingMeetups, setUpcomingMeetups] = useState<CommunityPost[]>([]);
   const [joiningPostId, setJoiningPostId] = useState<string | null>(null);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -141,9 +154,23 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
     fetchCommunityTopics().then(setTopics).catch(() => { /* chips just won't render, browse still works */ });
   }, []);
 
+  const loadUpcomingMeetups = () => {
+    if (view === 'MINE' || activeCategory === 'meetup') {
+      setUpcomingMeetups([]);
+      return;
+    }
+    fetchUpcomingMeetups()
+      .then((result) => {
+        setUpcomingMeetups(result.posts);
+        setJoinedCounts((prev) => ({ ...prev, ...result.joinedCounts }));
+      })
+      .catch(() => { /* pinned strip just won't render, main feed load below still works */ });
+  };
+
   const load = () => {
     setError(null);
     setPosts(null);
+    loadUpcomingMeetups();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
         .then(([profile, result]) => {
@@ -291,8 +318,14 @@ export function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: 
         // Real 같이해요 (join-together) pinned mid-feed slot (2026-07-24) -- Karrot's
         // real board gives meetup posts a dedicated slot instead of mixing them purely
         // chronologically (docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My
-        // posts" stays plain chronological.
-        const meetups = view !== 'MINE' ? posts.filter((p) => p.category === 'meetup') : [];
+        // posts" stays plain chronological. Sourced from the real upcoming-only,
+        // soonest-first `upcomingMeetups` fetch above (not a client-side filter of this
+        // page's posts) except when explicitly browsing the Meetups category chip,
+        // which keeps showing the full chronological browse including past ones.
+        let meetups: CommunityPost[] = [];
+        if (view !== 'MINE') {
+          meetups = activeCategory === 'meetup' ? posts.filter((p) => p.category === 'meetup') : upcomingMeetups;
+        }
         const regular = view !== 'MINE' ? posts.filter((p) => p.category !== 'meetup') : posts;
         const renderCard = (post: CommunityPost) => (
           <CommunityPostCard

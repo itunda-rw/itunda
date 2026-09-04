@@ -72,6 +72,20 @@ export const fetchCommunityPosts = (category?: string, topic?: string) => {
   ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
 };
 
+// Real 당근모임-style "upcoming meetups" browse (backend 2026-07-25,
+// CommunityController.upcomingMeetups) -- unlike fetchCommunityPosts(category:
+// 'meetup'), this excludes meetups whose eventDate has already passed and orders
+// by soonest eventDate first (backend query: `eventDate > now ORDER BY eventDate
+// ASC`), not by post creation time. Found unused by every client (Android had the
+// same dead API binding) while auditing the "🎉 Meetups" dedicated-slot feature --
+// that slot was built by client-side-filtering the general feed, which can surface
+// an already-happened meetup if it was posted recently, and can miss a genuinely
+// upcoming one if it's fallen off the loaded page of the general feed.
+export const fetchUpcomingMeetups = () =>
+  apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>(
+    '/api/v1/community/meetups/upcoming',
+  ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
+
 export const fetchMyCommunityPosts = () =>
   apiFetch<{ success: boolean; posts: CommunityPost[]; joinedCounts: JoinedCounts }>('/api/v1/community/my-posts')
     .then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
