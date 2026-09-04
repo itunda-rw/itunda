@@ -39,21 +39,20 @@ class DesignatedDriverServiceTest : BehaviorSpec({
 
     Given("a fresh account with a real account") {
         val designatedDriverRepository = mockk<DesignatedDriverRepository>()
-        val service = newService(designatedDriverRepository = designatedDriverRepository)
         val account = Account(
             id = "account_1", userId = "user_1", accountNumber = "1000000001", accountName = "User",
             type = AccountType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
         )
         val accountRepository = mockk<AccountRepository>()
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account
-        val service2 = newService(designatedDriverRepository = designatedDriverRepository, accountRepository = accountRepository)
+        val service = newService(designatedDriverRepository = designatedDriverRepository, accountRepository = accountRepository)
 
         When("registering as a designated driver for the first time") {
             every { designatedDriverRepository.findByUserId("user_1") } returns null
             val savedSlot = slot<DesignatedDriver>()
             every { designatedDriverRepository.save(capture(savedSlot)) } answers { firstArg() }
 
-            val result = service2.register("user_1", "DL-12345")
+            val result = service.register("user_1", "DL-12345")
 
             Then("a real driver row is saved with the account reused as payout destination") {
                 result.userId shouldBe "user_1"
@@ -69,7 +68,7 @@ class DesignatedDriverServiceTest : BehaviorSpec({
 
             Then("the second registration real-409s") {
                 try {
-                    service2.register("user_1", "DL-99999")
+                    service.register("user_1", "DL-99999")
                     throw AssertionError("expected DesignatedDriverAlreadyRegisteredException")
                 } catch (e: DesignatedDriverAlreadyRegisteredException) {
                     e.message shouldBe "This account is already registered as a designated driver"
