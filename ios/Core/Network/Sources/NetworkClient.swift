@@ -2078,11 +2078,14 @@ extension NetworkClient {
     // doc comment. Genuinely distinct from every Toss/Kakao/Naver/Coupang-sourced
     // feature in this backend and from Ikimina (rotating-pot ROSCA).
     public func buySaccoShares(amount: Double) async throws -> SaccoShareholdingResponse {
-        try await authenticatedPost("api/v1/sacco/shares/buy", body: SaccoAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/sacco/shares/buy", body: SaccoAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
+    // Real gap found 2026-09-04: redeemShares' "Insufficient shares -- you hold X"
+    // is a dynamic real message (the actual share count) SaccoScreenView.swift's
+    // bare `catch {}` flattened into a static "Could not redeem SACCO shares."
     public func redeemSaccoShares(amount: Double) async throws -> SaccoShareholdingResponse {
-        try await authenticatedPost("api/v1/sacco/shares/redeem", body: SaccoAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/sacco/shares/redeem", body: SaccoAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func getMySaccoShareholding() async throws -> SaccoShareholdingResponse { try await get("api/v1/sacco/shares/me") }
@@ -2178,24 +2181,30 @@ extension NetworkClient {
     // money movement itself, matching the backend's own contract); contribute/
     // cancel/convert-to-loan/repay all require one, same convention as every other
     // money-moving call in this file.
+    // Real gap found 2026-09-04: MotoOwnershipService has genuinely rich, actionable
+    // real messages across all 5 actions ("You already have an active moto-taxi
+    // ownership plan -- complete or cancel it before starting another", dynamic
+    // bike-price bounds, "the down payment target ($X) has not been met yet", "Only
+    // a SAVING/LOAN_ACTIVE plan can be...") that MotoOwnershipScreenView.swift's 5
+    // bare `catch {}` blocks each flattened into one static per-action string.
     public func createMotoOwnershipPlan(bikePrice: Double, dailyContribution: Double) async throws -> MotoOwnershipPlanResponse {
-        try await authenticatedPost("api/v1/moto-ownership/plans", body: CreateMotoOwnershipPlanRequest(bikePrice: bikePrice, dailyContribution: dailyContribution))
+        try await authenticatedPostWithMessage("api/v1/moto-ownership/plans", body: CreateMotoOwnershipPlanRequest(bikePrice: bikePrice, dailyContribution: dailyContribution))
     }
 
     public func contributeToMotoOwnershipPlan(planId: String, amount: Double) async throws -> MotoOwnershipPlanResponse {
-        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/contribute", body: ContributeToMotoOwnershipPlanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/moto-ownership/plans/\(planId)/contribute", body: ContributeToMotoOwnershipPlanRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func cancelMotoOwnershipPlan(planId: String) async throws -> MotoOwnershipPlanResponse {
-        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/moto-ownership/plans/\(planId)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func convertMotoOwnershipPlanToLoan(planId: String) async throws -> MotoOwnershipPlanResponse {
-        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/convert-to-loan", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/moto-ownership/plans/\(planId)/convert-to-loan", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func repayMotoOwnershipPlan(planId: String, amount: Double) async throws -> MotoOwnershipPlanResponse {
-        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/repay", body: RepayMotoOwnershipPlanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/moto-ownership/plans/\(planId)/repay", body: RepayMotoOwnershipPlanRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyMotoOwnershipPlans() async throws -> MotoOwnershipPlansResponse { try await get("api/v1/moto-ownership/plans/me") }

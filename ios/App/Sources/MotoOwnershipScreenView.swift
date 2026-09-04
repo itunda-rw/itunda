@@ -202,6 +202,8 @@ struct MotoOwnershipScreenView: View {
             dailyContribution = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not create this moto-taxi ownership plan."
         } catch {
             self.error = "Could not create this moto-taxi ownership plan."
         }
@@ -219,6 +221,8 @@ struct MotoOwnershipScreenView: View {
             contributeAmounts[planId] = nil
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not contribute to this plan."
         } catch {
             self.error = "Could not contribute to this plan."
         }
@@ -231,6 +235,8 @@ struct MotoOwnershipScreenView: View {
             _ = try await NetworkClient.shared.cancelMotoOwnershipPlan(planId: planId)
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not cancel this plan."
         } catch {
             self.error = "Could not cancel this plan."
         }
@@ -243,6 +249,8 @@ struct MotoOwnershipScreenView: View {
             _ = try await NetworkClient.shared.convertMotoOwnershipPlanToLoan(planId: planId)
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not convert this plan to a loan."
         } catch {
             self.error = "Could not convert this plan to a loan."
         }
@@ -260,6 +268,8 @@ struct MotoOwnershipScreenView: View {
             repayAmounts[planId] = nil
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not repay this loan."
         } catch {
             self.error = "Could not repay this loan."
         }

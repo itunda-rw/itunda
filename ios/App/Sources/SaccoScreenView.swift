@@ -126,6 +126,8 @@ struct SaccoScreenView: View {
             amount = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not buy SACCO shares."
         } catch {
             self.error = "Could not buy SACCO shares."
         }
@@ -140,6 +142,8 @@ struct SaccoScreenView: View {
             amount = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not redeem SACCO shares."
         } catch {
             self.error = "Could not redeem SACCO shares."
         }
