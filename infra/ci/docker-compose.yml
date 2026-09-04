@@ -5,7 +5,7 @@ version: '3.9'
 # hosted-runner compute. The repo stays on GitHub (source hosting, PRs, issues); only
 # CI *execution* moves off GitHub's billed runners onto infrastructure itunda owns.
 # GitHub Actions' own workflow (.github/workflows/ci-cd.yml) is left in place --
-# .woodpecker.yml at the repo root is an independent, parallel pipeline definition,
+# .woodpecker/*.yml at the repo root is an independent, parallel pipeline definition,
 # not a replacement file GitHub Actions reads.
 #
 # Architecture (deliberately NOT single-node): the server here is the lightweight
@@ -14,7 +14,7 @@ version: '3.9'
 # below does the real work for every JVM/Node/Python job (lint-and-typecheck,
 # backend-build, microservices-build, android-build, api-gateway-test,
 # progressive-manifest-verify, backend-migration-verify, application-container-build,
-# root-workspace-build -- see .woodpecker.yml). The ios-build job needs a SEPARATE
+# root-workspace-build -- see .woodpecker/*.yml). The ios-build job needs a SEPARATE
 # agent using Woodpecker's "exec" backend instead of Docker (Xcode cannot run inside
 # a Linux container -- there is no official Docker image for it) -- see
 # infra/ci/woodpecker-exec-agent.env + infra/launchd/com.itunda.woodpecker-exec-agent.plist
@@ -68,7 +68,7 @@ services:
 
   # Docker-based build agent -- handles every job EXCEPT ios-build (see the
   # exec-backend agent referenced above for that one). Each pipeline step in
-  # .woodpecker.yml runs as its own container, same isolation model GitHub Actions'
+  # .woodpecker/*.yml runs as its own container, same isolation model GitHub Actions'
   # own hosted runners use, just scheduled by this agent instead.
   woodpecker-agent:
     image: woodpeckerci/woodpecker-agent:v3
@@ -88,7 +88,7 @@ services:
       # Real Woodpecker convention (not itunda-invented): every agent auto-reports a
       # `backend=<type>` label matching how it actually runs steps -- this one
       # defaults to `backend=docker` with no override needed, which is exactly what
-      # lets .woodpecker.yml's ios-build job (labels: {backend: exec}) route only to
+      # lets .woodpecker/*.yml's ios-build job (labels: {backend: exec}) route only to
       # the separate macOS exec-backend agent instead of here.
     networks:
       - woodpecker-network

@@ -1,0 +1,60 @@
+# Real port of .github/workflows/ci-cd.yml's application-container-build and
+# progressive-manifest-verify jobs -- same commands, run on itunda's own Woodpecker
+# infrastructure instead of a GitHub-hosted runner. See lint-and-typecheck.yml's own
+# doc comment for the overall GitHub-Actions-stays / Woodpecker-runs-in-parallel
+# architecture.
+#
+# application-container-build needs a real `docker build`, unlike every other step in
+# .woodpecker/* -- the standard Woodpecker pattern for this (a docker:cli image with
+# the HOST's own docker.sock mounted in, per infra/ci/docker-compose.yml's own agent
+# already doing exactly that mount) rather than Docker-in-Docker. Not yet live-tested
+# against a real running Woodpecker instance (see docs/CI_WOODPECKER_SETUP.md -- the
+# server/agent aren't deployed anywhere yet), so verify this step specifically once
+# Woodpecker is actually live, same as this whole directory's own standing caveat.
+labels:
+  backend: docker
+
+steps:
+  - name: application-container-build-api-gateway
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - docker build --tag itunda/api-gateway:ci --file services/api-gateway/Dockerfile services/api-gateway
+    when:
+      - event: [push, pull_request]
+
+  - name: application-container-build-backend
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - docker build --tag itunda/backend:ci --file services/backend/Dockerfile services/backend
+    when:
+      - event: [push, pull_request]
+
+  - name: application-container-build-ledger-service
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - docker build --tag itunda/ledger-service:ci --file services/microservices/ledger-service/Dockerfile services/microservices
+    when:
+      - event: [push, pull_request]
+
+  - name: application-container-build-payment-service
+    image: docker:cli
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - docker build --tag itunda/payment-service:ci --file services/microservices/payment-service/Dockerfile services/microservices
+    when:
+      - event: [push, pull_request]
+
+  - name: progressive-manifest-verify
+    image: python:3.12-slim
+    commands:
+      - bash scripts/verify-progressive-images.sh
+      - bash scripts/verify-api-gateway-runtime-security.sh
+    when:
+      - event: [push, pull_request]

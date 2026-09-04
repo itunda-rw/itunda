@@ -1,0 +1,26 @@
+# Real port of .github/workflows/ci-cd.yml's root-workspace-build and
+# api-gateway-test jobs -- same commands, run on itunda's own Woodpecker
+# infrastructure instead of a GitHub-hosted runner. See lint-and-typecheck.yml's
+# own doc comment for the overall GitHub-Actions-stays / Woodpecker-runs-in-parallel
+# architecture.
+labels:
+  backend: docker
+
+steps:
+  - name: root-workspace-build
+    image: node:20
+    commands:
+      - corepack enable
+      - yarn install --immutable
+      - yarn build
+    when:
+      - event: [push, pull_request]
+
+  - name: api-gateway-test
+    image: node:20
+    commands:
+      - corepack enable
+      - yarn install --immutable
+      - yarn workspace @itunda/api-gateway test
+    when:
+      - event: [push, pull_request]
