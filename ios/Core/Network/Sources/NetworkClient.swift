@@ -5075,8 +5075,13 @@ extension NetworkClient {
     }
 
     // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
+    // Real gap found 2026-09-04: GroupMessagingService.createGroupByPhoneNumbers has
+    // real, distinct messages (name required, name too long, needs another real
+    // member, "No itunda account found for one of the invited members" -- a common,
+    // actionable typo'd-phone-number case) none of which are checked client-side,
+    // all collapsed into TalkScreen.errorMessage's generic 400/404 text.
     public func createGroup(name: String, memberPhoneNumbers: [String]) async throws -> GroupResponse {
-        try await authenticatedPost("api/v1/messages/groups", body: CreateGroupRequest(name: name, memberPhoneNumbers: memberPhoneNumbers))
+        try await authenticatedPostWithMessage("api/v1/messages/groups", body: CreateGroupRequest(name: name, memberPhoneNumbers: memberPhoneNumbers))
     }
 
     public func getMyGroups() async throws -> GroupsResponse { try await get("api/v1/messages/groups") }

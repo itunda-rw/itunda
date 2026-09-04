@@ -242,8 +242,8 @@ struct GroupsList: View {
             name = ""
             phoneNumbers = ""
             onCreated(res.group.groupId)
-        } catch let NetworkError.httpError(statusCode) {
-            createError = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            createError = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             createError = "Couldn't reach itunda. Check your connection and try again."
         }
