@@ -104,6 +104,16 @@ class MerchantService(
 
     @Transactional
     fun register(ownerUserId: String, businessName: String): Merchant {
+        // Real gap found 2026-09-05, same shape as AuthService.register's own
+        // firstName/lastName fix -- Merchant.businessName has no explicit @Column
+        // length (Hibernate's real 255-char VARCHAR default), and this real
+        // registration entry point never checked it before insert. Same
+        // STRICT_TRANS_TABLES raw-500-on-over-length-insert bug class this codebase's
+        // own systematic sweep already closed elsewhere (see PartnerService
+        // .submitMiniApp's own doc comment).
+        if (businessName.isBlank() || businessName.length > 255) {
+            throw InvalidBusinessNameException("Business name must be between 1 and 255 characters")
+        }
         if (merchantRepository.findByOwnerUserId(ownerUserId) != null) {
             throw MerchantAlreadyRegisteredException("This account is already registered as a merchant")
         }

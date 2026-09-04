@@ -7,6 +7,7 @@ package rw.itunda.merchant
 class MerchantAlreadyRegisteredException(message: String) : RuntimeException(message)
 class MerchantNotFoundException(message: String) : RuntimeException(message)
 class MerchantNoAccountException(message: String) : RuntimeException(message)
+class InvalidBusinessNameException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class InvalidCategoryException(message: String) : RuntimeException(message)
 class InvalidClosedWeekdaysException(message: String) : RuntimeException(message)

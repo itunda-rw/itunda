@@ -423,6 +423,10 @@ class MerchantController(
     fun handleAlreadyRegistered(ex: MerchantAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MERCHANT_ALREADY_REGISTERED", ex.message ?: "Conflict"))
 
+    @ExceptionHandler(InvalidBusinessNameException::class)
+    fun handleInvalidBusinessName(ex: InvalidBusinessNameException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BUSINESS_NAME", ex.message ?: "Bad request"))
+
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))

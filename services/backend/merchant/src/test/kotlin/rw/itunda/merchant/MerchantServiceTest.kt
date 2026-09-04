@@ -150,6 +150,28 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("registering with a blank business name") {
+            Then("it throws InvalidBusinessNameException before ever checking for a duplicate") {
+                try {
+                    service.register("owner_3", "   ")
+                    error("expected InvalidBusinessNameException")
+                } catch (e: InvalidBusinessNameException) {
+                    verify(exactly = 0) { merchantRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with a business name longer than the real 255-char DB column bound") {
+            Then("it throws InvalidBusinessNameException rather than risking a raw DB insert failure") {
+                try {
+                    service.register("owner_3", "x".repeat(256))
+                    error("expected InvalidBusinessNameException")
+                } catch (e: InvalidBusinessNameException) {
+                    verify(exactly = 0) { merchantRepository.save(any()) }
+                }
+            }
+        }
+
         When("generating a QR payment intent") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
