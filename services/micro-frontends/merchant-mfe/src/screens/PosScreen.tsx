@@ -24,6 +24,7 @@ import {
   removeProduct,
   setPriceTiers,
   setSoldOut,
+  updateProduct,
   type CardChargeResult,
   type MenuOptionGroup,
   type MerchantProduct,
@@ -518,6 +519,32 @@ function CatalogView() {
     }
   };
 
+  // Real "edit product" parity gap, found 2026-09-04 via a defined-but-uncalled-method
+  // sweep: updateProduct was fully built on the backend and declared here, but never
+  // called anywhere on any platform -- a merchant could adjust stock (adjustStock
+  // above) or delete a product entirely, but never fix a typo in its name or adjust
+  // its price without deleting and recreating it (losing its reviews/analytics/stock
+  // history in the process). Reuses the same lightweight window.prompt convention
+  // adjustStock above already established, rather than building a full edit form for
+  // a two-field change.
+  const editProduct = async (product: MerchantProduct) => {
+    const name = window.prompt(t('pos.editProductNamePrompt'), product.name);
+    if (name === null) return;
+    const priceInput = window.prompt(t('pos.editProductPricePrompt'), String(product.price));
+    if (priceInput === null) return;
+    const price = Number(priceInput);
+    if (!name.trim() || !Number.isFinite(price) || price <= 0) {
+      setError(t('pos.priceValidationError'));
+      return;
+    }
+    try {
+      await updateProduct(product.id, name.trim(), price);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('pos.editProductError'));
+    }
+  };
+
   // Real 마감할인 (closing/surplus discount) toggle -- see lib/merchant.ts's own doc
   // comment for the full sourced account.
   const handleSetSurplusDeal = async (product: MerchantProduct) => {
@@ -722,6 +749,12 @@ function CatalogView() {
                             style={{ color: 'var(--itunda-indigo)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.analyticsToggle')} {isAnalyticsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
+                            onClick={() => editProduct(product)}
+                            style={{ color: 'var(--itunda-indigo)', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            {t('pos.editButton')}
                           </button>
                           <button
                             onClick={() => adjustStock(product)}

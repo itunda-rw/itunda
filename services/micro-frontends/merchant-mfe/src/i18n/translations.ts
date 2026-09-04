@@ -424,6 +424,9 @@ export type TranslationKey =
   | 'pos.addProductError'
   | 'pos.adjustStockPrompt'
   | 'pos.updateStockError'
+  | 'pos.editProductNamePrompt'
+  | 'pos.editProductPricePrompt'
+  | 'pos.editProductError'
   | 'pos.surplusDealSetButton'
   | 'pos.surplusDealClearButton'
   | 'pos.surplusDealHoursPrompt'
@@ -466,6 +469,7 @@ export type TranslationKey =
   | 'pos.analyticsViewCount'
   | 'pos.analyticsOrderCount'
   | 'pos.adjustStockButton'
+  | 'pos.editButton'
   | 'pos.removeButton'
   | 'pos.optionGroupsLoadError'
   | 'pos.existingOptionGroups'
@@ -996,6 +1000,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.addProductError': 'Could not add this product.',
     'pos.adjustStockPrompt': 'Set available units. Leave blank for unlimited availability.',
     'pos.updateStockError': 'Could not update stock.',
+    'pos.editProductNamePrompt': 'Product name',
+    'pos.editProductPricePrompt': 'Price (RWF)',
+    'pos.editProductError': 'Could not update this product.',
     'pos.surplusDealSetButton': 'Mark as closing deal',
     'pos.surplusDealClearButton': 'End closing deal',
     'pos.surplusDealHoursPrompt': 'Hours until this deal closes',
@@ -1038,6 +1045,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.analyticsViewCount': 'Views',
     'pos.analyticsOrderCount': 'Orders',
     'pos.adjustStockButton': 'Adjust stock',
+    'pos.editButton': 'Edit',
     'pos.removeButton': 'Remove',
     'pos.optionGroupsLoadError': 'Could not load option groups.',
     'pos.existingOptionGroups': 'Existing option groups',
@@ -1561,6 +1569,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.addProductError': 'Ntibishoboka kongeraho iki gicuruzwa.',
     'pos.adjustStockPrompt': 'Shyiraho umubare uhari. Reka ubusa niba nta mubare uzwi.',
     'pos.updateStockError': 'Ntibishoboka kuvugurura ibicuruzwa.',
+    'pos.editProductNamePrompt': 'Izina ry\'igicuruzwa',
+    'pos.editProductPricePrompt': 'Igiciro (RWF)',
+    'pos.editProductError': 'Ntibishoboka kuvugurura iki gicuruzwa.',
     'pos.surplusDealSetButton': 'Shyiraho nk\'igurisha ryo gufunga',
     'pos.surplusDealClearButton': 'Hagarika igurisha ryo gufunga',
     'pos.surplusDealHoursPrompt': 'Amasaha asigaye kugeza iri gurisha rirangiye',
@@ -1603,6 +1614,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.analyticsViewCount': 'Abarebye',
     'pos.analyticsOrderCount': 'Ibyaguzwe',
     'pos.adjustStockButton': 'Vugurura ibicuruzwa',
+    'pos.editButton': 'Hindura',
     'pos.removeButton': 'Kuraho',
     'pos.optionGroupsLoadError': 'Ntibishoboka gushakisha amatsinda y\'amahitamo.',
     'pos.existingOptionGroups': 'Amatsinda y\'amahitamo asanzwe',
@@ -2126,6 +2138,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.addProductError': 'Impossible d\'ajouter ce produit.',
     'pos.adjustStockPrompt': 'Définissez les unités disponibles. Laissez vide pour une disponibilité illimitée.',
     'pos.updateStockError': 'Impossible de mettre à jour le stock.',
+    'pos.editProductNamePrompt': 'Nom du produit',
+    'pos.editProductPricePrompt': 'Prix (RWF)',
+    'pos.editProductError': 'Impossible de mettre à jour ce produit.',
     'pos.surplusDealSetButton': 'Marquer comme vente de clôture',
     'pos.surplusDealClearButton': 'Terminer la vente de clôture',
     'pos.surplusDealHoursPrompt': 'Heures avant la fin de cette offre',
@@ -2168,6 +2183,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.analyticsViewCount': 'Vues',
     'pos.analyticsOrderCount': 'Commandes',
     'pos.adjustStockButton': 'Ajuster le stock',
+    'pos.editButton': 'Modifier',
     'pos.removeButton': 'Retirer',
     'pos.optionGroupsLoadError': "Impossible de charger les groupes d'options.",
     'pos.existingOptionGroups': "Groupes d'options existants",
