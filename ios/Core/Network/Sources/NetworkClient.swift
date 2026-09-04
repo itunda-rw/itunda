@@ -1907,8 +1907,11 @@ extension NetworkClient {
     // option, which stays unwired on every client including Android's.
     public func getRoundUpSettings() async throws -> RoundUpSettingsResponse { try await get("api/v1/savings/round-up") }
 
+    // Real gap found 2026-09-04: RoundUpService.setSettings' real "Choose a real
+    // increment -- 10, 50, 100 RWF" (dynamically listing SUPPORTED_INCREMENTS) was
+    // flattened by RoundUpSettingsView.swift's bare `catch {}`.
     public func setRoundUpSettings(enabled: Bool, roundToNearest: Double, targetGoalId: String?) async throws -> RoundUpSettingsResponse {
-        try await authenticatedPost("api/v1/savings/round-up", body: SetRoundUpSettingsRequest(enabled: enabled, roundToNearest: roundToNearest, targetGoalId: targetGoalId))
+        try await authenticatedPostWithMessage("api/v1/savings/round-up", body: SetRoundUpSettingsRequest(enabled: enabled, roundToNearest: roundToNearest, targetGoalId: targetGoalId))
     }
 
     // Real 당근마켓 Keyword Alert (키워드 알림) -- first iOS client for this feature

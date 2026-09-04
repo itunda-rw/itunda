@@ -113,12 +113,22 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/transit/tap", body: TapFareRequest(operatorName: operatorName, fare: fare), idempotencyKey: UUID().uuidString)
     }
 
+    // Real gap found 2026-09-04: TransitService.chargeFare/MotoFareService's tap-
+    // collect real messages ("This code has already been used", "This code has
+    // expired -- ask the rider to refresh their Pay screen", "That's your own code",
+    // "Your transit balance is too low for this fare. Top up and try again.") are
+    // each a genuinely different real-world tap-to-pay failure the operator needs to
+    // act on differently -- both screens' bare `catch {}` flattened all of them into
+    // one static "Could not collect this fare." `postP2p` is fileprivate to
+    // NetworkClient.swift, so this cross-file extension reuses the internal
+    // postSavingsGoal instead (same idempotency-keyed/message-carrying/
+    // DEVICE_NOT_VERIFIED-checked shape).
     public func tapTransitFareByCode(code: String, operatorName: String, fare: Double) async throws -> TapFareByCodeResponse {
-        try await authenticatedPost("api/v1/transit/tap-by-code", body: TapFareByCodeRequest(code: code, operatorName: operatorName, fare: fare), idempotencyKey: UUID().uuidString)
+        try await postSavingsGoal("api/v1/transit/tap-by-code", body: TapFareByCodeRequest(code: code, operatorName: operatorName, fare: fare), idempotencyKey: UUID().uuidString)
     }
 
     public func collectMotoFare(code: String, fare: Double) async throws -> CollectMotoFareResponse {
-        try await authenticatedPost("api/v1/moto-fare/collect", body: CollectMotoFareRequest(code: code, fare: fare), idempotencyKey: UUID().uuidString)
+        try await postSavingsGoal("api/v1/moto-fare/collect", body: CollectMotoFareRequest(code: code, fare: fare), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyMotoFareEarnings(page: Int = 0, size: Int = 20) async throws -> MotoFareEarningsResponse {

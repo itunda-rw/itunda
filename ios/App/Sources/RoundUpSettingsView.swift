@@ -125,6 +125,8 @@ struct RoundUpSettingsView: View {
         do {
             let target = enabled ? goalId : settings?.targetGoalId
             settings = try await NetworkClient.shared.setRoundUpSettings(enabled: enabled, roundToNearest: increment, targetGoalId: target).settings
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not update round-up settings."
         } catch {
             self.error = "Could not update round-up settings."
         }

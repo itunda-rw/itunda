@@ -145,6 +145,8 @@ struct TransitCollectScreenView: View {
         Task {
             do {
                 collected = try await NetworkClient.shared.tapTransitFareByCode(code: code, operatorName: operatorName, fare: fare).collected
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not collect this fare."
             } catch {
                 self.error = "Could not collect this fare."
             }

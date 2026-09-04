@@ -246,6 +246,8 @@ struct MotoFareCollectScreenView: View {
             do {
                 collected = try await NetworkClient.shared.collectMotoFare(code: code, fare: fare).collected
                 loadEarnings()
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not collect this fare."
             } catch {
                 self.error = "Could not collect this fare."
             }
