@@ -198,6 +198,23 @@ class SaccoService(
      * INSIDE this transactional method rather than propagating out, Spring commits
      * the transaction normally at the end, with only the failed shareholder skipped
      * (and logged) rather than the whole distribution rolled back.
+     *
+     * Real proactive hardening (2026-09-05, applying this session's own "@Version /
+     * a real lock from day one, don't wait to find the race live" precedent -- see
+     * Cooperative.kt's own doc comment for where that precedent was set): `declareDividend`
+     * has no real caller anywhere in this codebase yet (confirmed via a repo-wide
+     * grep -- `GET /dividends/me` reads dividend HISTORY, but nothing ever creates
+     * one; a real, disclosed, half-built-feature gap, not something this pass wires
+     * up unilaterally -- WHEN a cooperative declares a dividend is a governance
+     * decision, not an engineering one). But the classic TOCTOU this method's own
+     * shape invites was worth closing now regardless of who eventually calls it:
+     * two concurrent `declareDividend()` calls would both read the SAME
+     * `lastDistribution` (neither has committed yet), compute the SAME period/rate,
+     * and both pay out a FULL dividend to every shareholder -- a real double-pay.
+     * Fixed by re-fetching the pool account via a real row lock
+     * (`AccountRepository.findByIdForUpdate`) before reading `lastDistribution`: a
+     * second concurrent call now blocks until the first's transaction commits, then
+     * correctly sees the first's already-saved distribution on its own fresh read.
      */
     @Transactional
     fun declareDividend(): SaccoDividendDistribution {
@@ -206,7 +223,8 @@ class SaccoService(
         if (totalShares <= BigDecimal.ZERO) {
             throw SaccoNoSharesOutstandingException("No SACCO shares outstanding -- nothing to declare a dividend on")
         }
-        val poolAccount = getOrCreatePoolAccount()
+        val unlockedPoolAccount = getOrCreatePoolAccount()
+        val poolAccount = accountRepository.findByIdForUpdate(unlockedPoolAccount.id).orElseThrow { SaccoNoAccountException("Account not found") }
 
         val lastDistribution = distributionRepository.findAllByOrderByDistributionDateDesc().firstOrNull()
         val periodStart = lastDistribution?.distributionDate ?: poolAccount.createdAt

@@ -166,6 +166,7 @@ class SaccoServiceTest : BehaviorSpec({
 
         every { shareholdingRepository.findAll() } returns listOf(shareholdingA, shareholdingB)
         every { accountRepository.findByUserIdAndType("sacco_pool_system", AccountType.GROUP) } returns poolAccount
+        every { accountRepository.findByIdForUpdate("account_pool") } returns Optional.of(poolAccount)
         every { distributionRepository.findAllByOrderByDistributionDateDesc() } returns emptyList()
         every { accountRepository.findById("account_u1") } returns Optional.of(account("account_u1", "u1"))
         every { accountRepository.findById("account_u2") } returns Optional.of(account("account_u2", "u2"))
@@ -212,6 +213,7 @@ class SaccoServiceTest : BehaviorSpec({
 
         every { shareholdingRepository.findAll() } returns listOf(shareholdingA, shareholdingB, shareholdingC)
         every { accountRepository.findByUserIdAndType("sacco_pool_system", AccountType.GROUP) } returns poolAccount
+        every { accountRepository.findByIdForUpdate("account_pool") } returns Optional.of(poolAccount)
         every { distributionRepository.findAllByOrderByDistributionDateDesc() } returns emptyList()
         every { accountRepository.findById("account_u1") } returns Optional.of(account("account_u1", "u1"))
         every { accountRepository.findById("account_deleted") } returns Optional.empty()
@@ -231,6 +233,38 @@ class SaccoServiceTest : BehaviorSpec({
             Then("the total paid only reflects the 2 real successful payouts, not the failed one") {
                 result.totalDividendPaid.signum() shouldBe 1
                 savedDistributionSlot.captured.totalDividendPaid shouldBe result.totalDividendPaid
+            }
+        }
+    }
+
+    Given("a real dividend declaration") {
+        val shareholdingRepository = mockk<SaccoShareholdingRepository>()
+        val distributionRepository = mockk<SaccoDividendDistributionRepository>()
+        val payoutRepository = mockk<SaccoDividendPayoutRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            shareholdingRepository = shareholdingRepository, distributionRepository = distributionRepository,
+            payoutRepository = payoutRepository, accountRepository = accountRepository, ledgerService = ledgerService,
+        )
+
+        val poolAccount = account("account_pool", "sacco_pool_system", AccountType.GROUP, BigDecimal("30000"))
+        val shareholding = SaccoShareholding(id = "share_a", userId = "u1", accountId = "account_u1", sharesHeld = BigDecimal("20000"), totalContributed = BigDecimal("20000"))
+
+        every { shareholdingRepository.findAll() } returns listOf(shareholding)
+        every { accountRepository.findByUserIdAndType("sacco_pool_system", AccountType.GROUP) } returns poolAccount
+        every { accountRepository.findByIdForUpdate("account_pool") } returns Optional.of(poolAccount)
+        every { distributionRepository.findAllByOrderByDistributionDateDesc() } returns emptyList()
+        every { accountRepository.findById("account_u1") } returns Optional.of(account("account_u1", "u1"))
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_div", emptyList())
+        every { payoutRepository.save(any()) } answers { firstArg() }
+        every { distributionRepository.save(any()) } answers { firstArg() }
+
+        When("it runs") {
+            service.declareDividend()
+
+            Then("real double-declare-race hardening: the pool account is re-fetched under a real row lock before reading the last distribution, so a genuinely concurrent second call is forced to serialize behind this one rather than reading the same stale state") {
+                verify(exactly = 1) { accountRepository.findByIdForUpdate("account_pool") }
             }
         }
     }
