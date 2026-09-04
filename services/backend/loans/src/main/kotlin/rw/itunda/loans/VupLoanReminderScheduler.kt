@@ -12,6 +12,11 @@ import org.springframework.stereotype.Component
  * found "only 14% of borrowers repay loans digitally" in Rwanda -- a real, current,
  * documented gap this reminder is a direct, scoped response to. Same demo-speed poll
  * convention VupLoanOverdueScheduler's own doc comment establishes.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): `sendDueReminder` had no try/catch of its own, and this loop had none
+ * either -- per-loan try/catch closes it, matching VupLoanOverdueScheduler's own
+ * sibling fix.
  */
 @Component
 class VupLoanReminderScheduler(private val vupLoanService: VupLoanService) {
@@ -21,8 +26,12 @@ class VupLoanReminderScheduler(private val vupLoanService: VupLoanService) {
     fun run() {
         val dueSoon = vupLoanService.getLoansDueSoonForReminder()
         for (loan in dueSoon) {
-            vupLoanService.sendDueReminder(loan)
-            log.info("VUP loan {} sent due-soon reminder (due {})", loan.id, loan.dueDate)
+            try {
+                vupLoanService.sendDueReminder(loan)
+                log.info("VUP loan {} sent due-soon reminder (due {})", loan.id, loan.dueDate)
+            } catch (e: Exception) {
+                log.error("VUP loan due-soon reminder failed for {}", loan.id, e)
+            }
         }
     }
 }

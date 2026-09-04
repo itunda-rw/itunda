@@ -24,6 +24,12 @@ import org.springframework.stereotype.Component
  * multiple times elsewhere. `processDue` is also exposed as a manually-triggerable
  * endpoint (LoansController.processPostpaidCreditPaymentReminders) so a real reminder
  * window can be verified without waiting real wall-clock days for one to arrive.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): the same "avoids the transaction-poisoning pitfall" claim above
+ * addressed a DIFFERENT concern (self-invocation) than the one that actually
+ * applied -- `sendPaymentReminder` had no try/catch of its own, and this loop had
+ * none either. Per-line try/catch closes it.
  */
 @Component
 class PostpaidCreditPaymentReminderScheduler(private val postpaidCreditService: PostpaidCreditService) {
@@ -37,8 +43,12 @@ class PostpaidCreditPaymentReminderScheduler(private val postpaidCreditService: 
     fun processDue(): Int {
         val due = postpaidCreditService.getLinesDueSoonForPaymentReminder()
         for (line in due) {
-            postpaidCreditService.sendPaymentReminder(line.id)
-            log.info("Sent payment-due-soon reminder for postpaid credit line {} (due {})", line.id, line.cycleDueAt)
+            try {
+                postpaidCreditService.sendPaymentReminder(line.id)
+                log.info("Sent payment-due-soon reminder for postpaid credit line {} (due {})", line.id, line.cycleDueAt)
+            } catch (e: Exception) {
+                log.error("Postpaid credit payment reminder failed for {}", line.id, e)
+            }
         }
         return due.size
     }

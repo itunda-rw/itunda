@@ -12,6 +12,10 @@ import org.springframework.stereotype.Component
  * own doc comment establishes: checking every 60 seconds for grace periods that have
  * already elapsed is cheap and correct; it does not mean grace periods end every 60
  * seconds.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): `markRepaying` had no try/catch of its own around its repository
+ * save, and this loop had none either. Per-loan try/catch closes it.
  */
 @Component
 class StudentLoanGracePeriodScheduler(private val studentLoanService: StudentLoanService) {
@@ -21,8 +25,12 @@ class StudentLoanGracePeriodScheduler(private val studentLoanService: StudentLoa
     fun run() {
         val due = studentLoanService.getLoansDueForGracePeriodEnd()
         for (loan in due) {
-            studentLoanService.markRepaying(loan)
-            log.info("Student loan {} grace period ended, now REPAYING (graceEndsAt {}, outstanding {})", loan.id, loan.graceEndsAt, loan.outstandingBalance)
+            try {
+                studentLoanService.markRepaying(loan)
+                log.info("Student loan {} grace period ended, now REPAYING (graceEndsAt {}, outstanding {})", loan.id, loan.graceEndsAt, loan.outstandingBalance)
+            } catch (e: Exception) {
+                log.error("Student loan grace-period-end flagging failed for {}", loan.id, e)
+            }
         }
     }
 }

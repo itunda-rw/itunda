@@ -25,6 +25,12 @@ import org.springframework.stereotype.Component
  * `processDue` is also exposed as a manually-triggerable endpoint
  * (StudentLoanController.processGraceEndReminders) so a real reminder window can be
  * verified without waiting real wall-clock days for one to arrive.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): the same "avoids the transaction-poisoning pitfall" claim above
+ * addressed a DIFFERENT concern (self-invocation) than the one that actually
+ * applied -- `sendGraceEndReminder` had no try/catch of its own, and this loop had
+ * none either. Per-loan try/catch closes it.
  */
 @Component
 class StudentLoanGraceEndReminderScheduler(private val studentLoanService: StudentLoanService) {
@@ -38,8 +44,12 @@ class StudentLoanGraceEndReminderScheduler(private val studentLoanService: Stude
     fun processDue(): Int {
         val due = studentLoanService.getLoansDueSoonForGraceEndReminder()
         for (loan in due) {
-            studentLoanService.sendGraceEndReminder(loan.id)
-            log.info("Sent grace-period-ending-soon reminder for student loan {} (graceEndsAt {})", loan.id, loan.graceEndsAt)
+            try {
+                studentLoanService.sendGraceEndReminder(loan.id)
+                log.info("Sent grace-period-ending-soon reminder for student loan {} (graceEndsAt {})", loan.id, loan.graceEndsAt)
+            } catch (e: Exception) {
+                log.error("Student loan grace-end reminder failed for {}", loan.id, e)
+            }
         }
         return due.size
     }

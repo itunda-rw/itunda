@@ -17,6 +17,14 @@ import org.springframework.stereotype.Component
  * already found and fixed multiple times elsewhere. `processDue` is also exposed as a
  * manually-triggerable endpoint for verifying a real renewal window without waiting
  * real wall-clock days for one to actually arrive.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): this doc comment's own "avoids the transaction-poisoning pitfall"
+ * claim addresses a DIFFERENT concern (self-invocation bypassing the Spring proxy)
+ * than the one that actually applied -- `sendRenewalReminder` had no try/catch of its
+ * own, and this loop had none either, so a single bad certificate would still throw
+ * uncaught and stop reminders for every OTHER real due certificate in the same tick.
+ * Per-certificate try/catch closes it.
  */
 @Component
 class CertificateRenewalReminderScheduler(private val certificateService: CertificateService) {
@@ -30,8 +38,12 @@ class CertificateRenewalReminderScheduler(private val certificateService: Certif
     fun processDue(): Int {
         val due = certificateService.getCertificatesDueForRenewalReminder()
         for (cert in due) {
-            certificateService.sendRenewalReminder(cert.id)
-            log.info("Sent renewal reminder for certificate {}", cert.id)
+            try {
+                certificateService.sendRenewalReminder(cert.id)
+                log.info("Sent renewal reminder for certificate {}", cert.id)
+            } catch (e: Exception) {
+                log.error("Certificate renewal reminder failed for {}", cert.id, e)
+            }
         }
         return due.size
     }

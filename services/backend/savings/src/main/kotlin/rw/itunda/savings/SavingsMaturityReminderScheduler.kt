@@ -14,6 +14,10 @@ import org.springframework.stereotype.Component
  * WeeklySavingsScheduler's own doc comment already establishes; `processDue` is also
  * exposed as a manually-triggerable endpoint for verifying a real maturity date without
  * waiting real wall-clock days/weeks for one to actually arrive.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): `sendMaturityReminder` had no try/catch of its own, and this loop had
+ * none either. Per-goal try/catch closes it.
  */
 @Component
 class SavingsMaturityReminderScheduler(private val savingsService: SavingsService) {
@@ -27,8 +31,12 @@ class SavingsMaturityReminderScheduler(private val savingsService: SavingsServic
     fun processDue(): Int {
         val due = savingsService.getGoalsDueForMaturityReminder()
         for (goal in due) {
-            savingsService.sendMaturityReminder(goal.id)
-            log.info("Sent maturity reminder for savings goal {}", goal.id)
+            try {
+                savingsService.sendMaturityReminder(goal.id)
+                log.info("Sent maturity reminder for savings goal {}", goal.id)
+            } catch (e: Exception) {
+                log.error("Savings maturity reminder failed for {}", goal.id, e)
+            }
         }
         return due.size
     }

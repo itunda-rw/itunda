@@ -15,6 +15,12 @@ import org.springframework.stereotype.Component
  * already found and fixed multiple times elsewhere. `processDue` is also exposed as a
  * manually-triggerable endpoint for verifying a real reminder window without waiting real
  * wall-clock days for one to actually arrive.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): the same "avoids the transaction-poisoning pitfall" claim above
+ * addressed a DIFFERENT concern (self-invocation) than the one that actually
+ * applied -- `sendExpiryReminder` had no try/catch of its own, and this loop had none
+ * either. Per-coupon try/catch closes it.
  */
 @Component
 class MerchantCouponExpiryReminderScheduler(private val merchantCouponService: MerchantCouponService) {
@@ -28,8 +34,12 @@ class MerchantCouponExpiryReminderScheduler(private val merchantCouponService: M
     fun processDue(): Int {
         val due = merchantCouponService.getCouponsDueForExpiryReminder()
         for (coupon in due) {
-            merchantCouponService.sendExpiryReminder(coupon.id)
-            log.info("Sent expiry reminder for merchant coupon {}", coupon.id)
+            try {
+                merchantCouponService.sendExpiryReminder(coupon.id)
+                log.info("Sent expiry reminder for merchant coupon {}", coupon.id)
+            } catch (e: Exception) {
+                log.error("Merchant coupon expiry reminder failed for {}", coupon.id, e)
+            }
         }
         return due.size
     }
