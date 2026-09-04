@@ -126,6 +126,8 @@ private struct CreateCouponCard: View {
             ))
             title = ""; description = ""; discountValue = ""; regularsOnly = false; expiresAt = ""
             onCreated()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not create this coupon."
         } catch {
             self.error = "Could not create this coupon."
         }
@@ -182,6 +184,8 @@ private struct CouponRow: View {
         do {
             _ = try await MerchantNetworkClient.shared.deactivateCoupon(coupon.id)
             onChanged()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not deactivate this coupon."
         } catch {
             self.error = "Could not deactivate this coupon."
         }

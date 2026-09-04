@@ -114,6 +114,8 @@ private struct CreatePlanCard: View {
             ))
             name = ""; description = ""; amount = ""; intervalDays = "30"
             onCreated()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not create this plan."
         } catch {
             self.error = "Could not create this plan."
         }
@@ -164,6 +166,8 @@ private struct PlanRow: View {
         do {
             _ = try await MerchantNetworkClient.shared.deactivateBillingPlan(plan.id)
             onChanged()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not deactivate this plan."
         } catch {
             self.error = "Could not deactivate this plan."
         }

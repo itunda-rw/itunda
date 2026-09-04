@@ -113,6 +113,8 @@ private struct LocationSetupCard: View {
         do {
             _ = try await MerchantNetworkClient.shared.setMerchantLocation(SetMerchantLocationRequest(latitude: lat, longitude: lng))
             onSaved()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save your location."
         } catch {
             self.error = "Could not save your location."
         }
@@ -183,6 +185,8 @@ private struct CreateOrExtendAdCard: View {
             ))
             title = ""; description = ""
             onCreated()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not create this ad."
         } catch {
             self.error = "Could not create this ad."
         }
