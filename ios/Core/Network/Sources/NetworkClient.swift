@@ -2973,11 +2973,15 @@ extension NetworkClient {
     // row to the same recipient, which the scheduler then executes independently -- a
     // real duplicate charge every period going forward. See backend
     // AutoTransferController.create's own doc comment for the full account.
+    // Real gap found 2026-09-04: AutoTransferService.create shares P2pSelfPaymentException
+    // with P2pService.sendDirect/sendDelayed -- "Auto-transfers need a different
+    // recipient -- you can't send to yourself" was falling back to the generic
+    // "That recipient, amount, or schedule isn't valid." text.
     public func createAutoTransfer(
         recipient: String, amount: Double, frequency: AutoTransferFrequency,
         dayOfWeek: Int?, dayOfMonth: Int?, description: String
     ) async throws -> AutoTransferResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/p2p/auto-transfers",
             body: CreateAutoTransferRequest(recipient: recipient, amount: amount, frequency: frequency, dayOfWeek: dayOfWeek, dayOfMonth: dayOfMonth, description: description),
             idempotencyKey: UUID().uuidString

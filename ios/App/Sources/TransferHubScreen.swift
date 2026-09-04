@@ -448,8 +448,8 @@ struct NewAutoTransferScreen: View {
                     description: description
                 )
                 onCreated()
-            } catch let NetworkError.httpError(statusCode) {
-                error = Self.errorMessage(statusCode)
+            } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+                error = message ?? Self.errorMessage(statusCode)
             } catch {
                 self.error = "Couldn't reach itunda. Check your connection and try again."
             }
