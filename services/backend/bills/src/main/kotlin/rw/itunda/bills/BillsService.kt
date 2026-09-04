@@ -130,6 +130,12 @@ class BillsService(
         // postLedgerTransaction below, same shape as P2pService.pay/send, but had no
         // rateLimiter.checkLimit. Same 30/hour baseline those already use.
         rateLimiter.checkLimit("bills:pay:$userId", limit = 30, window = Duration.ofHours(1))
+        // Real gap found live (2026-09-04, same shape as StocksService's fix): no
+        // check here meant a zero/negative amount reached the provider connector
+        // AND postLedgerTransaction's own leg filter before failing, surfacing as
+        // an opaque LedgerImbalanceException (500) instead of a clean 400 -- same
+        // require() pattern AccountService.quoteTransfer already uses.
+        require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
 
         val rail = RailCatalog.resolve(provider)
@@ -195,6 +201,7 @@ class BillsService(
     @Transactional
     fun buyAirtime(userId: String, phoneNumber: String, amount: BigDecimal, provider: String?): Map<String, Any?> {
         rateLimiter.checkLimit("bills:airtime:$userId", limit = 30, window = Duration.ofHours(1))
+        require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
 
         val rail = RailCatalog.resolve(provider)
