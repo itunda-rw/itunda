@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.ExtendLocationShareRequest
 import rw.itunda.core.network.LiveLocationShareDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.StartLocationShareRequest
@@ -189,15 +190,36 @@ fun LocationShareSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Sharing until ${formatShareExpiry(s.expiresAt)}", fontSize = 12.sp, color = Ids.colors.textPrimary)
-                Text(
-                    "Stop", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger,
-                    modifier = Modifier.pressScaleClickable {
-                        scope.launch {
-                            try { NetworkClient.apiService.stopLocationShare(s.id) } catch (_: Exception) {}
-                            myShares = myShares.filter { it.id != s.id }
-                        }
-                    },
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Real "extend while active" (2026-09-04) -- a fully-built backend
+                    // (LiveLocationShareService.extendSharing, capped at MAX_DURATION_HOURS
+                    // total from the share's own original creation) had zero UI on any
+                    // platform since the feature shipped; once shared, a user could only
+                    // let it lapse or stop it early, never lengthen it. Silent no-op on
+                    // failure (e.g. already past the 6h cap) matches Stop's own existing
+                    // convention below rather than introducing a new error-display path
+                    // for this compact row.
+                    Text(
+                        "+1h", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                        modifier = Modifier.pressScaleClickable {
+                            scope.launch {
+                                try {
+                                    val updated = NetworkClient.apiService.extendLocationShare(s.id, ExtendLocationShareRequest(1)).share
+                                    myShares = myShares.map { if (it.id == s.id) updated else it }
+                                } catch (_: Exception) {}
+                            }
+                        },
+                    )
+                    Text(
+                        "Stop", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger,
+                        modifier = Modifier.pressScaleClickable {
+                            scope.launch {
+                                try { NetworkClient.apiService.stopLocationShare(s.id) } catch (_: Exception) {}
+                                myShares = myShares.filter { it.id != s.id }
+                            }
+                        },
+                    )
+                }
             }
         }
 

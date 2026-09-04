@@ -21,6 +21,7 @@ import {
   subscribeToSharedMapFolder,
   startLocationShare,
   updateMyLocationShare,
+  extendLocationShare,
   stopLocationShare,
   fetchMyLocationShares,
   fetchLocationSharesWithMe,
@@ -906,6 +907,21 @@ export default function MapView() {
     };
     push();
     sharingPushIntervalRef.current = window.setInterval(push, 30000);
+  };
+
+  // Real "extend while active" (2026-09-04) -- a fully-built backend
+  // (LiveLocationShareService.extendSharing, capped at MAX_DURATION_HOURS total from the
+  // share's own original creation) had zero UI on any platform since the feature shipped;
+  // once shared, a user could only let it lapse or stop it early, never lengthen it.
+  // Best-effort like handleStopLocationShare above -- silent no-op on failure (e.g.
+  // already past the 6h cap) rather than a new error-display path for this compact row.
+  const handleExtendLocationShare = async (shareId: string) => {
+    try {
+      const updated = await extendLocationShare(shareId, 1);
+      setMyShares((prev) => prev.map((s) => (s.id === shareId ? updated : s)));
+    } catch {
+      // Best-effort -- see handleStopLocationShare's own doc comment above.
+    }
   };
 
   const handleStopLocationShare = async (shareId: string) => {
@@ -1976,9 +1992,14 @@ export default function MapView() {
                     {myShares.map((s) => (
                       <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
                         <span style={{ color: MAP_CARD_TEXT }}>Sharing until {new Date(s.expiresAt).toLocaleTimeString()}</span>
-                        <button type="button" onClick={() => handleStopLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#E53935', background: 'none', border: 'none' }}>
-                          Stop
-                        </button>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          <button type="button" onClick={() => handleExtendLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#7472F4', background: 'none', border: 'none' }}>
+                            +1h
+                          </button>
+                          <button type="button" onClick={() => handleStopLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#E53935', background: 'none', border: 'none' }}>
+                            Stop
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

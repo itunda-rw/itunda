@@ -85,6 +85,15 @@ struct LocationShareSection: View {
                 HStack {
                     Text("Sharing until \(formatShareExpiry(s.expiresAt))").font(.caption).foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
+                    // Real "extend while active" (2026-09-04) -- a fully-built backend
+                    // (LiveLocationShareService.extendSharing, capped at MAX_DURATION_HOURS
+                    // total from the share's own original creation) had zero UI on any
+                    // platform since the feature shipped; once shared, a user could only
+                    // let it lapse or stop it early, never lengthen it. Silent no-op on
+                    // failure (e.g. already past the 6h cap) matches Stop's own existing
+                    // convention below rather than introducing a new error-display path
+                    // for this compact row.
+                    Button("+1h") { extendShare(s.id) }.font(.caption2).bold().foregroundColor(IDS.Colors.brand)
                     Button("Stop") { stopShare(s.id) }.font(.caption2).bold().foregroundColor(IDS.Colors.danger)
                 }
             }
@@ -142,6 +151,14 @@ struct LocationShareSection: View {
                     _ = try? await NetworkClient.shared.updateMyLocationShare(latitude: location.lat, longitude: location.lng)
                 }
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
+            }
+        }
+    }
+
+    private func extendShare(_ id: String) {
+        Task {
+            if let updated = try? await NetworkClient.shared.extendLocationShare(id: id, additionalHours: 1).share {
+                if let index = myShares.firstIndex(where: { $0.id == id }) { myShares[index] = updated }
             }
         }
     }
