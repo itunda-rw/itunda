@@ -28,6 +28,15 @@ struct CommunityContent: View {
     // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
     // Section 4 recommendation #4.
     @State private var joinedCounts: [String: Int] = [:]
+    // Real fix (2026-09-04): the "🎉 Meetups" pinned slot below used to be a plain
+    // client-side filter of whatever page of the general feed happened to be loaded --
+    // no eventDate check, no sort at all -- so an already-happened meetup could show up
+    // pinned as "upcoming", and a genuinely upcoming one could be missing if it fell off
+    // the loaded page. The real backend GET /api/v1/community/meetups/upcoming (built
+    // 2026-07-25) already excludes past eventDates and orders soonest-first; iOS never
+    // had even the NetworkClient binding for it (Android/bank-mfe had the binding but no
+    // caller). See NetworkClient.getUpcomingMeetups's own doc comment.
+    @State private var upcomingMeetups: [CommunityPostDto] = []
     @State private var joiningPostId: String?
     @State private var error: String?
     @State private var showNewPost = false
@@ -146,8 +155,18 @@ struct CommunityContent: View {
                         // (2026-07-24) -- Karrot's real board gives meetup posts a
                         // dedicated slot instead of mixing them purely chronologically
                         // (docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My
-                        // posts" stays plain chronological.
-                        let meetups = view != .mine ? posts!.filter { $0.category == "meetup" } : []
+                        // posts" stays plain chronological. Sourced from the real
+                        // upcoming-only, soonest-first `upcomingMeetups` fetch (not a
+                        // client-side filter of this page's posts), except when
+                        // explicitly browsing the Meetups category chip, which keeps the
+                        // original full chronological (including past) browse.
+                        let meetups: [CommunityPostDto] = {
+                            if view == .mine { return [] }
+                            if activeCategory == "meetup" {
+                                return posts!.filter { $0.category == "meetup" }.sorted { ($0.eventDate ?? "9999") < ($1.eventDate ?? "9999") }
+                            }
+                            return upcomingMeetups
+                        }()
                         let regular = view != .mine ? posts!.filter { $0.category != "meetup" } : posts!
                         if !meetups.isEmpty {
                             Text("🎉 Meetups").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -204,8 +223,23 @@ struct CommunityContent: View {
         }
     }
 
+    private func loadUpcomingMeetups() async {
+        guard view != .mine, activeCategory != "meetup" else {
+            upcomingMeetups = []
+            return
+        }
+        do {
+            let res = try await NetworkClient.shared.getUpcomingMeetups()
+            upcomingMeetups = res.posts
+            if let counts = res.joinedCounts { joinedCounts.merge(counts) { _, new in new } }
+        } catch {
+            // Pinned strip just won't render this refresh -- main feed load is unaffected.
+        }
+    }
+
     private func load() async {
         posts = nil
+        await loadUpcomingMeetups()
         if view == .nearby {
             locationFetcher.requestLocation()
             return

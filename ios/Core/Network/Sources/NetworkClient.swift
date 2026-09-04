@@ -5268,6 +5268,16 @@ extension NetworkClient {
 
     public func getMyCommunityPosts() async throws -> CommunityPostsResponse { try await get("api/v1/community/my-posts") }
 
+    // Real 당근모임-style "upcoming meetups" browse (backend 2026-07-25,
+    // CommunityController.upcomingMeetups) -- excludes meetups whose eventDate has
+    // already passed and orders by soonest first, unlike browseCommunityPosts(category:
+    // "meetup") above which is plain chronological with no date filter at all. Found
+    // missing entirely on iOS (Android/bank-mfe both had the API binding defined but
+    // never called -- this platform never even had the binding) while fixing the
+    // identical "🎉 Meetups pinned slot shows past events" bug on the other two
+    // platforms 2026-09-04.
+    public func getUpcomingMeetups() async throws -> CommunityPostsResponse { try await get("api/v1/community/meetups/upcoming") }
+
     public func getCommentNotificationsEnabled() async throws -> CommentNotificationsEnabledResponse { try await get("api/v1/community/notification-preference") }
 
     public func setCommentNotificationsEnabled(_ enabled: Bool) async throws -> CommentNotificationsEnabledResponse {
