@@ -81,7 +81,7 @@
   "services/micro-frontends/bank-mfe/src/i18n/translations.ts": 899,
   "services/micro-frontends/maps-mfe/src/MapView.tsx": 2043,
   "services/micro-frontends/merchant-mfe/src/i18n/translations.ts": 2344,
-  "services/micro-frontends/merchant-mfe/src/lib/merchant.ts": 838,
+  "services/micro-frontends/merchant-mfe/src/lib/merchant.ts": 854,
   "services/micro-frontends/merchant-mfe/src/screens/PosScreen.tsx": 1254,
   "services/micro-frontends/merchant-mfe/src/screens/SettingsScreen.tsx": 898
 }
