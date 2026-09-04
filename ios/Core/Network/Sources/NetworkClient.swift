@@ -5211,8 +5211,15 @@ extension NetworkClient {
         }
     }
 
+    // Real gap found 2026-09-04: MarketplaceService.createListing has a genuinely
+    // rich validation surface (title/description length caps, coordinate bounds,
+    // meeting-place/photo-URL length caps, vehicle mileage/claim-count, and a whole
+    // all-or-nothing lease-takeover consistency block) all mapped to plain 400s --
+    // TalkScreen.errorMessage(400) collapses every one of them into "Please check
+    // what you entered and try again.", losing the specific real reason on exactly
+    // the kind of multi-field form that benefits most from it.
     public func createListing(title: String, description: String, price: Double, category: String, latitude: Double? = nil, longitude: Double? = nil, meetingPlace: String? = nil, photoUrl: String? = nil, vehicleMileageKm: Int? = nil, vehicleInsuranceClaimCount: Int? = nil, vehicleIsLeaseTakeover: Bool = false, leaseTotalAcquisitionCost: Double? = nil, leaseRemainingMonths: Int? = nil, leaseTotalMonths: Int? = nil, leaseMonthlyPayment: Double? = nil, leaseSubsidyAmount: Double? = nil, leaseReturnFee: Double? = nil) async throws -> ListingResponse {
-        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace, photoUrl: photoUrl, vehicleMileageKm: vehicleMileageKm, vehicleInsuranceClaimCount: vehicleInsuranceClaimCount, vehicleIsLeaseTakeover: vehicleIsLeaseTakeover, leaseTotalAcquisitionCost: leaseTotalAcquisitionCost, leaseRemainingMonths: leaseRemainingMonths, leaseTotalMonths: leaseTotalMonths, leaseMonthlyPayment: leaseMonthlyPayment, leaseSubsidyAmount: leaseSubsidyAmount, leaseReturnFee: leaseReturnFee))
+        try await authenticatedPostWithMessage("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace, photoUrl: photoUrl, vehicleMileageKm: vehicleMileageKm, vehicleInsuranceClaimCount: vehicleInsuranceClaimCount, vehicleIsLeaseTakeover: vehicleIsLeaseTakeover, leaseTotalAcquisitionCost: leaseTotalAcquisitionCost, leaseRemainingMonths: leaseRemainingMonths, leaseTotalMonths: leaseTotalMonths, leaseMonthlyPayment: leaseMonthlyPayment, leaseSubsidyAmount: leaseSubsidyAmount, leaseReturnFee: leaseReturnFee))
     }
 
     public func browseListings(category: String? = nil) async throws -> ListingsResponse {
