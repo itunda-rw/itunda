@@ -1,5 +1,10 @@
+import { useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
-import { fetchPaymentRails, fetchSystemDashboard, type PaymentRail, type SystemDashboard } from '../lib/queues';
+import { ApiError } from '../lib/api';
+import {
+  fetchPaymentRails, fetchSystemDashboard, testMtnMomoConnectivity,
+  type MtnMomoConnectivityResult, type PaymentRail, type SystemDashboard,
+} from '../lib/queues';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
 // Real system overview + per-rail health -- see queues.ts's own doc comment: both
@@ -53,6 +58,57 @@ function RailRow({ rail }: { rail: PaymentRail }) {
   );
 }
 
+// Real, live external diagnostic -- see lib/queues.ts's own doc comment: fully built
+// on the backend (SystemController.testMtnMomoConnectivity), found via
+// scripts/uncalled-endpoint-sweep.py with zero caller anywhere. An admin previously
+// had no way to run this check except raw curl/Postman.
+function MtnMomoConnectivityCard() {
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<MtnMomoConnectivityResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runTest = async () => {
+    setTesting(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await testMtnMomoConnectivity();
+      setResult(res);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reach the MTN MoMo sandbox.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="itunda-card" style={{ marginBottom: '28px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>MTN MoMo sandbox connectivity</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+            Makes a real, live call to the sandbox -- not wired into any real transfer/bill flow.
+          </p>
+        </div>
+        <button
+          className="itunda-btn itunda-btn-secondary"
+          onClick={runTest}
+          disabled={testing}
+          style={{ padding: '8px 16px', fontSize: '13px' }}
+        >
+          {testing ? 'Testing…' : 'Run test'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{error}</p>}
+      {result && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-green)', marginTop: '12px' }}>
+          {result.status} · {result.latencyMs}ms · ref {result.referenceId}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function OverviewView() {
   const dashboard = useSingle<SystemDashboard>(fetchSystemDashboard);
   const rails = useQueue(fetchPaymentRails);
@@ -78,6 +134,8 @@ export default function OverviewView() {
           <StatCard label="Active linked-account consents" value={dashboard.value.operatingLayer.activeConsents.toLocaleString()} />
         </div>
       )}
+
+      <MtnMomoConnectivityCard />
 
       <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '12px' }}>Payment rail health</h3>
       {rails.error && <QueueError message={rails.error} onRetry={rails.reload} />}

@@ -452,3 +452,21 @@ export const fetchSystemDashboard = () =>
 
 export const fetchPaymentRails = () =>
   apiFetch<{ success: boolean; rails: PaymentRail[] }>('/api/v1/system/rails').then((r) => r.rails);
+
+export interface MtnMomoConnectivityResult {
+  referenceId: string;
+  status: string;
+  financialTransactionId: string | null;
+  latencyMs: number;
+}
+
+// Real, live external diagnostic (SystemController.testMtnMomoConnectivity) -- see
+// MtnMomoSandboxClient's own doc comment for why this is deliberately NOT wired into
+// any real user-facing transfer/bill flow, ADMIN-gated the same way every other
+// /api/v1/system/** route already is. Found via scripts/uncalled-endpoint-sweep.py:
+// fully built, zero caller anywhere -- an admin had no way to actually run this check
+// except raw curl/Postman.
+export const testMtnMomoConnectivity = () =>
+  apiFetch<{ success: boolean } & MtnMomoConnectivityResult>('/api/v1/system/mtn-momo/connectivity-test', {
+    method: 'POST',
+  });
