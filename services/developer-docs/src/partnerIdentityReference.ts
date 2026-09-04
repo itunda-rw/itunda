@@ -105,6 +105,12 @@ The raw key is returned exactly once — only its hash is ever stored, so save i
 | GET | \`/api/v1/partners/identity/requests/{requestId}\` | \`X-Api-Key\` | Poll for the result |
 | GET | \`/api/v1/partners/identity/public-key\` | none (public) | Fetch itunda's Ed25519 public key |
 
+## Rate limiting
+
+Creating a request is limited to 30 per minute per partner. Every response carries
+\`X-RateLimit-Limit\` / \`X-RateLimit-Remaining\` / \`X-RateLimit-Reset\` headers reflecting
+that limit — check them before you hit a 429, not just after.
+
 ## Errors
 
 Every error response is \`{ "success": false, "code": "...", "message": "..." }\` with a

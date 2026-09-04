@@ -21,7 +21,7 @@ class RateLimiterTest : BehaviorSpec({
 
     Given("a key under its configured limit") {
         val redisTemplate = mockk<StringRedisTemplate>()
-        every { redisTemplate.execute(any<RedisScript<Long>>(), any<List<String>>(), *anyVararg()) } returns 5L
+        every { redisTemplate.execute(any<RedisScript<List<*>>>(), any<List<String>>(), *anyVararg()) } returns listOf(5L, 3599L)
         val rateLimiter = RateLimiter(redisTemplate)
 
         When("checkLimit is called") {
@@ -33,7 +33,7 @@ class RateLimiterTest : BehaviorSpec({
 
     Given("a key exactly at its configured limit") {
         val redisTemplate = mockk<StringRedisTemplate>()
-        every { redisTemplate.execute(any<RedisScript<Long>>(), any<List<String>>(), *anyVararg()) } returns 30L
+        every { redisTemplate.execute(any<RedisScript<List<*>>>(), any<List<String>>(), *anyVararg()) } returns listOf(30L, 3599L)
         val rateLimiter = RateLimiter(redisTemplate)
 
         When("checkLimit is called") {
@@ -45,7 +45,7 @@ class RateLimiterTest : BehaviorSpec({
 
     Given("a key one over its configured limit") {
         val redisTemplate = mockk<StringRedisTemplate>()
-        every { redisTemplate.execute(any<RedisScript<Long>>(), any<List<String>>(), *anyVararg()) } returns 31L
+        every { redisTemplate.execute(any<RedisScript<List<*>>>(), any<List<String>>(), *anyVararg()) } returns listOf(31L, 3599L)
         val rateLimiter = RateLimiter(redisTemplate)
 
         When("checkLimit is called") {
@@ -62,8 +62,8 @@ class RateLimiterTest : BehaviorSpec({
         val redisTemplate = mockk<StringRedisTemplate>()
         val windowArgSlot = slot<String>()
         every {
-            redisTemplate.execute(any<RedisScript<Long>>(), any<List<String>>(), capture(windowArgSlot))
-        } returns 1L
+            redisTemplate.execute(any<RedisScript<List<*>>>(), any<List<String>>(), capture(windowArgSlot))
+        } returns listOf(1L, 7200L)
         val rateLimiter = RateLimiter(redisTemplate)
 
         When("checkLimit is called with a 2-hour window") {
@@ -71,6 +71,38 @@ class RateLimiterTest : BehaviorSpec({
 
             Then("the EXPIRE argument passed to the Lua script is the window in real seconds, not minutes or hours") {
                 windowArgSlot.captured shouldBe "7200"
+            }
+        }
+    }
+
+    Given("a real call within a configured limit") {
+        val redisTemplate = mockk<StringRedisTemplate>()
+        every { redisTemplate.execute(any<RedisScript<List<*>>>(), any<List<String>>(), *anyVararg()) } returns listOf(12L, 1800L)
+        val rateLimiter = RateLimiter(redisTemplate)
+
+        When("checkLimit is called") {
+            rateLimiter.checkLimit("test:key", limit = 30, window = Duration.ofHours(1))
+
+            Then("it stashes the real remaining count and reset seconds for RateLimitHeaderFilter to report") {
+                val info = RateLimitContext.get()
+                info shouldBe RateLimitInfo(limit = 30, remaining = 18, resetSeconds = 1800)
+                RateLimitContext.clear()
+            }
+        }
+    }
+
+    Given("a call that exceeds its configured limit") {
+        val redisTemplate = mockk<StringRedisTemplate>()
+        every { redisTemplate.execute(any<RedisScript<List<*>>>(), any<List<String>>(), *anyVararg()) } returns listOf(31L, 900L)
+        val rateLimiter = RateLimiter(redisTemplate)
+
+        When("checkLimit throws") {
+            Then("it still stashes remaining=0, not a negative count, so the 429 response reports a sane header") {
+                shouldThrow<RateLimitExceededException> {
+                    rateLimiter.checkLimit("test:key", limit = 30, window = Duration.ofHours(1))
+                }
+                RateLimitContext.get() shouldBe RateLimitInfo(limit = 30, remaining = 0, resetSeconds = 900)
+                RateLimitContext.clear()
             }
         }
     }

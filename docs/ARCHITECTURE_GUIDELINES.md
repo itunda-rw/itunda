@@ -112,6 +112,19 @@ against the real deployed backend, not just "it compiles"). When you find a syst
 guardrail) rather than fixing the one instance and leaving the next agent to repeat the
 same mistake blind.
 
+**A real itunda-own instance of this, found 2026-09-05**: none of this backend's 147+
+`rateLimiter.checkLimit(...)` call sites ever exposed standard `X-RateLimit-*` response
+headers, including on the real external Pay/Partner-Identity APIs third-party developers
+integrate against. The paved-road fix wasn't "add headers to whichever endpoint someone
+happens to be touching" -- it was changing `RateLimiter.checkLimit` itself to stash the
+result in a new per-request `RateLimitContext` (a `ThreadLocal`, cleared by the filter
+itself) and adding one new `@Component` `OncePerRequestFilter`
+(`RateLimitHeaderFilter`, `:auth`) that reads it after `filterChain.doFilter()` returns.
+Every existing call site gets the fix with zero code changes at the call site itself --
+the shape to reach for whenever a cross-cutting response concern (headers, timing,
+auditing) needs to react to something a deeply-nested service call already knows,
+without threading a new return value through every layer between them.
+
 ## 5. One documented, honest path per discipline (Spotify)
 
 Spotify's real "Golden Path" concept (`engineering.atspotify.com/.../golden-paths-to-

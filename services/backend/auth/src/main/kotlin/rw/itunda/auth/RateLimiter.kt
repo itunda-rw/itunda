@@ -28,23 +28,40 @@ class RateLimitExceededException(message: String) : RuntimeException(message)
  */
 @Service
 class RateLimiter(private val redisTemplate: StringRedisTemplate) {
+    // Also returns the key's real remaining TTL (not just the configured window) so
+    // RateLimitHeaderFilter can report an accurate X-RateLimit-Reset -- a caller mid-
+    // window has less time left than the full window, and reporting the full window on
+    // every response would overstate it more the closer a client gets to the reset.
     private val script = DefaultRedisScript(
         """
         local current = redis.call('INCR', KEYS[1])
         if tonumber(current) == 1 then
             redis.call('EXPIRE', KEYS[1], ARGV[1])
         end
-        return current
+        local ttl = redis.call('TTL', KEYS[1])
+        return {current, ttl}
         """.trimIndent(),
-        Long::class.java,
+        List::class.java,
     )
 
     /** Throws once more than `limit` calls for the same `key` land within `window`;
      * otherwise lets the call through silently. The INCR+EXPIRE pair runs as one atomic
      * EVAL, so two concurrent requests can't both observe "count == 1" and both skip
-     * setting the TTL, which would otherwise leave the key permanently uncapped. */
+     * setting the TTL, which would otherwise leave the key permanently uncapped.
+     *
+     * Real API-developer-experience gap found 2026-09-05: none of this app's 147+ real
+     * rate-limited endpoints (including the external Pay/Partner-Identity APIs real
+     * third-party developers integrate against) ever exposed standard X-RateLimit-*
+     * response headers -- a partner had no way to know they were close to a limit until
+     * they were already rejected. Stashes the result here (a per-request ThreadLocal,
+     * cleared by the filter itself) rather than changing this function's return type,
+     * so none of the 147 existing call sites need to change to opt in. */
     fun checkLimit(key: String, limit: Int, window: Duration) {
-        val current = redisTemplate.execute(script, listOf(key), window.seconds.toString())
+        @Suppress("UNCHECKED_CAST")
+        val result = redisTemplate.execute(script, listOf(key), window.seconds.toString()) as List<Long>
+        val current = result[0]
+        val resetSeconds = result[1].coerceAtLeast(0)
+        RateLimitContext.set(RateLimitInfo(limit = limit, remaining = (limit - current).coerceAtLeast(0), resetSeconds = resetSeconds))
         if (current > limit) throw RateLimitExceededException("Too many attempts, please try again later")
     }
 }

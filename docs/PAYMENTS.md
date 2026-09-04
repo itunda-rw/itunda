@@ -93,6 +93,14 @@ merchant's own server fleet can roll out a new key without a hard cutover.
 `PaymentIntentStatus` is `PENDING → COMPLETED | EXPIRED` (no separate `CANCELLED` state — a
 full refund is simply `refundedAmount == amount`).
 
+**Rate limits** (per merchant, per minute — `PaymentsApiController.kt`): 30 for
+`POST /payments` (create) and `POST /payments/{paymentKey}/cancel`, 120 for
+`GET /payments/{paymentKey}` (read). Every response carries real `X-RateLimit-Limit` /
+`X-RateLimit-Remaining` / `X-RateLimit-Reset` headers (2026-09-05, `RateLimitHeaderFilter`)
+reflecting whichever of this merchant's own limits the specific request just checked —
+matching the real convention Stripe/GitHub/Toss Payments all follow, so you can back off
+before hitting a 429 rather than only after.
+
 ### Webhooks
 
 Real, persistent, retry-backed delivery (`WebhookDeliveryService`/`WebhookRetryScheduler`) —

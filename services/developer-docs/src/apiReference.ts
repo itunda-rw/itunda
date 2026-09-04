@@ -100,6 +100,19 @@ you can roll a new key across your own server fleet without a hard cutover.
 \`PaymentIntentStatus\` is \`PENDING → COMPLETED | EXPIRED\` — there's no separate
 \`CANCELLED\` state; a full refund is simply \`refundedAmount == amount\`.
 
+## Rate limiting
+
+Limits are per merchant, per minute: 30 for creating a payment or a cancel/refund, 120 for
+reading one back. Every response — successful or not — carries:
+
+| Header | Meaning |
+| --- | --- |
+| \`X-RateLimit-Limit\` | The limit for whichever endpoint you just called |
+| \`X-RateLimit-Remaining\` | How many calls you have left in the current window |
+| \`X-RateLimit-Reset\` | Seconds until the window resets |
+
+Check these before you hit a 429, not just after.
+
 ## Webhooks
 
 Register a \`webhookUrl\` on your merchant account and itunda will POST you real, durable,
