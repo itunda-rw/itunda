@@ -263,6 +263,8 @@ struct PropertyContent: View {
             let res = try await NetworkClient.shared.makePropertyOffer(listingId: propertyListingId, amount: amount)
             pendingConversationId = res.offer.conversationId
             onSwitchToTalk()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't send this offer. Check your connection and try again."
         } catch {
             self.error = "Couldn't send this offer. Check your connection and try again."
         }
@@ -374,8 +376,8 @@ struct NewPropertyListingForm: View {
                 bedrooms: Int(bedrooms), sizeSqm: Double(sizeSqm), latitude: location?.latitude, longitude: location?.longitude,
             )
             onCreated()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

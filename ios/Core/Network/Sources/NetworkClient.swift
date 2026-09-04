@@ -5671,12 +5671,16 @@ extension NetworkClient {
     // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
     public func getPropertyTypes() async throws -> PropertyTypesResponse { try await get("api/v1/realestate/property-types") }
 
+    // Real gap found 2026-09-04: PropertyListingService.createListing has a rich
+    // validation surface (title/description length caps, unknown property type,
+    // bedroom/size bounds, coordinate bounds) matching Marketplace's own createListing
+    // fix earlier this session, none of it checked client-side beyond price>0.
     public func createPropertyListing(
         listingType: String, propertyType: String, title: String, description: String, price: Double,
         bedrooms: Int? = nil, sizeSqm: Double? = nil,
         latitude: Double? = nil, longitude: Double? = nil,
     ) async throws -> PropertyListingResponse {
-        try await authenticatedPost(
+        try await authenticatedPostWithMessage(
             "api/v1/realestate/listings",
             body: CreatePropertyListingRequest(
                 listingType: listingType, propertyType: propertyType, title: title, description: description, price: price,
@@ -5779,8 +5783,11 @@ extension NetworkClient {
     }
 
     // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService.
+    // Real gap found 2026-09-04: PropertyPriceOfferService.makeOffer's real "This is
+    // your own listing" and "This listing is no longer available" weren't checked
+    // client-side and fell into a generic connection-error fallback.
     public func makePropertyOffer(listingId: String, amount: Double) async throws -> PropertyPriceOfferResponse {
-        try await authenticatedPost("api/v1/realestate/listings/\(listingId)/offers", body: MakePropertyOfferRequest(amount: amount))
+        try await authenticatedPostWithMessage("api/v1/realestate/listings/\(listingId)/offers", body: MakePropertyOfferRequest(amount: amount))
     }
 
     public func respondToPropertyOffer(offerId: String, action: String, counterAmount: Double? = nil) async throws -> PropertyPriceOfferResponse {
