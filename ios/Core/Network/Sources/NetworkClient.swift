@@ -2145,20 +2145,26 @@ extension NetworkClient {
     // No Idempotency-Key on apply/declareGraduated (neither is money movement itself,
     // matching the backend's own contract); disburse/repay both require one, same
     // convention as every other money-moving call in this file.
+    // Real gap found 2026-09-04: StudentLoanService has genuinely specific, actionable
+    // real messages ("You already have an active student loan -- repay it before
+    // applying for another", "Amount must be between 1 and $MAX RWF", "Only a
+    // REQUESTED loan can be disbursed", "repayment can't start before the grace
+    // period ends") that StudentLoanScreenView.swift's 4 bare `catch {}` blocks
+    // each flattened into one static per-action string, losing all of this.
     public func applyForStudentLoan(level: String, declaredAnnualHouseholdIncome: Double, amount: Double, expectedGraduationDate: String) async throws -> StudentLoanResponse {
-        try await authenticatedPost("api/v1/loans/student/apply", body: ApplyForStudentLoanRequest(level: level, declaredAnnualHouseholdIncome: declaredAnnualHouseholdIncome, amount: amount, expectedGraduationDate: expectedGraduationDate))
+        try await authenticatedPostWithMessage("api/v1/loans/student/apply", body: ApplyForStudentLoanRequest(level: level, declaredAnnualHouseholdIncome: declaredAnnualHouseholdIncome, amount: amount, expectedGraduationDate: expectedGraduationDate))
     }
 
     public func disburseStudentLoan(loanId: String) async throws -> StudentLoanResponse {
-        try await authenticatedPost("api/v1/loans/student/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/loans/student/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func declareStudentLoanGraduated(loanId: String) async throws -> StudentLoanResponse {
-        try await authenticatedPost("api/v1/loans/student/\(loanId)/declare-graduated", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/loans/student/\(loanId)/declare-graduated", body: EmptyBody())
     }
 
     public func repayStudentLoan(loanId: String, amount: Double) async throws -> StudentLoanResponse {
-        try await authenticatedPost("api/v1/loans/student/\(loanId)/repay", body: RepayStudentLoanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/loans/student/\(loanId)/repay", body: RepayStudentLoanRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyStudentLoans() async throws -> StudentLoansResponse { try await get("api/v1/loans/student/my") }
