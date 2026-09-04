@@ -129,6 +129,63 @@ class MerchantProductServiceTest : BehaviorSpec({
             }
         }
 
+        // Real regression test (2026-09-04): updateProduct is a full REPLACE, not a
+        // partial patch -- every optional parameter defaults to null/false when
+        // omitted (imageUrl/originalPrice/description/durationMinutes/requiresPrepay/
+        // stockQuantity all have their own `= null`/`= false` default right on this
+        // function's own signature). A real client bug (merchant-mfe's Edit-product
+        // action, feedback_put_full_replace_vs_patch_partial) called this with only
+        // name+price and would have silently wiped every one of those fields on a
+        // product that already had them set. This proves the CORRECT caller contract
+        // (pass through every existing field alongside the edited ones) actually
+        // preserves them -- catches a future regression if this function's field
+        // assignments are ever accidentally dropped.
+        When("changing the name and price while explicitly passing through every other existing field") {
+            // Deliberately uses a DIFFERENT value for every "preserved" field too (not
+            // the product's original ones) -- an earlier draft reused the exact
+            // original values here, which passed even with the real field assignment
+            // removed (a mutated-in-place object just keeps its old value either way).
+            // Caught by deliberately breaking the source before trusting this test, per
+            // feedback_verify_new_test_actually_discriminates.
+            val richProduct = MerchantProduct(
+                id = "p10", merchantId = "merchant_1", name = "Cappuccino", price = BigDecimal("2500"),
+                imageUrl = "https://example.com/cappuccino-old.jpg", originalPrice = BigDecimal("3000"),
+                description = "Old description", stockQuantity = 12,
+            )
+            every { merchantProductRepository.findById("p10") } returns Optional.of(richProduct)
+
+            val updated = service.updateProduct(
+                "owner_1", "p10", "Large Cappuccino", BigDecimal("2800"),
+                imageUrl = "https://example.com/cappuccino-new.jpg", originalPrice = BigDecimal("3500"),
+                description = "Real Italian espresso with steamed milk", stockQuantity = 20,
+            )
+
+            Then("every field -- edited or passed-through -- takes exactly the value it was given") {
+                updated.name shouldBe "Large Cappuccino"
+                updated.price shouldBe BigDecimal("2800")
+                updated.imageUrl shouldBe "https://example.com/cappuccino-new.jpg"
+                updated.originalPrice shouldBe BigDecimal("3500")
+                updated.description shouldBe "Real Italian espresso with steamed milk"
+                updated.stockQuantity shouldBe 20
+            }
+        }
+
+        When("changing the name and price WITHOUT passing through the other existing fields") {
+            val richProduct = MerchantProduct(
+                id = "p11", merchantId = "merchant_1", name = "Mocha", price = BigDecimal("2700"),
+                imageUrl = "https://example.com/mocha.jpg", description = "Chocolate espresso", stockQuantity = 5,
+            )
+            every { merchantProductRepository.findById("p11") } returns Optional.of(richProduct)
+
+            val updated = service.updateProduct("owner_1", "p11", "Large Mocha", BigDecimal("3100"))
+
+            Then("this is the exact real bug shape -- every omitted field is wiped, not left alone") {
+                updated.imageUrl shouldBe null
+                updated.description shouldBe null
+                updated.stockQuantity shouldBe null
+            }
+        }
+
         When("marking it temporarily sold out") {
             val updated = service.setSoldOut("owner_1", "p1", true)
 
