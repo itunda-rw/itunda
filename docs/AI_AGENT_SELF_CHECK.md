@@ -90,7 +90,15 @@ not in the abstract, against the actual diff:
 3. **Did I add input handling (a form, an API endpoint, a query param)?** → Have I checked
    it against real injection/access-control risks, not just the happy path? Does it
    actually enforce ownership checks (a user can't act on someone else's resource) the way
-   every existing money-moving endpoint in this repo already does?
+   every existing money-moving endpoint in this repo already does? If it takes a resource
+   id, check one level deeper than the HTTP status: does the "doesn't exist" case and the
+   "exists but isn't yours" case return byte-identical response bodies (same `code`, same
+   `message`), not just the same status code? A same-status-different-body pair is a real,
+   twice-independently-found bug in this exact codebase (see `project_itunda_idor_audit`
+   memory's pass 9 and its 2026-09-04 continuation) — always name-searchable via the
+   pattern's SHAPE (two sibling exceptions for the same resource, one for missing/one for
+   unauthorized), not any specific exception-naming convention, since the second instance
+   was missed by a grep for the first instance's naming style alone.
 4. **Would my change survive being read by someone who didn't write it?** → Re-read the
    diff as if reviewing a stranger's PR. Does every function do what its name says (no
    hidden side effect)? Is there a nested ternary, an unnamed magic number, a duplicated
