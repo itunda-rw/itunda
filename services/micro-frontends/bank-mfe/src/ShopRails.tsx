@@ -9,7 +9,7 @@ import { ShopBestSellerBadge } from './ShopSellerContactPicker';
 import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import { recentlyViewedProductsStore } from './lib/recentlyViewed';
-import { fetchShopDeals, fetchSurplusDeals, fetchNearbyAds, type ProductSearchResult, type SurplusDealResult, type NearbyMerchantAd } from './lib/shopping';
+import { fetchShopDeals, fetchSurplusDeals, fetchNearbyAds, fetchMembershipDayStatus, type ProductSearchResult, type SurplusDealResult, type NearbyMerchantAd } from './lib/shopping';
 import type { CommerceProduct } from './lib/commerce';
 import { ProductImageThumb, ProductPriceBlock } from './ProductDisplay';
 
@@ -53,6 +53,29 @@ export function LiveDealCountdown({ endsAt }: { endsAt: string }) {
 // Android-only that pass, never actually ported to web. Horizontal scroll-snap (no
 // external carousel library) with a real "current | total" page indicator, matching
 // Android's HorizontalPager reference exactly.
+// Real "Membership Day" cashback-multiplier banner parity gap, found 2026-09-04 --
+// Android's ShopScreen.kt already shows this (a real 🎉 banner on days
+// ShoppingCashbackService.kt applies a real multiplier), fetchMembershipDayStatus was
+// defined here but never rendered anywhere on bank-mfe. Own component (not a
+// BannerCarousel slide) since it's a single always-or-never banner driven by a boolean
+// flag, not a rotating deal carousel.
+export function MembershipDayBanner() {
+  const [status, setStatus] = useState<{ isMembershipDay: boolean; multiplier: number } | null>(null);
+  useEffect(() => { fetchMembershipDayStatus().then(setStatus).catch(() => {}); }, []);
+
+  if (!status?.isMembershipDay) return null;
+  return (
+    <div style={{ marginBottom: '16px', padding: '14px 16px', borderRadius: '14px', background: 'color-mix(in srgb, var(--itunda-indigo) 12%, transparent)' }}>
+      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>
+        🎉 Membership Day · {status.multiplier}x cashback today
+      </p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
+        Every purchase you make today earns {status.multiplier}x the usual cashback.
+      </p>
+    </div>
+  );
+}
+
 export function BannerCarousel() {
   const [banners, setBanners] = useState<TimeDealView[]>([]);
   useEffect(() => { fetchShopBanners().then(setBanners).catch(() => {}); }, []);

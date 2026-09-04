@@ -16,7 +16,7 @@ import { ProductCatalogView } from './ProductCatalogView';
 import { MultiCartView, MultiCartResultsView, type CommerceCheckoutResult } from './MerchantBillingAndCart';
 import { MyCommerceOrdersView, MerchantOrdersView, WishlistView } from './ShopOrdersAndWishlist';
 import { MerchantReturnQueueView, MerchantRedeemVoucherCard } from './CommerceMerchantTools';
-import { BannerCarousel, MissionsRow, NearbyAdsRail, RecentlyViewedRail, DealsRail, SurplusDealsRail, TimeDealsRail } from './ShopRails';
+import { BannerCarousel, MembershipDayBanner, MissionsRow, NearbyAdsRail, RecentlyViewedRail, DealsRail, SurplusDealsRail, TimeDealsRail } from './ShopRails';
 import { SearchResultsList, MerchantList } from './ShopMerchantList';
 
 function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
@@ -278,6 +278,7 @@ function ShopView({ onMessageSeller }: { onMessageSeller: (conversationId: strin
         </form>
       )}
 
+      {view === 'BROWSE' && searchResults === null && <MembershipDayBanner />}
       {view === 'BROWSE' && searchResults === null && <BannerCarousel />}
       {view === 'BROWSE' && searchResults === null && <MissionsRow />}
       {view === 'BROWSE' && searchResults === null && <NearbyAdsRail onOpenMerchant={setSelected} />}
