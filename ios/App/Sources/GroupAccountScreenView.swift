@@ -315,6 +315,8 @@ private struct GroupAccountDetailContent: View {
         } catch NetworkError.deviceNotVerified {
             pendingDeviceAction = { await self.deposit() }
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not deposit."
         } catch {
             self.error = "Could not deposit."
         }
@@ -333,6 +335,8 @@ private struct GroupAccountDetailContent: View {
         } catch NetworkError.deviceNotVerified {
             pendingDeviceAction = { await self.withdraw() }
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not withdraw."
         } catch {
             self.error = "Could not withdraw."
         }
@@ -351,6 +355,8 @@ private struct GroupAccountDetailContent: View {
             phoneNumber = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
+            self.error = message ?? "Could not invite this member."
         } catch {
             self.error = "Could not invite this member."
         }
@@ -363,6 +369,8 @@ private struct GroupAccountDetailContent: View {
             _ = try await NetworkClient.shared.setGroupAccountDuesAmount(id: id, amount: newAmount)
             duesAmountInput = ""
             await loadDues()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save the dues amount."
         } catch {
             self.error = "Could not save the dues amount."
         }
@@ -374,6 +382,8 @@ private struct GroupAccountDetailContent: View {
         remindedCount = nil
         do {
             remindedCount = try await NetworkClient.shared.requestUnpaidGroupAccountDues(id: id).remindedCount
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not send reminders."
         } catch {
             self.error = "Could not send reminders."
         }

@@ -34,7 +34,7 @@
   "ios/App/Sources/ShopScreen.swift": 615,
   "ios/App/Sources/TalkChatThread.swift": 673,
   "ios/App/Sources/WeeklySavingsScreenView.swift": 538,
-  "ios/Core/Network/Sources/NetworkClient.swift": 7133,
+  "ios/Core/Network/Sources/NetworkClient.swift": 7136,
   "ios/Features/Banking/Sources/BankView.swift": 572,
   "ios/Features/Maps/Sources/MapScreenView.swift": 1587,
   "ios/Features/Payments/Sources/TransferFlowScreens.swift": 702,

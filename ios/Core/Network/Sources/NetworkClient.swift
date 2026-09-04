@@ -2040,20 +2040,23 @@ extension NetworkClient {
         try await authenticatedPostWithCode("api/v1/group-accounts/\(id)/members", body: InviteMemberRequest(phoneNumber: phoneNumber))
     }
 
+    // Real gap found 2026-09-04: withdraw's real "Insufficient available balance in
+    // this group account" was flattened by GroupAccountScreenView.swift's bare
+    // `catch {}` into "Could not withdraw."
     public func depositToGroupAccount(id: String, amount: Double) async throws -> GroupAccountDetailResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/group-accounts/\(id)/deposit", body: GroupAccountAmountRequest(amount: amount), idempotencyKey: UUID().uuidString
         )
     }
 
     public func withdrawFromGroupAccount(id: String, amount: Double) async throws -> GroupAccountDetailResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/group-accounts/\(id)/withdraw", body: GroupAccountAmountRequest(amount: amount), idempotencyKey: UUID().uuidString
         )
     }
 
     public func setGroupAccountDuesAmount(id: String, amount: Double?) async throws -> CreateGroupAccountResponse {
-        try await authenticatedPut("api/v1/group-accounts/\(id)/dues", body: SetDuesAmountRequest(amount: amount))
+        try await authenticatedPutWithMessage("api/v1/group-accounts/\(id)/dues", body: SetDuesAmountRequest(amount: amount))
     }
 
     public func getGroupAccountDues(id: String) async throws -> GroupAccountDuesResponse {
@@ -2061,7 +2064,7 @@ extension NetworkClient {
     }
 
     public func requestUnpaidGroupAccountDues(id: String) async throws -> RemindUnpaidDuesResponse {
-        try await authenticatedPost("api/v1/group-accounts/\(id)/dues/remind", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/group-accounts/\(id)/dues/remind", body: EmptyBody())
     }
 
     // Real ikimina (Rwanda's own rotating savings & credit association) -- see
