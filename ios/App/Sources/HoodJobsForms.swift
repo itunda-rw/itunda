@@ -112,8 +112,8 @@ struct NewJobPostForm: View {
             let location = shareLocation ? myLocation : nil
             _ = try await NetworkClient.shared.createJobPost(category: category, title: title, description: description, payType: payType, payAmount: amount, latitude: location?.latitude, longitude: location?.longitude)
             onCreated()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -382,8 +382,8 @@ struct JobPostCard: View {
             reviewSubmitted = true
             showReviewSheet = false
             hoodReviews = (hoodReviews ?? []) + [res.review]
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -409,8 +409,8 @@ struct JobPostCard: View {
             _ = try await NetworkClient.shared.applyToJob(post.id, message: applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines))
             applying = false
             applicationSubmitted = true
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

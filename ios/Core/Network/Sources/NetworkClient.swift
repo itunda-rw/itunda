@@ -5491,8 +5491,12 @@ extension NetworkClient {
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
     public func getJobCategories() async throws -> JobCategoriesResponse { try await get("api/v1/jobs/categories") }
 
+    // Real gap found 2026-09-04: JobPostService.create validates title/description
+    // length, category whitelist, and coordinate bounds beyond the client's own
+    // non-empty/amount>0 guard -- all mapped to plain 400s TalkScreen.errorMessage
+    // collapses into one generic string.
     public func createJobPost(category: String, title: String, description: String, payType: String, payAmount: Double, latitude: Double? = nil, longitude: Double? = nil) async throws -> JobPostResponse {
-        try await authenticatedPost("api/v1/jobs/posts", body: CreateJobPostRequest(category: category, title: title, description: description, payType: payType, payAmount: payAmount, latitude: latitude, longitude: longitude))
+        try await authenticatedPostWithMessage("api/v1/jobs/posts", body: CreateJobPostRequest(category: category, title: title, description: description, payType: payType, payAmount: payAmount, latitude: latitude, longitude: longitude))
     }
 
     public func browseJobPosts(category: String? = nil) async throws -> JobPostsResponse {
@@ -5537,8 +5541,11 @@ extension NetworkClient {
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    // Real gap found 2026-09-04: HoodReviewService's "not marked filled yet" and
+    // "already reviewed" cases both map to 409, both showing the identical generic
+    // TalkScreen.errorMessage text.
     public func submitJobPostReview(_ jobPostId: String, goodPoints: [String], uncomfortablePoints: [String]) async throws -> HoodReviewResponse {
-        try await authenticatedPost(
+        try await authenticatedPostWithMessage(
             "api/v1/jobs/posts/\(jobPostId)/review",
             body: SubmitHoodReviewRequest(goodPoints: goodPoints, uncomfortablePoints: uncomfortablePoints),
         )
@@ -5562,8 +5569,13 @@ extension NetworkClient {
 
     // Real 당근알바-style structured application (2026-07-25 on Android, ported here
     // 2026-07-29) -- see ApplyToJobRequest's own doc comment.
+    // Real gap found 2026-09-04: JobApplicationService.apply's two real 409 causes
+    // (job post no longer open vs. already applied) were both showing the identical
+    // TalkScreen.errorMessage(409) text ("That's already been done, or is being
+    // processed.") -- a real, actionable distinction lost. Also swallowed the
+    // required self-introduction length validation, which the client never checks.
     public func applyToJob(_ jobPostId: String, message: String) async throws -> JobApplicationResponse {
-        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/apply", body: ApplyToJobRequest(message: message))
+        try await authenticatedPostWithMessage("api/v1/jobs/posts/\(jobPostId)/apply", body: ApplyToJobRequest(message: message))
     }
 
     public func getApplicationsForJobPost(_ jobPostId: String) async throws -> JobApplicationsResponse {
