@@ -6144,8 +6144,15 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/orders/items/\(orderItemId)/review", body: SubmitProductReviewRequest(rating: rating, comment: comment))
     }
 
+    // Real gap found 2026-09-04: OrderReturnService throws 5 distinct real reasons
+    // (not delivered yet, 7-day return window expired, already requested, invalid
+    // reason code) across only 3 HTTP statuses -- TalkScreen.errorMessage's generic
+    // per-status bucket collapses "not delivered" and "already requested" into the
+    // same 409 text, and its 422 case ("Insufficient funds for this order.") is
+    // actively WRONG for a return-window-expired response, which has nothing to do
+    // with funds.
     public func requestOrderReturn(orderId: String, type: String, reasonCode: String, reasonNote: String?) async throws -> OrderReturnRequestResponse {
-        try await authenticatedPost("api/v1/orders/\(orderId)/return", body: RequestOrderReturnRequest(type: type, reasonCode: reasonCode, reasonNote: reasonNote))
+        try await authenticatedPostWithMessage("api/v1/orders/\(orderId)/return", body: RequestOrderReturnRequest(type: type, reasonCode: reasonCode, reasonNote: reasonNote))
     }
 
     public func getMyReturnRequests() async throws -> OrderReturnRequestsResponse {

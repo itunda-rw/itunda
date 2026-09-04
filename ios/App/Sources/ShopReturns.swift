@@ -86,8 +86,8 @@ struct ReturnExchangeAction: View {
                 reasonNote: note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note
             )
             done = true
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
