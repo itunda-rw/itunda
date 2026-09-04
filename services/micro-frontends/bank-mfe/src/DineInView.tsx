@@ -11,6 +11,7 @@ import {
 } from './lib/dineIn';
 import { nextInChain, eatsCartKey, eatsOptionsSummary, eatsLineUnitPrice, type EatsCartLine } from './BankDashboard';
 import { useDeferredLoading } from './useDeferredLoading';
+import { SwipeToConfirmButton } from './MerchantBillingAndCart';
 
 const DINE_IN_STATUS_LABEL: Record<DineInOrderStatus, string> = {
   PLACED: 'Placed',
@@ -140,6 +141,16 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   const { t } = useI18n();
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const showMenuSkeleton = useDeferredLoading(menu === null);
+  // Real fix (2026-09-04, same fix as MenuView.tsx's identical bug): this used to be
+  // one shared `error` state for both the initial menu fetch AND checkout submission,
+  // so a real order-placement failure replaced the entire checkout screen with a
+  // full-screen ErrorCard whose "Retry" just reloads the menu -- discarding the
+  // buyer's cart/table-number/notes and forcing them to rebuild checkout from
+  // scratch, a real dead end (feedback_toss_error_handling memory's standing
+  // instruction). `loadError` covers only the fetch failure (full-screen is correct
+  // there); `error` covers only checkout submission and renders inline within the
+  // still-visible checkout form.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, EatsCartLine>>({});
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
@@ -152,7 +163,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   useEffect(() => {
     fetchMenu(restaurant.merchantId)
       .then((r) => setMenu({ businessName: r.merchant.businessName, products: r.products }))
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : t('common.loadError')));
   }, [restaurant.merchantId]);
 
   const cartItems = Object.entries(cart).filter(([, line]) => line.quantity > 0);
@@ -178,8 +189,8 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
     setExpandedProductId(null);
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setPlacing(true);
     setError(null);
     try {
@@ -196,10 +207,10 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
     }
   };
 
-  if (error) {
+  if (loadError) {
     return (
       <div>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{loadError}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
@@ -245,10 +256,17 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
             rows={2}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'none', fontFamily: 'inherit' }}
           />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={placing || !tableNumber.trim()}>
-            {placing ? 'Placing order…' : 'Place order'}
-          </button>
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+          {/* Real Toss "밀어서 결제하기" (swipe to pay) -- see MenuView.tsx's identical
+              fix for the full account; reused here for consistency across every real
+              "place a paid order" flow. */}
+          <SwipeToConfirmButton
+            label="Swipe to place order"
+            busyLabel="Placing order…"
+            enabled={!placing && !!tableNumber.trim()}
+            busy={placing}
+            onConfirm={() => handlePlaceOrder()}
+          />
         </form>
       </div>
     );

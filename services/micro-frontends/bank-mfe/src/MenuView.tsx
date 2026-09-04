@@ -12,6 +12,7 @@ import { fetchMenu, placeEatsOrder, type MenuItem, type EatsOrder } from './lib/
 import { ProductPriceBlock } from './ProductDisplay';
 import { RestaurantRatingBadge } from './EatsOrderCard';
 import { type EatsCartLine, eatsCartKey, eatsOptionsSummary, eatsLineUnitPrice, AddressAutocomplete } from './BankDashboard';
+import { SwipeToConfirmButton } from './MerchantBillingAndCart';
 
 export function MenuView({
   restaurant, onBack, onOrderPlaced, initialCart,
@@ -20,6 +21,19 @@ export function MenuView({
 }) {
   const { t } = useI18n();
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
+  // Real fix (2026-09-04): this used to be one shared `error` state for both the
+  // initial menu fetch AND checkout submission -- so a real, expected order-placement
+  // failure (insufficient funds, restaurant closed, a discount-stacking rejection,
+  // etc.) replaced the ENTIRE checkout screen with a bare full-screen ErrorCard whose
+  // own "Retry" button just reloads the menu, discarding the buyer's cart/address/
+  // notes state and forcing them to rebuild checkout from scratch -- a real dead end,
+  // exactly what this codebase's own standing Toss-style error-handling instruction
+  // (feedback_toss_error_handling memory) says never to do. `loadError` now covers
+  // only the fetch failure (where a full-screen takeover is correct -- there's no
+  // usable menu to show at all); `error` covers only checkout submission and renders
+  // inline within the still-visible checkout form below, so a failed attempt lets the
+  // buyer just fix and retry in place.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
   // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
@@ -57,7 +71,7 @@ export function MenuView({
   const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
 
   const load = () => {
-    setError(null);
+    setLoadError(null);
     fetchMenu(restaurant.merchantId)
       .then((r) => {
         setMenu({ businessName: r.merchant.businessName, products: r.products });
@@ -78,7 +92,7 @@ export function MenuView({
           return next;
         });
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('common.loadError')));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : t('common.loadError')));
   };
 
   useEffect(load, [restaurant.merchantId]);
@@ -168,9 +182,9 @@ export function MenuView({
     return <DeviceStepUpPrompt onVerified={() => handlePlaceOrder()} onCancel={() => setNeedsDeviceVerification(false)} />;
   }
 
-  if (error) {
+  if (loadError) {
     return (
-      <ErrorCard message={error} onRetry={load} />
+      <ErrorCard message={loadError} onRetry={load} />
     );
   }
 
@@ -240,10 +254,19 @@ export function MenuView({
             rows={2}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-14-size)', resize: 'none', fontFamily: 'inherit' }}
           />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={placing || (fulfillmentType === 'DELIVERY' && !address.trim())}>
-            {placing ? 'Placing order…' : 'Place order'}
-          </button>
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+          {/* Real Toss "밀어서 결제하기" (swipe to pay) -- same signature deliberate-drag
+              payment gesture Commerce checkout already established
+              (MerchantBillingAndCart.tsx's own doc comment), reused here for consistency
+              across every real "place a paid order" flow rather than a plain submit
+              button just for this one. */}
+          <SwipeToConfirmButton
+            label="Swipe to place order"
+            busyLabel="Placing order…"
+            enabled={!placing && !(fulfillmentType === 'DELIVERY' && !address.trim())}
+            busy={placing}
+            onConfirm={() => handlePlaceOrder()}
+          />
         </form>
       </div>
     );
