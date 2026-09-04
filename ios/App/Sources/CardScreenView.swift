@@ -229,12 +229,15 @@ struct CardScreenView: View {
                 _ = try await NetworkClient.shared.issueCard(design: design)
                 busy = false
                 load()
-            } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            } catch let NetworkError.httpErrorWithMessage(statusCode, _) where statusCode == 409 {
                 // CARD_ALREADY_ISSUED in practice (matches Android's identical
                 // CardScreen.kt fix, 2026-08-15) -- the account genuinely already has
                 // a card. Resolve forward: load it instead of a dead-end error.
                 busy = false
                 load()
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not issue a card."
+                busy = false
             } catch {
                 self.error = "Could not issue a card."
                 busy = false
@@ -250,6 +253,8 @@ struct CardScreenView: View {
             do {
                 let res = current.frozen ? try await NetworkClient.shared.unfreezeCard() : try await NetworkClient.shared.freezeCard()
                 card = res.card
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not update your card."
             } catch {
                 self.error = "Could not update your card."
             }
@@ -268,6 +273,8 @@ struct CardScreenView: View {
             do {
                 let res = try await NetworkClient.shared.setCardLimits(dailyLimit: daily, monthlyLimit: monthly)
                 card = res.card
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not update your limits."
             } catch {
                 self.error = "Could not update your limits."
             }
@@ -285,6 +292,8 @@ struct CardScreenView: View {
         Task {
             do {
                 card = try await NetworkClient.shared.reportCardLost().card
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not update your card."
             } catch {
                 self.error = "Could not update your card."
             }
@@ -302,6 +311,8 @@ struct CardScreenView: View {
         Task {
             do {
                 card = try await NetworkClient.shared.closeCard().card
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not close your card."
             } catch {
                 self.error = "Could not close your card."
             }
@@ -317,6 +328,8 @@ struct CardScreenView: View {
         Task {
             do {
                 card = try await NetworkClient.shared.reissueCard().card
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Could not reissue your card."
             } catch {
                 self.error = "Could not reissue your card."
             }
@@ -343,6 +356,8 @@ struct CardScreenView: View {
                 pinPasswordInput = ""
                 showPinForm = false
                 pinSuccess = true
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                pinError = message ?? "Could not update your card PIN."
             } catch {
                 pinError = "Could not update your card PIN."
             }
@@ -365,6 +380,8 @@ struct CardScreenView: View {
                 merchantName = ""
                 chargeAmount = ""
                 load()
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                chargeMessage = message ?? "Could not complete this purchase."
             } catch {
                 chargeMessage = "Could not complete this purchase."
             }

@@ -97,8 +97,15 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/loans/postpaid-credit/repay", body: PostpaidCreditAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
+    // Real gap found 2026-09-04: CardService has a genuinely rich, actionable real
+    // message surface across every action (invalid design, limit bounds, "This card
+    // was reported lost or stolen. Reissue a new card...", "This purchase would
+    // exceed your daily/monthly card limit. $X RWF remaining" -- a dynamic real
+    // remaining-limit figure, "Incorrect current password or PIN") that
+    // CardScreenView.swift's bare `catch {}` blocks each flattened into one static
+    // per-action string.
     public func issueCard(design: String) async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/issue", body: IssueCardRequest(design: design))
+        try await authenticatedPostWithMessage("api/v1/card/issue", body: IssueCardRequest(design: design))
     }
 
     public func getMyTransitBalance() async throws -> TransitBalanceResponse { try await get("api/v1/transit/balance") }
@@ -150,15 +157,15 @@ extension NetworkClient {
     public func getCardTransactions() async throws -> CardTransactionsResponse { try await get("api/v1/card/transactions") }
 
     public func setCardLimits(dailyLimit: Double, monthlyLimit: Double) async throws -> CardResponse {
-        try await authenticatedPut("api/v1/card/limits", body: SetCardLimitsRequest(dailyLimit: dailyLimit, monthlyLimit: monthlyLimit))
+        try await authenticatedPutWithMessage("api/v1/card/limits", body: SetCardLimitsRequest(dailyLimit: dailyLimit, monthlyLimit: monthlyLimit))
     }
 
     public func freezeCard() async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/freeze", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/card/freeze", body: EmptyRequest())
     }
 
     public func unfreezeCard() async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/unfreeze", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/card/unfreeze", body: EmptyRequest())
     }
 
     // Real "분실신고" (report lost or stolen) -- a distinct, one-way backend state
@@ -166,30 +173,30 @@ extension NetworkClient {
     // comment). Closes the same gap web/Android's identical CardView already
     // closed this session (commits 378b8e4b/d3facc7b).
     public func reportCardLost() async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/report-lost", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/card/report-lost", body: EmptyRequest())
     }
 
     // Real "카드 해지하기" (close card) -- also one-way; only reissueCard() below
     // can recover from it.
     public func closeCard() async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/close", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/card/close", body: EmptyRequest())
     }
 
     // Real "카드 재발급" (reissue) -- only allowed once a card is lost or closed;
     // regenerates last4 and clears the old PIN in place.
     public func reissueCard() async throws -> CardResponse {
-        try await authenticatedPost("api/v1/card/reissue", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/card/reissue", body: EmptyRequest())
     }
 
     // Real "카드 비밀번호 변경" (change card PIN) -- a real, separate 4-digit
     // debit-card PIN, distinct from the login password/PIN. Requires the current
     // login credential as step-up auth.
     public func setCardPin(newPin: String, currentCredential: String) async throws -> CardResponse {
-        try await authenticatedPut("api/v1/card/pin", body: SetCardPinRequest(newPin: newPin, currentCredential: currentCredential))
+        try await authenticatedPutWithMessage("api/v1/card/pin", body: SetCardPinRequest(newPin: newPin, currentCredential: currentCredential))
     }
 
     public func chargeCard(amount: Double, merchantName: String) async throws -> ChargeCardResponse {
-        try await authenticatedPost("api/v1/card/charge", body: ChargeCardRequest(amount: amount, merchantName: merchantName), idempotencyKey: UUID().uuidString)
+        try await postSavingsGoal("api/v1/card/charge", body: ChargeCardRequest(amount: amount, merchantName: merchantName), idempotencyKey: UUID().uuidString)
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }
