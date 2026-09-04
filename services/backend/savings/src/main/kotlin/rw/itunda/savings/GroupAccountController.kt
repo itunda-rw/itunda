@@ -112,6 +112,9 @@ class GroupAccountController(
     @ExceptionHandler(GroupAccountNotFoundException::class)
     fun handleNotFound(ex: GroupAccountNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
+    @ExceptionHandler(InvalidGroupAccountNameException::class)
+    fun handleInvalidName(ex: InvalidGroupAccountNameException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_GROUP_ACCOUNT_NAME", ex.message ?: "Bad request"))
+
     // Real fix (IDOR audit pass 1, 2026-08-08) fixed the STATUS (403->404) for
     // ownership/membership checks in withdraw/inviteMember/setDues/requestDues/
     // getGroupAccount/contribute, but kept distinguishable error CODES

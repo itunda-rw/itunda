@@ -79,6 +79,29 @@ class GroupAccountServiceTest : BehaviorSpec({
                 verify(exactly = 1) { rateLimiter.checkLimit("group-account:create:owner_1", limit = 10, window = any()) }
             }
         }
+
+        When("creating a group account with a blank name") {
+            Then("it throws InvalidGroupAccountNameException before ever spending a rate-limit attempt") {
+                try {
+                    service.createGroupAccount("owner_1", "   ")
+                    error("expected InvalidGroupAccountNameException")
+                } catch (e: InvalidGroupAccountNameException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { groupAccountRepository.save(any()) }
+                }
+            }
+        }
+
+        When("creating a group account with a name that would overflow the settlement account's own accountName column once \" (Group Account)\" is appended") {
+            Then("it throws InvalidGroupAccountNameException rather than risking a raw DB insert failure on either column") {
+                try {
+                    service.createGroupAccount("owner_1", "x".repeat(239))
+                    error("expected InvalidGroupAccountNameException")
+                } catch (e: InvalidGroupAccountNameException) {
+                    verify(exactly = 0) { groupAccountRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("a group account with an owner and one invited member") {

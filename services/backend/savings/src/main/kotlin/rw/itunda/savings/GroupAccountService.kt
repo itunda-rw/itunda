@@ -37,6 +37,7 @@ class GroupAccountRecipientNotFoundException(message: String) : RuntimeException
 class GroupAccountAlreadyMemberException(message: String) : RuntimeException(message)
 class GroupAccountFullException(message: String) : RuntimeException(message)
 class GroupAccountNoAccountException(message: String) : RuntimeException(message)
+class InvalidGroupAccountNameException(message: String) : RuntimeException(message)
 
 data class GroupAccountView(val account: GroupAccount, val balance: BigDecimal, val members: List<GroupAccountMemberView>)
 data class GroupAccountMemberView(val userId: String, val firstName: String, val lastName: String, val isOwner: Boolean, val joinedAt: Instant)
@@ -71,6 +72,17 @@ class GroupAccountService(
 
     @Transactional
     fun createGroupAccount(ownerId: String, name: String): GroupAccount {
+        // Real gap found 2026-09-05: GroupAccount.name's own @Column already declares a
+        // real length = 255, but this real registration entry point never enforced it
+        // before insert -- and 255 alone isn't even the right bound here, since this
+        // same name is also concatenated into the settlement Account's own accountName
+        // below ("$name (Group Account)", 17 extra characters) -- a name right at 255
+        // would overflow accountName's own real Hibernate-default-255 column even
+        // though it would fit GroupAccount.name's own explicit one. 238 is the real
+        // safe bound (255 - 17) for both columns, not just the naive one.
+        if (name.isBlank() || name.length > 238) {
+            throw InvalidGroupAccountNameException("Group account name must be between 1 and 238 characters")
+        }
         // Real anti-spam limit, added from day one this time (not as a later fix) --
         // this is a real free-row-creation endpoint, the exact class of gap the
         // 2026-07-19 sweep found across P2P/Savings/Marketplace/etc.
