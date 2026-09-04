@@ -15,6 +15,14 @@ import org.springframework.stereotype.Component
  * already found and fixed multiple times elsewhere. `processDue` is also exposed as a
  * manually-triggerable endpoint for verifying a real reminder window without waiting
  * real wall-clock days for one to actually arrive.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): this doc comment's own "avoids the transaction-poisoning pitfall"
+ * claim addresses a DIFFERENT concern (self-invocation bypassing the Spring proxy)
+ * than the one that actually applied here -- `sendExpiryReminder` had no try/catch of
+ * its own around its messaging/repository calls, and this loop had none either, so a
+ * single bad voucher would still throw uncaught and stop reminders for every OTHER
+ * real due voucher in the same tick. Per-voucher try/catch closes it.
  */
 @Component
 class GiftVoucherExpiryReminderScheduler(private val giftVoucherService: GiftVoucherService) {
@@ -28,8 +36,12 @@ class GiftVoucherExpiryReminderScheduler(private val giftVoucherService: GiftVou
     fun processDue(): Int {
         val due = giftVoucherService.getVouchersDueForExpiryReminder()
         for (voucher in due) {
-            giftVoucherService.sendExpiryReminder(voucher.id)
-            log.info("Sent expiry reminder for gift voucher {}", voucher.id)
+            try {
+                giftVoucherService.sendExpiryReminder(voucher.id)
+                log.info("Sent expiry reminder for gift voucher {}", voucher.id)
+            } catch (e: Exception) {
+                log.error("Gift voucher expiry reminder failed for {}", voucher.id, e)
+            }
         }
         return due.size
     }

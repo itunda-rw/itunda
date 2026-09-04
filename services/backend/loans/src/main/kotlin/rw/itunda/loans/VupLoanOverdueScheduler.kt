@@ -16,6 +16,13 @@ import org.springframework.stereotype.Component
  * log line) -- `markOverdue` now also sends the borrower a real notification, see its
  * own doc comment. See `VupLoanReminderScheduler` for the proactive, before-the-fact
  * half of this same fix.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): `markOverdue` had no try/catch of its own around its repository
+ * save/notification calls, and this loop had none either -- lower real-world
+ * likelihood than a ledger-touching scheduler (no money moves here), but still a
+ * real instance of the same "one bad row can't poison the sweep" gap. Per-loan
+ * try/catch closes it for consistency.
  */
 @Component
 class VupLoanOverdueScheduler(private val vupLoanService: VupLoanService) {
@@ -25,8 +32,12 @@ class VupLoanOverdueScheduler(private val vupLoanService: VupLoanService) {
     fun run() {
         val due = vupLoanService.getLoansDueForOverdueCheck()
         for (loan in due) {
-            vupLoanService.markOverdue(loan)
-            log.info("VUP loan {} flagged OVERDUE (due {}, outstanding {})", loan.id, loan.dueDate, loan.outstandingPrincipal)
+            try {
+                vupLoanService.markOverdue(loan)
+                log.info("VUP loan {} flagged OVERDUE (due {}, outstanding {})", loan.id, loan.dueDate, loan.outstandingPrincipal)
+            } catch (e: Exception) {
+                log.error("VUP loan overdue flagging failed for {}", loan.id, e)
+            }
         }
     }
 }

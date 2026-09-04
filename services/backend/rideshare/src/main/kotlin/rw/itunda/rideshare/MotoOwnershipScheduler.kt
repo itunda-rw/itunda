@@ -12,6 +12,13 @@ import org.springframework.stereotype.Component
  * establish: checking every 60 seconds for plans whose real 30-day cadence has already
  * elapsed is cheap and correct; it does not mean plans auto-contribute every 60
  * seconds.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): `autoContribute`'s own `Boolean` return only covers the deliberate
+ * insufficient-funds case -- it calls `ledgerService.postLedgerTransaction` with no
+ * try/catch of its own, so a genuinely unexpected failure throws uncaught. This loop
+ * had no try/catch either, so that exception would silently stop auto-contribution
+ * for every OTHER real due plan in the same tick. Per-plan try/catch closes it.
  */
 @Component
 class MotoOwnershipScheduler(private val motoOwnershipService: MotoOwnershipService) {
@@ -21,9 +28,13 @@ class MotoOwnershipScheduler(private val motoOwnershipService: MotoOwnershipServ
     fun run() {
         val due = motoOwnershipService.getPlansDueForAutoContribution()
         for (plan in due) {
-            val succeeded = motoOwnershipService.autoContribute(plan)
-            if (succeeded) {
-                log.info("Auto-contributed to moto-taxi ownership plan {} (saved {} of {})", plan.id, plan.savedAmount, plan.downPaymentTarget)
+            try {
+                val succeeded = motoOwnershipService.autoContribute(plan)
+                if (succeeded) {
+                    log.info("Auto-contributed to moto-taxi ownership plan {} (saved {} of {})", plan.id, plan.savedAmount, plan.downPaymentTarget)
+                }
+            } catch (e: Exception) {
+                log.error("Moto-taxi ownership auto-contribution failed for plan {}", plan.id, e)
             }
         }
     }

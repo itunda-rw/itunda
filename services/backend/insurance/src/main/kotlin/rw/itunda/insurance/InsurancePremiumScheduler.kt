@@ -20,6 +20,14 @@ import org.springframework.stereotype.Component
  * InsurancePremiumFund when the account alone is short), then auto-contribute to funds
  * that are due for their own recurring top-up -- mirroring how AutoSaveScheduler and
  * InterestAccrualScheduler each own one real recurring job for their module.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): both `collectPremium` and `autoContributeToFund` call
+ * `ledgerService.postLedgerTransaction` with no try/catch of their own, and neither
+ * loop here had one either -- a single bad policy/fund (a since-deleted account, a
+ * transient ledger error) would throw uncaught and silently stop the REST of that
+ * same loop (and, for a failure in the first loop, the second loop never even runs)
+ * for every other real due row. Per-item try/catch in both loops closes it.
  */
 @Component
 class InsurancePremiumScheduler(private val insuranceService: InsuranceService) {
@@ -29,19 +37,27 @@ class InsurancePremiumScheduler(private val insuranceService: InsuranceService) 
     fun run() {
         val duePolicies = insuranceService.getPoliciesDueForPremiumCollection()
         for (policy in duePolicies) {
-            val collected = insuranceService.collectPremium(policy)
-            if (collected) {
-                log.info("Collected premium {} for policy {} ({})", policy.monthlyPremium, policy.id, policy.planName)
-            } else {
-                log.info("Premium collection failed for policy {} ({}) -- policy lapsed", policy.id, policy.planName)
+            try {
+                val collected = insuranceService.collectPremium(policy)
+                if (collected) {
+                    log.info("Collected premium {} for policy {} ({})", policy.monthlyPremium, policy.id, policy.planName)
+                } else {
+                    log.info("Premium collection failed for policy {} ({}) -- policy lapsed", policy.id, policy.planName)
+                }
+            } catch (e: Exception) {
+                log.error("Premium collection failed unexpectedly for policy {}", policy.id, e)
             }
         }
 
         val dueFunds = insuranceService.getFundsDueForAutoContribution()
         for (fund in dueFunds) {
-            val contributed = insuranceService.autoContributeToFund(fund)
-            if (contributed) {
-                log.info("Auto-contributed {} to premium fund {} (policy {})", fund.dailyContribution, fund.id, fund.policyId)
+            try {
+                val contributed = insuranceService.autoContributeToFund(fund)
+                if (contributed) {
+                    log.info("Auto-contributed {} to premium fund {} (policy {})", fund.dailyContribution, fund.id, fund.policyId)
+                }
+            } catch (e: Exception) {
+                log.error("Premium fund auto-contribution failed for fund {}", fund.id, e)
             }
         }
     }
