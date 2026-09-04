@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ApiError } from './lib/api';
 import {
   cancelBooking, createBooking, fetchAvailableSlots, fetchBookableServices, fetchBookingDeposit, fetchCouponsForCustomer,
-  fetchMerchantAvailability, fetchMerchantReviews, fetchMyBookings, submitBookingReview,
+  fetchMerchantAvailability, fetchMerchantReviews, fetchMyBookings, fetchMyBookingReviews, submitBookingReview,
   type BookableService, type BookingDeposit, type BookingDepositStatus, type BookingSlot, type MerchantAvailabilityWindow,
   type MerchantBooking, type MerchantBookingReview, type MerchantCoupon,
 } from './lib/booking';
@@ -316,6 +316,40 @@ function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
 // Real customer-side view of merchant bookings requested via BookingWidget above.
 // Cancel is the only customer action here (confirm/decline/complete are owner-side,
 // already real on merchant-mfe).
+// Real "My reviews" parity gap, closing the last open item from
+// project_itunda_uncalled_method_sweep_2026_09_04 -- Android's MyTab.kt already shows
+// this inline; bank-mfe/iOS had neither a fetch nor a section (fixed on iOS/bank-mfe's
+// scam-reports section separately, but booking reviews belong here instead: bank-mfe
+// can't import this module's own lib/booking.ts directly, per
+// .dependency-cruiser.cjs's cross-MFE-src-import ban, and this whole booking-review
+// domain already lives in itunda Place per this file's own "moved here from
+// bank-mfe... booking... supposed to be in itunda place not in itunda shopping"
+// doc comment above). Distinct from fetchMerchantReviews above (a specific merchant's
+// public reviews) -- this is the caller's own review history across every merchant
+// they've reviewed.
+export function MyBookingReviewsCard() {
+  const [reviews, setReviews] = useState<MerchantBookingReview[] | null>(null);
+
+  useEffect(() => {
+    fetchMyBookingReviews().then(setReviews).catch(() => setReviews([]));
+  }, []);
+
+  if (!reviews || reviews.length === 0) return null;
+
+  return (
+    <div className="itunda-flat-section">
+      <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My reviews</h3>
+      {reviews.map((r) => (
+        <div key={r.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+          <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{'⭐'.repeat(r.rating)} · {r.serviceName}</p>
+          {r.comment && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>{r.comment}</p>}
+          {r.ownerReply && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>↳ {r.ownerReply}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function MyBookingsCard() {
   const [bookings, setBookings] = useState<MerchantBooking[] | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);

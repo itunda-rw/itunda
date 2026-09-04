@@ -43,7 +43,7 @@ import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
 import { ApiError, getStoredUser } from './lib/api';
 import { PlaceGlyph } from './icons/ItundaFacePlaces';
-import { MerchantBookableServicesSection, MyBookingsCard } from './MapsBooking';
+import { MerchantBookableServicesSection, MyBookingReviewsCard, MyBookingsCard } from './MapsBooking';
 import { MapPlaceDetailPanel } from './MapPlaceDetailPanel';
 import { MapDirectionsPanel } from './MapDirectionsPanel';
 
@@ -2028,6 +2028,7 @@ export default function MapView() {
               {/* Real local-business appointment booking (moved here 2026-08-25 --
                   see MapsBooking.tsx's own doc comment). */}
               <MyBookingsCard />
+              <MyBookingReviewsCard />
             </>
           )}
         </div>

@@ -100,6 +100,20 @@ export const fetchMerchantReviews = (merchantId: string) =>
     `/api/v1/merchant/${merchantId}/reviews?size=20`,
   );
 
+// Real "My reviews" parity gap, closing the last open item from
+// project_itunda_uncalled_method_sweep_2026_09_04 -- Android's MyTab.kt already shows
+// this inline; bank-mfe/iOS had neither a fetch nor a section (iOS's own copy landed in
+// MyBookingReviewsSection.swift). Distinct from fetchMerchantReviews above (a specific
+// merchant's public reviews) -- this is the caller's own review history across every
+// merchant they've reviewed. Rendered via MyBookingReviewsCard in MapsBooking.tsx (not
+// bank-mfe's MyView.tsx) since this whole booking-review domain already lives in itunda
+// Place -- bank-mfe can't import this module's own lib/booking.ts directly per
+// .dependency-cruiser.cjs's cross-MFE-src-import ban, and duplicating the fetch into a
+// second copy would repeat the exact "defined but never rendered" mistake this sweep
+// just found once already (bank-mfe's own lib/maps.ts location-share duplicate).
+export const fetchMyBookingReviews = () =>
+  apiFetch<{ success: boolean; reviews: MerchantBookingReview[] }>('/api/v1/merchant/reviews/my-reviews').then((r) => r.reviews);
+
 export interface MerchantCoupon {
   id: string;
   merchantId: string;

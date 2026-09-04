@@ -76,6 +76,7 @@ public struct MyTabView: View {
     @State private var affiliateLinks: [AffiliateLinkDto] = []
     @State private var affiliateCommissions: [AffiliateCommissionDto] = []
     @State private var myScamReports: [ScamReportDto] = []
+    @State private var myBookingReviews: [MerchantBookingReviewDto] = []
 
     public init(
         onBack: @escaping () -> Void = {},
@@ -173,6 +174,7 @@ public struct MyTabView: View {
                 ])
                 // Real "My scam reports" history -- see MyScamReportsSection.swift's own
                 // doc comment for the full account of this parity gap.
+                MyBookingReviewsSection(reviews: myBookingReviews)
                 MyScamReportsSection(reports: myScamReports)
                 // "My account" (My assets/Get a loan/Credit score/etc) deliberately
                 // dropped here (2026-07-24) -- every one of those rows already lives in
@@ -200,6 +202,7 @@ public struct MyTabView: View {
             if let res = try? await NetworkClient.shared.getMyAffiliateLinks() { affiliateLinks = res.links }
             if let res = try? await NetworkClient.shared.getMyAffiliateCommissions() { affiliateCommissions = res.commissions }
             if let res = try? await NetworkClient.shared.getMyScamReports() { myScamReports = res.reports }
+            if let res = try? await NetworkClient.shared.getMyBookingReviews() { myBookingReviews = res.reviews }
         }
     }
 
