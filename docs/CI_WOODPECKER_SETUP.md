@@ -91,6 +91,16 @@ already has admin on the repo).
 
 ## Known caveats, not yet resolved
 
+- **`cimg/android:2026.08` has no `linux/arm64` manifest** (confirmed via `docker
+  pull` -- fails with "no matching manifest for linux/arm64/v8"; only `linux/amd64`
+  exists). `infra/ci/docker-compose.yml`'s Docker-based agent doesn't pin a
+  `platform:`, so it inherits whatever architecture the HOST it runs on is. If you
+  deploy that agent to an arm64 host (an Apple Silicon Mac, an arm64 cloud
+  instance), `.woodpecker/android.yml` will fail outright, not just run slow under
+  emulation. Run the Docker-based agent on an amd64 host, or add
+  `platform: linux/amd64` to that one step in `.woodpecker/android.yml` (forces
+  QEMU emulation on an arm64 host -- works, but noticeably slower for a real
+  Android build).
 - `.woodpecker/android.yml` uses `cimg/android:2026.08` -- its exact bundled JDK
   version isn't confirmed against this project's `jvmTarget=17` pin. The file's own
   first step (`check-jdk-version`) surfaces this on the first real run; if it isn't
