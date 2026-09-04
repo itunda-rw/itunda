@@ -17,6 +17,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.ussd.UssdInvalidPinException
 import rw.itunda.ussd.UssdService
+import java.security.MessageDigest
 
 data class SetUssdPinRequest(val pin: String)
 
@@ -59,7 +60,13 @@ class UssdController(
         @RequestParam(defaultValue = "") text: String,
         @RequestHeader(value = "X-Ussd-Gateway-Secret", required = false) providedSecret: String?,
     ): ResponseEntity<String> {
-        if (gatewaySecret.isNotBlank() && providedSecret != gatewaySecret) {
+        // Real fix (2026-09-04): a plain `!=` string compare short-circuits on the
+        // first differing byte, a classic timing side-channel for a shared-secret
+        // check -- MessageDigest.isEqual is JDK-native and constant-time regardless
+        // of where the inputs first diverge.
+        val secretMatches = providedSecret != null &&
+            MessageDigest.isEqual(providedSecret.toByteArray(), gatewaySecret.toByteArray())
+        if (gatewaySecret.isNotBlank() && !secretMatches) {
             throw UssdGatewayUnauthorizedException("Invalid or missing USSD gateway secret")
         }
         val response = ussdService.handleUssdRequest(sessionId, phoneNumber, text)
