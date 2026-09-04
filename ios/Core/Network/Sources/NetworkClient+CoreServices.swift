@@ -317,8 +317,14 @@ extension NetworkClient {
 
     public func getSupportTickets() async throws -> SupportTicketsResponse { try await get("api/v1/support/tickets") }
 
+    // Real gap found 2026-09-04: SplitBillService has a genuinely rich real message
+    // surface ("A split bill needs at least one other real participant", "Every
+    // participant must be a real member of this group", "This share has already been
+    // paid", real insufficient-funds, "This split bill is already settled", "Already
+    // at the maximum of N settlement rounds") that TalkSplitBills.swift's bare
+    // `catch {}` blocks each flattened into one static per-action string.
     public func createSplitBill(groupConversationId: String, totalAmount: Double, description: String, participantUserIds: [String], mode: String = "EVEN", ladderVarianceLevel: Int? = nil) async throws -> CreateSplitBillResponse {
-        try await authenticatedPost(
+        try await postSavingsGoal(
             "api/v1/split-bills/conversations/\(groupConversationId)",
             body: CreateSplitBillRequest(totalAmount: totalAmount, description: description, participantUserIds: participantUserIds, mode: mode, ladderVarianceLevel: ladderVarianceLevel),
             idempotencyKey: UUID().uuidString
@@ -334,7 +340,7 @@ extension NetworkClient {
     // 2-person group between the caller and otherUserId first, so this never needs an
     // existing named group the way createSplitBill above does.
     public func createDirectSplitBill(otherUserId: String, totalAmount: Double, description: String, mode: String = "EVEN", ladderVarianceLevel: Int? = nil) async throws -> CreateSplitBillResponse {
-        try await authenticatedPost(
+        try await postSavingsGoal(
             "api/v1/split-bills/direct/\(otherUserId)",
             body: CreateDirectSplitBillRequest(totalAmount: totalAmount, description: description, mode: mode, ladderVarianceLevel: ladderVarianceLevel),
             idempotencyKey: UUID().uuidString
@@ -353,11 +359,11 @@ extension NetworkClient {
     }
 
     public func attachSplitBillReceipt(splitBillId: String, imageUrl: String) async throws -> SplitBillOnlyResponse {
-        try await authenticatedPost("api/v1/split-bills/\(splitBillId)/receipt", body: AttachSplitBillReceiptRequest(imageUrl: imageUrl))
+        try await authenticatedPostWithMessage("api/v1/split-bills/\(splitBillId)/receipt", body: AttachSplitBillReceiptRequest(imageUrl: imageUrl))
     }
 
     public func requestSplitBillNextRound(splitBillId: String) async throws -> SplitBillOnlyResponse {
-        try await authenticatedPost("api/v1/split-bills/\(splitBillId)/next-round", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/split-bills/\(splitBillId)/next-round", body: EmptyRequest())
     }
 
     public func getContacts() async throws -> ContactsResponse { try await get("api/v1/contacts") }

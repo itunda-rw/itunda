@@ -189,6 +189,8 @@ struct GroupSplitBillsView: View {
             )
             amountText = ""; descriptionText = ""; selectedIds = []; showNewForm = false; ladderMode = false
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "That split bill could not be created."
         } catch { self.error = "That split bill could not be created." }
     }
 
@@ -200,6 +202,8 @@ struct GroupSplitBillsView: View {
             await refresh()
         } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "SPLIT_BILL_SHARE_ALREADY_PAID" {
             await refresh()
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
+            self.error = message ?? "That payment could not be completed."
         } catch { self.error = "That payment could not be completed." }
     }
 
@@ -211,6 +215,8 @@ struct GroupSplitBillsView: View {
             _ = try await NetworkClient.shared.attachSplitBillReceipt(splitBillId: splitBillId, imageUrl: url)
             receiptUrlDrafts[splitBillId] = nil
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "That receipt could not be attached."
         } catch { self.error = "That receipt could not be attached." }
     }
 
@@ -220,6 +226,8 @@ struct GroupSplitBillsView: View {
         do {
             _ = try await NetworkClient.shared.requestSplitBillNextRound(splitBillId: splitBillId)
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not start the next settlement round."
         } catch { self.error = "Could not start the next settlement round." }
     }
 }
@@ -382,6 +390,8 @@ struct DirectSplitBillsView: View {
             )
             amountText = ""; descriptionText = ""; showNewForm = false; ladderMode = false
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "That split bill could not be created."
         } catch { self.error = "That split bill could not be created." }
     }
 
@@ -393,6 +403,8 @@ struct DirectSplitBillsView: View {
             await refresh()
         } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "SPLIT_BILL_SHARE_ALREADY_PAID" {
             await refresh()
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
+            self.error = message ?? "That payment could not be completed."
         } catch { self.error = "That payment could not be completed." }
     }
 
@@ -404,6 +416,8 @@ struct DirectSplitBillsView: View {
             _ = try await NetworkClient.shared.attachSplitBillReceipt(splitBillId: splitBillId, imageUrl: url)
             receiptUrlDrafts[splitBillId] = nil
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "That receipt could not be attached."
         } catch { self.error = "That receipt could not be attached." }
     }
 
@@ -413,6 +427,8 @@ struct DirectSplitBillsView: View {
         do {
             _ = try await NetworkClient.shared.requestSplitBillNextRound(splitBillId: splitBillId)
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not start the next settlement round."
         } catch { self.error = "Could not start the next settlement round." }
     }
 }
