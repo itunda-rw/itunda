@@ -144,6 +144,8 @@ private fun CreateCouponCard(onCreated: () -> Unit) {
                             )
                             title = ""; description = ""; discountValue = ""; regularsOnly = false; expiresAt = ""
                             onCreated()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not create this coupon."
                         } catch (e: Exception) {
                             error = "Could not create this coupon."
                         } finally {
@@ -195,6 +197,8 @@ private fun CouponRow(coupon: MerchantCouponDto, onChanged: () -> Unit) {
                             try {
                                 NetworkClient.apiService.deactivateCoupon(coupon.id)
                                 onChanged()
+                            } catch (e: retrofit2.HttpException) {
+                                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not deactivate this coupon."
                             } catch (e: Exception) {
                                 error = "Could not deactivate this coupon."
                             } finally {

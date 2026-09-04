@@ -94,6 +94,8 @@ private fun AvailabilityEditor() {
         scope.launch {
             try {
                 windows = NetworkClient.apiService.setAvailability(SetAvailabilityRequest(next)).windows
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't save your availability. Try again."
             } catch (e: Exception) {
                 error = "Couldn't save your availability. Try again."
             } finally {
@@ -242,6 +244,8 @@ private fun BookingQueue() {
                                         try {
                                             NetworkClient.apiService.respondToBooking(booking.id, RespondToBookingRequest(true))
                                             refresh()
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't update this booking."
                                         } catch (e: Exception) {
                                             error = "Couldn't update this booking."
                                         } finally {
@@ -258,6 +262,8 @@ private fun BookingQueue() {
                                         try {
                                             NetworkClient.apiService.respondToBooking(booking.id, RespondToBookingRequest(false))
                                             refresh()
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't update this booking."
                                         } catch (e: Exception) {
                                             error = "Couldn't update this booking."
                                         } finally {
@@ -279,6 +285,8 @@ private fun BookingQueue() {
                                     try {
                                         NetworkClient.apiService.completeBooking(booking.id)
                                         refresh()
+                                    } catch (e: retrofit2.HttpException) {
+                                        error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't update this booking."
                                     } catch (e: Exception) {
                                         error = "Couldn't update this booking."
                                     } finally {

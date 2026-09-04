@@ -112,6 +112,8 @@ internal fun MoreStoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDt
                             updated = NetworkClient.apiService.setClosedWeekdays(SetClosedWeekdaysRequest(closedWeekdays.sorted())).merchant
                             onUpdated(updated)
                             saved = true
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not save."
                         } catch (e: Exception) {
                             error = "Could not save."
                         } finally {
@@ -140,6 +142,8 @@ internal fun MoreStoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDt
                         scope.launch {
                             try {
                                 onUpdated(NetworkClient.apiService.setAcceptingOrders(SetAcceptingOrdersRequest(!merchant.isAcceptingOrders)).merchant)
+                            } catch (e: retrofit2.HttpException) {
+                                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not save."
                             } catch (e: Exception) {
                                 error = "Could not save."
                             } finally {

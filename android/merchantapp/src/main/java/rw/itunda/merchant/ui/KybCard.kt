@@ -89,6 +89,8 @@ internal fun KybCard(merchant: MerchantDto) {
                                     NetworkClient.apiService.submitIdentity(SubmitIdentityRequest("BUSINESS_TIN", trimmed, "TIN $trimmed"))
                                     tin = ""
                                     submissions = NetworkClient.apiService.getIdentityStatus().submissions
+                                } catch (e: retrofit2.HttpException) {
+                                    error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not submit. Try again."
                                 } catch (e: Exception) {
                                     error = "Could not submit. Try again."
                                 } finally {

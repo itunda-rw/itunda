@@ -72,6 +72,8 @@ internal fun FollowersTab() {
                         sentCount = recipients
                         title = ""
                         body = ""
+                    } catch (e: retrofit2.HttpException) {
+                        error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not send this broadcast."
                     } catch (e: Exception) {
                         error = "Could not send this broadcast."
                     } finally {

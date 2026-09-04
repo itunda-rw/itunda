@@ -36,6 +36,7 @@ import rw.itunda.merchant.network.PayrollEmployeeDto
 import rw.itunda.merchant.network.PayrollRunDto
 import rw.itunda.merchant.network.PayrollRunResponse
 import rw.itunda.merchant.network.PayslipDto
+import rw.itunda.merchant.network.apiErrorMessage
 import rw.itunda.merchant.network.isDeviceNotVerifiedError
 
 // Real B2B payroll -- see rw.itunda.merchant.PayrollService's own doc comment for why
@@ -245,7 +246,7 @@ private fun RosterHeaderCard(
                 if (isDeviceNotVerifiedError(e)) {
                     needsDeviceVerification = true
                 } else {
-                    runError = "Could not run payroll."
+                    runError = apiErrorMessage(e) ?: "Could not run payroll."
                 }
             } catch (e: Exception) {
                 runError = "Could not run payroll."

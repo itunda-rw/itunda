@@ -40,6 +40,7 @@ fun VisitorAnalyticsTab() {
 
     LaunchedEffect(Unit) {
         try { trend = NetworkClient.apiService.getProfileViewTrend(7).trend; error = null }
+        catch (e: retrofit2.HttpException) { error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't reach itunda. Check your connection and try again." }
         catch (e: Exception) { error = "Couldn't reach itunda. Check your connection and try again." }
     }
 

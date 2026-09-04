@@ -34,6 +34,8 @@ internal fun ProductAnalyticsPanel(productId: String) {
     LaunchedEffect(productId) {
         try {
             analytics = NetworkClient.apiService.getProductAnalytics(productId)
+        } catch (e: retrofit2.HttpException) {
+            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't load analytics."
         } catch (e: Exception) {
             error = "Couldn't load analytics."
         }

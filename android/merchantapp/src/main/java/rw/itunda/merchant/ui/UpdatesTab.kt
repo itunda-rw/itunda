@@ -73,6 +73,8 @@ internal fun UpdatesTab(merchantId: String) {
                 body = ""
                 label = "NOTICE"
                 load()
+            } catch (e: retrofit2.HttpException) {
+                postError = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not post your update."
             } catch (e: Exception) {
                 postError = "Could not post your update."
             } finally {

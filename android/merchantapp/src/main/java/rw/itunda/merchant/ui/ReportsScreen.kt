@@ -47,6 +47,8 @@ fun ReportsTab() {
             val toStr = to.format(DateTimeFormatter.ISO_LOCAL_DATE)
             days = NetworkClient.apiService.getReport(from = fromStr, to = toStr).days
             topProducts = NetworkClient.apiService.getTopSellingProducts(from = fromStr, to = toStr).products
+        } catch (e: retrofit2.HttpException) {
+            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't load your reports right now."
         } catch (e: Exception) {
             error = "Couldn't load your reports right now."
         }

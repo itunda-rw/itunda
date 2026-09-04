@@ -126,6 +126,8 @@ private fun LocationSetupCard(onSaved: () -> Unit) {
                         try {
                             NetworkClient.apiService.setMerchantLocation(SetMerchantLocationRequest(lat, lng))
                             onSaved()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not save your location."
                         } catch (e: Exception) {
                             error = "Could not save your location."
                         } finally {
@@ -187,6 +189,8 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
                             )
                             title = ""; description = ""
                             onCreated()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not create this ad."
                         } catch (e: Exception) {
                             error = "Could not create this ad."
                         } finally {

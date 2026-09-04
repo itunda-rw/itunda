@@ -66,6 +66,8 @@ internal fun PhotosTab() {
                     SetMerchantPhotoUrlsRequest(urls.value.map { it.trim() }.filter { it.isNotEmpty() }),
                 )
                 saved = true
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not save your photos."
             } catch (e: Exception) {
                 error = "Could not save your photos."
             } finally {

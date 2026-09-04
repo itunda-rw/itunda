@@ -108,7 +108,7 @@ fun BusinessAccountTab() {
                     pendingMoveAction = { moveToBusinessAction() }
                     needsDeviceVerification = true
                 } else {
-                    error = "Couldn't move this money. Check your personal balance."
+                    error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't move this money. Check your personal balance."
                 }
             } catch (e: Exception) {
                 error = "Couldn't move this money. Check your personal balance."
@@ -134,7 +134,7 @@ fun BusinessAccountTab() {
                     pendingMoveAction = { moveToPersonalAction() }
                     needsDeviceVerification = true
                 } else {
-                    error = "Couldn't move this money. Check your business balance."
+                    error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't move this money. Check your business balance."
                 }
             } catch (e: Exception) {
                 error = "Couldn't move this money. Check your business balance."

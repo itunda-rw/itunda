@@ -78,6 +78,8 @@ fun VendorCashAdvanceTab(merchantId: String) {
             try {
                 NetworkClient.apiService.applyForVendorCashAdvance(ApplyForVendorCashAdvanceRequest(merchantId))
                 load()
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't apply for a vendor cash advance."
             } catch (e: Exception) {
                 error = "Couldn't apply for a vendor cash advance."
             } finally {
@@ -93,6 +95,8 @@ fun VendorCashAdvanceTab(merchantId: String) {
             try {
                 NetworkClient.apiService.disburseVendorCashAdvance(advanceId, UUID.randomUUID().toString())
                 load()
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't disburse this advance."
             } catch (e: Exception) {
                 error = "Couldn't disburse this advance."
             } finally {
@@ -114,6 +118,8 @@ fun VendorCashAdvanceTab(merchantId: String) {
                 NetworkClient.apiService.repayVendorCashAdvanceEarly(advanceId, RepayVendorCashAdvanceEarlyRequest(value), UUID.randomUUID().toString())
                 repayAmount = ""
                 load()
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't repay this advance. Check your balance."
             } catch (e: Exception) {
                 error = "Couldn't repay this advance. Check your balance."
             } finally {

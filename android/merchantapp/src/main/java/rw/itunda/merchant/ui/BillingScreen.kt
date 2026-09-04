@@ -122,6 +122,8 @@ private fun CreatePlanCard(onCreated: () -> Unit) {
                             )
                             name = ""; description = ""; amount = ""; intervalDays = "30"
                             onCreated()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not create this plan."
                         } catch (e: Exception) {
                             error = "Could not create this plan."
                         } finally {
@@ -169,6 +171,8 @@ private fun PlanRow(plan: MerchantBillingPlanDto, onChanged: () -> Unit) {
                             try {
                                 NetworkClient.apiService.deactivateBillingPlan(plan.id)
                                 onChanged()
+                            } catch (e: retrofit2.HttpException) {
+                                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not deactivate this plan."
                             } catch (e: Exception) {
                                 error = "Could not deactivate this plan."
                             } finally {

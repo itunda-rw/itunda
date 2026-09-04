@@ -202,6 +202,8 @@ private fun OrdersTab() {
                                     try {
                                         NetworkClient.apiService.completePickupOrder(order.id)
                                         refresh()
+                                    } catch (e: retrofit2.HttpException) {
+                                        error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't update this order. Try again."
                                     } catch (e: Exception) {
                                         error = "Couldn't update this order. Try again."
                                     }
@@ -218,6 +220,8 @@ private fun OrdersTab() {
                                         try {
                                             NetworkClient.apiService.advanceRestaurantOrderStatus(order.id, UpdateEatsOrderStatusRequest(nextStatus))
                                             refresh()
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Couldn't update this order. Try again."
                                         } catch (e: Exception) {
                                             error = "Couldn't update this order. Try again."
                                         }
@@ -390,6 +394,8 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
                             NetworkClient.apiService.replyToRestaurantReview(review.id, rw.itunda.merchant.network.ReplyToEatsReviewRequest(reply.trim()))
                             replying = false
                             onReplied()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not submit your reply."
                         } catch (e: Exception) {
                             error = "Could not submit your reply."
                         } finally {
@@ -436,6 +442,8 @@ private fun ProductInquiryAnswerRow(inquiry: rw.itunda.merchant.network.ProductI
                             NetworkClient.apiService.answerProductInquiry(inquiry.id, rw.itunda.merchant.network.AnswerProductInquiryRequest(answer.trim()))
                             answering = false
                             onAnswered()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not submit your answer."
                         } catch (e: Exception) {
                             error = "Could not submit your answer."
                         } finally {
@@ -482,6 +490,8 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
                             NetworkClient.apiService.replyToProductReview(review.id, rw.itunda.merchant.network.ReplyToProductReviewRequest(reply.trim()))
                             replying = false
                             onReplied()
+                        } catch (e: retrofit2.HttpException) {
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not submit your reply."
                         } catch (e: Exception) {
                             error = "Could not submit your reply."
                         } finally {
