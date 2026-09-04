@@ -9,6 +9,25 @@
 # express real intent, but on a stock kind cluster they apply without error and
 # without actually restricting traffic. Documented here rather than silently
 # assumed, the same honesty convention the rest of this repo's infra docs follow.
+#
+# Real gap found 2026-09-04: this caveat also applies to itunda's actual deployed
+# private cloud, not just kind. scripts/private-cloud-bootstrap.sh's install_flannel()
+# applies plain upstream Flannel with no policy-engine addon (no Calico, no Cilium) --
+# vanilla Flannel is a pure L3 overlay with zero NetworkPolicy enforcement code, by
+# the project's own design (unlike Calico/Cilium/Weave, which do implement it). This
+# means every policy below -- default-deny-ingress included -- is currently
+# NON-ENFORCING on the real kubeadm+Flannel cluster these manifests actually deploy
+# to, not just a local kind sandbox. The "any authenticated caller can reach internal
+# services directly" gap these were written to close (see allow-gateway-to-backend's
+# own comment) is still open in practice today. Closing it for real needs either
+# switching the CNI to one with policy enforcement (Calico can run in policy-only mode
+# alongside an existing CNI, or replace Flannel outright) or accepting this as a
+# real, currently-unmitigated gap -- a genuine infra decision with real migration
+# risk on a live single/two-node cluster, not something to change without the user's
+# input. See project_itunda_webhook_ssrf_dns_rebinding's own memory for why this
+# specifically matters for the webhook-delivery SSRF finding (its "accept the
+# residual risk, rely on the existing NetworkPolicy" option is weaker than that
+# analysis already suspected -- there is no existing enforcement to rely on at all).
 
 # ---------- HorizontalPodAutoscaler ----------
 # minReplicas/maxReplicas capped at 1 for every service (2026-08-11) -- real live
