@@ -151,6 +151,20 @@ including which of the four NetworkClient copies still need incremental per-endp
 conversions and which were fixed at the root (MerchantApp/RiderApp, both small and
 centralized enough that one root-level fix was safe).
 
+**A real itunda-own instance of this, found 2026-09-05**: `services/backend`'s golden
+path for an outbound HTTP call is `java.net.http.HttpClient` (the JDK-native client
+already used everywhere else in the backend). `merchant/WebhookDeliveryService.kt` is a
+deliberate, narrow exception: it switched to `com.squareup.okhttp3:okhttp` because
+`java.net.http.HttpClient` re-resolves a hostname independently at connection time from
+whatever DNS query validated it, a real DNS-rebinding SSRF gap (see
+`project_itunda_webhook_ssrf_dns_rebinding` memory) that only OkHttp's injectable `Dns`
+interface (or a JDK 18+ upgrade this backend doesn't target) can close. **This is not a
+new default** — don't reach for OkHttp for an ordinary outbound call just because it's
+now a resolved dependency in the tree; only when a call needs the SAME kind of
+resolution-level control (DNS pinned to what was actually validated, not just a nicer
+API) does the exception apply. Any other module hitting this exact need should follow
+the same pattern (a module-scoped OkHttp `Dns` implementation), not invent a third way.
+
 ## 6. Module boundaries need real enforcement, not just intent (Toss silo model)
 
 Toss's own real internal team structure — "loosely coupled, tightly aligned" silos
