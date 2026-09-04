@@ -311,6 +311,12 @@ export type TranslationKey =
   | 'payroll.paidTitle'
   | 'payroll.employeesPaidCount'
   | 'payroll.backToRoster'
+  | 'payroll.historyTitle'
+  | 'payroll.historyLoadError'
+  | 'payroll.historyEmpty'
+  | 'payroll.viewPayslips'
+  | 'payroll.hidePayslips'
+  | 'payroll.payslipsLoadError'
   // Real 12th-localization-pass additions (2026-08-15): BookingScreen -- real local-
   // business appointment booking, owner side (weekly availability + booking queue).
   | 'booking.dayMon'
@@ -884,6 +890,12 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'payroll.paidTitle': 'Payroll paid',
     'payroll.employeesPaidCount': '{{count}} employees paid',
     'payroll.backToRoster': 'Back to roster',
+    'payroll.historyTitle': 'Payroll history',
+    'payroll.historyLoadError': 'Could not load past payroll runs.',
+    'payroll.historyEmpty': 'No payroll runs yet — run payroll above to pay your team.',
+    'payroll.viewPayslips': 'View payslips',
+    'payroll.hidePayslips': 'Hide payslips',
+    'payroll.payslipsLoadError': 'Could not load payslips for this run.',
     'booking.dayMon': 'Mon',
     'booking.dayTue': 'Tue',
     'booking.dayWed': 'Wed',
@@ -1443,6 +1455,12 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'payroll.paidTitle': 'Imishahara yatanzwe',
     'payroll.employeesPaidCount': 'Abakozi {{count}} bishyuwe',
     'payroll.backToRoster': 'Subira ku rutonde',
+    'payroll.historyTitle': 'Amateka y\'imishahara',
+    'payroll.historyLoadError': 'Ntibishoboka gushakisha imishahara yatanzwe mbere.',
+    'payroll.historyEmpty': 'Nta mishahara yatanzwe. Tanga imishahara hejuru kugira ngo wishyure itsinda ryawe.',
+    'payroll.viewPayslips': 'Reba impapuro z\'umushahara',
+    'payroll.hidePayslips': 'Hisha impapuro z\'umushahara',
+    'payroll.payslipsLoadError': 'Ntibishoboka gushakisha impapuro z\'umushahara z\'iyi gutanga.',
     'booking.dayMon': 'Mbe',
     'booking.dayTue': 'Kab',
     'booking.dayWed': 'Gtu',
@@ -2002,6 +2020,12 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'payroll.paidTitle': 'Paie versée',
     'payroll.employeesPaidCount': '{{count}} employés payés',
     'payroll.backToRoster': 'Retour à la liste',
+    'payroll.historyTitle': 'Historique de la paie',
+    'payroll.historyLoadError': 'Impossible de charger les paies précédentes.',
+    'payroll.historyEmpty': 'Aucune paie effectuée pour l\'instant — traitez la paie ci-dessus pour payer votre équipe.',
+    'payroll.viewPayslips': 'Voir les fiches de paie',
+    'payroll.hidePayslips': 'Masquer les fiches de paie',
+    'payroll.payslipsLoadError': 'Impossible de charger les fiches de paie de cette paie.',
     'booking.dayMon': 'Lun',
     'booking.dayTue': 'Mar',
     'booking.dayWed': 'Mer',

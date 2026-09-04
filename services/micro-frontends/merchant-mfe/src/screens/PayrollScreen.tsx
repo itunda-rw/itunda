@@ -4,10 +4,14 @@ import { ApiError } from '../lib/api';
 import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
   addPayrollEmployee,
+  getPayrollHistory,
   getPayrollRoster,
+  getPayslips,
   removePayrollEmployee,
   runPayroll,
   type PayrollEmployee,
+  type PayrollRun,
+  type Payslip,
   type PayrollRunResult,
 } from '../lib/merchant';
 import { useI18n } from '../i18n/I18nContext';
@@ -43,6 +47,98 @@ export default function PayrollScreen() {
         onRemove={(id) => removePayrollEmployee(id).then(load)}
         onRunPayroll={setRunResult}
       />
+      <PayrollHistorySection />
+    </div>
+  );
+}
+
+// Real "Payroll history" parity gap, found 2026-09-04 via a defined-but-uncalled-method
+// sweep: getPayrollHistory/getPayslips were fully built on the backend and declared in
+// every client's own API layer (merchant-mfe, Android's ApiService.kt, iOS's
+// NetworkClient+Payroll.swift), but none of the 3 apps ever called them -- once
+// PayrollRunConfirmation's own in-memory result screen was dismissed, a merchant had no
+// way to look back at a past run or an individual employee's payslip.
+function PayrollHistorySection() {
+  const { t } = useI18n();
+  const [runs, setRuns] = useState<PayrollRun[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPayrollHistory()
+      .then(setRuns)
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('payroll.historyLoadError')));
+  }, []);
+
+  return (
+    <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, padding: '16px 20px 0' }}>{t('payroll.historyTitle')}</h2>
+      {error && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 20px' }} role="alert">
+          {error}
+        </p>
+      )}
+      {!error && runs === null && <p style={{ padding: '12px 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('payroll.loading')}</p>}
+      {!error && runs !== null && runs.length === 0 && (
+        <p style={{ padding: '12px 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('payroll.historyEmpty')}</p>
+      )}
+      {!error && runs !== null && runs.length > 0 && (
+        <div style={{ padding: '12px 20px 20px' }}>
+          {runs.map((run) => (
+            <PayrollRunRow
+              key={run.id}
+              run={run}
+              expanded={expandedRunId === run.id}
+              onToggle={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PayrollRunRow({ run, expanded, onToggle }: { run: PayrollRun; expanded: boolean; onToggle: () => void }) {
+  const { t } = useI18n();
+  const [payslips, setPayslips] = useState<Payslip[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!expanded || payslips !== null) return;
+    getPayslips(run.id)
+      .then(setPayslips)
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('payroll.payslipsLoadError')));
+  }, [expanded]);
+
+  return (
+    <div style={{ borderTop: '1px solid var(--itunda-grey-200)', padding: '12px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{new Date(run.createdAt).toLocaleDateString()}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+            {t('payroll.employeesPaidCount', { count: run.employeeCount })} · {run.totalAmount.toLocaleString()} RWF
+          </p>
+        </div>
+        <button onClick={onToggle} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>
+          {expanded ? t('payroll.hidePayslips') : t('payroll.viewPayslips')}
+        </button>
+      </div>
+      {expanded && (
+        <div style={{ marginTop: '10px' }}>
+          {error && (
+            <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">
+              {error}
+            </p>
+          )}
+          {!error && payslips === null && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('payroll.loading')}</p>}
+          {!error && payslips?.map((p) => (
+            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
+              <span style={{ color: 'var(--itunda-grey-700)' }}>{p.employeeName}</span>
+              <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
