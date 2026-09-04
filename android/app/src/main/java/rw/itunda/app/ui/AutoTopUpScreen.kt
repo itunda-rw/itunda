@@ -220,9 +220,16 @@ private fun AutoTopUpConfigCard(
                     error = null
                     coroutineScope.launch {
                         try {
+                            // Real bug fix (2026-09-04): omitting dailyTriggerCap here fell
+                            // back to ConfigureAutoTopUpRequest's own default of 3 -- since
+                            // this PUT endpoint is a full replace (AutoTopUpService.configure
+                            // takes the whole config, no fetch-existing-then-merge), every
+                            // save from this screen silently reset a cap a user had
+                            // customized to something else via bank-mfe (the only client
+                            // that actually exposes this field for editing) back to 3.
                             NetworkClient.apiService.configureAutoTopUp(
                                 accountId,
-                                ConfigureAutoTopUpRequest(selectedAccountId, thresholdBd, topUpBd, enabled = enabled),
+                                ConfigureAutoTopUpRequest(selectedAccountId, thresholdBd, topUpBd, dailyTriggerCap = setting?.dailyTriggerCap ?: 3, enabled = enabled),
                             )
                             onChanged()
                         } catch (e: HttpException) {

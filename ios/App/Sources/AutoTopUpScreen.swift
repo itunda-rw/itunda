@@ -192,9 +192,16 @@ private struct AutoTopUpConfigCard: View {
         error = nil
         defer { saving = false }
         do {
+            // Real bug fix (2026-09-04): omitting dailyTriggerCap here fell back to
+            // configureAutoTopUp's own default of 3 -- since this PUT endpoint is a full
+            // replace (AutoTopUpService.configure takes the whole config, no
+            // fetch-existing-then-merge), every save from this screen silently reset a
+            // cap a user had customized to something else via bank-mfe (the only client
+            // that actually exposes this field for editing) back to 3.
             _ = try await NetworkClient.shared.configureAutoTopUp(
                 accountId: accountId, linkedAccountId: selectedAccountId,
-                thresholdAmount: threshold, topUpAmount: topUp, enabled: enabled
+                thresholdAmount: threshold, topUpAmount: topUp,
+                dailyTriggerCap: setting?.dailyTriggerCap ?? 3, enabled: enabled
             )
             onChanged()
         } catch let NetworkError.httpError(statusCode) {
