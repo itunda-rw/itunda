@@ -1,5 +1,6 @@
 package rw.itunda.eats
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -72,6 +73,7 @@ class GroupEatsOrderService(
     private val splitBillService: SplitBillService,
     private val rateLimiter: RateLimiter,
 ) {
+    private val log = LoggerFactory.getLogger(GroupEatsOrderService::class.java)
     private val secureRandom = SecureRandom()
     // Excludes visually ambiguous characters (0/O, 1/I) -- a real, spoken/typed-aloud
     // share code, unlike CertificateService's own hex serial number which is never
@@ -213,6 +215,24 @@ class GroupEatsOrderService(
      * A participant with a zero subtotal (joined but never added anything) gets no split
      * request at all, same "nothing to collect" reasoning SplitBillService's own ladder
      * zero-share handling already established.
+     *
+     * Real fix (found via project_itunda_zero_test_coverage_sweep's broadened
+     * transaction-poisoning check, 2026-09-05): the per-participant split-bill loop
+     * below had no try/catch, and this whole method is one @Transactional block --
+     * `SplitBillService.createSplitBill`'s own real `rateLimiter.checkLimit
+     * ("splitbill:create:$organizerId", limit = 20, window = 1 hour)` fires ONCE PER
+     * PARTICIPANT here, so a real group order with 21+ paying non-host participants
+     * (or a host who already created other split bills that hour) hits it partway
+     * through this very loop -- and since nothing catches it, that
+     * RateLimitExceededException rolls back the WHOLE transaction, including the real
+     * food order already placed via `eatsOrderService.placeOrder` above. A perfectly
+     * valid, already-charged order would silently vanish because of an unrelated
+     * per-organizer request-count limit, not anything wrong with the order itself.
+     * Fixed with a per-participant try/catch: the real order (the thing that actually
+     * matters -- everyone gets fed) is preserved regardless of how many Dutch-pay
+     * requests fail to go out; a failed request is logged, not silently dropped
+     * without a trace, and can be requested again manually via the group order's own
+     * split-bill history.
      */
     @Transactional
     fun finalizeOrder(hostId: String, groupOrderId: String): EatsOrderDetail {
@@ -261,12 +281,16 @@ class GroupEatsOrderService(
             val participantId = participantView.participant.userId
             if (participantId == hostId) continue
             if (participantView.subtotal.compareTo(BigDecimal.ZERO) <= 0) continue
-            splitBillService.createDirectSplitBill(
-                organizerId = hostId,
-                otherUserId = participantId,
-                totalAmount = participantView.subtotal,
-                description = "Together Order at $restaurantName",
-            )
+            try {
+                splitBillService.createDirectSplitBill(
+                    organizerId = hostId,
+                    otherUserId = participantId,
+                    totalAmount = participantView.subtotal,
+                    description = "Together Order at $restaurantName",
+                )
+            } catch (e: Exception) {
+                log.error("Split-bill request failed for participant {} on group order {} -- the real food order is unaffected", participantId, groupOrder.id, e)
+            }
         }
         return orderDetail
     }
