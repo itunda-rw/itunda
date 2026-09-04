@@ -1,9 +1,8 @@
-// Source of truth: services/backend/partners/src/main/kotlin/rw/itunda/partners/
-// PartnerIdentityController.kt / IdentityVerificationService.kt / PartnerController.kt --
-// there is no internal docs/PARTNERS.md yet (unlike apiReference.ts's docs/PAYMENTS.md
-// source), so every field/code/status value below was read directly from that code, not
-// guessed or ported from prose. Keep in sync the same way: if those files change, update
-// this content in the same commit.
+// Source of truth: docs/PARTNERS.md's "Identity verification" section (added in the same
+// pass as this file, once none existed yet), same "internal doc backs the public port"
+// relationship apiReference.ts already has with docs/PAYMENTS.md. Keep these two in sync;
+// if PartnerIdentityController.kt/IdentityVerificationService.kt change, update
+// docs/PARTNERS.md first, then this file.
 export const partnerIdentityReferenceMarkdown = `
 ## Overview
 
