@@ -426,6 +426,8 @@ struct GroupBuyFinalizeSection: View {
         do {
             _ = try await NetworkClient.shared.finalizeGroupBuy(post.id, totalAmount: amount, description: description.trimmingCharacters(in: .whitespaces))
             done = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not split this cost."
         } catch {
             self.error = "Could not split this cost."
         }

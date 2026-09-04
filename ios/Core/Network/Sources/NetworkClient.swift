@@ -5497,8 +5497,14 @@ extension NetworkClient {
     public func checkIntoMeetupSession(_ sessionId: String) async throws -> MeetupAttendanceResponse {
         try await authenticatedPost("api/v1/community/sessions/\(sessionId)/check-in", body: EmptyBody())
     }
+    // Real gap found 2026-09-04: finalizeGroupBuy delegates into SplitBillService
+    // .createSplitBill's own rich real validation (needs at least one other real
+    // participant, invalid amount, description required) plus its own
+    // "no real participants to split the cost with yet"/"only group-buy posts can be
+    // finalized" checks -- HoodCommunityPosts.swift's catch was a bare `catch {}`
+    // swallowing every one of these into one flat "Could not split this cost."
     public func finalizeGroupBuy(_ postId: String, totalAmount: Double, description: String) async throws -> SuccessResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/community/posts/\(postId)/finalize-group-buy",
             body: FinalizeGroupBuyRequest(totalAmount: totalAmount, description: description),
             idempotencyKey: UUID().uuidString
