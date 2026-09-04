@@ -75,6 +75,7 @@ public struct MyTabView: View {
     // Android's own port.
     @State private var affiliateLinks: [AffiliateLinkDto] = []
     @State private var affiliateCommissions: [AffiliateCommissionDto] = []
+    @State private var myScamReports: [ScamReportDto] = []
 
     public init(
         onBack: @escaping () -> Void = {},
@@ -170,6 +171,9 @@ public struct MyTabView: View {
                     FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", glyph: { AnyView(BriefcaseGlyph(size: 28)) }, action: onSwitchToJobs),
                     FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", glyph: { AnyView(TravelHouse(size: 28)) }, action: onSwitchToProperty),
                 ])
+                // Real "My scam reports" history -- see MyScamReportsSection.swift's own
+                // doc comment for the full account of this parity gap.
+                MyScamReportsSection(reports: myScamReports)
                 // "My account" (My assets/Get a loan/Credit score/etc) deliberately
                 // dropped here (2026-07-24) -- every one of those rows already lives in
                 // EntireMenuScreen's own "Financial services" section now that All is
@@ -195,6 +199,7 @@ public struct MyTabView: View {
             if let res = try? await NetworkClient.shared.getMyPropertyListings() { myPropertyListingsCount = res.listings.count }
             if let res = try? await NetworkClient.shared.getMyAffiliateLinks() { affiliateLinks = res.links }
             if let res = try? await NetworkClient.shared.getMyAffiliateCommissions() { affiliateCommissions = res.commissions }
+            if let res = try? await NetworkClient.shared.getMyScamReports() { myScamReports = res.reports }
         }
     }
 

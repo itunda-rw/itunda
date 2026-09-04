@@ -24,6 +24,22 @@ import { fetchMyFavoriteListings, fetchMyListings } from './lib/marketplace';
 import { fetchMyFavoritePropertyListings, fetchMyPropertyListings } from './lib/realestate';
 import { fetchMyFavoriteJobPosts, fetchMyJobPosts } from './lib/jobs';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
+import { fetchMyScamReports, type ScamReport } from './lib/scamReports';
+
+// Real "My scam reports" parity gap found 2026-09-04 via a defined-but-uncalled-method
+// sweep (project_itunda_uncalled_method_sweep_2026_09_04): Android's MyTab.kt already
+// shows this inline (its own real, live section), bank-mfe had fetchMyScamReports
+// defined but never rendered anywhere, and iOS had neither (see MyScamReportsSection.swift
+// for the iOS port). Own local copy, matching LiveRiderMap.tsx's own local timeAgo --
+// scaled to minutes/hours/days since a report history can be weeks old, unlike a live
+// rider-location update.
+function relativeTimeAgo(iso: string): string {
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return 'Just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
 
 // Real Naver-style "My" personal hub (2026-07-22), at the user's direct request:
 // "My should be like Naver style My since we have shopping and eats and other
@@ -45,6 +61,7 @@ export function MyView() {
   const [myJobPostsCount, setMyJobPostsCount] = useState(0);
   const [myPropertyListingsCount, setMyPropertyListingsCount] = useState(0);
   const [miniApps, setMiniApps] = useState<PartnerMiniApp[]>([]);
+  const [myScamReports, setMyScamReports] = useState<ScamReport[]>([]);
 
   useEffect(() => {
     // Each fetch independent and best-effort -- one product's API hiccup must never
@@ -59,6 +76,7 @@ export function MyView() {
     fetchMyJobPosts().then((r) => setMyJobPostsCount(r.posts.length)).catch(() => {});
     fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.listings.length)).catch(() => {});
     fetchMiniAppCatalog().then(setMiniApps).catch(() => {});
+    fetchMyScamReports().then(setMyScamReports).catch(() => {});
   }, []);
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 'var(--itunda-type-scale-13-size)' };
@@ -105,6 +123,18 @@ export function MyView() {
         <div style={rowStyle}><span>Jobs posted</span><span>{myJobPostsCount}</span></div>
         <div style={rowStyle}><span>Property listed</span><span>{myPropertyListingsCount}</span></div>
       </div>
+      {myScamReports.length > 0 && (
+        <div className="itunda-flat-section">
+          <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>My scam reports</h3>
+          {myScamReports.map((report) => (
+            <div key={report.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{report.reportedIdentifier}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>{report.reason}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{relativeTimeAgo(report.createdAt)}</p>
+            </div>
+          ))}
+        </div>
+      )}
       <MyVehiclesCard />
       <FamilyLinkCard />
       <MyProductSubscriptionsCard />
