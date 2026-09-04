@@ -3006,8 +3006,14 @@ extension NetworkClient {
     // matching cancelAutoTransfer's own reasoning just above.
     public func getMyDelayedTransfers() async throws -> DelayedTransfersListResponse { try await get("api/v1/p2p/delayed-transfers") }
 
+    // Real gap found 2026-09-04: sendDelayed shares P2pDelayedTransferService's exact
+    // exception surface with P2pService.sendDirect (self-payment, transfer-limit,
+    // recipient-not-found, insufficient-funds) -- sendDirect already gets real
+    // messages via postP2p below, but this delayed twin was going through the plain
+    // authenticatedPost, so DelayedTransferListScreen.swift's catch fell back to a
+    // 4-status generic switch instead of the same real messages sendDirect shows.
     public func sendDelayed(recipient: String, amount: Double, description: String) async throws -> DelayedTransferResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/p2p/send-delayed",
             body: SendDelayedTransferRequest(recipient: recipient, amount: amount, description: description),
             idempotencyKey: UUID().uuidString
