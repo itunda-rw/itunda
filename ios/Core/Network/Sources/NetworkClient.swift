@@ -2128,16 +2128,21 @@ extension NetworkClient {
     // microloan -- see VupLoanDto's own doc comment. No Idempotency-Key on apply (not
     // money movement itself, matching the backend's own contract); disburse/repay both
     // require one, same convention as every other money-moving call in this file.
+    // Real gap found 2026-09-04: VupLoanService has real, actionable messages
+    // ("VUP Financial Services targets Ubudehe categories X-Y; category Z is not
+    // eligible", dynamic amount bound, "already have an active VUP loan", status-
+    // gated disburse/repay) that VupLoanScreenView.swift's 3 bare `catch {}` blocks
+    // each flattened into one static per-action string.
     public func applyForVupLoan(declaredUbudeheCategory: Int, purpose: String, amount: Double) async throws -> VupLoanResponse {
-        try await authenticatedPost("api/v1/loans/vup/apply", body: ApplyForVupLoanRequest(declaredUbudeheCategory: declaredUbudeheCategory, purpose: purpose, amount: amount))
+        try await authenticatedPostWithMessage("api/v1/loans/vup/apply", body: ApplyForVupLoanRequest(declaredUbudeheCategory: declaredUbudeheCategory, purpose: purpose, amount: amount))
     }
 
     public func disburseVupLoan(loanId: String) async throws -> VupLoanResponse {
-        try await authenticatedPost("api/v1/loans/vup/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/loans/vup/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func repayVupLoan(loanId: String, amount: Double) async throws -> VupLoanResponse {
-        try await authenticatedPost("api/v1/loans/vup/\(loanId)/repay", body: RepayVupLoanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/loans/vup/\(loanId)/repay", body: RepayVupLoanRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyVupLoans() async throws -> VupLoansResponse { try await get("api/v1/loans/vup/my") }

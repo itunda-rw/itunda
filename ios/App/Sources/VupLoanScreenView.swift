@@ -179,6 +179,8 @@ struct VupLoanScreenView: View {
             amount = ""
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not apply for this VUP loan."
         } catch {
             self.error = "Could not apply for this VUP loan."
         }
@@ -191,6 +193,8 @@ struct VupLoanScreenView: View {
             _ = try await NetworkClient.shared.disburseVupLoan(loanId: loanId)
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not disburse this loan."
         } catch {
             self.error = "Could not disburse this loan."
         }
@@ -208,6 +212,8 @@ struct VupLoanScreenView: View {
             repayAmounts[loanId] = nil
             error = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not repay this loan."
         } catch {
             self.error = "Could not repay this loan."
         }
