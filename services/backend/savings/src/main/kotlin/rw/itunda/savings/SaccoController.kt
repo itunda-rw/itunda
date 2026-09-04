@@ -80,7 +80,7 @@ class SaccoController(
     fun handleNoSharesOutstanding(ex: SaccoNoSharesOutstandingException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("SACCO_NO_SHARES_OUTSTANDING", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(RateLimitExceededException::class)
-    fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))
+    fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

@@ -294,12 +294,12 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 PLAN_NOT_FOUND`, `404 POLICY_NOT_FOUND`,
 `409 POLICY_NOT_ACTIVE`, `404 ACCOUNT_NOT_FOUND`, `403 ACCOUNT_FROZEN`,
 `422 INSUFFICIENT_FUNDS`, `400 INVALID_REQUEST`, `400 INVALID_CLAIM`,
-`429 RATE_LIMIT_EXCEEDED`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`,
+`429 RATE_LIMITED`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`,
 not `WALLET_NOT_FOUND` (doesn't exist); `ACCOUNT_FROZEN`/`INVALID_CLAIM`/
-`RATE_LIMIT_EXCEEDED` were missing entirely. Note the rate-limit code here is
-`RATE_LIMIT_EXCEEDED`, unlike Account/Stocks/Bills's `RATE_LIMITED` for the same
-underlying `RateLimitExceededException` — a real, undocumented naming
-inconsistency between controllers, not a doc error. Real insurer quote/bind
+`RATE_LIMITED` were missing entirely. (This controller used to throw the
+inconsistent `RATE_LIMIT_EXCEEDED` for the same `RateLimitExceededException`
+other controllers throw `RATE_LIMITED` for — standardized on `RATE_LIMITED`
+repo-wide 2026-09-04, see `docs/TOSS_PARITY_MATRIX.md`'s Overview row.) Real insurer quote/bind
 adapters are not built — this is itunda's own claims workflow, not a live
 connection to an actual insurer.
 
