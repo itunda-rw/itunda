@@ -127,6 +127,17 @@ class SavingsService(
         // autoContribute on the same goal. SavingsGoal's own @Version already made this
         // provably NOT a fund-leak either way -- see this thread's own standing rule.
         val goal = savingsGoalRepository.findByIdForUpdate(goalId).filter { it.userId == userId }.orElseThrow { GoalNotFoundException("Goal not found") }
+        // Real gap found+fixed (2026-09-04, amount-validation sweep): unlike
+        // withdrawFromGoal's own identical check just below, nothing here rejected a
+        // non-positive amount before it reached the ledger -- LedgerService.
+        // postLedgerTransaction's own `rawLegs.filter { it.amount > BigDecimal.ZERO }`
+        // defense-in-depth means a zero/negative amount was never fund-unsafe (both legs
+        // get silently dropped, leaving zero legs, which throws LedgerImbalanceException),
+        // but that exception has no controller-level handler anywhere in this codebase --
+        // same unhandled-500-instead-of-clean-400 bug class already fixed for Stocks/
+        // Account/Bills. Reuses withdrawFromGoal's own exact exception+message for
+        // consistency within this file.
+        if (amount <= BigDecimal.ZERO) throw InsufficientGoalBalanceException("Amount must be positive")
         // Real bug found+fixed (2026-08-23): nothing previously stopped a deposit into an
         // already-completed goal -- the real money debit/ledger-credit below ran
         // unconditionally, but `currentAmount` is capped at `targetAmount`, so the money

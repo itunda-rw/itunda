@@ -135,6 +135,33 @@ class SavingsServiceTest : BehaviorSpec({
             }
         }
 
+        // Real gap found+fixed (2026-09-04, amount-validation sweep): a zero/negative
+        // amount used to reach the ledger unguarded here (unlike withdrawFromGoal's own
+        // identical check just below in the real source) -- LedgerService's own
+        // `rawLegs.filter { it.amount > BigDecimal.ZERO }` defense-in-depth meant this was
+        // never fund-unsafe, but it produced an unhandled LedgerImbalanceException (500)
+        // instead of a clean 400/422, same bug class already fixed for Stocks/Account/
+        // Bills. Deliberately verified by commenting out the real source's new
+        // `if (amount <= BigDecimal.ZERO) throw ...` line and confirming this test fails
+        // before trusting it.
+        When("depositing a non-positive amount") {
+            val goal = SavingsGoal(
+                id = "sg_neg_1", userId = "user_1", accountId = "account_savings", name = "Emergency Fund",
+                targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("100000"),
+                monthlyContribution = BigDecimal("50000"), interestRate = 7.5, createdAt = Instant.now(),
+            )
+            every { savingsGoalRepository.findByIdForUpdate("sg_neg_1") } returns Optional.of(goal)
+
+            Then("it throws InsufficientGoalBalanceException before ever touching the ledger") {
+                try {
+                    service.depositToGoal("user_1", "sg_neg_1", BigDecimal("-1000"), null)
+                    error("expected InsufficientGoalBalanceException")
+                } catch (e: InsufficientGoalBalanceException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("depositing from an explicit account that belongs to someone else") {
             val goal = SavingsGoal(
                 id = "sg_3", userId = "user_1", accountId = "account_savings", name = "Goal",
