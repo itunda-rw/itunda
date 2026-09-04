@@ -83,6 +83,10 @@ whichever one is wrong; never let them silently drift apart.
 
 ## Enforcement already wired into CI
 
+`.woodpecker/*.yml` (real, open-source, self-hosted parallel path to
+`.github/workflows/ci-cd.yml` — see `docs/CI_WOODPECKER_SETUP.md`) runs the same checks below;
+keep both in sync when adding a new one.
+
 - `.dependency-cruiser.cjs` (JS/TS): forbids one micro-frontend importing another's `src`
   directly.
 - Konsist (Android) / a standalone boundary script (iOS): forbid cross-Feature-module

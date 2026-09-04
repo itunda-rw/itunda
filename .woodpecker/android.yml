@@ -1,0 +1,36 @@
+# Real port of .github/workflows/ci-cd.yml's android-build job (Konsist boundary
+# test + debug APK assembly). Unverified detail, flagged rather than hidden: the
+# exact JDK version cimg/android:2026.08 bundles isn't confirmed against this
+# project's jvmTarget=17 pin -- the first real run's "java -version" step below will
+# show it; if it isn't 17, this file needs a JDK switch (the image bundles multiple
+# JDKs selectable via `sdk use java`, per CircleCI's own docs) before it's trusted.
+labels:
+  backend: docker
+
+steps:
+  - name: check-jdk-version
+    image: cimg/android:2026.08
+    commands:
+      - java -version
+
+  - name: install-saronite-deps
+    image: cimg/android:2026.08
+    directory: packages/saronite
+    commands:
+      - npm ci
+    when:
+      - event: [push, pull_request]
+
+  - name: android-build
+    image: cimg/android:2026.08
+    directory: android
+    commands:
+      # Same real fix ci-cd.yml's own comment documents: android/gradle.properties'
+      # -Xmx6144m is tuned for a developer machine, not a constrained CI container.
+      - mkdir -p ~/.gradle
+      - echo "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+      - echo "kotlin.daemon.jvmargs=-Xmx2048m" >> ~/.gradle/gradle.properties
+      - ./gradlew :architecture-test:test --no-daemon
+      - ./gradlew :app:assembleDebug --no-daemon --stacktrace
+    when:
+      - event: [push, pull_request]

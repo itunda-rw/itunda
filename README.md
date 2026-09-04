@@ -193,6 +193,12 @@ xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
 A new `.swift` file needs `tuist generate` re-run before Xcode will see it — this is the most
 common "why won't this compile" surprise on this platform.
 
+### CI
+
+`.github/workflows/ci-cd.yml` is the primary pipeline. `.woodpecker/*.yml` is a parallel,
+independent, open-source (Apache 2.0) CI path running on itunda-owned infrastructure instead
+of GitHub-hosted runners — see [docs/CI_WOODPECKER_SETUP.md](docs/CI_WOODPECKER_SETUP.md).
+
 ## Design Principles
 
 - Put the user's money state first: balance, obligations, next best action.
