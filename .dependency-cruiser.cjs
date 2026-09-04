@@ -22,6 +22,16 @@ const noCrossMfeImportRules = MICRO_FRONTENDS.map((mfe) => ({
   to: { path: `^services/micro-frontends/(?!${mfe}/)[^/]+/` },
 }));
 
+// Verified 2026-09-05 (deliberately created a scratch packages/shared-utils/src/
+// internal/*.ts + an outside importer, confirmed depcruise catches it, reverted) that
+// the mechanism itself is sound -- but as of the same date, none of SHARED_PACKAGES
+// actually HAS a src/internal/ directory (shared-utils and itunda-pay-widget are each
+// a single flat index.ts; design-tokens is CSS, not TS). That means every rule below
+// currently protects nothing real -- "0 violations" here is not the same claim as the
+// cross-mfe rules above, which DO have real files to violate. Left in place as cheap,
+// correct-when-it-matters insurance for if one of these packages ever grows an
+// internal/ split, not because it's catching anything today. Don't read a clean
+// depcruise run as proof this specific rule set is doing real work right now.
 const noDeepPackageInternalImportRules = SHARED_PACKAGES.map((pkg) => ({
   name: `no-deep-internal-import-${pkg}`,
   comment:
