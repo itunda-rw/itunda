@@ -111,7 +111,8 @@ reading one back. Every response — successful or not — carries:
 | \`X-RateLimit-Remaining\` | How many calls you have left in the current window |
 | \`X-RateLimit-Reset\` | Seconds until the window resets |
 
-Check these before you hit a 429, not just after.
+Check these before you hit a 429, not just after. A real 429 also carries the standard
+\`Retry-After\` header (the same seconds-until-reset value).
 
 ## Webhooks
 

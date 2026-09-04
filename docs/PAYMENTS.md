@@ -99,7 +99,8 @@ full refund is simply `refundedAmount == amount`).
 `X-RateLimit-Remaining` / `X-RateLimit-Reset` headers (2026-09-05, `RateLimitHeaderFilter`)
 reflecting whichever of this merchant's own limits the specific request just checked —
 matching the real convention Stripe/GitHub/Toss Payments all follow, so you can back off
-before hitting a 429 rather than only after.
+before hitting a 429 rather than only after. An actual 429 also carries the standard
+`Retry-After` header (RFC 9110 §10.2.3) with the same real seconds-until-reset value.
 
 ### Webhooks
 

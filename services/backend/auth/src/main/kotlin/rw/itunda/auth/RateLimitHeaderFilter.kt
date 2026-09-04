@@ -20,6 +20,11 @@ import org.springframework.web.filter.OncePerRequestFilter
  * inside a controller/service, not by this filter itself -- and still runs on the 429
  * path too, since Spring's own exception-handling for `RateLimitExceededException`
  * happens inside the same `doFilter` call this filter wraps, not after it.
+ *
+ * Also sets `Retry-After` on an actual 429 -- unlike the `X-RateLimit-*` headers above
+ * (a real, common, but non-standardized convention), `Retry-After` is an actual HTTP
+ * standard header (RFC 9110 §10.2.3) for exactly this purpose, and we already have the
+ * real seconds-until-reset value on hand from the same [RateLimitInfo].
  */
 @Component
 class RateLimitHeaderFilter : OncePerRequestFilter() {
@@ -32,6 +37,9 @@ class RateLimitHeaderFilter : OncePerRequestFilter() {
                     response.setHeader("X-RateLimit-Limit", info.limit.toString())
                     response.setHeader("X-RateLimit-Remaining", info.remaining.toString())
                     response.setHeader("X-RateLimit-Reset", info.resetSeconds.toString())
+                    if (response.status == 429) {
+                        response.setHeader("Retry-After", info.resetSeconds.toString())
+                    }
                 }
             }
             RateLimitContext.clear()

@@ -109,7 +109,8 @@ The raw key is returned exactly once — only its hash is ever stored, so save i
 
 Creating a request is limited to 30 per minute per partner. Every response carries
 \`X-RateLimit-Limit\` / \`X-RateLimit-Remaining\` / \`X-RateLimit-Reset\` headers reflecting
-that limit — check them before you hit a 429, not just after.
+that limit — check them before you hit a 429, not just after. A real 429 also carries
+the standard \`Retry-After\` header (the same seconds-until-reset value).
 
 ## Errors
 
