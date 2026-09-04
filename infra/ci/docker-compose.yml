@@ -49,6 +49,15 @@ services:
       - WOODPECKER_GITHUB_CLIENT=${WOODPECKER_GITHUB_CLIENT}
       - WOODPECKER_GITHUB_SECRET=${WOODPECKER_GITHUB_SECRET}
       - WOODPECKER_AGENT_SECRET=${WOODPECKER_AGENT_SECRET}
+      # Real finding from an actual local dry-run of this file (2026-09-04, not from
+      # the docs alone): left unset, the server logs "generated a temporary random
+      # secret" and picks a NEW one on every restart, forcing every agent to
+      # reauthenticate each time (signs the agent<->server gRPC session JWTs --
+      # distinct from WOODPECKER_AGENT_SECRET above, which is the initial handshake
+      # secret). Harmless for this single-server setup, but avoidable churn -- same
+      # "generate once with openssl rand -hex 32, persist it" treatment as the agent
+      # secret.
+      - WOODPECKER_GRPC_SECRET=${WOODPECKER_GRPC_SECRET}
       # Real repo scoping (defense in depth alongside WOODPECKER_ADMIN) -- without
       # this, an admin account that also belongs to unrelated GitHub orgs would see
       # every repo they can access, not just itunda-rw/itunda.
