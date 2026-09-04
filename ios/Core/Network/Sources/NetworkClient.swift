@@ -2391,6 +2391,76 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    // Real gap found 2026-09-04 (same iOS error-message-gap pass as postEatsOrder
+    // above): depositToGoal/withdrawFromGoal went through the shared authenticatedPost,
+    // so TransferViewModel's catch blocks fell back to the generic per-status-code
+    // bucket for every SavingsService validation failure -- including
+    // InsufficientGoalBalanceException's own dynamic "Cannot withdraw more than this
+    // goal's current balance ($X)" message (a real number a generic bucket could never
+    // reproduce), "Amount must be positive" (shared by both deposit and withdraw), and
+    // GoalAlreadyCompletedException's "This goal has already reached its target".
+    // Dedicated function rather than widening authenticatedPost itself, same rationale
+    // as postEatsOrder just above.
+    func postSavingsGoal<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body,
+        idempotencyKey: String
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
+    // Real gap found 2026-09-04 (same pass): boostListing went through the shared
+    // authenticatedPost, so HoodMarketplaceCard's catch block fell back to the generic
+    // bucket for InvalidBoostDurationException's real "Choose a real boost duration --
+    // X days" message (which names the actual valid durations) instead of a vague
+    // "Please check what you entered and try again." Dedicated function rather than
+    // widening authenticatedPost itself, same rationale as postEatsOrder above.
+    func postListingAction<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body,
+        idempotencyKey: String
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
     // See NetworkError.httpErrorWithCode's own doc comment -- a dedicated function for
     // the handful of endpoints whose 409s are genuinely ambiguous without the real
     // code, same "additive, narrow-scoped" precedent as authenticatedPutWithMessage/
@@ -2935,7 +3005,7 @@ extension NetworkClient {
     public func getMyScamReports() async throws -> ScamReportsListResponse { try await get("api/v1/p2p/scam-reports/mine") }
 
     public func depositToGoal(goalId: String, amount: Double) async throws -> DepositResponse {
-        try await authenticatedPost(
+        try await postSavingsGoal(
             "api/v1/savings/deposit",
             body: DepositRequest(goalId: goalId, amount: amount),
             idempotencyKey: UUID().uuidString
@@ -2943,7 +3013,7 @@ extension NetworkClient {
     }
 
     public func withdrawFromGoal(goalId: String, amount: Double) async throws -> WithdrawResponse {
-        try await authenticatedPost(
+        try await postSavingsGoal(
             "api/v1/savings/withdraw",
             body: WithdrawRequest(goalId: goalId, amount: amount),
             idempotencyKey: UUID().uuidString
@@ -5140,7 +5210,7 @@ extension NetworkClient {
     // already has this; this is the first iOS client (bank-mfe never built it either).
     public func getBoostTiers() async throws -> BoostTiersResponse { try await get("api/v1/marketplace/boost-tiers") }
     public func boostListing(_ listingId: String, days: Int) async throws -> ListingResponse {
-        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/boost", body: BoostListingRequest(days: days), idempotencyKey: UUID().uuidString)
+        try await postListingAction("api/v1/marketplace/listings/\(listingId)/boost", body: BoostListingRequest(days: days), idempotencyKey: UUID().uuidString)
     }
 
     // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see backend

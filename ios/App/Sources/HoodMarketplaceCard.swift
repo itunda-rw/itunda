@@ -544,8 +544,13 @@ struct ListingCard: View {
             _ = try await NetworkClient.shared.boostListing(listing.id, days: days)
             showBoostPicker = false
             onChanged()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            // Real fix (2026-09-04): boostListing now carries the backend's own
+            // specific message, e.g. InvalidBoostDurationException's real "Choose a
+            // real boost duration -- X days" (naming the actual valid durations)
+            // instead of a vague generic bucket. See NetworkClient.postListingAction's
+            // own doc comment.
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

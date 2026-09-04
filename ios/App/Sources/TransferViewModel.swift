@@ -121,8 +121,12 @@ final class TransferViewModel: ObservableObject {
             return .success(response.message, fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
-        } catch let NetworkError.httpError(statusCode) {
-            return .failure(Self.errorMessage(statusCode))
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            // Real fix (2026-09-04): depositToGoal now carries the backend's own
+            // specific message (e.g. "Amount must be positive") instead of the
+            // generic per-status-code bucket -- see NetworkClient.postSavingsGoal's
+            // own doc comment.
+            return .failure(message ?? Self.errorMessage(statusCode))
         } catch is URLError {
             OfflineActionQueue.shared.enqueueSavingsDeposit(goalId: goalId, amount: Double(amountRwf))
             return .queued("Saved offline -- this deposit will go through automatically once you're back online.")
@@ -142,8 +146,13 @@ final class TransferViewModel: ObservableObject {
             return .success(response.message, fraudWarnings: [])
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
-        } catch let NetworkError.httpError(statusCode) {
-            return .failure(Self.errorMessage(statusCode))
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            // Real fix (2026-09-04): withdrawFromGoal now carries the backend's own
+            // specific message, including InsufficientGoalBalanceException's dynamic
+            // "Cannot withdraw more than this goal's current balance ($X)" -- a real
+            // number the generic per-status-code bucket could never reproduce. See
+            // NetworkClient.postSavingsGoal's own doc comment.
+            return .failure(message ?? Self.errorMessage(statusCode))
         } catch {
             return .failure("Couldn't reach itunda. Check your connection and try again.")
         }
