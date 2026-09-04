@@ -1409,7 +1409,7 @@ val MAP_NEARBY_CATEGORIES = listOf(
     MapPlaceCategory("SUPERMARKET", "Supermarkets"),
     MapPlaceCategory("GAS_STATION", "Gas stations"),
     MapPlaceCategory("SCHOOL", "Schools"),
-    MapPlaceCategory("ITUNDA_AGENT", "Itunda agents"),
+    MapPlaceCategory("ITUNDA_AGENT", "Cash agents"),
     // Real additions (2026-08-09), same pass as MapPlaceCategory.kt's own backend enum --
     // live-verified against itunda's real self-hosted Nominatim before adding (see that
     // file's own doc comment for the real curl results).
