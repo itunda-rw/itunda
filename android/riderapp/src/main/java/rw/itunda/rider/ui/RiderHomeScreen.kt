@@ -50,6 +50,7 @@ import rw.itunda.rider.network.NotificationDto
 import rw.itunda.rider.network.RiderDto
 import rw.itunda.rider.network.RiderRatingResponse
 import rw.itunda.rider.network.SetRiderAvailabilityRequest
+import rw.itunda.rider.network.parseApiError
 
 private enum class HomeTab { AVAILABLE, MINE }
 
@@ -204,6 +205,8 @@ fun RiderHomeScreen(
                                         runCatching { NetworkClient.apiService.updateRiderLocation(rw.itunda.rider.network.UpdateRiderLocationRequest(loc.latitude, loc.longitude)) }
                                     }
                                 }
+                            } catch (e: retrofit2.HttpException) {
+                                error = parseApiError(e).message ?: "Couldn't update your availability. Try again."
                             } catch (e: Exception) {
                                 error = "Couldn't update your availability. Try again."
                             } finally {
@@ -242,6 +245,9 @@ fun RiderHomeScreen(
                                             runCatching { NetworkClient.apiService.markNotificationRead(notification.id) }
                                             refreshOffers(); refreshDeliveries()
                                             onOpenDelivery(orderId)
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = parseApiError(e).message ?: "This delivery is no longer available."
+                                            refreshOffers(); refreshDeliveries()
                                         } catch (e: Exception) {
                                             error = "This delivery is no longer available."
                                             refreshOffers(); refreshDeliveries()
@@ -353,6 +359,9 @@ fun RiderHomeScreen(
                                                 onOpenCommerceDelivery(claimed)
                                             }
                                         }
+                                    } catch (e: retrofit2.HttpException) {
+                                        error = parseApiError(e).message ?: "Someone else just claimed this delivery."
+                                        refreshDeliveries()
                                     } catch (e: Exception) {
                                         error = "Someone else just claimed this delivery."
                                         refreshDeliveries()

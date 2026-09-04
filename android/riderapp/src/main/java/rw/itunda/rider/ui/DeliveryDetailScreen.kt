@@ -33,6 +33,7 @@ import rw.itunda.rider.network.EatsOrderDto
 import rw.itunda.rider.network.NetworkClient
 import rw.itunda.rider.network.UpdateEatsOrderStatusRequest
 import rw.itunda.rider.network.UpdateRiderLocationRequest
+import rw.itunda.rider.network.parseApiError
 
 /**
  * A single active (or just-completed) delivery. Pushes this rider's real live
@@ -148,6 +149,8 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
                         try {
                             order = NetworkClient.apiService.updateRiderOrderStatus(orderId, UpdateEatsOrderStatusRequest(nextStatus)).order
                             if (nextStatus == "DELIVERED") onBack()
+                        } catch (e: retrofit2.HttpException) {
+                            error = parseApiError(e).message ?: "Couldn't update this delivery's status. Try again."
                         } catch (e: Exception) {
                             error = "Couldn't update this delivery's status. Try again."
                         } finally {
