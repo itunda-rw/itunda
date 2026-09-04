@@ -1859,8 +1859,13 @@ extension NetworkClient {
     // rw.itunda.family.FamilyLinkService's own doc comment. Honest scope boundary: real
     // read-only spending oversight only, no new allowance mechanism. bank-mfe/Android
     // already have this; this is the first iOS client.
+    // Real gap found 2026-09-04: FamilyLinkService.inviteChild's real "No itunda
+    // account found for this phone number" (404) and "Cannot link your own account
+    // as a child" (400) were both falling into FamilyLinkScreenView's generic
+    // "Could not send this invitation." catch-all -- only the 409 case was already
+    // handled specifically.
     public func inviteFamilyChild(childPhoneNumber: String) async throws -> FamilyLinkResponse {
-        try await authenticatedPost("api/v1/family/invite", body: InviteChildRequest(childPhoneNumber: childPhoneNumber))
+        try await authenticatedPostWithMessage("api/v1/family/invite", body: InviteChildRequest(childPhoneNumber: childPhoneNumber))
     }
     public func getMyFamilyInvites() async throws -> FamilyLinksResponse { try await get("api/v1/family/invites") }
     public func respondToFamilyInvite(_ id: String, accept: Bool) async throws -> FamilyLinkResponse {

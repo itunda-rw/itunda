@@ -177,8 +177,8 @@ struct FamilyLinkScreenView: View {
             childPhone = ""
             showInvite = false
             await load()
-        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
-            error = "A link with this account already exists or is pending."
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = statusCode == 409 ? "A link with this account already exists or is pending." : (message ?? "Could not send this invitation.")
         } catch {
             self.error = "Could not send this invitation."
         }
