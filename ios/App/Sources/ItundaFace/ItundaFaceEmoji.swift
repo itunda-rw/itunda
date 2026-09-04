@@ -161,6 +161,10 @@ func itundaFaceEmojiGlyph(_ emoji: String, size: CGFloat) -> some View {
     case "🇿🇼": FlagZimbabwe(size: size)
     case "🇧🇼": FlagBotswana(size: size)
     case "🇲🇼": FlagMalawi(size: size)
+    case "🇶🇦": FlagQatar(size: size)
+    case "🇮🇱": FlagIsrael(size: size)
+    case "🇵🇰": FlagPakistan(size: size)
+    case "🇷🇺": FlagRussia(size: size)
     default: EmptyView()
     }
 }
