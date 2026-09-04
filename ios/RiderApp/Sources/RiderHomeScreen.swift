@@ -284,6 +284,14 @@ struct RiderHomeScreen: View {
                 await refreshDeliveries()
                 onOpenCommerceDelivery(claimed)
             }
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            // Real gap found 2026-09-04: claimDelivery/claimCommerceDelivery share 3
+            // distinct real causes (rider not available, rider already on another
+            // delivery, delivery no longer available) -- this fallback used to guess
+            // it was always the third one, wrong whenever it was actually one of the
+            // other two.
+            self.error = message ?? "Someone else just claimed this delivery."
+            await refreshDeliveries()
         } catch {
             self.error = "Someone else just claimed this delivery."
             await refreshDeliveries()

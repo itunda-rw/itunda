@@ -136,6 +136,8 @@ struct DeliveryDetailScreen: View {
         do {
             order = try await RiderNetworkClient.shared.updateRiderOrderStatus(orderId, status: nextStatus).order
             if nextStatus == "DELIVERED" { onBack() }
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't update this delivery's status. Try again."
         } catch {
             self.error = "Couldn't update this delivery's status. Try again."
         }
