@@ -72,7 +72,6 @@ import rw.itunda.eats.MenuItemSoldOutException
 import rw.itunda.eats.MenuItemSurplusDealExpiredException
 import rw.itunda.eats.MissingRequiredMenuOptionException
 import rw.itunda.eats.NoActiveOfferException
-import rw.itunda.eats.NotAssignedRiderException
 import rw.itunda.eats.RestaurantNoAccountException
 import rw.itunda.eats.RestaurantNotFoundException
 import rw.itunda.eats.RiderAlreadyRegisteredException
@@ -870,9 +869,6 @@ class EatsController(
     fun handleNoActiveOffer(ex: NoActiveOfferException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_ACTIVE_OFFER", ex.message ?: "Conflict"))
 
-    @ExceptionHandler(NotAssignedRiderException::class)
-    fun handleNotAssignedRider(ex: NotAssignedRiderException) =
-        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("NOT_ASSIGNED_RIDER", ex.message ?: "Not found"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

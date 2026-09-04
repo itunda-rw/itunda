@@ -2264,11 +2264,16 @@ class EatsOrderServiceTest : BehaviorSpec({
             every { riderRepository.findByUserId("someone_else") } returns Rider(id = "rider_2", userId = "someone_else", accountId = "account_2")
             every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(assignedOrder)
 
-            Then("it throws NotAssignedRiderException") {
+            // Real IDOR fix (2026-09-04): this used to throw NotAssignedRiderException,
+            // a distinguishable exception/code from EatsOrderNotFoundException even
+            // though both map to the same 404 status -- letting any registered rider
+            // probe order ids and learn "exists, assigned to someone else" vs "doesn't
+            // exist." Now reuses the exact same exception as the not-found case.
+            Then("it throws the same EatsOrderNotFoundException as a genuinely missing order, never a distinguishable one") {
                 try {
                     service.updateRiderStatus("someone_else", "eats_order_1", EatsOrderStatus.PICKED_UP)
-                    error("expected NotAssignedRiderException")
-                } catch (e: NotAssignedRiderException) {
+                    error("expected EatsOrderNotFoundException")
+                } catch (e: EatsOrderNotFoundException) {
                     // expected
                 }
             }

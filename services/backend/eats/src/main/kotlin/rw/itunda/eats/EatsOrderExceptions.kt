@@ -20,7 +20,6 @@ class InvalidEatsOrderStatusTransitionException(message: String) : RuntimeExcept
 class RiderNotAvailableException(message: String) : RuntimeException(message)
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
 class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
-class NotAssignedRiderException(message: String) : RuntimeException(message)
 class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
 class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(message)
 class NoActiveOfferException(message: String) : RuntimeException(message)

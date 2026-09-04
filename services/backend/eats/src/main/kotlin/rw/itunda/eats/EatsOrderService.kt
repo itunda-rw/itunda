@@ -1546,8 +1546,16 @@ class EatsOrderService(
         val rider = riderRepository.findByUserId(riderUserId)
             ?: throw RiderNotRegisteredException("This account is not registered as a rider")
         val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        // Real IDOR fix (2026-09-04, IDOR audit pass 9 continuation): this used to throw
+        // NotAssignedRiderException, a distinguishable exception/code from the sibling
+        // EatsOrderNotFoundException just above -- even though both map to the same 404
+        // status, the response BODY still let any registered rider probe arbitrary order
+        // ids and learn "this one exists and has a DIFFERENT rider assigned" versus "this
+        // one doesn't exist/isn't claimable," the exact existence-oracle this codebase's
+        // established convention (see RideTripService.getOwnedTrip's identical pattern)
+        // closes by reusing the same NotFound exception for both cases.
         if (order.riderId != rider.id) {
-            throw NotAssignedRiderException("You are not the rider assigned to this delivery")
+            throw EatsOrderNotFoundException("Order not found")
         }
         val currentIndex = riderStatusOrder.indexOf(order.status)
         val newIndex = riderStatusOrder.indexOf(newStatus)
