@@ -12,6 +12,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.events.EventPublisher
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
@@ -51,7 +52,8 @@ class AccountServiceTest : BehaviorSpec({
         // When since relaxed already defaults to a no-op success.
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter)
 
         val senderAccount = account("account_1", "user_1", "10000")
 
@@ -220,7 +222,8 @@ class AccountServiceTest : BehaviorSpec({
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter)
 
         When("a user requests their own real account's transaction history") {
             val payAccount = account("account_pay", "user_1", "5000")
@@ -264,7 +267,8 @@ class AccountServiceTest : BehaviorSpec({
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = AccountService(accountRepository, transactionRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, rateLimiter)
 
         fun debitTxn(id: String, amount: String, createdAt: java.time.Instant, status: rw.itunda.core.domain.TransactionStatus = rw.itunda.core.domain.TransactionStatus.COMPLETED) = rw.itunda.core.domain.Transaction(
             id = id, referenceNumber = "REF-$id", senderId = "user_1", recipientId = "merchant_1",

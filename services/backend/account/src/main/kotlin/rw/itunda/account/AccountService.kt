@@ -2,6 +2,7 @@ package rw.itunda.account
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
@@ -25,6 +26,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -55,6 +57,7 @@ class AccountService(
     private val eventPublisher: EventPublisher,
     private val providerConnector: ProviderConnector,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val rateLimiter: RateLimiter,
 ) {
     private val quoteStore = QuoteStore()
 
@@ -155,6 +158,11 @@ class AccountService(
 
     @Transactional
     fun confirmTransfer(quoteId: String, userId: String): Pair<Transaction, BigDecimal> {
+        // Real gap found live (2026-09-04, same pass that found StocksService's
+        // identical gap): this external-transfer confirm moves real money via
+        // postLedgerTransaction below, same as P2pService.pay/send, but had no
+        // rateLimiter.checkLimit at all. Same 30/hour baseline those already use.
+        rateLimiter.checkLimit("account:confirm-transfer:$userId", limit = 30, window = Duration.ofHours(1))
         val quote = quoteStore.get(quoteId) ?: throw QuoteNotFoundException("Transfer quote not found")
         // Real IDOR fix (2026-08-02): a quoteId belonging to a DIFFERENT user used to
         // 403 ("that quote does not belong to you") rather than 404, the same

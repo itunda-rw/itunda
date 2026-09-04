@@ -19,6 +19,7 @@ import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.AccountFrozenException
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -216,4 +217,7 @@ class AccountController(
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleBadRequest(ex: IllegalArgumentException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REQUEST", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }
