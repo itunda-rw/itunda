@@ -235,6 +235,9 @@ private fun ScanCustomerCheckout(amount: Double, onDone: () -> Unit) {
                 result = rw.itunda.merchant.network.NetworkClient.apiService.chargeByCustomerCode(
                     request = rw.itunda.merchant.network.ChargeByCustomerCodeRequest(code, amount),
                 )
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not charge this code. It may have expired -- ask the customer to refresh their Pay screen."
+                scannedCode = null
             } catch (e: Exception) {
                 error = "Could not charge this code. It may have expired -- ask the customer to refresh their Pay screen."
                 scannedCode = null
@@ -264,6 +267,8 @@ private fun QrCheckout(amount: Double, description: String, onDone: () -> Unit) 
             try {
                 val intent = NetworkClient.apiService.generateQr(GenerateQrRequest(amount, description)).paymentIntent
                 qrContent = paymentIntentQrPayload(intent.id)
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not generate a QR code."
             } catch (e: Exception) {
                 error = "Could not generate a QR code."
             }
@@ -322,7 +327,7 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
                 if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
                     needsDeviceVerification = true
                 } else {
-                    error = "Could not charge this card."
+                    error = rw.itunda.merchant.network.apiErrorMessage(e) ?: "Could not charge this card."
                 }
             } catch (e: Exception) {
                 error = "Could not charge this card."

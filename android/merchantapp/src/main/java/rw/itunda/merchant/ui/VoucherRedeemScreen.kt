@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.RedeemedGiftVoucherDto
+import rw.itunda.merchant.network.apiErrorMessage
 import rw.itunda.merchant.network.isDeviceNotVerifiedError
 
 /**
@@ -55,7 +56,7 @@ fun VoucherRedeemTab() {
                 if (isDeviceNotVerifiedError(e)) {
                     needsDeviceVerification = true
                 } else {
-                    error = "Could not redeem this voucher."
+                    error = apiErrorMessage(e) ?: "Could not redeem this voucher."
                 }
             } catch (e: Exception) {
                 error = "Could not redeem this voucher."

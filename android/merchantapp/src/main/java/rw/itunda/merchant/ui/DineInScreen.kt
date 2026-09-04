@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.DineInOrderDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateDineInOrderStatusRequest
+import rw.itunda.merchant.network.apiErrorMessage
 import rw.itunda.merchant.network.dineInTableQrPayload
 
 /**
@@ -156,6 +157,8 @@ private fun DineInOrdersQueue() {
                                     try {
                                         NetworkClient.apiService.advanceDineInOrderStatus(order.id, UpdateDineInOrderStatusRequest(nextStatus))
                                         refresh()
+                                    } catch (e: retrofit2.HttpException) {
+                                        error = apiErrorMessage(e) ?: "Couldn't update this order. Try again."
                                     } catch (e: Exception) {
                                         error = "Couldn't update this order. Try again."
                                     }
