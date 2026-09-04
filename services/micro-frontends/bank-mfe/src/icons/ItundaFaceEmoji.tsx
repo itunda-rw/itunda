@@ -38,6 +38,7 @@ import { FlagRwanda, FlagKenya, FlagUganda, FlagTanzania, FlagBurundi, FlagCongo
 import { FlagSouthSudan, FlagSomalia, FlagChina, FlagIndia, FlagBelgium, FlagGermany, FlagFrance, FlagSouthAfrica, FlagNigeria, FlagEthiopia } from './ItundaFaceFlags2';
 import { FlagSouthKorea, FlagJapan, FlagUnitedArabEmirates, FlagSwitzerland, FlagNetherlands, FlagGhana, FlagMorocco, FlagEgypt, FlagZambia, FlagMozambique } from './ItundaFaceFlags3';
 import { FlagSweden, FlagCanada, FlagAustralia, FlagSenegal, FlagIvoryCoast, FlagCameroon, FlagAngola, FlagZimbabwe, FlagBotswana, FlagMalawi } from './ItundaFaceFlags4';
+import { FlagQatar, FlagIsrael, FlagPakistan, FlagRussia } from './ItundaFaceFlags5';
 
 type GlyphFn = (props: { size?: number }) => React.ReactElement;
 
@@ -101,6 +102,10 @@ export const ITUNDAFACE_EMOJI: Record<string, GlyphFn> = {
   '🇿🇼': FlagZimbabwe,
   '🇧🇼': FlagBotswana,
   '🇲🇼': FlagMalawi,
+  '🇶🇦': FlagQatar,
+  '🇮🇱': FlagIsrael,
+  '🇵🇰': FlagPakistan,
+  '🇷🇺': FlagRussia,
 };
 
 /** Real category grouping for the picker -- Unicode's own official emoji group

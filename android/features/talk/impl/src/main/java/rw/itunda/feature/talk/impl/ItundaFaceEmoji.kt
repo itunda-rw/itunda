@@ -209,6 +209,10 @@ fun ItundaFaceEmojiGlyph(emoji: String, size: Dp) {
         "🇿🇼" -> FlagZimbabwe(size)
         "🇧🇼" -> FlagBotswana(size)
         "🇲🇼" -> FlagMalawi(size)
+        "🇶🇦" -> FlagQatar(size)
+        "🇮🇱" -> FlagIsrael(size)
+        "🇵🇰" -> FlagPakistan(size)
+        "🇷🇺" -> FlagRussia(size)
     }
 }
 
