@@ -124,6 +124,8 @@ struct BusinessAccountTab: View {
         do {
             _ = try await MerchantNetworkClient.shared.openBusinessAccount()
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't open a business account. Try again."
         } catch {
             self.error = "Couldn't open a business account. Try again."
         }
@@ -200,6 +202,8 @@ private struct MoveMoneyCard: View {
         } catch NetworkError.deviceNotVerified {
             pendingMoveAction = { await self.move(toBusiness: toBusiness) }
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't move this money. Check your balance."
         } catch {
             self.error = "Couldn't move this money. Check your balance."
         }
@@ -256,6 +260,8 @@ private struct FeeWaiverCard: View {
         defer { busy = false }
         do {
             onUpdated(try await MerchantNetworkClient.shared.applyForFeeWaiver().merchant)
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't apply for a fee waiver."
         } catch {
             self.error = "Couldn't apply for a fee waiver."
         }
@@ -309,6 +315,8 @@ private struct WebhookUrlCard: View {
         do {
             onUpdated(try await MerchantNetworkClient.shared.setWebhookUrl(webhookUrl).merchant)
             saved = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save."
         } catch {
             self.error = "Could not save."
         }
@@ -566,6 +574,8 @@ private struct StoreSettingsCard: View {
             updated = try await MerchantNetworkClient.shared.setCashbackRate(cashbackRate).merchant
             onUpdated(updated)
             saved = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save."
         } catch {
             self.error = "Could not save."
         }

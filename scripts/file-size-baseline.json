@@ -38,7 +38,7 @@
   "ios/Features/Banking/Sources/BankView.swift": 572,
   "ios/Features/Maps/Sources/MapScreenView.swift": 1587,
   "ios/Features/Payments/Sources/TransferFlowScreens.swift": 702,
-  "ios/MerchantApp/Sources/BusinessAccountScreen.swift": 584,
+  "ios/MerchantApp/Sources/BusinessAccountScreen.swift": 594,
   "ios/MerchantApp/Sources/MerchantHomeScreen.swift": 508,
   "ios/MerchantApp/Sources/NetworkClient.swift": 888,
   "packages/saronite/mini-apps/insurance_mini_app/pages/index.tsx": 679,
