@@ -118,6 +118,16 @@ class StocksService(
         // placed at all. Same 30/hour figure P2pService.pay/send already establishes
         // as this codebase's own baseline for a comparable-stakes real money action.
         rateLimiter.checkLimit("stocks:buy:$userId", limit = 30, window = Duration.ofHours(1))
+        // Real gap found live (2026-09-04): unlike fundInvestmentAccount just above
+        // (which already validates its amount), buyStock/sellStock never checked
+        // shares was positive -- a zero/negative value would have both
+        // postLedgerTransaction legs share the same non-positive `cost`, which
+        // LedgerService's own leg filter (`rawLegs.filter { it.amount > ZERO }`)
+        // silently drops both, so no actual fund-direction reversal is possible --
+        // but the caller then gets an opaque, unhandled LedgerImbalanceException
+        // (500) instead of a clean validation error. Same exception/handler this
+        // file already established for fundInvestmentAccount's identical check.
+        if (shares <= BigDecimal.ZERO) throw InvalidFundingAmountException("Shares must be greater than zero")
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
         val account = accountRepository.findByUserIdAndType(userId, AccountType.INVESTMENT) ?: throw NoAccountException("No investment account found for this account")
         // Real bug found and fixed 2026-07-27: shares is caller-supplied BigDecimal with
@@ -160,6 +170,7 @@ class StocksService(
     @Transactional
     fun sellStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
         rateLimiter.checkLimit("stocks:sell:$userId", limit = 30, window = Duration.ofHours(1))
+        if (shares <= BigDecimal.ZERO) throw InvalidFundingAmountException("Shares must be greater than zero")
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
         val holding = holdingRepository.findByUserIdAndStockId(userId, stock.id)
         if (holding == null || holding.shares < shares) throw NotEnoughSharesException("Not enough shares to sell")
