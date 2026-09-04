@@ -14,6 +14,14 @@ import org.springframework.stereotype.Component
  * WeeklySavingsScheduler -- the real business cadence is a full calendar day, the poll
  * itself is just fast enough that a real maturity doesn't require the process to stay
  * up an actual 31 days to observe it working end to end.
+ *
+ * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+ * 2026-09-05): `maturePlan` calls `ledgerService.postLedgerTransaction` (for the
+ * real maturity-interest payout) with no try/catch of its own, and this loop had none
+ * either -- a single bad plan (a since-deleted account, a transient ledger error)
+ * would throw uncaught and silently stop maturity processing for every OTHER real due
+ * plan the same day. Per-plan try/catch closes it, matching every other resilient
+ * scheduler's shape.
  */
 @Component
 class Grow31SavingsScheduler(private val grow31SavingsService: Grow31SavingsService) {
@@ -27,8 +35,12 @@ class Grow31SavingsScheduler(private val grow31SavingsService: Grow31SavingsServ
     fun processDue(): Int {
         val due = grow31SavingsService.getPlansDueForMaturity()
         for (plan in due) {
-            grow31SavingsService.maturePlan(plan)
-            log.info("Matured 31-day savings plan {} via scheduler sweep", plan.id)
+            try {
+                grow31SavingsService.maturePlan(plan)
+                log.info("Matured 31-day savings plan {} via scheduler sweep", plan.id)
+            } catch (e: Exception) {
+                log.error("31-day savings maturity failed for plan {}", plan.id, e)
+            }
         }
         return due.size
     }
