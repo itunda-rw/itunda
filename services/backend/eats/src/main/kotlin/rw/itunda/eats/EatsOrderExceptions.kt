@@ -29,6 +29,7 @@ class InvalidMenuOptionSelectionException(message: String) : RuntimeException(me
 class ScheduledOrdersNotSupportedException(message: String) : RuntimeException(message)
 class InvalidScheduledOrderTimeException(message: String) : RuntimeException(message)
 class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
+class InvalidEatsOrderChargeException(message: String) : RuntimeException(message)
 class EatsOrderItemNotFoundException(message: String) : RuntimeException(message)
 class EatsOrderItemAlreadyUnavailableException(message: String) : RuntimeException(message)
 class EatsOrderAllItemsUnavailableException(message: String) : RuntimeException(message)

@@ -528,6 +528,22 @@ class EatsOrderService(
         // as a real expense (PROMOTION_EXPENSE leg below), matching Baemin's own real
         // "platform pays" mechanic for that discount specifically.
         val buyerCharge = totalAmount.subtract(promotionDiscount).subtract(pickupDiscount)
+        // Real fund-safety fix (2026-09-04): a restaurant-set pickupDiscountPercent
+        // (up to 100, see MerchantProfileService.setPickupDiscount) stacks additively
+        // with itunda's own platform-funded promotionDiscount, with no check that the
+        // two combined discounts never exceed what the buyer actually owes. Left
+        // unchecked, a PICKUP order sized so buyerCharge lands at exactly zero would
+        // have its own WALLET debit leg silently dropped by
+        // LedgerService.postLedgerTransaction's `amount > BigDecimal.ZERO` filter --
+        // since dropping a genuinely-zero leg never breaks the debit/credit balance
+        // check, the transaction would commit with the restaurant still paid in full
+        // and the buyer charged nothing. A negative buyerCharge is comparatively safe
+        // (it throws LedgerImbalanceException instead, since dropping a non-zero leg
+        // DOES break the balance), but is still a real order-placement failure worth
+        // rejecting cleanly here rather than as a raw 500 further down.
+        if (buyerCharge <= BigDecimal.ZERO) {
+            throw InvalidEatsOrderChargeException("This order's discounts exceed its total -- adjust your order or discount configuration")
+        }
 
         buyerAccount = autoTopUpService.ensureSufficientPayBalance(buyerId, buyerAccount, buyerCharge)
 

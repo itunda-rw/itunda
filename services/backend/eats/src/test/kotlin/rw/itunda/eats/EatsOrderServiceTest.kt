@@ -340,6 +340,46 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        // Real fund-safety fix (2026-09-04): pickupDiscountPercent (restaurant-set, up
+        // to 100) and promotionDiscount (platform-computed) both subtract from
+        // buyerCharge with no check that they don't together consume the whole order.
+        // At 100% pickup discount and an itemsSubtotal below the lowest promotion
+        // tier (so promotionDiscount stays a clean zero), buyerCharge lands at EXACTLY
+        // zero -- and LedgerService.postLedgerTransaction's own `amount >
+        // BigDecimal.ZERO` filter would silently drop that zero-valued WALLET debit
+        // leg without breaking the debit/credit balance check (removing an
+        // already-zero leg can never unbalance a balanced transaction), letting the
+        // whole order commit with the restaurant paid in full and the buyer charged
+        // nothing. This test's Then block never reaches the ledger call at all --
+        // deliberately verified by commenting out this test's own guarding
+        // `if (buyerCharge <= BigDecimal.ZERO) throw ...` line in EatsOrderService.kt
+        // and confirming the test fails (no exception thrown) before restoring it.
+        When("a real buyer's pickup-discount-and-promotion stacking would charge them exactly zero") {
+            val restaurantWithFullPickupDiscount = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, pickupDiscountPercent = 100,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithFullPickupDiscount)
+            every { accountRepository.findById("account_restaurant") } returns Optional.of(restaurantAccount)
+            every { accountRepository.findByUserIdAndType("buyer_1", AccountType.PAY) } returns buyerAccount
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+
+            Then("it's rejected before ever touching the ledger, not silently committed as a free order") {
+                try {
+                    // itemsSubtotal = 1 x 3000 = 3000, below the 5000 promotion tier, so
+                    // promotionDiscount = 0; pickupDiscount = 3000 x 100% = 3000;
+                    // buyerCharge = 3000 - 0 - 3000 = 0.
+                    service.placeOrder(
+                        "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), deliveryAddress = "",
+                        fulfillmentType = EatsFulfillmentType.PICKUP,
+                    )
+                    throw AssertionError("expected InvalidEatsOrderChargeException")
+                } catch (e: InvalidEatsOrderChargeException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("a real buyer places a DELIVERY order (not PICKUP) at a restaurant with a real 포장할인 set") {
             val restaurantWithPickupDiscount = Merchant(
                 id = "restaurant_1", ownerUserId = "owner_1", accountId = "account_restaurant", businessName = "Kigali Grill",

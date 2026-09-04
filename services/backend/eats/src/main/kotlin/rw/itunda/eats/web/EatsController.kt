@@ -83,6 +83,7 @@ import rw.itunda.eats.RiderService
 import rw.itunda.eats.ScheduledOrdersNotSupportedException
 import rw.itunda.eats.InvalidScheduledOrderTimeException
 import rw.itunda.eats.MinOrderAmountNotMetException
+import rw.itunda.eats.InvalidEatsOrderChargeException
 import rw.itunda.eats.SelfEatsOrderException
 import java.time.Instant
 
@@ -816,6 +817,10 @@ class EatsController(
     @ExceptionHandler(MinOrderAmountNotMetException::class)
     fun handleMinOrderAmountNotMet(ex: MinOrderAmountNotMetException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MIN_ORDER_AMOUNT_NOT_MET", ex.message ?: "Unprocessable"))
+
+    @ExceptionHandler(InvalidEatsOrderChargeException::class)
+    fun handleInvalidOrderCharge(ex: InvalidEatsOrderChargeException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INVALID_ORDER_CHARGE", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(InvalidEatsOrderStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidEatsOrderStatusTransitionException) =
