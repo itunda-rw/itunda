@@ -3053,7 +3053,7 @@ extension NetworkClient {
     }
 
     public func claimInterest() async throws -> ClaimInterestResponse {
-        try await authenticatedPost(
+        try await postSavingsGoal(
             "api/v1/savings/interest-jar/claim",
             body: EmptyBody(),
             idempotencyKey: UUID().uuidString
