@@ -177,12 +177,16 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 |---|---|---|---|---|
 | GET | `/providers` | — | `{success, providers: [...]}` | |
 | GET | `/pending` | — | `{success, bills: [...]}` | |
-| POST | `/pay` | `{billId, amount, accountNumber?, provider?}` (+ `Idempotency-Key`) | `{success, message, transaction}` | |
-| POST | `/airtime` | `{phoneNumber, amount, provider?}` (+ `Idempotency-Key`) | `{success, message, transaction}` | |
+| POST | `/pay` | `{billId, amount, accountNumber?, provider?}` (+ `Idempotency-Key`) | `{success, message, transaction}` | **Real 30/hour per-user rate limit and `amount > 0` validation added 2026-09-04** |
+| POST | `/airtime` | `{phoneNumber, amount, provider?}` (+ `Idempotency-Key`) | `{success, message, transaction}` | Same rate limit and validation as `/pay` |
 
-Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`, `404 WALLET_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
-`502 PROVIDER_DECLINED`.
+Errors: `404 BILL_PROVIDER_NOT_FOUND`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`,
+`502 PROVIDER_DECLINED`, `400 INVALID_REQUEST`, `429 RATE_LIMITED`. **Corrected
+2026-09-04** — the real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND` (which
+doesn't exist); `BILL_PROVIDER_NOT_FOUND`/`ACCOUNT_FROZEN`/`INVALID_REQUEST`/
+`RATE_LIMITED` were missing entirely.
 
 No real biller integration exists behind this (REG/WASAC/Irembo/RRA credentials) — see
 `docs/TOSS_PARITY_MATRIX.md`'s Bills row; this is a real simulated provider connector, not a
@@ -249,14 +253,17 @@ thread-starvation bug found and fixed alongside it.
 |---|---|---|---|---|
 | GET | `` | — | `{success, stocks: [...]}` | |
 | GET | `/portfolio` | — | `{success, portfolio: [...]}` | |
-| POST | `/buy` | `{stockId, shares}` (+ `Idempotency-Key`) | `{success, ...}` | Weighted-average-cost basis recomputed on each buy |
-| POST | `/sell` | `{stockId, shares}` (+ `Idempotency-Key`) | `{success, ...}` | |
+| POST | `/buy` | `{stockId, shares}` (+ `Idempotency-Key`) | `{success, ...}` | Weighted-average-cost basis recomputed on each buy. **Real 30/hour per-user rate limit and `shares > 0` validation added 2026-09-04** |
+| POST | `/sell` | `{stockId, shares}` (+ `Idempotency-Key`) | `{success, ...}` | Same rate limit and validation as `/buy` |
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`, `404 STOCK_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
-`422 INSUFFICIENT_SHARES`, `422 INSUFFICIENT_FUNDS`. RSE (Rwanda Stock Exchange) brokerage/
-custody integration is blocked (regulatory), not built — stock prices and trades here are
-simulated.
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 STOCK_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
+`400 INVALID_AMOUNT`, `422 INSUFFICIENT_SHARES`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `429 RATE_LIMITED`. **Corrected 2026-09-04** — the real code is
+`ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND` (which doesn't exist), and `INVALID_AMOUNT`/
+`ACCOUNT_FROZEN`/`RATE_LIMITED` were missing entirely. RSE (Rwanda Stock Exchange)
+brokerage/custody integration is blocked (regulatory), not built — stock prices and
+trades here are simulated.
 
 ## Insurance — `/api/v1/insurance`
 
