@@ -131,9 +131,11 @@ recipient-to-recipient — see that row for the full account).
 
 Errors: `404 P2P_REQUEST_NOT_FOUND`, `409 P2P_REQUEST_NOT_PAYABLE` (already paid, or expired —
 a real request past its `expiresAt` gets marked `EXPIRED` on the attempt, not silently allowed),
-`400 SELF_PAYMENT_NOT_ALLOWED`, `404 WALLET_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`400 SELF_PAYMENT_NOT_ALLOWED`, `404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
 `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`.
+`400 IDEMPOTENCY_KEY_REQUIRED`. **Corrected 2026-09-04** — real code is
+`ACCOUNT_NOT_FOUND` (confirmed via `P2pController.kt`'s own `@ExceptionHandler`
+list), `WALLET_NOT_FOUND` does not exist.
 
 ## Account — `/api/v1/account`
 
@@ -233,14 +235,22 @@ duplicated or cached copy — see the Loans section.
 |---|---|---|---|---|
 | GET | `/goals` | — | `{success, goals: [...]}` | |
 | POST | `/goals` | `{name, targetAmount, monthlyContribution?, targetDate?, category?}` | `{success, goal: {...}}` | |
-| POST | `/deposit` | `{goalId, amount, fromWalletId?}` (+ `Idempotency-Key`) | `{success, ...}` | |
+| POST | `/deposit` | `{goalId, amount, fromAccountId?}` (+ `Idempotency-Key`) | `{success, ...}` | |
 | GET | `/interest-jar` | — | `{success, ...}` | |
 | POST | `/interest-jar/claim` | (+ `Idempotency-Key`) | `{success, ...}` | |
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`, `404 GOAL_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
-`404 INTEREST_JAR_NOT_FOUND`, `403 WALLET_NOT_OWNED`, `409 NO_INTEREST_AVAILABLE`,
-`422 INSUFFICIENT_FUNDS`. Recurring auto-save is built and live-verified 2026-07-13 —
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 GOAL_NOT_FOUND`, `404 ACCOUNT_NOT_FOUND`,
+`404 INTEREST_JAR_NOT_FOUND`, `403 ACCOUNT_FROZEN`, `409 NO_INTEREST_AVAILABLE`,
+`422 INSUFFICIENT_FUNDS`. **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`
+(`WALLET_NOT_FOUND` doesn't exist), request field is `fromAccountId` not
+`fromWalletId`, and `WALLET_NOT_OWNED` never actually gets returned —
+`SavingsService.kt`'s own code comment explains this is deliberate: an
+ownership mismatch folds into the same `ACCOUNT_NOT_FOUND` 404 an IDOR-safe
+lookup already returns, not a distinguishable 403, so a caller can't use the
+difference to enumerate accounts that exist but aren't theirs; `ACCOUNT_FROZEN`
+(a real, separate handler) was missing from this list entirely. Recurring
+auto-save is built and live-verified 2026-07-13 —
 `AutoSaveScheduler` runs on a real 30-day business cadence (30-second poll for demo speed) and
 charges `monthlyContribution` from the goal owner's MAIN wallet, skipping gracefully on
 insufficient funds. There is no API endpoint for this — it's a background job, not a route; see
