@@ -49,28 +49,6 @@ class MerchantWebhookReportTest : BehaviorSpec({
 
     Given("a registered merchant with no webhook configured yet") {
         val merchantRepository = mockk<MerchantRepository>()
-        val paymentIntentRepository = mockk<PaymentIntentRepository>()
-        val accountRepository = mockk<AccountRepository>()
-        val ledgerService = mockk<LedgerService>()
-        val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
-        // Not relaxed for save() specifically: mockk's relaxed default can't correctly
-        // infer JpaRepository's generic `<S extends T> S save(S)` signature, returning a
-        // raw mock Object that then fails a real ClassCastException back in the caller
-        // (confirmed live) -- same reason AccountServiceTest explicitly stubs this too.
-        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        every { transactionRepository.save(any()) } answers { firstArg() }
-        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val demoCardAuthorizationService = DemoCardAuthorizationService()
-        val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
-        val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
-        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
-        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
-        val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
-        val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
         // setWebhookUrl now lives on MerchantProfileService (itunda Maps redesign,
         // 2026-08-28), see that class's own doc comment -- this Given block no longer
         // needs a real MerchantService instance at all.
