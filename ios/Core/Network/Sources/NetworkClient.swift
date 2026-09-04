@@ -5268,8 +5268,11 @@ extension NetworkClient {
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    // 2026-09-04: same real gap as submitJobPostReview/submitPropertyListingReview --
+    // "not marked sold yet" vs. "already reviewed" both mapped to 409, both showing
+    // the identical generic TalkScreen.errorMessage text.
     public func submitListingReview(_ listingId: String, goodPoints: [String], uncomfortablePoints: [String]) async throws -> HoodReviewResponse {
-        try await authenticatedPost(
+        try await authenticatedPostWithMessage(
             "api/v1/marketplace/listings/\(listingId)/review",
             body: SubmitHoodReviewRequest(goodPoints: goodPoints, uncomfortablePoints: uncomfortablePoints),
         )

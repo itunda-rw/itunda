@@ -484,8 +484,8 @@ struct ListingCard: View {
             reviewSubmitted = true
             showReviewSheet = false
             hoodReviews = (hoodReviews ?? []) + [res.review]
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
