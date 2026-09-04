@@ -7,10 +7,15 @@
 # application-container-build needs a real `docker build`, unlike every other step in
 # .woodpecker/* -- the standard Woodpecker pattern for this (a docker:cli image with
 # the HOST's own docker.sock mounted in, per infra/ci/docker-compose.yml's own agent
-# already doing exactly that mount) rather than Docker-in-Docker. Not yet live-tested
-# against a real running Woodpecker instance (see docs/CI_WOODPECKER_SETUP.md -- the
-# server/agent aren't deployed anywhere yet), so verify this step specifically once
-# Woodpecker is actually live, same as this whole directory's own standing caveat.
+# already doing exactly that mount) rather than Docker-in-Docker. Confirmed against
+# Woodpecker's own docs (woodpecker-ci.org/docs/usage/volumes) that this exact
+# volumes: syntax is correct -- but that same page states host volume mounts are
+# GATED behind "trusted" mode, which is off by default and must be explicitly
+# enabled per-repo in the Woodpecker UI's project settings before this step will
+# work at all. Whoever does the initial Woodpecker setup (docs/CI_WOODPECKER_SETUP.md)
+# needs to flip that setting for this repo. Not yet live-tested against a real
+# running Woodpecker instance (server/agent aren't deployed anywhere yet), so
+# verify this step specifically once Woodpecker is actually live.
 labels:
   backend: docker
 

@@ -68,6 +68,14 @@ creation, and exposing a new public endpoint is a real infrastructure decision.
    `WOODPECKER_ADMIN` -- `CONTRIBUTORS.md`'s "에릭" entry has no confirmed GitHub
    username in git history (a local-machine commit email, not a GitHub-linked one).
    Don't guess.
+5. **Enable "trusted" mode for this repo** in the Woodpecker UI's project settings,
+   once the repo is registered. Off by default, and required for
+   `.woodpecker/containers.yml`'s `application-container-build` steps to work at
+   all -- Woodpecker gates any host volume mount (here, mounting the agent host's
+   own `/var/run/docker.sock` so a step can run real `docker build` commands)
+   behind this setting for security reasons. Without it, those 4 steps won't be
+   able to mount the socket -- confirm the actual failure mode once Woodpecker is
+   live rather than assuming it's an obvious error pointing at this setting.
 
 ## Bringing it up
 
