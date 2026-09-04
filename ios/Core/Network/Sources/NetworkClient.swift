@@ -6481,14 +6481,19 @@ extension NetworkClient {
 
     public func getMyEatsMembership() async throws -> EatsMembershipResponse { try await get("api/v1/eats/membership/me") }
 
+    // Real gap found 2026-09-04: both membership subscribe endpoints' real
+    // "Choose a real membership duration -- X, Y, Z days" message (dynamically listing
+    // the actual valid tiers, EatsMembershipService/PlatformMembershipService's own
+    // MEMBERSHIP_TIERS keys) would fall back to a generic 400 if a client duration
+    // picker ever drifted out of sync with the backend's tier list.
     public func subscribeEatsMembership(days: Int) async throws -> EatsMembershipResponse {
-        try await authenticatedPost("api/v1/eats/membership/subscribe", body: SubscribeEatsMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/eats/membership/subscribe", body: SubscribeEatsMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
     }
 
     public func getMyPlatformMembership() async throws -> PlatformMembershipResponse { try await get("api/v1/eats/platform-membership/me") }
 
     public func subscribePlatformMembership(days: Int) async throws -> PlatformMembershipResponse {
-        try await authenticatedPost("api/v1/eats/platform-membership/subscribe", body: SubscribePlatformMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/eats/platform-membership/subscribe", body: SubscribePlatformMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
     }
 
     // Real Toss Securities-style stock investing (2026-07-20) -- see StocksResponse's
