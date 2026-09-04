@@ -45,8 +45,8 @@ class WebhookDeliveryServiceTest : BehaviorSpec({
             )
 
             Then("it carries stable deduplication and event-contract headers") {
-                request.headers().firstValue("X-Itunda-Delivery-Id").orElse(null) shouldBe "whd_delivery_1"
-                request.headers().firstValue("X-Itunda-Event-Type").orElse(null) shouldBe "PAYMENT_STATUS_CHANGED"
+                request.header("X-Itunda-Delivery-Id") shouldBe "whd_delivery_1"
+                request.header("X-Itunda-Event-Type") shouldBe "PAYMENT_STATUS_CHANGED"
             }
         }
     }

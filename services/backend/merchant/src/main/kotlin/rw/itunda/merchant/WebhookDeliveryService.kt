@@ -1,18 +1,19 @@
 package rw.itunda.merchant
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import rw.itunda.core.domain.WebhookDelivery
 import rw.itunda.core.domain.WebhookDeliveryStatus
 import rw.itunda.core.repository.WebhookDeliveryRepository
 import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
@@ -41,7 +42,19 @@ class WebhookDeliveryService(
     private val webhookDeliveryRepository: WebhookDeliveryRepository,
 ) {
     private val log = LoggerFactory.getLogger(WebhookDeliveryService::class.java)
-    private val httpClient: HttpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()
+
+    // Real DNS-rebinding SSRF fix (2026-09-05) -- see WebhookSafeDns's own doc comment.
+    // This used to be a plain java.net.http.HttpClient, which re-resolves a hostname
+    // URI itself at connection time -- a second, independent DNS query from the one
+    // WebhookUrlPolicy.parseForDelivery used to validate it, and therefore a real
+    // TOCTOU gap (CWE-918) a merchant controlling their webhook hostname's DNS could
+    // exploit. OkHttp's `dns()` hook makes WebhookSafeDns the ONLY resolution used to
+    // open the connection, so the safety check and the connection share one lookup.
+    private val httpClient: OkHttpClient = OkHttpClient.Builder()
+        .dns(WebhookSafeDns)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .callTimeout(5, TimeUnit.SECONDS)
+        .build()
 
     companion object {
         // Real Toss Payments schedule (docs.tosspayments.com/en/webhooks): "resends the
@@ -211,23 +224,22 @@ class WebhookDeliveryService(
     ): Pair<Boolean, String?> {
         return try {
             val request = buildRequest(WebhookUrlPolicy.parseForDelivery(webhookUrl), payloadJson, deliveryId, eventType, signature)
-            val response = httpClient.send(request, HttpResponse.BodyHandlers.discarding())
-            if (response.statusCode() in 200..299) {
-                true to null
-            } else {
-                false to "HTTP ${response.statusCode()}"
+            httpClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    true to null
+                } else {
+                    false to "HTTP ${response.code}"
+                }
             }
         } catch (e: Exception) {
             false to (e.message ?: e.javaClass.simpleName)
         }
     }
 
-    internal fun buildRequest(target: URI, payloadJson: String, deliveryId: String, eventType: String?, signature: String? = null): HttpRequest {
-        val builder = HttpRequest.newBuilder()
-            .uri(target)
-            .header("Content-Type", "application/json")
+    internal fun buildRequest(target: URI, payloadJson: String, deliveryId: String, eventType: String?, signature: String? = null): Request {
+        val builder = Request.Builder()
+            .url(target.toString())
             .header("X-Itunda-Delivery-Id", deliveryId)
-            .timeout(Duration.ofSeconds(5))
         if (!eventType.isNullOrBlank()) {
             builder.header("X-Itunda-Event-Type", eventType)
         }
@@ -239,6 +251,6 @@ class WebhookDeliveryService(
         if (!signature.isNullOrBlank()) {
             builder.header("X-Itunda-Signature", signature)
         }
-        return builder.POST(HttpRequest.BodyPublishers.ofString(payloadJson)).build()
+        return builder.post(payloadJson.toRequestBody("application/json".toMediaType())).build()
     }
 }

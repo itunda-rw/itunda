@@ -29,6 +29,12 @@ dependencies {
     implementation(project(":messaging"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
+    // WebhookDeliveryService's outbound HTTP client -- see WebhookSafeDns's doc comment
+    // for why this replaced java.net.http.HttpClient: OkHttp's Dns interface lets the
+    // safety check and the actual connection share one DNS resolution, closing a real
+    // DNS-rebinding SSRF gap java.net.http.HttpClient's own independent re-resolution
+    // could not close without a JDK 18+ upgrade (JEP 418).
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     // Same Kotest + MockK convention as :core's tests -- see LedgerServiceTest.kt's
     // doc comment for why (Toss's own documented Kotlin testing convention).
