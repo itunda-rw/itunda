@@ -16,6 +16,7 @@ import rw.itunda.partners.InvalidApiKeyException
 import rw.itunda.partners.InvalidMiniAppSubmissionException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
+import rw.itunda.partners.InvalidPartnerEmailException
 import rw.itunda.partners.PartnerMiniAppPermissions
 import rw.itunda.partners.PartnerService
 import rw.itunda.partners.PartnerSuspendedException
@@ -70,6 +71,10 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(PartnerEmailAlreadyRegisteredException::class)
     fun handleAlreadyRegistered(ex: PartnerEmailAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PARTNER_EMAIL_ALREADY_REGISTERED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidPartnerEmailException::class)
+    fun handleInvalidEmail(ex: InvalidPartnerEmailException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_EMAIL", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidApiKeyException::class)
     fun handleInvalidApiKey(ex: InvalidApiKeyException) =

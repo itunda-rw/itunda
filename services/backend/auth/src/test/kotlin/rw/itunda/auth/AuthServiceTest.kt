@@ -174,6 +174,36 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
+        When("registering with an email that isn't shaped like one") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000031") } returns false
+
+            Then("it throws InvalidEmailException before ever saving a user") {
+                try {
+                    service.register(RegisterRequest("+250788000031", "not-an-email", "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidEmailException")
+                } catch (e: InvalidEmailException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with no email at all") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000032") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { accountRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { termsAcceptanceRepository.save(any()) } answers { firstArg() }
+
+            Then("email is genuinely optional -- registration still succeeds") {
+                val response = service.register(RegisterRequest("+250788000032", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                response.user.email shouldBe null
+            }
+        }
+
         When("registering with a valid referral code") {
             val referrer = User(
                 id = "user_referrer", phoneNumber = "+250788000010", firstName = "Ref", lastName = "R",

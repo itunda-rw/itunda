@@ -11,12 +11,14 @@ import rw.itunda.core.domain.PartnerMiniAppStatus
 import rw.itunda.core.domain.PartnerStatus
 import rw.itunda.core.repository.PartnerMiniAppRepository
 import rw.itunda.core.repository.PartnerRepository
+import rw.itunda.core.validation.isValidEmail
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
 import java.util.UUID
 
 class PartnerEmailAlreadyRegisteredException(message: String) : RuntimeException(message)
+class InvalidPartnerEmailException(message: String) : RuntimeException(message)
 class InvalidApiKeyException(message: String) : RuntimeException(message)
 class PartnerSuspendedException(message: String) : RuntimeException(message)
 class InvalidPermissionScopeException(message: String) : RuntimeException(message)
@@ -70,6 +72,13 @@ class PartnerService(
         // AuthService.register already applies to itunda's own user registration --
         // without this, the endpoint has no bound at all on registration spam or on how
         // fast that oracle can be probed.
+        // Real gap found 2026-09-05: contactEmail was never checked for even being
+        // shaped like an email address -- see EmailValidation.kt's own doc comment.
+        // Checked before the rate limiter below so a malformed value doesn't spend a
+        // real attempt out of that budget.
+        if (!isValidEmail(contactEmail)) {
+            throw InvalidPartnerEmailException("Please provide a valid contact email address")
+        }
         rateLimiter.checkLimit("partner:register:$contactEmail", limit = 3, window = Duration.ofMinutes(10))
         if (partnerRepository.findByContactEmail(contactEmail) != null) {
             throw PartnerEmailAlreadyRegisteredException("A partner account already exists for this email")

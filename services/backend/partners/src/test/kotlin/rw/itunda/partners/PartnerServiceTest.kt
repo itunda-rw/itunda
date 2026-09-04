@@ -64,6 +64,18 @@ class PartnerServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("registering with an email that isn't shaped like one") {
+            Then("it throws InvalidPartnerEmailException before ever checking for a duplicate or spending a rate-limit attempt") {
+                try {
+                    service.register("Acme Rwanda", "not-an-email")
+                    error("expected InvalidPartnerEmailException")
+                } catch (e: InvalidPartnerEmailException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { partnerRepository.save(any()) }
+                }
+            }
+        }
     }
 
     Given("a registered partner submitting a mini-app for review") {

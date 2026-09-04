@@ -17,6 +17,7 @@ import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
+import rw.itunda.core.validation.isValidEmail
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -79,6 +80,12 @@ class AuthService(
         // support.toss.im's own real help-center articles.
         if (!PIN_PATTERN.matches(request.password)) {
             throw InvalidPinException("Your PIN must be exactly 6 digits")
+        }
+        // Real gap found 2026-09-05: email is optional, but an email that IS provided
+        // was never checked for even being shaped like one -- see EmailValidation.kt's
+        // own doc comment for the full account.
+        if (request.email != null && !isValidEmail(request.email)) {
+            throw InvalidEmailException("Please enter a valid email address")
         }
         // Real, not honor-system: an invalid/typo'd code fails registration loudly
         // rather than silently registering with no attribution, matching this repo's

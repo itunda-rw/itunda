@@ -15,3 +15,4 @@ class InvalidProfilePhotoUrlException(message: String) : RuntimeException(messag
 class InvalidBirthDateException(message: String) : RuntimeException(message)
 class RequiredTermsNotAcceptedException(message: String) : RuntimeException(message)
 class InvalidPinException(message: String) : RuntimeException(message)
+class InvalidEmailException(message: String) : RuntimeException(message)

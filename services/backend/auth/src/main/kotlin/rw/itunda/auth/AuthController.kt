@@ -327,4 +327,8 @@ class AuthController(
     @ExceptionHandler(InvalidPinException::class)
     fun handleInvalidPin(ex: InvalidPinException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PIN", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidEmailException::class)
+    fun handleInvalidEmail(ex: InvalidEmailException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_EMAIL", ex.message ?: "Bad request"))
 }
