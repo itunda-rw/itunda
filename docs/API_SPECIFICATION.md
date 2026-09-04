@@ -135,24 +135,41 @@ a real request past its `expiresAt` gets marked `EXPIRED` on the attempt, not si
 `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`.
 
-## Wallet — `/api/v1/wallet`
+## Account — `/api/v1/account`
+
+**Corrected 2026-09-04** — this section previously said `/api/v1/wallet`, a prefix
+that does not exist anywhere in the real backend (confirmed via
+`grep -r '@RequestMapping("/api/v1/wallet'`, zero matches); the real controller is
+`AccountController.kt`, mounted at `/api/v1/account`, and several of the error codes
+below were also stale (`WALLET_NOT_FOUND`/`WALLET_FROZEN` don't exist — the real
+codes are `ACCOUNT_NOT_FOUND`/`ACCOUNT_FROZEN`). Re-verified against the real
+controller's current `@GetMapping`/`@PostMapping`/`@ExceptionHandler` list, not
+re-derived from memory.
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| GET | `` | — | `{success, wallets: [...]}` | |
-| GET | `/{id}` | — | `{success, wallet: {...}}` | |
+| GET | `` | — | `{success, accounts: [...]}` | |
+| GET | `/{id}` | — | `{success, account: {...}}` | |
 | GET | `/transactions` | — | `{success, transactions: [...]}` | Real transaction history, backs the transaction-history screen on both mobile platforms |
-| GET | `/spending` | — | `{success, categories: [...], totalSpent}` | Built and live-verified 2026-07-13. Categorizes by looking up each wallet debit's real ledger counterpart, not the `transactions` table (only P2P transfers ever write a row there). `categories`: `[{name, amount}]`, largest first |
-| POST | `/budgets` | `{category?, monthlyLimit}` | `{success, budget: {...}}` | Built and live-verified 2026-07-13. `category` null means an overall budget; otherwise must match a real `/spending` category name. Upserts the current real calendar month's budget |
+| GET | `/spending` | — | `{success, categories: [...], totalSpent}` | Categorizes by looking up each debit's real ledger counterpart, not the `transactions` table (only P2P transfers ever write a row there). `categories`: `[{name, amount}]`, largest first |
+| POST | `/budgets` | `{category?, monthlyLimit}` | `{success, budget: {...}}` | `category` null means an overall budget; otherwise must match a real `/spending` category name. Upserts the current real calendar month's budget |
 | GET | `/budgets` | — | `{success, budgets: [...]}` | Each entry: `{category, monthlyLimit, spent, remaining, percentUsed, status: "UNDER"\|"NEAR"\|"OVER"}`, `spent` computed live against `/spending`'s real categorization. Crossing 80%/100% writes a real `BUDGET_NEAR`/`BUDGET_OVER` notification (see `## Notifications` above), once per threshold per month |
-| POST | `/transfer/quote` | `{amount, recipient, fromWalletId?, description?}` | `{success, quote: {...}}` | Quote expires after 60 seconds |
-| POST | `/transfer/confirm` | `{quoteId}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Requires the quote from `/transfer/quote`; posts through the double-entry ledger. Real per-rail routing as of 2026-07-13 — `recipient`'s phone prefix (078 → MTN, 072/073 → Airtel, per RURA's numbering plan) resolves the real rail instead of always falling through to `generic` |
+| POST | `/transfer/quote` | `{amount, recipient, fromAccountId?, description?}` | `{success, quote: {...}}` | Quote expires after 60 seconds |
+| POST | `/transfer/confirm` | `{quoteId}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Requires the quote from `/transfer/quote`; posts through the double-entry ledger. Real per-rail routing — `recipient`'s phone prefix (078 → MTN, 072/073 → Airtel, per RURA's numbering plan) resolves the real rail instead of always falling through to `generic`. **Real 30/hour per-user rate limit added 2026-09-04** (`RATE_LIMITED`), same baseline every other real money-moving endpoint in this backend uses |
+
+Not yet documented here (real endpoints, confirmed present in the controller, not
+written up in this pass — `/{id}/transactions`, `/transactions/timeline`,
+`/spending/monthly-report`, `/business-expense-summary`, `/subscriptions`,
+`/agent-withdrawal-authorizations` and its `/cancel` sibling): a real, disclosed gap,
+not silently skipped — add these in a dedicated future pass rather than assuming this
+section is now exhaustive.
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`, `404 WALLET_NOT_FOUND`, `403 WALLET_NOT_OWNED`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 ACCOUNT_NOT_FOUND`,
 `404 QUOTE_NOT_FOUND`, `409 QUOTE_EXPIRED`, `409 QUOTE_ALREADY_USED`,
-`422 INSUFFICIENT_FUNDS`, `403 WALLET_FROZEN` (see `## Support` below), `502 PROVIDER_DECLINED`
-(the simulated provider connector declined the rail), `400 INVALID_REQUEST`.
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `502 PROVIDER_DECLINED`
+(the simulated provider connector declined the rail), `400 INVALID_REQUEST`,
+`429 RATE_LIMITED`.
 
 ## Bills — `/api/v1/bills`
 
