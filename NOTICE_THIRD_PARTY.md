@@ -3,39 +3,54 @@
 itunda's own hand-drawn glyph system ("itundaface") is original artwork built
 from scratch for this project, with one deliberate exception documented here.
 
-## Noto Emoji (Google) — People & Body hand-gesture silhouettes
+## Noto Emoji (Google) — People & Body, Animals & Nature, Food & Drink,
+## Travel & Places, Activities, and Objects
 
-The following itundaface glyphs' outer silhouette path data is derived
+The following itundaface glyphs' silhouette/shape path data is derived
 directly from Google's real, published **Noto Emoji** project
-(<https://github.com/googlefonts/noto-emoji>), not hand-approximated:
+(<https://github.com/googlefonts/noto-emoji>), not hand-approximated. This
+list covers phases 2, 3, 4, 5, 6, and 7 of itundaface's "reach TossFace's
+3,600-glyph scale" emoji-input initiative (phase 1, Smileys & Emotion, is
+itundaface's own original hand-authored face template, not Noto-derived, and
+carries no attribution obligation here):
 
-- Waving Hand (👋)
-- Raised Fist (✊)
-- Victory Hand (✌️)
-- OK Hand (👌)
-- Flexed Biceps / Muscle (💪)
-- Folded Hands / Pray (🙏)
-- Clapping Hands (👏, silhouette + motion-line placement)
+**People & Body** (outer silhouette only, recolored to itunda's own
+skin-tone and indigo brand palette and paired with itundaface's own
+accent-stroke signature — Noto's real multi-layer shading was not
+reproduced, except for Handshake, whose internal finger-interlock detail is
+semantically load-bearing, not decoration, so all of Noto's real shading
+paths are kept there, clipped to the outer silhouette):
+- Waving Hand (👋), Raised Fist (✊), Victory Hand (✌️), OK Hand (👌),
+  Flexed Biceps / Muscle (💪), Folded Hands / Pray (🙏), Clapping Hands (👏,
+  silhouette + motion-line placement), Handshake (🤝, full shading kept)
 
-Each silhouette was recolored to itunda's own skin-tone and indigo brand
-palette and paired with itundaface's own accent-stroke signature; Noto's
-real multi-layer shading/outline construction was not reproduced (only the
-flat outer silhouette), and no Noto asset files (fonts, images) are bundled —
-only path coordinate data, adapted directly into this repo's own source
-files.
+**Animals & Nature, Food & Drink, Travel & Places, Activities, Objects**
+(kept in Noto's own real multi-color construction — a monochrome dog, pizza
+slice, or soccer ball isn't recognizable — colors are Noto's own real fills,
+not itunda's palette): Dog, Cat, Star, Glowing Star, Rainbow, Cherry
+Blossom, Bird; Pizza, Hamburger, Coffee, Cake, Donut, Strawberry,
+Watermelon, Apple; Car, Airplane, House, Rocket, Bike, Globe; Soccer Ball,
+Basketball, Video Game, Palette, Musical Note, Party Popper, Trophy, Direct
+Hit; Credit Card, Mobile Phone, Watch, Key, Light Bulb, Headphones,
+Paperclip, Pen.
+
+No Noto asset files (fonts, images) are bundled — only path/shape coordinate
+data, adapted directly into each platform's own source files.
 
 **Copyright 2013 Google LLC.** Licensed under the SIL Open Font License,
 Version 1.1 (<https://scripts.sil.org/OFL>). The full license text is
 reproduced below per OFL §2, which requires that any copy — original or
 modified — carry this notice.
 
-Locations using this derived data (updated 2026-09-03: the Android and iOS paths moved into
-each platform's `:core:designsystem` module during a later cross-Feature-module promotion,
-not corrected here until now):
-- `services/micro-frontends/bank-mfe/src/icons/ItundaFacePeople.tsx` (web)
-- `android/core/designsystem/src/main/java/rw/itunda/core/designsystem/itundaface/ItundaFacePeople.kt` (Android)
-- `ios/Core/DesignSystem/Sources/ItundaFace/ItundaFacePeople.swift` (iOS)
-- `github.com/itunda-rw/itundaface` (the published, standalone itundaface repo)
+Locations using this derived data (updated 2026-09-04: extended from People-only
+to all six Noto-derived categories, and corrected the published-repo status --
+see [[project_itunda_pure_tossface_icons]], it did not actually carry this data
+until this same pass):
+- `services/micro-frontends/bank-mfe/src/icons/ItundaFace{People,Nature,Food,Travel,Activities,Objects}.tsx` (web)
+- `android/core/designsystem/src/main/java/rw/itunda/core/designsystem/itundaface/ItundaFace{People,Nature,Food,Travel,Objects}.kt` (Android), plus `android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/ItundaFaceActivities.kt` (Activities lives with Talk's own emoji-picker consumer, not `:core:designsystem`)
+- `ios/Core/DesignSystem/Sources/ItundaFace/ItundaFace{People,Nature,Food,Travel,Objects}.swift`, `ios/App/Sources/ItundaFace/ItundaFaceActivities.swift` (iOS)
+- `github.com/itunda-rw/itundaface` (the published, standalone itundaface repo —
+  see that repo's own `NOTICE_THIRD_PARTY.md`)
 
 ---
 
