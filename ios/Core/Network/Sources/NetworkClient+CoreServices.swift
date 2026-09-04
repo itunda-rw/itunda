@@ -26,15 +26,23 @@ extension NetworkClient {
         try await get("api/v1/account/\(accountId)/auto-topup")
     }
 
+    // Real gap found 2026-09-04 (device step-up/error-message-gap sweep): configure/
+    // trigger both went through the plain authenticatedPut/authenticatedPost, so
+    // AutoTopUpScreen.swift's catch blocks could only show TalkScreen.errorMessage's
+    // generic per-status bucket -- swallowing AutoTopUpService's real, specific
+    // messages ("Threshold amount cannot be negative", "Top-up amount must be
+    // greater than zero", "Daily trigger cap must be at least 1", "This linked
+    // account is not currently LINKED"), all real validation failures a multi-field
+    // settings form like this one hits often.
     public func configureAutoTopUp(accountId: String, linkedAccountId: String, thresholdAmount: Double, topUpAmount: Double, dailyTriggerCap: Int = 3, enabled: Bool = true) async throws -> GetAutoTopUpSettingResponse {
-        try await authenticatedPut(
+        try await authenticatedPutWithMessage(
             "api/v1/account/\(accountId)/auto-topup",
             body: ConfigureAutoTopUpRequest(linkedAccountId: linkedAccountId, thresholdAmount: thresholdAmount, topUpAmount: topUpAmount, dailyTriggerCap: dailyTriggerCap, enabled: enabled)
         )
     }
 
     public func triggerAutoTopUp(accountId: String) async throws -> TriggerAutoTopUpResponse {
-        try await authenticatedPost("api/v1/account/\(accountId)/auto-topup/trigger", body: EmptyRequest())
+        try await authenticatedPostWithMessage("api/v1/account/\(accountId)/auto-topup/trigger", body: EmptyRequest())
     }
 
     public func getLoanOffers(lenderId: String? = nil) async throws -> LoanOffersResponse {

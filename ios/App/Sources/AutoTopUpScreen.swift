@@ -85,8 +85,8 @@ struct AutoTopUpScreenView: View {
                                     do {
                                         _ = try await NetworkClient.shared.triggerAutoTopUp(accountId: accountId)
                                         refreshKey += 1
-                                    } catch let NetworkError.httpError(statusCode) {
-                                        error = TalkScreen.errorMessage(statusCode)
+                                    } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+                                        error = message ?? TalkScreen.errorMessage(statusCode)
                                     } catch {
                                         self.error = "Couldn't reach itunda. Check your connection and try again."
                                     }
@@ -204,8 +204,8 @@ private struct AutoTopUpConfigCard: View {
                 dailyTriggerCap: setting?.dailyTriggerCap ?? 3, enabled: enabled
             )
             onChanged()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
