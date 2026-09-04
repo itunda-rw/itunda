@@ -17,3 +17,4 @@ class RequiredTermsNotAcceptedException(message: String) : RuntimeException(mess
 class InvalidPinException(message: String) : RuntimeException(message)
 class InvalidEmailException(message: String) : RuntimeException(message)
 class InvalidPhoneNumberException(message: String) : RuntimeException(message)
+class InvalidNameException(message: String) : RuntimeException(message)

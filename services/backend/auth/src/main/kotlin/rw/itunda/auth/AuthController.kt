@@ -335,4 +335,8 @@ class AuthController(
     @ExceptionHandler(InvalidPhoneNumberException::class)
     fun handleInvalidPhoneNumber(ex: InvalidPhoneNumberException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PHONE_NUMBER", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidNameException::class)
+    fun handleInvalidName(ex: InvalidNameException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_NAME", ex.message ?: "Bad request"))
 }

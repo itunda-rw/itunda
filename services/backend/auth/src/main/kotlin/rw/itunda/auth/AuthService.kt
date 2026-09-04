@@ -62,6 +62,19 @@ class AuthService(
         if (!isValidPhoneNumber(request.phoneNumber)) {
             throw InvalidPhoneNumberException("Please enter a valid phone number, including country code")
         }
+        // Real gap found 2026-09-05: firstName/lastName had no length bound, unlike the
+        // identical User.firstName/lastName@Column (no explicit length -> Hibernate's
+        // real 255-character VARCHAR default) already-fixed everywhere else this exact
+        // sweep covered (see PartnerService.submitMiniApp's own doc comment: "found via
+        // the same systematic sweep that fixed the identical gap across Commerce/Eats/
+        // Marketplace/Jobs/RealEstate/Community/Messaging/Maps the same day") -- this
+        // backend's own registration endpoint was the one real gap that sweep missed.
+        if (request.firstName.isBlank() || request.firstName.length > 255) {
+            throw InvalidNameException("First name must be between 1 and 255 characters")
+        }
+        if (request.lastName.isBlank() || request.lastName.length > 255) {
+            throw InvalidNameException("Last name must be between 1 and 255 characters")
+        }
         // Stricter and longer-windowed than login: creating an account is a rarer,
         // more sensitive action than a login retry, so fewer attempts should be
         // tolerated before this starts looking like account-creation spam.

@@ -186,6 +186,28 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
+        When("registering with a blank first name") {
+            Then("it throws InvalidNameException before ever checking for a duplicate") {
+                try {
+                    service.register(RegisterRequest("+250788000034", null, "   ", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidNameException")
+                } catch (e: InvalidNameException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with a first name longer than the real 255-char DB column bound") {
+            Then("it throws InvalidNameException rather than risking a raw DB insert failure") {
+                try {
+                    service.register(RegisterRequest("+250788000035", null, "x".repeat(256), "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidNameException")
+                } catch (e: InvalidNameException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
         When("registering with an email that isn't shaped like one") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000031") } returns false
