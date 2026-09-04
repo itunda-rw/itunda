@@ -5656,8 +5656,11 @@ extension NetworkClient {
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    // Real gap found 2026-09-04, same class as submitJobPostReview: HoodReviewService's
+    // "not marked taken yet" and "already reviewed" cases both map to 409, both showing
+    // the identical generic TalkScreen.errorMessage text.
     public func submitPropertyListingReview(_ propertyListingId: String, goodPoints: [String], uncomfortablePoints: [String]) async throws -> HoodReviewResponse {
-        try await authenticatedPost(
+        try await authenticatedPostWithMessage(
             "api/v1/realestate/listings/\(propertyListingId)/review",
             body: SubmitHoodReviewRequest(goodPoints: goodPoints, uncomfortablePoints: uncomfortablePoints),
         )
@@ -5687,8 +5690,12 @@ extension NetworkClient {
     // backend + bank-mfe with zero iOS client until now -- found via a
     // cross-platform-parity check, the real-estate mirror of the same fix already
     // ported to Marketplace listings (updateListingPrice above).
+    // Real gap found 2026-09-04: PropertyListingService.updatePrice's real
+    // "Only an available listing's price can be changed" 409 was showing the generic
+    // TalkScreen.errorMessage(409) text ("That's already been done, or is being
+    // processed."), an unhelpful match for "this listing is no longer available."
     public func updatePropertyListingPrice(_ propertyListingId: String, price: Double) async throws -> PropertyListingResponse {
-        try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/price", body: UpdateListingPriceRequest(price: price))
+        try await authenticatedPostWithMessage("api/v1/realestate/listings/\(propertyListingId)/price", body: UpdateListingPriceRequest(price: price))
     }
 
     public func contactLister(_ propertyListingId: String) async throws -> ContactListerResponse {

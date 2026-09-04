@@ -391,8 +391,8 @@ struct PropertyListingCard: View {
             reviewSubmitted = true
             showReviewSheet = false
             hoodReviews = (hoodReviews ?? []) + [res.review]
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -418,8 +418,8 @@ struct PropertyListingCard: View {
             _ = try await NetworkClient.shared.updatePropertyListingPrice(listing.id, price: price)
             editingPrice = false
             onChanged()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
