@@ -195,8 +195,8 @@ struct DeliverContent: View {
         do {
             _ = try await NetworkClient.shared.claimDelivery(order.id)
             await loadDeliveries()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -209,8 +209,8 @@ struct DeliverContent: View {
         do {
             _ = try await NetworkClient.shared.updateRiderOrderStatus(order.id, status: status)
             await loadDeliveries()
-        } catch let NetworkError.httpError(statusCode) {
-            error = TalkScreen.errorMessage(statusCode)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = message ?? TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

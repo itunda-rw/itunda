@@ -6419,8 +6419,12 @@ extension NetworkClient {
 
     /// Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
     /// only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.
+    // Real gap found 2026-09-04: EatsOrderService.cancelOrder's real message includes
+    // the order's actual current status ("Only a PLACED order can be cancelled --
+    // this order is already DELIVERED"), a dynamic detail TalkScreen.errorMessage(409)
+    // can never reproduce with its generic "That's already been done" text.
     public func cancelEatsOrder(_ orderId: String) async throws -> EatsOrderDetailResponse {
-        try await authenticatedPost("api/v1/eats/orders/\(orderId)/cancel", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/eats/orders/\(orderId)/cancel", body: EmptyBody())
     }
     public func getRiderDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/rider-deliveries") }
     public func getAvailableDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/available") }
@@ -6433,12 +6437,15 @@ extension NetworkClient {
         try await get("api/v1/eats/orders/\(orderId)/rider-location")
     }
 
+    // Real gap found 2026-09-04: claimDelivery's 3 real 409 causes (rider not
+    // available, delivery no longer available, rider already on another delivery)
+    // all showed the identical generic TalkScreen.errorMessage(409) text.
     public func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse {
-        try await authenticatedPost("api/v1/eats/orders/\(orderId)/claim", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/eats/orders/\(orderId)/claim", body: EmptyBody())
     }
 
     public func updateRiderOrderStatus(_ orderId: String, status: String) async throws -> EatsOrderDetailResponse {
-        try await authenticatedPost("api/v1/eats/orders/\(orderId)/rider-status", body: UpdateEatsOrderStatusRequest(status: status))
+        try await authenticatedPostWithMessage("api/v1/eats/orders/\(orderId)/rider-status", body: UpdateEatsOrderStatusRequest(status: status))
     }
 
     public func registerRider() async throws -> RiderResponse {
