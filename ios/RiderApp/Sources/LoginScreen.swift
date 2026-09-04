@@ -145,7 +145,7 @@ struct LoginScreen: View {
                 )
             }
             onLoggedIn()
-        } catch let NetworkError.httpError(statusCode) {
+        } catch let NetworkError.httpErrorWithMessage(statusCode, _) {
             error = statusCode == 401 ? t("incorrectCredentials") : t("unreachable")
         } catch {
             self.error = t("connectionError")

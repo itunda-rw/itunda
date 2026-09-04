@@ -118,7 +118,19 @@ struct SuccessResponse: Decodable { let success: Bool }
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
+    // Real gap found 2026-09-04 (same pass that fixed the identical gap on the main
+    // app's and MerchantApp's own separate NetworkClient copies -- see
+    // MerchantApp's own httpErrorWithMessage doc comment for the full account):
+    // sendRequest below only ever threw the bare, message-less httpError case, so
+    // this app's screens fell back to one hardcoded string per failure, never the
+    // backend's own real, specific message (e.g. RiderService's
+    // "This account is already registered as a rider"). Purely additive -- the one
+    // real UI pattern-match on the bare case (LoginScreen.swift) is updated in the
+    // same commit, not left to silently degrade.
+    case httpErrorWithMessage(statusCode: Int, message: String?)
 }
+
+private struct ApiErrorBody: Decodable { let message: String? }
 
 /**
  * Real, minimal URLSession client, mirroring the consumer app's own
@@ -237,7 +249,10 @@ final class RiderNetworkClient {
         }
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
         return data
     }
 }

@@ -47,6 +47,11 @@ struct BecomeRiderScreen: View {
         do {
             _ = try await RiderNetworkClient.shared.registerRider()
             onRegistered()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            // Real fix (2026-09-04): surfaces the backend's own specific reason
+            // (e.g. "This account is already registered as a rider") instead of
+            // one generic string for every failure.
+            self.error = message ?? "Couldn't register as a rider right now. Try again."
         } catch {
             self.error = "Couldn't register as a rider right now. Try again."
         }
