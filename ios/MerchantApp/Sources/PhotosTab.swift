@@ -73,6 +73,8 @@ struct PhotosTab: View {
         do {
             _ = try await MerchantNetworkClient.shared.setMerchantPhotoUrls(urls.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
             saved = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save your photos."
         } catch {
             self.error = "Could not save your photos."
         }

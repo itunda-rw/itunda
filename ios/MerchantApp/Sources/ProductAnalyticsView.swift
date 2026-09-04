@@ -46,6 +46,8 @@ struct ProductAnalyticsView: View {
     private func load() async {
         do {
             analytics = try await MerchantNetworkClient.shared.getProductAnalytics(productId)
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't load analytics."
         } catch {
             self.error = "Couldn't load analytics."
         }

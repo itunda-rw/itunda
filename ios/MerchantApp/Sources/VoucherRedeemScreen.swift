@@ -70,6 +70,8 @@ struct VoucherRedeemTab: View {
             result = response.voucher
         } catch NetworkError.deviceNotVerified {
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not redeem this voucher."
         } catch {
             self.error = "Could not redeem this voucher."
         }

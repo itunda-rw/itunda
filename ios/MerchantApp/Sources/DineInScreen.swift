@@ -137,6 +137,8 @@ private struct DineInOrdersQueueView: View {
         do {
             _ = try await MerchantNetworkClient.shared.advanceDineInOrderStatus(orderId, status: status)
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't update this order. Try again."
         } catch {
             self.error = "Couldn't update this order. Try again."
         }

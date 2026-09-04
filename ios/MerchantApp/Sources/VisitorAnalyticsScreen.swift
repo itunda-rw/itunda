@@ -49,6 +49,8 @@ struct VisitorAnalyticsTab: View {
         error = nil
         do {
             trend = try await MerchantNetworkClient.shared.getProfileViewTrend(days: 7).trend
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not load your visitor data."
         } catch {
             self.error = "Could not load your visitor data."
         }

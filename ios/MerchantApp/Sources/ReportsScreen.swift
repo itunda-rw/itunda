@@ -107,6 +107,8 @@ struct ReportsTab: View {
         do {
             days = try await MerchantNetworkClient.shared.getReport(from: fromStr, to: toStr).days
             topProducts = try await MerchantNetworkClient.shared.getTopSellingProducts(from: fromStr, to: toStr).products
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't load your reports right now."
         } catch {
             self.error = "Couldn't load your reports right now."
         }

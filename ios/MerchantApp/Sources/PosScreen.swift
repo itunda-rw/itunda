@@ -185,6 +185,8 @@ private struct QrCheckoutView: View {
         do {
             let intent = try await MerchantNetworkClient.shared.generateQr(amount: amount, description: description).paymentIntent
             qrContent = paymentIntentQrPayload(intent.id)
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not generate a QR code."
         } catch {
             self.error = "Could not generate a QR code."
         }
@@ -267,6 +269,8 @@ private struct CardCheckoutView: View {
             result = charge.cardLast4
         } catch NetworkError.deviceNotVerified {
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not charge this card."
         } catch {
             self.error = "Could not charge this card."
         }

@@ -92,6 +92,8 @@ struct UpdatesTab: View {
             body_ = ""
             label = "NOTICE"
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            postError = message ?? "Could not post your update."
         } catch {
             postError = "Could not post your update."
         }

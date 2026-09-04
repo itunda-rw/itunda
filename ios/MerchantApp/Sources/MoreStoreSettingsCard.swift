@@ -127,6 +127,8 @@ struct MoreStoreSettingsCard: View {
             updated = try await MerchantNetworkClient.shared.setClosedWeekdays(closedWeekdays.sorted()).merchant
             onUpdated(updated)
             saved = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save."
         } catch {
             self.error = "Could not save."
         }
@@ -137,6 +139,8 @@ struct MoreStoreSettingsCard: View {
         defer { acceptingBusy = false }
         do {
             onUpdated(try await MerchantNetworkClient.shared.setAcceptingOrders(!merchant.isAcceptingOrders).merchant)
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not save."
         } catch {
             self.error = "Could not save."
         }
