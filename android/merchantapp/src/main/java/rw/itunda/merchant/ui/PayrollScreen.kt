@@ -29,10 +29,13 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Groups
 import rw.itunda.core.designsystem.components.EmptyState
+import androidx.compose.foundation.clickable
 import rw.itunda.merchant.network.AddPayrollEmployeeRequest
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.PayrollEmployeeDto
+import rw.itunda.merchant.network.PayrollRunDto
 import rw.itunda.merchant.network.PayrollRunResponse
+import rw.itunda.merchant.network.PayslipDto
 import rw.itunda.merchant.network.isDeviceNotVerifiedError
 
 // Real B2B payroll -- see rw.itunda.merchant.PayrollService's own doc comment for why
@@ -76,6 +79,94 @@ fun PayrollTab() {
         val list = roster
         if (list != null) {
             items(list, key = { it.id }) { employee -> EmployeeRow(employee = employee, onChanged = ::load) }
+        }
+        item { PayrollHistorySection() }
+    }
+}
+
+// Real "Payroll history" parity gap, found 2026-09-04 via a defined-but-uncalled-method
+// sweep: getPayrollHistory/getPayslips were fully built on the backend and declared in
+// every client's own API layer (this file's own ApiService.kt, merchant-mfe's
+// lib/merchant.ts, iOS's NetworkClient+Payroll.swift), but none of the 3 apps ever
+// called them -- once PayrollRunConfirmation's own in-memory result screen was
+// dismissed, a merchant had no way to look back at a past run or an individual
+// employee's payslip. Ported alongside merchant-mfe's own identical fix the same day.
+@Composable
+private fun PayrollHistorySection() {
+    var runs by remember { mutableStateOf<List<PayrollRunDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var expandedRunId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            runs = NetworkClient.apiService.getPayrollHistory().runs
+        } catch (e: Exception) {
+            error = "Could not load past payroll runs."
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Payroll history", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            when {
+                error != null -> Text(error!!, color = MaterialTheme.colorScheme.error)
+                runs == null -> Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                runs!!.isEmpty() -> EmptyState("No payroll runs yet — run payroll above to pay your team.", icon = Icons.Outlined.Groups)
+                else -> runs!!.forEach { run ->
+                    PayrollRunRow(
+                        run = run,
+                        expanded = expandedRunId == run.id,
+                        onToggle = { expandedRunId = if (expandedRunId == run.id) null else run.id },
+                        scope = scope,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PayrollRunRow(run: PayrollRunDto, expanded: Boolean, onToggle: () -> Unit, scope: kotlinx.coroutines.CoroutineScope) {
+    var payslips by remember(run.id) { mutableStateOf<List<PayslipDto>?>(null) }
+    var error by remember(run.id) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(expanded) {
+        if (!expanded || payslips != null) return@LaunchedEffect
+        try {
+            payslips = NetworkClient.apiService.getPayslips(run.id).payslips
+        } catch (e: Exception) {
+            error = "Could not load payslips for this run."
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().clickable { onToggle() }.padding(vertical = 8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text(run.createdAt.take(10), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "${run.employeeCount} employees paid · ${"%,.0f".format(run.totalAmount)} RWF",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                if (expanded) "Hide payslips" else "View payslips",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        if (expanded) {
+            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                if (error == null && payslips == null) {
+                    Text("Loading…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                payslips?.forEach { p ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(p.employeeName, style = MaterialTheme.typography.bodySmall)
+                        Text("${"%,.0f".format(p.amount)} RWF", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
         }
     }
 }

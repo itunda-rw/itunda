@@ -41,6 +41,7 @@ struct PayrollTab: View {
                             EmployeeRow(employee: employee, onChanged: { Task { await load() } })
                         }
                     }
+                    PayrollHistorySection()
                 }
                 .padding(16)
             }
@@ -54,6 +55,99 @@ struct PayrollTab: View {
             roster = try await MerchantNetworkClient.shared.getPayrollRoster().employees
         } catch {
             loadError = "Could not load the payroll roster."
+        }
+    }
+}
+
+// Real "Payroll history" parity gap, found 2026-09-04 via a defined-but-uncalled-method
+// sweep: getPayrollHistory/getPayslips were fully built on the backend and declared in
+// every client's own API layer (this file's own NetworkClient+Payroll.swift,
+// merchant-mfe's lib/merchant.ts, Android's ApiService.kt), but none of the 3 apps ever
+// called them -- once PayrollRunConfirmation's own in-memory result screen was
+// dismissed, a merchant had no way to look back at a past run or an individual
+// employee's payslip. Ported alongside merchant-mfe/Android's own identical fix the
+// same day.
+private struct PayrollHistorySection: View {
+    @State private var runs: [PayrollRunDto]?
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Payroll history").font(.headline)
+            if let error {
+                Text(error).font(.footnote).foregroundColor(.red)
+            } else if let runs {
+                if runs.isEmpty {
+                    Text("No payroll runs yet — run payroll above to pay your team.").font(.footnote).foregroundColor(.secondary)
+                } else {
+                    ForEach(runs) { run in
+                        PayrollRunRow(run: run)
+                    }
+                }
+            } else {
+                Text("Loading…").font(.footnote).foregroundColor(.secondary)
+            }
+        }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemBackground)).cornerRadius(12)
+        .task {
+            do {
+                runs = try await MerchantNetworkClient.shared.getPayrollHistory().runs
+            } catch {
+                self.error = "Could not load past payroll runs."
+            }
+        }
+    }
+}
+
+private struct PayrollRunRow: View {
+    let run: PayrollRunDto
+
+    @State private var expanded = false
+    @State private var payslips: [PayslipDto]?
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(run.createdAt.prefix(10))).bold().font(.subheadline)
+                    Text("\(run.employeeCount) employees paid · \(formatAmount(Int(run.totalAmount))) RWF")
+                        .font(.caption).foregroundColor(.secondary)
+                }
+                Spacer()
+                Button(expanded ? "Hide payslips" : "View payslips") {
+                    expanded.toggle()
+                    if expanded && payslips == nil {
+                        Task { await loadPayslips() }
+                    }
+                }.font(.caption).bold()
+            }
+            if expanded {
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                } else if let payslips {
+                    ForEach(payslips) { p in
+                        HStack {
+                            Text(p.employeeName).font(.caption)
+                            Spacer()
+                            Text("\(formatAmount(Int(p.amount))) RWF").bold().font(.caption)
+                        }
+                    }
+                } else {
+                    Text("Loading…").font(.caption).foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        Divider()
+    }
+
+    private func loadPayslips() async {
+        do {
+            payslips = try await MerchantNetworkClient.shared.getPayslips(run.id).payslips
+        } catch {
+            self.error = "Could not load payslips for this run."
         }
     }
 }
