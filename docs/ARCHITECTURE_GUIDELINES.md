@@ -133,6 +133,24 @@ an architectural decision that should generalize (a new shared pattern, a new co
 add it here in the same pass, don't leave it undocumented for the next agent to
 rediscover independently.
 
+**A real itunda-own instance of this, found 2026-09-04**: iOS has four separate
+`NetworkClient.swift` copies (`Core/Network` for the main app, plus one each for
+`MerchantApp`/`RiderApp`/`AgentApp`). Each app's shared low-level POST helper
+(`authenticatedPost`/`sendRequest`) deliberately throws a message-less error for most
+callers — widening it to carry the backend's real message would break every existing
+`catch NetworkError.httpError(let statusCode)` pattern-match across that app's UI (up to
+96 sites on the main app alone). The correct, established golden path when a SPECIFIC
+endpoint's real backend message is worth surfacing: add one new, narrowly-named dedicated
+function (`postEatsOrder`, `postSavingsGoal`, `postP2p`, etc.) that mirrors the shared
+helper's body but throws the existing `NetworkError.httpErrorWithMessage(statusCode,
+message)` case instead, switch just that endpoint to it, and update only that endpoint's
+own UI catch site(s). Never widen the shared helper's arity itself — that's the "prettier
+lie" version of this problem (looks like one fix, is actually ~96 silent behavior
+changes). See `project_itunda_ios_error_message_gap` memory for the full account,
+including which of the four NetworkClient copies still need incremental per-endpoint
+conversions and which were fixed at the root (MerchantApp/RiderApp, both small and
+centralized enough that one root-level fix was safe).
+
 ## 6. Module boundaries need real enforcement, not just intent (Toss silo model)
 
 Toss's own real internal team structure — "loosely coupled, tightly aligned" silos
