@@ -180,9 +180,9 @@ public struct DeviceStepUpHost: View {
                             _ = try await NetworkClient.shared.verifyDevice(password: password)
                             busy = false
                             await onVerified()
-                        } catch let NetworkError.httpError(statusCode) {
+                        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
                             busy = false
-                            error = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
+                            error = message ?? (statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again.")
                         } catch {
                             busy = false
                             self.error = "Couldn't reach itunda. Check your connection and try again."

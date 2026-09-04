@@ -2348,6 +2348,38 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    // Real gap found 2026-09-04 (device step-up, while auditing the shared
+    // DeviceStepUpHost's own generic-error catch block): verifyDevice went through
+    // the plain authenticatedPost above, so DeviceStepUpHost.swift's catch block
+    // could only tell 400 apart from everything else, hardcoding "Incorrect
+    // password." for every 400 even though DeviceService.verifyDevice's OTHER 400
+    // ("This session has no device id to verify") is a completely different, real
+    // cause -- and collapsing the real 429 rate-limit message ("Too many attempts,
+    // please try again later") and 404 ("Device not found") into one generic
+    // "Something went wrong" bucket, on a component shared by Gift/Commerce/Eats/
+    // Stocks step-up, not just this one screen. Same additive-function shape as
+    // postP2p/authenticatedPutWithMessage -- never widen the plain authenticatedPost
+    // used by ~230 other unaudited callers.
+    func authenticatedPostWithMessage<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
     // Real gap found 2026-09-04 (Eats checkout, while adding a new backend validation
     // -- InvalidEatsOrderChargeException for a pickup+promotion discount-stacking
     // fund-safety fix): placeEatsOrder/placeDineInOrder both went through the shared
@@ -2853,7 +2885,7 @@ extension NetworkClient {
     public func getMyDevices() async throws -> DevicesResponse { try await get("api/v1/auth/devices") }
 
     public func verifyDevice(password: String) async throws -> VerifyDeviceResponse {
-        try await authenticatedPost("api/v1/auth/devices/verify", body: VerifyDeviceRequest(password: password))
+        try await authenticatedPostWithMessage("api/v1/auth/devices/verify", body: VerifyDeviceRequest(password: password))
     }
 
     public func revokeDevice(deviceId: String) async throws -> RevokeDeviceResponse {
@@ -2861,7 +2893,7 @@ extension NetworkClient {
     }
 
     public func registerDeviceKey(publicKey: String, password: String) async throws -> VerifyDeviceResponse {
-        try await authenticatedPost("api/v1/auth/devices/register-key", body: RegisterDeviceKeyRequest(publicKey: publicKey, password: password))
+        try await authenticatedPostWithMessage("api/v1/auth/devices/register-key", body: RegisterDeviceKeyRequest(publicKey: publicKey, password: password))
     }
 
     public func issueDeviceChallenge() async throws -> DeviceChallengeResponse {

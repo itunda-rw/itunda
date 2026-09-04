@@ -360,11 +360,11 @@ struct SettingsScreen: View {
             _ = try await NetworkClient.shared.registerDeviceKey(publicKey: publicKey, password: keyPassword)
             hasDeviceKey = true
             keyPassword = ""
-        } catch let NetworkError.httpError(statusCode) {
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
             // Don't leave an unregistered key sitting in the Secure Enclave -- hasDeviceKey
             // must keep meaning "the server also has this key".
             DeviceKeyManager.shared.removeKey()
-            keyRegisterError = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
+            keyRegisterError = message ?? (statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again.")
             showKeyPasswordPrompt = true
         } catch {
             DeviceKeyManager.shared.removeKey()
