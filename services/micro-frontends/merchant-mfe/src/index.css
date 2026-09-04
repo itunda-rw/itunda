@@ -55,9 +55,30 @@ input, textarea {
   background: var(--itunda-white);
   border-radius: var(--itunda-radius-md);
   padding: 24px;
+  /* Real fix (2026-09-04, matching bank-mfe's own 2026-08-24 fix -- this file's
+     copy of the shared itunda-card/itunda-flat-section pattern had drifted): on a
+     white page background, the shadow alone isn't always enough to separate a card
+     -- added the same hairline border bank-mfe/src/index.css already carries. */
+  border: 1px solid var(--itunda-grey-200);
   box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
   transition: var(--itunda-transition);
+}
+
+/* Real Toss reference (ported from bank-mfe/src/index.css's own 2026-08-21/22 fix,
+   direct user directive: "our bank home screen should look 100% like toss bank
+   screen") -- a list of same-shaped, repeated items (e.g. one row per review) reads
+   as one continuous flat list on real Toss, not a grid of separate white shadowed
+   cards. Added here for ReviewsScreen.tsx's per-review rows, which were missing
+   this exact treatment bank-mfe's own equivalent (RestaurantReviewReplyCard in
+   EatsReviews.tsx) already has. */
+.itunda-flat-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--itunda-grey-100);
+}
+
+.itunda-flat-section:last-child {
+  border-bottom: none;
 }
 
 .itunda-btn {

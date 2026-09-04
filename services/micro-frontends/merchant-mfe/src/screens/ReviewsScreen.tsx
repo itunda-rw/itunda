@@ -150,7 +150,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
   };
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.productName}</p>
         <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
@@ -224,7 +224,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
   };
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.serviceName}</p>
         <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
