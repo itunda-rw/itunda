@@ -20,6 +20,7 @@ import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Duration
 
 /** First test coverage for stocks -- specifically the weighted-average-cost math on
  * buy (a real, easy-to-get-wrong calculation) and that sell can't oversell a position. */
@@ -65,6 +66,15 @@ class StocksServiceTest : BehaviorSpec({
             Then("it creates a new holding at the stock's real current price") {
                 holdingSlot.first().shares shouldBe BigDecimal("10")
                 holdingSlot.first().avgPrice shouldBe bokPrice.setScale(4)
+            }
+            // Real regression test (2026-09-04): every rateLimiter mock in this file was
+            // relaxed = true with zero verify{} anywhere, so a future accidental removal
+            // of the real checkLimit call in buyStock (added the same session this test
+            // was added) would have compiled and passed silently. Proves the real
+            // call actually fires with the real key/limit/window, not just that
+            // buyStock runs without the mock complaining.
+            Then("it checks the real 30/hour rate limit for this user's buys") {
+                verify { rateLimiter.checkLimit("stocks:buy:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 
@@ -127,6 +137,11 @@ class StocksServiceTest : BehaviorSpec({
 
             Then("it reduces the share count by exactly the amount sold") {
                 holding.shares shouldBe BigDecimal("6")
+            }
+            // Real regression test (2026-09-04) -- see buyStock's own identical test above
+            // for why this matters.
+            Then("it checks the real 30/hour rate limit for this user's sells") {
+                verify { rateLimiter.checkLimit("stocks:sell:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 

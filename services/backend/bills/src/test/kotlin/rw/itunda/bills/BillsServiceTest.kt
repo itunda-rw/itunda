@@ -25,6 +25,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Duration
 
 /**
  * First test coverage for bills/airtime, and specifically for the provider-connector
@@ -82,6 +83,24 @@ class BillsServiceTest : BehaviorSpec({
             // recipientUserId is null -- a bill provider isn't an itunda user.
             Then("the real fraud engine is evaluated with a null recipient before the transaction is saved") {
                 verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("35000"), "ledgertxn_1") }
+            }
+
+            // Real regression test (2026-09-04): rateLimiter was relaxed = true with zero
+            // verify{} anywhere in this file, so a future accidental removal of the real
+            // checkLimit calls in payBill/buyAirtime would have compiled and passed silently.
+            Then("it checks the real 30/hour rate limit for this user's bill payments") {
+                verify { rateLimiter.checkLimit("bills:pay:user_1", limit = 30, window = Duration.ofHours(1)) }
+            }
+        }
+
+        When("buying airtime and the provider accepts") {
+            every { providerConnector.attempt(any(), any()) } returns Unit
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
+
+            service.buyAirtime("user_1", "+250788000000", BigDecimal("2000"), "MTN")
+
+            Then("it checks the real 30/hour rate limit for this user's airtime purchases") {
+                verify { rateLimiter.checkLimit("bills:airtime:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 

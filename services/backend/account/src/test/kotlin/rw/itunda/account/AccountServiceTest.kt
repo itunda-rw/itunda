@@ -22,6 +22,7 @@ import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -115,6 +116,12 @@ class AccountServiceTest : BehaviorSpec({
                 transaction.amount shouldBe BigDecimal("1000")
                 transaction.fee shouldBe BigDecimal("10")
                 verify(exactly = 1) { transactionRepository.save(any()) }
+            }
+            // Real regression test (2026-09-04): rateLimiter was relaxed = true with zero
+            // verify{} anywhere in this file, so a future accidental removal of the real
+            // checkLimit call in confirmTransfer would have compiled and passed silently.
+            Then("it checks the real 30/hour rate limit for this user's transfer confirms") {
+                verify { rateLimiter.checkLimit("account:confirm-transfer:user_1", limit = 30, window = Duration.ofHours(1)) }
             }
         }
 

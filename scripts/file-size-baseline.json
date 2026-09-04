@@ -73,7 +73,7 @@
   "services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/RideTripServiceTest.kt": 1138,
   "services/backend/splitbill/src/main/kotlin/rw/itunda/splitbill/SplitBillService.kt": 501,
   "services/backend/splitbill/src/test/kotlin/rw/itunda/splitbill/SplitBillServiceTest.kt": 552,
-  "services/backend/stocks/src/test/kotlin/rw/itunda/stocks/StocksServiceTest.kt": 617,
+  "services/backend/stocks/src/test/kotlin/rw/itunda/stocks/StocksServiceTest.kt": 632,
   "services/backend/wallet/src/main/kotlin/rw/itunda/wallet/WalletService.kt": 545,
   "services/micro-frontends/bank-mfe/src/BankDashboard.tsx": 24708,
   "services/micro-frontends/bank-mfe/src/ConversationThread.tsx": 814,
