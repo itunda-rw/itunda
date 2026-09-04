@@ -193,4 +193,45 @@ class SaccoServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("3 shareholders due a dividend, where the middle one's account was since deleted") {
+        val shareholdingRepository = mockk<SaccoShareholdingRepository>()
+        val distributionRepository = mockk<SaccoDividendDistributionRepository>()
+        val payoutRepository = mockk<SaccoDividendPayoutRepository>()
+        val accountRepository = mockk<AccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            shareholdingRepository = shareholdingRepository, distributionRepository = distributionRepository,
+            payoutRepository = payoutRepository, accountRepository = accountRepository, ledgerService = ledgerService,
+        )
+
+        val poolAccount = account("account_pool", "sacco_pool_system", AccountType.GROUP, BigDecimal("30000"))
+        val shareholdingA = SaccoShareholding(id = "share_a", userId = "u1", accountId = "account_u1", sharesHeld = BigDecimal("20000"), totalContributed = BigDecimal("20000"))
+        val shareholdingB = SaccoShareholding(id = "share_b", userId = "u2", accountId = "account_deleted", sharesHeld = BigDecimal("10000"), totalContributed = BigDecimal("10000"))
+        val shareholdingC = SaccoShareholding(id = "share_c", userId = "u3", accountId = "account_u3", sharesHeld = BigDecimal("15000"), totalContributed = BigDecimal("15000"))
+
+        every { shareholdingRepository.findAll() } returns listOf(shareholdingA, shareholdingB, shareholdingC)
+        every { accountRepository.findByUserIdAndType("sacco_pool_system", AccountType.GROUP) } returns poolAccount
+        every { distributionRepository.findAllByOrderByDistributionDateDesc() } returns emptyList()
+        every { accountRepository.findById("account_u1") } returns Optional.of(account("account_u1", "u1"))
+        every { accountRepository.findById("account_deleted") } returns Optional.empty()
+        every { accountRepository.findById("account_u3") } returns Optional.of(account("account_u3", "u3"))
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_div", emptyList())
+        every { payoutRepository.save(any()) } answers { firstArg() }
+        val savedDistributionSlot = slot<SaccoDividendDistribution>()
+        every { distributionRepository.save(capture(savedDistributionSlot)) } answers { firstArg() }
+
+        When("a dividend is declared") {
+            val result = service.declareDividend()
+
+            Then("the real bug this closes: it does NOT throw and roll back the whole distribution -- shareholders A and C are still paid") {
+                verify(exactly = 2) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 2) { payoutRepository.save(any()) }
+            }
+            Then("the total paid only reflects the 2 real successful payouts, not the failed one") {
+                result.totalDividendPaid.signum() shouldBe 1
+                savedDistributionSlot.captured.totalDividendPaid shouldBe result.totalDividendPaid
+            }
+        }
+    }
 })

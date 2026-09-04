@@ -1,5 +1,6 @@
 package rw.itunda.savings
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -59,6 +60,8 @@ class SaccoService(
     private val rateLimiter: RateLimiter,
     private val accountNumberGenerator: AccountNumberGenerator,
 ) {
+    private val log = LoggerFactory.getLogger(SaccoService::class.java)
+
     companion object {
         // Reuses SavingsService's own real 7.5% annual savings-goal rate as the SACCO's
         // declared annual dividend rate, rather than fabricating a new number --
@@ -178,6 +181,23 @@ class SaccoService(
      * already establish for every other yield-paying feature in this backend -- the pool
      * account is now only ever debited by a real member `redeemShares` call, keeping
      * `poolAccount.balance == sum(sharesHeld)` a true invariant at all times.
+     *
+     * Real fix (found via project_itunda_zero_test_coverage_sweep's scheduler audit,
+     * broadened past @Scheduled classes to any batch-over-independent-rows loop,
+     * 2026-09-05): this whole method is `@Transactional`, and the per-shareholder
+     * loop below had no try/catch -- a single bad shareholding (a since-deleted
+     * account) would throw uncaught, and since the exception propagates out of this
+     * `@Transactional` method, Spring rolls back the ENTIRE transaction -- undoing
+     * the ledger postings already made to every OTHER, perfectly good shareholder in
+     * the same run, and leaving the whole SACCO's dividend undeclared for that
+     * period. This is more severe than the equivalent scheduler bug class (each
+     * scheduler's own per-item delegate method has its OWN separate transaction, so
+     * a poisoned item there only blocks the REST of that tick's batch, not rows
+     * already committed) -- one bad shareholder here blocked dividends for everyone.
+     * Fixed with a per-shareholder try/catch: since the exception is now caught
+     * INSIDE this transactional method rather than propagating out, Spring commits
+     * the transaction normally at the end, with only the failed shareholder skipped
+     * (and logged) rather than the whole distribution rolled back.
      */
     @Transactional
     fun declareDividend(): SaccoDividendDistribution {
@@ -204,21 +224,25 @@ class SaccoService(
         allShareholdings.forEach { shareholding ->
             val payoutAmount = shareholding.sharesHeld.multiply(periodRate).setScale(2, RoundingMode.HALF_UP)
             if (payoutAmount <= BigDecimal.ZERO) return@forEach
-            val memberAccount = accountRepository.findById(shareholding.accountId).orElseThrow { SaccoNoAccountException("Account not found") }
-            val result = ledgerService.postLedgerTransaction(
-                memberAccount.currency,
-                listOf(
-                    LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, payoutAmount, "SACCO dividend"),
-                    LedgerLeg(memberAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payoutAmount, "SACCO dividend"),
-                ),
-            )
-            payoutRepository.save(
-                SaccoDividendPayout(
-                    id = "saccopayout_${UUID.randomUUID()}", distributionId = distribution.id, shareholdingId = shareholding.id,
-                    amount = payoutAmount, payoutTransactionId = result.transactionId,
-                ),
-            )
-            totalPaid = totalPaid.add(payoutAmount)
+            try {
+                val memberAccount = accountRepository.findById(shareholding.accountId).orElseThrow { SaccoNoAccountException("Account not found") }
+                val result = ledgerService.postLedgerTransaction(
+                    memberAccount.currency,
+                    listOf(
+                        LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, payoutAmount, "SACCO dividend"),
+                        LedgerLeg(memberAccount.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payoutAmount, "SACCO dividend"),
+                    ),
+                )
+                payoutRepository.save(
+                    SaccoDividendPayout(
+                        id = "saccopayout_${UUID.randomUUID()}", distributionId = distribution.id, shareholdingId = shareholding.id,
+                        amount = payoutAmount, payoutTransactionId = result.transactionId,
+                    ),
+                )
+                totalPaid = totalPaid.add(payoutAmount)
+            } catch (e: Exception) {
+                log.error("SACCO dividend payout failed for shareholding {}", shareholding.id, e)
+            }
         }
         distribution.totalDividendPaid = totalPaid
         return distributionRepository.save(distribution)
