@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GiftVoucher
 import rw.itunda.core.domain.GiftVoucherStatus
+import rw.itunda.core.format.formatAmount
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.MerchantStatus
@@ -360,9 +361,3 @@ class GiftVoucherService(
     }
 }
 
-private fun formatAmount(amount: BigDecimal): String {
-    val plain = amount.stripTrailingZeros().toPlainString()
-    val parts = plain.split(".")
-    val intPart = parts[0].reversed().chunked(3).joinToString(",").reversed()
-    return intPart
-}

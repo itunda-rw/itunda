@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Gift
 import rw.itunda.core.domain.GiftStatus
+import rw.itunda.core.format.formatAmount
 import rw.itunda.core.domain.GiftTheme
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -266,13 +267,6 @@ class GiftService(
 
     fun getExpiredPendingGifts(): List<Gift> =
         giftRepository.findByStatusAndExpiresAtBefore(GiftStatus.PENDING, Instant.now())
-}
-
-private fun formatAmount(amount: BigDecimal): String {
-    val plain = amount.stripTrailingZeros().toPlainString()
-    val parts = plain.split(".")
-    val intPart = parts[0].reversed().chunked(3).joinToString(",").reversed()
-    return intPart
 }
 
 /** A gift's chat message body is a real, stable, machine-parseable format (same

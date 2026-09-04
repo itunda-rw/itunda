@@ -46,7 +46,7 @@ class PriceOfferServiceTest : BehaviorSpec({
             val offer = service.makeOffer("buyer_1", "listing_1", BigDecimal("12000"))
 
             Then("it posts a real offer message and saves a real PENDING offer proposed by the buyer") {
-                messageSlot.captured shouldBe "💰 Offered 12000 RWF for \"Bicycle\""
+                messageSlot.captured shouldBe "💰 Offered 12,000 RWF for \"Bicycle\""
                 offer.amount shouldBe BigDecimal("12000")
                 offer.buyerId shouldBe "buyer_1"
                 offer.sellerId shouldBe "seller_1"
@@ -141,7 +141,7 @@ class PriceOfferServiceTest : BehaviorSpec({
             Then("status flips to ACCEPTED, respondedAt is set, and a real acceptance message is posted") {
                 result.status shouldBe PriceOfferStatus.ACCEPTED
                 (result.respondedAt != null) shouldBe true
-                bodySlot.captured shouldBe "✅ Offer accepted: 12000 RWF"
+                bodySlot.captured shouldBe "✅ Offer accepted: 12,000 RWF"
             }
         }
 
@@ -178,7 +178,7 @@ class PriceOfferServiceTest : BehaviorSpec({
                 result.status shouldBe PriceOfferStatus.PENDING
                 result.proposedByUserId shouldBe "seller_1"
                 result.amount shouldBe BigDecimal("13500")
-                bodySlot.captured shouldBe "🔁 Countered: 13500 RWF for \"Bicycle\""
+                bodySlot.captured shouldBe "🔁 Countered: 13,500 RWF for \"Bicycle\""
             }
         }
 
