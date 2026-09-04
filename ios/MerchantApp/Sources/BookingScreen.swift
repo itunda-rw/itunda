@@ -102,6 +102,8 @@ private struct AvailabilityEditor: View {
         Task {
             do {
                 windows = try await MerchantNetworkClient.shared.setAvailability(SetAvailabilityRequest(windows: next)).windows
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Couldn't save your availability. Try again."
             } catch {
                 self.error = "Couldn't save your availability. Try again."
             }
@@ -164,6 +166,8 @@ private struct BookingQueue: View {
             do {
                 _ = try await MerchantNetworkClient.shared.respondToBooking(bookingId, confirm: confirm)
                 await refresh()
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Couldn't update this booking."
             } catch {
                 self.error = "Couldn't update this booking."
             }
@@ -177,6 +181,8 @@ private struct BookingQueue: View {
             do {
                 _ = try await MerchantNetworkClient.shared.completeBooking(bookingId)
                 await refresh()
+            } catch let NetworkError.httpErrorWithMessage(_, message) {
+                self.error = message ?? "Couldn't update this booking."
             } catch {
                 self.error = "Couldn't update this booking."
             }

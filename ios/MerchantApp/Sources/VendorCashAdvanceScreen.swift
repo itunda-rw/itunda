@@ -150,6 +150,8 @@ struct VendorCashAdvanceTab: View {
         do {
             _ = try await MerchantNetworkClient.shared.applyForVendorCashAdvance(merchantId: merchantId)
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't apply for a vendor cash advance."
         } catch {
             self.error = "Couldn't apply for a vendor cash advance."
         }
@@ -162,6 +164,8 @@ struct VendorCashAdvanceTab: View {
         do {
             _ = try await MerchantNetworkClient.shared.disburseVendorCashAdvance(advanceId)
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't disburse this advance."
         } catch {
             self.error = "Couldn't disburse this advance."
         }
@@ -179,6 +183,8 @@ struct VendorCashAdvanceTab: View {
             _ = try await MerchantNetworkClient.shared.repayVendorCashAdvanceEarly(advanceId, amount: value)
             repayAmount = ""
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't repay this advance. Check your balance."
         } catch {
             self.error = "Couldn't repay this advance. Check your balance."
         }

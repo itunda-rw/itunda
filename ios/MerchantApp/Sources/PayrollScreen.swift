@@ -273,6 +273,8 @@ private struct RosterCard: View {
             onRunPayroll(result)
         } catch NetworkError.deviceNotVerified {
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            runError = message ?? "Could not run payroll."
         } catch {
             runError = "Could not run payroll."
         }
@@ -314,6 +316,8 @@ private struct EmployeeRow: View {
         do {
             _ = try await MerchantNetworkClient.shared.removePayrollEmployee(employee.id)
             onChanged()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not remove this employee."
         } catch {
             self.error = "Could not remove this employee."
         }
