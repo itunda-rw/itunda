@@ -18,6 +18,7 @@ import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.account.AccountNumberGenerator
 import rw.itunda.core.validation.isValidEmail
+import rw.itunda.core.validation.isValidPhoneNumber
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -55,6 +56,12 @@ class AuthService(
 
     @Transactional
     fun register(request: RegisterRequest): AuthResponse {
+        // Real gap found 2026-09-05, same shape as the email check below -- phoneNumber
+        // was never checked for even being shaped like a real phone number. Checked
+        // before the rate limiter so a malformed value doesn't spend a real attempt.
+        if (!isValidPhoneNumber(request.phoneNumber)) {
+            throw InvalidPhoneNumberException("Please enter a valid phone number, including country code")
+        }
         // Stricter and longer-windowed than login: creating an account is a rarer,
         // more sensitive action than a login retry, so fewer attempts should be
         // tolerated before this starts looking like account-creation spam.

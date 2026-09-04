@@ -174,6 +174,18 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
+        When("registering with a phone number that isn't shaped like one") {
+            Then("it throws InvalidPhoneNumberException before ever checking for a duplicate or spending a rate-limit attempt") {
+                try {
+                    service.register(RegisterRequest("0788000033", null, "Jean", "B", "123456", acceptedTermsIds = requiredTermsIds))
+                    error("expected InvalidPhoneNumberException")
+                } catch (e: InvalidPhoneNumberException) {
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
         When("registering with an email that isn't shaped like one") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000031") } returns false
