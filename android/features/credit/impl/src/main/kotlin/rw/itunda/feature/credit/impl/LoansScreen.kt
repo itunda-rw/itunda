@@ -49,6 +49,7 @@ import rw.itunda.core.network.LoanAccountDto
 import rw.itunda.core.network.LoanOfferDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.apiErrorCode
+import rw.itunda.core.network.apiErrorMessage
 import rw.itunda.core.network.OpenOverdraftRequest
 import rw.itunda.core.network.OverdraftAccountDto
 import rw.itunda.core.network.OverdraftAmountRequest
@@ -181,6 +182,8 @@ fun LoansScreen(onBack: () -> Unit) {
                                 )
                                 mode = LoansMode.MY_LOANS
                                 refresh()
+                            } catch (e: retrofit2.HttpException) {
+                                error = apiErrorMessage(e) ?: "That loan application could not be completed."
                             } catch (_: Exception) {
                                 error = "That loan application could not be completed."
                             } finally { busyId = null }
@@ -220,7 +223,7 @@ fun LoansScreen(onBack: () -> Unit) {
                                         repayAmounts = repayAmounts - loan.id
                                         refresh()
                                     } else {
-                                        error = "That repayment could not be completed."
+                                        error = apiErrorMessage(e) ?: "That repayment could not be completed."
                                     }
                                 } catch (_: Exception) {
                                     error = "That repayment could not be completed."
@@ -237,6 +240,8 @@ fun LoansScreen(onBack: () -> Unit) {
                                         RefinanceLoanRequest(loan.id),
                                     )
                                     refresh()
+                                } catch (e: retrofit2.HttpException) {
+                                    error = apiErrorMessage(e) ?: "No better rate is available for this loan right now."
                                 } catch (_: Exception) {
                                     error = "No better rate is available for this loan right now."
                                 } finally { busyId = null }

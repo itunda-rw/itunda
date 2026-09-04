@@ -107,6 +107,8 @@ internal fun MyPaymentCodeCard(
                 expiresAtMillis = java.time.Instant.parse(res.expiresAt).toEpochMilli()
                 error = null
                 TransitPresentmentStore.set(res.code, expiresAtMillis)
+            } catch (e: retrofit2.HttpException) {
+                error = rw.itunda.core.network.apiErrorMessage(e) ?: "Could not load your payment code."
             } catch (e: Exception) {
                 error = "Could not load your payment code."
             }
