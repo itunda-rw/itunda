@@ -124,11 +124,11 @@ class GroupAccountServiceTest : BehaviorSpec({
         When("someone who isn't the owner tries to invite a member") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
 
-            Then("it throws GroupAccountNotOwnerException before touching the member repository") {
+            Then("it throws GroupAccountNotFoundException before touching the member repository") {
                 try {
                     service.inviteMember("member_2", "grp_1", "+250788000003")
-                    error("expected GroupAccountNotOwnerException")
-                } catch (e: GroupAccountNotOwnerException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { groupAccountMemberRepository.save(any()) }
                 }
             }
@@ -212,11 +212,11 @@ class GroupAccountServiceTest : BehaviorSpec({
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
             every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "outsider") } returns null
 
-            Then("it throws GroupAccountNotMemberException before touching the ledger") {
+            Then("it throws GroupAccountNotFoundException before touching the ledger") {
                 try {
                     service.deposit("outsider", "grp_1", BigDecimal("1000"))
-                    error("expected GroupAccountNotMemberException")
-                } catch (e: GroupAccountNotMemberException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -247,11 +247,11 @@ class GroupAccountServiceTest : BehaviorSpec({
         When("a member who isn't the owner tries to withdraw") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
 
-            Then("it throws GroupAccountNotOwnerException -- matching Kakao Bank's real withdrawal-authority-stays-with-organizer rule") {
+            Then("it throws GroupAccountNotFoundException -- matching Kakao Bank's real withdrawal-authority-stays-with-organizer rule") {
                 try {
                     service.withdraw("member_2", "grp_1", BigDecimal("1000"))
-                    error("expected GroupAccountNotOwnerException")
-                } catch (e: GroupAccountNotOwnerException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
@@ -286,11 +286,11 @@ class GroupAccountServiceTest : BehaviorSpec({
         When("a member who isn't the owner tries to set the dues amount") {
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
 
-            Then("it throws GroupAccountNotOwnerException, matching every other real settlement-authority action") {
+            Then("it throws GroupAccountNotFoundException, matching every other real settlement-authority action") {
                 try {
                     service.setDuesAmount("member_2", "grp_1", BigDecimal("2000"))
-                    error("expected GroupAccountNotOwnerException")
-                } catch (e: GroupAccountNotOwnerException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { groupAccountRepository.save(any()) }
                 }
             }
@@ -361,11 +361,11 @@ class GroupAccountServiceTest : BehaviorSpec({
             val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", accountId = "account_grp_1", monthlyDuesAmount = BigDecimal("2000"))
             every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
 
-            Then("it throws GroupAccountNotOwnerException before touching notifications") {
+            Then("it throws GroupAccountNotFoundException before touching notifications") {
                 try {
                     service.requestUnpaidDues("member_2", "grp_1")
-                    error("expected GroupAccountNotOwnerException")
-                } catch (e: GroupAccountNotOwnerException) {
+                    error("expected GroupAccountNotFoundException")
+                } catch (e: GroupAccountNotFoundException) {
                     verify(exactly = 0) { notificationRepository.save(any()) }
                 }
             }

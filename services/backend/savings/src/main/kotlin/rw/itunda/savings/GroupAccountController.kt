@@ -112,20 +112,17 @@ class GroupAccountController(
     @ExceptionHandler(GroupAccountNotFoundException::class)
     fun handleNotFound(ex: GroupAccountNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
-    // Real fix (IDOR audit, docs/DESIGN_REFERENCES.md-adjacent sweep): these used to
-    // real-403, unlike every other real resource-ownership check in this codebase
-    // (e.g. GiftVoucherService.getVoucher's own doc comment: "a stranger gets a real
-    // 404, same IDOR discipline"). GroupAccountService.withdraw/inviteMember/setDues/
-    // requestDues only ever check account.ownerId -- never group MEMBERSHIP first --
-    // so a complete stranger (never a member) hitting any of those with someone else's
-    // real groupAccountId could distinguish "exists, not yours" (403) from "doesn't
-    // exist" (404), a real existence-oracle this codebase's own established convention
-    // exists specifically to avoid.
-    @ExceptionHandler(GroupAccountNotOwnerException::class)
-    fun handleNotOwner(ex: GroupAccountNotOwnerException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_OWNER", ex.message ?: "Not found"))
-
-    @ExceptionHandler(GroupAccountNotMemberException::class)
-    fun handleNotMember(ex: GroupAccountNotMemberException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_MEMBER", ex.message ?: "Not found"))
+    // Real fix (IDOR audit pass 1, 2026-08-08) fixed the STATUS (403->404) for
+    // ownership/membership checks in withdraw/inviteMember/setDues/requestDues/
+    // getGroupAccount/contribute, but kept distinguishable error CODES
+    // (GROUP_ACCOUNT_NOT_OWNER/GROUP_ACCOUNT_NOT_MEMBER) -- the exact residual leak
+    // pass 9 (2026-09-03) named and fixed elsewhere (LoanNotOwned/AccountNotOwned/
+    // PaymentCodeAccountNotOwned) but missed here. A stranger probing groupAccountId
+    // values could still distinguish "exists, not yours/not a member" from "doesn't
+    // exist" purely from the response body, even though both returned 404. Fixed
+    // 2026-09-04 by having every ownership/membership check in
+    // GroupAccountService.kt throw the same GroupAccountNotFoundException instead --
+    // both handlers (and their now-dead exception classes) removed.
 
     @ExceptionHandler(GroupAccountRecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: GroupAccountRecipientNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))

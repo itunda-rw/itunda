@@ -33,8 +33,6 @@ import java.util.UUID
 private const val MAX_MEMBERS = 100
 
 class GroupAccountNotFoundException(message: String) : RuntimeException(message)
-class GroupAccountNotOwnerException(message: String) : RuntimeException(message)
-class GroupAccountNotMemberException(message: String) : RuntimeException(message)
 class GroupAccountRecipientNotFoundException(message: String) : RuntimeException(message)
 class GroupAccountAlreadyMemberException(message: String) : RuntimeException(message)
 class GroupAccountFullException(message: String) : RuntimeException(message)
@@ -107,7 +105,7 @@ class GroupAccountService(
     fun getGroupAccount(userId: String, groupAccountId: String): GroupAccountView {
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
-            ?: throw GroupAccountNotMemberException("You are not a member of this group account")
+            ?: throw GroupAccountNotFoundException("Group account not found")
         val userAccount = accountRepository.findById(account.accountId).orElseThrow { GroupAccountNoAccountException("Account not found") }
 
         val members = groupAccountMemberRepository.findByGroupAccountId(groupAccountId)
@@ -123,7 +121,7 @@ class GroupAccountService(
     @Transactional
     fun inviteMember(ownerId: String, groupAccountId: String, phoneNumber: String): GroupAccountMemberView {
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
-        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can invite members")
+        if (account.ownerId != ownerId) throw GroupAccountNotFoundException("Group account not found")
 
         val invitee = userRepository.findByPhoneNumber(phoneNumber.trim())
             ?: throw GroupAccountRecipientNotFoundException("No itunda account found for this phone number")
@@ -156,7 +154,7 @@ class GroupAccountService(
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
-            ?: throw GroupAccountNotMemberException("You are not a member of this group account")
+            ?: throw GroupAccountNotFoundException("Group account not found")
 
         val sourceAccount = accountRepository.findByUserIdAndType(userId, AccountType.MAIN)
             ?: throw GroupAccountNoAccountException("No account found for this account")
@@ -185,7 +183,7 @@ class GroupAccountService(
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         // Real Kakao Bank behavior: withdrawal/settlement authority belongs to the
         // organizer only, unlike deposit which any real member can do.
-        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can withdraw")
+        if (account.ownerId != ownerId) throw GroupAccountNotFoundException("Group account not found")
 
         val groupAccount = accountRepository.findById(account.accountId).orElseThrow { GroupAccountNoAccountException("Account not found") }
         val ownerAccount = accountRepository.findByUserIdAndType(ownerId, AccountType.MAIN)
@@ -215,7 +213,7 @@ class GroupAccountService(
     fun setDuesAmount(ownerId: String, groupAccountId: String, amount: BigDecimal?): GroupAccount {
         require(amount == null || amount >= BigDecimal.ZERO) { "Dues amount cannot be negative" }
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
-        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can set the dues amount")
+        if (account.ownerId != ownerId) throw GroupAccountNotFoundException("Group account not found")
         account.monthlyDuesAmount = amount
         return groupAccountRepository.save(account)
     }
@@ -229,7 +227,7 @@ class GroupAccountService(
     fun getDuesStatus(userId: String, groupAccountId: String): GroupAccountDuesStatusView {
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
         groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
-            ?: throw GroupAccountNotMemberException("You are not a member of this group account")
+            ?: throw GroupAccountNotFoundException("Group account not found")
 
         val cycleMonth = currentCycleMonth()
         val members = groupAccountMemberRepository.findByGroupAccountId(groupAccountId)
@@ -260,7 +258,7 @@ class GroupAccountService(
     @Transactional
     fun requestUnpaidDues(ownerId: String, groupAccountId: String): Int {
         val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
-        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can request unpaid dues")
+        if (account.ownerId != ownerId) throw GroupAccountNotFoundException("Group account not found")
         require(account.monthlyDuesAmount != null) { "No monthly dues amount is set for this group account" }
         return remindUnpaidMembers(account, currentCycleMonth())
     }

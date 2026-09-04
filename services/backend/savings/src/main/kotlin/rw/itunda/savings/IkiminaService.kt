@@ -30,8 +30,6 @@ import java.time.Instant
 import java.util.UUID
 
 class IkiminaNotFoundException(message: String) : RuntimeException(message)
-class IkiminaNotOrganizerException(message: String) : RuntimeException(message)
-class IkiminaNotMemberException(message: String) : RuntimeException(message)
 class IkiminaMemberNotFoundException(message: String) : RuntimeException(message)
 class IkiminaAlreadyMemberException(message: String) : RuntimeException(message)
 class IkiminaFullException(message: String) : RuntimeException(message)
@@ -117,7 +115,7 @@ class IkiminaService(
     fun getIkimina(userId: String, ikiminaId: String): IkiminaView {
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
         ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
-            ?: throw IkiminaNotMemberException("You are not a member of this ikimina")
+            ?: throw IkiminaNotFoundException("Ikimina not found")
         val account = accountRepository.findById(ikimina.accountId).orElseThrow { IkiminaNoAccountException("Account not found") }
 
         val members = ikiminaMemberRepository.findByIkiminaId(ikiminaId).sortedBy { it.payoutOrder }
@@ -138,7 +136,7 @@ class IkiminaService(
     @Transactional
     fun inviteMember(organizerId: String, ikiminaId: String, phoneNumber: String): IkiminaMemberView {
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
-        if (ikimina.organizerId != organizerId) throw IkiminaNotOrganizerException("Only the ikimina's organizer can invite members")
+        if (ikimina.organizerId != organizerId) throw IkiminaNotFoundException("Ikimina not found")
         if (ikimina.status != IkiminaStatus.FORMING) throw IkiminaNotFormingException("Members can only be invited before the cycle starts")
 
         val invitee = userRepository.findByPhoneNumber(phoneNumber.trim())
@@ -166,7 +164,7 @@ class IkiminaService(
     @Transactional
     fun startCycle(organizerId: String, ikiminaId: String): Ikimina {
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
-        if (ikimina.organizerId != organizerId) throw IkiminaNotOrganizerException("Only the ikimina's organizer can start the cycle")
+        if (ikimina.organizerId != organizerId) throw IkiminaNotFoundException("Ikimina not found")
         if (ikimina.status != IkiminaStatus.FORMING) throw IkiminaNotFormingException("This ikimina's cycle has already started")
         val memberCount = ikiminaMemberRepository.countByIkiminaId(ikiminaId)
         if (memberCount < MIN_MEMBERS_TO_START) {
@@ -196,7 +194,7 @@ class IkiminaService(
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
         if (ikimina.status != IkiminaStatus.ACTIVE) throw IkiminaNotActiveException("This ikimina's cycle is not currently active")
         val member = ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
-            ?: throw IkiminaNotMemberException("You are not a member of this ikimina")
+            ?: throw IkiminaNotFoundException("Ikimina not found")
         if (ikiminaContributionRepository.findByIkiminaIdAndMemberIdAndRound(ikiminaId, member.id, ikimina.currentRound) != null) {
             throw IkiminaAlreadyContributedException("You have already contributed for round ${ikimina.currentRound}")
         }
@@ -343,7 +341,7 @@ class IkiminaService(
     fun checkAndTriggerPayout(userId: String, ikiminaId: String): IkiminaPayoutResult {
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
         ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
-            ?: throw IkiminaNotMemberException("You are not a member of this ikimina")
+            ?: throw IkiminaNotFoundException("Ikimina not found")
         if (ikimina.status != IkiminaStatus.ACTIVE) throw IkiminaNotActiveException("This ikimina's cycle is not currently active")
         return attemptPayout(ikimina)
             ?: throw IkiminaContributionsIncompleteException("Not every member has contributed for round ${ikimina.currentRound} yet")
