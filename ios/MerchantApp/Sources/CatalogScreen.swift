@@ -170,6 +170,8 @@ struct CatalogTab: View {
             )
             name = ""; price = ""; originalPrice = ""; imageUrl = ""; description = ""; stockQuantity = ""
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't add this product. Try again."
         } catch {
             self.error = "Couldn't add this product. Try again."
         }
@@ -185,6 +187,8 @@ struct CatalogTab: View {
             _ = try await MerchantNetworkClient.shared.updateProductStock(productId, stockQuantity: stockQuantity)
             stockProduct = nil
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't update stock. Try again."
         } catch {
             self.error = "Couldn't update stock. Try again."
         }
@@ -297,8 +301,10 @@ private struct ProductOptionsView: View {
             groupName = ""
             choiceRows = [("", "0"), ("", "0")]
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't add this option group."
         } catch {
-            self.error = "Couldn't add this option group -- a required group needs at least one +0 RWF choice."
+            self.error = "Couldn't add this option group."
         }
     }
 
@@ -307,6 +313,8 @@ private struct ProductOptionsView: View {
         do {
             try await MerchantNetworkClient.shared.removeOptionGroup(productId, groupId: groupId)
             await load()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't remove this option group."
         } catch {
             self.error = "Couldn't remove this option group."
         }
@@ -392,8 +400,10 @@ private struct PriceTiersView: View {
         do {
             _ = try await MerchantNetworkClient.shared.setPriceTiers(productId, tiers: tiers)
             dismiss()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't save bulk pricing."
         } catch {
-            self.error = "Couldn't save bulk pricing -- each higher tier must cost less per unit."
+            self.error = "Couldn't save bulk pricing."
         }
     }
 }
