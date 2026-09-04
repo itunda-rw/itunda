@@ -23,6 +23,7 @@ import { theSwitchThatOnlyFlippedOneRoom } from './the-switch-that-only-flipped-
 import { theScreenWeAllAssumedWasAlreadyDone } from './the-screen-we-all-assumed-was-already-done';
 import { theFeatureWeShelvedTwice } from './the-feature-we-shelved-twice';
 import { theOutageWeStoppedDebugging } from './the-outage-we-stopped-debugging';
+import { theTwoLookupsThatWereSupposedToAgree } from './the-two-lookups-that-were-supposed-to-agree';
 
 export interface Post {
   slug: string;
@@ -34,7 +35,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [theOutageWeStoppedDebugging, theFeatureWeShelvedTwice, theScreenWeAllAssumedWasAlreadyDone, theSwitchThatOnlyFlippedOneRoom, theFixThatForgotItsOwnLesson, theLanguageWeNeverAskedAbout, whatWeFoundOutsideOurOwnReference, theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [theTwoLookupsThatWereSupposedToAgree, theOutageWeStoppedDebugging, theFeatureWeShelvedTwice, theScreenWeAllAssumedWasAlreadyDone, theSwitchThatOnlyFlippedOneRoom, theFixThatForgotItsOwnLesson, theLanguageWeNeverAskedAbout, whatWeFoundOutsideOurOwnReference, theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 
