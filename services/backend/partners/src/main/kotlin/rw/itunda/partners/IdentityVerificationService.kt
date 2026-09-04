@@ -138,5 +138,30 @@ class IdentityVerificationService(
 
     fun publicKeyBase64(): String = signingKeyProvider.publicKeyBase64()
 
-    private fun escape(value: String): String = value.replace("\\", "\\\\").replace("\"", "\\\"")
+    // Real gap found 2026-09-05: this only escaped backslash and quote -- the two
+    // characters that could otherwise break OUT of the JSON string this value sits
+    // inside -- but never escaped raw control characters (newline, tab, etc). Neither
+    // AuthDtos.RegisterRequest nor AuthService.register restrict what a real
+    // firstName/lastName can contain, so a name containing a literal newline would
+    // have produced syntactically invalid JSON here (RFC 8259 requires every C0
+    // control character inside a JSON string to be escaped), breaking a partner's own
+    // parse of `disclosedPayloadJson` for that user with no itunda-side error to
+    // explain why. Quote/backslash were already the load-bearing characters for
+    // preventing a real structure-injection (extra fields, an early-closed string) --
+    // this closes the narrower "merely invalid JSON" gap the same escaping needed to
+    // cover all along.
+    private fun escape(value: String): String = buildString {
+        for (c in value) {
+            when (c) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                '\b' -> append("\\b")
+                '' -> append("\\f")
+                else -> if (c < ' ') append("\\u%04x".format(c.code)) else append(c)
+            }
+        }
+    }
 }

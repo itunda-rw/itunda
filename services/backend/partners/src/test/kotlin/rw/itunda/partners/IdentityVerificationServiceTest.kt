@@ -91,6 +91,32 @@ class IdentityVerificationServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a user whose real name contains characters that are unsafe inside a raw JSON string") {
+        val requestRepository = mockk<IdentityVerificationRequestRepository>()
+        val partnerRepository = mockk<PartnerRepository>()
+        val userRepository = mockk<UserRepository>()
+        val signingKeyProvider = IdentitySigningKeyProvider()
+        val trickyUser = User(
+            id = "user_2", phoneNumber = "+250788000002",
+            firstName = "Jean\n\"Le Grand\"\\Backslash", lastName = "Paul", passwordHash = "x", kycVerified = false,
+        )
+        val pending = IdentityVerificationRequest(id = "idverify_2", partnerId = "partner_1", expiresAt = Instant.now().plusSeconds(300))
+        every { requestRepository.findById("idverify_2") } returns Optional.of(pending)
+        every { userRepository.findById("user_2") } returns Optional.of(trickyUser)
+        val savedSlot = slot<IdentityVerificationRequest>()
+        every { requestRepository.save(capture(savedSlot)) } answers { firstArg() }
+        val service = buildService(requestRepository, partnerRepository, userRepository, signingKeyProvider)
+
+        When("the user approves it") {
+            val approved = service.approve("idverify_2", "user_2")
+
+            Then("the disclosed payload is real, parseable JSON a partner can actually read") {
+                val parsed = com.fasterxml.jackson.databind.ObjectMapper().readValue(approved.disclosedPayloadJson, Map::class.java)
+                parsed["firstName"] shouldBe "Jean\n\"Le Grand\"\\Backslash"
+            }
+        }
+    }
+
     Given("a real pending request a user explicitly declines") {
         val requestRepository = mockk<IdentityVerificationRequestRepository>()
         val partnerRepository = mockk<PartnerRepository>()
