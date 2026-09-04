@@ -55,8 +55,8 @@ struct DeviceStepUpDialog: View {
         do {
             _ = try await MerchantNetworkClient.shared.verifyDevice(password: password)
             onVerified()
-        } catch let NetworkError.httpError(statusCode) {
-            error = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            error = statusCode == 400 ? "Incorrect password." : (message ?? "Something went wrong. Please try again.")
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

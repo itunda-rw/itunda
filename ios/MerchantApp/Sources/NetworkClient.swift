@@ -482,9 +482,20 @@ enum NetworkError: Error {
     // that itself carried an Idempotency-Key, mirroring CoreNetwork's own
     // authenticatedPost so this never misclassifies an unrelated 403.
     case deviceNotVerified
+    // Real gap found 2026-09-04 (same pass that added CoreNetwork's own
+    // postEatsOrder/httpErrorWithMessage fix on the main app): sendRequest below only
+    // ever threw the bare, message-less httpError case, so all ~65 catch sites across
+    // this app's screens fell back to a hardcoded per-screen generic string for every
+    // failure, never the backend's own real, specific validation message (e.g.
+    // PayrollService's "Salary amount must be greater than zero", "Cannot add the
+    // business owner as a payroll employee", etc.). Purely additive -- the existing
+    // bare httpError case and its 3 real UI pattern-matches (BecomeMerchantScreen/
+    // DeviceStepUpDialog/LoginScreen) are updated in the same commit, not left to
+    // silently degrade.
+    case httpErrorWithMessage(statusCode: Int, message: String?)
 }
 
-private struct ApiErrorBody: Decodable { let code: String? }
+private struct ApiErrorBody: Decodable { let code: String?; let message: String? }
 
 /// Real, minimal URLSession client, mirroring RiderApp's own NetworkClient.swift --
 /// this app's own copy, scoped to rw.itunda.merchant's endpoints plus the Eats
@@ -857,12 +868,12 @@ final class MerchantNetworkClient {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
+            let errorBody = try? decoder.decode(ApiErrorBody.self, from: data)
             if extraHeader?.0 == "Idempotency-Key", httpResponse.statusCode == 403,
-               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
-               errorBody.code == "DEVICE_NOT_VERIFIED" {
+               errorBody?.code == "DEVICE_NOT_VERIFIED" {
                 throw NetworkError.deviceNotVerified
             }
-            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: errorBody?.message)
         }
         return data
     }

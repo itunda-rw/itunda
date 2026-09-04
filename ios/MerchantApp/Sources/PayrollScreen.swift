@@ -195,6 +195,13 @@ private struct AddEmployeeCard: View {
             )
             phoneNumber = ""; salaryAmount = ""
             onAdded()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            // Real fix (2026-09-04): surfaces the backend's own specific reason
+            // (e.g. "No itunda account found for this phone number", "Cannot add
+            // the business owner as a payroll employee", "This person is already
+            // on the payroll roster") instead of one generic string for every
+            // failure -- see NetworkClient's own httpErrorWithMessage doc comment.
+            self.error = message ?? "Could not add this employee."
         } catch {
             self.error = "Could not add this employee."
         }

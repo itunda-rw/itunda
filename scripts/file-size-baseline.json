@@ -40,7 +40,7 @@
   "ios/Features/Payments/Sources/TransferFlowScreens.swift": 702,
   "ios/MerchantApp/Sources/BusinessAccountScreen.swift": 584,
   "ios/MerchantApp/Sources/MerchantHomeScreen.swift": 508,
-  "ios/MerchantApp/Sources/NetworkClient.swift": 877,
+  "ios/MerchantApp/Sources/NetworkClient.swift": 888,
   "packages/saronite/mini-apps/insurance_mini_app/pages/index.tsx": 679,
   "services/backend/agents/src/main/kotlin/rw/itunda/agents/AgentService.kt": 502,
   "services/backend/app/src/main/kotlin/rw/itunda/app/SeedDataRunner.kt": 507,

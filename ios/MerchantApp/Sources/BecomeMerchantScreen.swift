@@ -62,7 +62,7 @@ struct BecomeMerchantScreen: View {
         do {
             let merchant = try await MerchantNetworkClient.shared.registerMerchant(businessName: businessName).merchant
             onRegistered(merchant)
-        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+        } catch NetworkError.httpErrorWithMessage(let statusCode, _) where statusCode == 409 {
             // MERCHANT_ALREADY_REGISTERED in practice -- this screen only ever
             // renders for a logged-in user with no LOCAL registration record, so the
             // only real 409 this endpoint can produce here is the account already
