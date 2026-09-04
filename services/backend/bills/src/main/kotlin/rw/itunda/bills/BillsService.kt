@@ -2,6 +2,7 @@ package rw.itunda.bills
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.BillAutoPaySetting
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -25,6 +26,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.AccountRepository
 import rw.itunda.core.domain.AccountType
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -62,6 +64,7 @@ class BillsService(
     private val transactionRepository: TransactionRepository,
     private val billAutoPaySettingRepository: BillAutoPaySettingRepository,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val rateLimiter: RateLimiter,
 ) {
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
@@ -122,6 +125,11 @@ class BillsService(
 
     @Transactional
     fun payBill(userId: String, billId: String, amount: BigDecimal, accountNumber: String?, provider: String? = null): Map<String, Any?> {
+        // Real gap found live (2026-09-04, same sweep that found Stocks/Account's
+        // identical gap): a real money-leaving-account action via
+        // postLedgerTransaction below, same shape as P2pService.pay/send, but had no
+        // rateLimiter.checkLimit. Same 30/hour baseline those already use.
+        rateLimiter.checkLimit("bills:pay:$userId", limit = 30, window = Duration.ofHours(1))
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
 
         val rail = RailCatalog.resolve(provider)
@@ -186,6 +194,7 @@ class BillsService(
 
     @Transactional
     fun buyAirtime(userId: String, phoneNumber: String, amount: BigDecimal, provider: String?): Map<String, Any?> {
+        rateLimiter.checkLimit("bills:airtime:$userId", limit = 30, window = Duration.ofHours(1))
         val account = accountRepository.findByUserIdAndType(userId, AccountType.MAIN) ?: throw NoAccountException("No account found for this account")
 
         val rail = RailCatalog.resolve(provider)

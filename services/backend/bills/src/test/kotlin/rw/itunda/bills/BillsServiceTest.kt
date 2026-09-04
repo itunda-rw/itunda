@@ -12,6 +12,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Account
 import rw.itunda.core.domain.AccountType
 import rw.itunda.core.events.EventPublisher
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -47,7 +48,8 @@ class BillsServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = BillsService(accountRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = BillsService(accountRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine, rateLimiter)
 
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account()
         // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
@@ -129,7 +131,8 @@ class BillsServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = BillsService(accountRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = BillsService(accountRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine, rateLimiter)
         val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService, accountRepository)
 
         every { accountRepository.findByUserIdAndType("user_1", AccountType.MAIN) } returns account()
