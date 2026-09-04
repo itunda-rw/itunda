@@ -365,6 +365,8 @@ private struct RidePassengerContent: View {
             scheduleHours = ""
             stops = []
             await loadTrips()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not request a ride."
         } catch {
             self.error = "Could not request a ride."
         }
@@ -376,6 +378,8 @@ private struct RidePassengerContent: View {
         do {
             _ = try await NetworkClient.shared.cancelRideTrip(id: id)
             await loadTrips()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not cancel this trip."
         } catch {
             self.error = "Could not cancel this trip."
         }

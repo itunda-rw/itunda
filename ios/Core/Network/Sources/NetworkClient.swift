@@ -1536,12 +1536,18 @@ extension NetworkClient {
         ])
     }
 
+    // Real gap found 2026-09-04: RideTripService.requestTrip has real, dynamic
+    // messages ("A trip can have at most $MAX_STOPS extra stops", "Scheduled time
+    // must be within $X days", "Scheduled time must be in the future") none of it
+    // checked client-side, plus a real "Insufficient available balance for this
+    // trip" -- RideScreenView.swift's bare `catch {}` flattened all of it into
+    // "Could not request a ride."
     public func requestRideTrip(
         pickupAddress: String, pickupLatitude: Double, pickupLongitude: Double,
         dropoffAddress: String, dropoffLatitude: Double, dropoffLongitude: Double,
         scheduledFor: String? = nil, stops: [RideStopRequestDto]? = nil
     ) async throws -> RideTripResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/rides/trips",
             body: RequestRideTripRequest(
                 pickupAddress: pickupAddress, pickupLatitude: pickupLatitude, pickupLongitude: pickupLongitude,
@@ -1577,8 +1583,12 @@ extension NetworkClient {
     public func completeRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/complete", body: EmptyBody())
     }
+    // Real gap found 2026-09-04: RideTripService.cancelTrip's real message includes
+    // the trip's actual current status ("Only a REQUESTED or DRIVER_ASSIGNED trip can
+    // be cancelled -- this one is already COMPLETED"), a dynamic detail no generic
+    // fallback can reproduce -- same class as EatsOrderService.cancelOrder's fix.
     public func cancelRideTrip(id: String) async throws -> RideTripResponse {
-        try await authenticatedPost("api/v1/rides/trips/\(id)/cancel", body: EmptyBody())
+        try await authenticatedPostWithMessage("api/v1/rides/trips/\(id)/cancel", body: EmptyBody())
     }
 
     // Real Uber post-trip tipping -- see RideTripDto.tipAmount's own doc comment. Real
