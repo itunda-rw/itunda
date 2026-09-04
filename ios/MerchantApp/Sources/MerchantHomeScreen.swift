@@ -183,6 +183,8 @@ private struct OrderCard: View {
                         do {
                             _ = try await MerchantNetworkClient.shared.completePickupOrder(order.id)
                             onAdvanced()
+                        } catch let NetworkError.httpErrorWithMessage(_, message) {
+                            self.error = message ?? "Couldn't update this order. Try again."
                         } catch {
                             self.error = "Couldn't update this order. Try again."
                         }
@@ -201,6 +203,8 @@ private struct OrderCard: View {
                         do {
                             _ = try await MerchantNetworkClient.shared.advanceRestaurantOrderStatus(order.id, status: nextStatus)
                             onAdvanced()
+                        } catch let NetworkError.httpErrorWithMessage(_, message) {
+                            self.error = message ?? "Couldn't update this order. Try again."
                         } catch {
                             self.error = "Couldn't update this order. Try again."
                         }
@@ -354,6 +358,8 @@ private struct ReviewReplyCard: View {
             _ = try await MerchantNetworkClient.shared.replyToRestaurantReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
             replying = false
             onReplied()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not submit your reply."
         } catch {
             self.error = "Could not submit your reply."
         }
@@ -414,6 +420,8 @@ private struct ProductReviewReplyCard: View {
             _ = try await MerchantNetworkClient.shared.replyToProductReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
             replying = false
             onReplied()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not submit your reply."
         } catch {
             self.error = "Could not submit your reply."
         }
