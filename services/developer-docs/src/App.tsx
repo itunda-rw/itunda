@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import Layout from './Layout';
 import PayDocsPage from './PayDocsPage';
 import PartnerIdentityDocsPage from './PartnerIdentityDocsPage';
+import CertificateDocsPage from './CertificateDocsPage';
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<PayDocsPage />} />
         <Route path="/identity" element={<PartnerIdentityDocsPage />} />
+        <Route path="/certificate" element={<CertificateDocsPage />} />
       </Route>
     </Routes>
   );

@@ -14,6 +14,9 @@ export default function Layout() {
           <NavLink to="/identity" className={({ isActive }) => (isActive ? 'header-link header-link-active' : 'header-link')}>
             Verify identity
           </NavLink>
+          <NavLink to="/certificate" className={({ isActive }) => (isActive ? 'header-link header-link-active' : 'header-link')}>
+            Verify signature
+          </NavLink>
         </nav>
       </header>
       <main>
