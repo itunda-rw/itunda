@@ -744,12 +744,25 @@ fun ItundaAppScreen(
                             // check (2026-07-12, see MainViewModel.sendTransfer) --
                             // previously "success" here just closed the sheet without
                             // moving any real money (see TransferFlow.kt's old header).
+                            //
+                            // Real defense-in-depth fix, 2026-09-05 (see iOS's own
+                            // TransferFlowContainer.confirm fix, the same real bug there):
+                            // BiometricPrompt always shows a real, blocking system dialog
+                            // for every biometric type (unlike iOS's bare Touch ID, which
+                            // shows no UI at all) -- so this Compose button was never
+                            // practically double-tappable the way iOS's was. But
+                            // isSendingTransfer only flipped true INSIDE the success
+                            // callback, leaving a real (if narrow, dialog-launch-latency-
+                            // sized) window where a sub-frame double-tap could still fire
+                            // authenticateForTransaction twice before either dialog
+                            // commits, each with its own fresh Idempotency-Key. Flipping
+                            // this synchronously before the call closes that window too.
                             biometricError = null
+                            isSendingTransfer = true
                             biometricAuth.authenticateForTransaction(
                                 reason = if (isGift) "Confirm sending a $amountRwf RWF gift" else "Confirm sending $amountRwf RWF"
                             ) { success, error ->
                                 if (success) {
-                                    isSendingTransfer = true
                                     coroutineScope.launch {
                                         suspend fun doSend() = if (isGift) {
                                             viewModel.sendGift(step.accountNumber, amountRwf, giftNote, giftTheme)
@@ -790,6 +803,7 @@ fun ItundaAppScreen(
                                         }
                                     }
                                 } else {
+                                    isSendingTransfer = false
                                     biometricError = error ?: "Couldn't verify. Try again."
                                 }
                             }
