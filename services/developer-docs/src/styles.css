@@ -51,9 +51,21 @@ a {
   color: var(--primary);
 }
 
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .header-link {
   font-size: 14px;
   color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.header-link-active {
+  color: var(--primary);
+  font-weight: 700;
 }
 
 .container {
