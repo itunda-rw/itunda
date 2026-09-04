@@ -180,9 +180,8 @@ final class TransferViewModel: ObservableObject {
         do {
             _ = try await NetworkClient.shared.verifyDevice(password: password)
             return .success("Device verified", fraudWarnings: [])
-        } catch let NetworkError.httpError(statusCode) {
-            let message = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
-            return .failure(message)
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            return .failure(message ?? (statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."))
         } catch {
             return .failure("Couldn't reach itunda. Check your connection and try again.")
         }
