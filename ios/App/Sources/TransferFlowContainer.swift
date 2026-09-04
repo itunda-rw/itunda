@@ -311,17 +311,32 @@ struct TransferFlowContainer: View {
     // ItundaAppScreen.kt exactly.
     private func confirm(accountNumber: String, amountRwf: Int, isGift: Bool = false, note: String? = nil, theme: String? = nil) {
         errorMessage = nil
+        // Real double-tap/double-send gap found and fixed 2026-09-05: isSubmitting
+        // used to flip to true only INSIDE authenticateForTransaction's success
+        // callback, so the "Send" button (which this flag replaces with a
+        // ProgressView -- see TransferFlowScreens.swift) stayed live and tappable
+        // for the entire biometric-prompt window. Face ID's own system overlay
+        // masks this on most devices, but Touch ID has no such overlay -- the
+        // app's own UI stays fully interactive while the sensor waits for a
+        // touch, so a second tap there could fire a second, independent
+        // LAContext evaluation (authenticateForTransaction always creates a
+        // fresh one) and, if both happened to succeed, a real double-send: each
+        // call generates its OWN fresh Idempotency-Key, so the backend's
+        // idempotency dedup never sees them as the same request. Setting this
+        // synchronously here, before the biometric prompt even appears, closes
+        // the window completely.
+        isSubmitting = true
         pendingAmountRwf = amountRwf
         pendingIsGift = isGift
         pendingGiftNote = note
         pendingGiftTheme = theme
         NIDABiometricAuth.shared.authenticateForTransaction(reason: isGift ? "Confirm sending a \(amountRwf) RWF gift" : "Confirm sending \(amountRwf) RWF") { success, error in
             guard success else {
+                isSubmitting = false
                 errorMessage = error?.localizedDescription ?? tc("biometricFailed")
                 return
             }
             Task { @MainActor in
-                isSubmitting = true
                 let result = isGift
                     ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: amountRwf, note: note, theme: theme)
                     : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf, memo: note ?? "", fromAccountId: fromAccount?.id)
