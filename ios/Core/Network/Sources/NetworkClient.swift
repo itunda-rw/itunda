@@ -6144,8 +6144,15 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/rewards/claim", body: ClaimRewardTaskRequest(taskId: taskId), idempotencyKey: UUID().uuidString)
     }
 
+    // Real gap found 2026-09-04: OrderService.placeOrder has a rich, real checkout
+    // validation surface (min order amount, insufficient stock, sold out, expired
+    // surplus deal, invalid delivery address/quantity, merchant not accepting orders)
+    // none of it checked client-side -- TalkScreen.errorMessage(422) is hardcoded to
+    // "Insufficient funds for this order.", actively WRONG for a min-order-amount
+    // failure, and its 409 bucket collapses 3 distinct real causes (out of stock,
+    // sold out, deal expired) into one generic "already done" string.
     public func placeOrder(_ request: PlaceOrderRequest) async throws -> OrderDetailResponse {
-        try await authenticatedPost("api/v1/orders", body: request, idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/orders", body: request, idempotencyKey: UUID().uuidString)
     }
 
     public func getMyOrders() async throws -> OrdersResponse { try await get("api/v1/orders/my-orders") }
