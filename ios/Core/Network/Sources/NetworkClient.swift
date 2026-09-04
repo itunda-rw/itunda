@@ -5371,8 +5371,13 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/offers", body: MakeOfferRequest(amount: amount))
     }
 
+    // Real gap found 2026-09-04: PriceOfferService/PropertyPriceOfferService have
+    // real, distinguishable messages ("This offer has already been resolved",
+    // "You can't respond to your own offer", "counterAmount is required for a
+    // counter-offer") that TalkChatThread.swift's respondToOffer catch flattened
+    // into one generic string.
     public func respondToOffer(offerId: String, action: String, counterAmount: Double? = nil) async throws -> PriceOfferResponse {
-        try await authenticatedPost("api/v1/marketplace/offers/\(offerId)/respond", body: RespondToOfferRequest(action: action, counterAmount: counterAmount))
+        try await authenticatedPostWithMessage("api/v1/marketplace/offers/\(offerId)/respond", body: RespondToOfferRequest(action: action, counterAmount: counterAmount))
     }
 
     public func getOffersForConversation(conversationId: String) async throws -> PriceOffersResponse {
@@ -5405,8 +5410,11 @@ extension NetworkClient {
     }
 
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
+    // Real gap found 2026-09-04: GiftService.sendGift's real "No itunda account
+    // found for this phone number" (typo'd recipient) and "Cannot send a gift to
+    // yourself" weren't checked client-side and fell into a generic fallback.
     public func sendGiftInConversation(conversationId: String, amount: Double, note: String?, theme: String? = nil) async throws -> GiftResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/gifts/conversations/\(conversationId)",
             body: SendGiftInConversationRequest(amount: amount, note: note, theme: theme),
             idempotencyKey: UUID().uuidString
@@ -5771,7 +5779,7 @@ extension NetworkClient {
     }
 
     public func respondToPropertyOffer(offerId: String, action: String, counterAmount: Double? = nil) async throws -> PropertyPriceOfferResponse {
-        try await authenticatedPost("api/v1/realestate/offers/\(offerId)/respond", body: RespondToPropertyOfferRequest(action: action, counterAmount: counterAmount))
+        try await authenticatedPostWithMessage("api/v1/realestate/offers/\(offerId)/respond", body: RespondToPropertyOfferRequest(action: action, counterAmount: counterAmount))
     }
 
     public func getPropertyOffersForConversation(conversationId: String) async throws -> PropertyPriceOffersResponse {

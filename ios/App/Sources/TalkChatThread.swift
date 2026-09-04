@@ -510,6 +510,8 @@ struct ChatThreadScreen: View {
         } catch NetworkError.deviceNotVerified {
             pendingGiftRetry = { await sendGift() }
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't send this gift. Check your connection and try again."
         } catch {
             self.error = "Couldn't send this gift. Check your connection and try again."
         }
@@ -524,6 +526,8 @@ struct ChatThreadScreen: View {
             needsDeviceVerification = true
         } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "GIFT_ALREADY_RESOLVED" {
             await loadGifts()
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
+            self.error = message ?? "Couldn't open this gift. Check your connection and try again."
         } catch {
             self.error = "Couldn't open this gift. Check your connection and try again."
         }
@@ -539,6 +543,8 @@ struct ChatThreadScreen: View {
             await loadVouchers()
         } catch let NetworkError.httpErrorWithCode(_, code, _) where code == "GIFT_VOUCHER_ALREADY_EXTENDED" {
             await loadVouchers()
+        } catch let NetworkError.httpErrorWithCode(_, _, message) {
+            self.error = message ?? "Couldn't extend this voucher. Try again."
         } catch {
             self.error = "Couldn't extend this voucher. Try again."
         }
@@ -556,6 +562,8 @@ struct ChatThreadScreen: View {
         do {
             try await respondToTalkThreadOffer(offerId: offerId, action: action, counterAmount: counterAmount)
             await refresh()
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Couldn't respond to this offer. Check your connection and try again."
         } catch {
             self.error = "Couldn't respond to this offer. Check your connection and try again."
         }
