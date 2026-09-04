@@ -538,7 +538,7 @@ function CatalogView() {
       return;
     }
     try {
-      await updateProduct(product.id, name.trim(), price);
+      await updateProduct(product.id, product, name.trim(), price);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('pos.editProductError'));

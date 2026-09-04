@@ -392,10 +392,26 @@ export const addProduct = (
 export const getProductCatalog = () =>
   apiFetch<{ success: boolean; products: MerchantProduct[] }>('/api/v1/merchant/products').then((r) => r.products);
 
-export const updateProduct = (productId: string, name: string, price: number) =>
+// Real bug caught before this ever shipped to a live merchant (2026-09-04): this
+// endpoint is a full REPLACE on the backend (MerchantProductService.updateProduct's
+// own doc comment: "a cashier replenishing a shelf must not... accidentally erase the
+// product's pricing, description, booking, or discount settings" -- that's exactly why
+// updateProductStock is a SEPARATE, narrower PATCH). Sending only {name, price} here
+// would silently null out imageUrl/originalPrice/description/durationMinutes/
+// requiresPrepay/stockQuantity on every edit. Takes the full product so the caller
+// can't accidentally omit a field it didn't mean to touch.
+export const updateProduct = (productId: string, product: MerchantProduct, name: string, price: number) =>
   apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}`, {
     method: 'PUT',
-    body: JSON.stringify({ name, price }),
+    body: JSON.stringify({
+      name, price,
+      imageUrl: product.imageUrl ?? undefined,
+      originalPrice: product.originalPrice ?? undefined,
+      description: product.description ?? undefined,
+      durationMinutes: product.durationMinutes ?? undefined,
+      requiresPrepay: product.requiresPrepay,
+      stockQuantity: product.stockQuantity ?? undefined,
+    }),
   }).then((r) => r.product);
 
 export const updateProductStock = (productId: string, stockQuantity: number | null) =>
