@@ -2348,6 +2348,49 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    // Real gap found 2026-09-04 (Eats checkout, while adding a new backend validation
+    // -- InvalidEatsOrderChargeException for a pickup+promotion discount-stacking
+    // fund-safety fix): placeEatsOrder/placeDineInOrder both went through the shared
+    // authenticatedPost above, which only ever throws the bare, message-less
+    // NetworkError.httpError -- so EatsCheckout.swift's catch block fell back to
+    // TalkScreen.errorMessage's generic per-status-code bucket for EVERY 4xx/422 from
+    // either endpoint, including the pre-existing MinOrderAmountNotMetException,
+    // MenuItemSoldOutException, MissingRequiredMenuOptionException, etc. -- all of
+    // which the backend already sends a specific, real message for. A 422 specifically
+    // showed "Insufficient funds for this order." regardless of the real cause, which
+    // is actively WRONG for a discount-stacking rejection, not just generic.
+    // Dedicated function rather than widening authenticatedPost itself, same
+    // "additive, narrow-scoped" precedent as postP2p/authenticatedPostWithCode just
+    // below/above -- authenticatedPost's message-less throw is a deliberate, load-
+    // bearing choice for its other 230+ callers (see NetworkError.httpErrorWithMessage's
+    // own doc comment), not something to change wholesale.
+    func postEatsOrder<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body,
+        idempotencyKey: String
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
     // See NetworkError.httpErrorWithCode's own doc comment -- a dedicated function for
     // the handful of endpoints whose 409s are genuinely ambiguous without the real
     // code, same "additive, narrow-scoped" precedent as authenticatedPutWithMessage/
@@ -6106,7 +6149,7 @@ extension NetworkClient {
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     public func placeEatsOrder(_ request: PlaceEatsOrderRequest) async throws -> EatsOrderDetailResponse {
-        try await authenticatedPost("api/v1/eats/orders", body: request, idempotencyKey: UUID().uuidString)
+        try await postEatsOrder("api/v1/eats/orders", body: request, idempotencyKey: UUID().uuidString)
     }
 
     public func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
@@ -6138,7 +6181,7 @@ extension NetworkClient {
     }
 
     public func placeDineInOrder(_ request: PlaceDineInOrderRequest) async throws -> DineInOrderDetailResponse {
-        try await authenticatedPost("api/v1/eats/dine-in/orders", body: request, idempotencyKey: UUID().uuidString)
+        try await postEatsOrder("api/v1/eats/dine-in/orders", body: request, idempotencyKey: UUID().uuidString)
     }
 
     public func getMyDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/my-orders") }
