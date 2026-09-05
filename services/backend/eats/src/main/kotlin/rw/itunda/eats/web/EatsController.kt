@@ -476,13 +476,24 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
+    // Real gap found 2026-09-05 (feedback_idempotency_key_sweep re-audit, same class
+    // as RideController.acceptTrip's identical fix) -- EatsOrderService.claimDelivery
+    // checks BOTH "rider already has an active delivery" (RiderAlreadyOnDeliveryException)
+    // AND "delivery already claimed" (DeliveryAlreadyClaimedException). After a
+    // successful claim, the rider legitimately now has an active delivery, so a
+    // lost-response retry from the SAME rider used to hit the first guard with a
+    // scary, confusing "finish your current delivery" message for a claim that
+    // actually just succeeded.
     @PostMapping("/orders/{orderId}/claim")
     fun claimDelivery(
         @PathVariable orderId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val order = eatsOrderService.claimDelivery(currentUser.userId, orderId)
-        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/orders/$orderId/claim", idempotencyKey, currentUser.userId) {
+            200 to mapOf("success" to true, "order" to eatsOrderService.claimDelivery(currentUser.userId, orderId))
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     // Real automatic dispatch (2026-07-20) -- see EatsOrderService.declineDelivery's own

@@ -6596,7 +6596,7 @@ extension NetworkClient {
     // available, delivery no longer available, rider already on another delivery)
     // all showed the identical generic TalkScreen.errorMessage(409) text.
     public func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse {
-        try await authenticatedPostWithMessage("api/v1/eats/orders/\(orderId)/claim", body: EmptyBody())
+        try await postP2p("api/v1/eats/orders/\(orderId)/claim", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func updateRiderOrderStatus(_ orderId: String, status: String) async throws -> EatsOrderDetailResponse {

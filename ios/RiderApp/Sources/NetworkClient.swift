@@ -179,7 +179,9 @@ final class RiderNetworkClient {
 
     func getOrder(_ orderId: String) async throws -> EatsOrderDetailResponse { try await get("api/v1/eats/orders/\(orderId)") }
 
-    func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse { try await postEmpty("api/v1/eats/orders/\(orderId)/claim") }
+    func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse {
+        try await postEmpty("api/v1/eats/orders/\(orderId)/claim", idempotencyKey: UUID().uuidString)
+    }
 
     func declineDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse { try await postEmpty("api/v1/eats/orders/\(orderId)/decline") }
 
@@ -231,17 +233,20 @@ final class RiderNetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
-    private func postEmpty<Response: Decodable>(_ path: String) async throws -> Response {
-        let data = try await sendRequest(method: "POST", path: path, body: Optional<EmptyBody>.none)
+    private func postEmpty<Response: Decodable>(_ path: String, idempotencyKey: String? = nil) async throws -> Response {
+        let data = try await sendRequest(method: "POST", path: path, body: Optional<EmptyBody>.none, idempotencyKey: idempotencyKey)
         return try decoder.decode(Response.self, from: data)
     }
 
     @discardableResult
-    private func sendRequest<Body: Encodable>(method: String, path: String, body: Body?, authenticated: Bool = true) async throws -> Data {
+    private func sendRequest<Body: Encodable>(method: String, path: String, body: Body?, authenticated: Bool = true, idempotencyKey: String? = nil) async throws -> Data {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = method
         if authenticated, let token = RiderKeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

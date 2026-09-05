@@ -7,6 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -152,7 +153,7 @@ interface ApiService {
     suspend fun getOrder(@Path("id") orderId: String): EatsOrderDetailResponse
 
     @POST("api/v1/eats/orders/{id}/claim")
-    suspend fun claimDelivery(@Path("id") orderId: String): EatsOrderDetailResponse
+    suspend fun claimDelivery(@Path("id") orderId: String, @Header("Idempotency-Key") idempotencyKey: String): EatsOrderDetailResponse
 
     @POST("api/v1/eats/orders/{id}/decline")
     suspend fun declineDelivery(@Path("id") orderId: String): EatsOrderDetailResponse

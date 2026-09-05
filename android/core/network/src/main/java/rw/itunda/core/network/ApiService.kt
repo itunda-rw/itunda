@@ -4113,7 +4113,7 @@ interface ApiService {
     suspend fun getAvailableDeliveries(): EatsOrdersResponse
 
     @POST("api/v1/eats/orders/{id}/claim")
-    suspend fun claimDelivery(@Path("id") orderId: String): EatsOrderDetailResponse
+    suspend fun claimDelivery(@Path("id") orderId: String, @Header("Idempotency-Key") idempotencyKey: String): EatsOrderDetailResponse
 
     @POST("api/v1/eats/orders/{id}/rider-status")
     suspend fun updateRiderOrderStatus(@Path("id") orderId: String, @Body request: UpdateEatsOrderStatusRequest): EatsOrderDetailResponse

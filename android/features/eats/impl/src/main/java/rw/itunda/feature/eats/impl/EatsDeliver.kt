@@ -318,7 +318,7 @@ internal fun DeliverContent() {
                                     error = null
                                     coroutineScope.launch {
                                         try {
-                                            NetworkClient.apiService.claimDelivery(o.id)
+                                            NetworkClient.apiService.claimDelivery(o.id, java.util.UUID.randomUUID().toString())
                                             loadDeliveries()
                                         } catch (e: HttpException) {
                                             error = superAppErrorMessage(e)

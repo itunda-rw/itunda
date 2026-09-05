@@ -241,7 +241,7 @@ fun RiderHomeScreen(
                                 onClick = {
                                     scope.launch {
                                         try {
-                                            NetworkClient.apiService.claimDelivery(orderId)
+                                            NetworkClient.apiService.claimDelivery(orderId, java.util.UUID.randomUUID().toString())
                                             runCatching { NetworkClient.apiService.markNotificationRead(notification.id) }
                                             refreshOffers(); refreshDeliveries()
                                             onOpenDelivery(orderId)
@@ -349,7 +349,7 @@ fun RiderHomeScreen(
                                     try {
                                         when (delivery) {
                                             is RiderDelivery.Eats -> {
-                                                NetworkClient.apiService.claimDelivery(delivery.id)
+                                                NetworkClient.apiService.claimDelivery(delivery.id, java.util.UUID.randomUUID().toString())
                                                 refreshDeliveries()
                                                 onOpenDelivery(delivery.id)
                                             }

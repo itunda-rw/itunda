@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 import type { EatsOrder, EatsOrderStatus } from './eats';
 
 // Extracted from lib/eats.ts (2026-08-20, real file-size-lint threshold crossed) --
@@ -36,7 +37,10 @@ export const fetchRiderDeliveries = () =>
   apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/rider-deliveries').then((r) => r.orders);
 
 export const claimDelivery = (orderId: string) =>
-  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/claim`, { method: 'POST' }).then((r) => r.order);
+  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/claim`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.order);
 
 export const advanceRiderOrder = (orderId: string, status: EatsOrderStatus) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/rider-status`, {
