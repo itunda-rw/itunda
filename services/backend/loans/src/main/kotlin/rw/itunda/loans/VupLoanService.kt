@@ -13,6 +13,7 @@ import rw.itunda.core.domain.AccountType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.pricing.ReminderWindows
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.VupLoanRepository
 import rw.itunda.core.repository.AccountRepository
@@ -220,8 +221,12 @@ class VupLoanService(
     // overdue is what actually drives real repayment behavior (this is standard real
     // fintech practice -- Toss/KakaoBank both send a due-date-approaching push, not
     // just an after-the-fact overdue flag). `reminderSentAt` guards against
-    // re-notifying on every scheduler tick.
-    fun getLoansDueSoonForReminder(withinDays: Long = 3): List<VupLoan> {
+    // re-notifying on every scheduler tick. Default consolidated 2026-09-06 into
+    // core/pricing/ReminderWindows -- same real 3-day policy this codebase's other
+    // pre-deadline reminders use, kept as a Long default parameter (not a shared val)
+    // since this is the only one of the family expressed as a function default rather
+    // than a stored constant.
+    fun getLoansDueSoonForReminder(withinDays: Long = ReminderWindows.PRE_EXPIRY_REMINDER_WINDOW.toDays()): List<VupLoan> {
         val today = LocalDate.now()
         val cutoff = today.plusDays(withinDays)
         return vupLoanRepository.findByStatus(VupLoanStatus.DISBURSED).filter {
