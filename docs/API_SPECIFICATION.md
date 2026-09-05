@@ -400,9 +400,37 @@ subset previously documented.
 `400 INVALID_AVG_PREP_TIME`, `400 INVALID_PICKUP_DISCOUNT`.
 
 **Corrected 2026-09-04** — real code is `ACCOUNT_NOT_FOUND`, not `WALLET_NOT_FOUND`
-(doesn't exist). No POS/card processing (beyond the demo `card/charge` above) or B2B
-payroll on this controller — payroll lives at a separate `PayrollController`, not
-documented on this page yet — see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
+(doesn't exist). No POS/card processing (beyond the demo `card/charge` above) — see
+`docs/TOSS_PARITY_MATRIX.md`'s Merchant row. B2B payroll lives at a separate
+`PayrollController`, documented immediately below.
+
+## Merchant Payroll — `/api/v1/merchant/payroll`
+
+**Added 2026-09-05** (was named as a real, still-open documentation gap in the Merchant
+section above — added here rather than folded into that table, since it's genuinely a
+separate real controller with its own error surface). Needs no external
+payroll/banking credentials, unlike the rest of `docs/TOSS_PARITY_MATRIX.md`'s blocked
+Merchant-row gaps, since every payment is just an internal itunda-account-to-itunda-
+account ledger transfer — see `PayrollService`'s own doc comment.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/employees` | `{phoneNumber, salaryAmount}` | `{success, employee: {...}}` | Adds an existing itunda user (by phone number) to the merchant's payroll roster. Not money-moving — no `Idempotency-Key` |
+| GET | `/employees` | — | `{success, employees: [...]}` | |
+| DELETE | `/employees/{employeeId}` | — | `{success, employee: {...}}` | |
+| POST | `/run` | — (+ `Idempotency-Key`) | `{success, ...}` | Pays every roster employee their `salaryAmount` in one run — real money movement, so `Idempotency-Key` is required, same convention as `/collect`/`/card/charge` above |
+| GET | `/runs` | — | `{success, runs: [...]}` | |
+| GET | `/runs/{runId}/payslips` | — | `{success, payslips: [...]}` | |
+
+Errors (all 15 real `@ExceptionHandler`s in `PayrollController.kt`): `404 MERCHANT_NOT_FOUND`,
+`404 ACCOUNT_NOT_FOUND` (the merchant's own account), `404 EMPLOYEE_PHONE_NOT_FOUND`,
+`409 EMPLOYEE_ALREADY_ON_ROSTER`, `400 EMPLOYEE_IS_OWNER` (can't add yourself),
+`422 EMPLOYEE_NO_ACCOUNT` (the phone number resolves to a real user with no itunda
+account), `400 INVALID_SALARY_AMOUNT`, `422 EMPTY_PAYROLL_ROSTER` (running payroll with
+no employees), `404 PAYROLL_ROSTER_ENTRY_NOT_FOUND`, `404 PAYROLL_RUN_NOT_FOUND`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `422 INSUFFICIENT_FUNDS` (the merchant's own account
+can't cover the full run), `403 ACCOUNT_FROZEN`.
 
 ## Face Pay — `/api/v1/facepay`
 
