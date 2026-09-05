@@ -48,7 +48,7 @@ export function AffiliateEarningsCard() {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
         <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>Total earned</span>
-        <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{totalEarned.toLocaleString()} RWF</span>
+        <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{totalEarned.toLocaleString('en-US')} RWF</span>
       </div>
     </div>
   );

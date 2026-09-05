@@ -127,7 +127,7 @@ function VoucherRedeem() {
         <Ticket size={40} color="var(--itunda-indigo)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.voucherRedeemedTitle')}</h2>
         <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-          {result.productNameSnapshot ?? `${result.amount.toLocaleString()} RWF`}
+          {result.productNameSnapshot ?? `${result.amount.toLocaleString('en-US')} RWF`}
         </p>
         <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
           <RefreshCw size={14} /> {t('collect.voucherRedeemAnother')}
@@ -213,7 +213,7 @@ function QrCollect() {
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.qrShowTitle')}</h2>
         <img src={qrDataUrl} alt="Payment QR code" width={240} height={240} style={{ borderRadius: '16px' }} />
         <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-          {intent.amount.toLocaleString()} RWF
+          {intent.amount.toLocaleString('en-US')} RWF
         </p>
         <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{intent.description}</p>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
@@ -324,10 +324,10 @@ function CardCollect() {
         <CreditCard size={40} color="var(--itunda-indigo)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('collect.cardChargedTitle')}</h2>
         <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-          {result.amount.toLocaleString()} RWF
+          {result.amount.toLocaleString('en-US')} RWF
         </p>
         <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>
-          •••• {result.cardLast4} · fee {result.fee.toLocaleString()} RWF
+          •••• {result.cardLast4} · fee {result.fee.toLocaleString('en-US')} RWF
         </p>
         <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
           <RefreshCw size={14} /> {t('collect.cardChargeAnother')}

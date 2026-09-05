@@ -126,10 +126,10 @@ export default function ReportsScreen() {
       </form>
 
       <div className="itunda-card" style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
-        <Metric label={t('reports.metricCollections')} value={totals.collections.toLocaleString()} />
-        <Metric label={t('reports.metricGross')} value={`${totals.gross.toLocaleString()} RWF`} />
-        <Metric label={t('reports.metricFees')} value={`${totals.fees.toLocaleString()} RWF`} />
-        <Metric label={t('reports.metricNet')} value={`${totals.net.toLocaleString()} RWF`} highlighted />
+        <Metric label={t('reports.metricCollections')} value={totals.collections.toLocaleString('en-US')} />
+        <Metric label={t('reports.metricGross')} value={`${totals.gross.toLocaleString('en-US')} RWF`} />
+        <Metric label={t('reports.metricFees')} value={`${totals.fees.toLocaleString('en-US')} RWF`} />
+        <Metric label={t('reports.metricNet')} value={`${totals.net.toLocaleString('en-US')} RWF`} highlighted />
       </div>
 
       <div className="itunda-card">
@@ -162,8 +162,8 @@ export default function ReportsScreen() {
               <tbody>{topProducts.map((p) => (
                 <tr key={p.productId} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
                   <td style={{ padding: '10px 14px' }}>{p.productName}</td>
-                  <td style={{ textAlign: 'right', padding: '10px 14px' }}>{p.unitsSold.toLocaleString()}</td>
-                  <td style={{ textAlign: 'right', padding: '10px 14px', fontWeight: 600 }}>{p.revenue.toLocaleString()} RWF</td>
+                  <td style={{ textAlign: 'right', padding: '10px 14px' }}>{p.unitsSold.toLocaleString('en-US')}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 14px', fontWeight: 600 }}>{p.revenue.toLocaleString('en-US')} RWF</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -179,8 +179,8 @@ export default function ReportsScreen() {
           <tbody>{items.map((day) => (
             <tr key={day.date} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
               <td style={{ padding: '12px 16px' }}>{day.date}</td><td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.collectionCount}</td>
-              <td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.grossAmount.toLocaleString()}</td><td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.fees.toLocaleString()}</td>
-              <td style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 600 }}>{day.netAmount.toLocaleString()}</td>
+              <td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.grossAmount.toLocaleString('en-US')}</td><td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.fees.toLocaleString('en-US')}</td>
+              <td style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 600 }}>{day.netAmount.toLocaleString('en-US')}</td>
             </tr>
           ))}</tbody>
         </table>

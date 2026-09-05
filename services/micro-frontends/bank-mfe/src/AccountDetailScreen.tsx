@@ -141,11 +141,11 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
             itunda Bank {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
           </p>
           <p style={{ margin: '6px 0 0', fontSize: '32px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
-            {account.currency} {account.balance.toLocaleString()}
+            {account.currency} {account.balance.toLocaleString('en-US')}
           </p>
           {jar && jar.earnedThisMonth > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--itunda-grey-50)' }}>
-              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>Interest {jar.earnedThisMonth.toLocaleString()} RWF</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>Interest {jar.earnedThisMonth.toLocaleString('en-US')} RWF</span>
               <button onClick={handleClaim} disabled={claiming} style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
                 {claiming ? '…' : 'Get interest'}
               </button>
@@ -252,7 +252,7 @@ export function AccountDetailScreen({ account, onBack, onSend, onNavigateToTab }
                           <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
-                          {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} {tx.currency}
+                          {isCredit ? '+' : '-'}{tx.amount.toLocaleString('en-US')} {tx.currency}
                         </span>
                       </motion.div>
                     );
@@ -369,9 +369,9 @@ function TransactionDetailScreen({ entry, onBack }: { entry: { tx: Transaction; 
     ['Type', transactionTypeLabel(tx.type)],
     ['Status', tx.status.charAt(0) + tx.status.slice(1).toLowerCase()],
     ['Date & time', new Date(tx.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })],
-    ['Balance after', `${tx.currency} ${afterBalance.toLocaleString()}`],
+    ['Balance after', `${tx.currency} ${afterBalance.toLocaleString('en-US')}`],
   ];
-  if (tx.fee > 0) rows.push(['Fee', `${tx.currency} ${tx.fee.toLocaleString()}`]);
+  if (tx.fee > 0) rows.push(['Fee', `${tx.currency} ${tx.fee.toLocaleString('en-US')}`]);
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1100, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
@@ -387,7 +387,7 @@ function TransactionDetailScreen({ entry, onBack }: { entry: { tx: Transaction; 
           </div>
           <p style={{ margin: '16px 0 0', fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{ledgerRowTitle(tx)}</p>
           <p style={{ margin: '6px 0 0', fontSize: '32px', fontWeight: 700, color: amountColor, letterSpacing: '-0.5px' }}>
-            {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} {tx.currency}
+            {isCredit ? '+' : '-'}{tx.amount.toLocaleString('en-US')} {tx.currency}
           </p>
           <div style={{ marginTop: '32px' }}>
             {rows.map(([label, value]) => (

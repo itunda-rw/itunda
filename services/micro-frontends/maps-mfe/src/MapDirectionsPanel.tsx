@@ -130,7 +130,7 @@ export function MapDirectionsPanel(props: {
                 </p>
                 <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
                   Scheduled · {trip.departureTime.slice(0, 16).replace('T', ' ')} · {trip.availableSeats} seat(s) left ·{' '}
-                  {trip.farePerSeat.toLocaleString()} RWF/seat
+                  {trip.farePerSeat.toLocaleString('en-US')} RWF/seat
                 </p>
               </div>
             ))

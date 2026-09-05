@@ -46,13 +46,13 @@ export function ProductPriceBlock({ price, originalPrice, discountPercent }: { p
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-red)' }}>{discountPercent}%</span>
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{price.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{price.toLocaleString('en-US')} RWF</span>
         </div>
-        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString('en-US')} RWF</p>
       </div>
     );
   }
-  return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{price.toLocaleString()} RWF</p>;
+  return <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{price.toLocaleString('en-US')} RWF</p>;
 }
 
 // Real dedicated product-detail screen (2026-07-21), closing
@@ -135,7 +135,7 @@ export function ProductDetailView({
             <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{product.name}</p>
             <ProductPriceBlock price={product.price} originalPrice={product.originalPrice} discountPercent={product.discountPercent} />
             {freshViewCount != null && (
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Views {freshViewCount.toLocaleString()}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Views {freshViewCount.toLocaleString('en-US')}</p>
             )}
           </div>
           <WishlistButton favorited={favorited} busy={busy} onToggle={toggleFavorite} />

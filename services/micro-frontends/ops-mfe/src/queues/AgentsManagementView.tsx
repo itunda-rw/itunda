@@ -137,7 +137,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
         </span>
       </td>
       <td style={{ padding: '12px 16px', fontSize: '13px' }}>
-        {agent.dailyCashInLimit.toLocaleString()} / {agent.dailyCashOutLimit.toLocaleString()} RWF
+        {agent.dailyCashInLimit.toLocaleString('en-US')} / {agent.dailyCashOutLimit.toLocaleString('en-US')} RWF
       </td>
       <td style={{ padding: '12px 16px' }}>
         {funding ? (

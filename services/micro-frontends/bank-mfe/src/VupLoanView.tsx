@@ -135,11 +135,11 @@ export function VupLoanView() {
             {loans.map((loan) => (
               <div key={loan.id} className="itunda-flat-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.purpose}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{loan.principalAmount.toLocaleString('en-US')} RWF · {loan.purpose}</p>
                   <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-indigo)' }}>{loan.status}</span>
                 </div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-                  Outstanding: {loan.outstandingPrincipal.toLocaleString()} RWF
+                  Outstanding: {loan.outstandingPrincipal.toLocaleString('en-US')} RWF
                   {loan.dueDate && ` · Due ${new Date(loan.dueDate).toLocaleDateString()}`}
                 </p>
                 {loan.status === 'REQUESTED' && (

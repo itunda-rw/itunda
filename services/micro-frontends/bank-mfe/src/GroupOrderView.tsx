@@ -177,7 +177,7 @@ export function GroupOrderView() {
       <div style={{ padding: '10px 0' }}>
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Order placed</h3>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-          Real order #{placedOrder.id.slice(-8)} placed for {placedOrder.totalAmount.toLocaleString()} RWF. Every other participant with items in the cart has been sent a real Dutch-pay request via Split Bill.
+          Real order #{placedOrder.id.slice(-8)} placed for {placedOrder.totalAmount.toLocaleString('en-US')} RWF. Every other participant with items in the cart has been sent a real Dutch-pay request via Split Bill.
         </p>
       </div>
     );
@@ -271,7 +271,7 @@ export function GroupOrderView() {
         <select value={menuItemId} onChange={(e) => setMenuItemId(e.target.value)} className="itunda-input" style={{ marginBottom: '8px', width: '100%' }}>
           <option value="">Select an item…</option>
           {(menu ?? []).map((m) => (
-            <option key={m.id} value={m.id}>{m.name} -- {m.price.toLocaleString()} RWF</option>
+            <option key={m.id} value={m.id}>{m.name} -- {m.price.toLocaleString('en-US')} RWF</option>
           ))}
         </select>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -282,7 +282,7 @@ export function GroupOrderView() {
         </div>
       </div>
       <div className="itunda-flat-section">
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Everyone's items -- {detail?.grandTotal.toLocaleString() ?? 0} RWF total</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '8px' }}>Everyone's items -- {detail?.grandTotal.toLocaleString('en-US') ?? 0} RWF total</h3>
         {/* Real, sourced Baemin UX writing finding (2026-08-24,
             bcut.baemin.com/6287, Baemin's own official UX writing blog on this exact
             함께주문/group-ordering feature): "함께주문을 쓸 때 대표로 주문하는 사람
@@ -300,13 +300,13 @@ export function GroupOrderView() {
         {(detail?.participants ?? []).map((p) => (
           <div key={p.userId} style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--itunda-grey-100)' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
-              {p.userId === detail?.groupOrder.hostUserId ? 'Host' : 'Participant'} -- {p.subtotal.toLocaleString()} RWF
+              {p.userId === detail?.groupOrder.hostUserId ? 'Host' : 'Participant'} -- {p.subtotal.toLocaleString('en-US')} RWF
             </p>
             {p.items.length === 0 ? (
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>No items yet</p>
             ) : (
               p.items.map((i, idx) => (
-                <p key={idx} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{i.quantity}x {i.productName} -- {i.lineTotal.toLocaleString()} RWF</p>
+                <p key={idx} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{i.quantity}x {i.productName} -- {i.lineTotal.toLocaleString('en-US')} RWF</p>
               ))
             )}
           </div>

@@ -163,7 +163,7 @@ export default function BusView() {
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
                   <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                     {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    {' · '}{trip.farePerSeat.toLocaleString()} RWF/seat · {trip.availableSeats} seat(s) left
+                    {' · '}{trip.farePerSeat.toLocaleString('en-US')} RWF/seat · {trip.availableSeats} seat(s) left
                   </p>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                     <input
@@ -192,7 +192,7 @@ export default function BusView() {
                   <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
                     <div>
                       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{b.seatCount} seat(s)</p>
-                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.totalFare.toLocaleString('en-US')} RWF</p>
                     </div>
                     <button className="itunda-btn itunda-btn-secondary" disabled={busyBookingId === b.id} onClick={() => handleCancelBooking(b.id)}>
                       {busyBookingId === b.id ? '…' : 'Cancel'}
@@ -253,7 +253,7 @@ export default function BusView() {
                     <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
                     <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
                       {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      {' · '}{trip.availableSeats}/{trip.totalSeats} seats left · {trip.farePerSeat.toLocaleString()} RWF/seat
+                      {' · '}{trip.availableSeats}/{trip.totalSeats} seats left · {trip.farePerSeat.toLocaleString('en-US')} RWF/seat
                     </p>
                     <button
                       className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px', fontSize: 'var(--itunda-type-scale-12-size)', padding: '6px 10px' }}
@@ -276,7 +276,7 @@ export default function BusView() {
                                   Rider #{b.riderUserId.slice(-6)} · {b.seatCount} seat{b.seatCount > 1 ? 's' : ''}
                                 </span>
                                 <span style={{ fontWeight: 700, color: b.status === 'CANCELLED' ? 'var(--itunda-grey-400)' : 'var(--itunda-grey-900)' }}>
-                                  {b.status === 'CANCELLED' ? 'Cancelled' : `${b.totalFare.toLocaleString()} RWF`}
+                                  {b.status === 'CANCELLED' ? 'Cancelled' : `${b.totalFare.toLocaleString('en-US')} RWF`}
                                 </span>
                               </div>
                             ))}

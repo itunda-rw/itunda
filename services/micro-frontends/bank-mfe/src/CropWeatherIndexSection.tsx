@@ -45,7 +45,7 @@ export function CropWeatherIndexSection() {
     setMessage(null);
     try {
       const policy = await enrollInCropIndexPolicy(cropType, district.trim(), season.trim(), amountNum);
-      setMessage(`Enrolled — premium ${policy.premiumAmount.toLocaleString()} RWF charged to your account.`);
+      setMessage(`Enrolled — premium ${policy.premiumAmount.toLocaleString('en-US')} RWF charged to your account.`);
       setDistrict('');
       load();
     } catch (err) {
@@ -96,7 +96,7 @@ export function CropWeatherIndexSection() {
               <div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{p.cropType.replace('_', ' ')} · {p.district} {p.season}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-                  {p.status} · insured {p.insuredAmount.toLocaleString()} RWF · premium {p.premiumAmount.toLocaleString()} RWF
+                  {p.status} · insured {p.insuredAmount.toLocaleString('en-US')} RWF · premium {p.premiumAmount.toLocaleString('en-US')} RWF
                 </p>
               </div>
               {p.status === 'ENROLLED' && (
@@ -134,7 +134,7 @@ export function CropWeatherIndexSection() {
           onChange={(e) => setInsuredAmount(e.target.value)}
           style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
         />
-        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your account.</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString('en-US')} RWF, charged now to your account.</p>
         <button className="itunda-btn itunda-btn-secondary" disabled={enrolling} onClick={handleEnroll}>
           {enrolling ? '...' : 'Enroll'}
         </button>

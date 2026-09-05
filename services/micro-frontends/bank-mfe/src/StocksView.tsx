@@ -158,7 +158,7 @@ export function StocksView() {
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{stock.name}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{stock.price.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{stock.price.toLocaleString('en-US')} RWF</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: positive ? 'var(--itunda-green)' : 'var(--itunda-red)', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
             {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {positive ? '+' : ''}{stock.changePercent.toFixed(2)}%
@@ -232,9 +232,9 @@ export function StocksView() {
           <div>
             <div className="itunda-flat-section">
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', fontWeight: 600 }}>Total value</p>
-              <p style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString('en-US')} RWF</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--itunda-green)' : 'var(--itunda-red)', marginBottom: '12px' }}>
-                {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toLocaleString()} RWF ({portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturnPercent.toFixed(2)}%)
+                {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toLocaleString('en-US')} RWF ({portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturnPercent.toFixed(2)}%)
               </p>
               {portfolioHistory && portfolioHistory.length > 0 && (
                 <div>
@@ -257,10 +257,10 @@ export function StocksView() {
                   <div key={h.stockId} style={{ padding: '10px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{h.symbol}</p>
-                      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{h.value.toLocaleString()} RWF</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{h.value.toLocaleString('en-US')} RWF</p>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString()} avg</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString('en-US')} avg</p>
                       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: h.return >= 0 ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                         {h.return >= 0 ? '+' : ''}{h.return.toFixed(2)}%
                       </p>

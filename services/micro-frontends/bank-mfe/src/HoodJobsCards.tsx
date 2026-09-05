@@ -198,7 +198,7 @@ export function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact,
     }
   };
 
-  const payLabel = `${post.payAmount.toLocaleString()} RWF${post.payType === 'HOURLY' ? '/hr' : ''}`;
+  const payLabel = `${post.payAmount.toLocaleString('en-US')} RWF${post.payType === 'HOURLY' ? '/hr' : ''}`;
 
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -462,7 +462,7 @@ export function JobPostWishlistView() {
         <div key={f.jobPostId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString('en-US')} RWF</p>
           </div>
           <button
             className="itunda-btn itunda-btn-secondary"

@@ -106,7 +106,7 @@ export function BannerCarousel() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {discountPercent > 0 && <span style={{ color: 'var(--itunda-red)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)' }}>{discountPercent}% off</span>}
                 <span style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-18-size)', color: 'var(--itunda-grey-900)' }}>{v.productName}</span>
-                <span style={{ fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{v.deal.dealPrice.toLocaleString()} RWF</span>
+                <span style={{ fontSize: 'var(--itunda-type-scale-15-size)', color: 'var(--itunda-grey-900)' }}>{v.deal.dealPrice.toLocaleString('en-US')} RWF</span>
                 <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{v.businessName}</span>
               </div>
               {v.productImageUrl && (
@@ -142,7 +142,7 @@ export function MissionsRow() {
     setMissionBusyType(type);
     try {
       const result = await completeShoppingMission(type);
-      setMissionFeedback(`+${result.amountEarned.toLocaleString()} RWF`);
+      setMissionFeedback(`+${result.amountEarned.toLocaleString('en-US')} RWF`);
       loadMissions();
     } catch (err) {
       setMissionFeedback(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -159,8 +159,8 @@ export function MissionsRow() {
         {missions.map((m) => {
           const done = m.type === 'WELCOME_BONUS' ? m.claimedEver : m.completedToday;
           const rewardText = m.type === 'SPIN' && spinOutcomes.length > 0
-            ? `+${Math.min(...spinOutcomes.map((s) => s.amount)).toLocaleString()}~${Math.max(...spinOutcomes.map((s) => s.amount)).toLocaleString()}`
-            : `+${m.rewardAmount.toLocaleString()}`;
+            ? `+${Math.min(...spinOutcomes.map((s) => s.amount)).toLocaleString('en-US')}~${Math.max(...spinOutcomes.map((s) => s.amount)).toLocaleString('en-US')}`
+            : `+${m.rewardAmount.toLocaleString('en-US')}`;
           return (
             <button
               key={m.type}

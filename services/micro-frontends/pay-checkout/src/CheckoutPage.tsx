@@ -121,7 +121,7 @@ export default function CheckoutPage() {
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>{t('checkout.payWith')}</p>
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '2px' }}>{info.merchantName}</h2>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>{info.description}</p>
-      <p style={{ fontSize: '32px', fontWeight: 700, marginBottom: '20px' }}>{info.amount.toLocaleString()} RWF</p>
+      <p style={{ fontSize: '32px', fontWeight: 700, marginBottom: '20px' }}>{info.amount.toLocaleString('en-US')} RWF</p>
 
       {info.status === 'PENDING' && (
         <>

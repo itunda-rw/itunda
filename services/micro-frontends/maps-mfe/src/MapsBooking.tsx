@@ -101,7 +101,7 @@ function BookingWidget({ merchantId, service, onBooked }: { merchantId: string; 
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Book {service.name} ({service.durationMinutes} min)</p>
       {service.requiresPrepay && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-          Requesting this slot holds a {service.price.toLocaleString()} RWF deposit from your account.
+          Requesting this slot holds a {service.price.toLocaleString('en-US')} RWF deposit from your account.
         </p>
       )}
       <input
@@ -166,7 +166,7 @@ export function MerchantBookableServicesSection({ merchantId }: { merchantId: st
             onClick={() => setActiveService(service)}
           >
             <span>{service.name} · {service.durationMinutes} min</span>
-            <span>{service.price.toLocaleString()} RWF</span>
+            <span>{service.price.toLocaleString('en-US')} RWF</span>
           </button>
         ),
       )}
@@ -208,7 +208,7 @@ function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
                 {c.description && <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{c.description}</p>}
               </div>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>
-                {c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`}
+                {c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString('en-US')} RWF off`}
               </p>
             </div>
           ))}
@@ -243,7 +243,7 @@ function BookingDepositBadge({ bookingId }: { bookingId: string }) {
   if (!deposit) return null;
   return (
     <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 6px', borderRadius: '999px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
-      {DEPOSIT_STATUS_LABEL[deposit.status]} · {deposit.amount.toLocaleString()} RWF
+      {DEPOSIT_STATUS_LABEL[deposit.status]} · {deposit.amount.toLocaleString('en-US')} RWF
     </span>
   );
 }

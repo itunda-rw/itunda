@@ -58,7 +58,7 @@ export function TransitCollectScreen() {
     return (
       <div className="itunda-flat-section" style={{ textAlign: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, color: 'var(--itunda-green)' }}>Collected</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', marginTop: '4px' }}>{collected.fare.toLocaleString()} RWF · {collected.operator}</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', marginTop: '4px' }}>{collected.fare.toLocaleString('en-US')} RWF · {collected.operator}</p>
         <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '16px', width: '100%' }} onClick={reset}>
           Collect next fare
         </button>
@@ -116,10 +116,10 @@ export function TransitCollectScreen() {
           value={fare} onChange={(e) => setFare(Number(e.target.value))}
           style={{ flex: 1 }}
         />
-        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString()} RWF</span>
+        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString('en-US')} RWF</span>
       </div>
       <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy} onClick={handleCollect}>
-        {busy ? 'Collecting…' : `Collect ${fare.toLocaleString()} RWF`}
+        {busy ? 'Collecting…' : `Collect ${fare.toLocaleString('en-US')} RWF`}
       </button>
       <button onClick={reset} style={{ width: '100%', marginTop: '8px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
         Scan a different code

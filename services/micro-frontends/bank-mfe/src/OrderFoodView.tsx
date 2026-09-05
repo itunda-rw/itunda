@@ -179,10 +179,10 @@ export function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversat
       <div style={{ textAlign: 'center', padding: '28px' }}>
         <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
-        <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString('en-US')} RWF</p>
         {confirmed.promotionDiscount > 0 && (
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-green)', marginBottom: '4px' }}>
-            {confirmed.promotionDiscount.toLocaleString()} RWF off, on us
+            {confirmed.promotionDiscount.toLocaleString('en-US')} RWF off, on us
           </p>
         )}
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
@@ -407,7 +407,7 @@ export function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversat
                   )}
                   {/* Real Baemin 찜 (favorites) count (2026-08-16) -- see
                       ShoppingController.getEligibleMerchants's own doc comment. */}
-                  {!!r.favoriteCount && r.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {r.favoriteCount.toLocaleString()}</span>}
+                  {!!r.favoriteCount && r.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {r.favoriteCount.toLocaleString('en-US')}</span>}
                   {r.distanceKm != null && <span>· {r.distanceKm.toFixed(1)} km</span>}
                   {r.deliveryTimeMinutes != null && <span>· ~{r.deliveryTimeMinutes} min</span>}
                   {/* Real Uber Eats-style "busy kitchen" delay explanation (2026-08-16) --
@@ -420,7 +420,7 @@ export function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversat
                       schedule) (2026-08-16) -- see Merchant.isClosedToday's own doc
                       comment. */}
                   {r.closedToday && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <SoldOutGlyph size={12} /> Closed today</span>}
-                  {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
+                  {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString('en-US')} RWF</span>}
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>
                 {/* Real "Discount" badge (itunda Eats redesign, 2026-08-28) -- see

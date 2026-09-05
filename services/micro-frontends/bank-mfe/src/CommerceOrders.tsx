@@ -34,7 +34,7 @@ export function CommerceOrderCard({ order, action }: { order: CommerceOrder; act
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{order.deliveryAddress}</p>
         </div>
-        <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
+        <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString('en-US')} RWF</span>
       </div>
       {order.status === 'SHIPPED' && (
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowLiveTracking((v) => !v)}>
@@ -70,12 +70,12 @@ export function PriceTiersDisplay({ productId, regularPrice }: { productId: stri
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           <span>1+</span>
-          <span>{regularPrice.toLocaleString()} RWF each</span>
+          <span>{regularPrice.toLocaleString('en-US')} RWF each</span>
         </div>
         {tiers.map((t) => (
           <div key={t.minQuantity} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)', fontWeight: 600 }}>
             <span>{t.minQuantity}+</span>
-            <span>{t.unitPrice.toLocaleString()} RWF each</span>
+            <span>{t.unitPrice.toLocaleString('en-US')} RWF each</span>
           </div>
         ))}
       </div>

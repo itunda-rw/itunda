@@ -145,7 +145,7 @@ export function MotoOwnershipView() {
             />
             {previewDownPayment > 0 && (
               <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-                Down payment target (30%): {previewDownPayment.toLocaleString()} RWF
+                Down payment target (30%): {previewDownPayment.toLocaleString('en-US')} RWF
               </p>
             )}
             <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'create'} onClick={handleCreate}>
@@ -164,13 +164,13 @@ export function MotoOwnershipView() {
               return (
                 <div key={plan.id} className="itunda-flat-section">
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{plan.bikePrice.toLocaleString()} RWF bike</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{plan.bikePrice.toLocaleString('en-US')} RWF bike</p>
                     <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{plan.status}</span>
                   </div>
                   {plan.status === 'SAVING' && (
                     <>
                       <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-                        Saved {plan.savedAmount.toLocaleString()} / {plan.downPaymentTarget.toLocaleString()} RWF down payment
+                        Saved {plan.savedAmount.toLocaleString('en-US')} / {plan.downPaymentTarget.toLocaleString('en-US')} RWF down payment
                       </p>
                       <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--itunda-indigo)' }} />
@@ -192,7 +192,7 @@ export function MotoOwnershipView() {
                         {plan.savedAmount >= plan.downPaymentTarget && (
                           <>
                             <p style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
-                              This releases your full {plan.bikePrice.toLocaleString()} RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.
+                              This releases your full {plan.bikePrice.toLocaleString('en-US')} RWF bike price to your account (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.
                             </p>
                             <button className="itunda-btn itunda-btn-primary" disabled={busyId === plan.id} onClick={() => handleConvert(plan.id)}>
                               {busyId === plan.id ? 'Converting…' : 'Convert to loan'}
@@ -204,7 +204,7 @@ export function MotoOwnershipView() {
                   )}
                   {plan.status === 'LOAN_ACTIVE' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Loan outstanding: {plan.loanOutstanding.toLocaleString()} RWF</p>
+                      <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Loan outstanding: {plan.loanOutstanding.toLocaleString('en-US')} RWF</p>
                       <input
                         type="number" value={repayAmounts[plan.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [plan.id]: e.target.value }))}
                         placeholder="Repayment amount (RWF)"

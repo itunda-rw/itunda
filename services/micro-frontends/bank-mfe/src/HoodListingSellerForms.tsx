@@ -83,7 +83,7 @@ export function HoodListingSellerForms({
                   disabled={boosting}
                   onClick={() => handleBoost(Number(days))}
                 >
-                  {days}d · {price.toLocaleString()} RWF
+                  {days}d · {price.toLocaleString('en-US')} RWF
                 </button>
               ))}
             </div>

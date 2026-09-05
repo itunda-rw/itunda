@@ -42,11 +42,11 @@ function ReconciliationCard({ reconciliation, onResolved }: { reconciliation: Ag
           </p>
         </div>
         <span style={{ fontSize: '16px', fontWeight: 700, color: short ? 'var(--itunda-red)' : 'var(--itunda-green)' }}>
-          {short ? '' : '+'}{reconciliation.variance.toLocaleString()} RWF
+          {short ? '' : '+'}{reconciliation.variance.toLocaleString('en-US')} RWF
         </span>
       </div>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
-        Expected {reconciliation.expectedCash.toLocaleString()} RWF · Counted {reconciliation.countedCash.toLocaleString()} RWF
+        Expected {reconciliation.expectedCash.toLocaleString('en-US')} RWF · Counted {reconciliation.countedCash.toLocaleString('en-US')} RWF
       </p>
 
       <textarea
@@ -123,7 +123,7 @@ function ReconciliationReportView() {
             <div className="itunda-card" style={{ flex: 1 }}>
               <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Total variance</p>
               <p style={{ fontSize: '20px', fontWeight: 700, color: report.totalVariance < 0 ? 'var(--itunda-red)' : 'var(--itunda-green)' }}>
-                {report.totalVariance.toLocaleString()} RWF
+                {report.totalVariance.toLocaleString('en-US')} RWF
               </p>
             </div>
           </div>
@@ -144,8 +144,8 @@ function ReconciliationReportView() {
                     <tr key={r.id} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 600 }}>{r.agentId}</td>
                       <td style={{ padding: '12px 16px' }}>{r.businessDate}</td>
-                      <td style={{ padding: '12px 16px' }}>{r.expectedCash.toLocaleString()}</td>
-                      <td style={{ padding: '12px 16px' }}>{r.countedCash.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px' }}>{r.expectedCash.toLocaleString('en-US')}</td>
+                      <td style={{ padding: '12px 16px' }}>{r.countedCash.toLocaleString('en-US')}</td>
                       <td style={{ padding: '12px 16px', color: r.variance !== 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                         {r.variance > 0 ? `+${r.variance}` : r.variance}
                       </td>

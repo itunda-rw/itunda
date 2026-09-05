@@ -64,7 +64,7 @@ export function RewardsView() {
     setMessage(null);
     try {
       const result = await claimRewardTask(taskId);
-      setMessage(`${result.message} (+${result.rewardAmount.toLocaleString()} RWF)`);
+      setMessage(`${result.message} (+${result.rewardAmount.toLocaleString('en-US')} RWF)`);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -88,9 +88,9 @@ export function RewardsView() {
         // Real lottery-style bonus win (item 248) -- always named separately from the
         // guaranteed reward, never folded into one number, so it's clear which part was
         // guaranteed and which was the real, disclosed-odds bonus.
-        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount.toLocaleString()} RWF — plus a lottery bonus: +${result.lotteryBonusWonAmount.toLocaleString()} RWF! 🎉`);
+        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount.toLocaleString('en-US')} RWF — plus a lottery bonus: +${result.lotteryBonusWonAmount.toLocaleString('en-US')} RWF! 🎉`);
       } else if (result.newlyEarnedAmount > 0) {
-        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount.toLocaleString()} RWF`);
+        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount.toLocaleString('en-US')} RWF`);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -114,7 +114,7 @@ export function RewardsView() {
       <PetCard />
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total earned</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{tasks.rewardsTotal.toLocaleString()} RWF</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{tasks.rewardsTotal.toLocaleString('en-US')} RWF</h2>
       </div>
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Missions</h3>
@@ -132,7 +132,7 @@ export function RewardsView() {
                 disabled={!t.eligible || claimingId === t.id}
                 onClick={() => handleClaim(t.id)}
               >
-                {claimingId === t.id ? '...' : `+${t.rewardAmount.toLocaleString()} RWF`}
+                {claimingId === t.id ? '...' : `+${t.rewardAmount.toLocaleString('en-US')} RWF`}
               </button>
             )}
           </div>
@@ -148,7 +148,7 @@ export function RewardsView() {
           <ul style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', margin: '6px 0 0', paddingLeft: '16px' }}>
             {stepTiers.map((tier) => (
               <li key={tier.stepsRequired}>
-                {tier.stepsRequired.toLocaleString()} steps: +{tier.rewardAmount} RWF guaranteed, plus a {Math.round(tier.lotteryOdds * 100)}% chance of a +{tier.lotteryBonusAmount} RWF bonus
+                {tier.stepsRequired.toLocaleString('en-US')} steps: +{tier.rewardAmount} RWF guaranteed, plus a {Math.round(tier.lotteryOdds * 100)}% chance of a +{tier.lotteryBonusAmount} RWF bonus
               </li>
             ))}
           </ul>

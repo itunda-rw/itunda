@@ -141,9 +141,9 @@ export function BucketTransactionList({ transactions, error }: { transactions: B
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: tx.isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
-                  {tx.isCredit ? '+' : '-'}{tx.amount.toLocaleString()}
+                  {tx.isCredit ? '+' : '-'}{tx.amount.toLocaleString('en-US')}
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)' }}>{tx.balanceAfter.toLocaleString()}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)' }}>{tx.balanceAfter.toLocaleString('en-US')}</p>
               </div>
             </motion.div>
           ))}

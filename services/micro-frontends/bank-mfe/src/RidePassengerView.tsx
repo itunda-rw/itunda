@@ -246,7 +246,7 @@ export function RidePassengerView({ onReportIssue }: { onReportIssue: (transacti
           {pickup && dropoff && (
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
               {estimatedFare != null
-                ? `Estimated fare: ${estimatedFare.toLocaleString()} RWF`
+                ? `Estimated fare: ${estimatedFare.toLocaleString('en-US')} RWF`
                 : 'Estimating fare…'}
             </p>
           )}

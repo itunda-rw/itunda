@@ -50,7 +50,7 @@ export function SubscriptionsView() {
     <div>
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Estimated monthly total</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{total.toLocaleString()} RWF</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{total.toLocaleString('en-US')} RWF</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
       </div>
       {// Real copy-voice fix (item 244, round 6 of the empty-state pass): this is
@@ -68,9 +68,9 @@ export function SubscriptionsView() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{s.cadence === 'WEEKLY' ? 'Weekly' : 'Monthly'} · {s.occurrenceCount} payments seen</p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{s.amount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{s.amount.toLocaleString('en-US')} RWF</p>
                 {s.priceIncreased && s.previousAmount !== null && (
-                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)' }}>↑ from {s.previousAmount.toLocaleString()} RWF</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-red)' }}>↑ from {s.previousAmount.toLocaleString('en-US')} RWF</p>
                 )}
               </div>
             </div>

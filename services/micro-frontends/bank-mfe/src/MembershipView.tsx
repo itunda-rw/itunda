@@ -60,15 +60,15 @@ export function MembershipView({ onBack, onOpenRewards, onOpenPayMoney }: { onBa
         ) : (
           <div style={{ padding: '4px 20px 24px' }}>
             <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{t('pay.membershipTotal')}</p>
-            <p style={{ margin: '6px 0 24px', fontSize: '32px', fontWeight: 700, letterSpacing: '-0.5px' }}>{combinedTotal.toLocaleString()} RWF</p>
+            <p style={{ margin: '6px 0 24px', fontSize: '32px', fontWeight: 700, letterSpacing: '-0.5px' }}>{combinedTotal.toLocaleString('en-US')} RWF</p>
 
             <button onClick={onOpenRewards} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)', textAlign: 'left' }}>
               <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-700)' }}>{t('pay.membershipAvailablePoints')}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{(rewards?.rewardsTotal ?? 0).toLocaleString()} RWF</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{(rewards?.rewardsTotal ?? 0).toLocaleString('en-US')} RWF</span>
             </button>
             <button onClick={onOpenPayMoney} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)', textAlign: 'left' }}>
               <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-700)' }}>{t('pay.membershipPayMoney')}</span>
-              <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{(payBalance ?? 0).toLocaleString()} RWF</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{(payBalance ?? 0).toLocaleString('en-US')} RWF</span>
             </button>
 
             {loyalty && loyalty.balances.length > 0 && (
@@ -77,7 +77,7 @@ export function MembershipView({ onBack, onOpenRewards, onOpenPayMoney }: { onBa
                 {loyalty.balances.map((b) => (
                   <div key={b.merchantId} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
                     <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)' }}>{b.merchantName}</span>
-                    <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{b.pointBalance.toLocaleString()}</span>
+                    <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{b.pointBalance.toLocaleString('en-US')}</span>
                   </div>
                 ))}
               </div>

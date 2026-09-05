@@ -167,7 +167,7 @@ export default function BikeShareView() {
           {justCompletedRental && (
             <div style={{ textAlign: 'center', padding: '10px 0' }}>
               <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
-              <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString('en-US')} RWF</p>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
               <button className="itunda-btn itunda-btn-secondary" onClick={() => setJustCompletedRental(null)} style={{ marginTop: '12px' }}>
                 Done
@@ -227,7 +227,7 @@ export default function BikeShareView() {
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
                   <div key={r.id} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
-                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString('en-US')} RWF</p>
                   </div>
                 ))}
               </div>

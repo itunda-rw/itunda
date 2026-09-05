@@ -66,7 +66,7 @@ export function OverdraftView() {
       const res = await drawOverdraft(amount);
       setAccount((prev) => (prev ? { ...prev, drawnBalance: res.drawnBalance } : prev));
       setDrawAmount('');
-      setNotice(`Drew ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF still available.`);
+      setNotice(`Drew ${res.amount.toLocaleString('en-US')} RWF -- ${res.availableCredit.toLocaleString('en-US')} RWF still available.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -84,7 +84,7 @@ export function OverdraftView() {
       const res = await repayOverdraft(amount);
       setAccount((prev) => (prev ? { ...prev, drawnBalance: res.drawnBalance } : prev));
       setRepayAmount('');
-      setNotice(`Repaid ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF now available.`);
+      setNotice(`Repaid ${res.amount.toLocaleString('en-US')} RWF -- ${res.availableCredit.toLocaleString('en-US')} RWF now available.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -117,8 +117,8 @@ export function OverdraftView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Overdraft line</h4>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Drawn: {account.drawnBalance.toLocaleString()} RWF of {account.creditLimit.toLocaleString()} RWF</p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Drawn: {account.drawnBalance.toLocaleString('en-US')} RWF of {account.creditLimit.toLocaleString('en-US')} RWF</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available to draw: {availableCredit.toLocaleString('en-US')} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
       {notice && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>{notice}</p>}
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <input
@@ -181,7 +181,7 @@ export function PostpaidCreditView() {
       const res = await spendPostpaidCredit(amount);
       setLine((prev) => (prev ? { ...prev, currentBalance: res.currentBalance } : prev));
       setSpendAmount('');
-      setNotice(`Added ${res.amount.toLocaleString()} RWF to your account -- ${res.availableCredit.toLocaleString()} RWF still available.`);
+      setNotice(`Added ${res.amount.toLocaleString('en-US')} RWF to your account -- ${res.availableCredit.toLocaleString('en-US')} RWF still available.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -199,7 +199,7 @@ export function PostpaidCreditView() {
       const res = await repayPostpaidCredit(amount);
       setLine((prev) => (prev ? { ...prev, currentBalance: res.currentBalance, status: res.currentBalance <= 0 ? 'ACTIVE' : prev.status } : prev));
       setRepayAmount('');
-      setNotice(`Repaid ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF now available.`);
+      setNotice(`Repaid ${res.amount.toLocaleString('en-US')} RWF -- ${res.availableCredit.toLocaleString('en-US')} RWF now available.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
     } finally {
@@ -228,8 +228,8 @@ export function PostpaidCreditView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Postpaid credit</h4>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Owed: {line.currentBalance.toLocaleString()} RWF of {line.creditLimit.toLocaleString()} RWF</p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available: {availableCredit.toLocaleString()} RWF · interest-free if repaid within 30 days</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Owed: {line.currentBalance.toLocaleString('en-US')} RWF of {line.creditLimit.toLocaleString('en-US')} RWF</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Available: {availableCredit.toLocaleString('en-US')} RWF · interest-free if repaid within 30 days</p>
       {line.status === 'SUSPENDED' && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', fontWeight: 700 }}>Suspended -- repay your overdue balance to keep spending.</p>
       )}

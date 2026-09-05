@@ -328,7 +328,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
           </p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
             {listing.category}
-            {displayedViewCount != null && <> · Views {displayedViewCount.toLocaleString()}</>}
+            {displayedViewCount != null && <> · Views {displayedViewCount.toLocaleString('en-US')}</>}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -344,7 +344,7 @@ export function ListingCard({ listing, isMine, onChanged, onMessageSeller, favor
             </button>
           )}
           {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
-          <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{listing.price.toLocaleString('en-US')} RWF</span>
         </div>
       </div>
       {/* Real seller-uploaded photo -- see lib/marketplace.ts's own doc comment on

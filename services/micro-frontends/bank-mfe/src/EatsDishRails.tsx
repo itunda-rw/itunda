@@ -29,7 +29,7 @@ function DishRail({ title, dishes, onOpenRestaurant }: { title: string; dishes: 
             </div>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{d.name}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{d.merchantName}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{d.price.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{d.price.toLocaleString('en-US')} RWF</p>
           </button>
         ))}
       </div>

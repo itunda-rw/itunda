@@ -43,7 +43,7 @@ function DisputeCard({ dispute, onResolved }: { dispute: MarketplaceEscrowDisput
           </p>
         </div>
         <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-          {dispute.amount.toLocaleString()} RWF
+          {dispute.amount.toLocaleString('en-US')} RWF
         </span>
       </div>
       {dispute.disputeReason && (
@@ -52,14 +52,14 @@ function DisputeCard({ dispute, onResolved }: { dispute: MarketplaceEscrowDisput
         </p>
       )}
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-        Disputed {new Date(dispute.updatedAt).toLocaleString()} · Escrow fee {dispute.fee.toLocaleString()} RWF
+        Disputed {new Date(dispute.updatedAt).toLocaleString()} · Escrow fee {dispute.fee.toLocaleString('en-US')} RWF
       </p>
       {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {confirming && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
           {confirming === 'release'
-            ? `Release ${dispute.amount.toLocaleString()} RWF to the seller?`
-            : `Refund ${dispute.amount.toLocaleString()} RWF to the buyer?`}{' '}
+            ? `Release ${dispute.amount.toLocaleString('en-US')} RWF to the seller?`
+            : `Refund ${dispute.amount.toLocaleString('en-US')} RWF to the buyer?`}{' '}
           This can't be undone.
         </p>
       )}

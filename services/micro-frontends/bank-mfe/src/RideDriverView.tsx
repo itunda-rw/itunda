@@ -288,11 +288,11 @@ export function RideDriverView() {
             </div>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Gross fare</p>
-              <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{earnings.reduce((sum, d) => sum + d.grossFare, 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700 }}>{earnings.reduce((sum, d) => sum + d.grossFare, 0).toLocaleString('en-US')} RWF</p>
             </div>
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Net earnings</p>
-              <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{earnings.reduce((sum, d) => sum + d.netEarnings, 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-green)' }}>{earnings.reduce((sum, d) => sum + d.netEarnings, 0).toLocaleString('en-US')} RWF</p>
             </div>
           </div>
         </div>

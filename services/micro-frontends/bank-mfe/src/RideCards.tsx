@@ -45,7 +45,7 @@ export function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?:
             </p>
           ))}
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString('en-US')} RWF</p>
           {trip.scheduledFor && (
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-indigo)', fontWeight: 700, marginTop: '2px' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><ClockGlyph size={16} /> Scheduled for {new Date(trip.scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
@@ -221,7 +221,7 @@ export function TipDriverPrompt({ tripId, onTipped }: { tripId: string; onTipped
               color: amount === preset ? 'white' : 'var(--itunda-grey-700)',
             }}
           >
-            {preset.toLocaleString()}
+            {preset.toLocaleString('en-US')}
           </button>
         ))}
       </div>

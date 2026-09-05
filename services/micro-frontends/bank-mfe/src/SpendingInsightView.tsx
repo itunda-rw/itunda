@@ -41,7 +41,7 @@ function MonthlySpendingReportCard() {
     <div className="itunda-flat-section">
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>This month so far</p>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-        <h3 style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700 }}>{report.currentTotal.toLocaleString()} RWF</h3>
+        <h3 style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700 }}>{report.currentTotal.toLocaleString('en-US')} RWF</h3>
         {report.percentChange !== null && (
           <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: report.percentChange > 0 ? 'var(--itunda-red)' : 'var(--itunda-green)' }}>
             {report.percentChange > 0 ? '▲' : '▼'} {Math.abs(report.percentChange)}% vs last month
@@ -50,7 +50,7 @@ function MonthlySpendingReportCard() {
       </div>
       {changed.slice(0, 3).map((c) => (
         <p key={c.name} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-          {c.name}: {c.currentAmount.toLocaleString()} RWF ({(c.percentChange ?? 0) > 0 ? '+' : ''}{c.percentChange}% vs last month)
+          {c.name}: {c.currentAmount.toLocaleString('en-US')} RWF ({(c.percentChange ?? 0) > 0 ? '+' : ''}{c.percentChange}% vs last month)
         </p>
       ))}
     </div>
@@ -87,7 +87,7 @@ export function SpendingInsightView() {
       <MonthlySpendingReportCard />
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total spent, all time</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{totalSpent.toLocaleString()} RWF</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{totalSpent.toLocaleString('en-US')} RWF</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Real, ledger-based -- what every account debit actually paid for.</p>
       </div>
       <div className="itunda-flat-section">
@@ -99,7 +99,7 @@ export function SpendingInsightView() {
             <div key={c.name} style={{ padding: '8px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '4px' }}>
                 <span>{c.name}</span>
-                <span style={{ fontWeight: 700 }}>{c.amount.toLocaleString()} RWF</span>
+                <span style={{ fontWeight: 700 }}>{c.amount.toLocaleString('en-US')} RWF</span>
               </div>
               <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${(c.amount / maxAmount) * 100}%`, backgroundColor: 'var(--itunda-indigo)', borderRadius: '3px' }} />
@@ -149,7 +149,7 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
             <div key={b.category ?? 'overall'} style={{ padding: '8px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', marginBottom: '4px' }}>
                 <span>{b.category ?? 'Overall'}</span>
-                <span style={{ fontWeight: 700, color: barColor }}>{b.spent.toLocaleString()} / {b.monthlyLimit.toLocaleString()} RWF</span>
+                <span style={{ fontWeight: 700, color: barColor }}>{b.spent.toLocaleString('en-US')} / {b.monthlyLimit.toLocaleString('en-US')} RWF</span>
               </div>
               <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${Math.min(100, b.percentUsed)}%`, backgroundColor: barColor, borderRadius: '3px' }} />

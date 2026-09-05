@@ -93,12 +93,12 @@ export function MerchantList({ merchants, totalItems, onSelectMerchant }: {
                   <IconStar size={11} color="#F5A623" fill="#F5A623" /> {m.rating.toFixed(1)} ({m.reviewCount})
                 </span>
               )}
-              {!!m.favoriteCount && m.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {m.favoriteCount.toLocaleString()}</span>}
+              {!!m.favoriteCount && m.favoriteCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <HeartFilled size={11} /> {m.favoriteCount.toLocaleString('en-US')}</span>}
               {m.distanceKm != null && <span>· {m.distanceKm.toFixed(1)} km</span>}
               {m.deliveryTimeMinutes != null && <span>· ~{m.deliveryTimeMinutes} min</span>}
               {m.isBusy && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <FlameGlyph size={12} /> Busy, delivery may take longer</span>}
               {m.closedToday && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>· <SoldOutGlyph size={12} /> Closed today</span>}
-              {m.minOrderAmount != null && <span>· Min {m.minOrderAmount.toLocaleString()} RWF</span>}
+              {m.minOrderAmount != null && <span>· Min {m.minOrderAmount.toLocaleString('en-US')} RWF</span>}
               {!m.category && m.rating == null && m.distanceKm == null && <span>Real cart checkout, real delivery tracking</span>}
             </p>
           </div>

@@ -127,7 +127,7 @@ function MenuTab({ detail }: { detail: MapPlaceDetail }) {
           {item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />}
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: '13px', fontWeight: 700, color: TEXT }}>{item.name}</p>
-            <p style={{ fontSize: '12px', color: TEXT_SECONDARY }}>{item.price.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '12px', color: TEXT_SECONDARY }}>{item.price.toLocaleString('en-US')} RWF</p>
           </div>
         </div>
       ))}

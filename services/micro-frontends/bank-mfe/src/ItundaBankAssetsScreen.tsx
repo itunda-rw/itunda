@@ -78,17 +78,17 @@ export function ItundaBankAssetsScreen({ onBack }: { onBack: () => void }) {
     const common = { onBack: () => setOpenRow(null) };
     switch (openRow.kind) {
       case 'interestJar':
-        return <BucketDetailScreen {...common} title="Interest Jar" subtitle="Safe Box" balanceText={`${openRow.jar.balance.toLocaleString()} RWF`} fetchTransactions={fetchInterestJarTransactions} />;
+        return <BucketDetailScreen {...common} title="Interest Jar" subtitle="Safe Box" balanceText={`${openRow.jar.balance.toLocaleString('en-US')} RWF`} fetchTransactions={fetchInterestJarTransactions} />;
       case 'goal':
-        return <BucketDetailScreen {...common} title={openRow.goal.name} subtitle="Savings Goal" balanceText={`${openRow.goal.currentAmount.toLocaleString()} RWF`} fetchTransactions={() => fetchGoalTransactions(openRow.goal.id)} />;
+        return <BucketDetailScreen {...common} title={openRow.goal.name} subtitle="Savings Goal" balanceText={`${openRow.goal.currentAmount.toLocaleString('en-US')} RWF`} fetchTransactions={() => fetchGoalTransactions(openRow.goal.id)} />;
       case 'weekly':
-        return <BucketDetailScreen {...common} title={openRow.plan.name} subtitle="26-Week Savings" balanceText={`${openRow.plan.currentAmount.toLocaleString()} RWF`} fetchTransactions={() => fetchWeeklySavingsPlanTransactions(openRow.plan.id)} />;
+        return <BucketDetailScreen {...common} title={openRow.plan.name} subtitle="26-Week Savings" balanceText={`${openRow.plan.currentAmount.toLocaleString('en-US')} RWF`} fetchTransactions={() => fetchWeeklySavingsPlanTransactions(openRow.plan.id)} />;
       case 'grow31':
-        return <BucketDetailScreen {...common} title={openRow.plan.name} subtitle="31-Day Savings" balanceText={`${openRow.plan.totalSaved.toLocaleString()} RWF`} fetchTransactions={() => fetchGrow31SavingsPlanTransactions(openRow.plan.id)} />;
+        return <BucketDetailScreen {...common} title={openRow.plan.name} subtitle="31-Day Savings" balanceText={`${openRow.plan.totalSaved.toLocaleString('en-US')} RWF`} fetchTransactions={() => fetchGrow31SavingsPlanTransactions(openRow.plan.id)} />;
       case 'upfront':
-        return <BucketDetailScreen {...common} title="12-Month Deposit" subtitle="Upfront Interest Deposit" balanceText={`${openRow.deposit.principal.toLocaleString()} RWF`} fetchTransactions={() => fetchUpfrontDepositTransactions(openRow.deposit.id)} />;
+        return <BucketDetailScreen {...common} title="12-Month Deposit" subtitle="Upfront Interest Deposit" balanceText={`${openRow.deposit.principal.toLocaleString('en-US')} RWF`} fetchTransactions={() => fetchUpfrontDepositTransactions(openRow.deposit.id)} />;
       case 'youth':
-        return <BucketDetailScreen {...common} title="Youth Account" subtitle={openRow.account.accountNumber} balanceText={`${openRow.account.balance.toLocaleString()} RWF`} fetchTransactions={() => fetchAccountTransactions(openRow.account.id).then((txs) => transactionsToBucketTransactions(txs, openRow.account.id, openRow.account.balance))} />;
+        return <BucketDetailScreen {...common} title="Youth Account" subtitle={openRow.account.accountNumber} balanceText={`${openRow.account.balance.toLocaleString('en-US')} RWF`} fetchTransactions={() => fetchAccountTransactions(openRow.account.id).then((txs) => transactionsToBucketTransactions(txs, openRow.account.id, openRow.account.balance))} />;
     }
   }
 
@@ -121,7 +121,7 @@ export function ItundaBankAssetsScreen({ onBack }: { onBack: () => void }) {
               >
                 <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{rowLabel(row)}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{rowBalance(row).toLocaleString()} RWF</span>
+                  <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{rowBalance(row).toLocaleString('en-US')} RWF</span>
                   <IconChevronRight size={16} color="var(--itunda-grey-400)" />
                 </span>
               </button>

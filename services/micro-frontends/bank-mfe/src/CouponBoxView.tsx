@@ -21,7 +21,7 @@ import { IconBack } from './icons/ItundaIcons';
 import { useDeferredLoading } from './useDeferredLoading';
 
 function couponDiscountLabel(c: CouponBrowseView['coupon']) {
-  return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
+  return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString('en-US')} RWF off`;
 }
 
 export function CouponBoxView({ onBack, onBrowseMerchants }: { onBack: () => void; onBrowseMerchants: () => void }) {
@@ -95,7 +95,7 @@ export function CouponBoxView({ onBack, onBrowseMerchants }: { onBack: () => voi
           (redemptions ?? []).map((r) => (
             <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
               <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{new Date(r.redeemedAt).toLocaleDateString()}</p>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>-{r.discountAmount.toLocaleString()} RWF</p>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>-{r.discountAmount.toLocaleString('en-US')} RWF</p>
             </div>
           ))
         )}

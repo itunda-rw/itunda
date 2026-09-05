@@ -278,7 +278,7 @@ export function TipRiderPrompt({ orderId, onTipped }: { orderId: string; onTippe
               color: amount === preset ? 'white' : 'var(--itunda-grey-700)',
             }}
           >
-            {preset.toLocaleString()}
+            {preset.toLocaleString('en-US')}
           </button>
         ))}
       </div>

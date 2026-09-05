@@ -209,8 +209,8 @@ export function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?
         myLoans.length === 0 ? <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>You have no loans yet.</p> :
         myLoans.map((loan) => (
           <div key={loan.id} className="itunda-flat-section">
-            <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{loan.principal.toLocaleString()} RWF loan</h4>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Outstanding: {loan.outstanding.toLocaleString()} RWF</p>
+            <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{loan.principal.toLocaleString('en-US')} RWF loan</h4>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Outstanding: {loan.outstanding.toLocaleString('en-US')} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Status: {loan.status} · {loan.interestRate}%</p>
             {loan.status === 'ACTIVE' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
@@ -287,7 +287,7 @@ function LoanOfferCard({ offer, busy, isBestRate, onApply }: { offer: LoanOffer;
       )}
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{offer.name}</h4>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{offer.lenderName}</p>
-      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Up to {offer.maxAmount.toLocaleString()} RWF · {offer.interestRate}% · {offer.term}</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>Up to {offer.maxAmount.toLocaleString('en-US')} RWF · {offer.interestRate}% · {offer.term}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{offer.requirements}</p>
       <input
         type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"

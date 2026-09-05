@@ -169,12 +169,12 @@ export function DirectSplitBillsView({
           <div key={splitBill.id} className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{splitBill.description}</h4>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-              Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}{modeLabel}
+              Total {splitBill.totalAmount.toLocaleString('en-US')} RWF · {splitBill.status}{modeLabel}
               {splitBill.currentRound > 1 ? ` · Round ${splitBill.currentRound}` : ''}
             </p>
             {participants.map((p) => (
               <p key={p.id} style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>
-                {p.userId === otherUserId ? otherUserName : 'You'}: {p.shareAmount.toLocaleString()} RWF ({p.status})
+                {p.userId === otherUserId ? otherUserName : 'You'}: {p.shareAmount.toLocaleString('en-US')} RWF ({p.status})
               </p>
             ))}
             {splitBill.receiptImageUrl && (
@@ -188,7 +188,7 @@ export function DirectSplitBillsView({
                 disabled={busyId === splitBill.id}
                 onClick={() => handlePay(splitBill.id)}
               >
-                {busyId === splitBill.id ? 'Paying…' : `Pay my share (${myShare.shareAmount.toLocaleString()} RWF)`}
+                {busyId === splitBill.id ? 'Paying…' : `Pay my share (${myShare.shareAmount.toLocaleString('en-US')} RWF)`}
               </button>
             )}
             {isOrganizer && (

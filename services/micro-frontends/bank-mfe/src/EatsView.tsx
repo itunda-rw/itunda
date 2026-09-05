@@ -69,7 +69,7 @@ function PlatformMembershipCard() {
                 onClick={() => handleSubscribe(tier.days)}
                 style={{ flex: 1, fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, padding: '10px', borderRadius: 'var(--itunda-radius-md)', backgroundColor: 'var(--itunda-white)', color: 'var(--itunda-indigo)' }}
               >
-                {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString()} RWF`}
+                {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString('en-US')} RWF`}
               </button>
             ))}
           </div>
@@ -132,7 +132,7 @@ function EatsMembershipCard() {
                 onClick={() => handleSubscribe(tier.days)}
                 style={{ flex: 1, fontSize: 'var(--itunda-type-scale-13-size)' }}
               >
-                {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString()} RWF`}
+                {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString('en-US')} RWF`}
               </button>
             ))}
           </div>

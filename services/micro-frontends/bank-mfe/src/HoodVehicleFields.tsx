@@ -80,16 +80,16 @@ export function VehicleDetailSection({ listing }: { listing: Listing }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '14px', borderRadius: '12px', background: 'var(--itunda-grey-50)' }}>
       <h4 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Vehicle info</h4>
-      {listing.vehicleMileageKm != null && row('Mileage', `${listing.vehicleMileageKm.toLocaleString()} km`)}
+      {listing.vehicleMileageKm != null && row('Mileage', `${listing.vehicleMileageKm.toLocaleString('en-US')} km`)}
       {listing.vehicleInsuranceClaimCount != null && row('Insurance claims', String(listing.vehicleInsuranceClaimCount))}
       {listing.vehicleIsLeaseTakeover && (
         <>
           <h5 style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, marginTop: '4px' }}>Lease takeover</h5>
-          {listing.leaseTotalAcquisitionCost != null && row('Total acquisition cost', `${listing.leaseTotalAcquisitionCost.toLocaleString()} RWF`)}
-          {listing.leaseMonthlyPayment != null && row('Monthly payment', `${listing.leaseMonthlyPayment.toLocaleString()} RWF`)}
+          {listing.leaseTotalAcquisitionCost != null && row('Total acquisition cost', `${listing.leaseTotalAcquisitionCost.toLocaleString('en-US')} RWF`)}
+          {listing.leaseMonthlyPayment != null && row('Monthly payment', `${listing.leaseMonthlyPayment.toLocaleString('en-US')} RWF`)}
           {listing.leaseRemainingMonths != null && listing.leaseTotalMonths != null && row('Remaining', `${listing.leaseRemainingMonths} / ${listing.leaseTotalMonths} months`)}
-          {listing.leaseSubsidyAmount != null && row('Subsidy', `${listing.leaseSubsidyAmount.toLocaleString()} RWF`)}
-          {listing.leaseReturnFee != null && row('Return fee at end', `${listing.leaseReturnFee.toLocaleString()} RWF`)}
+          {listing.leaseSubsidyAmount != null && row('Subsidy', `${listing.leaseSubsidyAmount.toLocaleString('en-US')} RWF`)}
+          {listing.leaseReturnFee != null && row('Return fee at end', `${listing.leaseReturnFee.toLocaleString('en-US')} RWF`)}
         </>
       )}
     </div>

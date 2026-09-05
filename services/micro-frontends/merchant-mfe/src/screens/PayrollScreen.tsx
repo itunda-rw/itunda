@@ -116,7 +116,7 @@ function PayrollRunRow({ run, expanded, onToggle }: { run: PayrollRun; expanded:
         <div>
           <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{new Date(run.createdAt).toLocaleDateString()}</p>
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-            {t('payroll.employeesPaidCount', { count: run.employeeCount })} · {run.totalAmount.toLocaleString()} RWF
+            {t('payroll.employeesPaidCount', { count: run.employeeCount })} · {run.totalAmount.toLocaleString('en-US')} RWF
           </p>
         </div>
         <button onClick={onToggle} style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-indigo)' }}>
@@ -134,7 +134,7 @@ function PayrollRunRow({ run, expanded, onToggle }: { run: PayrollRun; expanded:
           {!error && payslips?.map((p) => (
             <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
               <span style={{ color: 'var(--itunda-grey-700)' }}>{p.employeeName}</span>
-              <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString()} RWF</span>
+              <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString('en-US')} RWF</span>
             </div>
           ))}
         </div>
@@ -278,7 +278,7 @@ function RosterTable({
           onClick={handleRunPayroll}
           disabled={running || roster.length === 0}
         >
-          {running ? t('payroll.running') : t('payroll.runPayrollButton', { total: total.toLocaleString() })}
+          {running ? t('payroll.running') : t('payroll.runPayrollButton', { total: total.toLocaleString('en-US') })}
         </button>
       </div>
       {runError && (
@@ -310,7 +310,7 @@ function RosterTable({
             {roster.map((employee) => (
               <tr key={employee.id} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
                 <td style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{employee.employeeName}</td>
-                <td style={{ padding: '10px 20px' }}>{employee.salaryAmount.toLocaleString()} RWF</td>
+                <td style={{ padding: '10px 20px' }}>{employee.salaryAmount.toLocaleString('en-US')} RWF</td>
                 <td style={{ padding: '10px 20px', textAlign: 'right' }}>
                   <button
                     onClick={() => onRemove(employee.id)}
@@ -335,7 +335,7 @@ function PayrollRunConfirmation({ result, onDone }: { result: PayrollRunResult; 
       <CircleCheck size={40} color="var(--itunda-green)" />
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('payroll.paidTitle')}</h2>
       <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-        {result.totalAmount.toLocaleString()} RWF
+        {result.totalAmount.toLocaleString('en-US')} RWF
       </p>
       <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{t('payroll.employeesPaidCount', { count: result.employeeCount })}</p>
       <div style={{ width: '100%', textAlign: 'left' }}>
@@ -345,7 +345,7 @@ function PayrollRunConfirmation({ result, onDone }: { result: PayrollRunResult; 
             style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           >
             <span style={{ color: 'var(--itunda-grey-700)' }}>{p.employeeName}</span>
-            <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString()} RWF</span>
+            <span style={{ fontWeight: 600 }}>{p.amount.toLocaleString('en-US')} RWF</span>
           </div>
         ))}
       </div>

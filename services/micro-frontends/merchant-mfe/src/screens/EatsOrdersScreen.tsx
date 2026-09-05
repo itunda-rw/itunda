@@ -110,7 +110,7 @@ export default function EatsOrdersScreen() {
                 </p>
                 <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{o.deliveryAddress}</p>
               </div>
-              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{o.totalAmount.toLocaleString()} RWF</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{o.totalAmount.toLocaleString('en-US')} RWF</span>
             </div>
             {o.deliveryNotes && (
               <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>

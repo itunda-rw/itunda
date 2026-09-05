@@ -31,7 +31,7 @@ export function EatsFrequentlyOrderedWith({ productId, onAdd }: { productId: str
               {item.imageUrl && <img src={item.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
             </div>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>{item.name}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{item.price.toLocaleString('en-US')} RWF</p>
             <button
               type="button"
               className="itunda-btn itunda-btn-secondary"

@@ -109,13 +109,13 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       {!advance && offer && offer.eligible && (
         <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('vendorAdvance.eligibleFor')}</p>
-          <h3 style={{ fontSize: '24px', fontWeight: 700 }}>{offer.offerAmount?.toLocaleString()} RWF</h3>
+          <h3 style={{ fontSize: '24px', fontWeight: 700 }}>{offer.offerAmount?.toLocaleString('en-US')} RWF</h3>
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
             {t('vendorAdvance.offerBody', {
-              feeAmount: offer.feeAmount?.toLocaleString() ?? '0',
+              feeAmount: offer.feeAmount?.toLocaleString('en-US') ?? '0',
               ratePercent: offer.collectionRatePercent ?? 0,
-              totalRepay: ((offer.offerAmount ?? 0) + (offer.feeAmount ?? 0)).toLocaleString(),
-              avgDaily: offer.averageDailySettlement?.toLocaleString() ?? '0',
+              totalRepay: ((offer.offerAmount ?? 0) + (offer.feeAmount ?? 0)).toLocaleString('en-US'),
+              avgDaily: offer.averageDailySettlement?.toLocaleString('en-US') ?? '0',
               tradingDays: offer.tradingDays ?? 0,
             })}
           </p>
@@ -136,7 +136,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       {advance && advance.status === 'REQUESTED' && (
         <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-            {t('vendorAdvance.readyToDisburseBody', { principalAmount: advance.principalAmount.toLocaleString() })}
+            {t('vendorAdvance.readyToDisburseBody', { principalAmount: advance.principalAmount.toLocaleString('en-US') })}
           </p>
           <button className="itunda-btn itunda-btn-primary" onClick={handleDisburse} disabled={busy}>
             {busy ? t('vendorAdvance.disbursing') : t('vendorAdvance.disburseButton')}
@@ -148,7 +148,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
         <>
           <div className="itunda-card">
             <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('vendorAdvance.remainingOwedLabel')}</p>
-            <h3 style={{ fontSize: '24px', fontWeight: 700 }}>{advance.remainingOwed.toLocaleString()} RWF</h3>
+            <h3 style={{ fontSize: '24px', fontWeight: 700 }}>{advance.remainingOwed.toLocaleString('en-US')} RWF</h3>
             <div
               style={{
                 marginTop: '8px', height: '8px', borderRadius: '4px', backgroundColor: 'var(--itunda-grey-200)', overflow: 'hidden',
@@ -165,12 +165,12 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
             <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>
               {advance.lastCollectionAt
                 ? t('vendorAdvance.progressBodyWithLastCollection', {
-                    totalOwed: advance.totalOwed.toLocaleString(),
+                    totalOwed: advance.totalOwed.toLocaleString('en-US'),
                     ratePercent: advance.collectionRatePercent,
                     lastCollectionDate: new Date(advance.lastCollectionAt).toLocaleDateString(),
                   })
                 : t('vendorAdvance.progressBody', {
-                    totalOwed: advance.totalOwed.toLocaleString(),
+                    totalOwed: advance.totalOwed.toLocaleString('en-US'),
                     ratePercent: advance.collectionRatePercent,
                   })}
             </p>

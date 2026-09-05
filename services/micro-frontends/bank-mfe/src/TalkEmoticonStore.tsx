@@ -183,7 +183,7 @@ export function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
                   <img src={pack.thumbnailUrl} alt="" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{pack.title}</p>
-                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{pack.artistName} · {pack.price.toLocaleString()} RWF</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{pack.artistName} · {pack.price.toLocaleString('en-US')} RWF</p>
                   </div>
                   <button
                     type="button"
@@ -293,7 +293,7 @@ export function GiftVoucherComposerPanel({
       />
       {selected ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{selected.name} · {selected.merchantName} · {selected.price.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{selected.name} · {selected.merchantName} · {selected.price.toLocaleString('en-US')} RWF</span>
           <button type="button" onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)' }}>Change</button>
         </div>
       ) : (
@@ -323,7 +323,7 @@ export function GiftVoucherComposerPanel({
                     style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', background: 'none', fontSize: 'var(--itunda-type-scale-13-size)', textAlign: 'left' }}
                   >
                     <span>{p.name} · {p.merchantName}</span>
-                    <span>{p.price.toLocaleString()} RWF</span>
+                    <span>{p.price.toLocaleString('en-US')} RWF</span>
                   </button>
                 ))}
               </div>

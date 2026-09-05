@@ -28,7 +28,7 @@ function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
             {trip.vehicleMake} {trip.vehicleModel} · {trip.vehiclePlate}
           </p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString('en-US')} RWF</p>
         </div>
         <span style={{
           fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 // rather than having a number instantly jump to its new value -- one of several concrete,
 // published "graphics with motion, not just a static number" techniques their own design
 // team writes about. itunda had zero equivalent anywhere in bank-mfe before this: every
-// `.toLocaleString()` balance display in this app re-renders as a flat instant jump.
+// `.toLocaleString('en-US')` balance display in this app re-renders as a flat instant jump.
 //
 // Tweens from whatever value was last rendered to the new one over a real, deliberately
 // snappy 600ms (Toss's own real published motion principle is "가볍고 경쾌하게," light and

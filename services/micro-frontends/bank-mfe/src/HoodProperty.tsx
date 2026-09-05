@@ -333,9 +333,9 @@ export function PropertyValuationCard({ propertyTypes }: { propertyTypes: Proper
         </button>
         {estimate && (
           <div style={{ marginTop: '8px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--itunda-grey-100)' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{estimate.estimatedValue.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{estimate.estimatedValue.toLocaleString('en-US')} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-              Based on {estimate.comparableCount} comparable listing{estimate.comparableCount === 1 ? '' : 's'} within {estimate.radiusKm}km ({estimate.averagePricePerSqm.toLocaleString()} RWF/sqm avg)
+              Based on {estimate.comparableCount} comparable listing{estimate.comparableCount === 1 ? '' : 's'} within {estimate.radiusKm}km ({estimate.averagePricePerSqm.toLocaleString('en-US')} RWF/sqm avg)
             </p>
           </div>
         )}

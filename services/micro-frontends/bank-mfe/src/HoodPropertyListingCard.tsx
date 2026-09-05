@@ -93,7 +93,7 @@ export function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChan
       });
   }, [listing.id, listing.status, listing.counterpartyId, isMine]);
 
-  const priceLabel = `${listing.price.toLocaleString()} RWF${listing.listingType === 'RENT' ? '/mo' : ''}`;
+  const priceLabel = `${listing.price.toLocaleString('en-US')} RWF${listing.listingType === 'RENT' ? '/mo' : ''}`;
   const detailsLabel = [
     listing.bedrooms != null ? `${listing.bedrooms} bd` : null,
     listing.sizeSqm != null ? `${listing.sizeSqm} m²` : null,

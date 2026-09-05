@@ -39,14 +39,14 @@ function MotoFareTripSummary({ trips, totalElements, role }: { trips: MotoFareTr
         </div>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Total (last {trips.length})</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: role === 'DRIVER' ? 'var(--itunda-green)' : 'var(--itunda-grey-900)' }}>{totalFare.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: role === 'DRIVER' ? 'var(--itunda-green)' : 'var(--itunda-grey-900)' }}>{totalFare.toLocaleString('en-US')} RWF</p>
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {trips.slice(0, 5).map((trip) => (
           <div key={trip.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-12-size)' }}>
             <span style={{ color: 'var(--itunda-grey-500)' }}>{new Date(trip.createdAt).toLocaleString()}</span>
-            <span style={{ fontWeight: 600 }}>{trip.fare.toLocaleString()} RWF</span>
+            <span style={{ fontWeight: 600 }}>{trip.fare.toLocaleString('en-US')} RWF</span>
           </div>
         ))}
       </div>
@@ -114,7 +114,7 @@ function MotoFareDriverCollectView() {
     return (
       <div className="itunda-flat-section" style={{ textAlign: 'center' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, color: 'var(--itunda-green)' }}>Collected</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', marginTop: '4px' }}>{collected.fare.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', marginTop: '4px' }}>{collected.fare.toLocaleString('en-US')} RWF</p>
         <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '16px', width: '100%' }} onClick={reset}>
           Collect next fare
         </button>
@@ -161,10 +161,10 @@ function MotoFareDriverCollectView() {
           value={fare} onChange={(e) => setFare(Number(e.target.value))}
           style={{ flex: 1 }}
         />
-        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString()} RWF</span>
+        <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString('en-US')} RWF</span>
       </div>
       <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy} onClick={handleCollect}>
-        {busy ? 'Collecting…' : `Collect ${fare.toLocaleString()} RWF`}
+        {busy ? 'Collecting…' : `Collect ${fare.toLocaleString('en-US')} RWF`}
       </button>
       <button onClick={reset} style={{ width: '100%', marginTop: '8px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
         Scan a different code

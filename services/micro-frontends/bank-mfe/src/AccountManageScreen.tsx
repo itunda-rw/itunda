@@ -198,15 +198,15 @@ function TransferLimitScreen({ onBack }: { onBack: () => void }) {
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Per transfer</span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{limit.perTransferLimit.toLocaleString()} RWF</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{limit.perTransferLimit.toLocaleString('en-US')} RWF</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Daily</span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{limit.dailyLimit.toLocaleString()} RWF</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{limit.dailyLimit.toLocaleString('en-US')} RWF</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}>
             <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', color: 'var(--itunda-grey-900)' }}>Remaining today</span>
-            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{limit.remainingToday.toLocaleString()} RWF</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600, color: 'var(--itunda-indigo)' }}>{limit.remainingToday.toLocaleString('en-US')} RWF</span>
           </div>
         </>
       )}

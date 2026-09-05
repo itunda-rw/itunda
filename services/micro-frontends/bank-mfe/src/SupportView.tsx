@@ -82,7 +82,7 @@ export function SupportView({ initialTransactionId, initialCategory, onConsumedI
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700 }}>Which transaction?</p>
           {transactions.slice(0, 10).map((tx) => (
             <label key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)' }}>
-              {tx.description} · {tx.currency} {tx.amount.toLocaleString()}
+              {tx.description} · {tx.currency} {tx.amount.toLocaleString('en-US')}
               <input type="radio" name="tx" checked={selectedTransactionId === tx.id} onChange={() => setSelectedTransactionId(tx.id)} />
             </label>
           ))}

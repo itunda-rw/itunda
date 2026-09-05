@@ -180,7 +180,7 @@ export function HarvestAdvanceView() {
             {advances.map((a) => (
               <div key={a.id} className="itunda-flat-section">
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.principalAmount.toLocaleString()} RWF · {a.purpose}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.principalAmount.toLocaleString('en-US')} RWF · {a.purpose}</p>
                   <span style={{ fontSize: 'var(--itunda-type-scale-11-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{a.status}</span>
                 </div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>Repay by {new Date(a.repaymentDueDate).toLocaleDateString()}</p>
@@ -196,7 +196,7 @@ export function HarvestAdvanceView() {
                   // debt. Repayment is full-settlement-only -- no amount to type, just
                   // the real outstanding principal shown up front.
                   <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id, a.principalAmount)}>
-                    {busy ? 'Repaying…' : `Repay in full (${a.principalAmount.toLocaleString()} RWF)`}
+                    {busy ? 'Repaying…' : `Repay in full (${a.principalAmount.toLocaleString('en-US')} RWF)`}
                   </button>
                 )}
               </div>

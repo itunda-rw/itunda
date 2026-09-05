@@ -99,13 +99,13 @@ export function MyView() {
           {shopOrders.slice(0, 3).map((order) => (
             <div key={order.id} style={rowStyle}>
               <span>Shop order · {order.status}</span>
-              <span>{order.totalAmount.toLocaleString()} RWF</span>
+              <span>{order.totalAmount.toLocaleString('en-US')} RWF</span>
             </div>
           ))}
           {eatsOrders.slice(0, 3).map((order) => (
             <div key={order.id} style={rowStyle}>
               <span>Eats order · {order.status}</span>
-              <span>{order.totalAmount.toLocaleString()} RWF</span>
+              <span>{order.totalAmount.toLocaleString('en-US')} RWF</span>
             </div>
           ))}
         </div>

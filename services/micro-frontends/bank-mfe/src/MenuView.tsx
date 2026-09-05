@@ -211,7 +211,7 @@ export function MenuView({
             return (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-14-size)' }}>
                 <span>{item.name}{eatsOptionsSummary(item, line.choiceIds)} x{line.quantity}</span>
-                <span>{(unitPrice * line.quantity).toLocaleString()} RWF</span>
+                <span>{(unitPrice * line.quantity).toLocaleString('en-US')} RWF</span>
               </div>
             );
           })}
@@ -362,7 +362,7 @@ export function MenuView({
                                     return { ...p, [group.id]: next };
                                   })}
                                 />
-                                {choice.name}{choice.priceDelta > 0 ? ` (+${choice.priceDelta.toLocaleString()} RWF)` : ''}
+                                {choice.name}{choice.priceDelta > 0 ? ` (+${choice.priceDelta.toLocaleString('en-US')} RWF)` : ''}
                               </label>
                             ))}
                           </div>
@@ -432,9 +432,9 @@ export function MenuView({
               doc comment just above. */}
           <span style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
             {cartOriginalSubtotal > cartSubtotal && (
-              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', textDecoration: 'line-through', opacity: 0.7 }}>{cartOriginalSubtotal.toLocaleString()} RWF</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', textDecoration: 'line-through', opacity: 0.7 }}>{cartOriginalSubtotal.toLocaleString('en-US')} RWF</span>
             )}
-            <span>{cartSubtotal.toLocaleString()} RWF</span>
+            <span>{cartSubtotal.toLocaleString('en-US')} RWF</span>
           </span>
         </button>
       )}

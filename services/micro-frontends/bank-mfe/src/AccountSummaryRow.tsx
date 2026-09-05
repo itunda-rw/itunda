@@ -52,7 +52,7 @@ export function AccountSummaryRow({ onOpen, onNavigateToPay }: { onOpen: (accoun
             itunda Bank {account.accountNumber.match(/.{1,4}/g)?.join('-') ?? account.accountNumber}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: '26px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
-            {account.balance.toLocaleString()} {account.currency}
+            {account.balance.toLocaleString('en-US')} {account.currency}
           </p>
         </div>
         <IconChevronRight size={20} color="var(--itunda-grey-400)" />
@@ -64,7 +64,7 @@ export function AccountSummaryRow({ onOpen, onNavigateToPay }: { onOpen: (accoun
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>itunda Pay</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>
-            {payAccount.balance.toLocaleString()} {payAccount.currency}
+            {payAccount.balance.toLocaleString('en-US')} {payAccount.currency}
             <IconChevronRight size={14} color="var(--itunda-grey-400)" style={{ verticalAlign: 'middle', marginLeft: 4 }} />
           </span>
         </button>

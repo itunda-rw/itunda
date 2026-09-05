@@ -30,7 +30,7 @@ function DineInOrderCard({ order, action }: { order: DineInOrder; action?: React
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{DINE_IN_STATUS_LABEL[order.status]}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Table {order.tableNumber}</p>
         </div>
-        <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
+        <span style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString('en-US')} RWF</span>
       </div>
       {order.notes && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
@@ -237,7 +237,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
             return (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-14-size)' }}>
                 <span>{item.name}{eatsOptionsSummary(item, line.choiceIds)} x{line.quantity}</span>
-                <span>{(unitPrice * line.quantity).toLocaleString()} RWF</span>
+                <span>{(unitPrice * line.quantity).toLocaleString('en-US')} RWF</span>
               </div>
             );
           })}
@@ -296,7 +296,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{item.name}</p>
-                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
+                    <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{item.price.toLocaleString('en-US')} RWF</p>
                   </div>
                   {hasOptions ? (
                     <button className="itunda-btn itunda-btn-secondary" onClick={() => toggleExpand(item.id)}>
@@ -324,7 +324,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
                                 checked={pendingChoices[group.id] === choice.id}
                                 onChange={() => setPendingChoices((p) => ({ ...p, [group.id]: choice.id }))}
                               />
-                              {choice.name}{choice.priceDelta ? ` (+${choice.priceDelta.toLocaleString()} RWF)` : ''}
+                              {choice.name}{choice.priceDelta ? ` (+${choice.priceDelta.toLocaleString('en-US')} RWF)` : ''}
                             </label>
                           ))}
                         </div>
@@ -383,7 +383,7 @@ export function DineInCustomerView() {
       <div style={{ textAlign: 'center', padding: '28px' }}>
         <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
-        <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString('en-US')} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>Table {confirmed.tableNumber}</p>
         <button className="itunda-btn itunda-btn-secondary" onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}>Done</button>
       </div>

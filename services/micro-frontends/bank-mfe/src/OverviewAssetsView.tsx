@@ -126,7 +126,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
     <div>
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.netWorth')}</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString()} RWF</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{animatedNetWorth.toLocaleString('en-US')} RWF</h2>
       </div>
 
       <div
@@ -189,7 +189,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
         {activeTab === 'LOANS' && (
           overview.loans.activeCount > 0 ? (
             <div className="itunda-card">
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.loans', { amount: overview.loans.totalOutstanding.toLocaleString(), count: overview.loans.activeCount })}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.loans', { amount: overview.loans.totalOutstanding.toLocaleString('en-US'), count: overview.loans.activeCount })}</p>
               <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '12px' }} onClick={() => onNavigateToTab('LOANS')}>{t('overview.manage')}</button>
             </div>
           ) : (
@@ -200,7 +200,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
         {activeTab === 'INVESTMENT' && (
           overview.investments.holdingCount > 0 ? (
             <div className="itunda-card">
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.investments', { amount: overview.investments.totalCostBasis.toLocaleString(), count: overview.investments.holdingCount })}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.investments', { amount: overview.investments.totalCostBasis.toLocaleString('en-US'), count: overview.investments.holdingCount })}</p>
               <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '12px' }} onClick={() => onNavigateToTab('STOCKS')}>{t('overview.manage')}</button>
             </div>
           ) : (
@@ -211,7 +211,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
         {activeTab === 'INSURANCE' && (
           overview.insurance.activePolicyCount > 0 ? (
             <div className="itunda-card">
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.insurance', { count: overview.insurance.activePolicyCount, amount: overview.insurance.totalMonthlyPremium.toLocaleString() })}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.insurance', { count: overview.insurance.activePolicyCount, amount: overview.insurance.totalMonthlyPremium.toLocaleString('en-US') })}</p>
               <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '12px' }} onClick={() => onNavigateToTab('INSURANCE')}>{t('overview.manage')}</button>
             </div>
           ) : (
@@ -230,7 +230,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
         {activeTab === 'CAR' && (
           overview.vehicles.vehicleCount > 0 ? (
             <div className="itunda-card">
-              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.carSummary', { count: overview.vehicles.vehicleCount, amount: overview.vehicles.totalPurchasePrice.toLocaleString() })}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.carSummary', { count: overview.vehicles.vehicleCount, amount: overview.vehicles.totalPurchasePrice.toLocaleString('en-US') })}</p>
               <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '12px' }} onClick={() => onNavigateToTab('MY')}>{t('overview.manage')}</button>
             </div>
           ) : (
@@ -243,15 +243,15 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
           // populated Tax tab (no "link a tax account" step exists; paying a real RRA
           // bill through Bills IS the real activity this reflects).
           <div className="itunda-card">
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.taxSummary', { count: overview.tax.paymentCount, amount: overview.tax.totalPaid.toLocaleString() })}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.taxSummary', { count: overview.tax.paymentCount, amount: overview.tax.totalPaid.toLocaleString('en-US') })}</p>
             <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '12px' }} onClick={() => onNavigateToTab('BILLS')}>{t('overview.manage')}</button>
           </div>
         )}
 
         {activeTab === 'POINTS' && (
           <div className="itunda-card">
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.pointsSummary', { amount: overview.points.rewardsTotal.toLocaleString() })}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>{t('overview.payMoneyBalance', { amount: overview.points.payMoneyBalance.toLocaleString() })}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t('overview.pointsSummary', { amount: overview.points.rewardsTotal.toLocaleString('en-US') })}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>{t('overview.payMoneyBalance', { amount: overview.points.payMoneyBalance.toLocaleString('en-US') })}</p>
             <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '12px' }} onClick={() => onNavigateToTab('REWARDS')}>{t('overview.manage')}</button>
           </div>
         )}
@@ -264,7 +264,7 @@ export function OverviewAssetsView({ onNavigateToTab }: { onNavigateToTab: (tab:
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{a.provider}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{a.externalAccountNumberMasked} · {a.status}</p>
             {a.demoBalance != null && (
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.demoBalance', { currency: a.demoBalanceCurrency ?? '', amount: a.demoBalance.toLocaleString() })}</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t('overview.demoBalance', { currency: a.demoBalanceCurrency ?? '', amount: a.demoBalance.toLocaleString('en-US') })}</p>
             )}
             {a.status === 'LINKED' && (
               <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>{t('overview.unlink')}</button>
@@ -299,7 +299,7 @@ function OverviewAccountRow({ account, onSend }: { account: AccountSummary; onSe
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
       <span>{account.name} ({account.type})</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span>{account.currency} {animatedBalance.toLocaleString()}</span>
+        <span>{account.currency} {animatedBalance.toLocaleString('en-US')}</span>
         {onSend && (
           <button
             type="button"

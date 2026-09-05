@@ -151,9 +151,9 @@ export function MyVehiclesCard() {
               <div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{v.modelYear} {v.make} {v.model}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-                  {v.mileageKm.toLocaleString()} km
+                  {v.mileageKm.toLocaleString('en-US')} km
                   {valuation && (
-                    <> · {valuation.ageYears} {valuation.ageYears === 1 ? 'year' : 'years'} old · expected {valuation.expectedMileageKm.toLocaleString()} km</>
+                    <> · {valuation.ageYears} {valuation.ageYears === 1 ? 'year' : 'years'} old · expected {valuation.expectedMileageKm.toLocaleString('en-US')} km</>
                   )}
                 </p>
               </div>
@@ -168,10 +168,10 @@ export function MyVehiclesCard() {
             </div>
             {valuation && (
               <div style={{ marginTop: '8px', display: 'flex', gap: '12px', fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-                <span>Now: <strong style={{ color: 'var(--itunda-grey-900)' }}>{valuation.currentEstimatedValue.toLocaleString()} RWF</strong></span>
-                <span>+1y: {valuation.estimatedValueIn1Year.toLocaleString()}</span>
-                <span>+2y: {valuation.estimatedValueIn2Years.toLocaleString()}</span>
-                <span>+3y: {valuation.estimatedValueIn3Years.toLocaleString()}</span>
+                <span>Now: <strong style={{ color: 'var(--itunda-grey-900)' }}>{valuation.currentEstimatedValue.toLocaleString('en-US')} RWF</strong></span>
+                <span>+1y: {valuation.estimatedValueIn1Year.toLocaleString('en-US')}</span>
+                <span>+2y: {valuation.estimatedValueIn2Years.toLocaleString('en-US')}</span>
+                <span>+3y: {valuation.estimatedValueIn3Years.toLocaleString('en-US')}</span>
               </div>
             )}
           </div>

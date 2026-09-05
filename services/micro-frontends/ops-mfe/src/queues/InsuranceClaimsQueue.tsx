@@ -40,7 +40,7 @@ function InsuranceClaimCard({ claim, onDecided }: { claim: InsuranceClaim; onDec
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
         <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>
-          {claim.amount.toLocaleString()} RWF
+          {claim.amount.toLocaleString('en-US')} RWF
         </p>
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           User {claim.userId} · Policy {claim.policyId}

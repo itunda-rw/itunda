@@ -147,10 +147,10 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
       <h3 style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, marginBottom: '6px' }}>{stock.name}</h3>
-      <p style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700, marginBottom: '4px' }}>{stock.price.toLocaleString()} RWF</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700, marginBottom: '4px' }}>{stock.price.toLocaleString('en-US')} RWF</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: positive ? 'var(--itunda-green)' : 'var(--itunda-red)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
         {positive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-        {positive ? '+' : ''}{stock.change.toLocaleString()} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
+        {positive ? '+' : ''}{stock.change.toLocaleString('en-US')} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
       </p>
 
       {history === null ? (
@@ -204,7 +204,7 @@ export function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchT
             <div>
               <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
                 <IconBell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
-                Alert set: notify when {alert.targetDirection === 'ABOVE' ? '≥' : '≤'} {alert.targetPrice.toLocaleString()} RWF
+                Alert set: notify when {alert.targetDirection === 'ABOVE' ? '≥' : '≤'} {alert.targetPrice.toLocaleString('en-US')} RWF
               </p>
               {alert.alertTriggeredAt && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Already triggered -- set a new target to re-arm it.</p>}
             </div>

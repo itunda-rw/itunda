@@ -71,7 +71,7 @@ export function ForeignCurrencyView() {
           {conversions.map((c) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
               <p>{c.fromCurrency} → {c.toCurrency}</p>
-              <p>{c.fromAmount.toLocaleString()} {c.fromCurrency} → {c.toAmount.toLocaleString()} {c.toCurrency}</p>
+              <p>{c.fromAmount.toLocaleString('en-US')} {c.fromCurrency} → {c.toAmount.toLocaleString('en-US')} {c.toCurrency}</p>
             </div>
           ))}
         </div>
@@ -88,7 +88,7 @@ function ForeignCurrencyAccountRow({ account }: { account: ForeignCurrencyAccoun
   return (
     <div style={{ padding: '12px 0' }}>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.currency} account</p>
-      <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} {account.currency}</h2>
+      <h2 style={{ fontSize: 'var(--itunda-type-scale-24-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString('en-US')} {account.currency}</h2>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.accountNumber}</p>
     </div>
   );
@@ -279,7 +279,7 @@ function ConvertCurrencyCard({ accounts, onConverted }: { accounts: ForeignCurre
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       {result && (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-indigo)', fontWeight: 700, margin: 0 }}>
-          Converted {result.fromAmount.toLocaleString()} {result.fromCurrency} → {result.toAmount.toLocaleString()} {result.toCurrency}
+          Converted {result.fromAmount.toLocaleString('en-US')} {result.fromCurrency} → {result.toAmount.toLocaleString('en-US')} {result.toCurrency}
         </p>
       )}
       <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>

@@ -165,7 +165,7 @@ function PlanRow({ plan, onChanged }: { plan: MerchantBillingPlan; onChanged: ()
       </div>
       {plan.description && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{plan.description}</p>}
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
-        {t(plan.intervalDays === 1 ? 'billing.everyDaySingular' : 'billing.everyDaysPlural', { amount: plan.amount.toLocaleString(), days: plan.intervalDays })}
+        {t(plan.intervalDays === 1 ? 'billing.everyDaySingular' : 'billing.everyDaysPlural', { amount: plan.amount.toLocaleString('en-US'), days: plan.intervalDays })}
       </p>
       {error && (
         <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>

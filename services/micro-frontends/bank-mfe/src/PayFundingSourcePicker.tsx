@@ -94,7 +94,7 @@ export function PayFundingSourcePicker({
           >
             <div>
               <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)' }}>{accountLabel(selected)}</p>
-              <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{selected.currency} {selected.balance.toLocaleString()}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{selected.currency} {selected.balance.toLocaleString('en-US')}</p>
             </div>
             <span style={{ color: 'var(--itunda-indigo)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>✓</span>
           </button>
@@ -110,7 +110,7 @@ export function PayFundingSourcePicker({
               >
                 <div>
                   <p style={{ margin: 0, fontWeight: 700, fontSize: 'var(--itunda-type-scale-14-size)' }}>{accountLabel(account)}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.currency} {account.balance.toLocaleString()}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{account.currency} {account.balance.toLocaleString('en-US')}</p>
                 </div>
                 {account.id === selectedAccountId && <span style={{ color: 'var(--itunda-indigo)', fontWeight: 700 }}>✓</span>}
               </button>

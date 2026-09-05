@@ -68,7 +68,7 @@ export function AgentOperatorView() {
     setMessage(null);
     try {
       const result = await agentCashIn(cashInAccount.trim(), amount, cashInReceipt.trim());
-      setMessage(`Cash in accepted — new customer balance ${result.newBalance.toLocaleString()} RWF`);
+      setMessage(`Cash in accepted — new customer balance ${result.newBalance.toLocaleString('en-US')} RWF`);
       setCashInAccount(''); setCashInAmount(''); setCashInReceipt('');
       load();
     } catch (err) {
@@ -89,7 +89,7 @@ export function AgentOperatorView() {
     setMessage(null);
     try {
       const result = await agentCashOut(cashOutAccount.trim(), amount, cashOutReceipt.trim(), cashOutCode.trim());
-      setMessage(`Cash out paid — new customer balance ${result.newBalance.toLocaleString()} RWF`);
+      setMessage(`Cash out paid — new customer balance ${result.newBalance.toLocaleString('en-US')} RWF`);
       setCashOutAccount(''); setCashOutAmount(''); setCashOutReceipt(''); setCashOutCode('');
       load();
     } catch (err) {
@@ -110,7 +110,7 @@ export function AgentOperatorView() {
     setMessage(null);
     try {
       const reconciliation = await submitAgentTillCount(counted);
-      setMessage(`Till count submitted — variance ${reconciliation.variance.toLocaleString()} RWF (${reconciliation.status})`);
+      setMessage(`Till count submitted — variance ${reconciliation.variance.toLocaleString('en-US')} RWF (${reconciliation.status})`);
       setCountedCash('');
       load();
     } catch (err) {
@@ -152,13 +152,13 @@ export function AgentOperatorView() {
           (docs/UI_UX_GUIDELINES.md §10, docs/DESIGN_REFERENCES.md §274). */}
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{till.agentName}</p>
-        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{till.expectedCash.toLocaleString()} RWF expected in till</h2>
+        <h2 style={{ fontSize: 'var(--itunda-type-scale-26-size)', fontWeight: 700 }}>{till.expectedCash.toLocaleString('en-US')} RWF expected in till</h2>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-          Today: {till.todayCashIn.toLocaleString()} RWF in · {till.todayCashOut.toLocaleString()} RWF out
+          Today: {till.todayCashIn.toLocaleString('en-US')} RWF in · {till.todayCashOut.toLocaleString('en-US')} RWF out
         </p>
         {till.reconciliation && (
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-            Last count: {till.reconciliation.countedCash.toLocaleString()} RWF ({till.reconciliation.status}, variance {till.reconciliation.variance.toLocaleString()})
+            Last count: {till.reconciliation.countedCash.toLocaleString('en-US')} RWF ({till.reconciliation.status}, variance {till.reconciliation.variance.toLocaleString('en-US')})
           </p>
         )}
       </div>
@@ -211,7 +211,7 @@ export function AgentOperatorView() {
         {activity.map((a) => (
           <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
             <span>{a.type === 'CASH_IN' ? '↓ Cash in' : '↑ Cash out'} · {a.receiptNumber}</span>
-            <span style={{ fontWeight: 600 }}>{a.amount.toLocaleString()} RWF</span>
+            <span style={{ fontWeight: 600 }}>{a.amount.toLocaleString('en-US')} RWF</span>
           </div>
         ))}
       </div>
@@ -304,7 +304,7 @@ function FloatMarketplaceSection() {
     const raw = requestAmounts[listingId];
     const amount = Number(raw);
     if (!Number.isFinite(amount) || amount <= 0 || amount > remainingAmount) {
-      setError(`Enter a real amount up to the ${remainingAmount.toLocaleString()} RWF still available on this listing.`);
+      setError(`Enter a real amount up to the ${remainingAmount.toLocaleString('en-US')} RWF still available on this listing.`);
       return;
     }
     setBusy(true);
@@ -377,7 +377,7 @@ function FloatMarketplaceSection() {
           <div key={n.listing.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)' }}>
               <span>{n.agentDisplayName} · {n.distanceKm.toFixed(1)} km</span>
-              <span style={{ fontWeight: 600 }}>{n.remainingAmount.toLocaleString()} RWF available</span>
+              <span style={{ fontWeight: 600 }}>{n.remainingAmount.toLocaleString('en-US')} RWF available</span>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
               <input type="number" placeholder="Amount to request" value={requestAmounts[n.listing.id] || ''}
@@ -394,7 +394,7 @@ function FloatMarketplaceSection() {
         {myListings.length === 0 && <EmptyState message="No float listings yet — post one to let nearby agents claim your spare cash." />}
         {myListings.map((l) => (
           <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
-            <span>{l.amount.toLocaleString()} RWF offered · {l.claimedAmount.toLocaleString()} claimed · {l.status}</span>
+            <span>{l.amount.toLocaleString('en-US')} RWF offered · {l.claimedAmount.toLocaleString('en-US')} claimed · {l.status}</span>
             {l.status === 'OPEN' && <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => handleCancelListing(l.id)}>Cancel</button>}
           </div>
         ))}
@@ -405,7 +405,7 @@ function FloatMarketplaceSection() {
         {incomingRequests.length === 0 && <EmptyState message="No requests yet — they'll show up here once another agent claims from your listing." />}
         {incomingRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
-            <span>{r.amount.toLocaleString()} RWF · {r.status}</span>
+            <span>{r.amount.toLocaleString('en-US')} RWF · {r.status}</span>
             {r.status === 'REQUESTED' && (
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={() => handleAcceptRequest(r.id)}>Accept</button>
@@ -421,7 +421,7 @@ function FloatMarketplaceSection() {
         {myRequests.length === 0 && <EmptyState message="No requests yet — claim from a nearby listing above and it'll show up here." />}
         {myRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '6px 0' }}>
-            <span>{r.amount.toLocaleString()} RWF</span>
+            <span>{r.amount.toLocaleString('en-US')} RWF</span>
             <span style={{ fontWeight: 600 }}>{r.status}</span>
           </div>
         ))}

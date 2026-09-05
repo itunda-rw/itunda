@@ -129,9 +129,9 @@ export default function OverviewView() {
       {!dashboard.error && dashboard.value === null && <QueueSkeleton />}
       {!dashboard.error && dashboard.value && (
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '28px' }}>
-          <StatCard label="Today's volume" value={`${dashboard.value.operations.todayVolume.toLocaleString()} ${dashboard.value.currency}`} />
-          <StatCard label="Today's completed transactions" value={dashboard.value.operations.todayCompletedTransactionCount.toLocaleString()} />
-          <StatCard label="Active linked-account consents" value={dashboard.value.operatingLayer.activeConsents.toLocaleString()} />
+          <StatCard label="Today's volume" value={`${dashboard.value.operations.todayVolume.toLocaleString('en-US')} ${dashboard.value.currency}`} />
+          <StatCard label="Today's completed transactions" value={dashboard.value.operations.todayCompletedTransactionCount.toLocaleString('en-US')} />
+          <StatCard label="Active linked-account consents" value={dashboard.value.operatingLayer.activeConsents.toLocaleString('en-US')} />
         </div>
       )}
 

@@ -185,19 +185,19 @@ function CreateOrExtendAdCard({ onCreated }: { onCreated: () => void }) {
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           >
             {AD_DURATION_TIERS.map((tier) => (
-              <option key={tier.days} value={tier.days}>{t('ads.durationOption', { days: tier.days, price: tier.price.toLocaleString() })}</option>
+              <option key={tier.days} value={tier.days}>{t('ads.durationOption', { days: tier.days, price: tier.price.toLocaleString('en-US') })}</option>
             ))}
           </select>
         </label>
       </div>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>
-        {t('ads.chargeNotice', { price: selectedTier.price.toLocaleString() })}
+        {t('ads.chargeNotice', { price: selectedTier.price.toLocaleString('en-US') })}
       </p>
       {error && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
       <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-        {submitting ? t('ads.starting') : t('ads.payAndRunButton', { price: selectedTier.price.toLocaleString() })}
+        {submitting ? t('ads.starting') : t('ads.payAndRunButton', { price: selectedTier.price.toLocaleString('en-US') })}
       </button>
     </form>
   );

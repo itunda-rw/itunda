@@ -166,7 +166,7 @@ function RegisterView() {
                 {product.imageUrl && <img src={product.imageUrl} alt="" style={{ width: '100%', aspectRatio: '1.5', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
                 <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{product.name}</p>
                 <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-                  {product.price.toLocaleString()} RWF
+                  {product.price.toLocaleString('en-US')} RWF
                 </p>
                 {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? t('pos.outOfStock') : t('pos.stockAvailable', { count: product.stockQuantity })}</p>}
               </button>
@@ -195,7 +195,7 @@ function RegisterView() {
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 600 }}>{line.product.name}</p>
                     <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-                      {(line.product.price * line.quantity).toLocaleString()} RWF
+                      {(line.product.price * line.quantity).toLocaleString('en-US')} RWF
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -220,7 +220,7 @@ function RegisterView() {
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--itunda-grey-200)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
               <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.total')}</span>
-              <span style={{ fontSize: '18px', fontWeight: 700 }}>{total.toLocaleString()} RWF</span>
+              <span style={{ fontSize: '18px', fontWeight: 700 }}>{total.toLocaleString('en-US')} RWF</span>
             </div>
             <button
               className="itunda-btn itunda-btn-primary"
@@ -246,7 +246,7 @@ function CheckoutView({
   return (
     <div className="itunda-card" style={{ maxWidth: '400px' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('pos.checkoutTitle')}</h2>
-      <p style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{total.toLocaleString()} RWF</p>
+      <p style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{total.toLocaleString('en-US')} RWF</p>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>{description}</p>
 
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
@@ -402,7 +402,7 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : (
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-          {submitting ? t('pos.charging') : t('pos.chargeButton', { amount: amount.toLocaleString() })}
+          {submitting ? t('pos.charging') : t('pos.chargeButton', { amount: amount.toLocaleString('en-US') })}
         </button>
       )}
     </form>
@@ -718,8 +718,8 @@ function CatalogView() {
                         </div>
                       </td>
                       <td style={{ padding: '10px 20px' }}>
-                        <div>{product.price.toLocaleString()} RWF</div>
-                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {t('pos.discountOff', { percent: product.discountPercent })}</div>}
+                        <div>{product.price.toLocaleString('en-US')} RWF</div>
+                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString('en-US')} RWF</s> · {t('pos.discountOff', { percent: product.discountPercent })}</div>}
                         <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '2px' }}>
                           {product.stockQuantity === null ? t('pos.unlimitedStock') : product.stockQuantity === 0 ? t('pos.outOfStock') : t('pos.inStock', { count: product.stockQuantity })}
                         </div>
@@ -854,11 +854,11 @@ function ProductAnalyticsPanel({ productId }: { productId: string }) {
     <div style={{ display: 'flex', gap: '24px' }}>
       <div>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('pos.analyticsViewCount')}</p>
-        <p style={{ fontSize: '20px', fontWeight: 700 }}>{analytics.viewCount.toLocaleString()}</p>
+        <p style={{ fontSize: '20px', fontWeight: 700 }}>{analytics.viewCount.toLocaleString('en-US')}</p>
       </div>
       <div>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('pos.analyticsOrderCount')}</p>
-        <p style={{ fontSize: '20px', fontWeight: 700 }}>{analytics.orderCount.toLocaleString()}</p>
+        <p style={{ fontSize: '20px', fontWeight: 700 }}>{analytics.orderCount.toLocaleString('en-US')}</p>
       </div>
     </div>
   );
@@ -937,7 +937,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{group.name}</p>
                     <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
-                      {group.choices.map((c) => `${c.name}${c.priceDelta > 0 ? ` (+${c.priceDelta.toLocaleString()} RWF)` : ''}`).join(', ')}
+                      {group.choices.map((c) => `${c.name}${c.priceDelta > 0 ? ` (+${c.priceDelta.toLocaleString('en-US')} RWF)` : ''}`).join(', ')}
                     </p>
                   </div>
                   <button
@@ -1052,7 +1052,7 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
         return;
       }
       if (tier.unitPrice >= regularPrice) {
-        setError(t('pos.tierBelowRegularError', { price: regularPrice.toLocaleString() }));
+        setError(t('pos.tierBelowRegularError', { price: regularPrice.toLocaleString('en-US') }));
         return;
       }
     }
@@ -1153,7 +1153,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
     const price = Number(dealPrice);
     const quantity = Number(totalQuantity);
     if (!Number.isFinite(price) || price <= 0 || price >= regularPrice) {
-      setError(t('pos.timeDealPriceError', { price: regularPrice.toLocaleString() }));
+      setError(t('pos.timeDealPriceError', { price: regularPrice.toLocaleString('en-US') }));
       return;
     }
     if (!Number.isInteger(quantity) || quantity < 1) {
@@ -1208,7 +1208,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
           {activeDeals.map((d) => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-200)' }}>
               <span style={{ fontSize: '13px' }}>
-                {d.dealPrice.toLocaleString()} RWF · {d.remainingQuantity}/{d.totalQuantity} left · ends {new Date(d.endsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                {d.dealPrice.toLocaleString('en-US')} RWF · {d.remainingQuantity}/{d.totalQuantity} left · ends {new Date(d.endsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
               <button type="button" onClick={() => handleEnd(d.id)} disabled={busyDealId === d.id} style={{ color: 'var(--itunda-grey-500)', fontSize: '12px' }}>
                 {busyDealId === d.id ? '…' : t('pos.timeDealEndNow')}

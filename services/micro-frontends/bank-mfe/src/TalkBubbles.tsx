@@ -179,7 +179,7 @@ export function OfferBubble({
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
-      <p style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><MoneyBagGlyph size={16} /> {offer.amount.toLocaleString()} RWF</p>
+      <p style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}><MoneyBagGlyph size={16} /> {offer.amount.toLocaleString('en-US')} RWF</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[offer.status]}</p>
       {canRespond && !countering && (
         <div style={{ display: 'flex', gap: '6px' }}>
@@ -247,7 +247,7 @@ export function GiftBubble({
     >
       <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-16-size)', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <GiftGlyph theme={gift.theme} size={18} />
-        {gift.theme ? GIFT_THEME_LABELS[gift.theme].replace(/^\S+\s*/, '') : ''} {gift.amount.toLocaleString()} RWF
+        {gift.theme ? GIFT_THEME_LABELS[gift.theme].replace(/^\S+\s*/, '') : ''} {gift.amount.toLocaleString('en-US')} RWF
       </p>
       {gift.note && <p style={{ fontStyle: 'italic', opacity: 0.9 }}>&ldquo;{gift.note}&rdquo;</p>}
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[gift.status]}</p>
@@ -305,7 +305,7 @@ export function GiftVoucherBubble({
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
-      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', display: 'flex', alignItems: 'center', gap: '6px' }}><VoucherTicket size={18} /> {voucher.productNameSnapshot ?? `${voucher.amount.toLocaleString()} RWF voucher`}</p>
+      <p style={{ fontWeight: 700, fontSize: 'var(--itunda-type-scale-15-size)', display: 'flex', alignItems: 'center', gap: '6px' }}><VoucherTicket size={18} /> {voucher.productNameSnapshot ?? `${voucher.amount.toLocaleString('en-US')} RWF voucher`}</p>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', opacity: 0.8 }}>{statusLabel[voucher.status]}</p>
       {voucher.status === 'ACTIVE' && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.7 }}>Expires {new Date(voucher.expiresAt).toLocaleDateString()}</p>

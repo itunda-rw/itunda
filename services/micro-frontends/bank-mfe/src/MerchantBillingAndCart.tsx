@@ -53,7 +53,7 @@ export function BillingPlanRow({ plan, subscription, onChanged }: { plan: Mercha
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{plan.name}</p>
           {plan.description && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-700)' }}>{plan.description}</p>}
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', marginTop: '2px' }}>
-            {plan.amount.toLocaleString()} RWF every {plan.intervalDays} day{plan.intervalDays === 1 ? '' : 's'}
+            {plan.amount.toLocaleString('en-US')} RWF every {plan.intervalDays} day{plan.intervalDays === 1 ? '' : 's'}
           </p>
         </div>
         <button
@@ -241,7 +241,7 @@ export function MultiCartView({
                 <div key={productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)' }}>
                   <span>{l.product.name} x{l.quantity}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span>{(l.product.price * l.quantity).toLocaleString()} RWF</span>
+                    <span>{(l.product.price * l.quantity).toLocaleString('en-US')} RWF</span>
                     <button type="button" onClick={() => onSetQty(merchantId, productId, 0)} style={{ color: 'var(--itunda-grey-500)', fontSize: 'var(--itunda-type-scale-12-size)' }}>Remove</button>
                   </div>
                 </div>
@@ -251,7 +251,7 @@ export function MultiCartView({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>
               <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
-              <span>{grandTotal.toLocaleString()} RWF</span>
+              <span>{grandTotal.toLocaleString('en-US')} RWF</span>
             </div>
             <input
               type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
@@ -316,7 +316,7 @@ export function MultiCartResultsView({ results, onDone }: { results: CommerceChe
           <div key={r.merchantId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--itunda-type-scale-13-size)' }}>
             <span style={{ fontWeight: 600 }}>{r.businessName}</span>
             {r.success ? (
-              <span style={{ color: 'var(--itunda-green)' }}>{r.order!.totalAmount.toLocaleString()} RWF — placed</span>
+              <span style={{ color: 'var(--itunda-green)' }}>{r.order!.totalAmount.toLocaleString('en-US')} RWF — placed</span>
             ) : (
               <span style={{ color: 'var(--itunda-red)' }}>{r.error}</span>
             )}

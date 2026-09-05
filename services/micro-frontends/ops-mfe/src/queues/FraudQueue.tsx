@@ -48,7 +48,7 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{flag.description}</p>
         </div>
         <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-          {flag.amount.toLocaleString()} RWF
+          {flag.amount.toLocaleString('en-US')} RWF
         </span>
       </div>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>

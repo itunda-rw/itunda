@@ -169,12 +169,12 @@ export function RewardsSummaryRow({ rewardsTotal, payBalance }: { rewardsTotal: 
     <div className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between' }}>
       <div>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Rewards earned</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{rewardsTotal.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{rewardsTotal.toLocaleString('en-US')} RWF</p>
       </div>
       {payBalance != null && (
         <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>itunda Pay balance</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{payBalance.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{payBalance.toLocaleString('en-US')} RWF</p>
         </div>
       )}
     </div>
@@ -264,7 +264,7 @@ export function RewardsPreviewSection({ tasks, onViewAll }: { tasks: RewardTasks
             <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>{t.title}</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{t.subtitle}</p>
           </div>
-          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{t.rewardAmount.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>+{t.rewardAmount.toLocaleString('en-US')} RWF</span>
         </div>
       ))}
     </div>

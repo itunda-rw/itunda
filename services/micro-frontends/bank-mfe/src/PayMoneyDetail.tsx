@@ -51,7 +51,7 @@ export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { accoun
         <div style={{ padding: '4px 20px 24px' }}>
           <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>itunda Pay Money</p>
           <p style={{ margin: '6px 0 20px', fontSize: '32px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
-            {account.balance.toLocaleString()} RWF
+            {account.balance.toLocaleString('en-US')} RWF
           </p>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={onSend} className="itunda-btn itunda-btn-secondary" style={{ flex: 1, minHeight: '48px', borderRadius: '999px' }}>Send</button>
@@ -102,7 +102,7 @@ export function PayMoneyDetail({ account, onBack, onSend, onAddMoney }: { accoun
                         <p style={{ margin: '2px 0 0', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                       <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
-                        {isCredit ? '+' : '-'}{tx.amount.toLocaleString()} RWF
+                        {isCredit ? '+' : '-'}{tx.amount.toLocaleString('en-US')} RWF
                       </span>
                     </div>
                   );

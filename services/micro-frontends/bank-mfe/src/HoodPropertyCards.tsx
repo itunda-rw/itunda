@@ -144,7 +144,7 @@ export function PropertyListingWishlistView() {
         <div key={f.propertyListingId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.propertyType} · {f.price.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{f.propertyType} · {f.price.toLocaleString('en-US')} RWF</p>
           </div>
           <button
             className="itunda-btn itunda-btn-secondary"

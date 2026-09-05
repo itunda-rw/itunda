@@ -137,7 +137,7 @@ export function MerchantRedeemVoucherCard() {
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
       {redeemed && (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-green-600, #16a34a)', marginTop: '8px' }}>
-          ✅ Redeemed {redeemed.productNameSnapshot ?? `${redeemed.amount.toLocaleString()} RWF`}
+          ✅ Redeemed {redeemed.productNameSnapshot ?? `${redeemed.amount.toLocaleString('en-US')} RWF`}
         </p>
       )}
     </div>

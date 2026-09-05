@@ -77,7 +77,7 @@ export default function BusinessAccountScreen() {
     <div style={{ maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="itunda-card">
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('business.balanceLabel')}</p>
-        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{wallet.balance.toLocaleString()} RWF</h2>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{wallet.balance.toLocaleString('en-US')} RWF</h2>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{wallet.accountNumber}</p>
       </div>
 
@@ -99,7 +99,7 @@ export default function BusinessAccountScreen() {
                   <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(entry.createdAt).toLocaleDateString()}</p>
                 </div>
                 <p style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  {entry.direction === 'CREDIT' ? '+' : '-'}{entry.amount.toLocaleString()} RWF
+                  {entry.direction === 'CREDIT' ? '+' : '-'}{entry.amount.toLocaleString('en-US')} RWF
                 </p>
               </div>
             ))}

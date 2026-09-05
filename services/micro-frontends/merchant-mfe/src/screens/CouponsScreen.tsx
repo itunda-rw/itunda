@@ -191,7 +191,7 @@ function CouponRow({ coupon, onChanged }: { coupon: MerchantCoupon; onChanged: (
       </div>
       {coupon.description && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{coupon.description}</p>}
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
-        {coupon.discountType === 'PERCENT' ? t('coupons.percentOff', { value: coupon.discountValue }) : t('coupons.fixedOff', { value: coupon.discountValue.toLocaleString() })}
+        {coupon.discountType === 'PERCENT' ? t('coupons.percentOff', { value: coupon.discountValue }) : t('coupons.fixedOff', { value: coupon.discountValue.toLocaleString('en-US') })}
         {coupon.regularsOnly ? t('coupons.regularsOnlySuffix') : ''}
         {coupon.expiresAt ? t('coupons.expiresSuffix', { date: new Date(coupon.expiresAt).toLocaleDateString() }) : ''}
       </p>

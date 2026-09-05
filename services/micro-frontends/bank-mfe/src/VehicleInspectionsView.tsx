@@ -206,7 +206,7 @@ export function VehicleInspectionsView() {
               {myBookings.map((b) => (
                 <div key={b.id} className="itunda-flat-section">
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Listing {b.listingId}</p>
-                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString('en-US')} RWF · {b.status}</p>
                   {b.findings && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', marginTop: '6px' }}>{b.findings}</p>}
                   {(b.status === 'REQUESTED' || b.status === 'ACCEPTED') && (
                     <button
@@ -265,7 +265,7 @@ export function VehicleInspectionsView() {
               {mechanicBookings.map((b) => (
                 <div key={b.id} className="itunda-flat-section">
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>Listing {b.listingId}</p>
-                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString('en-US')} RWF · {b.status}</p>
                   {b.status === 'REQUESTED' && (
                     <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id} onClick={() => handleAccept(b.id)}>
                       {busyBookingId === b.id ? 'Accepting…' : 'Accept'}

@@ -179,9 +179,9 @@ export function FamilyLinkCard() {
               </div>
               {openOverviewFor === c.link.childUserId && overview && (
                 <div style={{ marginTop: '6px', fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-                  <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.accountBalance.toLocaleString()} RWF</strong></p>
+                  <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.accountBalance.toLocaleString('en-US')} RWF</strong></p>
                   {overview.recentTransactions.slice(0, 5).map((t) => (
-                    <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
+                    <p key={t.id}>{t.description} · {t.amount.toLocaleString('en-US')} RWF</p>
                   ))}
                   {overview.recentTransactions.length === 0 && <EmptyState message="Nothing here yet — your activity will show up as you use itunda." />}
                   {/* Real Naver Pay "family shared asset management" -- instant transfer

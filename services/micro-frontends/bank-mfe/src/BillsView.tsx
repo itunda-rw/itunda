@@ -87,7 +87,7 @@ export function BillsView() {
     setMessage(null);
     try {
       const result = await payBill(bill.id, bill.amount, bill.accountNumber, bill.provider);
-      setMessage(`Paid ${result.amount.toLocaleString()} RWF — ${result.referenceNumber}`);
+      setMessage(`Paid ${result.amount.toLocaleString('en-US')} RWF — ${result.referenceNumber}`);
       setPending((prev) => prev.filter((b) => b.id !== bill.id));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -107,7 +107,7 @@ export function BillsView() {
     setMessage(null);
     try {
       const result = await buyAirtime(airtimePhone.trim(), amount, airtimeProvider || undefined);
-      setMessage(`Sent ${result.amount.toLocaleString()} RWF airtime — ${result.referenceNumber}`);
+      setMessage(`Sent ${result.amount.toLocaleString('en-US')} RWF airtime — ${result.referenceNumber}`);
       setAirtimePhone('');
       setAirtimeAmount('');
     } catch (err) {
@@ -136,7 +136,7 @@ export function BillsView() {
             <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{b.provider}</p>
-                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.accountNumber} · due {b.dueDate} · {b.amount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{b.accountNumber} · due {b.dueDate} · {b.amount.toLocaleString('en-US')} RWF</p>
               </div>
               <button className="itunda-btn itunda-btn-secondary" disabled={payingId === b.id} onClick={() => handlePay(b)}>
                 {payingId === b.id ? '...' : 'Pay'}
@@ -157,7 +157,7 @@ export function BillsView() {
             <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{provider ? `${provider.logo} ${provider.name}` : s.providerId}</p>
-                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{s.accountNumber} · up to {s.maxAmount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{s.accountNumber} · up to {s.maxAmount.toLocaleString('en-US')} RWF</p>
               </div>
               <button
                 className="itunda-btn itunda-btn-secondary"

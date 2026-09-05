@@ -502,7 +502,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
             <span style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><GiftGlyph theme={giftResult.theme} size={40} /></span>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-19-size)', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-              {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
+              {giftResult.amount.toLocaleString('en-US')} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
             </p>
           </div>
         </FullScreenFlow>
@@ -517,7 +517,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               {typeof navigator !== 'undefined' && !!navigator.share && (
                 <IdsButton
                   variant="tinted" fullWidth style={{ flex: 1 }}
-                  onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString()} RWF to ${recipientName} via itunda` }).catch(() => {})}
+                  onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString('en-US')} RWF to ${recipientName} via itunda` }).catch(() => {})}
                 >
                   Share
                 </IdsButton>
@@ -558,11 +558,11 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.3, ease: 'easeOut' }}>
             <h3 style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>{t('transfer.sentHeadline')}</h3>
-            <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, marginBottom: '4px' }}>{Number(amount).toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, marginBottom: '4px' }}>{Number(amount).toLocaleString('en-US')} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.toLabel')} {recipientName}</p>
             {memo.trim() && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)', marginTop: '10px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-400)', marginTop: '14px' }}>
-              {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })}
+              {t('transfer.newBalance', { amount: result.newBalance.toLocaleString('en-US') })}
             </p>
             {/* Real Toss "Fraud Suspicion Siren" (사기의심 사이렌) parity -- see
                 lib/p2p.ts's own doc comment. Purely informational: the transfer this
@@ -626,9 +626,9 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
                 <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
                   {isGift ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-                      <GiftGlyph theme={null} size={16} /> Send gift · {Number(amount).toLocaleString()} RWF
+                      <GiftGlyph theme={null} size={16} /> Send gift · {Number(amount).toLocaleString('en-US')} RWF
                     </span>
-                  ) : t('transfer.send', { amount: Number(amount).toLocaleString() })}
+                  ) : t('transfer.send', { amount: Number(amount).toLocaleString('en-US') })}
                 </IdsButton>
               </div>
               {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -639,7 +639,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
       >
         <ProgressStepper activeStepIndex={2} steps={TRANSFER_STEP_LABELS} />
         <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 800 }}>
-          {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString(), recipient: recipientName })}
+          {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString('en-US'), recipient: recipientName })}
         </h3>
         <div style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
           <span>{recipient.trim()}</span>
@@ -706,7 +706,7 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               app's single largest, most prominent number on screen but used an
               invented 38px/800 pair matching no real Toss/itunda token. */}
           <span style={{ fontSize: 'var(--itunda-type-large-amount-size)', lineHeight: 'var(--itunda-type-large-amount-line-height)', fontWeight: 'var(--itunda-type-large-amount-weight)' }}>
-            {amount === '' ? '0' : Number(amount).toLocaleString()} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
+            {amount === '' ? '0' : Number(amount).toLocaleString('en-US')} <span style={{ fontSize: 'var(--itunda-type-scale-18-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
           </span>
           <div>
             {/* Real gap found live (2026-08-31, direct user reference of their own
@@ -722,12 +722,12 @@ export function TransferFlow({ onClose, onSuccess, onBalanceRefresh, accountBala
               </p>
             )}
             <button type="button" onClick={() => setAmount(String(accountBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: 'var(--itunda-type-scale-12-size)', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
-              {t('transfer.balanceLabel', { amount: accountBalance.toLocaleString() })}
+              {t('transfer.balanceLabel', { amount: accountBalance.toLocaleString('en-US') })}
             </button>
           </div>
           {insufficientBalance && (
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', margin: '4px 0 0' }}>
-              {t('transfer.insufficientBalance', { amount: accountBalance.toLocaleString() })}
+              {t('transfer.insufficientBalance', { amount: accountBalance.toLocaleString('en-US') })}
             </p>
           )}
         </div>
@@ -945,7 +945,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
                     </div>
                   </div>
                   <span style={{ fontWeight: '700', fontSize: 'var(--itunda-type-scale-16-size)', color: isUnusual ? 'var(--itunda-red)' : isCredit ? 'var(--itunda-indigo)' : 'var(--itunda-grey-900)' }}>
-                    {isCredit ? '+' : ''}{tx.amount.toLocaleString()} RWF
+                    {isCredit ? '+' : ''}{tx.amount.toLocaleString('en-US')} RWF
                   </span>
                 </motion.div>
               );
@@ -1248,7 +1248,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
           <div>
             <p style={{ margin: 0, fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Pay money</p>
             <p style={{ margin: '4px 0 0', fontSize: '26px', fontWeight: 700, color: 'var(--itunda-grey-900)', letterSpacing: '-0.5px' }}>
-              {Math.round(animatedPayBalance).toLocaleString()} RWF
+              {Math.round(animatedPayBalance).toLocaleString('en-US')} RWF
             </p>
           </div>
           <IconChevronRight size={20} color="var(--itunda-grey-400)" />
@@ -1266,7 +1266,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
         >
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)' }}>itunda Bank</span>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 600 }}>
-            {mainAccount.balance.toLocaleString()} {mainAccount.currency}
+            {mainAccount.balance.toLocaleString('en-US')} {mainAccount.currency}
             <IconChevronRight size={14} color="var(--itunda-grey-400)" style={{ verticalAlign: 'middle', marginLeft: 4 }} />
           </span>
         </button>
@@ -1353,7 +1353,7 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
         <button onClick={() => setShowMembership(true)} className="itunda-flat-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', textAlign: 'left' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{t('pay.pointsPayMoneyRow')}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{((rewardsPreview.rewardsTotal ?? 0) + (account?.balance ?? 0)).toLocaleString()} RWF</span>
+            <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, color: 'var(--itunda-indigo)' }}>{((rewardsPreview.rewardsTotal ?? 0) + (account?.balance ?? 0)).toLocaleString('en-US')} RWF</span>
             <IconChevronRight size={18} color="var(--itunda-grey-400)" />
           </span>
         </button>
@@ -1718,7 +1718,7 @@ function YouthAccountCard() {
         <BucketDetailScreen
           title={t('youthAccount.title')}
           subtitle={youthAccount.accountNumber}
-          balanceText={`${youthAccount.balance.toLocaleString()} RWF`}
+          balanceText={`${youthAccount.balance.toLocaleString('en-US')} RWF`}
           fetchTransactions={() => fetchAccountTransactions(youthAccount.id).then((txs) => transactionsToBucketTransactions(txs, youthAccount.id, youthAccount.balance))}
           onBack={() => setShowDetail(false)}
         />
@@ -1726,7 +1726,7 @@ function YouthAccountCard() {
       {youthAccount && (
         <div>
           <button onClick={() => setShowDetail(true)} style={{ textAlign: 'left', display: 'block' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{animatedBalance.toLocaleString('en-US')} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{youthAccount.accountNumber}</p>
           </button>
           {showDeposit && (
@@ -1851,7 +1851,7 @@ function ScheduledTransfersCard() {
       {[...pending, ...past.slice(0, 3)].map((tr) => (
         <div key={tr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{tr.recipientName} · {tr.amount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{tr.recipientName} · {tr.amount.toLocaleString('en-US')} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{tr.scheduledDate} · {t(SCHEDULED_TRANSFER_STATUS_KEY[tr.status])}</p>
           </div>
           {tr.status === 'PENDING' && (
@@ -2013,7 +2013,7 @@ function DelayedTransfersCard() {
         <div key={tr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
             <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>
-              {knownNames[tr.recipientUserId] ?? t('delayedTransfers.recipientFallback')} · {tr.amount.toLocaleString()} RWF
+              {knownNames[tr.recipientUserId] ?? t('delayedTransfers.recipientFallback')} · {tr.amount.toLocaleString('en-US')} RWF
             </p>
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
               {tr.status === 'PENDING'
@@ -2174,7 +2174,7 @@ function AutoTransfersCard() {
       {[...active, ...cancelled.slice(0, 2)].map((at) => (
         <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{at.recipientName} · {at.amount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{at.recipientName} · {at.amount.toLocaleString('en-US')} RWF</p>
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
               {at.frequency === 'WEEKLY' ? t('autoTransfers.weeklyLabel', { day: t(WEEKDAY_KEYS[(at.dayOfWeek ?? 1) - 1]) }) : t('autoTransfers.monthlyLabel', { day: at.dayOfMonth ?? 1 })} · {t(AUTO_TRANSFER_STATUS_KEY[at.status])}
               {at.lastFailureReason && ` · ${at.lastFailureReason}`}
@@ -2317,7 +2317,7 @@ function RequestMoneyCard() {
           {requests.slice(0, 5).map((r) => (
             <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
-                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{r.amount.toLocaleString()} RWF{r.description ? ` · ${r.description}` : ''}</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{r.amount.toLocaleString('en-US')} RWF{r.description ? ` · ${r.description}` : ''}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{t(P2P_REQUEST_STATUS_KEY[r.status])}</p>
               </div>
             </div>
@@ -2436,7 +2436,7 @@ function AutoTopUpCard({ accountId }: { accountId: string }) {
       {setting && !showForm && (
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>
-            {t('autoTopUp.summaryLine', { state: setting.enabled ? t('autoTopUp.on') : t('autoTopUp.off'), topUp: setting.topUpAmount.toLocaleString(), threshold: setting.thresholdAmount.toLocaleString() })}
+            {t('autoTopUp.summaryLine', { state: setting.enabled ? t('autoTopUp.on') : t('autoTopUp.off'), topUp: setting.topUpAmount.toLocaleString('en-US'), threshold: setting.thresholdAmount.toLocaleString('en-US') })}
           </p>
           <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
             {t('autoTopUp.upToPerDay', { cap: setting.dailyTriggerCap, count: setting.triggersToday })}
@@ -2502,7 +2502,7 @@ export function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: 
 // FacePayStatusRow (PayHomeExtras.tsx), already wired into PayHub above.
 
 function couponDiscountLabel(c: MerchantCouponView['coupon']) {
-  return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
+  return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString('en-US')} RWF off`;
 }
 
 // Real correction (2026-08-19, same session as QrScanCamera above): a QR code only
@@ -2795,7 +2795,7 @@ function AccountCardCarousel({ accounts, selectedAccountId, onSelect }: { accoun
             <div>
               <p style={{ margin: 0, color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-13-size)' }}>{w.type === 'PAY' ? 'itunda Pay' : w.type === 'MAIN' ? 'itunda Bank' : `itunda Pay ${w.currency}`}</p>
               <p style={{ margin: '2px 0 0', color: 'var(--itunda-white)', fontWeight: 700, fontSize: 'var(--itunda-type-scale-19-size)' }}>
-                {w.currency} {w.currency === 'RWF' ? w.availableBalance.toLocaleString() : w.availableBalance.toFixed(2)}
+                {w.currency} {w.currency === 'RWF' ? w.availableBalance.toLocaleString('en-US') : w.availableBalance.toFixed(2)}
               </p>
             </div>
           </div>
@@ -2992,7 +2992,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
       ) : preview ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{preview.businessName}</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{preview.amount.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-20-size)', fontWeight: 700 }}>{preview.amount.toLocaleString('en-US')} RWF</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Apply a coupon?</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
@@ -3009,7 +3009,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
           {loyaltyBalance > 0 && (
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--itunda-type-scale-13-size)' }}>
               <input type="checkbox" checked={redeemPoints} onChange={(e) => setRedeemPoints(e.target.checked)} />
-              Use my {loyaltyBalance.toLocaleString()} points ({redeemableAmount.toLocaleString()} RWF off)
+              Use my {loyaltyBalance.toLocaleString('en-US')} points ({redeemableAmount.toLocaleString('en-US')} RWF off)
             </label>
           )}
           {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
@@ -3143,13 +3143,13 @@ function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult;
     <div style={{ textAlign: 'center', padding: '28px 0' }}>
       <IconShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
       <h3 style={{ fontSize: 'var(--itunda-type-scale-17-size)', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
-      <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
+      <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString('en-US')} RWF</p>
       {result.channel === 'FACE_PAY' && (
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>😊 Authorized with Face Pay</p>
       )}
       {result.cashbackEarned > 0 && (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700, color: 'var(--itunda-green)', marginBottom: '16px' }}>
-          +{result.cashbackEarned.toLocaleString()} RWF cashback earned
+          +{result.cashbackEarned.toLocaleString('en-US')} RWF cashback earned
         </p>
       )}
       <button className="itunda-btn itunda-btn-secondary" onClick={onDone} style={{ marginTop: '8px' }}>Done</button>
@@ -4076,7 +4076,7 @@ function CardView() {
     try {
       const result = await chargeCard(Number(chargeAmount), merchantName);
       setCard(result.card);
-      setChargeSuccess(`Paid ${result.transaction.amount.toLocaleString()} RWF at ${result.transaction.merchantName}`);
+      setChargeSuccess(`Paid ${result.transaction.amount.toLocaleString('en-US')} RWF at ${result.transaction.merchantName}`);
       setMerchantName('');
       setChargeAmount('');
       load();
@@ -4126,7 +4126,7 @@ function CardView() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
           <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>This month</p>
-          <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>{card.spentThisMonth.toLocaleString()} RWF</p>
+          <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>{card.spentThisMonth.toLocaleString('en-US')} RWF</p>
         </div>
         <div
           style={{
@@ -4173,7 +4173,7 @@ function CardView() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{t.merchantName}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
               </div>
-              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{t.amount.toLocaleString()} RWF</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{t.amount.toLocaleString('en-US')} RWF</span>
             </div>
           ))
         )}
@@ -4262,11 +4262,11 @@ function CardView() {
         <h3 style={{ fontSize: 'var(--itunda-type-scale-15-size)', fontWeight: 700, marginBottom: '10px' }}>Spend limits</h3>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Today</span>
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentToday.toLocaleString()} / {card.dailyLimit.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentToday.toLocaleString('en-US')} / {card.dailyLimit.toLocaleString('en-US')} RWF</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
           <span style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>This month</span>
-          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentThisMonth.toLocaleString()} / {card.monthlyLimit.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-12-size)' }}>{card.spentThisMonth.toLocaleString('en-US')} / {card.monthlyLimit.toLocaleString('en-US')} RWF</span>
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <input
@@ -4362,7 +4362,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {settings?.enabled ? (
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>
-          Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString()} RWF, saved into your goal.
+          Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString('en-US')} RWF, saved into your goal.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -4376,7 +4376,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
                 className={increment === v ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 style={{ flex: 1, fontSize: 'var(--itunda-type-scale-12-size)', padding: '8px' }}
               >
-                {v.toLocaleString()} RWF
+                {v.toLocaleString('en-US')} RWF
               </button>
             ))}
           </div>
@@ -4459,15 +4459,15 @@ function InterestJarCard() {
         <BucketDetailScreen
           title="Interest Jar"
           subtitle="Safe Box"
-          balanceText={`${jar.balance.toLocaleString()} RWF`}
-          secondaryStat={{ label: 'Earned all-time', value: `${jar.earnedTotal.toLocaleString()} RWF` }}
+          balanceText={`${jar.balance.toLocaleString('en-US')} RWF`}
+          secondaryStat={{ label: 'Earned all-time', value: `${jar.earnedTotal.toLocaleString('en-US')} RWF` }}
           fetchTransactions={fetchInterestJarTransactions}
           onBack={() => setShowDetail(false)}
         />
       )}
       <button onClick={() => setShowDetail(true)} style={{ display: 'block', width: '100%', textAlign: 'left' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>Safe Box · {jar.rate}% annual, accrued daily on your balance</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{animatedBalance.toLocaleString('en-US')} RWF</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
           <div>
             {/* Real fix (2026-08-11): interest now auto-credits to the account the
@@ -4475,11 +4475,11 @@ function InterestJarCard() {
                 doc comment, matching real Toss Bank passbook interest) -- this money
                 is already in jar.balance above, not sitting unclaimed. */}
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.8 }}>Earned this month</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString('en-US')} RWF</p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', opacity: 0.8 }}>Earned all-time</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedTotal.toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-16-size)', fontWeight: 700 }}>{jar.earnedTotal.toLocaleString('en-US')} RWF</p>
           </div>
         </div>
       </button>
@@ -4496,7 +4496,7 @@ function InterestJarCard() {
           disabled={!canClaim || claiming}
           style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--itunda-indigo)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
         >
-          {claiming ? 'Clearing…' : canClaim ? `OK, ${jar.earnedThisMonth.toLocaleString()} RWF added` : 'Nothing new this month yet'}
+          {claiming ? 'Clearing…' : canClaim ? `OK, ${jar.earnedThisMonth.toLocaleString('en-US')} RWF added` : 'Nothing new this month yet'}
         </button>
       )}
       {claimMsg && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', marginTop: '8px' }}>{claimMsg}</p>}
@@ -4526,13 +4526,13 @@ function DepositProtectionCard() {
       <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, margin: '0 0 8px' }}>Deposit Protection Fund (simulation)</h3>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>Your covered balance</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 650 }}>{status.yourCoveredBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 650 }}>{status.yourCoveredBalance.toLocaleString('en-US')} RWF</p>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)', marginTop: '4px' }}>
-        Covered up to {status.coverageCapPerUser.toLocaleString()} RWF per user
+        Covered up to {status.coverageCapPerUser.toLocaleString('en-US')} RWF per user
       </p>
       <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-400)' }}>
-        itunda&apos;s reserve: {status.fundReserveBalance.toLocaleString()} RWF
+        itunda&apos;s reserve: {status.fundReserveBalance.toLocaleString('en-US')} RWF
       </p>
     </div>
   );
@@ -4617,8 +4617,8 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
         <BucketDetailScreen
           title={goal.name}
           subtitle="Savings Goal"
-          balanceText={`${goal.currentAmount.toLocaleString()} RWF`}
-          secondaryStat={{ label: 'Target', value: `${goal.targetAmount.toLocaleString()} RWF` }}
+          balanceText={`${goal.currentAmount.toLocaleString('en-US')} RWF`}
+          secondaryStat={{ label: 'Target', value: `${goal.targetAmount.toLocaleString('en-US')} RWF` }}
           fetchTransactions={() => fetchGoalTransactions(goal.id)}
           onBack={() => setShowDetail(false)}
         />
@@ -4627,7 +4627,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
         <button onClick={() => setShowDetail(true)} style={{ textAlign: 'left' }}>
           <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{goal.name}</p>
           <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-            {goal.currentAmount.toLocaleString()} / {goal.targetAmount.toLocaleString()} RWF
+            {goal.currentAmount.toLocaleString('en-US')} / {goal.targetAmount.toLocaleString('en-US')} RWF
             {goal.status === 'completed' && ' · Completed 🎉'}
           </p>
         </button>
@@ -4655,7 +4655,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
       </div>
       {goal.monthlyContribution > 0 && (
         <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>
-          Auto-saves {goal.monthlyContribution.toLocaleString()} RWF/month
+          Auto-saves {goal.monthlyContribution.toLocaleString('en-US')} RWF/month
         </p>
       )}
       {mode !== 'closed' && (
@@ -4975,7 +4975,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
 
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{detail.groupAccount.name}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString('en-US')} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
       </div>
 
@@ -5008,14 +5008,14 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
           )
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{dues.duesAmount.toLocaleString()} RWF / month · {dues.cycleMonth}</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{dues.duesAmount.toLocaleString('en-US')} RWF / month · {dues.cycleMonth}</p>
             {dues.members.map((m) => {
               const duesAmount = dues.duesAmount as number;
               return (
                 <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)' }}>
                   <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
                   <span style={{ color: m.paid ? '#1E8E4F' : 'var(--itunda-grey-500)', fontWeight: m.paid ? 700 : 400 }}>
-                    {m.paid ? '✓ Paid' : `${m.contributedAmount.toLocaleString()} / ${duesAmount.toLocaleString()}`}
+                    {m.paid ? '✓ Paid' : `${m.contributedAmount.toLocaleString('en-US')} / ${duesAmount.toLocaleString('en-US')}`}
                   </span>
                 </div>
               );
@@ -5473,7 +5473,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       // case the backend already auto-triggered the payout -- surface that instead of
       // silently leaving the member to wonder why the round advanced.
       if (result.payout) {
-        setPayoutMessage(`Round complete — ${result.payout.amount.toLocaleString()} RWF paid out.`);
+        setPayoutMessage(`Round complete — ${result.payout.amount.toLocaleString('en-US')} RWF paid out.`);
       }
       load();
     } catch (err) {
@@ -5489,7 +5489,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
     setPayoutMessage(null);
     try {
       const result = await triggerIkiminaPayout(id);
-      setPayoutMessage(`${result.amount.toLocaleString()} RWF paid out for round ${result.ikimina.currentRound - 1}.`);
+      setPayoutMessage(`${result.amount.toLocaleString('en-US')} RWF paid out for round ${result.ikimina.currentRound - 1}.`);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -5506,12 +5506,12 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 
       <div className="itunda-flat-section">
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>{ikimina.name}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0' }}>{animatedBalance.toLocaleString('en-US')} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
           {ikimina.status === 'FORMING'
             ? `Forming — ${members.length} of up to ${ikimina.memberCap} members`
             : ikimina.status === 'ACTIVE'
-              ? `Round ${ikimina.currentRound} of ${members.length} · ${ikimina.contributionAmount.toLocaleString()} RWF each · pot ${pot.toLocaleString()} RWF`
+              ? `Round ${ikimina.currentRound} of ${members.length} · ${ikimina.contributionAmount.toLocaleString('en-US')} RWF each · pot ${pot.toLocaleString('en-US')} RWF`
               : 'Every member has been paid — this ikimina is complete'}
         </p>
       </div>
@@ -5545,7 +5545,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
         <div className="itunda-flat-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>Round {ikimina.currentRound}</h3>
           <button className="itunda-btn itunda-btn-primary" disabled={busy || iContributed} onClick={handleContribute}>
-            {busy ? '…' : iContributed ? '✓ You contributed this round' : `Contribute ${ikimina.contributionAmount.toLocaleString()} RWF`}
+            {busy ? '…' : iContributed ? '✓ You contributed this round' : `Contribute ${ikimina.contributionAmount.toLocaleString('en-US')} RWF`}
           </button>
           <button className="itunda-btn itunda-btn-secondary" disabled={busy || !allContributed} onClick={handlePayout}>
             {busy ? '…' : allContributed ? 'Release this round\'s payout' : 'Waiting for everyone to contribute'}
@@ -5639,9 +5639,9 @@ function SaccoSection() {
         ) : (
           <>
             <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Shares held</p>
-            <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700 }}>{(shareholding?.sharesHeld ?? 0).toLocaleString()} RWF</p>
+            <p style={{ fontSize: 'var(--itunda-type-scale-22-size)', fontWeight: 700 }}>{(shareholding?.sharesHeld ?? 0).toLocaleString('en-US')} RWF</p>
             {currentValue != null && (
-              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total contributed: {(shareholding?.totalContributed ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>Total contributed: {(shareholding?.totalContributed ?? 0).toLocaleString('en-US')} RWF</p>
             )}
           </>
         )}
@@ -5668,7 +5668,7 @@ function SaccoSection() {
           {dividends.map((d) => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--itunda-type-scale-13-size)', padding: '4px 0' }}>
               <span style={{ color: 'var(--itunda-grey-500)' }}>{new Date(d.createdAt).toLocaleDateString()}</span>
-              <span style={{ fontWeight: 700 }}>+{d.amount.toLocaleString()} RWF</span>
+              <span style={{ fontWeight: 700 }}>+{d.amount.toLocaleString('en-US')} RWF</span>
             </div>
           ))}
         </div>
@@ -5773,7 +5773,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
       <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>{plan.name} · Week {plan.weeksElapsed} of {WEEKLY_SAVINGS_TERM_WEEKS}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString('en-US')} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fff' }} />
         </div>
@@ -5794,11 +5794,11 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
         <Row label="Status" value={plan.status} />
-        <Row label="Base weekly amount" value={`${plan.baseWeeklyAmount.toLocaleString()} RWF`} />
+        <Row label="Base weekly amount" value={`${plan.baseWeeklyAmount.toLocaleString('en-US')} RWF`} />
         <Row label="Escalation" value={escalationLabel(plan.escalationRate)} />
         <Row label="Base rate + streak bonus" value={`${plan.baseRate}% + ${plan.bonusRate}%`} />
         {plan.status === 'ACTIVE' && <Row label="Next installment due" value={new Date(plan.nextInstallmentDueAt).toLocaleDateString()} />}
-        {plan.totalInterestPaid != null && <Row label="Interest paid" value={`${plan.totalInterestPaid.toLocaleString()} RWF`} />}
+        {plan.totalInterestPaid != null && <Row label="Interest paid" value={`${plan.totalInterestPaid.toLocaleString('en-US')} RWF`} />}
       </div>
 
       <div className="itunda-flat-section">
@@ -5840,7 +5840,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
           {plan.status === 'MATURED' && !plan.withdrawnAt && (
             <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
-              {busy ? '…' : `Withdraw ${accountBalance.toLocaleString()} RWF to main account`}
+              {busy ? '…' : `Withdraw ${accountBalance.toLocaleString('en-US')} RWF to main account`}
             </button>
           )}
         </>
@@ -6072,7 +6072,7 @@ function WeeklySavingsSection() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{p.status}</p>
               </div>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-                {p.currentAmount.toLocaleString()} RWF · week {p.weeksElapsed}/{WEEKLY_SAVINGS_TERM_WEEKS}
+                {p.currentAmount.toLocaleString('en-US')} RWF · week {p.weeksElapsed}/{WEEKLY_SAVINGS_TERM_WEEKS}
                 {p.streakBroken ? ' · streak broken' : ' · on streak'}
               </p>
               <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
@@ -6193,7 +6193,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
       <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-indigo) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', opacity: 0.85 }}>{plan.name} · Day {Math.min(plan.daysElapsed, GROW31_TERM_DAYS)} of {GROW31_TERM_DAYS}</p>
-        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '6px 0' }}>{accountBalance.toLocaleString('en-US')} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fff' }} />
         </div>
@@ -6212,9 +6212,9 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       <div className="itunda-flat-section">
         <h3 style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
         <Row label="Status" value={plan.status} />
-        <Row label="Daily amount" value={`${plan.dailyAmount.toLocaleString()} RWF`} />
+        <Row label="Daily amount" value={`${plan.dailyAmount.toLocaleString('en-US')} RWF`} />
         <Row label="Base rate" value={`${plan.baseRate}%`} />
-        {plan.totalInterestPaid != null && <Row label="Total interest paid" value={`${plan.totalInterestPaid.toLocaleString()} RWF`} />}
+        {plan.totalInterestPaid != null && <Row label="Total interest paid" value={`${plan.totalInterestPaid.toLocaleString('en-US')} RWF`} />}
       </div>
 
       <div className="itunda-flat-section">
@@ -6236,7 +6236,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {!alreadyDepositedToday ? (
                 <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleDeposit} disabled={busy}>
-                  {busy ? '…' : `Save today (+${plan.dailyAmount.toLocaleString()} RWF)`}
+                  {busy ? '…' : `Save today (+${plan.dailyAmount.toLocaleString('en-US')} RWF)`}
                 </button>
               ) : (
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-green)', fontWeight: 600 }}>
@@ -6265,7 +6265,7 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
           {plan.status === 'MATURED' && !plan.withdrawnAt && (
             <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
-              {busy ? '…' : `Withdraw ${accountBalance.toLocaleString()} RWF to main account`}
+              {busy ? '…' : `Withdraw ${accountBalance.toLocaleString('en-US')} RWF to main account`}
             </button>
           )}
         </>
@@ -6460,7 +6460,7 @@ function Grow31SavingsSection() {
                 <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{p.status}</p>
               </div>
               <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-                {p.totalSaved.toLocaleString()} RWF · day {Math.min(p.daysElapsed, GROW31_TERM_DAYS)}/{GROW31_TERM_DAYS} · streak {p.currentStreak}
+                {p.totalSaved.toLocaleString('en-US')} RWF · day {Math.min(p.daysElapsed, GROW31_TERM_DAYS)}/{GROW31_TERM_DAYS} · streak {p.currentStreak}
               </p>
               <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${pct}%`, backgroundColor: bonus > 0 ? 'var(--itunda-indigo)' : 'var(--itunda-grey-500)' }} />
@@ -6543,7 +6543,7 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
         max={UPFRONT_DEPOSIT_MAX_PRINCIPAL}
         value={principal}
         onChange={(e) => setPrincipal(e.target.value)}
-        placeholder={`Principal (${UPFRONT_DEPOSIT_MIN_PRINCIPAL.toLocaleString()} - ${UPFRONT_DEPOSIT_MAX_PRINCIPAL.toLocaleString()} RWF)`}
+        placeholder={`Principal (${UPFRONT_DEPOSIT_MIN_PRINCIPAL.toLocaleString('en-US')} - ${UPFRONT_DEPOSIT_MAX_PRINCIPAL.toLocaleString('en-US')} RWF)`}
         required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: 'var(--itunda-type-scale-15-size)' }}
       />
@@ -6589,11 +6589,11 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   return (
     <div className="itunda-flat-section">
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{deposit.principal.toLocaleString()} RWF</p>
+        <p style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700 }}>{deposit.principal.toLocaleString('en-US')} RWF</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>{deposit.withdrawnAt ? 'WITHDRAWN' : deposit.status}</p>
       </div>
       <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-grey-500)' }}>
-        +{deposit.interestPaid.toLocaleString()} RWF interest already paid · matures {new Date(deposit.maturesAt).toLocaleDateString()}
+        +{deposit.interestPaid.toLocaleString('en-US')} RWF interest already paid · matures {new Date(deposit.maturesAt).toLocaleDateString()}
       </p>
       {error && <p style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-red)', marginTop: '6px' }} role="alert">{error}</p>}
       <button onClick={toggleHistory} style={{ fontSize: 'var(--itunda-type-scale-12-size)', color: 'var(--itunda-indigo)', marginTop: '8px', fontWeight: 600 }}>

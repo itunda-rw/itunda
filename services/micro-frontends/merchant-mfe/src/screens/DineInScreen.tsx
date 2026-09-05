@@ -123,7 +123,7 @@ function DineInOrdersQueue() {
                       <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
                         {t(STATUS_KEY[order.status])}
                       </span>
-                      <span style={{ fontWeight: 700, fontSize: '13px' }}>{order.totalAmount.toLocaleString()} RWF</span>
+                      <span style={{ fontWeight: 700, fontSize: '13px' }}>{order.totalAmount.toLocaleString('en-US')} RWF</span>
                     </div>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{t('dineIn.tablePrefix')} {order.tableNumber}</p>
                     {order.notes && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('dineIn.notePrefix')} {order.notes}</p>}

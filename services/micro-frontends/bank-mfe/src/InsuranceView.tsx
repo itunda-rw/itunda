@@ -189,7 +189,7 @@ export default function InsuranceView() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{p.planName}</p>
-                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString()} RWF/mo</p>
+                  <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString('en-US')} RWF/mo</p>
                 </div>
                 <button
                   className="itunda-btn itunda-btn-secondary"
@@ -274,7 +274,7 @@ export default function InsuranceView() {
                 return (
                   <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>
-                      Saved toward next premium: {fund.currentAmount.toLocaleString()} / {fund.targetAmount.toLocaleString()} RWF
+                      Saved toward next premium: {fund.currentAmount.toLocaleString('en-US')} / {fund.targetAmount.toLocaleString('en-US')} RWF
                     </p>
                     <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: 'var(--itunda-indigo)' }} />
@@ -311,7 +311,7 @@ export default function InsuranceView() {
                 <p>{c.description}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{c.status}</p>
               </div>
-              <span>{c.amount.toLocaleString()} RWF</span>
+              <span>{c.amount.toLocaleString('en-US')} RWF</span>
             </div>
           ))}
         </div>
@@ -335,7 +335,7 @@ export default function InsuranceView() {
                   </span>
                 )}
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 600 }}>{plan.name}</p>
-                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString('en-US')} RWF/mo · cover {plan.coverageAmount.toLocaleString('en-US')} RWF</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{plan.description}</p>
               </div>
               {enrolledPlanIds.has(plan.id) ? (

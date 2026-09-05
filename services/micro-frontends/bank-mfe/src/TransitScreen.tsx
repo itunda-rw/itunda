@@ -31,7 +31,7 @@ function tapButtonLabel(balance: TransitBalance | null, fare: number, busy: bool
   if (balance === null) return 'Top up first';
   if (balance.balance < fare) return 'Balance too low';
   if (busy) return 'Tapping…';
-  return `Tap ${fare.toLocaleString()} RWF`;
+  return `Tap ${fare.toLocaleString('en-US')} RWF`;
 }
 
 export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) {
@@ -81,7 +81,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
     try {
       const result = await tapTransitFare(operator, fare);
       setBalance(result.balance);
-      setTapMessage(`Tapped ${result.trip.fare.toLocaleString()} RWF at ${result.trip.operator}`);
+      setTapMessage(`Tapped ${result.trip.fare.toLocaleString('en-US')} RWF at ${result.trip.operator}`);
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('common.actionError'));
@@ -102,7 +102,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
       <div style={{ marginBottom: '12px' }}>
         <p style={{ fontSize: 'var(--itunda-type-scale-13-size)', color: 'var(--itunda-grey-500)' }}>itunda Transit balance</p>
         <p style={{ fontSize: 'var(--itunda-type-scale-28-size)', fontWeight: 800, margin: '4px 0 0' }}>
-          {(balance?.balance ?? 0).toLocaleString()} RWF
+          {(balance?.balance ?? 0).toLocaleString('en-US')} RWF
         </p>
       </div>
 
@@ -158,7 +158,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
             value={fare} onChange={(e) => setFare(Number(e.target.value))}
             style={{ flex: 1 }}
           />
-          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString()} RWF</span>
+          <span style={{ fontSize: 'var(--itunda-type-scale-14-size)', fontWeight: 700, minWidth: '84px', textAlign: 'right' }}>{fare.toLocaleString('en-US')} RWF</span>
         </div>
         <button
           className="itunda-btn itunda-btn-primary" style={{ width: '100%' }}
@@ -180,7 +180,7 @@ export function TransitScreen({ onOpenCollect }: { onOpenCollect: () => void }) 
                 <p style={{ fontSize: 'var(--itunda-type-scale-13-size)' }}>{trip.operator}</p>
                 <p style={{ fontSize: 'var(--itunda-type-scale-11-size)', color: 'var(--itunda-grey-500)' }}>{new Date(trip.createdAt).toLocaleString()}</p>
               </div>
-              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.fare.toLocaleString()} RWF</span>
+              <span style={{ fontSize: 'var(--itunda-type-scale-13-size)', fontWeight: 700 }}>{trip.fare.toLocaleString('en-US')} RWF</span>
             </div>
           ))
         )}
