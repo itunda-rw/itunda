@@ -35,6 +35,7 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "trusted": "Trusted -- can send money",
         "notVerified": "Not verified -- can't send money yet",
         "remove": "Remove",
+        "removeFailed": "Couldn't remove this device. Try again.",
         "noNotifications": "No notifications",
         "notifications": "Notifications",
         "markAllRead": "Mark all read",
@@ -68,6 +69,7 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "trusted": "Byemewe -- gishobora kohereza amafaranga",
         "notVerified": "Ntibyemejwe -- ntigishobora kohereza amafaranga",
         "remove": "Kuraho",
+        "removeFailed": "Ntibishoboka gukuraho iki gikoresho. Wongere ugerageze.",
         "noNotifications": "Nta menyesha rihari",
         "notifications": "Amamenyesha",
         "markAllRead": "Yose yasomwe",
@@ -104,6 +106,7 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "trusted": "Approuvé -- peut envoyer de l'argent",
         "notVerified": "Non vérifié -- ne peut pas encore envoyer d'argent",
         "remove": "Retirer",
+        "removeFailed": "Impossible de retirer cet appareil. Réessayez.",
         "noNotifications": "Aucune notification",
         "notifications": "Notifications",
         "markAllRead": "Tout marquer comme lu",
@@ -228,6 +231,11 @@ struct SettingsScreen: View {
                                 .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
                                 .foregroundColor(.red)
                         }
+                    }
+                    if let deviceError = viewModel.deviceError {
+                        Text(t(deviceError))
+                            .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
+                            .foregroundColor(.red)
                     }
                 }
 

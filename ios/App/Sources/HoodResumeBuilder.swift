@@ -151,15 +151,31 @@ private struct ResumeExperienceSection: View {
                         Text(exp.period).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     }
                     Spacer()
-                    Button("Remove") { Task { _ = try? await NetworkClient.shared.removeResumeExperience(exp.id); onChanged() } }
+                    // Real gap found 2026-09-05 (matches bank-mfe's identical
+                    // HoodResumeBuilder.tsx fix, same session) -- try? silently
+                    // discarded a failed remove, so a tap did nothing with zero
+                    // feedback. Routes through this section's own error state
+                    // (moved below, outside `if adding`, so it's visible even
+                    // when the add form is closed).
+                    Button("Remove") {
+                        Task {
+                            do {
+                                _ = try await NetworkClient.shared.removeResumeExperience(exp.id)
+                                error = nil
+                                onChanged()
+                            } catch {
+                                self.error = "Couldn't remove this. Try again."
+                            }
+                        }
+                    }
                         .font(.caption)
                 }
             }
+            if let error { Text(error).font(.caption).foregroundColor(.red) }
             if adding {
                 IdsTextField("Company", text: $company)
                 IdsTextField("Role", text: $role)
                 IdsTextField("Period (e.g. 2023 – present)", text: $period)
-                if let error { Text(error).font(.caption).foregroundColor(.red) }
                 Button("Save") {
                     Task {
                         do {
@@ -196,14 +212,24 @@ private struct ResumeEducationSection: View {
                 HStack {
                     Text([edu.school, edu.degree].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
-                    Button("Remove") { Task { _ = try? await NetworkClient.shared.removeResumeEducation(edu.id); onChanged() } }
+                    Button("Remove") {
+                        Task {
+                            do {
+                                _ = try await NetworkClient.shared.removeResumeEducation(edu.id)
+                                error = nil
+                                onChanged()
+                            } catch {
+                                self.error = "Couldn't remove this. Try again."
+                            }
+                        }
+                    }
                         .font(.caption)
                 }
             }
+            if let error { Text(error).font(.caption).foregroundColor(.red) }
             if adding {
                 IdsTextField("School", text: $school)
                 IdsTextField("Degree (optional)", text: $degree)
-                if let error { Text(error).font(.caption).foregroundColor(.red) }
                 Button("Save") {
                     Task {
                         do {
@@ -239,13 +265,23 @@ private struct ResumeCertificationSection: View {
                 HStack {
                     Text(cert.name).font(.caption).foregroundColor(IDS.Colors.textPrimary)
                     Spacer()
-                    Button("Remove") { Task { _ = try? await NetworkClient.shared.removeResumeCertification(cert.id); onChanged() } }
+                    Button("Remove") {
+                        Task {
+                            do {
+                                _ = try await NetworkClient.shared.removeResumeCertification(cert.id)
+                                error = nil
+                                onChanged()
+                            } catch {
+                                self.error = "Couldn't remove this. Try again."
+                            }
+                        }
+                    }
                         .font(.caption)
                 }
             }
+            if let error { Text(error).font(.caption).foregroundColor(.red) }
             if adding {
                 IdsTextField("Certification name", text: $name)
-                if let error { Text(error).font(.caption).foregroundColor(.red) }
                 Button("Save") {
                     Task {
                         do {

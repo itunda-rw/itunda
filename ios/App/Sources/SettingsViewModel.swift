@@ -11,6 +11,12 @@ final class SettingsViewModel: ObservableObject {
     // Real device management (2026-07-21 port) -- mirrors bank-mfe's Devices tab /
     // Android's MainViewModel.devices exactly.
     @Published private(set) var devices: [TrustedDeviceDto] = []
+    // Real gap found 2026-09-05: revokeDevice() used try? to silently discard a
+    // failed revoke -- a security-relevant action (removing a device's ability to
+    // send money) failing with zero feedback could leave the user believing a
+    // device was removed when it wasn't. Matches DeviceListScreen.swift's own
+    // identical same-day fix for the standalone device screen.
+    @Published private(set) var deviceError: String?
 
     func load() async {
         do {
@@ -37,8 +43,13 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func revokeDevice(_ deviceId: String) async {
-        _ = try? await NetworkClient.shared.revokeDevice(deviceId: deviceId)
-        await loadDevices()
+        do {
+            _ = try await NetworkClient.shared.revokeDevice(deviceId: deviceId)
+            deviceError = nil
+            await loadDevices()
+        } catch {
+            deviceError = "removeFailed"
+        }
     }
 
     func markRead(_ id: String) async {

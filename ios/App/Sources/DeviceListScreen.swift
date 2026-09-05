@@ -19,22 +19,30 @@ struct DeviceListScreen: View {
     @State private var devices: [TrustedDeviceDto] = []
     @State private var loaded = false
     @State private var locale: AppLocale = loadStoredLocale()
+    // Real gap found 2026-09-05: revoke() used try? to silently discard a failed
+    // revoke -- a security-relevant action (removing a device's ability to send
+    // money) failing with zero feedback could leave the user believing a device
+    // was removed when it wasn't.
+    @State private var error: String?
 
     private let strings: [AppLocale: [String: String]] = [
         .en: [
             "title": "Devices", "unknownDevice": "Unknown device", "thisDevice": " (this device)",
             "trusted": "Trusted -- can send money", "notVerified": "Not verified -- can't send money yet",
             "remove": "Remove", "empty": "No devices found.",
+            "removeFailed": "Couldn't remove this device. Try again.",
         ],
         .rw: [
             "title": "Ibikoresho", "unknownDevice": "Ikoresho kitazwi", "thisDevice": " (iki gikoresho)",
             "trusted": "Byemewe -- gishobora kohereza amafaranga", "notVerified": "Ntibyemejwe -- ntigishobora kohereza amafaranga",
             "remove": "Kuraho", "empty": "Nta bikoresho biboneka.",
+            "removeFailed": "Ntibishoboka gukuraho iki gikoresho. Wongere ugerageze.",
         ],
         .fr: [
             "title": "Appareils", "unknownDevice": "Appareil inconnu", "thisDevice": " (cet appareil)",
             "trusted": "Approuvé -- peut envoyer de l'argent", "notVerified": "Non vérifié -- ne peut pas encore envoyer d'argent",
             "remove": "Retirer", "empty": "Aucun appareil trouvé.",
+            "removeFailed": "Impossible de retirer cet appareil. Réessayez.",
         ],
     ]
 
@@ -48,8 +56,13 @@ struct DeviceListScreen: View {
     }
 
     private func revoke(_ deviceId: String) async {
-        _ = try? await NetworkClient.shared.revokeDevice(deviceId: deviceId)
-        await load()
+        do {
+            _ = try await NetworkClient.shared.revokeDevice(deviceId: deviceId)
+            error = nil
+            await load()
+        } catch {
+            self.error = t("removeFailed")
+        }
     }
 
     var body: some View {
@@ -70,6 +83,14 @@ struct DeviceListScreen: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 4)
                 .padding(.bottom, 12)
+
+            if let error {
+                Text(error)
+                    .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
+            }
 
             if !loaded {
                 Spacer()
