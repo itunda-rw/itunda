@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,14 +33,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.app.R
+import rw.itunda.core.designsystem.components.BucketTransactionRow
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.pressScaleClickable
 import rw.itunda.core.designsystem.components.ledgerDateHeader
-import rw.itunda.core.designsystem.components.ledgerFullDateTime
-import rw.itunda.core.designsystem.theme.AccentIndigo
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsIcons
 import rw.itunda.core.designsystem.theme.IdsTypography
@@ -146,36 +142,6 @@ internal fun BucketDetailScreen(
                     items(rows, key = { it.id }) { tx -> BucketTransactionRow(tx) }
                 }
             }
-        }
-    }
-}
-
-@Composable
-internal fun BucketTransactionRow(tx: BucketTransactionDto) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier.size(38.dp).clip(CircleShape).background(if (tx.isCredit) AccentIndigo else Ids.colors.textTertiary),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (tx.isCredit) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
-                contentDescription = null, modifier = Modifier.size(18.dp), tint = androidx.compose.ui.graphics.Color.White,
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(tx.description, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
-            Text(ledgerFullDateTime(tx.createdAt), fontSize = 12.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                "${if (tx.isCredit) "+" else "-"}%,.0f".format(tx.amount),
-                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (tx.isCredit) AccentIndigo else Ids.colors.textPrimary,
-            )
-            Text("%,.0f".format(tx.balanceAfter), fontSize = 11.sp, color = Ids.colors.textTertiary, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

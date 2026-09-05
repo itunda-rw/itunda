@@ -186,6 +186,7 @@ import rw.itunda.feature.credit.impl.CreditScoreScreen
 import rw.itunda.feature.credit.impl.StudentLoanScreen
 import rw.itunda.feature.credit.impl.VupLoanScreen
 import rw.itunda.feature.banking.impl.BankHubScreen
+import rw.itunda.feature.banking.impl.WeeklySavingsScreen
 import rw.itunda.feature.home.impl.HomeTab
 import rw.itunda.feature.pay.impl.PayTab
 import rw.itunda.feature.menu.impl.MenuScreen
