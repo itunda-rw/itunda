@@ -586,6 +586,102 @@ Errors (all 5 real `@ExceptionHandler`s): `404 TRUSTED_CONTACT_NOT_FOUND`,
 `404 TRUSTED_CONTACT_RECIPIENT_NOT_FOUND`, `400 CANNOT_ADD_SELF_AS_TRUSTED_CONTACT`,
 `409 TRUSTED_CONTACT_ALREADY_ADDED`, `409 TOO_MANY_TRUSTED_CONTACTS`.
 
+## Marketplace — `/api/v1/marketplace`
+
+**Added 2026-09-05** (eleventh documentation slice). Real 당근마켓-style used-goods
+marketplace — listings (including 당근카/Karrot Vehicles lease-takeover fields),
+당근 price-offer negotiation posted inline into the buyer-seller chat, 끌어올리기
+(free self-bump), seller-paid sponsored boost, "pay via itunda" escrow, and
+post-transaction reviews. The parent controller for the already-documented Vehicle
+Inspections and Keyword Alerts sub-resources below. Confirmed by direct read of
+`MarketplaceController.kt` (31 endpoints, 32 `@ExceptionHandler`s, 28 unique codes —
+`LISTING_NOT_FOUND` is shared by 4 exceptions, `ACCOUNT_NOT_FOUND` by 2).
+
+### Listings
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/listings` | `{title, description, price, category, latitude?, longitude?, meetingPlace?, photoUrl?, vehicleMileageKm?, vehicleInsuranceClaimCount?, vehicleIsLeaseTakeover?, leaseTotalAcquisitionCost?, leaseRemainingMonths?, leaseTotalMonths?, leaseMonthlyPayment?, leaseSubsidyAmount?, leaseReturnFee?}` | `201 {success, listing: {...}}` | The `lease*`/`vehicle*` fields are real 당근카 (Karrot Vehicles) lease-takeover data, all optional. Triggers real Keyword Alert matching (see the Keyword Alerts section below) |
+| GET | `/categories` | — | `{success, categories: [...]}` | |
+| GET | `/listings?category` | — | `{success, listings: [...], trustScores, ...pageMeta}` | Every real browse call is JWT-authenticated (no guest-browse path here, unlike some other browse endpoints in this backend), so hidden listings (see `/hide` below) are already excluded |
+| GET | `/listings/nearby?latitude&longitude&radiusKm` | — | `{success, listings: [...], trustScores, ...pageMeta}` | `radiusKm` defaults to 5.0 |
+| GET | `/listings/my-neighborhood?category` | — | `{success, listings: [...], trustScores, likedByMe, ...pageMeta}` | |
+| GET | `/listings/search?q` | — | `{success, listings: [...], trustScores, ...pageMeta}` | |
+| GET | `/listings/{listingId}` | — | `{success, listing: {...}, sellerTrustScore}` | |
+| GET | `/my-listings` | — | `{success, listings: [...], trustScores, likedByMe, ...pageMeta}` | |
+| GET | `/my-purchases` | — | `{success, listings: [...], trustScores, likedByMe, ...pageMeta}` | |
+| DELETE | `/listings/{listingId}` | — | `{success, listing: {...}}` | |
+| POST | `/listings/{listingId}/like` | — | `{success, liked}` | Idempotent toggle |
+| POST | `/listings/{listingId}/hide` | — | `201 {success, hide: {...}}` | Real Karrot "이 글 숨기기" (hide this post) — removes it from the caller's own browse results only |
+| DELETE | `/listings/{listingId}/hide` | — | `{success}` | |
+| POST | `/listings/{listingId}/bump` | — | `{success, listing: {...}}` | Real 당근마켓 끌어올리기 (bump to top of feed) — free, self-serve, no `Idempotency-Key` |
+| PATCH | `/listings/{listingId}/price` | `{price}` | `{success, listing: {...}}` | Real 가격 수정 (price edit) — also triggers a real Karrot 가격 하락 알림 (price-drop notification) to interested buyers when the price drops |
+| POST | `/listings/{listingId}/mark-sold` | `{buyerPhoneNumber?}` | `{success, listing: {...}}` | |
+
+### Boost & escrow (real money movement)
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/listings/{listingId}/boost` | `{days}` (+ `Idempotency-Key`) | `{success, listing: {...}}` | Seller-paid sponsored placement — the first money-moving endpoint in this controller, so the first to require `Idempotency-Key` |
+| GET | `/boost-tiers` | — | `{success, tiers: {...}}` | |
+| POST | `/listings/{listingId}/pay-escrow` | `{deliveryAddress?}` (+ `Idempotency-Key`) | `201 {success, escrow: {...}}` | Real "pay via itunda" escrow. `deliveryAddress` is optional — omit it for the original in-person handoff flow |
+| POST | `/listings/{listingId}/confirm-receipt` | — (+ `Idempotency-Key`) | `{success, escrow: {...}}` | Releases escrowed funds to the seller |
+| POST | `/listings/{listingId}/dispute-escrow` | `{reason}` | `{success, escrow: {...}}` | Not `Idempotency-Key`-protected — opens a dispute rather than moving money itself |
+| GET | `/listings/{listingId}/escrow` | — | `{success, escrow: {...}}` | |
+
+### Favorites, contact, offers, reviews
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/listings/{listingId}/favorite` | — | `201 {success, favorite: {...}}` | |
+| DELETE | `/listings/{listingId}/favorite` | — | `{success}` | |
+| GET | `/listings/favorites` | — | `{success, favorites: [...], ...pageMeta}` | |
+| POST | `/listings/{listingId}/contact-seller` | — | `{success, conversation: {...}}` | |
+| POST | `/listings/{listingId}/offers` | `{amount}` | `201 {success, offer: {...}}` | Real 당근-style price-offer negotiation — posted as a real message in the buyer-seller conversation `contact-seller` establishes |
+| POST | `/offers/{offerId}/respond` | `{action, counterAmount?}` | `{success, offer: {...}}` | `action` is accept/reject/counter |
+| GET | `/conversations/{conversationId}/offers` | — | `{success, offers: [...]}` | Per-thread offer history, so a client can render offer bubbles inline in the conversation it already fetches from Messaging |
+| POST | `/listings/{listingId}/review` | `{goodPoints?, uncomfortablePoints?}` | `201 {success, review: {...}}` | Shared `HoodReviewService` — asymmetric public/private visibility, same as Jobs' own reviews |
+| GET | `/listings/{listingId}/review` | — | `{success, reviews: [...]}` | |
+
+Reporting a listing moved to the unified `POST /api/v1/hood/reports`
+(`HoodReportController`, not yet documented on this page) — this controller
+deliberately has no separate report endpoint of its own, same retirement `Community`'s
+own section above documents for the identical reason.
+
+### Errors (complete — all 32 `@ExceptionHandler`s in `MarketplaceController.kt`, 28 unique codes)
+
+`404 OFFER_NOT_FOUND`, `400 INVALID_OFFER_AMOUNT`, `409 OFFER_ALREADY_RESOLVED`,
+`400 OWN_OFFER`, `404 LISTING_NOT_FOUND` (shared by 4 exceptions — the listing itself
+not existing, a stale favorite/hide pointer, and a review-lookup miss),
+`400 INVALID_LISTING`, `400 INVALID_LISTING_PRICE`, `409 LISTING_NOT_ACTIVE`,
+`400 OWN_LISTING`, `429 BUMP_COOLDOWN`, `429 RATE_LIMITED`, `400 INVALID_COORDINATES`,
+`400 NEIGHBORHOOD_NOT_SET`, `404 BUYER_NOT_FOUND`,
+`409 REVIEW_TRANSACTION_NOT_COMPLETED`, `400 REVIEW_NO_COUNTERPARTY`,
+`404 REVIEW_NOT_PARTY` (IDOR fix, 2026-08-30 — was `403`, same fix class as Jobs'
+identical review-ownership check), `409 REVIEW_ALREADY_SUBMITTED`,
+`400 INVALID_BOOST_DURATION`, `404 ACCOUNT_NOT_FOUND` (seller or buyer, shared),
+`404 ESCROW_NOT_FOUND`, `409 INVALID_ESCROW_STATUS`, `400 INVALID_DISPUTE_REASON`,
+`422 INSUFFICIENT_FUNDS`, `403 ACCOUNT_FROZEN`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Keyword Alerts — `/api/v1/marketplace/keyword-alerts`
+
+**Added 2026-09-05, same slice.** Real 당근마켓-style Keyword Alert — save a keyword,
+get notified when a new listing matches it (triggered from `MarketplaceController
+.createListing` above), with a real do-not-disturb quiet-hours window. Confirmed by
+direct read of `KeywordAlertController.kt` (5 endpoints, 4 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | `{keyword}` | `201 {success, alert: {...}}` | |
+| GET | `` (base path) | — | `{success, alerts: [...], ...pageMeta}` | |
+| DELETE | `/{alertId}` | — | `{success}` | |
+| POST | `/quiet-hours` | `{startTime, endTime, enabled?}` | `{success, quietHours: {...}}` | |
+| GET | `/quiet-hours` | — | `{success, quietHours: {...}}` | |
+
+Errors (all 4 real `@ExceptionHandler`s): `400 INVALID_QUIET_HOURS`,
+`400 INVALID_KEYWORD`, `409 KEYWORD_ALERT_CAP_REACHED`, `404 KEYWORD_ALERT_NOT_FOUND`.
+
 ## Vehicle Inspections — `/api/v1/marketplace/inspections`
 
 **Added 2026-09-05.** Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection
