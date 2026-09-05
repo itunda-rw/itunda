@@ -1596,6 +1596,56 @@ visitor-count dashboard. Confirmed by direct read of
 
 Errors: `404 MERCHANT_NOT_FOUND`.
 
+## Merchant Business Account — `/api/v1/merchant/business-account`
+
+**Added 2026-09-05** (twenty-fifth documentation slice). Real 토스뱅크 개인사업자
+(business banking for sole proprietors)-style separate business ledger — the same
+person on both sides of a "move" action, but real ledger-level separation between
+personal and business money. Confirmed by direct read of
+`MerchantBusinessAccountController.kt` (5 endpoints, 10 error codes, all unique).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `` (base path) | — (+ `Idempotency-Key`) | `201 {success, account: {...}}` | Real gap fixed 2026-09-05 — a lost response after a successful open would previously resubmit and hit `BUSINESS_ACCOUNT_ALREADY_EXISTS` on retry; the two `move-*` endpoints below were already protected |
+| GET | `` (base path) | — | `{success, account: {...}}` | |
+| GET | `/transactions` | — | `{success, transactions: [...]}` | |
+| POST | `/move-to-business` | `{amount}` (+ `Idempotency-Key`) | `{success, account: {...}}` | |
+| POST | `/move-to-personal` | `{amount}` (+ `Idempotency-Key`) | `{success, account: {...}}` | |
+
+Errors (all 10 real `@ExceptionHandler`s): `404 MERCHANT_NOT_FOUND`,
+`409 BUSINESS_ACCOUNT_ALREADY_EXISTS`, `404 BUSINESS_ACCOUNT_NOT_FOUND`,
+`400 INVALID_MOVE_AMOUNT`, `404 ACCOUNT_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`403 ACCOUNT_FROZEN`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`.
+
+## Pay API — `/api/v1/pay`
+
+**Added 2026-09-05, same slice.** Real "Pay with itunda" external checkout API — the
+itunda equivalent of Toss Payments (a genuinely different product from Toss Pay's
+own in-app consumer feature): any external merchant's own backend server integrates
+directly with a real API key, zero itunda user login involved anywhere in the flow.
+Deliberately `permitAll` at the Spring Security layer — API-key resolution happens
+inside this controller, not the JWT filter chain, since neither a merchant's server
+nor a paying customer's browser holds an itunda user JWT. Confirmed by direct read
+of `PaymentsApiController.kt` (4 endpoints, 10 `@ExceptionHandler`s, 11 total codes
+— one handler branches into 2 different codes depending on which header is missing).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/payments` | `{amount, description, orderId?, successUrl?, failUrl?}` header `X-Api-Key` (+ `Idempotency-Key`) | `201 {success, paymentKey, checkoutUrl, status, expiresAt}` | Rate-limited to 30/minute per merchant. Creates a payable intent; no money moves yet |
+| GET | `/payments/{paymentKey}` | — header `X-Api-Key` | `{success, paymentKey, orderId, amount, status, completedTransactionId}` | Rate-limited to 120/minute per merchant. The merchant's own backend calls this to independently confirm payment before fulfilling an order — a customer's browser redirect alone is never trusted as proof of payment |
+| POST | `/payments/{paymentKey}/cancel` | `{cancelReason, cancelAmount?}` header `X-Api-Key` (+ `Idempotency-Key`) | `{success, ...}` | Rate-limited to 30/minute per merchant. Real cancel/refund — reverses real ledger legs, unlike `createPayment` above |
+| GET | `/checkout/{paymentKey}` | — | `{success, paymentKey, merchantName, amount, description, status, successUrl, failUrl}` | Public, no API key — the customer's own browser calls this (a real itunda-hosted checkout page), not the merchant's server |
+
+Errors (all 10 real `@ExceptionHandler`s, 11 total codes): `401 INVALID_API_KEY`,
+`400 INVALID_CHECKOUT_REQUEST`, `404 PAYMENT_NOT_FOUND`, `404 MERCHANT_NOT_FOUND`,
+`400 IDEMPOTENCY_KEY_REQUIRED` / `401 API_KEY_REQUIRED` (one handler, branches on
+which of the two required headers is actually missing — this controller needs both
+`X-Api-Key` and, on every POST, `Idempotency-Key`, so a single hardcoded message
+would be wrong for the other case), `409 PAYMENT_NOT_REFUNDABLE`,
+`400 INVALID_CANCEL_REQUEST`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `429 RATE_LIMITED`.
+
 ## Merchant Payroll — `/api/v1/merchant/payroll`
 
 **Added 2026-09-05** (was named as a real, still-open documentation gap in the Merchant
